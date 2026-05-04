@@ -1,0 +1,128 @@
+{
+  "HomePage": {
+    "title": "One Trace",
+    "description": "Trace and manage your work in one place.",
+    "signIn": "Sign in"
+  },
+  "Auth": {
+    "brandKicker": "One Trace",
+    "title": "Welcome back",
+    "subtitle": "Sign in to your account to continue.",
+    "email": "Email",
+    "emailPlaceholder": "you@company.com",
+    "password": "Password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "passwordPlaceholder": "Enter your password",
+    "submit": "Sign in",
+    "submitting": "Signing in…",
+    "forgotPasswordLink": "Forgot password?",
+    "noAccount": "No account yet?",
+    "signUpLink": "Create one",
+    "errors": {
+      "invalidCredentials": "Invalid email or password. Please try again."
+    },
+    "register": {
+      "title": "Create account",
+      "body": "Registration will live here — wire your API next.",
+      "backToLogin": "Back to sign in"
+    },
+    "forgotPassword": {
+      "title": "Reset password",
+      "body": "Password reset will live here — wire your API next.",
+      "backToLogin": "Back to sign in"
+    }
+  },
+  "ApiErrors": {
+    "INVALID_CREDENTIALS": "Invalid email or password.",
+    "NETWORK": "Network error. Check your connection and try again.",
+    "fallback": "Something went wrong. Please try again.",
+    "HTTP_500": "The server had a problem. Please try again later."
+  },
+  "NotFound": {
+    "title": "Page not found",
+    "description": "The page you are looking for does not exist.",
+    "home": "Back to home"
+  },
+  "Dashboard": {
+    "brand": {
+      "appName": "One Trace"
+    },
+    "header": {
+      "eyebrowMain": "Projects",
+      "eyebrowSettings": "Settings",
+      "closeSettings": "Close settings",
+      "toggleSidebar": "Show or hide sidebar",
+      "signOut": "Sign out",
+      "openSettings": "Settings & appearance"
+    },
+    "sidebar": {
+      "projects": "Projects",
+      "footerHint": "Signed-in area"
+    },
+    "settingsNav": {
+      "title": "Settings",
+      "sidebarSubtitle": "Workspace preferences",
+      "backToApp": "Projects",
+      "appearance": "Appearance",
+      "hint": "Customize theme and accent for this workspace."
+    },
+    "appearance": {
+      "metaTitle": "Appearance",
+      "pageKicker": "Settings",
+      "title": "Appearance",
+      "subtitle": "Control theme, language, and accent for the dashboard shell. Accent colors highlight navigation and the header stripe.",
+      "themeHeading": "Theme",
+      "themeHint": "Switch between a bright interface and a dark interface.",
+      "themeSelectLabel": "Interface theme",
+      "theme": {
+        "light": "Light",
+        "dark": "Dark"
+      },
+      "languageHeading": "Language",
+      "languageHint": "Updates all dashboard and settings labels for your account on this device.",
+      "languageSelectLabel": "Display language",
+      "languages": {
+        "en": "English",
+        "es": "Español"
+      },
+      "accentHeading": "Accent color",
+      "accentHint": "Choose a preset or define your own hex color. Active routes and the top stripe use this accent.",
+      "accentCustom": "Custom",
+      "customHexLabel": "Custom hex color",
+      "customColorPicker": "Pick a color",
+      "applyCustom": "Apply",
+      "customHint": "Use a 6-digit hex value (e.g. #2563eb). Custom accents apply to the sidebar, mobile bar, and header stripe.",
+      "accents": {
+        "slate": "Slate",
+        "indigo": "Indigo",
+        "emerald": "Emerald",
+        "rose": "Rose",
+        "violet": "Violet",
+        "amber": "Amber",
+        "sky": "Sky",
+        "fuchsia": "Fuchsia",
+        "teal": "Teal",
+        "orange": "Orange"
+      }
+    },
+    "home": {
+      "title": "Overview",
+      "body": "You are in the app shell. Add widgets, tables, and navigation here."
+    },
+    "projects": {
+      "metaTitle": "Projects",
+      "title": "Projects",
+      "body": "Your projects will appear here. This is the default view after sign-in."
+    },
+    "settings": {
+      "title": "Settings",
+      "body": "Account and workspace settings will go here."
+    }
+  },
+  "validation": {
+    "emailRequired": "Email is required.",
+    "emailInvalid": "Enter a valid email address.",
+    "passwordRequired": "Password is required."
+  }
+}

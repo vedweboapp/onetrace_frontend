@@ -1,0 +1,128 @@
+{
+  "HomePage": {
+    "title": "One Trace",
+    "description": "Rastrea y gestiona tu trabajo en un solo lugar.",
+    "signIn": "Iniciar sesión"
+  },
+  "Auth": {
+    "brandKicker": "One Trace",
+    "title": "Bienvenido de nuevo",
+    "subtitle": "Inicia sesión en tu cuenta para continuar.",
+    "email": "Correo",
+    "emailPlaceholder": "tu@empresa.com",
+    "password": "Contraseña",
+    "showPassword": "Mostrar contraseña",
+    "hidePassword": "Ocultar contraseña",
+    "passwordPlaceholder": "Introduce tu contraseña",
+    "submit": "Entrar",
+    "submitting": "Entrando…",
+    "forgotPasswordLink": "¿Olvidaste la contraseña?",
+    "noAccount": "¿No tienes cuenta?",
+    "signUpLink": "Crear una",
+    "errors": {
+      "invalidCredentials": "Correo o contraseña no válidos. Inténtalo de nuevo."
+    },
+    "register": {
+      "title": "Crear cuenta",
+      "body": "El registro irá aquí: conecta tu API cuando toque.",
+      "backToLogin": "Volver a iniciar sesión"
+    },
+    "forgotPassword": {
+      "title": "Restablecer contraseña",
+      "body": "El restablecimiento irá aquí: conecta tu API cuando toque.",
+      "backToLogin": "Volver a iniciar sesión"
+    }
+  },
+  "ApiErrors": {
+    "INVALID_CREDENTIALS": "Correo o contraseña no válidos.",
+    "NETWORK": "Error de red. Comprueba tu conexión e inténtalo de nuevo.",
+    "fallback": "Algo salió mal. Inténtalo de nuevo.",
+    "HTTP_500": "El servidor tuvo un problema. Inténtalo más tarde."
+  },
+  "NotFound": {
+    "title": "Página no encontrada",
+    "description": "La página que buscas no existe.",
+    "home": "Volver al inicio"
+  },
+  "Dashboard": {
+    "brand": {
+      "appName": "One Trace"
+    },
+    "header": {
+      "eyebrowMain": "Proyectos",
+      "eyebrowSettings": "Ajustes",
+      "closeSettings": "Cerrar ajustes",
+      "toggleSidebar": "Mostrar u ocultar barra lateral",
+      "signOut": "Cerrar sesión",
+      "openSettings": "Ajustes y apariencia"
+    },
+    "sidebar": {
+      "projects": "Proyectos",
+      "footerHint": "Zona autenticada"
+    },
+    "settingsNav": {
+      "title": "Ajustes",
+      "sidebarSubtitle": "Preferencias del espacio",
+      "backToApp": "Proyectos",
+      "appearance": "Apariencia",
+      "hint": "Personaliza el tema y el color de acento de este espacio."
+    },
+    "appearance": {
+      "metaTitle": "Apariencia",
+      "pageKicker": "Ajustes",
+      "title": "Apariencia",
+      "subtitle": "Controla el tema, el idioma y el color de acento del panel. El acento resalta la navegación y la franja superior.",
+      "themeHeading": "Tema",
+      "themeHint": "Alterna entre interfaz clara y oscura.",
+      "themeSelectLabel": "Tema de la interfaz",
+      "theme": {
+        "light": "Claro",
+        "dark": "Oscuro"
+      },
+      "languageHeading": "Idioma",
+      "languageHint": "Actualiza todas las etiquetas del panel y ajustes en este dispositivo.",
+      "languageSelectLabel": "Idioma de la interfaz",
+      "languages": {
+        "en": "English",
+        "es": "Español"
+      },
+      "accentHeading": "Color de acento",
+      "accentHint": "Elige un preset o define tu propio color hex. Las rutas activas y la franja superior usan este acento.",
+      "accentCustom": "Personalizado",
+      "customHexLabel": "Color hex personalizado",
+      "customColorPicker": "Elegir color",
+      "applyCustom": "Aplicar",
+      "customHint": "Usa 6 caracteres hex (p. ej. #2563eb). El acento personalizado afecta la barra lateral, la barra móvil y la franja del encabezado.",
+      "accents": {
+        "slate": "Pizarra",
+        "indigo": "Índigo",
+        "emerald": "Esmeralda",
+        "rose": "Rosa",
+        "violet": "Violeta",
+        "amber": "Ámbar",
+        "sky": "Cielo",
+        "fuchsia": "Fucsia",
+        "teal": "Verde azulado",
+        "orange": "Naranja"
+      }
+    },
+    "home": {
+      "title": "Resumen",
+      "body": "Estás en el shell de la app. Añade widgets, tablas y navegación aquí."
+    },
+    "projects": {
+      "metaTitle": "Proyectos",
+      "title": "Proyectos",
+      "body": "Tus proyectos aparecerán aquí. Es la vista predeterminada tras iniciar sesión."
+    },
+    "settings": {
+      "title": "Ajustes",
+      "body": "Aquí irán los ajustes de cuenta y espacio de trabajo."
+    }
+  },
+  "validation": {
+    "emailRequired": "El correo es obligatorio.",
+    "emailInvalid": "Introduce un correo válido.",
+    "passwordRequired": "La contraseña es obligatoria."
+  }
+}
