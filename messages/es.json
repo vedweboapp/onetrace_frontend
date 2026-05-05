@@ -45,33 +45,41 @@
     "home": "Volver al inicio"
   },
   "Dashboard": {
+    "common": {
+      "back": "Atrás"
+    },
     "brand": {
       "appName": "One Trace"
     },
     "header": {
-      "eyebrowMain": "Proyectos",
+      "eyebrowMain": "Espacio de trabajo",
       "eyebrowSettings": "Ajustes",
       "closeSettings": "Cerrar ajustes",
-      "toggleSidebar": "Mostrar u ocultar barra lateral",
+      "toggleSidebar": "Expandir o contraer barra lateral",
       "signOut": "Cerrar sesión",
-      "openSettings": "Ajustes y apariencia"
+      "openSettings": "Ajustes y apariencia",
+      "openProfileMenu": "Abrir menú de perfil",
+      "profileMenuLabel": "Cuenta"
     },
     "sidebar": {
+      "clients": "Clientes",
       "projects": "Proyectos",
-      "footerHint": "Zona autenticada"
+      "groups": "Grupos",
+      "compositeItems": "Ítems compuestos"
     },
     "settingsNav": {
       "title": "Ajustes",
       "sidebarSubtitle": "Preferencias del espacio",
       "backToApp": "Proyectos",
       "appearance": "Apariencia",
+      "pinStatus": "Estados de pin",
       "hint": "Personaliza el tema y el color de acento de este espacio."
     },
     "appearance": {
       "metaTitle": "Apariencia",
       "pageKicker": "Ajustes",
       "title": "Apariencia",
-      "subtitle": "Controla el tema, el idioma y el color de acento del panel. El acento resalta la navegación y la franja superior.",
+      "subtitle": "Controla el tema, el idioma y el color de acento del panel. El acento resalta la navegación y las acciones clave.",
       "themeHeading": "Tema",
       "themeHint": "Alterna entre interfaz clara y oscura.",
       "themeSelectLabel": "Tema de la interfaz",
@@ -87,13 +95,17 @@
         "es": "Español"
       },
       "accentHeading": "Color de acento",
-      "accentHint": "Elige un preset o define tu propio color hex. Las rutas activas y la franja superior usan este acento.",
+      "accentPresetsLabel": "Predefinidos",
+      "accentCustomLabel": "Color personalizado",
       "accentCustom": "Personalizado",
       "customHexLabel": "Color hex personalizado",
       "customColorPicker": "Elegir color",
       "applyCustom": "Aplicar",
-      "customHint": "Usa 6 caracteres hex (p. ej. #2563eb). El acento personalizado afecta la barra lateral, la barra móvil y la franja del encabezado.",
+      "customHint": "Usa 6 caracteres hex (p. ej. #2563eb). El acento personalizado afecta la barra lateral, la barra móvil y los resaltados de acento.",
       "accents": {
+        "black": "Negro",
+        "blue": "Azul",
+        "pink": "Rosa",
         "slate": "Pizarra",
         "indigo": "Índigo",
         "emerald": "Esmeralda",
@@ -106,14 +118,413 @@
         "orange": "Naranja"
       }
     },
+    "pinStatus": {
+      "metaTitle": "Estados de pin",
+      "title": "Estados de pin",
+      "subtitle": "Crea y gestiona las etiquetas de flujo para los pins. Los colores se usan en las pastillas de estado en toda la app.",
+      "add": "Añadir estado",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "table": {
+        "status": "Nombre",
+        "preview": "Vista previa",
+        "created": "Creado",
+        "actions": "Acciones"
+      },
+      "empty": "Aún no hay estados de pin. Añade uno para empezar.",
+      "loadError": "No se pudieron cargar los estados. Inténtalo de nuevo.",
+      "modal": {
+        "createTitle": "Nuevo estado de pin",
+        "editTitle": "Editar estado de pin",
+        "statusName": "Nombre del estado",
+        "bgColour": "Color de fondo",
+        "textColour": "Color del texto",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "deleteConfirmTitle": "¿Eliminar este estado?",
+      "deleteConfirmBody": "Los pins que usen este estado pueden verse afectados. Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar",
+      "pageLabel": "Página {current} de {total} ({count} registros)",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "saved": "Estado actualizado",
+      "created": "Estado creado",
+      "deleted": "Estado eliminado",
+      "hexPlaceholder": "#000000",
+      "validationName": "Introduce un nombre de estado.",
+      "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #E5E7EB)."
+    },
+    "clients": {
+      "metaTitle": "Clientes",
+      "detailMetaTitle": "Detalle del cliente",
+      "title": "Clientes",
+      "subtitle": "Organizaciones y contactos con los que trabajas. Pulsa una fila para ver todos los datos.",
+      "add": "Añadir cliente",
+      "empty": "Aún no hay clientes. Añade el primero para empezar.",
+      "loadError": "No se pudieron cargar los clientes. Inténtalo de nuevo.",
+      "missingOrganization": "No hay organización de espacio de trabajo en esta sesión. Cierra sesión y vuelve a entrar, o contacta con soporte.",
+      "createdToast": "Cliente creado correctamente",
+      "updatedToast": "Cliente actualizado correctamente",
+      "pageLabel": "Página {current} de {total} ({count} registros)",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "table": {
+        "name": "Cliente",
+        "contact": "Contacto",
+        "email": "Correo",
+        "phone": "Teléfono",
+        "status": "Estado",
+        "created": "Creado"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "detail": {
+        "loadingTitle": "Cargando…",
+        "retry": "Reintentar",
+        "close": "Cerrar panel",
+        "edit": "Editar",
+        "addressUnavailable": "Aún no hay dirección guardada para este cliente.",
+        "sectionContact": "Contacto",
+        "sectionAddress": "Dirección",
+        "sectionRecord": "Registro"
+      },
+      "detailLoadError": "No se pudieron cargar los datos del cliente. Inténtalo de nuevo.",
+      "form": {
+        "section": {
+          "organization": "Organización",
+          "contact": "Contacto principal",
+          "address": "Dirección"
+        }
+      },
+      "placeholders": {
+        "country": "Seleccionar país",
+        "state": "Seleccionar estado / provincia",
+        "city": "Seleccionar o escribir ciudad"
+      },
+      "fields": {
+        "name": "Nombre del cliente",
+        "contactPerson": "Persona de contacto",
+        "email": "Correo",
+        "phone": "Teléfono",
+        "addressLine1": "Línea de dirección 1",
+        "addressLine2": "Línea de dirección 2",
+        "country": "País",
+        "stateProvince": "Estado / provincia",
+        "city": "Ciudad",
+        "pincode": "Código postal",
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "createdBy": "Creado por"
+      },
+      "modal": {
+        "createTitle": "Nuevo cliente",
+        "editTitle": "Editar cliente",
+        "cancel": "Cancelar",
+        "save": "Crear cliente",
+        "saveChanges": "Guardar cambios"
+      },
+      "validation": {
+        "generic": "Revisa el formulario e inténtalo de nuevo.",
+        "name": "Introduce el nombre del cliente.",
+        "contact": "Introduce una persona de contacto.",
+        "email": "Introduce un correo válido.",
+        "phoneInvalid": "Introduce un número válido con prefijo internacional.",
+        "addressLine1": "Introduce la línea 1 de la dirección.",
+        "country": "Selecciona un país.",
+        "state": "Selecciona un estado o provincia.",
+        "city": "Selecciona o escribe una ciudad.",
+        "pincode": "Introduce un código postal."
+      }
+    },
     "home": {
       "title": "Resumen",
       "body": "Estás en el shell de la app. Añade widgets, tablas y navegación aquí."
     },
+    "list": {
+      "searchPlaceholder": "Buscar…",
+      "searchAria": "Buscar en esta lista"
+    },
     "projects": {
       "metaTitle": "Proyectos",
+      "detailMetaTitle": "Detalle del proyecto",
       "title": "Proyectos",
-      "body": "Tus proyectos aparecerán aquí. Es la vista predeterminada tras iniciar sesión."
+      "subtitle": "Organiza el trabajo por cliente y fechas. Abre una fila para ver todos los datos.",
+      "add": "Añadir proyecto",
+      "empty": "Aún no hay proyectos. Crea el primero para empezar.",
+      "loadError": "No se pudieron cargar los proyectos. Inténtalo de nuevo.",
+      "missingOrganization": "No hay organización de espacio de trabajo en esta sesión. Cierra sesión y vuelve a entrar, o contacta con soporte.",
+      "createdToast": "Proyecto creado correctamente",
+      "updatedToast": "Proyecto actualizado correctamente",
+      "deletedToast": "Proyecto eliminado",
+      "deleteError": "No se pudo eliminar el proyecto. Inténtalo de nuevo.",
+      "noClientsHint": "Añade al menos un cliente antes de poder crear un proyecto.",
+      "filterState": "Estado activo",
+      "filterAll": "Todos",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "activatedToast": "Proyecto activado",
+      "deactivatedToast": "Proyecto desactivado",
+      "toggleActiveError": "No se pudo actualizar el estado del proyecto. Inténtalo de nuevo.",
+      "pageLabel": "Página {current} de {total} ({count} registros)",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "delete": "Eliminar",
+      "deleteConfirmTitle": "¿Eliminar este proyecto?",
+      "deleteConfirmBody": "Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar proyecto",
+      "table": {
+        "name": "Proyecto",
+        "client": "Cliente",
+        "start": "Inicio",
+        "end": "Fin",
+        "status": "Estado",
+        "activeState": "Activo",
+        "created": "Creado",
+        "actions": "Acciones"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "detail": {
+        "loadingTitle": "Cargando…",
+        "retry": "Reintentar",
+        "edit": "Editar",
+        "addressUnavailable": "No hay dirección estructurada guardada para este proyecto.",
+        "sectionOverview": "Resumen",
+        "sectionClient": "Cliente",
+        "sectionSchedule": "Planificación",
+        "sectionAddress": "Dirección",
+        "sectionRecord": "Registro",
+        "tabsAria": "Secciones del proyecto",
+        "tabs": {
+          "details": "Detalles",
+          "forms": "Formularios",
+          "drawings": "Planos",
+          "locations": "Ubicaciones",
+          "specs": "Especificaciones",
+          "docs": "Documentos",
+          "approvals": "Aprobaciones"
+        },
+        "tabPlaceholder": "Esta sección estará disponible pronto."
+      },
+      "drawings": {
+        "title": "Planos",
+        "upload": "Subir",
+        "open": "Abrir",
+        "empty": "Aún no hay planos. Sube un PDF o una imagen para empezar.",
+        "loadError": "No se pudieron cargar los planos. Inténtalo de nuevo.",
+        "pageLabel": "Página {current} de {total} ({count} planos)",
+        "prev": "Anterior",
+        "next": "Siguiente",
+        "pinsLabelShort": "Pins:",
+        "table": {
+          "drawing": "Plano",
+          "file": "Archivo",
+          "pins": "Pins",
+          "actions": "Acciones"
+        },
+        "modal": {
+          "title": "Subir plano",
+          "name": "Nombre del plano",
+          "namePlaceholder": "p. ej. Planta baja",
+          "nameError": "Introduce un nombre para este plano.",
+          "file": "Archivo",
+          "fileHint": "PDF u otros formatos de imagen habituales.",
+          "fileError": "Elige un archivo para subir.",
+          "cancel": "Cancelar",
+          "submit": "Subir",
+          "createdToast": "Plano subido correctamente"
+        },
+        "editor": {
+          "title": "Editor de plano",
+          "subtitle": "Primero crea un área de plot y luego coloca pins dentro de ese plot.",
+          "toolSelect": "Seleccionar",
+          "close": "Cerrar",
+          "loadError": "No se pudieron cargar los datos del editor.",
+          "toolHand": "Mover",
+          "toolPlot": "Dibujar plot",
+          "toolBox": "Dibujar caja",
+          "toolPin": "Colocar pin",
+          "zoomReset": "Restablecer",
+          "pdfRenderError": "No se pudo renderizar la página PDF. Prueba con otro archivo.",
+          "renderUnavailable": "No se pudo renderizar este archivo para edición.",
+          "plotNameTitle": "Nombre del nuevo plot",
+          "plotNameHint": "Asigna una etiqueta a esta área mapeada.",
+          "cancel": "Cancelar",
+          "createPlot": "Crear plot",
+          "plotSection": "1) Área de plot",
+          "plotNamePlaceholder": "Nombre del plot (p. ej. Sala A)",
+          "plotNameRequired": "Introduce un nombre de plot.",
+          "plotCoordinatesRequired": "Selecciona al menos 2 puntos para las coordenadas del plot.",
+          "plotSelectingOff": "Seleccionar área",
+          "plotSelectingOn": "Detener selección",
+          "clearPoints": "Limpiar puntos",
+          "savePlot": "Guardar plot",
+          "pointsCount": "Puntos seleccionados: {count}",
+          "plotSaved": "Plot guardado",
+          "plotSaveError": "No se pudo guardar el plot.",
+          "pinSection": "2) Pins en el plot seleccionado",
+          "choosePlot": "Elegir plot",
+          "chooseGroup": "Elegir grupo",
+          "allGroups": "Todos los grupos",
+          "chooseComposite": "Elegir ítem compuesto",
+          "selectComposite": "Seleccionar ítem compuesto",
+          "chooseStatus": "Elegir estado",
+          "groupRequired": "Selecciona primero un grupo.",
+          "statusRequired": "Selecciona un estado de pin.",
+          "compositeRequired": "Selecciona un ítem compuesto.",
+          "pinSelectingOff": "Colocar pin",
+          "pinSelectingOn": "Detener colocación",
+          "clearPin": "Limpiar pin",
+          "savePin": "Guardar pin",
+          "pin": "Pin",
+          "pinPoint": "Punto seleccionado: ({x}, {y})",
+          "pinPointEmpty": "Haz clic en el plano para elegir el punto del pin.",
+          "pinOutsidePlot": "El pin debe estar dentro del área del plot seleccionado.",
+          "selectedPlot": "Plot seleccionado",
+          "pinSaved": "Pin guardado",
+          "pinSaveError": "No se pudo guardar el pin.",
+          "saveEach": "Guardar cada uno",
+          "saveBulk": "Modo lote",
+          "saveAll": "Guardar",
+          "savedAll": "Todos los cambios guardados.",
+          "saveAllError": "No se pudieron guardar todos los cambios.",
+          "loading": "Cargando editor..."
+        }
+      },
+      "detailLoadError": "No se pudieron cargar los datos del proyecto. Inténtalo de nuevo.",
+      "placeholders": {
+        "client": "Seleccionar cliente"
+      },
+      "fields": {
+        "name": "Nombre del proyecto",
+        "client": "Cliente",
+        "description": "Descripción",
+        "startDate": "Fecha de inicio",
+        "endDate": "Fecha de fin",
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "createdBy": "Creado por"
+      },
+      "modal": {
+        "createTitle": "Nuevo proyecto",
+        "editTitle": "Editar proyecto",
+        "cancel": "Cancelar",
+        "save": "Crear proyecto",
+        "saveChanges": "Guardar cambios"
+      },
+      "validation": {
+        "name": "Introduce el nombre del proyecto.",
+        "client": "Selecciona un cliente.",
+        "description": "Introduce una descripción.",
+        "startDate": "Elige la fecha de inicio.",
+        "endDate": "Elige la fecha de fin.",
+        "dateOrder": "La fecha de fin debe ser igual o posterior a la de inicio."
+      }
+    },
+    "groups": {
+      "metaTitle": "Grupos",
+      "title": "Grupos",
+      "subtitle": "Crea y nombra grupos para tu catálogo (p. ej. materiales). Cada ítem compuesto pertenece a un grupo.",
+      "compositeHint": {
+        "prefix": "Para asignar líneas del catálogo a grupos, abre",
+        "link": "Ítems compuestos",
+        "suffix": "— selecciona filas y muévelas a un grupo, o elige el grupo al crear o editar un ítem."
+      },
+      "add": "Añadir grupo",
+      "empty": "Aún no hay grupos. Crea uno para organizar ítems compuestos.",
+      "loadError": "No se pudieron cargar los grupos. Inténtalo de nuevo.",
+      "pageLabel": "Página {current} de {total} ({count} grupos)",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "deletedToast": "Grupo eliminado",
+      "table": {
+        "name": "Nombre",
+        "organization": "Organización",
+        "created": "Creado",
+        "status": "Estado",
+        "actions": "Acciones"
+      },
+      "statusActive": "Activo",
+      "statusInactive": "Inactivo",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "deleteConfirmTitle": "¿Eliminar este grupo?",
+      "deleteConfirmBody": "Los ítems compuestos de este grupo pueden necesitar otro grupo. Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar grupo",
+      "modal": {
+        "createTitle": "Nuevo grupo",
+        "editTitle": "Editar grupo",
+        "cancel": "Cancelar",
+        "save": "Crear grupo",
+        "saveChanges": "Guardar cambios",
+        "name": "Nombre del grupo",
+        "namePlaceholder": "p. ej. Materiales",
+        "nameError": "Introduce un nombre de grupo.",
+        "createdToast": "Grupo creado",
+        "updatedToast": "Grupo actualizado"
+      }
+    },
+    "compositeItems": {
+      "metaTitle": "Ítems compuestos",
+      "title": "Ítems compuestos",
+      "subtitle": "Filas de catálogo asociadas a un grupo (p. ej. materiales). Filtra por grupo, añade filas o edítalas.",
+      "groupsHint": {
+        "prefix": "¿Necesitas un grupo nuevo?",
+        "link": "Gestionar grupos",
+        "suffix": "— luego elígelo en el filtro o al añadir ítems."
+      },
+      "add": "Añadir ítem",
+      "empty": "Aún no hay ítems compuestos. Crea primero un grupo y luego añade ítems aquí.",
+      "loadError": "No se pudieron cargar los ítems compuestos. Inténtalo de nuevo.",
+      "groupsLoadError": "No se pudieron cargar los grupos — el filtro puede estar vacío.",
+      "bulkBarLabel": "Seleccionados",
+      "bulkMoveToGroup": "Mover a grupo",
+      "bulkGroupPlaceholder": "Elegir grupo",
+      "bulkApply": "Aplicar",
+      "bulkAssignedToast": "{count} ítems actualizados",
+      "bulkNoneSelected": "Selecciona uno o más ítems con las casillas.",
+      "filterGroup": "Grupo",
+      "filterAllGroups": "Todos los grupos",
+      "pageLabel": "Página {current} de {total} ({count} ítems)",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "deletedToast": "Ítem compuesto eliminado",
+      "table": {
+        "name": "Nombre",
+        "group": "Grupo",
+        "organization": "Organización",
+        "created": "Creado",
+        "status": "Estado",
+        "actions": "Acciones"
+      },
+      "statusActive": "Activo",
+      "statusInactive": "Inactivo",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "deleteConfirmTitle": "¿Eliminar este ítem?",
+      "deleteConfirmBody": "Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar",
+      "modal": {
+        "createTitle": "Nuevo ítem compuesto",
+        "editTitle": "Editar ítem compuesto",
+        "cancel": "Cancelar",
+        "save": "Crear ítem",
+        "saveChanges": "Guardar cambios",
+        "name": "Nombre",
+        "namePlaceholder": "p. ej. Cemento Ambuja",
+        "nameError": "Introduce un nombre.",
+        "group": "Grupo",
+        "groupPlaceholder": "Seleccionar grupo",
+        "groupError": "Selecciona un grupo.",
+        "noGroupsHint": "No hay grupos. Crea al menos un grupo antes de añadir ítems compuestos.",
+        "createdToast": "Ítem compuesto creado",
+        "updatedToast": "Ítem compuesto actualizado"
+      }
     },
     "settings": {
       "title": "Ajustes",

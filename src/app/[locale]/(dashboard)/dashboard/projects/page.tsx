@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
+import { ProjectsPanel } from "@/features/projects/components/projects-panel";
+import { PageHeadingWithBack } from "@/shared/components/layout/page-heading-with-back";
+import { cn } from "@/core/utils/http.util";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Dashboard.projects");
@@ -10,11 +14,23 @@ export default async function DashboardProjectsPage() {
   const t = await getTranslations("Dashboard.projects");
 
   return (
-    <div className="mx-auto max-w-3xl space-y-2">
-      <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-        {t("title")}
-      </h2>
-      <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">{t("body")}</p>
+    <div className="pb-12">
+      <PageHeadingWithBack
+        title={t("title")}
+        description={t("subtitle")}
+        density="compact"
+        className={cn("border-b border-slate-200/90 pb-4 dark:border-slate-800", "mb-4")}
+      />
+      <Suspense
+        fallback={
+          <div className="space-y-2 p-6">
+            <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+            <div className="h-40 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
+          </div>
+        }
+      >
+        <ProjectsPanel />
+      </Suspense>
     </div>
   );
 }

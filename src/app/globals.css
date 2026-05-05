@@ -1,6 +1,65 @@
 @import "tailwindcss";
 
-/* Class-based dark mode (next-themes sets `.dark` on <html>) — not OS media preference */
+@import "react-phone-number-input/style.css";
+
+.surface-phone-root .PhoneInput {
+  --PhoneInput-countryFlag-heightEm: 0.875em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(226 232 240);
+  background: rgb(255 255 255);
+  padding: 0 0.625rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.dark .surface-phone-root .PhoneInput {
+  border-color: rgb(51 65 85);
+  background: rgb(2 6 23);
+}
+.surface-phone-root .PhoneInput--focus,
+.surface-phone-root .PhoneInput:focus-within {
+  border-color: var(--dash-accent, #111111);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dash-accent, #111111) 20%, transparent);
+}
+.surface-phone-root .PhoneInputInput {
+  min-width: 0;
+  flex: 1;
+  height: 2.75rem;
+  border: 0;
+  background: transparent;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: rgb(15 23 42);
+  outline: none;
+}
+.dark .surface-phone-root .PhoneInputInput {
+  color: rgb(241 245 249);
+}
+.surface-phone-root .PhoneInputInput::placeholder {
+  color: rgb(148 163 184);
+}
+.dark .surface-phone-root .PhoneInputInput::placeholder {
+  color: rgb(100 116 139);
+}
+.surface-phone-root .PhoneInputCountry {
+  margin-right: 0.25rem;
+}
+.surface-phone-root .PhoneInputCountrySelect {
+  padding: 0.25rem 0.25rem;
+  border-radius: 0.5rem;
+  border: 0;
+  background: rgb(248 250 252);
+  font-size: 0.875rem;
+}
+.dark .surface-phone-root .PhoneInputCountrySelect {
+  background: rgb(15 23 42);
+  color: rgb(241 245 249);
+}
+
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
@@ -12,8 +71,16 @@ html {
   color-scheme: light;
 }
 
+
+:root {
+  --dash-accent: #111111;
+  --dash-on-accent: #ffffff;
+}
+
 html.dark {
   color-scheme: dark;
+  --dash-accent: #ffffff;
+  --dash-on-accent: #111111;
 }
 
 body {

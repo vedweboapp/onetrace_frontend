@@ -45,33 +45,41 @@
     "home": "Back to home"
   },
   "Dashboard": {
+    "common": {
+      "back": "Back"
+    },
     "brand": {
       "appName": "One Trace"
     },
     "header": {
-      "eyebrowMain": "Projects",
+      "eyebrowMain": "Workspace",
       "eyebrowSettings": "Settings",
       "closeSettings": "Close settings",
-      "toggleSidebar": "Show or hide sidebar",
+      "toggleSidebar": "Expand or collapse sidebar",
       "signOut": "Sign out",
-      "openSettings": "Settings & appearance"
+      "openSettings": "Settings & appearance",
+      "openProfileMenu": "Open profile menu",
+      "profileMenuLabel": "Account"
     },
     "sidebar": {
+      "clients": "Clients",
       "projects": "Projects",
-      "footerHint": "Signed-in area"
+      "groups": "Groups",
+      "compositeItems": "Composite items"
     },
     "settingsNav": {
       "title": "Settings",
       "sidebarSubtitle": "Workspace preferences",
       "backToApp": "Projects",
       "appearance": "Appearance",
+      "pinStatus": "Pin statuses",
       "hint": "Customize theme and accent for this workspace."
     },
     "appearance": {
       "metaTitle": "Appearance",
       "pageKicker": "Settings",
       "title": "Appearance",
-      "subtitle": "Control theme, language, and accent for the dashboard shell. Accent colors highlight navigation and the header stripe.",
+      "subtitle": "Control theme, language, and accent for the dashboard. Accent colors highlight navigation and key actions.",
       "themeHeading": "Theme",
       "themeHint": "Switch between a bright interface and a dark interface.",
       "themeSelectLabel": "Interface theme",
@@ -87,13 +95,17 @@
         "es": "Español"
       },
       "accentHeading": "Accent color",
-      "accentHint": "Choose a preset or define your own hex color. Active routes and the top stripe use this accent.",
+      "accentPresetsLabel": "Presets",
+      "accentCustomLabel": "Custom color",
       "accentCustom": "Custom",
       "customHexLabel": "Custom hex color",
       "customColorPicker": "Pick a color",
       "applyCustom": "Apply",
-      "customHint": "Use a 6-digit hex value (e.g. #2563eb). Custom accents apply to the sidebar, mobile bar, and header stripe.",
+      "customHint": "Use a 6-digit hex value (e.g. #2563eb). Custom accents apply to the sidebar, mobile bar, and accent highlights.",
       "accents": {
+        "black": "Black",
+        "blue": "Blue",
+        "pink": "Pink",
         "slate": "Slate",
         "indigo": "Indigo",
         "emerald": "Emerald",
@@ -106,14 +118,413 @@
         "orange": "Orange"
       }
     },
+    "pinStatus": {
+      "metaTitle": "Pin statuses",
+      "title": "Pin statuses",
+      "subtitle": "Create and manage workflow labels for pins. Colors are used when displaying status chips across the app.",
+      "add": "Add status",
+      "edit": "Edit",
+      "delete": "Delete",
+      "table": {
+        "status": "Status name",
+        "preview": "Preview",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "empty": "No pin statuses yet. Add one to get started.",
+      "loadError": "Could not load pin statuses. Try again.",
+      "modal": {
+        "createTitle": "New pin status",
+        "editTitle": "Edit pin status",
+        "statusName": "Status name",
+        "bgColour": "Background color",
+        "textColour": "Text color",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this status?",
+      "deleteConfirmBody": "Pins using this status may need to be updated. This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Page {current} of {total} ({count} records)",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Status updated",
+      "created": "Status created",
+      "deleted": "Status deleted",
+      "hexPlaceholder": "#000000",
+      "validationName": "Enter a status name.",
+      "validationHex": "Use a valid 6-digit hex color (e.g. #E5E7EB)."
+    },
+    "clients": {
+      "metaTitle": "Clients",
+      "detailMetaTitle": "Client details",
+      "title": "Clients",
+      "subtitle": "Organizations and contacts you work with. Click a row for full details.",
+      "add": "Add client",
+      "empty": "No clients yet. Add your first client to get started.",
+      "loadError": "Could not load clients. Try again.",
+      "missingOrganization": "No workspace organization on this session. Sign out and sign in again, or contact support.",
+      "createdToast": "Client created successfully",
+      "updatedToast": "Client updated successfully",
+      "pageLabel": "Page {current} of {total} ({count} records)",
+      "prev": "Previous",
+      "next": "Next",
+      "table": {
+        "name": "Client",
+        "contact": "Contact",
+        "email": "Email",
+        "phone": "Phone",
+        "status": "Status",
+        "created": "Created"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "detail": {
+        "loadingTitle": "Loading…",
+        "retry": "Retry",
+        "close": "Close panel",
+        "edit": "Edit",
+        "addressUnavailable": "No address saved for this client yet.",
+        "sectionContact": "Contact",
+        "sectionAddress": "Address",
+        "sectionRecord": "Record"
+      },
+      "detailLoadError": "Could not load client details. Try again.",
+      "form": {
+        "section": {
+          "organization": "Organization",
+          "contact": "Primary contact",
+          "address": "Address"
+        }
+      },
+      "placeholders": {
+        "country": "Select country",
+        "state": "Select state / region",
+        "city": "Select or type city"
+      },
+      "fields": {
+        "name": "Client name",
+        "contactPerson": "Contact person",
+        "email": "Email",
+        "phone": "Phone",
+        "addressLine1": "Address line 1",
+        "addressLine2": "Address line 2",
+        "country": "Country",
+        "stateProvince": "State / province",
+        "city": "City",
+        "pincode": "Postal / ZIP code",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "createdBy": "Created by"
+      },
+      "modal": {
+        "createTitle": "New client",
+        "editTitle": "Edit client",
+        "cancel": "Cancel",
+        "save": "Create client",
+        "saveChanges": "Save changes"
+      },
+      "validation": {
+        "generic": "Check the form and try again.",
+        "name": "Enter a client name.",
+        "contact": "Enter a contact person.",
+        "email": "Enter a valid email address.",
+        "phoneInvalid": "Enter a valid phone number including country.",
+        "addressLine1": "Enter address line 1.",
+        "country": "Select a country.",
+        "state": "Select a state or region.",
+        "city": "Enter or select a city.",
+        "pincode": "Enter a postal or ZIP code."
+      }
+    },
     "home": {
       "title": "Overview",
       "body": "You are in the app shell. Add widgets, tables, and navigation here."
     },
+    "list": {
+      "searchPlaceholder": "Search…",
+      "searchAria": "Search this list"
+    },
     "projects": {
       "metaTitle": "Projects",
+      "detailMetaTitle": "Project details",
       "title": "Projects",
-      "body": "Your projects will appear here. This is the default view after sign-in."
+      "subtitle": "Track work by client and schedule. Open a row for full details.",
+      "add": "Add project",
+      "empty": "No projects yet. Create your first project to get started.",
+      "loadError": "Could not load projects. Try again.",
+      "missingOrganization": "No workspace organization on this session. Sign out and sign in again, or contact support.",
+      "createdToast": "Project created successfully",
+      "updatedToast": "Project updated successfully",
+      "deletedToast": "Project deleted",
+      "deleteError": "Could not delete this project. Try again.",
+      "noClientsHint": "Add at least one client before you can create a project.",
+      "filterState": "Active state",
+      "filterAll": "All",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "activatedToast": "Project activated",
+      "deactivatedToast": "Project deactivated",
+      "toggleActiveError": "Could not update project status. Try again.",
+      "pageLabel": "Page {current} of {total} ({count} records)",
+      "prev": "Previous",
+      "next": "Next",
+      "delete": "Delete",
+      "deleteConfirmTitle": "Delete this project?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete project",
+      "table": {
+        "name": "Project",
+        "client": "Client",
+        "start": "Start",
+        "end": "End",
+        "status": "Status",
+        "activeState": "Active",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "detail": {
+        "loadingTitle": "Loading…",
+        "retry": "Retry",
+        "edit": "Edit",
+        "addressUnavailable": "No structured address on file for this project.",
+        "sectionOverview": "Overview",
+        "sectionClient": "Client",
+        "sectionSchedule": "Schedule",
+        "sectionAddress": "Address",
+        "sectionRecord": "Record",
+        "tabsAria": "Project sections",
+        "tabs": {
+          "details": "Details",
+          "forms": "Forms",
+          "drawings": "Drawings",
+          "locations": "Locations",
+          "specs": "Specs",
+          "docs": "Docs",
+          "approvals": "Approvals"
+        },
+        "tabPlaceholder": "This section will be available soon."
+      },
+      "drawings": {
+        "title": "Drawings",
+        "upload": "Upload",
+        "open": "Open",
+        "empty": "No drawings yet. Upload a PDF or image to get started.",
+        "loadError": "Could not load drawings. Try again.",
+        "pageLabel": "Page {current} of {total} ({count} drawings)",
+        "prev": "Previous",
+        "next": "Next",
+        "pinsLabelShort": "Pins:",
+        "table": {
+          "drawing": "Drawing",
+          "file": "File",
+          "pins": "Pins",
+          "actions": "Actions"
+        },
+        "modal": {
+          "title": "Upload drawing",
+          "name": "Drawing name",
+          "namePlaceholder": "e.g. Ground floor plan",
+          "nameError": "Enter a name for this drawing.",
+          "file": "File",
+          "fileHint": "PDF or common image formats.",
+          "fileError": "Choose a file to upload.",
+          "cancel": "Cancel",
+          "submit": "Upload",
+          "createdToast": "Drawing uploaded successfully"
+        },
+        "editor": {
+          "title": "Drawing editor",
+          "subtitle": "Create a plot area first, then place pins inside that plot.",
+          "toolSelect": "Select",
+          "close": "Close",
+          "loadError": "Could not load drawing editor data.",
+          "toolHand": "Pan",
+          "toolPlot": "Plot draw",
+          "toolBox": "Box draw",
+          "toolPin": "Pin place",
+          "zoomReset": "Reset",
+          "pdfRenderError": "Could not render PDF page. Try another file.",
+          "renderUnavailable": "Could not render this file for editing.",
+          "plotNameTitle": "New Plot Name",
+          "plotNameHint": "Assign a label to this mapped area.",
+          "cancel": "Cancel",
+          "createPlot": "Create Plot",
+          "plotSection": "1) Plot area",
+          "plotNamePlaceholder": "Plot name (e.g. Room A)",
+          "plotNameRequired": "Enter a plot name.",
+          "plotCoordinatesRequired": "Select at least 2 points for plot coordinates.",
+          "plotSelectingOff": "Select area",
+          "plotSelectingOn": "Stop selecting",
+          "clearPoints": "Clear points",
+          "savePlot": "Save plot",
+          "pointsCount": "Points selected: {count}",
+          "plotSaved": "Plot saved",
+          "plotSaveError": "Could not save plot.",
+          "pinSection": "2) Pins in selected plot",
+          "choosePlot": "Choose plot",
+          "chooseGroup": "Choose group",
+          "allGroups": "All groups",
+          "chooseComposite": "Choose composite item",
+          "selectComposite": "Select composite item",
+          "chooseStatus": "Choose status",
+          "groupRequired": "Select a group first.",
+          "statusRequired": "Select a pin status.",
+          "compositeRequired": "Select a composite item.",
+          "pinSelectingOff": "Place pin",
+          "pinSelectingOn": "Stop placing",
+          "clearPin": "Clear pin",
+          "savePin": "Save pin",
+          "pin": "Pin",
+          "pinPoint": "Selected point: ({x}, {y})",
+          "pinPointEmpty": "Click on drawing to choose pin point.",
+          "pinOutsidePlot": "Pin must be inside selected plot area.",
+          "selectedPlot": "Selected plot",
+          "pinSaved": "Pin saved",
+          "pinSaveError": "Could not save pin.",
+          "saveEach": "Save each",
+          "saveBulk": "Bulk mode",
+          "saveAll": "Save",
+          "savedAll": "All changes saved.",
+          "saveAllError": "Could not save all changes.",
+          "loading": "Loading editor..."
+        }
+      },
+      "detailLoadError": "Could not load project details. Try again.",
+      "placeholders": {
+        "client": "Select client"
+      },
+      "fields": {
+        "name": "Project name",
+        "client": "Client",
+        "description": "Description",
+        "startDate": "Start date",
+        "endDate": "End date",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "createdBy": "Created by"
+      },
+      "modal": {
+        "createTitle": "New project",
+        "editTitle": "Edit project",
+        "cancel": "Cancel",
+        "save": "Create project",
+        "saveChanges": "Save changes"
+      },
+      "validation": {
+        "name": "Enter a project name.",
+        "client": "Select a client.",
+        "description": "Enter a description.",
+        "startDate": "Choose a start date.",
+        "endDate": "Choose an end date.",
+        "dateOrder": "End date must be on or after the start date."
+      }
+    },
+    "groups": {
+      "metaTitle": "Groups",
+      "title": "Groups",
+      "subtitle": "Create and name groups for your catalog (e.g. Materials). Composite items belong to exactly one group.",
+      "compositeHint": {
+        "prefix": "To assign catalogue lines to groups, open",
+        "link": "Composite items",
+        "suffix": "— select rows and move them to a group, or set the group when creating or editing an item."
+      },
+      "add": "Add group",
+      "empty": "No groups yet. Create one to organize composite items.",
+      "loadError": "Could not load groups. Try again.",
+      "pageLabel": "Page {current} of {total} ({count} groups)",
+      "prev": "Previous",
+      "next": "Next",
+      "deletedToast": "Group deleted",
+      "table": {
+        "name": "Name",
+        "organization": "Organization",
+        "created": "Created",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "statusActive": "Active",
+      "statusInactive": "Inactive",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteConfirmTitle": "Delete this group?",
+      "deleteConfirmBody": "Composite items in this group may need to be reassigned. This action cannot be undone.",
+      "confirmDelete": "Delete group",
+      "modal": {
+        "createTitle": "New group",
+        "editTitle": "Edit group",
+        "cancel": "Cancel",
+        "save": "Create group",
+        "saveChanges": "Save changes",
+        "name": "Group name",
+        "namePlaceholder": "e.g. Materials",
+        "nameError": "Enter a group name.",
+        "createdToast": "Group created",
+        "updatedToast": "Group updated"
+      }
+    },
+    "compositeItems": {
+      "metaTitle": "Composite items",
+      "title": "Composite items",
+      "subtitle": "Catalog entries linked to a group (e.g. materials). Filter by group, add rows, edit or remove.",
+      "groupsHint": {
+        "prefix": "Need a new group first?",
+        "link": "Manage groups",
+        "suffix": "— then pick it in the filter or when adding items."
+      },
+      "add": "Add item",
+      "empty": "No composite items yet. Create a group first, then add items here.",
+      "loadError": "Could not load composite items. Try again.",
+      "groupsLoadError": "Could not load groups for filters — dropdown may be empty.",
+      "bulkBarLabel": "Selected",
+      "bulkMoveToGroup": "Move to group",
+      "bulkGroupPlaceholder": "Choose group",
+      "bulkApply": "Apply",
+      "bulkAssignedToast": "Updated {count} items",
+      "bulkNoneSelected": "Select one or more items using the checkboxes.",
+      "filterGroup": "Group",
+      "filterAllGroups": "All groups",
+      "pageLabel": "Page {current} of {total} ({count} items)",
+      "prev": "Previous",
+      "next": "Next",
+      "deletedToast": "Composite item deleted",
+      "table": {
+        "name": "Name",
+        "group": "Group",
+        "organization": "Organization",
+        "created": "Created",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "statusActive": "Active",
+      "statusInactive": "Inactive",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteConfirmTitle": "Delete this item?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "modal": {
+        "createTitle": "New composite item",
+        "editTitle": "Edit composite item",
+        "cancel": "Cancel",
+        "save": "Create item",
+        "saveChanges": "Save changes",
+        "name": "Name",
+        "namePlaceholder": "e.g. Ambuja cement",
+        "nameError": "Enter a name.",
+        "group": "Group",
+        "groupPlaceholder": "Select group",
+        "groupError": "Select a group.",
+        "noGroupsHint": "No groups found. Create at least one group before adding composite items.",
+        "createdToast": "Composite item created",
+        "updatedToast": "Composite item updated"
+      }
     },
     "settings": {
       "title": "Settings",

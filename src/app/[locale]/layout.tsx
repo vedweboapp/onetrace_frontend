@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { Toaster } from "sonner";
-import { ApiErrorI18nBridge } from "@/components/providers/api-error-i18n-bridge";
-import { LocaleHtmlLang } from "@/components/providers/locale-html-lang";
+import { ApiErrorI18nBridge } from "@/app/providers/api-error-i18n-bridge";
+import { LocaleHtmlLang } from "@/app/providers/locale-html-lang";
 import { routing } from "@/i18n/routing";
 
 type Props = {

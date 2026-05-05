@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils/http.util";
 import { authCardClassName } from "./class-names";
 
 type AuthCardProps = {

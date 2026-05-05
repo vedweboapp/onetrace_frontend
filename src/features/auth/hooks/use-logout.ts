@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "@/i18n/navigation";
-import { logoutRequest } from "@/features/auth/api/auth-api";
-import { useAuthStore } from "@/features/auth/store/auth-store";
+import { logoutRequest } from "@/features/auth/api/auth.api";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 import { routes } from "@/shared/config/routes";
 
 export function useLogout() {

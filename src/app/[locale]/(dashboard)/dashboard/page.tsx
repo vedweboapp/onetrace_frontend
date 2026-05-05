@@ -5,7 +5,7 @@ type Props = {
   params: Promise<{ locale: string }>;
 };
 
-/** `/dashboard` → main app entry (projects). */
+
 export default async function DashboardIndexPage({ params }: Props) {
   const { locale } = await params;
   redirect({ href: routes.dashboard.projects, locale });

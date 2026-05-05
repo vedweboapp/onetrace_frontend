@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { routes } from "@/shared/config/routes";
-import { LocaleSwitcher } from "@/components/layout/locale-switcher";
+import { LocaleSwitcher } from "@/shared/components/layout/locale-switcher";
 
 export default async function HomePage() {
   const t = await getTranslations("HomePage");

@@ -13,7 +13,8 @@ import {
 } from "@/features/auth/schemas/login-schema";
 import { useLogin } from "@/features/auth/hooks/use-login";
 import { RhfTextField, SubmitButton } from "@/shared/ui";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils/http.util";
+
 
 export function LoginForm() {
   const t = useTranslations("Auth");
@@ -36,7 +37,7 @@ export function LoginForm() {
     >
       <div className="flex flex-col items-center gap-3 text-center">
         <div
-          className="flex size-12 items-center justify-center rounded-xl bg-slate-900 text-white shadow-md"
+          className="flex size-12 items-center justify-center rounded-xl bg-[#111111] text-white shadow-md dark:bg-white dark:text-[#111111]"
           aria-hidden
         >
           <LayoutDashboard className="size-6" strokeWidth={1.75} />
@@ -62,7 +63,7 @@ export function LoginForm() {
           autoComplete="email"
           placeholder={t("emailPlaceholder")}
           translateError={translateError}
-          appearance="light"
+          appearance="default"
         />
         <RhfTextField
           control={form.control}
@@ -73,7 +74,7 @@ export function LoginForm() {
           autoComplete="current-password"
           placeholder={t("passwordPlaceholder")}
           translateError={translateError}
-          appearance="light"
+          appearance="default"
           passwordToggle
           passwordToggleAria={{
             show: t("showPassword"),
@@ -84,7 +85,7 @@ export function LoginForm() {
 
       <SubmitButton
         loading={isSubmitting}
-        appearance="light"
+        appearance="default"
         className={cn(isSubmitting && "cursor-wait")}
       >
         {isSubmitting ? (
@@ -97,10 +98,10 @@ export function LoginForm() {
         )}
       </SubmitButton>
 
-      <div className="space-y-3 border-t border-slate-100 pt-6 text-center text-sm text-slate-500">
+      <div className="space-y-3 border-t border-slate-100 pt-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
         <Link
           href={routes.auth.forgotPassword}
-          className="block font-medium text-slate-700 underline-offset-4 hover:text-slate-900 hover:underline"
+          className="block font-medium text-slate-700 underline-offset-4 hover:text-slate-900 hover:underline dark:text-slate-300 dark:hover:text-white"
         >
           {t("forgotPasswordLink")}
         </Link>
@@ -108,7 +109,7 @@ export function LoginForm() {
           {t("noAccount")}{" "}
           <Link
             href={routes.auth.register}
-            className="font-semibold text-slate-900 underline-offset-4 hover:underline"
+            className="font-semibold text-slate-900 underline-offset-4 hover:underline dark:text-white"
           >
             {t("signUpLink")}
           </Link>
