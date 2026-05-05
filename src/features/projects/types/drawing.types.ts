@@ -35,6 +35,7 @@ export type DrawingPin = {
   status_id?: number;
   group?: number | null;
   composite_item?: number | null;
+  quantity?: number;
 };
 
 export type DrawingPlot = {
@@ -60,6 +61,7 @@ export type DrawingPlotUpsert = {
     status_id?: number;
     group?: number | null;
     composite_item?: number | null;
+    quantity?: number;
   }>;
 };
 

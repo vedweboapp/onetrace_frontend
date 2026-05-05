@@ -18,6 +18,7 @@ export type DetailPanelProps = {
 
   isBusy?: boolean;
   showCloseButton?: boolean;
+  action?: ReactNode;
 };
 
 
@@ -31,6 +32,7 @@ export function DetailPanel({
   widthClassName = "sm:max-w-xl",
   isBusy = false,
   showCloseButton = true,
+  action,
 }: DetailPanelProps) {
   React.useEffect(() => {
     if (!open) return;
@@ -65,6 +67,11 @@ export function DetailPanel({
               <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">{subtitle}</p>
             ) : null}
           </div>
+          {action ? (
+            <div className="shrink-0 flex items-center h-9">
+              {action}
+            </div>
+          ) : null}
           {showCloseButton ? (
             <AppButton
               type="button"
