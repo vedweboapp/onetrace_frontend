@@ -41,6 +41,24 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
   const [submitting, setSubmitting] = React.useState(false);
   const [touched, setTouched] = React.useState<{ name?: boolean; sku?: boolean }>({});
 
+  React.useEffect(() => {
+    if (!open) return;
+    if (mode === "edit" && item) {
+      setName(item.name);
+      setSku(String(item.sku ?? ""));
+      setQty(String(item.quantity ?? 0));
+      setCost(String(item.cost_price ?? 0));
+      setSell(String(item.selling_price ?? 0));
+    } else {
+      setName("");
+      setSku("");
+      setQty("");
+      setCost("");
+      setSell("");
+    }
+    setTouched({});
+  }, [open, mode, item]);
+
   const nameInvalid = Boolean(touched.name) && name.trim().length === 0;
   const skuInvalid = Boolean(touched.sku) && sku.trim().length === 0;
 

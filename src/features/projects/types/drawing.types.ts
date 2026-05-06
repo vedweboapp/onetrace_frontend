@@ -47,6 +47,8 @@ export type DrawingPlot = {
   name: string;
   coordinates: number[][];
   pins?: DrawingPin[];
+  plot_border?: string;
+  plot_bg?: string;
 };
 
 export type DrawingDetail = Drawing & {
@@ -57,11 +59,13 @@ export type DrawingPlotUpsert = {
   id?: number;
   name: string;
   coordinates: number[][];
+  plot_border?: string;
+  plot_bg?: string;
   pins?: Array<{
     id?: number;
     x_coordinate: number;
     y_coordinate: number;
-    status: string;
+    status?: string | number;
     status_id?: number;
     group?: number | null;
     composite_item?: number | null;

@@ -4,7 +4,7 @@ import { cn } from "@/core/utils/http.util";
 /** Responsive 2–3 column grid for SaaS-style summary fields on detail pages */
 export function DetailMetricsGrid({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3", className)}>{children}</div>
+    <div className={cn("grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3", className)}>{children}</div>
   );
 }
 
@@ -20,14 +20,14 @@ export function DetailMetricCard({
   return (
     <div
       className={cn(
-        "rounded-xl border border-slate-200/90 bg-slate-50/90 p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-900/45",
+        "rounded-lg border border-slate-200/90 bg-slate-50/90 p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-900/45",
         className,
       )}
     >
       <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500 dark:text-slate-400">
         {label}
       </p>
-      <div className="mt-2 min-w-0 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">{children}</div>
+      <div className="mt-1.5 min-w-0 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">{children}</div>
     </div>
   );
 }
@@ -44,14 +44,14 @@ export function DetailWideCard({
   return (
     <div
       className={cn(
-        "rounded-xl border border-slate-200/90 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-950/60",
+        "rounded-lg border border-slate-200/90 bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-950/60",
         className,
       )}
     >
       <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500 dark:text-slate-400">
         {label}
       </p>
-      <div className="mt-2 min-w-0 text-sm leading-relaxed text-slate-800 dark:text-slate-200">{children}</div>
+      <div className="mt-1.5 min-w-0 text-sm leading-relaxed text-slate-800 dark:text-slate-200">{children}</div>
     </div>
   );
 }
@@ -64,5 +64,5 @@ export function DetailSectionTitle({ children }: { children: ReactNode }) {
 
 /** Tighter padded shell for detail tab content inside SurfaceShell */
 export function DetailPagePadding({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("space-y-6 p-4 sm:p-6", className)}>{children}</div>;
+  return <div className={cn("space-y-5 p-3.5 sm:p-5", className)}>{children}</div>;
 }

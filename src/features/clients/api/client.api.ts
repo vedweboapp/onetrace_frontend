@@ -22,23 +22,33 @@ export type ClientListFilters = {
   is_active?: boolean;
 };
 
+type ClientRequestOptions = {
+  silent?: boolean;
+};
+
 export async function fetchClientsPage(
   page = 1,
   pageSize = 20,
   filters?: ClientListFilters,
+  options?: ClientRequestOptions,
 ): Promise<{ items: Client[]; pagination: ClientListResponse["pagination"] }> {
   const params: Record<string, string | number> = { page, page_size: pageSize };
   const q = filters?.search?.trim();
   if (q) params.search = q;
   if (typeof filters?.is_active === "boolean") params.is_active = String(filters.is_active);
 
-  const { data } = await api.get<ClientListResponse>(CLIENT_PATHS.list, { params });
+  const { data } = await api.get<ClientListResponse>(CLIENT_PATHS.list, {
+    params,
+    skipErrorToast: options?.silent === true,
+  });
   assertEnvelopeSuccess(data);
   return { items: data.data, pagination: data.pagination };
 }
 
-export async function fetchClient(id: number): Promise<Client> {
-  const { data } = await api.get<ApiEnvelope<Client>>(CLIENT_PATHS.detail(id));
+export async function fetchClient(id: number, options?: ClientRequestOptions): Promise<Client> {
+  const { data } = await api.get<ApiEnvelope<Client>>(CLIENT_PATHS.detail(id), {
+    skipErrorToast: options?.silent === true,
+  });
   assertApiSuccess(data);
   return data.data;
 }

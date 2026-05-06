@@ -389,7 +389,11 @@ export function ProjectsPanel() {
                           {row.description?.trim() ? row.description : "—"}
                         </span>
                       </DataTableTd>
-                      <DataTableTd narrow>
+                      <DataTableTd
+                        narrow
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
                         <DataTableRowActionsMenu
                           menuAriaLabel={tList("openRowActions")}
                           items={[

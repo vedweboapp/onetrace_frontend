@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { Group } from "@/features/groups/types/group.types";
 import {
   DetailMetricCard,
@@ -9,20 +10,14 @@ import {
   DetailWideCard,
 } from "@/shared/components/layout/detail-metric-card";
 
-export type GroupsTranslator = (
-  key: string,
-  values?: Record<string, string | number | boolean | null | undefined>,
-) => string;
-
 export function GroupDetailBody({
   detail,
   dateFmt,
-  t,
 }: {
   detail: Group;
   dateFmt: Intl.DateTimeFormat;
-  t: GroupsTranslator;
 }) {
+  const t = useTranslations("Dashboard.groups");
   return (
     <DetailPagePadding>
       <div className="space-y-3">
