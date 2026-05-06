@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import type { Project } from "@/features/projects/types/project.types";
 import { routes } from "@/shared/config/routes";
@@ -12,22 +13,18 @@ import {
 } from "@/shared/components/layout/detail-metric-card";
 import { cn } from "@/core/utils/http.util";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type ProjectsTranslator = (key: string, values?: Record<string, any>) => string;
-
 export function ProjectDetailBody({
   detail,
   dateFmt,
   dateOnlyFmt,
   clientName,
-  t,
 }: {
   detail: Project;
   dateFmt: Intl.DateTimeFormat;
   dateOnlyFmt: Intl.DateTimeFormat;
   clientName: string | null;
-  t: ProjectsTranslator;
 }) {
+  const t = useTranslations("Dashboard.projects");
   const line1 = detail.address_line_1?.trim() ?? "";
   const line2 = detail.address_line_2?.trim() ?? "";
   const structured =

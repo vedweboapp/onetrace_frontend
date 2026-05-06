@@ -119,7 +119,7 @@ export function CompositeItemDetailScreen({ itemId }: Props) {
             </AppButton>
           </div>
         ) : detail ? (
-          <ItemDetailBody detail={detail} dateFmt={dateFmt} t={tItems} />
+          <ItemDetailBody detail={detail} dateFmt={dateFmt} />
         ) : null}
       </SurfaceShell>
 

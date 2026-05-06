@@ -386,7 +386,7 @@
       "drawings": {
         "title": "Planos",
         "subtitle": "Administra y consulta planos y proyectos de construcción.",
-        "createDrawing": "Crear plano",
+        "createDrawing": "Subir plano",
         "searchPlaceholder": "Buscar planos…",
         "searchAria": "Buscar planos",
         "updatedLabel": "Actualizado",

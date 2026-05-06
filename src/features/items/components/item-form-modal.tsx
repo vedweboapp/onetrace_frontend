@@ -6,6 +6,7 @@ import { cn } from "@/core/utils/http.util";
 import { createItem, updateItem } from "@/features/items/api/item.api";
 import type { Item } from "@/features/items/types/item.types";
 import { toastSuccess } from "@/shared/feedback/app-toast";
+import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { AppButton, AppModal, FieldLabel, fieldErrorTextClassName, surfaceInputClassName } from "@/shared/ui";
 
 type Props = {
@@ -118,7 +119,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
             type="text"
             autoComplete="off"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => setName(capitalizeFirstLetter(e.target.value))}
             onBlur={() => setTouched((p) => ({ ...p, name: true }))}
             disabled={submitting}
             placeholder={t("namePlaceholder")}

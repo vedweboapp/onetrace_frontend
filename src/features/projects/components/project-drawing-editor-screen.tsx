@@ -729,7 +729,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       return;
     }
 
-    const plotStageCoordinates = plot.coordinates.map((p) => toStagePoint(p, pageSize));
+    const plotStageCoordinates = plot.coordinates.map((p) => percentToPixel(p, pageSize));
     if (!inside(point, plotStageCoordinates)) {
       toastError(t("pinOutsidePlot"));
       return;
@@ -1028,7 +1028,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     if (activeTool === "pen" && tempPoints.length >= 3) {
                       // Check for overlap with existing plots
                       for (const existing of plots) {
-                        if (doPolygonsIntersect(tempPoints, existing.coordinates.map(c => toStagePoint(c, pageSize)))) {
+                        if (doPolygonsIntersect(tempPoints, existing.coordinates.map(c => percentToPixel(c, pageSize)))) {
                           toastError("This plot overlaps with an existing one");
                           return;
                         }
@@ -1037,7 +1037,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                       // Check if any existing pins are inside this new plot
                       const allExistingPins = plots.flatMap(p => p.pins.map(pin => ({
                         ...pin,
-                        stagePoint: toStagePoint([pin.x_coordinate, pin.y_coordinate], pageSize)
+                        stagePoint: percentToPixel([pin.x_coordinate, pin.y_coordinate], pageSize)
                       })));
 
                       for (const pin of allExistingPins) {

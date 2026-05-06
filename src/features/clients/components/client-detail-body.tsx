@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { Client } from "@/features/clients/types/client.types";
 import {
   DetailMetricCard,
@@ -10,21 +11,14 @@ import {
 } from "@/shared/components/layout/detail-metric-card";
 import { cn } from "@/core/utils/http.util";
 
-
-export type ClientsTranslator = (
-  key: string,
-  values?: Record<string, string | number | boolean | null | undefined>,
-) => string;
-
 export function ClientDetailBody({
   detail,
   dateFmt,
-  t,
 }: {
   detail: Client;
   dateFmt: Intl.DateTimeFormat;
-  t: ClientsTranslator;
 }) {
+  const t = useTranslations("Dashboard.clients");
   const line1 = detail.address_line_1?.trim() ?? "";
   const line2 = detail.address_line_2?.trim() ?? "";
   const legacyOnly = detail.address?.trim() ?? "";

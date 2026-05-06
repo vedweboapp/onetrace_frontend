@@ -4,6 +4,7 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { createDrawing } from "@/features/projects/api/drawing.api";
 import { toastSuccess } from "@/shared/feedback/app-toast";
+import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
   AppModal,
@@ -104,7 +105,7 @@ export function DrawingUploadModal({
             type="text"
             autoComplete="off"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => setName(capitalizeFirstLetter(e.target.value))}
             onBlur={() => setNameTouched(true)}
             disabled={submitting}
             placeholder={t("namePlaceholder")}

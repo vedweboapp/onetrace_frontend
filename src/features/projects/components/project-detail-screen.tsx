@@ -232,7 +232,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
               </AppButton>
             </div>
           ) : detail && activeTab === "details" ? (
-            <ProjectDetailBody detail={detail} dateFmt={dateFmt} dateOnlyFmt={dateOnlyFmt} clientName={clientName} t={t} />
+            <ProjectDetailBody detail={detail} dateFmt={dateFmt} dateOnlyFmt={dateOnlyFmt} clientName={clientName} />
           ) : loading ? (
             <div className="space-y-3 p-4 sm:p-6">
               <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />

@@ -386,7 +386,7 @@
       "drawings": {
         "title": "Drawings",
         "subtitle": "Manage and view all construction blueprints and plans.",
-        "createDrawing": "Create drawing",
+        "createDrawing": "Upload drawing",
         "searchPlaceholder": "Search drawings…",
         "searchAria": "Search drawings",
         "updatedLabel": "Updated",

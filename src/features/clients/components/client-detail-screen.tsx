@@ -106,7 +106,7 @@ export function ClientDetailScreen({ clientId }: Props) {
             </AppButton>
           </div>
         ) : detail ? (
-          <ClientDetailBody detail={detail} dateFmt={dateFmt} t={t} />
+          <ClientDetailBody detail={detail} dateFmt={dateFmt} />
         ) : null}
       </SurfaceShell>
 

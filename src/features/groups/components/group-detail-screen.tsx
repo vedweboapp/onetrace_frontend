@@ -117,7 +117,7 @@ export function GroupDetailScreen({ groupId }: Props) {
             </AppButton>
           </div>
         ) : detail ? (
-          <GroupDetailBody detail={detail} dateFmt={dateFmt} t={t} />
+          <GroupDetailBody detail={detail} dateFmt={dateFmt} />
         ) : null}
       </SurfaceShell>
 

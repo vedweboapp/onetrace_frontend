@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { Item } from "@/features/items/types/item.types";
 import { cn } from "@/core/utils/http.util";
 import {
@@ -10,11 +11,6 @@ import {
   DetailWideCard,
 } from "@/shared/components/layout/detail-metric-card";
 
-export type ItemsTranslator = (
-  key: string,
-  values?: Record<string, string | number | boolean | null | undefined>,
-) => string;
-
 function moneyDisplay(v: unknown): string {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : Number.NaN;
   return Number.isFinite(n) ? n.toFixed(2) : "—";
@@ -23,12 +19,11 @@ function moneyDisplay(v: unknown): string {
 export function ItemDetailBody({
   detail,
   dateFmt,
-  t,
 }: {
   detail: Item;
   dateFmt: Intl.DateTimeFormat;
-  t: ItemsTranslator;
 }) {
+  const t = useTranslations("Dashboard.items");
   return (
     <DetailPagePadding>
       <div className="flex flex-wrap items-center gap-2">
