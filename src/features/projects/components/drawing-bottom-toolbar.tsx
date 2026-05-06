@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Crosshair, Hand, MapPin, MapPinned, PenTool, SquareDashed } from "lucide-react";
+import { Crosshair, Hand, MapPin, MapPinned, MousePointer2, PenTool, SquareDashed } from "lucide-react";
 import { AppButton, CheckmarkSelect } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import type { LocalPlot, Tool } from "./project-drawing-editor-screen";
@@ -25,6 +25,7 @@ type Props = {
     selectedPlot: LocalPlot | null;
     savingPin: boolean;
     sidebarOpen: boolean;
+    onClose: () => void;
 };
 
 const DrawingBottomToolbar = ({
@@ -46,6 +47,7 @@ const DrawingBottomToolbar = ({
     selectedPlot,
     savingPin,
     sidebarOpen,
+    onClose,
 }: Props) => {
     return (
         <div className={cn(
@@ -88,35 +90,61 @@ const DrawingBottomToolbar = ({
 
                 <div className="flex items-center gap-1.5">
                     {[
-                        { id: "pen", icon: <PenTool className="size-4" />,  },
-                        { id: "plot-select", icon: <SquareDashed className="size-4" />, },
+                        { id: "select", icon: <MousePointer2 className="size-4" />, nameKey: "toolSelect", fallback: "Select", shortcut: "V" },
+                        { id: "pen", icon: <PenTool className="size-4" />, nameKey: "toolPen", fallback: "Pen", shortcut: "P" },
+                        { id: "plot-select", icon: <SquareDashed className="size-4" />, nameKey: "toolBox", fallback: "Box", shortcut: "B" },
                         {
                             id: "pin",
                             icon: <MapPin  className="size-4" />,
-                            label: t("toolPin"),
-                            disabled: !selectedPlot || savingPin,
+                            nameKey: "toolPin",
+                            fallback: "Pin",
+                            shortcut: "A",
+                            disabled: !selectedPlot || !selectedCompositeId || savingPin,
                         },
-                        { id: "hand", icon: <Hand className="size-4" />,},
-                    ].map((tool) => (
-                        <AppButton
-                            key={tool.id}
-                            type="button"
-                            size="sm"
-                            variant={activeTool === tool.id ? "primary" : "secondary"}
-                            disabled={Boolean(tool.disabled)}
-                            onClick={() => setActiveTool(tool.id as Tool)}
-                            className={cn(
-                                "h-10 px-4",
-                                activeTool !== tool.id && "hover:bg-slate-100 dark:hover:bg-slate-800"
-                            )}
-                        >
-                            {tool.icon} 
-                        </AppButton>
-                    ))}
+                        { id: "hand", icon: <Hand className="size-4" />, nameKey: "toolHand", fallback: "Hand", shortcut: "H" },
+                    ].map((tool) => {
+                        let translatedName: any = "";
+                        try {
+                            translatedName = t(tool.nameKey);
+                        } catch (e) {
+                            translatedName = "";
+                        }
+                        
+                        const name = (typeof translatedName === "string" && translatedName && !translatedName.includes("MISSING_MESSAGE")) 
+                            ? translatedName 
+                            : tool.fallback;
+
+                        return (
+                            <AppButton
+                                key={tool.id}
+                                type="button"
+                                size="sm"
+                                variant={activeTool === tool.id ? "primary" : "secondary"}
+                                disabled={Boolean(tool.disabled)}
+                                onClick={() => setActiveTool(tool.id as Tool)}
+                                title={`${name} (${tool.shortcut})`}
+                                className={cn(
+                                    "h-10 px-4",
+                                    activeTool !== tool.id && "hover:bg-slate-100 dark:hover:bg-slate-800"
+                                )}
+                            >
+                                {tool.icon} 
+                            </AppButton>
+                        );
+                    })}
                 </div>
             </div>
 
             <div className="absolute right-6 flex items-center gap-3 lg:right-10">
+                <AppButton
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="h-10 px-6 font-bold border-slate-200 dark:border-slate-800"
+                    onClick={onClose}
+                >
+                    {t("close")}
+                </AppButton>
                 <AppButton
                     type="button"
                     size="sm"

@@ -427,6 +427,7 @@
           "close": "Cerrar",
           "loadError": "No se pudieron cargar los datos del editor.",
           "toolHand": "Mover",
+          "toolPen": "Dibujar",
           "toolPlot": "Dibujar plot",
           "toolBox": "Dibujar caja",
           "toolPin": "Colocar pin",
