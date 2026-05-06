@@ -3,26 +3,26 @@
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import { deleteItem, fetchItem } from "@/features/items/api/item.api";
-import { ItemDetailBody } from "@/features/items/components/item-detail-body";
-import { ItemFormModal } from "@/features/items/components/item-form-modal";
-import type { Item } from "@/features/items/types/item.types";
+import { deleteGroup, fetchGroup } from "@/features/groups/api/group.api";
+import { GroupDetailBody } from "@/features/groups/components/group-detail-body";
+import { GroupFormModal } from "@/features/groups/components/group-form-modal";
+import type { Group } from "@/features/groups/types/group.types";
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { PageHeadingWithBack } from "@/shared/components/layout/page-heading-with-back";
 import { AppButton, ConfirmDialog, SurfaceShell } from "@/shared/ui";
 
 type Props = {
-  itemId: number;
+  groupId: number;
 };
 
-export function ItemDetailScreen({ itemId }: Props) {
-  const t = useTranslations("Dashboard.items");
+export function GroupDetailScreen({ groupId }: Props) {
+  const t = useTranslations("Dashboard.groups");
   const tCommon = useTranslations("Dashboard.common");
   const locale = useLocale();
   const router = useRouter();
 
-  const [detail, setDetail] = React.useState<Item | null>(null);
+  const [detail, setDetail] = React.useState<Group | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
@@ -46,10 +46,10 @@ export function ItemDetailScreen({ itemId }: Props) {
       setError(null);
       setDetail(null);
       try {
-        const row = await fetchItem(itemId);
+        const row = await fetchGroup(groupId);
         if (!cancelled) setDetail(row);
       } catch {
-        if (!cancelled) setError(t("loadError"));
+        if (!cancelled) setError(t("detailLoadError"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -57,17 +57,17 @@ export function ItemDetailScreen({ itemId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [itemId, refreshNonce, t]);
+  }, [groupId, refreshNonce, t]);
 
   async function confirmDelete() {
     if (!detail) return;
     setDeleting(true);
     try {
-      await deleteItem(detail.id);
+      await deleteGroup(detail.id);
       toastSuccess(t("deletedToast"));
-      router.push(routes.dashboard.items);
+      router.push(routes.dashboard.groups);
     } catch {
-      toastError(t("deleteError"));
+      toastError(t("loadError"));
     } finally {
       setDeleting(false);
     }
@@ -75,7 +75,7 @@ export function ItemDetailScreen({ itemId }: Props) {
 
   const detailBreadcrumb = React.useMemo(
     () => [
-      { label: t("title"), href: routes.dashboard.items },
+      { label: t("title"), href: routes.dashboard.groups },
       { label: detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle")) },
     ],
     [detail?.name, loading, t],
@@ -117,15 +117,15 @@ export function ItemDetailScreen({ itemId }: Props) {
             </AppButton>
           </div>
         ) : detail ? (
-          <ItemDetailBody detail={detail} dateFmt={dateFmt} t={t} />
+          <GroupDetailBody detail={detail} dateFmt={dateFmt} t={t} />
         ) : null}
       </SurfaceShell>
 
-      <ItemFormModal
+      <GroupFormModal
         open={formOpen}
         onClose={() => setFormOpen(false)}
         mode="edit"
-        item={detail}
+        group={detail}
         onSaved={() => setRefreshNonce((n) => n + 1)}
       />
 
@@ -137,7 +137,7 @@ export function ItemDetailScreen({ itemId }: Props) {
         body={t("deleteConfirmBody")}
         highlight={detail?.name}
         confirmLabel={t("confirmDelete")}
-        cancelLabel={t("cancel")}
+        cancelLabel={t("modal.cancel")}
         isBusy={deleting}
       />
     </div>

@@ -36,9 +36,12 @@ export async function fetchGroupsPage(
 }
 
 export async function fetchGroup(id: number): Promise<Group> {
-  const { data } = await api.get<ApiEnvelope<Group>>(GROUP_PATHS.detail(id));
-  assertApiSuccess(data);
-  return data.data;
+  const { data } = await api.get<ApiEnvelope<Group> | Group>(GROUP_PATHS.detail(id));
+  if (data && typeof data === "object" && "success" in data) {
+    assertApiSuccess(data as ApiEnvelope<Group>);
+    return (data as ApiEnvelope<Group>).data;
+  }
+  return data as Group;
 }
 
 export async function createGroup(body: GroupCreatePayload): Promise<Group> {

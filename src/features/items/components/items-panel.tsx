@@ -33,7 +33,7 @@ import {
 } from "@/shared/ui";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
-import { deleteItem, updateItem } from "@/features/items/api/item.api";
+import { deleteItem } from "@/features/items/api/item.api";
 
 function asNumberMaybe(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -158,17 +158,7 @@ export function ItemsPanel() {
     }
   }
 
-  async function makeComposite(row: Item) {
-    try {
-      await updateItem(row.id, { is_composite: true });
-      toastSuccess(t("madeCompositeToast"));
-      setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("makeCompositeError"));
-    }
-  }
-
-  const tableColSpan = 6;
+  const tableColSpan = 7;
 
   return (
     <div className="space-y-6">
@@ -263,7 +253,6 @@ export function ItemsPanel() {
                       menuAriaLabel={tList("openRowActions")}
                       items={[
                         { id: "edit", label: t("edit"), onSelect: () => openEdit(row) },
-                        { id: "make-composite", label: t("makeComposite"), onSelect: () => void makeComposite(row) },
                         {
                           id: "delete",
                           label: t("delete"),
@@ -287,8 +276,9 @@ export function ItemsPanel() {
                   <DataTableTh>{t("table.name")}</DataTableTh>
                   <DataTableTh className="hidden sm:table-cell">{t("table.sku")}</DataTableTh>
                   <DataTableTh className="hidden md:table-cell">{t("table.quantity")}</DataTableTh>
-                  <DataTableTh className="hidden lg:table-cell">{t("table.prices")}</DataTableTh>
-                  <DataTableTh className="hidden md:table-cell">{t("table.created")}</DataTableTh>
+                  <DataTableTh className="hidden lg:table-cell">{t("modal.costPrice")}</DataTableTh>
+                  <DataTableTh className="hidden lg:table-cell">{t("modal.sellingPrice")}</DataTableTh>
+                  <DataTableTh className="hidden xl:table-cell">{t("table.created")}</DataTableTh>
                   <DataTableTh narrow>
                     <span className="sr-only">{t("table.actions")}</span>
                   </DataTableTh>
@@ -303,10 +293,9 @@ export function ItemsPanel() {
                       <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{row.name}</DataTableTd>
                       <DataTableTd className="hidden font-mono text-xs sm:table-cell">{row.sku || "—"}</DataTableTd>
                       <DataTableTd className="hidden tabular-nums md:table-cell">{row.quantity ?? "—"}</DataTableTd>
-                      <DataTableTd className="hidden tabular-nums lg:table-cell">
-                        {moneyDisplay(row.cost_price)} / {moneyDisplay(row.selling_price)}
-                      </DataTableTd>
-                      <DataTableTd className="hidden text-slate-500 dark:text-slate-400 md:table-cell">
+                      <DataTableTd className="hidden tabular-nums lg:table-cell">{moneyDisplay(row.cost_price)}</DataTableTd>
+                      <DataTableTd className="hidden tabular-nums lg:table-cell">{moneyDisplay(row.selling_price)}</DataTableTd>
+                      <DataTableTd className="hidden text-slate-500 dark:text-slate-400 xl:table-cell">
                         {dateFmt.format(new Date(row.created_at))}
                       </DataTableTd>
                       <DataTableTd
@@ -318,7 +307,6 @@ export function ItemsPanel() {
                           menuAriaLabel={tList("openRowActions")}
                           items={[
                           { id: "edit", label: t("edit"), onSelect: () => openEdit(row) },
-                            { id: "make-composite", label: t("makeComposite"), onSelect: () => void makeComposite(row) },
                             {
                               id: "delete",
                               label: t("delete"),

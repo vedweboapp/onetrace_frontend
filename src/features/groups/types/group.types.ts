@@ -6,10 +6,11 @@ export type GroupUserRef = {
   username: string;
 };
 
-export type GroupCompositeItemRef = {
-  composite_item: number;
+export type GroupItemRef = {
+  id?: number;
+  item: number;
   abbreviation: string;
-  composite_item_name?: string;
+  item_name?: string;
 };
 
 export type Group = {
@@ -24,17 +25,17 @@ export type Group = {
   is_active: boolean;
   deleted_by: unknown;
   organization: number;
-  composite_items?: GroupCompositeItemRef[];
+  items?: GroupItemRef[];
 };
 
 export type GroupCreatePayload = {
   name: string;
-  composite_items?: GroupCompositeItemRef[];
+  items?: GroupItemRef[];
 };
 
 export type GroupUpdatePayload = {
   name?: string;
-  composite_items?: GroupCompositeItemRef[];
+  items?: GroupItemRef[];
 };
 
 export type GroupListResponse = {

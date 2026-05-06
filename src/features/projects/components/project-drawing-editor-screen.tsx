@@ -7,10 +7,10 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { fetchDrawingDetail, updateDrawingPlots } from "@/features/projects/api/drawing.api";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
-import { fetchGroupsPage } from "@/features/groups/api/group.api";
+import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
-import type { Group } from "@/features/groups/types/group.types";
+import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
 import type { PinStatus } from "@/features/pin-status/types/pin-status.types";
 import type { DrawingPin, DrawingPlot, DrawingPlotUpsert } from "@/features/projects/types/drawing.types";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
@@ -295,6 +295,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [selectedGroupId, setSelectedGroupId] = React.useState<string>("");
   const [selectedCompositeId, setSelectedCompositeId] = React.useState<string>("");
   const [selectedStatusId, setSelectedStatusId] = React.useState<string>("");
+  const [selectedGroupItems, setSelectedGroupItems] = React.useState<GroupItemRef[] | null>(null);
 
   const [tempPoints, setTempPoints] = React.useState<number[][]>([]);
   const [selectionStart, setSelectionStart] = React.useState<number[] | null>(null);
@@ -334,11 +335,29 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   );
   const filteredItems = React.useMemo(() => {
     if (!selectedGroupId) return items;
-    return items.filter((ci) => String(ci.group) === selectedGroupId);
-  }, [items, selectedGroupId]);
+    if (!selectedGroupItems || selectedGroupItems.length === 0) return [];
+    const selectedItemIds = new Set(selectedGroupItems.map((entry) => entry.item));
+    return items.filter((ci) => selectedItemIds.has(ci.id));
+  }, [items, selectedGroupId, selectedGroupItems]);
   const compositeOptions = React.useMemo(
-    () => [{ value: "", label: t("selectComposite") }, ...filteredItems.map((ci) => ({ value: String(ci.id), label: ci.name }))],
-    [filteredItems, t],
+    () => {
+      if (!selectedGroupId) {
+        return [{ value: "", label: t("selectComposite") }, ...items.map((ci) => ({ value: String(ci.id), label: ci.name }))];
+      }
+      const itemNameById: Record<number, string> = {};
+      for (const ci of items) itemNameById[ci.id] = ci.name;
+      const uniqueByItem = new Map<number, { value: string; label: string }>();
+      for (const entry of selectedGroupItems ?? []) {
+        if (uniqueByItem.has(entry.item)) continue;
+        uniqueByItem.set(entry.item, {
+          value: String(entry.item),
+          label: entry.item_name ?? itemNameById[entry.item] ?? `#${entry.item}`,
+        });
+      }
+      const groupScoped = Array.from(uniqueByItem.values());
+      return [{ value: "", label: t("selectComposite") }, ...groupScoped];
+    },
+    [selectedGroupId, items, selectedGroupItems, t],
   );
   const groupLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -409,6 +428,33 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       cancelled = true;
     };
   }, [drawingId, projectId, t]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    if (!selectedGroupId) {
+      setSelectedGroupItems(null);
+      return;
+    }
+    (async () => {
+      try {
+        const groupDetail = await fetchGroup(Number.parseInt(selectedGroupId, 10));
+        if (!cancelled) {
+          setSelectedGroupItems(groupDetail.items ?? []);
+        }
+      } catch {
+        if (!cancelled) setSelectedGroupItems([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedGroupId]);
+
+  React.useEffect(() => {
+    if (!selectedCompositeId) return;
+    const stillExists = compositeOptions.some((opt) => opt.value === selectedCompositeId);
+    if (!stillExists) setSelectedCompositeId("");
+  }, [compositeOptions, selectedCompositeId]);
 
   React.useEffect(() => {
     if (!namingPlotOpen) return;

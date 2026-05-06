@@ -15,10 +15,11 @@ import type { Item } from "@/features/items/types/item.types";
 import {
   AppButton,
   AppModal,
+  CheckmarkSelect,
+  type CheckmarkSelectOption,
   FieldLabel,
   fieldErrorTextClassName,
   surfaceInputClassName,
-  surfaceSelectClassName,
 } from "@/shared/ui";
 
 type Props = {
@@ -66,15 +67,22 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
   const [submitting, setSubmitting] = React.useState(false);
   const [nameTouched, setNameTouched] = React.useState(false);
   const [skuTouched, setSkuTouched] = React.useState(false);
+  const [componentsTouched, setComponentsTouched] = React.useState(false);
 
   const nameInvalid = nameTouched && name.trim().length === 0;
   const skuInvalid = skuTouched && sku.trim().length === 0;
+  const hasAtLeastOneComponentItem = rows.some((r) => r.child_item.trim().length > 0);
+  const componentsInvalid = componentsTouched && !hasAtLeastOneComponentItem;
 
   const itemLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
     for (const it of itemOptions) m[it.id] = it.name;
     return m;
   }, [itemOptions]);
+  const itemSelectOptions = React.useMemo<CheckmarkSelectOption[]>(
+    () => itemOptions.map((it) => ({ value: String(it.id), label: itemLabelById[it.id] ?? it.name })),
+    [itemLabelById, itemOptions],
+  );
 
   React.useEffect(() => {
     if (!open) return;
@@ -140,6 +148,7 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
     e.preventDefault();
     setNameTouched(true);
     setSkuTouched(true);
+    setComponentsTouched(true);
     const qtyN = Number(qty);
     const costN = Number(cost);
     const sellN = Number(sell);
@@ -147,6 +156,7 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
     if (!Number.isFinite(qtyN) || qtyN < 0) return;
     if (!Number.isFinite(costN) || costN < 0) return;
     if (!Number.isFinite(sellN) || sellN < 0) return;
+    if (!hasAtLeastOneComponentItem) return;
 
     const comps = buildComponents();
     if (!comps) return;
@@ -316,23 +326,21 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
                 <div>
                   <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
                     {t("childItem")}
+                    <span className="ml-1 text-red-500">*</span>
                   </span>
-                  <select
+                  <CheckmarkSelect
+                    listLabel={t("childItem")}
+                    buttonAriaLabel={t("childItem")}
                     value={r.child_item}
-                    onChange={(e) => {
-                      const v = e.target.value;
+                    onChange={(v) => {
                       setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, child_item: v } : x)));
                     }}
+                    options={itemSelectOptions}
+                    emptyLabel={t("childItemPlaceholder")}
                     disabled={submitting || noItems}
-                    className={surfaceSelectClassName}
-                  >
-                    <option value="">{t("childItemPlaceholder")}</option>
-                    {itemOptions.map((it) => (
-                      <option key={it.id} value={String(it.id)}>
-                        {itemLabelById[it.id] ?? it.name}
-                      </option>
-                    ))}
-                  </select>
+                    portaled
+                    className="w-full"
+                  />
                 </div>
                 <div>
                   <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -376,6 +384,7 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
               </div>
             ))}
           </div>
+          {componentsInvalid ? <p className={fieldErrorTextClassName}>{t("atLeastOneComponentError")}</p> : null}
           <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t("componentsHint")}</p>
         </div>
       </form>
