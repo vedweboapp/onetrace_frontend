@@ -39,7 +39,7 @@ export type LocalPlot = {
   coordinates: number[][];
   pins: DrawingPin[];
   plot_border?: string;
-  plot_background?: string;
+  plot_bg?: string;
 };
 
 function inside(point: number[], vs: number[][]): boolean {
@@ -78,7 +78,7 @@ function normalizePlot(p: DrawingPlot): LocalPlot {
     coordinates: Array.isArray(p.coordinates) ? p.coordinates : [],
     pins: Array.isArray(p.pins) ? p.pins : [],
     plot_border: p.plot_border || defaultColor.border,
-    plot_background: p.plot_background || defaultColor.bg,
+    plot_bg: p.plot_bg || defaultColor.bg,
   };
 }
 
@@ -610,7 +610,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       name: p.name,
       coordinates: p.coordinates,
       plot_border: p.plot_border,
-      plot_background: p.plot_background,
+      plot_bg: p.plot_bg,
       pins: p.pins.map((pin) => ({
         ...(pin.id > 0 ? { id: pin.id } : {}),
         x_coordinate: pin.x_coordinate,
@@ -652,7 +652,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         coordinates: percentageCoordinates,
         pins: [],
         plot_border: plotColorDraft.border,
-        plot_background: plotColorDraft.bg
+        plot_bg: plotColorDraft.bg
       }
     ];
     setPlots(nextPlots);
@@ -1056,7 +1056,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                           {plotPoints.length >= 3 ? (
                             <polygon
                               points={plotPoints.map((p) => `${p[0]},${p[1]}`).join(" ")}
-                              fill={plot.plot_background || "#0596690D"}
+                              fill={plot.plot_bg || "#0596690D"}
                               stroke={plot.plot_border || "#059669"}
                               strokeWidth={isSelected ? 3.5 : 2}
                               strokeDasharray="5 4"
