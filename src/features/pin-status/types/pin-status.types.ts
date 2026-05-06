@@ -10,14 +10,15 @@ export type PinStatus = {
   modified_by: PinStatusUserRef | null;
   created_at: string;
   modified_at: string;
-  deleted_at: string | null;
-  is_deleted: boolean;
   status_name: string;
   bg_colour: string;
   text_colour: string;
-  is_active: boolean;
-  deleted_by: unknown;
-  organization: number;
+  /** Present on full API records; list payloads may omit these. */
+  deleted_at?: string | null;
+  is_deleted?: boolean;
+  is_active?: boolean;
+  deleted_by?: unknown;
+  organization?: number;
 };
 
 export type PinStatusPagination = {

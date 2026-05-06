@@ -11,6 +11,7 @@ type DashboardEmptyStateIconName =
   | "clients"
   | "projects"
   | "groups"
+  | "items"
   | "compositeItems"
   | "pinStatus"
   | "noResults";
@@ -38,6 +39,7 @@ export function DashboardEmptyState({
     clients: Building2,
     projects: FolderKanban,
     groups: Layers,
+    items: Package,
     compositeItems: Package,
     pinStatus: Tags,
     noResults: SearchX,

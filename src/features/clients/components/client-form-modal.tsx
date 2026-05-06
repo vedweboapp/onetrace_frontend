@@ -140,9 +140,7 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved }: Props)
     >
       <form id={FORM_DOM_ID} className="space-y-6" noValidate onSubmit={handleSubmit(submit)}>
         <div>
-          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            {t("form.section.organization")}
-          </h3>
+        
           <FormFieldRow cols="2" className="mt-3">
             <FieldGroup label={t("fields.name")} htmlFor="client-name" required>
               <input

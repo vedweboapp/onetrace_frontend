@@ -81,9 +81,6 @@ export function ClientDetailScreen({ clientId }: Props) {
         breadcrumb={detailBreadcrumb}
         breadcrumbAriaLabel={tCommon("breadcrumbNav")}
         title={detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle"))}
-        description={
-          detail && !loading && !error ? `${detail.contact_person} · ${detail.email}` : undefined
-        }
         actions={
           !loading && !error && detail ? (
             <AppButton type="button" variant="primary" size="md" onClick={openEdit}>

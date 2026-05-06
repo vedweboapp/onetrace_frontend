@@ -44,7 +44,7 @@ export function PageHeadingWithBack({
   return (
     <header className={cn(compact ? "space-y-2" : "space-y-3", className)}>
       {breadcrumb && breadcrumb.length > 0 ? (
-        <nav aria-label={breadcrumbAriaLabel} className="mb-1">
+        <nav aria-label={breadcrumbAriaLabel} className="mb-4 sm:mb-5">
           <ol className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
             {breadcrumb.map((item, i) => (
               <li key={`${item.label}-${i}`} className="flex min-w-0 items-center gap-1">

@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
-import { Toaster } from "sonner";
 import { ApiErrorI18nBridge } from "@/app/providers/api-error-i18n-bridge";
+import { SnackbarHost } from "@/shared/feedback/snackbar-host";
 import { LocaleHtmlLang } from "@/app/providers/locale-html-lang";
 import { routing } from "@/i18n/routing";
 
@@ -31,18 +31,7 @@ export default async function LocaleLayout({ children, params }: Props) {
       <ApiErrorI18nBridge />
       <LocaleHtmlLang />
       {children}
-      <Toaster
-        richColors
-        closeButton
-        expand
-        visibleToasts={4}
-        position="top-center"
-        toastOptions={{
-          className: "app-sonner-toast",
-          descriptionClassName: "app-sonner-description",
-          duration: 3500,
-        }}
-      />
+      <SnackbarHost />
     </NextIntlClientProvider>
   );
 }

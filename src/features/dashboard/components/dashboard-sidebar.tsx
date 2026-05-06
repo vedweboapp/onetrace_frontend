@@ -1,7 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { Building2, FolderKanban, Home, Layers, Package, Palette, Tags } from "lucide-react";
+import { Building2, ChevronRight, FolderKanban, Home, Layers, Package, Palette, Tags } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useDashboardAppearanceStore } from "@/features/dashboard/store/dashboard-appearance.store";
@@ -98,6 +98,43 @@ function SidebarNavLink({
   );
 }
 
+function SidebarSubNavLink({
+  href,
+  active,
+  label,
+  expanded,
+  resolved,
+}: {
+  href: string;
+  active: boolean;
+  label: string;
+  expanded: boolean;
+  resolved: ReturnType<typeof resolveDashboardAccent>;
+}) {
+  return (
+    <Link
+      href={href}
+      title={expanded ? undefined : label}
+      className={cn(
+        "flex items-center rounded-lg text-sm font-medium transition",
+        expanded ? "gap-2.5 px-3 py-2 pl-10" : "mx-auto size-9 justify-center p-0",
+        active ? resolved.navActiveClassName : navInactive(),
+      )}
+      style={active ? resolved.navActiveStyle : undefined}
+    >
+      <ChevronRight
+        className={cn(
+          "size-4 shrink-0",
+          active ? "opacity-95" : "text-slate-400 dark:text-slate-500",
+        )}
+        strokeWidth={2}
+        aria-hidden
+      />
+      {expanded ? <span className="truncate">{label}</span> : <span className="sr-only">{label}</span>}
+    </Link>
+  );
+}
+
 function DashboardMainSidebar({
   resolved,
   expanded,
@@ -111,6 +148,7 @@ function DashboardMainSidebar({
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
+  const itemsHref = routes.dashboard.items;
   const compositeHref = routes.dashboard.compositeItems;
   const homeActive = pathname === homeHref;
   const clientsActive =
@@ -118,8 +156,9 @@ function DashboardMainSidebar({
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
   const groupsActive = pathname === groupsHref || pathname.startsWith(`${groupsHref}/`);
-  const compositeActive =
-    pathname === compositeHref || pathname.startsWith(`${compositeHref}/`);
+  const itemsActive = pathname === itemsHref || pathname.startsWith(`${itemsHref}/`);
+  const compositeActive = pathname === compositeHref || pathname.startsWith(`${compositeHref}/`);
+  const itemsSectionActive = itemsActive || compositeActive;
 
   return (
     <>
@@ -164,14 +203,53 @@ function DashboardMainSidebar({
           expanded={expanded}
           resolved={resolved}
         />
-        <SidebarNavLink
-          href={compositeHref}
-          active={compositeActive}
-          label={t("compositeItems")}
-          icon={Package}
-          expanded={expanded}
-          resolved={resolved}
-        />
+        {expanded ? (
+          <div className="group/items pt-1">
+            <SidebarNavLink
+              href={itemsHref}
+              active={false}
+              label={t("items")}
+              icon={Package}
+              expanded
+              resolved={resolved}
+            />
+            <div
+              className={cn(
+                "mt-0.5 space-y-0.5 overflow-hidden",
+                "max-h-0 opacity-0 transition-all duration-150",
+                "group-hover/items:max-h-40 group-hover/items:opacity-100",
+                "group-focus-within/items:max-h-40 group-focus-within/items:opacity-100",
+                itemsSectionActive && "max-h-40 opacity-100",
+              )}
+            >
+              <SidebarSubNavLink
+                href={itemsHref}
+                active={itemsActive}
+                label={t("itemsPlain")}
+                expanded
+                resolved={resolved}
+              />
+              <SidebarSubNavLink
+                href={compositeHref}
+                active={compositeActive}
+                label={t("compositeItems")}
+                expanded
+                resolved={resolved}
+              />
+            </div>
+          </div>
+        ) : (
+          <>
+            <SidebarNavLink
+              href={itemsHref}
+              active={itemsSectionActive}
+              label={t("items")}
+              icon={Package}
+              expanded={expanded}
+              resolved={resolved}
+            />
+          </>
+        )}
       </nav>
     </>
   );

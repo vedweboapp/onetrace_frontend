@@ -150,7 +150,7 @@ export function DashboardHeader() {
         </div>
 
         <div className="flex min-w-0 shrink-0 items-center gap-2 md:gap-3">
-          <button
+          {/* <button
             type="button"
             title={t("notifications")}
             aria-label={t("notifications")}
@@ -160,7 +160,7 @@ export function DashboardHeader() {
             )}
           >
             <Bell className="size-4" strokeWidth={1.75} />
-          </button>
+          </button> */}
           <Link
             href={appearanceHref}
             title={t("openSettings")}

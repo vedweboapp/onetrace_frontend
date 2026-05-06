@@ -87,57 +87,13 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Global Sonner toast polish */
-[data-sonner-toaster] {
-  --normal-bg: #ffffff;
-  --normal-text: #0f172a;
-  --normal-border: #e2e8f0;
-}
-
-html.dark [data-sonner-toaster] {
-  --normal-bg: #0f172a;
-  --normal-text: #f8fafc;
-  --normal-border: #334155;
-}
-
-[data-sonner-toast].app-sonner-toast {
-  border-radius: 0.85rem;
-  border: 1px solid var(--normal-border);
-  box-shadow: 0 14px 28px -14px rgba(15, 23, 42, 0.42);
-  padding: 0.85rem 0.95rem;
-}
-
-[data-sonner-toast] [data-title] {
-  font-weight: 700;
-  letter-spacing: 0.01em;
-}
-
-[data-sonner-toast] [data-description],
-.app-sonner-description {
-  font-size: 0.82rem;
-  line-height: 1.35;
-}
-
-[data-sonner-toast] [data-close-button] {
-  border-radius: 9999px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: #64748b;
-  transition: all 0.15s ease;
-}
-
-[data-sonner-toast] [data-close-button]:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-  border-color: #e2e8f0;
-}
-
-html.dark [data-sonner-toast] [data-close-button] {
-  color: #94a3b8;
-}
-
-html.dark [data-sonner-toast] [data-close-button]:hover {
-  background: #1e293b;
-  color: #f8fafc;
-  border-color: #334155;
+@keyframes snackbar-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
