@@ -1351,8 +1351,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     icon={StatusIcon}
                     label="Status"
                     value={isPinEditing
-                      ? (pinEditData.status_id ?? detailPin.status_id ?? "")
-                      : (statusLabelById[String(pinEditData.status_id ?? detailPin.status_id ?? 0)] || detailPin.status)
+                      ? (pinEditData.status_id ?? detailPin.status_id ?? detailPin.status ?? "")
+                      : (statusLabelById[String(pinEditData.status_id ?? detailPin.status_id ?? detailPin.status ?? 0)] || detailPin.status)
                     }
                     isEditing={isPinEditing}
                     type="select"
