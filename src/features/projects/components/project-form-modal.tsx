@@ -191,7 +191,7 @@ export function ProjectFormModal({ open, onClose, mode, project, clientOptions, 
             aria-describedby={errors.description ? "project-desc-err" : undefined}
             className={cn(
               surfaceInputClassName,
-              "min-h-[100px] resize-y",
+              "h-auto min-h-[100px] resize-y py-3 leading-5",
               errors.description && "border-red-500 dark:border-red-500",
             )}
             {...register("description")}

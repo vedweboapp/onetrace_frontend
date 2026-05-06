@@ -1,7 +1,8 @@
 "use client";
 
+import * as React from "react";
 import type { LucideIcon } from "lucide-react";
-import { Building2, ChevronRight, FolderKanban, Home, Layers, Package, Palette, Tags } from "lucide-react";
+import { Building2, FolderKanban, Home, Layers, Package, Palette, Tags } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useDashboardAppearanceStore } from "@/features/dashboard/store/dashboard-appearance.store";
@@ -104,32 +105,32 @@ function SidebarSubNavLink({
   label,
   expanded,
   resolved,
+  subtleActive = false,
 }: {
   href: string;
   active: boolean;
   label: string;
   expanded: boolean;
   resolved: ReturnType<typeof resolveDashboardAccent>;
+  subtleActive?: boolean;
 }) {
+  const subtleActiveClassName = cn(
+    "bg-slate-100 text-slate-900",
+    "dark:bg-slate-800 dark:text-slate-100",
+  );
+
   return (
     <Link
       href={href}
       title={expanded ? undefined : label}
       className={cn(
-        "flex items-center rounded-lg text-sm font-medium transition",
-        expanded ? "gap-2.5 px-3 py-2 pl-10" : "mx-auto size-9 justify-center p-0",
-        active ? resolved.navActiveClassName : navInactive(),
+        "flex items-center rounded-lg border-l-2 text-sm font-medium transition",
+        expanded ? "px-3 py-2 pl-8" : "mx-auto size-9 justify-center p-0",
+        active ? "border-l-[color:var(--dash-accent)]" : "border-l-transparent",
+        active ? (subtleActive ? subtleActiveClassName : resolved.navActiveClassName) : navInactive(),
       )}
-      style={active ? resolved.navActiveStyle : undefined}
+      style={active && !subtleActive ? resolved.navActiveStyle : undefined}
     >
-      <ChevronRight
-        className={cn(
-          "size-4 shrink-0",
-          active ? "opacity-95" : "text-slate-400 dark:text-slate-500",
-        )}
-        strokeWidth={2}
-        aria-hidden
-      />
       {expanded ? <span className="truncate">{label}</span> : <span className="sr-only">{label}</span>}
     </Link>
   );
@@ -144,6 +145,7 @@ function DashboardMainSidebar({
 }) {
   const t = useTranslations("Dashboard.sidebar");
   const pathname = usePathname();
+  const [itemsOpen, setItemsOpen] = React.useState(false);
   const clientsHref = routes.dashboard.clients;
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
@@ -159,6 +161,10 @@ function DashboardMainSidebar({
   const itemsActive = pathname === itemsHref || pathname.startsWith(`${itemsHref}/`);
   const compositeActive = pathname === compositeHref || pathname.startsWith(`${compositeHref}/`);
   const itemsSectionActive = itemsActive || compositeActive;
+
+  React.useEffect(() => {
+    if (itemsSectionActive) setItemsOpen(true);
+  }, [itemsSectionActive]);
 
   return (
     <>
@@ -204,22 +210,34 @@ function DashboardMainSidebar({
           resolved={resolved}
         />
         {expanded ? (
-          <div className="group/items pt-1">
-            <SidebarNavLink
-              href={itemsHref}
-              active={false}
-              label={t("items")}
-              icon={Package}
-              expanded
-              resolved={resolved}
-            />
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setItemsOpen((v) => !v)}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition",
+                itemsSectionActive
+                  ? resolved.navActiveClassName
+                  : navInactive(),
+              )}
+              style={itemsSectionActive ? resolved.navActiveStyle : undefined}
+              aria-expanded={itemsOpen}
+            >
+              <Package
+                className={cn(
+                  "size-[18px] shrink-0",
+                  itemsSectionActive ? "opacity-95" : "text-slate-600 dark:text-slate-300",
+                )}
+                strokeWidth={1.75}
+                aria-hidden
+              />
+              <span className="truncate">{t("products")}</span>
+            </button>
             <div
               className={cn(
-                "mt-0.5 space-y-0.5 overflow-hidden",
+                "mt-1.5 space-y-1 overflow-hidden",
                 "max-h-0 opacity-0 transition-all duration-150",
-                "group-hover/items:max-h-40 group-hover/items:opacity-100",
-                "group-focus-within/items:max-h-40 group-focus-within/items:opacity-100",
-                itemsSectionActive && "max-h-40 opacity-100",
+                itemsOpen && "max-h-40 opacity-100",
               )}
             >
               <SidebarSubNavLink
@@ -228,6 +246,7 @@ function DashboardMainSidebar({
                 label={t("itemsPlain")}
                 expanded
                 resolved={resolved}
+                subtleActive
               />
               <SidebarSubNavLink
                 href={compositeHref}
@@ -235,6 +254,7 @@ function DashboardMainSidebar({
                 label={t("compositeItems")}
                 expanded
                 resolved={resolved}
+                subtleActive
               />
             </div>
           </div>
@@ -243,7 +263,7 @@ function DashboardMainSidebar({
             <SidebarNavLink
               href={itemsHref}
               active={itemsSectionActive}
-              label={t("items")}
+              label={t("products")}
               icon={Package}
               expanded={expanded}
               resolved={resolved}

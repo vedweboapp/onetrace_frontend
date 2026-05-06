@@ -9,7 +9,6 @@ import { ItemFormModal } from "@/features/items/components/item-form-modal";
 import type { Item } from "@/features/items/types/item.types";
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
-import { PageHeadingWithBack } from "@/shared/components/layout/page-heading-with-back";
 import { AppButton, ConfirmDialog, SurfaceShell } from "@/shared/ui";
 
 type Props = {
@@ -18,7 +17,6 @@ type Props = {
 
 export function ItemDetailScreen({ itemId }: Props) {
   const t = useTranslations("Dashboard.items");
-  const tCommon = useTranslations("Dashboard.common");
   const locale = useLocale();
   const router = useRouter();
 
@@ -73,34 +71,23 @@ export function ItemDetailScreen({ itemId }: Props) {
     }
   }
 
-  const detailBreadcrumb = React.useMemo(
-    () => [
-      { label: t("title"), href: routes.dashboard.items },
-      { label: detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle")) },
-    ],
-    [detail?.name, loading, t],
-  );
-
   return (
     <div className="pb-12">
-      <PageHeadingWithBack
-        breadcrumb={detailBreadcrumb}
-        breadcrumbAriaLabel={tCommon("breadcrumbNav")}
-        title={detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle"))}
-        actions={
-          !loading && !error && detail ? (
-            <>
-              <AppButton type="button" variant="secondary" size="md" onClick={() => setDeleteOpen(true)}>
-                {t("delete")}
-              </AppButton>
-              <AppButton type="button" variant="primary" size="md" onClick={() => setFormOpen(true)}>
-                {t("edit")}
-              </AppButton>
-            </>
-          ) : undefined
-        }
-        className="mb-5 border-b border-slate-200/90 pb-5 dark:border-slate-800 sm:mb-6"
-      />
+      <div className="mb-4 flex items-center justify-between gap-3 sm:mb-5">
+        <h1 className="truncate text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          {detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle"))}
+        </h1>
+        {!loading && !error && detail ? (
+          <div className="flex gap-2">
+            <AppButton type="button" variant="secondary" size="md" onClick={() => setDeleteOpen(true)}>
+              {t("delete")}
+            </AppButton>
+            <AppButton type="button" variant="primary" size="md" onClick={() => setFormOpen(true)}>
+              {t("edit")}
+            </AppButton>
+          </div>
+        ) : null}
+      </div>
 
       <SurfaceShell className="rounded-none">
         {loading ? (

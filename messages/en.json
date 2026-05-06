@@ -102,6 +102,7 @@
       "clients": "Clients",
       "projects": "Projects",
       "groups": "Groups",
+      "products": "Products",
       "items": "Items",
       "itemsPlain": "Items",
       "compositeItems": "Composite items"
@@ -310,8 +311,8 @@
       "searchPlaceholder": "Search…",
       "searchAria": "Search this list",
       "rowsPerPage": "Rows per page",
-      "tableView": "Table view",
-      "listView": "List view",
+      "tableView": "Card view",
+      "listView": "Table view",
       "openRowActions": "Open row actions",
       "noResultsTitle": "No results found",
       "noResultsDescription": "Nothing matches your current search or filters. Adjust them or clear filters to see more items.",
@@ -374,7 +375,7 @@
         "sectionRecord": "Record",
         "tabsAria": "Project sections",
         "tabs": {
-          "details": "Details",
+          "details": "Overview",
           "forms": "Forms",
           "drawings": "Drawings",
           "locations": "Locations",
@@ -386,7 +387,7 @@
       "drawings": {
         "title": "Drawings",
         "subtitle": "Manage and view all construction blueprints and plans.",
-        "createDrawing": "Upload drawing",
+        "createDrawing": "Upload drawings",
         "searchPlaceholder": "Search drawings…",
         "searchAria": "Search drawings",
         "updatedLabel": "Updated",
@@ -404,12 +405,13 @@
           "block": "Block",
           "level": "Level",
           "file": "File",
+          "created": "Created by",
           "pins": "Pins",
           "updated": "Last updated",
           "actions": "Actions"
         },
         "modal": {
-          "title": "Upload drawing",
+          "title": "Upload drawings",
           "name": "Drawing name",
           "namePlaceholder": "e.g. Ground floor plan",
           "nameError": "Enter a name for this drawing.",
@@ -417,7 +419,7 @@
           "fileHint": "PDF or common image formats.",
           "fileError": "Choose a file to upload.",
           "cancel": "Cancel",
-          "submit": "Upload",
+          "submit": "Upload drawings",
           "createdToast": "Drawing uploaded successfully"
         },
         "editor": {

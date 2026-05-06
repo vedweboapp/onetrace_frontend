@@ -12,7 +12,6 @@ import type { CompositeItem } from "@/features/composite-items/types/composite-i
 import { ItemDetailBody } from "@/features/items/components/item-detail-body";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess } from "@/shared/feedback/app-toast";
-import { PageHeadingWithBack } from "@/shared/components/layout/page-heading-with-back";
 import { AppButton, ConfirmDialog, SurfaceShell } from "@/shared/ui";
 
 type Props = {
@@ -22,7 +21,6 @@ type Props = {
 export function CompositeItemDetailScreen({ itemId }: Props) {
   const t = useTranslations("Dashboard.compositeItems");
   const tItems = useTranslations("Dashboard.items");
-  const tCommon = useTranslations("Dashboard.common");
   const locale = useLocale();
   const router = useRouter();
 
@@ -75,34 +73,23 @@ export function CompositeItemDetailScreen({ itemId }: Props) {
     }
   }
 
-  const detailBreadcrumb = React.useMemo(
-    () => [
-      { label: t("title"), href: routes.dashboard.compositeItems },
-      { label: detail?.name ?? (loading ? tItems("detail.loadingTitle") : tItems("detailMetaTitle")) },
-    ],
-    [detail?.name, loading, t, tItems],
-  );
-
   return (
     <div className="pb-12">
-      <PageHeadingWithBack
-        breadcrumb={detailBreadcrumb}
-        breadcrumbAriaLabel={tCommon("breadcrumbNav")}
-        title={detail?.name ?? (loading ? tItems("detail.loadingTitle") : tItems("detailMetaTitle"))}
-        actions={
-          !loading && !error && detail ? (
-            <>
-              <AppButton type="button" variant="secondary" size="md" onClick={() => setDeleteOpen(true)}>
-                {t("delete")}
-              </AppButton>
-              <AppButton type="button" variant="primary" size="md" onClick={() => setFormOpen(true)}>
-                {t("edit")}
-              </AppButton>
-            </>
-          ) : undefined
-        }
-        className="mb-5 border-b border-slate-200/90 pb-5 dark:border-slate-800 sm:mb-6"
-      />
+      <div className="mb-4 flex items-center justify-between gap-3 sm:mb-5">
+        <h1 className="truncate text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          {detail?.name ?? (loading ? tItems("detail.loadingTitle") : tItems("detailMetaTitle"))}
+        </h1>
+        {!loading && !error && detail ? (
+          <div className="flex gap-2">
+            <AppButton type="button" variant="secondary" size="md" onClick={() => setDeleteOpen(true)}>
+              {t("delete")}
+            </AppButton>
+            <AppButton type="button" variant="primary" size="md" onClick={() => setFormOpen(true)}>
+              {t("edit")}
+            </AppButton>
+          </div>
+        ) : null}
+      </div>
 
       <SurfaceShell className="rounded-none">
         {loading ? (

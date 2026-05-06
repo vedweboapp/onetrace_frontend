@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { List, Plus, Table2 } from "lucide-react";
+import { LayoutGrid, List, Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -19,7 +19,6 @@ import {
   DataTableHead,
   DataTablePaginationBar,
   DataTableRow,
-  DataTableRowActionsMenu,
   DataTableScroll,
   DataTableTd,
   DataTableTh,
@@ -40,17 +39,6 @@ function formatBytes(bytes: number): string {
   }
   const rounded = i === 0 ? Math.round(v) : v < 10 ? Number(v.toFixed(1)) : Math.round(v);
   return `${rounded} ${units[i]}`;
-}
-
-function displayBlock(row: Drawing): string {
-  const b = row.block?.trim();
-  return b && b.length > 0 ? b : "—";
-}
-
-function displayLevel(row: Drawing): string {
-  const l = row.level?.trim();
-  if (l && l.length > 0) return l;
-  return String(row.order);
 }
 
 function formatRelativeUpdated(iso: string, locale: string): string {
@@ -76,22 +64,15 @@ function parseDrawingsListViewParam(param: string | null): ListPageViewMode {
 function DrawingGridCard({
   row,
   updatedLabel,
-  levelLabel,
   locale,
   onOpen,
-  menu,
 }: {
   row: Drawing;
   updatedLabel: string;
-  levelLabel: string;
   locale: string;
   onOpen: () => void;
-  menu: React.ReactNode;
 }) {
-  const block = displayBlock(row);
-  const level = displayLevel(row);
-  const locationLine =
-    block === "—" ? `${levelLabel} ${level}` : `${block} · ${levelLabel} ${level}`;
+  const createdBy = row.created_by?.username || row.created_by?.email || "—";
 
   return (
     <div
@@ -119,15 +100,13 @@ function DrawingGridCard({
         />
       </div>
       <div className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="min-w-0 flex-1 text-base font-semibold leading-snug tracking-tight text-slate-900 dark:text-slate-100">
-            {row.name}
-          </h3>
-          <div className="shrink-0" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-            {menu}
-          </div>
-        </div>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{locationLine}</p>
+        <h3 className="min-w-0 truncate text-base font-semibold leading-snug tracking-tight text-slate-900 dark:text-slate-100">
+          {row.name}
+        </h3>
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+          {formatBytes(row.drawing_file_size)} · {row.drawing_file_type || "—"}
+        </p>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">By {createdBy}</p>
         <p className="mt-3 text-xs text-slate-500 dark:text-slate-500">
           {updatedLabel} {formatRelativeUpdated(row.modified_at || row.created_at, locale)}
         </p>
@@ -233,28 +212,28 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     <div className="inline-flex shrink-0 items-center rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
       <button
         type="button"
-        onClick={() => setListViewMode("table")}
+        onClick={() => setListViewMode("list")}
         title={tList("tableView")}
         aria-label={tList("tableView")}
-        aria-pressed={listViewMode === "table"}
-        className={cn(
-          "inline-flex size-8 items-center justify-center rounded-md transition",
-          listViewMode === "table"
-            ? "bg-slate-100 text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100"
-            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
-        )}
-      >
-        <Table2 className="size-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => setListViewMode("list")}
-        title={tList("listView")}
-        aria-label={tList("listView")}
         aria-pressed={listViewMode === "list"}
         className={cn(
           "inline-flex size-8 items-center justify-center rounded-md transition",
           listViewMode === "list"
+            ? "bg-slate-100 text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100"
+            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+        )}
+      >
+        <LayoutGrid className="size-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => setListViewMode("table")}
+        title={tList("listView")}
+        aria-label={tList("listView")}
+        aria-pressed={listViewMode === "table"}
+        className={cn(
+          "inline-flex size-8 items-center justify-center rounded-md transition",
+          listViewMode === "table"
             ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-600"
             : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
         )}
@@ -264,7 +243,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     </div>
   );
 
-  const tableColSpan = 5;
+  const tableColSpan = 4;
 
   return (
     <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -326,21 +305,8 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
                   key={row.id}
                   row={row}
                   updatedLabel={t("updatedLabel")}
-                  levelLabel={t("levelLabel")}
                   locale={locale}
                   onOpen={() => openDrawing(row)}
-                  menu={
-                    <DataTableRowActionsMenu
-                      menuAriaLabel={tList("openRowActions")}
-                      items={[
-                        {
-                          id: "open",
-                          label: t("open"),
-                          onSelect: () => openDrawing(row),
-                        },
-                      ]}
-                    />
-                  }
                 />
               ))}
             </div>
@@ -352,12 +318,9 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
             <DataTableHead>
               <tr>
                 <DataTableTh>{t("table.drawing")}</DataTableTh>
-                <DataTableTh className="hidden sm:table-cell">{t("table.level")}</DataTableTh>
                 <DataTableTh className="hidden lg:table-cell">{t("table.file")}</DataTableTh>
+                  <DataTableTh className="hidden md:table-cell">{t("table.created")}</DataTableTh>
                 <DataTableTh className="hidden md:table-cell">{t("table.updated")}</DataTableTh>
-                <DataTableTh narrow>
-                  <span className="sr-only">{t("table.actions")}</span>
-                </DataTableTh>
               </tr>
             </DataTableHead>
             <DataTableBody>
@@ -365,8 +328,9 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
                 <DataTableEmptyRow message={t("empty")} colSpan={tableColSpan} />
               ) : (
                 items.map((row) => {
+                  const createdBy = row.created_by?.username || row.created_by?.email || "—";
                   return (
-                    <DataTableRow key={row.id}>
+                    <DataTableRow key={row.id} clickable onClick={() => openDrawing(row)}>
                       <DataTableTd className="font-medium text-slate-900 dark:text-slate-100">
                         <span className="flex min-w-0 items-center gap-3">
                           <DrawingFilePreview
@@ -380,9 +344,6 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
                           <span className="min-w-0 truncate">{row.name}</span>
                         </span>
                       </DataTableTd>
-                      <DataTableTd className="hidden text-slate-600 dark:text-slate-400 sm:table-cell">
-                        {displayLevel(row)}
-                      </DataTableTd>
                       <DataTableTd className="hidden text-slate-600 dark:text-slate-400 lg:table-cell">
                         <span className="tabular-nums">{formatBytes(row.drawing_file_size)}</span>
                         <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-500">
@@ -390,19 +351,10 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
                         </span>
                       </DataTableTd>
                       <DataTableTd className="hidden text-slate-600 dark:text-slate-400 md:table-cell">
-                        {formatRelativeUpdated(row.modified_at || row.created_at, locale)}
+                        {createdBy}
                       </DataTableTd>
-                      <DataTableTd narrow>
-                        <DataTableRowActionsMenu
-                          menuAriaLabel={tList("openRowActions")}
-                          items={[
-                            {
-                              id: "open",
-                              label: t("open"),
-                              onSelect: () => openDrawing(row),
-                            },
-                          ]}
-                        />
+                      <DataTableTd className="hidden text-slate-600 dark:text-slate-400 md:table-cell">
+                        {formatRelativeUpdated(row.modified_at || row.created_at, locale)}
                       </DataTableTd>
                     </DataTableRow>
                   );

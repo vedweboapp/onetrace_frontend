@@ -94,7 +94,7 @@ const DrawingBottomToolbar = ({
                             id: "pin",
                             icon: <MapPin  className="size-4" />,
                             label: t("toolPin"),
-                            disabled: !selectedPlot || !selectedGroupId || !selectedCompositeId || savingPin,
+                            disabled: !selectedPlot || savingPin,
                         },
                         { id: "hand", icon: <Hand className="size-4" />,},
                     ].map((tool) => (

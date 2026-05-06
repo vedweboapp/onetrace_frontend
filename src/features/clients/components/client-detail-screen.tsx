@@ -6,9 +6,6 @@ import { fetchClient } from "@/features/clients/api/client.api";
 import { ClientDetailBody } from "@/features/clients/components/client-detail-body";
 import { ClientFormModal } from "@/features/clients/components/client-form-modal";
 import type { Client } from "@/features/clients/types/client.types";
-import { cn } from "@/core/utils/http.util";
-import { PageHeadingWithBack } from "@/shared/components/layout/page-heading-with-back";
-import { routes } from "@/shared/config/routes";
 import { AppButton, SurfaceShell } from "@/shared/ui";
 
 type Props = {
@@ -17,7 +14,6 @@ type Props = {
 
 export function ClientDetailScreen({ clientId }: Props) {
   const t = useTranslations("Dashboard.clients");
-  const tCommon = useTranslations("Dashboard.common");
   const locale = useLocale();
 
   const [detail, setDetail] = React.useState<Client | null>(null);
@@ -65,31 +61,18 @@ export function ClientDetailScreen({ clientId }: Props) {
     setRefreshNonce((n) => n + 1);
   }
 
-  const detailBreadcrumb = React.useMemo(
-    () => [
-      { label: t("title"), href: routes.dashboard.clients },
-      {
-        label: detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle")),
-      },
-    ],
-    [detail?.name, loading, t],
-  );
-
   return (
     <div className="pb-12">
-      <PageHeadingWithBack
-        breadcrumb={detailBreadcrumb}
-        breadcrumbAriaLabel={tCommon("breadcrumbNav")}
-        title={detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle"))}
-        actions={
-          !loading && !error && detail ? (
-            <AppButton type="button" variant="primary" size="md" onClick={openEdit}>
-              {t("detail.edit")}
-            </AppButton>
-          ) : undefined
-        }
-        className={cn("border-b border-slate-200/90 pb-5 dark:border-slate-800", "mb-5 sm:mb-6")}
-      />
+      <div className="mb-4 flex items-center justify-between gap-3 sm:mb-5">
+        <h1 className="truncate text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          {detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle"))}
+        </h1>
+        {!loading && !error && detail ? (
+          <AppButton type="button" variant="primary" size="md" onClick={openEdit}>
+            {t("detail.edit")}
+          </AppButton>
+        ) : null}
+      </div>
 
       <SurfaceShell className="rounded-none">
         {loading ? (

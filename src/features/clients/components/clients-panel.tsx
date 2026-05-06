@@ -364,7 +364,11 @@ export function ClientsPanel() {
                         </span>
                       </DataTableTd>
                       <DataTableTd>{dateFmt.format(new Date(row.created_at))}</DataTableTd>
-                      <DataTableTd narrow>
+                      <DataTableTd
+                        narrow
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
                         <DataTableRowActionsMenu
                           menuAriaLabel={tList("openRowActions")}
                           items={[

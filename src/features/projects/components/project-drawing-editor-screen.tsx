@@ -209,7 +209,7 @@ type DetailRowProps = {
   isEditing?: boolean;
   onChange?: (v: string) => void;
   type?: "text" | "select";
-  options?: string[];
+  options?: string[] | { value: string | number; label: string }[];
   statusColor?: string;
   statusTextColor?: string;
 };
@@ -225,7 +225,7 @@ const DetailRow = ({
   statusColor,
   statusTextColor,
 }: DetailRowProps) => {
-  const strValue = typeof value === "number" ? String(value) : value;
+  const strValue = (value === null || value === undefined) ? "" : String(value);
   return (
     <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800/50">
       <div className="flex items-center gap-3">
@@ -242,9 +242,15 @@ const DetailRow = ({
               onChange={(e) => onChange(e.target.value)}
               className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900"
             >
-              {options.map((opt) => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
+              {options.map((opt) => {
+                const optVal = typeof opt === "string" ? opt : String(opt.value);
+                const optLabel = typeof opt === "string" ? opt : opt.label;
+                return (
+                  <option key={optVal} value={optVal}>
+                    {optLabel}
+                  </option>
+                );
+              })}
             </select>
           ) : (
             <input
@@ -287,7 +293,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [selectedPlotId, setSelectedPlotId] = React.useState<string>("");
   const [activeTool, setActiveTool] = React.useState<Tool>("hand");
   const [dirty, setDirty] = React.useState(false);
-  const [zoom, setZoom] = React.useState(1);
+  const [zoom, setZoom] = React.useState(0.4);
 
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [items, setItems] = React.useState<CompositeItem[]>([]);
@@ -365,69 +371,70 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     return m;
   }, [groups]);
   const compositeLabelById = React.useMemo(() => {
-    const m: Record<number, string> = {};
-    for (const ci of items) m[ci.id] = ci.name;
+    const m: Record<string, string> = {};
+    for (const ci of items) m[String(ci.id)] = ci.name;
     return m;
   }, [items]);
 
   const statusLabelById = React.useMemo(() => {
-    const m: Record<number, string> = {};
-    for (const s of statuses) m[s.id] = s.status_name;
+    const m: Record<string, string> = {};
+    for (const s of statuses) m[String(s.id)] = s.status_name;
     return m;
   }, [statuses]);
+
+  const loadAllData = React.useCallback(async () => {
+    try {
+      const results = await Promise.allSettled([
+        fetchDrawingDetail(projectId, drawingId),
+        fetchGroupsPage(1, 500),
+        fetchCompositeItemsPage(1, 500),
+        fetchPinStatusesPage(1, 500),
+      ]);
+
+      // 1. Drawing Detail (Critical)
+      if (results[0].status === "fulfilled") {
+        const detail = results[0].value;
+        const normalized = (detail.plots ?? []).map(normalizePlot);
+        setDrawingName(detail.name);
+        setFilePath(detail.drawing_file);
+        setPlots(normalized);
+        setSelectedPlotId((prev) => prev || (normalized[0] ? String(normalized[0].id) : ""));
+      } else {
+        toastError(t("loadError"));
+      }
+
+      // 2. Groups
+      if (results[1].status === "fulfilled") {
+        setGroups(results[1].value.items);
+      }
+
+      // 3. Composite Items
+      if (results[2].status === "fulfilled") {
+        setItems(results[2].value.items);
+      }
+
+      // 4. Pin Statuses
+      if (results[3].status === "fulfilled") {
+        const statusItems = results[3].value.items;
+        setStatuses(statusItems);
+        setSelectedStatusId((prev) => prev || (statusItems[0] ? String(statusItems[0].id) : ""));
+      }
+    } catch {
+      toastError(t("loadError"));
+    }
+  }, [drawingId, projectId, t]);
 
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      try {
-        const results = await Promise.allSettled([
-          fetchDrawingDetail(projectId, drawingId),
-          fetchGroupsPage(1, 500),
-          fetchCompositeItemsPage(1, 500),
-          fetchPinStatusesPage(1, 500),
-        ]);
-
-        if (cancelled) return;
-
-        // 1. Drawing Detail (Critical)
-        if (results[0].status === "fulfilled") {
-          const detail = results[0].value;
-          const normalized = (detail.plots ?? []).map(normalizePlot);
-          setDrawingName(detail.name);
-          setFilePath(detail.drawing_file);
-          setPlots(normalized);
-          setSelectedPlotId(normalized[0] ? String(normalized[0].id) : "");
-        } else {
-          toastError(t("loadError"));
-        }
-
-        // 2. Groups
-        if (results[1].status === "fulfilled") {
-          setGroups(results[1].value.items);
-        }
-
-        // 3. Composite Items
-        if (results[2].status === "fulfilled") {
-          setItems(results[2].value.items);
-        }
-
-        // 4. Pin Statuses
-        if (results[3].status === "fulfilled") {
-          const statusItems = results[3].value.items;
-          setStatuses(statusItems);
-          setSelectedStatusId(statusItems[0] ? String(statusItems[0].id) : "");
-        }
-      } catch {
-        if (!cancelled) toastError(t("loadError"));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      await loadAllData();
+      if (!cancelled) setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, [drawingId, projectId, t]);
+  }, [loadAllData]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -663,7 +670,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         y_coordinate: pin.y_coordinate,
         status: pin.status_id,
         group: pin.group ?? null,
-        composite_item: pin.composite_item ?? null,
+        item: pin.composite_item ?? null,
         quantity: pin.quantity || 1,
       })),
     }));
@@ -713,17 +720,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   }
 
   async function placePin(point: number[], targetPlot?: LocalPlot) {
-    if (!selectedGroupId) {
-      toastError(t("groupRequired"));
-      return;
-    }
-    if (!selectedCompositeId) {
-      toastError(t("compositeRequired"));
-      return;
-    }
-
     const plot = targetPlot ?? selectedPlot;
-
     if (!plot) {
       toastError(t("pinOutsidePlot"));
       return;
@@ -734,6 +731,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       toastError(t("pinOutsidePlot"));
       return;
     }
+
     const selectedStatus = statuses.find((s) => String(s.id) === selectedStatusId);
     if (!selectedStatus) {
       toastError(t("statusRequired"));
@@ -745,8 +743,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       y_coordinate: Number(((point[1] / pageSize.height) * 100).toFixed(6)),
       status: selectedStatus.status_name,
       status_id: selectedStatus.id,
-      group: Number.parseInt(selectedGroupId, 10),
-      composite_item: Number.parseInt(selectedCompositeId, 10),
+      group: selectedGroupId ? Number.parseInt(selectedGroupId, 10) : undefined,
+      composite_item: selectedCompositeId ? Number.parseInt(selectedCompositeId, 10) : undefined,
     };
 
     const nextPlots = plots.map((p) =>
@@ -812,6 +810,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     try {
       await persistPlots(plots);
       toastSuccess(t("savedAll"));
+      // Refresh all data from API after successful save
+      await loadAllData();
     } catch {
       toastError(t("saveAllError"));
     } finally {
@@ -1329,13 +1329,15 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                   <DetailRow
                     icon={PackageIcon}
                     label="Product Name"
-                    value={compositeLabelById[detailPin.composite_item ?? 0] || "-"}
+                    value={isPinEditing 
+                      ? (pinEditData.composite_item ?? detailPin.composite_item ?? "")
+                      : (compositeLabelById[String(pinEditData.composite_item ?? detailPin.composite_item ?? 0)] || "-")
+                    }
                     isEditing={isPinEditing}
                     type="select"
-                    options={filteredItems.map(i => i.name)}
+                    options={filteredItems.map(i => ({ value: i.id, label: i.name }))}
                     onChange={(val: string) => {
-                      const item = filteredItems.find(i => i.name === val);
-                      if (item) setPinEditData(prev => ({ ...prev, composite_item: item.id }));
+                      setPinEditData(prev => ({ ...prev, composite_item: parseInt(val) || undefined }));
                     }}
                   />
                   <DetailRow
@@ -1348,14 +1350,17 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                   <DetailRow
                     icon={StatusIcon}
                     label="Status"
-                    value={statusLabelById[detailPin.status_id ?? 0] || detailPin.status}
+                    value={isPinEditing
+                      ? (pinEditData.status_id ?? detailPin.status_id ?? detailPin.status ?? "")
+                      : (statusLabelById[String(pinEditData.status_id ?? detailPin.status_id ?? detailPin.status ?? 0)] || detailPin.status)
+                    }
                     isEditing={isPinEditing}
                     type="select"
-                    options={statuses.map(s => s.status_name)}
+                    options={statuses.map(s => ({ value: s.id, label: s.status_name }))}
                     statusColor={statuses.find(s => s.id === (pinEditData.status_id || detailPin.status_id))?.bg_colour}
                     statusTextColor={statuses.find(s => s.id === (pinEditData.status_id || detailPin.status_id))?.text_colour}
                     onChange={(val: string) => {
-                      const s = statuses.find(st => st.status_name === val);
+                      const s = statuses.find(st => String(st.id) === val);
                       if (s) setPinEditData(prev => ({ ...prev, status_id: s.id, status: s.status_name }));
                     }}
                   />
