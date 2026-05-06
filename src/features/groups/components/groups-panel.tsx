@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { deleteGroup, fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import { GroupFormModal } from "@/features/groups/components/group-form-modal";
 import type { Group } from "@/features/groups/types/group.types";
@@ -30,11 +31,13 @@ import {
 } from "@/shared/ui";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { routes } from "@/shared/config/routes";
 
 export function GroupsPanel() {
   const t = useTranslations("Dashboard.groups");
   const tList = useTranslations("Dashboard.list");
   const locale = useLocale();
+  const router = useRouter();
 
   const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } =
     useListUrlState();
@@ -235,18 +238,23 @@ export function GroupsPanel() {
                 <ListPageCard
                   key={row.id}
                   title={row.name}
-                  subtitle={row.organization}
+                  subtitle={
+                    row.items && row.items.length > 0
+                      ? t("compositeCount", { count: row.items.length })
+                      : t("noCompositeLinked")
+                  }
                   meta={dateFmt.format(new Date(row.created_at))}
                   description={
-                    row.composite_items && row.composite_items.length > 0
-                      ? row.composite_items
-                          .map((x) => `${x.composite_item_name ?? `#${x.composite_item}`} (${x.abbreviation})`)
+                    row.items && row.items.length > 0
+                      ? row.items
+                          .map((x) => `${x.item_name ?? `#${x.item}`} (${x.abbreviation})`)
                           .slice(0, 2)
                           .join(" · ")
                       : row.is_active
                         ? t("statusActive")
                         : t("statusInactive")
                   }
+                  onCardClick={() => router.push(`${routes.dashboard.groups}/${row.id}`)}
                   menu={
                     <DataTableRowActionsMenu
                       menuAriaLabel={tList("openRowActions")}
@@ -278,7 +286,7 @@ export function GroupsPanel() {
               <DataTableHead>
                 <tr>
                   <DataTableTh>{t("table.name")}</DataTableTh>
-                  <DataTableTh className="hidden sm:table-cell">{t("table.organization")}</DataTableTh>
+                  <DataTableTh className="hidden sm:table-cell">{t("table.compositeItems")}</DataTableTh>
                   <DataTableTh className="hidden md:table-cell">{t("table.created")}</DataTableTh>
                   <DataTableTh className="hidden lg:table-cell">{t("table.status")}</DataTableTh>
                   <DataTableTh narrow>{t("table.actions")}</DataTableTh>
@@ -286,10 +294,15 @@ export function GroupsPanel() {
               </DataTableHead>
               <DataTableBody>
                 {items.map((row) => (
-                    <DataTableRow key={row.id}>
+                    <DataTableRow key={row.id} clickable onClick={() => router.push(`${routes.dashboard.groups}/${row.id}`)}>
                       <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{row.name}</DataTableTd>
                       <DataTableTd className="hidden tabular-nums text-slate-700 dark:text-slate-300 sm:table-cell">
-                        {row.organization}
+                        {row.items && row.items.length > 0
+                          ? row.items
+                              .map((x) => `${x.item_name ?? `#${x.item}`} (${x.abbreviation})`)
+                              .slice(0, 2)
+                              .join(" · ")
+                          : "—"}
                       </DataTableTd>
                       <DataTableTd className="hidden text-slate-600 dark:text-slate-400 md:table-cell">
                         {dateFmt.format(new Date(row.created_at))}
@@ -305,7 +318,7 @@ export function GroupsPanel() {
                           {row.is_active ? t("statusActive") : t("statusInactive")}
                         </span>
                       </DataTableTd>
-                      <DataTableTd narrow>
+                      <DataTableTd narrow onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                         <DataTableRowActionsMenu
                           menuAriaLabel={tList("openRowActions")}
                           items={[

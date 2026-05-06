@@ -509,6 +509,7 @@
     },
     "groups": {
       "metaTitle": "Grupos",
+      "detailMetaTitle": "Detalle del grupo",
       "title": "Grupos",
       "subtitle": "Crea y nombra grupos para tu catálogo (p. ej. materiales). Cada ítem compuesto pertenece a un grupo.",
       "compositeHint": {
@@ -522,13 +523,15 @@
       "emptyDescription": "Crea grupos para organizar tu catálogo de ítems compuestos.",
       "loadError": "No se pudieron cargar los grupos. Inténtalo de nuevo.",
       "detailLoadError": "No se pudieron cargar los detalles del grupo. Inténtalo de nuevo.",
+      "compositeCount": "{count} ítems compuestos",
+      "noCompositeLinked": "No hay ítems compuestos vinculados",
       "pageLabel": "Mostrando {start}-{end} de {total} grupos",
       "prev": "Anterior",
       "next": "Siguiente",
       "deletedToast": "Grupo eliminado",
       "table": {
         "name": "Nombre",
-        "organization": "Organización",
+        "compositeItems": "Ítems compuestos",
         "created": "Creado",
         "status": "Estado",
         "actions": "Acciones"
@@ -558,8 +561,21 @@
         "abbreviationPlaceholder": "p. ej. HM",
         "addCompositeItem": "Añadir fila",
         "removeCompositeItem": "Quitar",
+        "atLeastOneCompositeItemError": "Selecciona al menos un ítem compuesto.",
         "createdToast": "Grupo creado",
         "updatedToast": "Grupo actualizado"
+      },
+      "detail": {
+        "loadingTitle": "Cargando grupo...",
+        "retry": "Reintentar",
+        "sectionItems": "Ítems vinculados",
+        "items": "Ítems con abreviatura",
+        "noItems": "No hay ítems vinculados a este grupo.",
+        "sectionRecord": "Registro",
+        "createdAt": "Creado el",
+        "updatedAt": "Actualizado el",
+        "createdBy": "Creado por",
+        "modifiedBy": "Modificado por"
       }
     },
     "compositeItems": {
@@ -627,6 +643,7 @@
         "componentQuantity": "Cant.",
         "addComponent": "Añadir fila",
         "removeComponent": "Quitar",
+        "atLeastOneComponentError": "Selecciona al menos un ítem.",
         "group": "Grupo",
         "groupPlaceholder": "Seleccionar grupo",
         "groupError": "Selecciona un grupo.",

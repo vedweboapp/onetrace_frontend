@@ -161,7 +161,7 @@ export function CompositeItemsPanel() {
   const hasActiveFilters = hasListActiveFilters({ search });
   const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
   const pageRange = getListPageRange(pagination);
-  const tableColSpan = 6;
+  const tableColSpan = 7;
 
   function moneyDisplay(v: unknown): string {
     const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : Number.NaN;
@@ -289,8 +289,9 @@ export function CompositeItemsPanel() {
                   <DataTableTh>{t("table.name")}</DataTableTh>
                   <DataTableTh className="hidden sm:table-cell">{t("modal.sku")}</DataTableTh>
                   <DataTableTh className="hidden md:table-cell">{t("modal.quantity")}</DataTableTh>
-                  <DataTableTh className="hidden lg:table-cell">{t("modal.costPrice")} / {t("modal.sellingPrice")}</DataTableTh>
-                  <DataTableTh className="hidden lg:table-cell">{t("table.created")}</DataTableTh>
+                  <DataTableTh className="hidden lg:table-cell">{t("modal.costPrice")}</DataTableTh>
+                  <DataTableTh className="hidden lg:table-cell">{t("modal.sellingPrice")}</DataTableTh>
+                  <DataTableTh className="hidden xl:table-cell">{t("table.created")}</DataTableTh>
                   <DataTableTh narrow>
                     <span className="sr-only">{t("table.actions")}</span>
                   </DataTableTh>
@@ -305,10 +306,9 @@ export function CompositeItemsPanel() {
                       <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{row.name}</DataTableTd>
                       <DataTableTd className="hidden font-mono text-xs sm:table-cell">{row.sku || "—"}</DataTableTd>
                       <DataTableTd className="hidden tabular-nums text-slate-600 dark:text-slate-400 md:table-cell">{row.quantity ?? "—"}</DataTableTd>
-                      <DataTableTd className="hidden tabular-nums text-slate-600 dark:text-slate-400 lg:table-cell">
-                        {moneyDisplay(row.cost_price)} / {moneyDisplay(row.selling_price)}
-                      </DataTableTd>
-                      <DataTableTd className="hidden text-slate-600 dark:text-slate-400 lg:table-cell">
+                      <DataTableTd className="hidden tabular-nums text-slate-600 dark:text-slate-400 lg:table-cell">{moneyDisplay(row.cost_price)}</DataTableTd>
+                      <DataTableTd className="hidden tabular-nums text-slate-600 dark:text-slate-400 lg:table-cell">{moneyDisplay(row.selling_price)}</DataTableTd>
+                      <DataTableTd className="hidden text-slate-600 dark:text-slate-400 xl:table-cell">
                         {dateFmt.format(new Date(row.created_at))}
                       </DataTableTd>
                       <DataTableTd

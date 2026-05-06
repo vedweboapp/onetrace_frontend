@@ -7,10 +7,10 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { fetchDrawingDetail, updateDrawingPlots } from "@/features/projects/api/drawing.api";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
-import { fetchGroupsPage } from "@/features/groups/api/group.api";
+import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
-import type { Group } from "@/features/groups/types/group.types";
+import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
 import type { PinStatus } from "@/features/pin-status/types/pin-status.types";
 import type { DrawingPin, DrawingPlot, DrawingPlotUpsert } from "@/features/projects/types/drawing.types";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
@@ -209,7 +209,7 @@ type DetailRowProps = {
   isEditing?: boolean;
   onChange?: (v: string) => void;
   type?: "text" | "select";
-  options?: string[];
+  options?: string[] | { value: string | number; label: string }[];
   statusColor?: string;
   statusTextColor?: string;
 };
@@ -225,7 +225,7 @@ const DetailRow = ({
   statusColor,
   statusTextColor,
 }: DetailRowProps) => {
-  const strValue = typeof value === "number" ? String(value) : value;
+  const strValue = (value === null || value === undefined) ? "" : String(value);
   return (
     <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800/50">
       <div className="flex items-center gap-3">
@@ -242,9 +242,15 @@ const DetailRow = ({
               onChange={(e) => onChange(e.target.value)}
               className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900"
             >
-              {options.map((opt) => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
+              {options.map((opt) => {
+                const optVal = typeof opt === "string" ? opt : String(opt.value);
+                const optLabel = typeof opt === "string" ? opt : opt.label;
+                return (
+                  <option key={optVal} value={optVal}>
+                    {optLabel}
+                  </option>
+                );
+              })}
             </select>
           ) : (
             <input
@@ -295,6 +301,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [selectedGroupId, setSelectedGroupId] = React.useState<string>("");
   const [selectedCompositeId, setSelectedCompositeId] = React.useState<string>("");
   const [selectedStatusId, setSelectedStatusId] = React.useState<string>("");
+  const [selectedGroupItems, setSelectedGroupItems] = React.useState<GroupItemRef[] | null>(null);
 
   const [tempPoints, setTempPoints] = React.useState<number[][]>([]);
   const [selectionStart, setSelectionStart] = React.useState<number[] | null>(null);
@@ -334,11 +341,29 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   );
   const filteredItems = React.useMemo(() => {
     if (!selectedGroupId) return items;
-    return items.filter((ci) => String(ci.group) === selectedGroupId);
-  }, [items, selectedGroupId]);
+    if (!selectedGroupItems || selectedGroupItems.length === 0) return [];
+    const selectedItemIds = new Set(selectedGroupItems.map((entry) => entry.item));
+    return items.filter((ci) => selectedItemIds.has(ci.id));
+  }, [items, selectedGroupId, selectedGroupItems]);
   const compositeOptions = React.useMemo(
-    () => [{ value: "", label: t("selectComposite") }, ...filteredItems.map((ci) => ({ value: String(ci.id), label: ci.name }))],
-    [filteredItems, t],
+    () => {
+      if (!selectedGroupId) {
+        return [{ value: "", label: t("selectComposite") }, ...items.map((ci) => ({ value: String(ci.id), label: ci.name }))];
+      }
+      const itemNameById: Record<number, string> = {};
+      for (const ci of items) itemNameById[ci.id] = ci.name;
+      const uniqueByItem = new Map<number, { value: string; label: string }>();
+      for (const entry of selectedGroupItems ?? []) {
+        if (uniqueByItem.has(entry.item)) continue;
+        uniqueByItem.set(entry.item, {
+          value: String(entry.item),
+          label: entry.item_name ?? itemNameById[entry.item] ?? `#${entry.item}`,
+        });
+      }
+      const groupScoped = Array.from(uniqueByItem.values());
+      return [{ value: "", label: t("selectComposite") }, ...groupScoped];
+    },
+    [selectedGroupId, items, selectedGroupItems, t],
   );
   const groupLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -346,14 +371,14 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     return m;
   }, [groups]);
   const compositeLabelById = React.useMemo(() => {
-    const m: Record<number, string> = {};
-    for (const ci of items) m[ci.id] = ci.name;
+    const m: Record<string, string> = {};
+    for (const ci of items) m[String(ci.id)] = ci.name;
     return m;
   }, [items]);
 
   const statusLabelById = React.useMemo(() => {
-    const m: Record<number, string> = {};
-    for (const s of statuses) m[s.id] = s.status_name;
+    const m: Record<string, string> = {};
+    for (const s of statuses) m[String(s.id)] = s.status_name;
     return m;
   }, [statuses]);
 
@@ -373,9 +398,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         setDrawingName(detail.name);
         setFilePath(detail.drawing_file);
         setPlots(normalized);
-        if (!selectedPlotId) {
-          setSelectedPlotId(normalized[0] ? String(normalized[0].id) : "");
-        }
+        setSelectedPlotId((prev) => prev || (normalized[0] ? String(normalized[0].id) : ""));
       } else {
         toastError(t("loadError"));
       }
@@ -394,14 +417,12 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       if (results[3].status === "fulfilled") {
         const statusItems = results[3].value.items;
         setStatuses(statusItems);
-        if (!selectedStatusId) {
-          setSelectedStatusId(statusItems[0] ? String(statusItems[0].id) : "");
-        }
+        setSelectedStatusId((prev) => prev || (statusItems[0] ? String(statusItems[0].id) : ""));
       }
     } catch {
       toastError(t("loadError"));
     }
-  }, [drawingId, projectId, selectedPlotId, selectedStatusId, t]);
+  }, [drawingId, projectId, t]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -414,6 +435,33 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       cancelled = true;
     };
   }, [loadAllData]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    if (!selectedGroupId) {
+      setSelectedGroupItems(null);
+      return;
+    }
+    (async () => {
+      try {
+        const groupDetail = await fetchGroup(Number.parseInt(selectedGroupId, 10));
+        if (!cancelled) {
+          setSelectedGroupItems(groupDetail.items ?? []);
+        }
+      } catch {
+        if (!cancelled) setSelectedGroupItems([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedGroupId]);
+
+  React.useEffect(() => {
+    if (!selectedCompositeId) return;
+    const stillExists = compositeOptions.some((opt) => opt.value === selectedCompositeId);
+    if (!stillExists) setSelectedCompositeId("");
+  }, [compositeOptions, selectedCompositeId]);
 
   React.useEffect(() => {
     if (!namingPlotOpen) return;
@@ -622,7 +670,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         y_coordinate: pin.y_coordinate,
         status: pin.status_id,
         group: pin.group ?? null,
-        composite_item: pin.composite_item ?? null,
+        item: pin.composite_item ?? null,
         quantity: pin.quantity || 1,
       })),
     }));
@@ -672,27 +720,18 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   }
 
   async function placePin(point: number[], targetPlot?: LocalPlot) {
-    if (!selectedGroupId) {
-      toastError(t("groupRequired"));
-      return;
-    }
-    if (!selectedCompositeId) {
-      toastError(t("compositeRequired"));
-      return;
-    }
-
     const plot = targetPlot ?? selectedPlot;
-
     if (!plot) {
       toastError(t("pinOutsidePlot"));
       return;
     }
 
-    const plotStageCoordinates = plot.coordinates.map((p) => toStagePoint(p, pageSize));
+    const plotStageCoordinates = plot.coordinates.map((p) => percentToPixel(p, pageSize));
     if (!inside(point, plotStageCoordinates)) {
       toastError(t("pinOutsidePlot"));
       return;
     }
+
     const selectedStatus = statuses.find((s) => String(s.id) === selectedStatusId);
     if (!selectedStatus) {
       toastError(t("statusRequired"));
@@ -704,8 +743,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       y_coordinate: Number(((point[1] / pageSize.height) * 100).toFixed(6)),
       status: selectedStatus.status_name,
       status_id: selectedStatus.id,
-      group: Number.parseInt(selectedGroupId, 10),
-      composite_item: Number.parseInt(selectedCompositeId, 10),
+      group: selectedGroupId ? Number.parseInt(selectedGroupId, 10) : undefined,
+      composite_item: selectedCompositeId ? Number.parseInt(selectedCompositeId, 10) : undefined,
     };
 
     const nextPlots = plots.map((p) =>
@@ -1290,13 +1329,15 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                   <DetailRow
                     icon={PackageIcon}
                     label="Product Name"
-                    value={compositeLabelById[detailPin.composite_item ?? 0] || "-"}
+                    value={isPinEditing 
+                      ? (pinEditData.composite_item ?? detailPin.composite_item ?? "")
+                      : (compositeLabelById[String(pinEditData.composite_item ?? detailPin.composite_item ?? 0)] || "-")
+                    }
                     isEditing={isPinEditing}
                     type="select"
-                    options={filteredItems.map(i => i.name)}
+                    options={filteredItems.map(i => ({ value: i.id, label: i.name }))}
                     onChange={(val: string) => {
-                      const item = filteredItems.find(i => i.name === val);
-                      if (item) setPinEditData(prev => ({ ...prev, composite_item: item.id }));
+                      setPinEditData(prev => ({ ...prev, composite_item: parseInt(val) || undefined }));
                     }}
                   />
                   <DetailRow
@@ -1309,14 +1350,17 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                   <DetailRow
                     icon={StatusIcon}
                     label="Status"
-                    value={statusLabelById[detailPin.status_id ?? 0] || detailPin.status}
+                    value={isPinEditing
+                      ? (pinEditData.status_id ?? detailPin.status_id ?? "")
+                      : (statusLabelById[String(pinEditData.status_id ?? detailPin.status_id ?? 0)] || detailPin.status)
+                    }
                     isEditing={isPinEditing}
                     type="select"
-                    options={statuses.map(s => s.status_name)}
+                    options={statuses.map(s => ({ value: s.id, label: s.status_name }))}
                     statusColor={statuses.find(s => s.id === (pinEditData.status_id || detailPin.status_id))?.bg_colour}
                     statusTextColor={statuses.find(s => s.id === (pinEditData.status_id || detailPin.status_id))?.text_colour}
                     onChange={(val: string) => {
-                      const s = statuses.find(st => st.status_name === val);
+                      const s = statuses.find(st => String(st.id) === val);
                       if (s) setPinEditData(prev => ({ ...prev, status_id: s.id, status: s.status_name }));
                     }}
                   />

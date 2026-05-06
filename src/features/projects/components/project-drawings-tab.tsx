@@ -42,11 +42,6 @@ function formatBytes(bytes: number): string {
   return `${rounded} ${units[i]}`;
 }
 
-function pinsDisplay(row: Drawing): number | null {
-  const raw = row.pin_count ?? row.pins_count;
-  return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
-}
-
 function displayBlock(row: Drawing): string {
   const b = row.block?.trim();
   return b && b.length > 0 ? b : "—";
@@ -269,7 +264,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     </div>
   );
 
-  const tableColSpan = 7;
+  const tableColSpan = 5;
 
   return (
     <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -357,12 +352,8 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
             <DataTableHead>
               <tr>
                 <DataTableTh>{t("table.drawing")}</DataTableTh>
-                <DataTableTh className="hidden sm:table-cell">{t("table.block")}</DataTableTh>
                 <DataTableTh className="hidden sm:table-cell">{t("table.level")}</DataTableTh>
                 <DataTableTh className="hidden lg:table-cell">{t("table.file")}</DataTableTh>
-                <DataTableTh narrow className="hidden md:table-cell">
-                  {t("table.pins")}
-                </DataTableTh>
                 <DataTableTh className="hidden md:table-cell">{t("table.updated")}</DataTableTh>
                 <DataTableTh narrow>
                   <span className="sr-only">{t("table.actions")}</span>
@@ -374,7 +365,6 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
                 <DataTableEmptyRow message={t("empty")} colSpan={tableColSpan} />
               ) : (
                 items.map((row) => {
-                  const pinN = pinsDisplay(row);
                   return (
                     <DataTableRow key={row.id}>
                       <DataTableTd className="font-medium text-slate-900 dark:text-slate-100">
@@ -391,9 +381,6 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
                         </span>
                       </DataTableTd>
                       <DataTableTd className="hidden text-slate-600 dark:text-slate-400 sm:table-cell">
-                        {displayBlock(row)}
-                      </DataTableTd>
-                      <DataTableTd className="hidden text-slate-600 dark:text-slate-400 sm:table-cell">
                         {displayLevel(row)}
                       </DataTableTd>
                       <DataTableTd className="hidden text-slate-600 dark:text-slate-400 lg:table-cell">
@@ -401,9 +388,6 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
                         <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-500">
                           {row.drawing_file_type?.replace(/^application\//, "") || "—"}
                         </span>
-                      </DataTableTd>
-                      <DataTableTd className="hidden tabular-nums text-slate-700 dark:text-slate-300 md:table-cell">
-                        {pinN !== null ? new Intl.NumberFormat(compactLocale).format(pinN) : "—"}
                       </DataTableTd>
                       <DataTableTd className="hidden text-slate-600 dark:text-slate-400 md:table-cell">
                         {formatRelativeUpdated(row.modified_at || row.created_at, locale)}

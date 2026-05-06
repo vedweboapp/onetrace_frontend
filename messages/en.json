@@ -509,6 +509,7 @@
     },
     "groups": {
       "metaTitle": "Groups",
+      "detailMetaTitle": "Group details",
       "title": "Groups",
       "subtitle": "Create and name groups for your catalog (e.g. Materials). Composite items belong to exactly one group.",
       "compositeHint": {
@@ -522,13 +523,15 @@
       "emptyDescription": "Create groups to organize your composite item catalog.",
       "loadError": "Could not load groups. Try again.",
       "detailLoadError": "Could not load group details. Try again.",
+      "compositeCount": "{count} composite items",
+      "noCompositeLinked": "No composite items linked",
       "pageLabel": "Showing {start}-{end} of {total} groups",
       "prev": "Previous",
       "next": "Next",
       "deletedToast": "Group deleted",
       "table": {
         "name": "Name",
-        "organization": "Organization",
+        "compositeItems": "Composite items",
         "created": "Created",
         "status": "Status",
         "actions": "Actions"
@@ -558,8 +561,21 @@
         "abbreviationPlaceholder": "e.g. HM",
         "addCompositeItem": "Add row",
         "removeCompositeItem": "Remove",
+        "atLeastOneCompositeItemError": "Select at least one composite item.",
         "createdToast": "Group created",
         "updatedToast": "Group updated"
+      },
+      "detail": {
+        "loadingTitle": "Loading group...",
+        "retry": "Retry",
+        "sectionItems": "Linked items",
+        "items": "Items with abbreviation",
+        "noItems": "No items linked to this group.",
+        "sectionRecord": "Record",
+        "createdAt": "Created at",
+        "updatedAt": "Updated at",
+        "createdBy": "Created by",
+        "modifiedBy": "Modified by"
       }
     },
     "compositeItems": {
@@ -627,6 +643,7 @@
         "componentQuantity": "Qty",
         "addComponent": "Add row",
         "removeComponent": "Remove",
+        "atLeastOneComponentError": "Select at least one item.",
         "group": "Group",
         "groupPlaceholder": "Select group",
         "groupError": "Select a group.",
