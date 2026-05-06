@@ -221,7 +221,7 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
                     autoComplete="off"
                     value={row.abbreviation}
                     onChange={(e) => {
-                      const value = e.target.value;
+                      const value = e.target.value.toUpperCase();
                       setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, abbreviation: value } : x)));
                     }}
                     disabled={submitting}
