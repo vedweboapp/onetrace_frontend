@@ -3,24 +3,27 @@
 import * as React from "react";
 import { Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { deleteGroup, fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
-import { GroupFormModal } from "@/features/groups/components/group-form-modal";
-import type { Group } from "@/features/groups/types/group.types";
+import { useRouter } from "@/i18n/navigation";
+import { fetchItemsPage } from "@/features/items/api/item.api";
+import type { Item } from "@/features/items/types/item.types";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { ItemFormModal } from "@/features/items/components/item-form-modal";
+import { routes } from "@/shared/config/routes";
 import {
   AppButton,
   ConfirmDialog,
   DataTable,
   DataTableBody,
+  DataTableEmptyRow,
   DataTableHead,
   DataTablePaginationBar,
   DataTableRow,
+  DataTableRowActionsMenu,
   DataTableScroll,
   DataTableTd,
   DataTableTh,
   DashboardEmptyState,
-  DataTableRowActionsMenu,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
@@ -30,16 +33,31 @@ import {
 } from "@/shared/ui";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { deleteItem, updateItem } from "@/features/items/api/item.api";
 
-export function GroupsPanel() {
-  const t = useTranslations("Dashboard.groups");
+function asNumberMaybe(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim()) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function moneyDisplay(v: unknown): string {
+  const n = asNumberMaybe(v);
+  if (n == null) return "—";
+  return n.toFixed(2);
+}
+
+export function ItemsPanel() {
+  const t = useTranslations("Dashboard.items");
   const tList = useTranslations("Dashboard.list");
   const locale = useLocale();
+  const router = useRouter();
 
-  const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } =
-    useListUrlState();
-
-  const [items, setItems] = React.useState<Group[]>([]);
+  const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } = useListUrlState();
+  const [items, setItems] = React.useState<Item[]>([]);
   const [pagination, setPagination] = React.useState({
     total_records: 0,
     total_pages: 1,
@@ -54,14 +72,23 @@ export function GroupsPanel() {
 
   const [formOpen, setFormOpen] = React.useState(false);
   const [formMode, setFormMode] = React.useState<"create" | "edit">("create");
-  const [editingGroup, setEditingGroup] = React.useState<Group | null>(null);
+  const [editingItem, setEditingItem] = React.useState<Item | null>(null);
   const [formKey, setFormKey] = React.useState(0);
 
-  const [deleteOpen, setDeleteOpen] = React.useState(false);
-  const [deletingGroup, setDeletingGroup] = React.useState<Group | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<Item | null>(null);
   const [deleting, setDeleting] = React.useState(false);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
+  const pageRange = getListPageRange(pagination);
+
+  const dateFmt = React.useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale === "es" ? "es" : "en", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }),
+    [locale],
+  );
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -77,17 +104,18 @@ export function GroupsPanel() {
       setLoading(true);
       setLoadError(null);
       try {
-        const { items: nextItems, pagination: p } = await fetchGroupsPage(page, pageSize, {
+        const { items: next, pagination: p } = await fetchItemsPage(page, pageSize, {
           search: search || undefined,
+          isComposite: false,
         });
         if (!cancelled) {
-          setItems(nextItems);
+          setItems(next);
           setPagination(p);
         }
       } catch {
         if (!cancelled) {
-          setLoadError(t("loadError"));
           setItems([]);
+          setLoadError(t("loadError"));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -96,63 +124,54 @@ export function GroupsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, search, refreshNonce, t]);
-
-  const dateFmt = React.useMemo(
-    () =>
-      new Intl.DateTimeFormat(locale === "es" ? "es" : "en", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }),
-    [locale],
-  );
+  }, [page, pageSize, refreshNonce, search, t]);
 
   const hasActiveFilters = hasListActiveFilters({ search });
   const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
-  const pageRange = getListPageRange(pagination);
 
   function openCreate() {
     setFormMode("create");
-    setEditingGroup(null);
+    setEditingItem(null);
     setFormKey((k) => k + 1);
     setFormOpen(true);
   }
 
-  async function openEdit(row: Group) {
+  function openEdit(row: Item) {
     setFormMode("edit");
-    setEditingGroup(row);
+    setEditingItem(row);
     setFormKey((k) => k + 1);
     setFormOpen(true);
-    try {
-      const fullGroup = await fetchGroup(row.id);
-      setEditingGroup(fullGroup);
-    } catch {
-      toastError(t("detailLoadError"));
-    }
-  }
-
-  function handleSaved() {
-    setRefreshNonce((n) => n + 1);
   }
 
   async function confirmDelete() {
-    if (!deletingGroup) return;
+    if (!deleteTarget) return;
     setDeleting(true);
     try {
-      await deleteGroup(deletingGroup.id);
+      await deleteItem(deleteTarget.id);
       toastSuccess(t("deletedToast"));
-      setDeleteOpen(false);
-      setDeletingGroup(null);
-      handleSaved();
+      setDeleteTarget(null);
+      setRefreshNonce((n) => n + 1);
     } catch {
-      
+      toastError(t("deleteError"));
     } finally {
       setDeleting(false);
     }
   }
 
+  async function makeComposite(row: Item) {
+    try {
+      await updateItem(row.id, { is_composite: true });
+      toastSuccess(t("madeCompositeToast"));
+      setRefreshNonce((n) => n + 1);
+    } catch {
+      toastError(t("makeCompositeError"));
+    }
+  }
+
+  const tableColSpan = 6;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {!hideListChrome ? (
         <ListPageHeader
           title={t("title")}
@@ -162,7 +181,7 @@ export function GroupsPanel() {
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
           action={
-            <AppButton type="button" variant="primary" size="md" onClick={openCreate} className="gap-2">
+            <AppButton type="button" variant="primary" size="md" className="gap-2" onClick={openCreate}>
               <Plus className="size-4" strokeWidth={2} aria-hidden />
               {t("add")}
             </AppButton>
@@ -217,11 +236,11 @@ export function GroupsPanel() {
             />
           ) : (
             <DashboardEmptyState
-              iconName="groups"
+              iconName="items"
               title={t("emptyTitle")}
               description={t("emptyDescription")}
               action={
-                <AppButton type="button" variant="primary" size="md" onClick={openCreate} className="gap-2">
+                <AppButton type="button" variant="primary" size="md" className="gap-2" onClick={openCreate}>
                   <Plus className="size-4" strokeWidth={2} aria-hidden />
                   {t("add")}
                 </AppButton>
@@ -235,34 +254,22 @@ export function GroupsPanel() {
                 <ListPageCard
                   key={row.id}
                   title={row.name}
-                  subtitle={row.organization}
+                  subtitle={row.sku ? <span className="font-mono text-xs">{row.sku}</span> : undefined}
                   meta={dateFmt.format(new Date(row.created_at))}
-                  description={
-                    row.composite_items && row.composite_items.length > 0
-                      ? row.composite_items
-                          .map((x) => `${x.composite_item_name ?? `#${x.composite_item}`} (${x.abbreviation})`)
-                          .slice(0, 2)
-                          .join(" · ")
-                      : row.is_active
-                        ? t("statusActive")
-                        : t("statusInactive")
-                  }
+                  description={`Qty: ${row.quantity ?? "—"} · Cost: ${moneyDisplay(row.cost_price)} · Sell: ${moneyDisplay(row.selling_price)}`}
+                  onCardClick={() => router.push(`${routes.dashboard.items}/${row.id}`)}
                   menu={
                     <DataTableRowActionsMenu
                       menuAriaLabel={tList("openRowActions")}
                       items={[
-                        {
-                          id: "edit",
-                          label: t("edit"),
-                          onSelect: () => void openEdit(row),
-                        },
+                        { id: "edit", label: t("edit"), onSelect: () => openEdit(row) },
+                        { id: "make-composite", label: t("makeComposite"), onSelect: () => void makeComposite(row) },
                         {
                           id: "delete",
                           label: t("delete"),
                           tone: "danger",
                           onSelect: () => {
-                            setDeletingGroup(row);
-                            setDeleteOpen(true);
+                            setDeleteTarget(row);
                           },
                         },
                       ]}
@@ -278,56 +285,54 @@ export function GroupsPanel() {
               <DataTableHead>
                 <tr>
                   <DataTableTh>{t("table.name")}</DataTableTh>
-                  <DataTableTh className="hidden sm:table-cell">{t("table.organization")}</DataTableTh>
+                  <DataTableTh className="hidden sm:table-cell">{t("table.sku")}</DataTableTh>
+                  <DataTableTh className="hidden md:table-cell">{t("table.quantity")}</DataTableTh>
+                  <DataTableTh className="hidden lg:table-cell">{t("table.prices")}</DataTableTh>
                   <DataTableTh className="hidden md:table-cell">{t("table.created")}</DataTableTh>
-                  <DataTableTh className="hidden lg:table-cell">{t("table.status")}</DataTableTh>
-                  <DataTableTh narrow>{t("table.actions")}</DataTableTh>
+                  <DataTableTh narrow>
+                    <span className="sr-only">{t("table.actions")}</span>
+                  </DataTableTh>
                 </tr>
               </DataTableHead>
               <DataTableBody>
-                {items.map((row) => (
-                    <DataTableRow key={row.id}>
+                {items.length === 0 ? (
+                  <DataTableEmptyRow message={t("empty")} colSpan={tableColSpan} />
+                ) : (
+                  items.map((row) => (
+                    <DataTableRow key={row.id} clickable onClick={() => router.push(`${routes.dashboard.items}/${row.id}`)}>
                       <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{row.name}</DataTableTd>
-                      <DataTableTd className="hidden tabular-nums text-slate-700 dark:text-slate-300 sm:table-cell">
-                        {row.organization}
+                      <DataTableTd className="hidden font-mono text-xs sm:table-cell">{row.sku || "—"}</DataTableTd>
+                      <DataTableTd className="hidden tabular-nums md:table-cell">{row.quantity ?? "—"}</DataTableTd>
+                      <DataTableTd className="hidden tabular-nums lg:table-cell">
+                        {moneyDisplay(row.cost_price)} / {moneyDisplay(row.selling_price)}
                       </DataTableTd>
-                      <DataTableTd className="hidden text-slate-600 dark:text-slate-400 md:table-cell">
+                      <DataTableTd className="hidden text-slate-500 dark:text-slate-400 md:table-cell">
                         {dateFmt.format(new Date(row.created_at))}
                       </DataTableTd>
-                      <DataTableTd className="hidden lg:table-cell">
-                        <span
-                          className={
-                            row.is_active
-                              ? "inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
-                              : "inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                          }
-                        >
-                          {row.is_active ? t("statusActive") : t("statusInactive")}
-                        </span>
-                      </DataTableTd>
-                      <DataTableTd narrow>
+                      <DataTableTd
+                        narrow
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
                         <DataTableRowActionsMenu
                           menuAriaLabel={tList("openRowActions")}
                           items={[
-                            {
-                              id: "edit",
-                              label: t("edit"),
-                              onSelect: () => void openEdit(row),
-                            },
+                          { id: "edit", label: t("edit"), onSelect: () => openEdit(row) },
+                            { id: "make-composite", label: t("makeComposite"), onSelect: () => void makeComposite(row) },
                             {
                               id: "delete",
                               label: t("delete"),
                               tone: "danger",
                               onSelect: () => {
-                                setDeletingGroup(row);
-                                setDeleteOpen(true);
+                                setDeleteTarget(row);
                               },
                             },
                           ]}
                         />
                       </DataTableTd>
                     </DataTableRow>
-                  ))}
+                  ))
+                )}
               </DataTableBody>
             </DataTable>
           </DataTableScroll>
@@ -358,26 +363,27 @@ export function GroupsPanel() {
         ) : null}
       </SurfaceShell>
 
-      <GroupFormModal
+      <ItemFormModal
         key={formKey}
         open={formOpen}
         onClose={() => setFormOpen(false)}
         mode={formMode}
-        group={editingGroup}
-        onSaved={handleSaved}
+        item={editingItem}
+        onSaved={() => setRefreshNonce((n) => n + 1)}
       />
 
       <ConfirmDialog
-        open={deleteOpen}
-        onClose={() => (!deleting ? setDeleteOpen(false) : undefined)}
+        open={deleteTarget !== null}
+        onClose={() => (!deleting ? setDeleteTarget(null) : undefined)}
         onConfirm={() => void confirmDelete()}
         title={t("deleteConfirmTitle")}
         body={t("deleteConfirmBody")}
-        highlight={deletingGroup?.name}
+        highlight={deleteTarget?.name}
         confirmLabel={t("confirmDelete")}
-        cancelLabel={t("modal.cancel")}
+        cancelLabel={t("cancel")}
         isBusy={deleting}
       />
     </div>
   );
 }
+

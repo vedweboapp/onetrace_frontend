@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -54,6 +55,38 @@ function normalizeHex(raw: string): string {
     return `#${h[1]}${h[1]}${h[2]}${h[2]}${h[3]}${h[3]}`.toLowerCase();
   }
   return h.slice(0, 7).toLowerCase();
+}
+
+function pinStatusUserLabel(user: PinStatus["created_by"]): string {
+  if (!user) return "—";
+  const name = user.username?.trim();
+  if (name) return name;
+  const email = user.email?.trim();
+  if (email) return email;
+  return `#${user.id}`;
+}
+
+function PinStatusChip({
+  row,
+  className,
+}: {
+  row: Pick<PinStatus, "status_name" | "bg_colour" | "text_colour">;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex max-w-full truncate rounded-full border border-black/10 px-3 py-1 text-xs font-semibold shadow-sm",
+        className,
+      )}
+      style={{
+        backgroundColor: normalizeHex(row.bg_colour),
+        color: normalizeHex(row.text_colour),
+      }}
+    >
+      {row.status_name}
+    </span>
+  );
 }
 
 export function PinStatusSettingsPanel() {
@@ -130,6 +163,7 @@ export function PinStatusSettingsPanel() {
   }, [page, pageSize, search, refreshNonce, t]);
 
   function openCreate() {
+    setDetailRow(null);
     setEditing(null);
     setStatusName("");
     setBgColour(DEFAULT_BG);
@@ -139,6 +173,7 @@ export function PinStatusSettingsPanel() {
   }
 
   function openEdit(row: PinStatus) {
+    setDetailRow(null);
     setEditing(row);
     setStatusName(row.status_name);
     setBgColour(normalizeHex(row.bg_colour));
@@ -307,20 +342,20 @@ export function PinStatusSettingsPanel() {
               {items.map((row) => (
                 <ListPageCard
                   key={row.id}
-                  title={row.status_name}
-                  subtitle={
-                    <span
-                      className="inline-flex rounded-md border border-black/5 px-2.5 py-1 text-xs font-semibold shadow-sm"
-                      style={{
-                        backgroundColor: normalizeHex(row.bg_colour),
-                        color: normalizeHex(row.text_colour),
-                      }}
-                    >
-                      {row.status_name}
-                    </span>
+                  title={<PinStatusChip row={row} className="text-sm font-semibold" />}
+                  meta={
+                    <>
+                      {t("detail.updatedAt")}: {dateFmt.format(new Date(row.modified_at))}
+                      {pinStatusUserLabel(row.modified_by) !== "—"
+                        ? ` · ${pinStatusUserLabel(row.modified_by)}`
+                        : ""}
+                    </>
                   }
-                  meta={dateFmt.format(new Date(row.created_at))}
-                  description={`${normalizeHex(row.bg_colour).toUpperCase()} · ${normalizeHex(row.text_colour).toUpperCase()}`}
+                  description={`${t("detail.createdAt")}: ${dateFmt.format(new Date(row.created_at))}${
+                    pinStatusUserLabel(row.created_by) !== "—"
+                      ? ` · ${t("detail.byUser", { user: pinStatusUserLabel(row.created_by) })}`
+                      : ""
+                  } · ${normalizeHex(row.bg_colour).toUpperCase()} / ${normalizeHex(row.text_colour).toUpperCase()}`}
                   onCardClick={() => setDetailRow(row)}
                   menu={
                     <DataTableRowActionsMenu
@@ -335,7 +370,10 @@ export function PinStatusSettingsPanel() {
                           id: "delete",
                           label: t("delete"),
                           tone: "danger",
-                          onSelect: () => setDeleteTarget(row),
+                          onSelect: () => {
+                            setDetailRow(null);
+                            setDeleteTarget(row);
+                          },
                         },
                       ]}
                     />
@@ -350,8 +388,8 @@ export function PinStatusSettingsPanel() {
               <DataTableHead>
                 <tr>
                   <DataTableTh>{t("table.status")}</DataTableTh>
-                  <DataTableTh>{t("table.preview")}</DataTableTh>
                   <DataTableTh className="hidden sm:table-cell">{t("table.created")}</DataTableTh>
+                  <DataTableTh className="hidden md:table-cell">{t("table.updated")}</DataTableTh>
                   <DataTableTh narrow>
                     <span className="sr-only">{t("table.actions")}</span>
                   </DataTableTh>
@@ -360,24 +398,30 @@ export function PinStatusSettingsPanel() {
               <DataTableBody>
                 {items.map((row) => (
                   <DataTableRow key={row.id} clickable onClick={() => setDetailRow(row)}>
-                    <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">
-                      {row.status_name}
-                    </DataTableTd>
                     <DataTableTd>
-                      <span
-                        className="inline-flex rounded-md border border-black/5 px-2.5 py-1 text-xs font-semibold shadow-sm"
-                        style={{
-                          backgroundColor: normalizeHex(row.bg_colour),
-                          color: normalizeHex(row.text_colour),
-                        }}
-                      >
-                        {row.status_name}
-                      </span>
+                      <PinStatusChip row={row} />
                     </DataTableTd>
                     <DataTableTd className="hidden text-slate-500 dark:text-slate-400 sm:table-cell">
-                      {dateFmt.format(new Date(row.created_at))}
+                      <span className="block">{dateFmt.format(new Date(row.created_at))}</span>
+                      {pinStatusUserLabel(row.created_by) !== "—" ? (
+                        <span className="mt-0.5 block text-xs text-slate-400 dark:text-slate-500">
+                          {pinStatusUserLabel(row.created_by)}
+                        </span>
+                      ) : null}
                     </DataTableTd>
-                    <DataTableTd narrow>
+                    <DataTableTd className="hidden text-slate-500 dark:text-slate-400 md:table-cell">
+                      <span className="block">{dateFmt.format(new Date(row.modified_at))}</span>
+                      {pinStatusUserLabel(row.modified_by) !== "—" ? (
+                        <span className="mt-0.5 block text-xs text-slate-400 dark:text-slate-500">
+                          {pinStatusUserLabel(row.modified_by)}
+                        </span>
+                      ) : null}
+                    </DataTableTd>
+                    <DataTableTd
+                      narrow
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
                       <DataTableRowActionsMenu
                         menuAriaLabel={tList("openRowActions")}
                         items={[
@@ -390,7 +434,10 @@ export function PinStatusSettingsPanel() {
                             id: "delete",
                             label: t("delete"),
                             tone: "danger",
-                            onSelect: () => setDeleteTarget(row),
+                            onSelect: () => {
+                              setDetailRow(null);
+                              setDeleteTarget(row);
+                            },
                           },
                         ]}
                       />
@@ -430,11 +477,11 @@ export function PinStatusSettingsPanel() {
       <DetailPanel
         open={detailRow !== null}
         onClose={() => setDetailRow(null)}
-        title={detailRow?.status_name ?? ""}
+        title={detailRow ? <PinStatusChip row={detailRow} className="text-base font-semibold" /> : null}
         subtitle={
           detailRow ? (
-            <span className="text-slate-500 dark:text-slate-400">
-              {`${t("table.created")} · ${dateFmt.format(new Date(detailRow.created_at))}`}
+            <span className="text-sm text-slate-500 dark:text-slate-400">
+              {t("detail.idLabel", { id: detailRow.id })}
             </span>
           ) : undefined
         }
@@ -473,28 +520,55 @@ export function PinStatusSettingsPanel() {
         }
       >
         {detailRow ? (
-          <div className="space-y-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {t("table.preview")}
-              </p>
-              <div className="mt-2">
+          <div className="space-y-5">
+            <FieldGroup label={t("modal.bgColour")}>
+              <div className="flex items-center gap-3">
                 <span
-                  className="inline-flex rounded-md border border-black/5 px-2.5 py-1 text-xs font-semibold shadow-sm"
+                  className="size-8 shrink-0 rounded-none border border-slate-200 dark:border-slate-600"
+                  style={{ backgroundColor: normalizeHex(detailRow.bg_colour) }}
+                  aria-hidden
+                />
+                <p className="font-mono text-sm text-slate-700 dark:text-slate-200">
+                  {normalizeHex(detailRow.bg_colour).toUpperCase()}
+                </p>
+              </div>
+            </FieldGroup>
+            <FieldGroup label={t("modal.textColour")}>
+              <div className="flex items-center gap-3">
+                <span
+                  className="flex size-8 shrink-0 items-center justify-center rounded-none border border-slate-200 text-xs font-bold dark:border-slate-600"
                   style={{
                     backgroundColor: normalizeHex(detailRow.bg_colour),
                     color: normalizeHex(detailRow.text_colour),
                   }}
+                  aria-hidden
                 >
-                  {detailRow.status_name}
+                  Aa
                 </span>
+                <p className="font-mono text-sm text-slate-700 dark:text-slate-200">
+                  {normalizeHex(detailRow.text_colour).toUpperCase()}
+                </p>
               </div>
-            </div>
-            <FieldGroup label={t("modal.bgColour")}>
-              <p className="font-mono text-sm text-slate-700 dark:text-slate-200">{normalizeHex(detailRow.bg_colour)}</p>
             </FieldGroup>
-            <FieldGroup label={t("modal.textColour")}>
-              <p className="font-mono text-sm text-slate-700 dark:text-slate-200">{normalizeHex(detailRow.text_colour)}</p>
+            <FieldGroup label={t("detail.createdAt")}>
+              <p className="text-sm text-slate-800 dark:text-slate-200">
+                {dateFmt.format(new Date(detailRow.created_at))}
+              </p>
+              {pinStatusUserLabel(detailRow.created_by) !== "—" ? (
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {t("detail.byUser", { user: pinStatusUserLabel(detailRow.created_by) })}
+                </p>
+              ) : null}
+            </FieldGroup>
+            <FieldGroup label={t("detail.updatedAt")}>
+              <p className="text-sm text-slate-800 dark:text-slate-200">
+                {dateFmt.format(new Date(detailRow.modified_at))}
+              </p>
+              {pinStatusUserLabel(detailRow.modified_by) !== "—" ? (
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {t("detail.byUser", { user: pinStatusUserLabel(detailRow.modified_by) })}
+                </p>
+              ) : null}
             </FieldGroup>
           </div>
         ) : null}

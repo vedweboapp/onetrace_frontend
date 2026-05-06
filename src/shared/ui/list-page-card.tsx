@@ -19,7 +19,7 @@ export function ListPageCardGrid({ className, children }: { className?: string; 
 type ListPageCardProps = {
   /** Renders before the title (e.g. row checkbox). */
   leading?: ReactNode;
-  title: string;
+  title: ReactNode;
   subtitle?: ReactNode;
   meta?: ReactNode;
   description?: string;
@@ -69,9 +69,9 @@ export function ListPageCard({
               {leading}
             </div>
           ) : null}
-          <h3 className="min-w-0 flex-1 text-base font-semibold leading-snug tracking-tight text-slate-900 dark:text-slate-100">
+          <div className="min-w-0 flex-1 text-base font-semibold leading-snug tracking-tight text-slate-900 dark:text-slate-100">
             {title}
-          </h3>
+          </div>
         </div>
         <div className="shrink-0" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
           {menu}

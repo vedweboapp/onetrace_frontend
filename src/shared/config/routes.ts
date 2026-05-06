@@ -10,6 +10,7 @@ export const routes = {
     clients: "/dashboard/clients",
     projects: "/dashboard/projects",
     groups: "/dashboard/groups",
+    items: "/dashboard/items",
     compositeItems: "/dashboard/composite-items",
     settings: "/dashboard/settings",
     settingsAppearance: "/dashboard/settings/appearance",

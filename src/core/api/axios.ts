@@ -5,7 +5,7 @@ import axios, {
   type AxiosResponse,
   type InternalAxiosRequestConfig,
 } from "axios";
-import { toast } from "sonner";
+import { toastError } from "@/shared/feedback/app-toast";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { AUTH_API_PATHS } from "@/features/auth/api/auth.paths";
 import { assertApiSuccess } from "@/core/types/api.types";
@@ -102,7 +102,7 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
     const payload = parseApiFailurePayload(error);
-    toast.error(resolveApiErrorUserText(payload));
+    toastError(resolveApiErrorUserText(payload));
     return Promise.reject(error);
   },
 );
