@@ -27,6 +27,13 @@ function formatBytes(bytes: number): string {
   return `${rounded} ${units[idx]}`;
 }
 
+function makeClientId(): string {
+  const hasRandomUUID =
+    typeof globalThis.crypto !== "undefined" && typeof globalThis.crypto.randomUUID === "function";
+  if (hasRandomUUID) return globalThis.crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -63,7 +70,7 @@ export function DrawingUploadModal({
     if (incoming.length === 0) return;
     setRows(
       incoming.map((file) => ({
-        id: `${file.name}-${file.size}-${crypto.randomUUID()}`,
+        id: `${file.name}-${file.size}-${makeClientId()}`,
         file,
         name: toNameFromFile(file),
         touched: false,
@@ -71,6 +78,13 @@ export function DrawingUploadModal({
     );
     setFileTouched(true);
   }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    setRows([]);
+    setFileTouched(false);
+    setDragActive(false);
+  }, [open]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
