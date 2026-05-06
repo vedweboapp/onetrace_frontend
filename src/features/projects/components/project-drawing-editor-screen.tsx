@@ -287,7 +287,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [selectedPlotId, setSelectedPlotId] = React.useState<string>("");
   const [activeTool, setActiveTool] = React.useState<Tool>("hand");
   const [dirty, setDirty] = React.useState(false);
-  const [zoom, setZoom] = React.useState(1);
+  const [zoom, setZoom] = React.useState(0.4);
 
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [items, setItems] = React.useState<CompositeItem[]>([]);
@@ -357,58 +357,63 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     return m;
   }, [statuses]);
 
+  const loadAllData = React.useCallback(async () => {
+    try {
+      const results = await Promise.allSettled([
+        fetchDrawingDetail(projectId, drawingId),
+        fetchGroupsPage(1, 500),
+        fetchCompositeItemsPage(1, 500),
+        fetchPinStatusesPage(1, 500),
+      ]);
+
+      // 1. Drawing Detail (Critical)
+      if (results[0].status === "fulfilled") {
+        const detail = results[0].value;
+        const normalized = (detail.plots ?? []).map(normalizePlot);
+        setDrawingName(detail.name);
+        setFilePath(detail.drawing_file);
+        setPlots(normalized);
+        if (!selectedPlotId) {
+          setSelectedPlotId(normalized[0] ? String(normalized[0].id) : "");
+        }
+      } else {
+        toastError(t("loadError"));
+      }
+
+      // 2. Groups
+      if (results[1].status === "fulfilled") {
+        setGroups(results[1].value.items);
+      }
+
+      // 3. Composite Items
+      if (results[2].status === "fulfilled") {
+        setItems(results[2].value.items);
+      }
+
+      // 4. Pin Statuses
+      if (results[3].status === "fulfilled") {
+        const statusItems = results[3].value.items;
+        setStatuses(statusItems);
+        if (!selectedStatusId) {
+          setSelectedStatusId(statusItems[0] ? String(statusItems[0].id) : "");
+        }
+      }
+    } catch {
+      toastError(t("loadError"));
+    }
+  }, [drawingId, projectId, selectedPlotId, selectedStatusId, t]);
+
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      try {
-        const results = await Promise.allSettled([
-          fetchDrawingDetail(projectId, drawingId),
-          fetchGroupsPage(1, 500),
-          fetchCompositeItemsPage(1, 500),
-          fetchPinStatusesPage(1, 500),
-        ]);
-
-        if (cancelled) return;
-
-        // 1. Drawing Detail (Critical)
-        if (results[0].status === "fulfilled") {
-          const detail = results[0].value;
-          const normalized = (detail.plots ?? []).map(normalizePlot);
-          setDrawingName(detail.name);
-          setFilePath(detail.drawing_file);
-          setPlots(normalized);
-          setSelectedPlotId(normalized[0] ? String(normalized[0].id) : "");
-        } else {
-          toastError(t("loadError"));
-        }
-
-        // 2. Groups
-        if (results[1].status === "fulfilled") {
-          setGroups(results[1].value.items);
-        }
-
-        // 3. Composite Items
-        if (results[2].status === "fulfilled") {
-          setItems(results[2].value.items);
-        }
-
-        // 4. Pin Statuses
-        if (results[3].status === "fulfilled") {
-          const statusItems = results[3].value.items;
-          setStatuses(statusItems);
-          setSelectedStatusId(statusItems[0] ? String(statusItems[0].id) : "");
-        }
-      } catch {
-        if (!cancelled) toastError(t("loadError"));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      await loadAllData();
+      if (!cancelled) setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, [drawingId, projectId, t]);
+  }, [loadAllData]);
 
   React.useEffect(() => {
     if (!namingPlotOpen) return;
@@ -766,6 +771,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     try {
       await persistPlots(plots);
       toastSuccess(t("savedAll"));
+      // Refresh all data from API after successful save
+      await loadAllData();
     } catch {
       toastError(t("saveAllError"));
     } finally {
@@ -982,7 +989,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     if (activeTool === "pen" && tempPoints.length >= 3) {
                       // Check for overlap with existing plots
                       for (const existing of plots) {
-                        if (doPolygonsIntersect(tempPoints, existing.coordinates.map(c => toStagePoint(c, pageSize)))) {
+                        if (doPolygonsIntersect(tempPoints, existing.coordinates.map(c => percentToPixel(c, pageSize)))) {
                           toastError("This plot overlaps with an existing one");
                           return;
                         }
@@ -991,7 +998,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                       // Check if any existing pins are inside this new plot
                       const allExistingPins = plots.flatMap(p => p.pins.map(pin => ({
                         ...pin,
-                        stagePoint: toStagePoint([pin.x_coordinate, pin.y_coordinate], pageSize)
+                        stagePoint: percentToPixel([pin.x_coordinate, pin.y_coordinate], pageSize)
                       })));
 
                       for (const pin of allExistingPins) {
