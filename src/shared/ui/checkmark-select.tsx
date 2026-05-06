@@ -50,17 +50,23 @@ type Props = {
   showCheckmarks?: boolean;
   /** e.g. "Rows per page" when the visible label is omitted */
   buttonAriaLabel?: string;
+  /** Opening direction. Defaults to "bottom". */
+  side?: "top" | "bottom";
 };
 
-function usePopoverRect(open: boolean, anchorRef: React.RefObject<HTMLElement | null>) {
-  const [rect, setRect] = React.useState({ top: 0, left: 0, width: 0 });
+function usePopoverRect(open: boolean, anchorRef: React.RefObject<HTMLElement | null>, side: "top" | "bottom" = "bottom") {
+  const [rect, setRect] = React.useState({ top: 0, left: 0, width: 0, transform: "none" });
 
   const update = React.useCallback(() => {
     const el = anchorRef.current;
     if (!el || !open) return;
     const r = el.getBoundingClientRect();
-    setRect({ top: r.bottom + 4, left: r.left, width: r.width });
-  }, [open, anchorRef]);
+    if (side === "top") {
+      setRect({ top: r.top - 4, left: r.left, width: r.width, transform: "translateY(-100%)" });
+    } else {
+      setRect({ top: r.bottom + 4, left: r.left, width: r.width, transform: "none" });
+    }
+  }, [open, anchorRef, side]);
 
   React.useLayoutEffect(() => {
     update();
@@ -94,13 +100,14 @@ export function CheckmarkSelect({
   size = "md",
   showCheckmarks = true,
   buttonAriaLabel,
+  side = "bottom",
 }: Props) {
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const listRef = React.useRef<HTMLUListElement>(null);
   const selected = options.find((o) => o.value === value);
-  const popoverRect = usePopoverRect(open && portaled, triggerRef);
+  const popoverRect = usePopoverRect(open && portaled, triggerRef, side);
   const [portalAccent, setPortalAccent] = React.useState("#111111");
   const [portalOnAccent, setPortalOnAccent] = React.useState("#ffffff");
 
@@ -251,6 +258,7 @@ export function CheckmarkSelect({
                 top: popoverRect.top,
                 left: popoverRect.left,
                 width: Math.max(popoverRect.width, size === "sm" ? 120 : 200),
+                transform: popoverRect.transform,
                 zIndex: 200,
                 ["--dash-accent" as string]: portalAccent,
                 ["--dash-on-accent" as string]: portalOnAccent,

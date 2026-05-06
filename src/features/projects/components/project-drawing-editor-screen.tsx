@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Crosshair, Hand, MapPinned, SquareDashed, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Crosshair, FileText, Hand, MapPinned, Maximize, SquareDashed, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
@@ -17,7 +17,9 @@ import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-ur
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
-import { AppButton, CheckmarkSelect, DetailPanel, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
+import { AppButton, ConfirmDialog, DetailPanel, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
+import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
+import DrawingBottomToolbar from "./drawing-bottom-toolbar";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -29,13 +31,15 @@ type Props = {
   drawingId: number;
 };
 
-type Tool = "pen" | "plot-select" | "pin" | "hand";
+export type Tool = "pen" | "plot-select" | "pin" | "hand";
 
-type LocalPlot = {
+export type LocalPlot = {
   id: number;
   name: string;
   coordinates: number[][];
   pins: DrawingPin[];
+  plot_border?: string;
+  plot_background?: string;
 };
 
 function inside(point: number[], vs: number[][]): boolean {
@@ -53,22 +57,65 @@ function inside(point: number[], vs: number[][]): boolean {
   return isInside;
 }
 
+const PLOT_PALETTE = [
+  { border: "#059669", bg: "#0596690D" },  // Green
+  { border: "#2563EB", bg: "#2563EB0D" },  // Blue
+  { border: "#7C3AED", bg: "#7C3AED0D" },  // Purple
+  { border: "#D946EF", bg: "#D946EF0D" },  // Fuchsia
+  { border: "#EAB308", bg: "#EAB3080D" },  // Yellow
+  { border: "#F97316", bg: "#F973160D" },  // Orange
+  { border: "#DC2626", bg: "#DC26260D" },  // Red
+];
+
 function normalizePlot(p: DrawingPlot): LocalPlot {
+  // Use the ID to consistently pick a color from the palette
+  const colorIndex = Math.abs(p.id) % PLOT_PALETTE.length;
+  const defaultColor = PLOT_PALETTE[colorIndex]!;
+
   return {
     id: p.id,
     name: p.name,
     coordinates: Array.isArray(p.coordinates) ? p.coordinates : [],
     pins: Array.isArray(p.pins) ? p.pins : [],
+    plot_border: p.plot_border || defaultColor.border,
+    plot_background: p.plot_background || defaultColor.bg,
   };
 }
 
-function toStagePoint(pt: number[], pageSize: { width: number; height: number }): number[] {
-  const x = pt?.[0] ?? 0;
-  const y = pt?.[1] ?? 0;
-  if (x >= 0 && x <= 100 && y >= 0 && y <= 100) {
-    return [Math.round((x / 100) * pageSize.width), Math.round((y / 100) * pageSize.height)];
+function segmentsIntersect(a: number[], b: number[], c: number[], d: number[]): boolean {
+  const crossProduct = (p1: number[], p2: number[], p3: number[]) =>
+    (p2[0] - p1[0]) * (p3[1] - p1[1]) - (p2[1] - p1[1]) * (p3[0] - p1[0]);
+  const d1 = crossProduct(c, d, a);
+  const d2 = crossProduct(c, d, b);
+  const d3 = crossProduct(a, b, c);
+  const d4 = crossProduct(a, b, d);
+  return (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0)));
+}
+
+function doPolygonsIntersect(poly1: number[][], poly2: number[][]): boolean {
+  if (!poly1.length || !poly2.length) return false;
+  for (let i = 0; i < poly1.length; i++) {
+    for (let j = 0; j < poly2.length; j++) {
+      if (segmentsIntersect(poly1[i]!, poly1[(i + 1) % poly1.length]!, poly2[j]!, poly2[(j + 1) % poly2.length]!)) return true;
+    }
   }
-  return [x, y];
+  if (inside(poly1[0]!, poly2)) return true;
+  if (inside(poly2[0]!, poly1)) return true;
+  return false;
+}
+
+function percentToPixel(pt: number[], pageSize: { width: number; height: number }): number[] {
+  return [
+    Math.round(((pt[0] ?? 0) / 100) * pageSize.width),
+    Math.round(((pt[1] ?? 0) / 100) * pageSize.height),
+  ];
+}
+
+function pixelToPercent(pt: number[], pageSize: { width: number; height: number }): number[] {
+  return [
+    Number(((pt[0] / pageSize.width) * 100).toFixed(6)),
+    Number(((pt[1] / pageSize.height) * 100).toFixed(6)),
+  ];
 }
 
 function getCentroid(points: number[][]): number[] {
@@ -208,7 +255,7 @@ const DetailRow = ({
             />
           )
         ) : label === "Status" && statusColor ? (
-          <div 
+          <div
             className="flex items-center gap-2 rounded-lg px-2.5 py-1 text-[11px] font-bold"
             style={{ backgroundColor: statusColor, color: statusTextColor || "#fff" }}
           >
@@ -226,7 +273,10 @@ const DetailRow = ({
 export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const t = useTranslations("Dashboard.projects.drawings.editor");
   const router = useRouter();
+  const sidebarOpen = useDashboardSidebarStore((s) => s.sidebarOpen);
 
+  const [plotNameDraft, setPlotNameDraft] = React.useState("");
+  const [plotColorDraft, setPlotColorDraft] = React.useState(PLOT_PALETTE[0]!);
   const [loading, setLoading] = React.useState(true);
   const [savingPlot, setSavingPlot] = React.useState(false);
   const [savingPin, setSavingPin] = React.useState(false);
@@ -250,7 +300,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [selectionStart, setSelectionStart] = React.useState<number[] | null>(null);
   const [selectionEnd, setSelectionEnd] = React.useState<number[] | null>(null);
   const [namingPlotOpen, setNamingPlotOpen] = React.useState(false);
-  const [plotNameDraft, setPlotNameDraft] = React.useState("");
   const [plotDetailDraftName, setPlotDetailDraftName] = React.useState("");
   const [detailPlotId, setDetailPlotId] = React.useState<number | null>(null);
   const [detailPin, setDetailPin] = React.useState<DrawingPin | null>(null);
@@ -259,6 +308,9 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [hoveredPinId, setHoveredPinId] = React.useState<number | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [pinDeleteConfirmOpen, setPinDeleteConfirmOpen] = React.useState(false);
+  const [abandonPlotConfirmOpen, setAbandonPlotConfirmOpen] = React.useState(false);
+  const [pendingTool, setPendingTool] = React.useState<Tool | null>(null);
+  const [isLeavingEditor, setIsLeavingEditor] = React.useState(false);
 
   const [pageSize, setPageSize] = React.useState({ width: 1200, height: 900 });
   const [panMode, setPanMode] = React.useState(false);
@@ -310,22 +362,43 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     (async () => {
       setLoading(true);
       try {
-        const [detail, groupRes, itemRes, statusRes] = await Promise.all([
+        const results = await Promise.allSettled([
           fetchDrawingDetail(projectId, drawingId),
           fetchGroupsPage(1, 500),
           fetchCompositeItemsPage(1, 500),
           fetchPinStatusesPage(1, 500),
         ]);
+
         if (cancelled) return;
-        const normalized = (detail.plots ?? []).map(normalizePlot);
-        setDrawingName(detail.name);
-        setFilePath(detail.drawing_file);
-        setPlots(normalized);
-        setGroups(groupRes.items);
-        setItems(itemRes.items);
-        setStatuses(statusRes.items);
-        setSelectedPlotId(normalized[0] ? String(normalized[0].id) : "");
-        setSelectedStatusId(statusRes.items[0] ? String(statusRes.items[0].id) : "");
+
+        // 1. Drawing Detail (Critical)
+        if (results[0].status === "fulfilled") {
+          const detail = results[0].value;
+          const normalized = (detail.plots ?? []).map(normalizePlot);
+          setDrawingName(detail.name);
+          setFilePath(detail.drawing_file);
+          setPlots(normalized);
+          setSelectedPlotId(normalized[0] ? String(normalized[0].id) : "");
+        } else {
+          toastError(t("loadError"));
+        }
+
+        // 2. Groups
+        if (results[1].status === "fulfilled") {
+          setGroups(results[1].value.items);
+        }
+
+        // 3. Composite Items
+        if (results[2].status === "fulfilled") {
+          setItems(results[2].value.items);
+        }
+
+        // 4. Pin Statuses
+        if (results[3].status === "fulfilled") {
+          const statusItems = results[3].value.items;
+          setStatuses(statusItems);
+          setSelectedStatusId(statusItems[0] ? String(statusItems[0].id) : "");
+        }
       } catch {
         if (!cancelled) toastError(t("loadError"));
       } finally {
@@ -364,6 +437,36 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [activeTool]);
 
+  function requestToolChange(tool: Tool) {
+    if (tempPoints.length > 0 && activeTool === "pen") {
+      setPendingTool(tool);
+      setIsLeavingEditor(false);
+      setAbandonPlotConfirmOpen(true);
+    } else {
+      setActiveTool(tool);
+    }
+  }
+
+  function requestClose() {
+    if (tempPoints.length > 0 && activeTool === "pen") {
+      setIsLeavingEditor(true);
+      setPendingTool(null);
+      setAbandonPlotConfirmOpen(true);
+    } else {
+      router.push(`${routes.dashboard.projects}/${projectId}`);
+    }
+  }
+
+  function confirmAbandonPlot() {
+    setTempPoints([]);
+    setAbandonPlotConfirmOpen(false);
+    if (isLeavingEditor) {
+      router.push(`${routes.dashboard.projects}/${projectId}`);
+    } else if (pendingTool) {
+      setActiveTool(pendingTool);
+    }
+  }
+
   function stagePointFromEvent(e: React.MouseEvent): number[] | null {
     const stage = stageRef.current;
     if (!stage) return null;
@@ -379,6 +482,37 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     const pt = stagePointFromEvent(e);
     if (!pt) return;
     if (activeTool === "pen") {
+      // Real-time validation: Prevent drawing inside or crossing other plots
+      for (const p of plots) {
+        const poly = p.coordinates.map((c) => percentToPixel(c, pageSize));
+        if (inside(pt, poly)) {
+          toastError("Cannot draw inside another plot");
+          return;
+        }
+        if (tempPoints.length > 0) {
+          const last = tempPoints[tempPoints.length - 1];
+          for (let i = 0; i < poly.length; i++) {
+            if (segmentsIntersect(last!, pt, poly[i]!, poly[(i + 1) % poly.length]!)) {
+              toastError("Line cannot cross another plot boundary");
+              return;
+            }
+          }
+        }
+      }
+
+      // Check if point is over an existing pin
+      const allExistingPins = plots.flatMap((p) =>
+        p.pins.map((pin) => ({
+          stagePoint: percentToPixel([pin.x_coordinate, pin.y_coordinate], pageSize),
+        }))
+      );
+      for (const pin of allExistingPins) {
+        if (Math.hypot(pin.stagePoint[0] - pt[0], pin.stagePoint[1] - pt[1]) < 12) {
+          toastError("Cannot place point over an existing pin");
+          return;
+        }
+      }
+
       const nearIndex = tempPoints.findIndex((p) => Math.hypot((p[0] ?? 0) - pt[0], (p[1] ?? 0) - pt[1]) < 12);
       if (nearIndex >= 0) {
         setTempPoints((prev) => prev.filter((_, idx) => idx !== nearIndex));
@@ -428,12 +562,40 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       const [x1, y1] = selectionStart;
       const [x2, y2] = selectionEnd;
       if (Math.abs(x1 - x2) > 4 && Math.abs(y1 - y2) > 4) {
-        setTempPoints([
+        const box = [
           [x1, y1],
           [x2, y1],
           [x2, y2],
           [x1, y2],
-        ]);
+        ];
+
+        // Validate box against existing plots
+        for (const p of plots) {
+          const poly = p.coordinates.map((c) => percentToPixel(c, pageSize));
+          if (doPolygonsIntersect(box, poly)) {
+            toastError("This box overlaps with an existing plot");
+            setSelectionStart(null);
+            setSelectionEnd(null);
+            return;
+          }
+        }
+
+        // Validate box against existing pins
+        const allExistingPins = plots.flatMap((p) =>
+          p.pins.map((pin) => ({
+            stagePoint: percentToPixel([pin.x_coordinate, pin.y_coordinate], pageSize),
+          }))
+        );
+        for (const pin of allExistingPins) {
+          if (inside(pin.stagePoint, box)) {
+            toastError("New plot cannot overlap existing pins");
+            setSelectionStart(null);
+            setSelectionEnd(null);
+            return;
+          }
+        }
+
+        setTempPoints(box);
         setNamingPlotOpen(true);
       }
       setSelectionStart(null);
@@ -447,6 +609,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       ...(p.id > 0 ? { id: p.id } : {}),
       name: p.name,
       coordinates: p.coordinates,
+      plot_border: p.plot_border,
+      plot_background: p.plot_background,
       pins: p.pins.map((pin) => ({
         ...(pin.id > 0 ? { id: pin.id } : {}),
         x_coordinate: pin.x_coordinate,
@@ -477,16 +641,25 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       return;
     }
 
-    const percentageCoordinates = tempPoints.map((pt) => [
-      Number(((pt[0] / pageSize.width) * 100).toFixed(6)),
-      Number(((pt[1] / pageSize.height) * 100).toFixed(6)),
-    ]);
+    const percentageCoordinates = tempPoints.map((pt) => pixelToPercent(pt, pageSize));
 
-    const nextPlots = [...plots, { id: Date.now() * -1, name, coordinates: percentageCoordinates, pins: [] }];
+
+    const nextPlots = [
+      ...plots,
+      {
+        id: Date.now() * -1,
+        name,
+        coordinates: percentageCoordinates,
+        pins: [],
+        plot_border: plotColorDraft.border,
+        plot_background: plotColorDraft.bg
+      }
+    ];
     setPlots(nextPlots);
     const created = nextPlots.at(-1);
     if (created) setSelectedPlotId(String(created.id));
     setPlotNameDraft("");
+    setPlotColorDraft(PLOT_PALETTE[0]!);
     setTempPoints([]);
     setNamingPlotOpen(false);
     setDirty(true);
@@ -613,7 +786,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   }, [detailPin, plots]);
 
   return (
-    <div className="w-full space-y-4 pb-8">
+    <div className="flex h-full w-full flex-col space-y-1 pb-2">
       {namingPlotOpen ? (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 px-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-950">
@@ -643,6 +816,28 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                 if (e.key === "Enter") void savePlotFromModal();
               }}
             />
+            <div className="mb-4">
+              <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                Select Color
+              </label>
+              <div className="flex flex-wrap gap-2.5">
+                {PLOT_PALETTE.map((c, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setPlotColorDraft(c)}
+                    className={cn(
+                      "size-8 rounded-full border-2 transition-all",
+                      plotColorDraft.border === c.border
+                        ? "scale-110 border-slate-900 shadow-lg dark:border-white"
+                        : "border-transparent opacity-60 hover:opacity-100"
+                    )}
+                    style={{ backgroundColor: c.border }}
+                  />
+                ))}
+              </div>
+            </div>
+
             <div className="mt-5 flex gap-2">
               <AppButton
                 type="button"
@@ -651,6 +846,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                 onClick={() => {
                   setNamingPlotOpen(false);
                   setTempPoints([]);
+                  setPlotColorDraft(PLOT_PALETTE[0]!);
                 }}
               >
                 {t("cancel")}
@@ -663,286 +859,347 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         </div>
       ) : null}
 
-      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+      <div
+        className={cn(
+          "fixed top-14 right-0 z-40 flex flex-col space-y-3 border-b border-slate-200 bg-white p-3 shadow-sm transition-all dark:border-slate-800 dark:bg-slate-950",
+          sidebarOpen ? "md:left-64" : "md:left-[52px]",
+          "left-0"
+        )}
+      >
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="truncate text-lg font-semibold text-slate-900 dark:text-slate-50">{drawingName || t("title")}</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
           </div>
-          <AppButton type="button" variant="secondary" size="sm" onClick={() => router.push(`${routes.dashboard.projects}/${projectId}`)}>
+          <AppButton type="button" variant="secondary" size="sm" onClick={requestClose}>
             {t("close")}
-          </AppButton>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <CheckmarkSelect
-            listLabel={`${t("choosePlot")} *`}
-            options={plots.map((p) => ({ value: String(p.id), label: p.name }))}
-            value={selectedPlotId}
-            onChange={setSelectedPlotId}
-            emptyLabel={t("choosePlot")}
-          />
-          <CheckmarkSelect
-            listLabel={`${t("chooseGroup")} *`}
-            options={groupOptions}
-            value={selectedGroupId}
-            onChange={(v) => {
-              setSelectedGroupId(v);
-              setSelectedCompositeId("");
-            }}
-            emptyLabel={t("allGroups")}
-          />
-          <CheckmarkSelect listLabel={`${t("chooseComposite")} *`} options={compositeOptions} value={selectedCompositeId} onChange={setSelectedCompositeId} emptyLabel={t("selectComposite")} />
-
-          {[
-            { id: "pen", icon: <MapPinned className="size-4" />, label: t("toolPlot") },
-            { id: "plot-select", icon: <SquareDashed className="size-4" />, label: t("toolBox") },
-            { id: "pin", icon: <Crosshair className="size-4" />, label: t("toolPin"), disabled: !selectedPlot || !selectedGroupId || !selectedCompositeId || savingPin },
-            { id: "hand", icon: <Hand className="size-4" />, label: t("toolHand") },
-          ].map((tool) => (
-            <AppButton
-              key={tool.id}
-              type="button"
-              size="sm"
-              variant={activeTool === tool.id ? "primary" : "secondary"}
-              disabled={Boolean(tool.disabled)}
-              onClick={() => setActiveTool(tool.id as Tool)}
-              className={cn(activeTool !== tool.id && "hover:bg-slate-100 dark:hover:bg-slate-800")}
-            >
-              {tool.icon} {tool.label}
-            </AppButton>
-          ))}
-          <AppButton type="button" size="sm" variant="primary" disabled={!dirty || savingAll} loading={savingAll} onClick={() => void saveAllChanges()}>
-            {t("saveAll")}
-          </AppButton>
-          <AppButton type="button" size="sm" variant="secondary" onClick={() => setZoom((z) => Math.max(0.4, Number((z - 0.1).toFixed(2))))}>
-            <ZoomOut className="size-4" />
-          </AppButton>
-          <AppButton type="button" size="sm" variant="secondary" onClick={() => setZoom(1)}>
-            {Math.round(zoom * 100)}%
-          </AppButton>
-          <AppButton type="button" size="sm" variant="secondary" onClick={() => setZoom((z) => Math.min(3, Number((z + 0.1).toFixed(2))))}>
-            <ZoomIn className="size-4" />
           </AppButton>
         </div>
       </div>
 
-      <SurfaceShell className="overflow-hidden p-0">
+      {/* Header Spacer - matches the height of the fixed top header. Adjust 'h-[64px]' to change the gap below the header. */}
+      <div className="h-[64px]" />
+
+      <SurfaceShell className="relative flex-1 overflow-hidden p-0">
+        <div className="absolute bottom-10 left-6 z-[60] flex flex-col gap-1">
+          <AppButton
+            type="button"
+            variant="secondary"
+            className="size-12 rounded-lg p-0 hover:bg-slate-100 dark:hover:bg-slate-800"
+            onClick={() => setZoom((z) => Math.min(4, Number((z + 0.1).toFixed(2))))}
+          >
+            <ZoomIn className="size-5" />
+          </AppButton>
+
+          <div className="flex h-9 items-center justify-center text-[12px] font-bold text-slate-600 dark:text-slate-400">
+            {Math.round(zoom * 100)}%
+          </div>
+
+          <AppButton
+            type="button"
+            variant="secondary"
+            className="size-12 rounded-lg p-0 hover:bg-slate-100 dark:hover:bg-slate-800"
+            onClick={() => setZoom((z) => Math.max(0.2, Number((z - 0.1).toFixed(2))))}
+          >
+            <ZoomOut className="size-5" />
+          </AppButton>
+
+          <div className="my-1.5 h-px bg-slate-100 dark:bg-slate-800" />
+
+          <AppButton
+            type="button"
+            variant="secondary"
+            className="size-12 rounded-lg p-0 hover:bg-slate-100 dark:hover:bg-slate-800"
+            onClick={() => setZoom(1)}
+          >
+            <Maximize className="size-5" />
+          </AppButton>
+        </div>
+
         <div
           ref={viewportRef}
-          className={cn("max-h-[74vh] w-full overflow-auto bg-slate-100 p-1 dark:bg-slate-900/60", activeTool === "hand" && "cursor-grab")}
+          className={cn(
+            "relative flex h-[calc(100vh-210px)] min-h-[400px] w-full flex-col overflow-hidden bg-slate-100 p-1 transition-all dark:bg-slate-900/60",
+            activeTool === "hand" && "cursor-grab"
+          )}
           onMouseMove={onPointerMove}
           onMouseUp={onPointerUp}
           onMouseLeave={onPointerUp}
         >
           {loading ? (
-            <p className="p-6 text-sm text-slate-500 dark:text-slate-400">{t("loading")}</p>
+            <div className="flex h-full w-full flex-col items-center justify-center p-12 text-center">
+              <div className="relative mb-10 size-20">
+                <div className="absolute inset-0 animate-spin rounded-full border-[3px] border-transparent border-t-blue-600 border-l-blue-600/30" style={{ animationDuration: "0.8s" }} />
+                <div className="absolute inset-2 animate-spin rounded-full border-[3px] border-transparent border-t-blue-400 border-r-blue-400/30" style={{ animationDuration: "1.2s", animationDirection: "reverse" }} />
+                <div className="absolute inset-4 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
+                  <FileText className="size-6 text-blue-600 animate-pulse" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 uppercase tracking-widest">{t("loading")}</h3>
+                <p className="text-xs font-medium text-slate-400 dark:text-slate-500 italic">Preparing workspace</p>
+              </div>
+            </div>
           ) : !normalizedFileUrl ? (
-            <p className="p-6 text-sm text-slate-500 dark:text-slate-400">{t("renderUnavailable")}</p>
+            <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-slate-500 dark:text-slate-400">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-slate-200 dark:bg-slate-800">
+                <X className="size-6 opacity-50" />
+              </div>
+              <p className="text-sm font-medium">{t("renderUnavailable")}</p>
+            </div>
           ) : (
-            <div
-              ref={stageRef}
-              className="relative mx-auto w-fit origin-top-left select-none"
-              style={{ transform: `scale(${zoom})` }}
-              onClick={onStageClick}
-              onMouseDown={onPointerDown}
-              onDoubleClick={() => {
-                if (activeTool === "pen" && tempPoints.length >= 3) setNamingPlotOpen(true);
+            <div 
+              style={{
+                display: 'flex',
+                minWidth: '100%',
+                minHeight: '100%',
+                width: 'max-content',
+                height: 'max-content',
+                justifyContent: 'safe center',
+                alignItems: 'safe center',
+                padding: '40px'
               }}
             >
-              {isPdf ? (
-                <Document file={normalizedFileUrl} onLoadError={() => toastError(t("pdfRenderError"))}>
-                  <Page
-                    pageNumber={1}
-                    scale={1}
-                    renderAnnotationLayer={false}
-                    renderTextLayer={false}
-                    onLoadSuccess={(page) => {
-                      const vp = page.getViewport({ scale: 1 });
-                      setPageSize({ width: Math.round(vp.width), height: Math.round(vp.height) });
-                    }}
-                  />
-                </Document>
-              ) : (
-                <img
-                  src={normalizedFileUrl}
-                  alt={drawingName}
-                  className="block max-w-none rounded-lg"
-                  onLoad={(e) => {
-                    const el = e.currentTarget;
-                    setPageSize({ width: el.naturalWidth, height: el.naturalHeight });
-                  }}
-                />
-              )}
-
-              <svg
-                className="absolute p-3 left-0 top-0"
-                width={pageSize.width}
-                height={pageSize.height}
-                viewBox={`0 0 ${pageSize.width} ${pageSize.height}`}
+              <div
+                style={{
+                  width: pageSize.width * zoom,
+                  height: pageSize.height * zoom,
+                  position: "relative"
+                }}
               >
-                {plots.map((plot) => {
-                  const plotPoints = plot.coordinates.map((p) => toStagePoint(p, pageSize));
-                  const [labelX, labelY] = getCentroid(plotPoints);
-                  const isSelected = selectedPlotId === String(plot.id);
-                  const minX = plotPoints.length ? Math.min(...plotPoints.map((p) => p[0])) : 0;
-                  const minY = plotPoints.length ? Math.min(...plotPoints.map((p) => p[1])) : 0;
-                  const maxX = plotPoints.length ? Math.max(...plotPoints.map((p) => p[0])) : 0;
-                  const maxY = plotPoints.length ? Math.max(...plotPoints.map((p) => p[1])) : 0;
-                  const labelText = plot.name.length > 24 ? `${plot.name.slice(0, 24)}...` : plot.name;
-                  const badgeWidth = Math.max(90, Math.min(220, labelText.length * 7 + 20));
-                  return (
-                    <g key={plot.id}>
-                      <defs>
-                        <clipPath id={`plot-clip-${plot.id}`}>
-                          <polygon points={plotPoints.map((p) => `${p[0]},${p[1]}`).join(" ")} />
-                        </clipPath>
-                      </defs>
-                      {plotPoints.length >= 3 ? (
-                        <polygon
-                          points={plotPoints.map((p) => `${p[0]},${p[1]}`).join(" ")}
-                          fill={isSelected ? "rgba(239,68,68,0.15)" : "rgba(16,185,129,0.05)"}
-                          stroke={isSelected ? "rgb(220,38,38)" : "rgb(5,150,105)"}
-                          strokeWidth={2}
-                          strokeDasharray="5 4"
-                          className="cursor-pointer"
-                          onClick={(e) => {
-                            if (activeTool === "pin") {
-                              const pt = stagePointFromEvent(e);
-                              if (pt) {
-                                setSelectedPlotId(String(plot.id));
-                                void placePin(pt, plot);
-                              }
-                              return;
-                            }
-                            e.stopPropagation();
-                            setSelectedPlotId(String(plot.id));
-                            setDetailPin(null);
-                            setDetailPlotId(plot.id);
-                            setPlotDetailDraftName(plot.name);
-                          }}
-                        />
-                      ) : plotPoints.length === 2 ? (
-                        <line
-                          x1={plotPoints[0][0]}
-                          y1={plotPoints[0][1]}
-                          x2={plotPoints[1][0]}
-                          y2={plotPoints[1][1]}
-                          stroke={isSelected ? "rgb(220,38,38)" : "rgb(5,150,105)"}
-                          strokeWidth={3}
-                          className="cursor-pointer"
-                          onClick={(e) => {
-                            if (activeTool === "pin") {
-                              const pt = stagePointFromEvent(e);
-                              if (pt) {
-                                setSelectedPlotId(String(plot.id));
-                                void placePin(pt, plot);
-                              }
-                              return;
-                            }
-                            e.stopPropagation();
-                            setSelectedPlotId(String(plot.id));
-                            setDetailPin(null);
-                            setDetailPlotId(plot.id);
-                            setPlotDetailDraftName(plot.name);
-                          }}
-                        />
-                      ) : null}
-                      {isSelected && plotPoints.length >= 3 ? (
-                        <g clipPath={`url(#plot-clip-${plot.id})`} className="pointer-events-none">
-                          <line x1={minX} y1={minY} x2={maxX} y2={maxY} stroke="rgb(220,38,38)" strokeWidth={1.5} strokeDasharray="5 5" />
-                          <line x1={maxX} y1={minY} x2={minX} y2={maxY} stroke="rgb(220,38,38)" strokeWidth={1.5} strokeDasharray="5 5" />
-                        </g>
-                      ) : null}
-                      <g className="pointer-events-none">
-                        <rect
-                          x={labelX - badgeWidth / 2}
-                          y={Math.max(8, labelY - 30)}
-                          width={badgeWidth}
-                          height={24}
-                          rx={12}
-                          fill="rgba(15,23,42,0.9)"
-                        />
-                        <text x={labelX} y={Math.max(24, labelY - 14)} fill="white" fontSize={12} fontWeight={700} textAnchor="middle">
-                          {labelText}
-                        </text>
-                      </g>
-                    </g>
-                  );
-                })}
+                <div
+                  ref={stageRef}
+                  className="relative select-none shadow-2xl transition-transform duration-200"
+                  style={{
+                    transform: `scale(${zoom})`,
+                    transformOrigin: "top left",
+                    width: pageSize.width,
+                    height: pageSize.height
+                  }}
+                  onClick={onStageClick}
+                  onMouseDown={onPointerDown}
+                  onDoubleClick={() => {
+                    if (activeTool === "pen" && tempPoints.length >= 3) {
+                      // Check for overlap with existing plots
+                      for (const existing of plots) {
+                        if (doPolygonsIntersect(tempPoints, existing.coordinates.map(c => toStagePoint(c, pageSize)))) {
+                          toastError("This plot overlaps with an existing one");
+                          return;
+                        }
+                      }
 
-                {tempPoints.length > 0 ? (
-                  <>
-                    <polyline
-                      points={tempPoints.map((p) => `${p[0]},${p[1]}`).join(" ")}
-                      fill="none"
-                      stroke="rgb(37,99,235)"
-                      strokeWidth={2}
-                      strokeDasharray="4 3"
+                      // Check if any existing pins are inside this new plot
+                      const allExistingPins = plots.flatMap(p => p.pins.map(pin => ({
+                        ...pin,
+                        stagePoint: toStagePoint([pin.x_coordinate, pin.y_coordinate], pageSize)
+                      })));
+
+                      for (const pin of allExistingPins) {
+                        if (inside(pin.stagePoint, tempPoints)) {
+                          toastError("New plot cannot overlap existing pins");
+                          return;
+                        }
+                      }
+
+                      setNamingPlotOpen(true);
+                    }
+                  }}
+                >
+                  {isPdf ? (
+                    <Document file={normalizedFileUrl} onLoadError={() => toastError(t("pdfRenderError"))}>
+                      <Page
+                        pageNumber={1}
+                        scale={1}
+                        renderAnnotationLayer={false}
+                        renderTextLayer={false}
+                        onLoadSuccess={(page) => {
+                          const vp = page.getViewport({ scale: 1 });
+                          setPageSize({ width: Math.round(vp.width), height: Math.round(vp.height) });
+                        }}
+                      />
+                    </Document>
+                  ) : (
+                    <img
+                      src={normalizedFileUrl}
+                      alt={drawingName}
+                      className="block max-w-none rounded-lg"
+                      onLoad={(e) => {
+                        const el = e.currentTarget;
+                        setPageSize({ width: el.naturalWidth, height: el.naturalHeight });
+                      }}
                     />
-                    {tempPoints.map((pt, idx) => (
-                      <circle key={`pt-${idx}`} cx={pt[0]} cy={pt[1]} r={4} fill="rgb(37,99,235)" stroke="white" strokeWidth={1.5} />
-                    ))}
-                  </>
-                ) : null}
+                  )}
 
-                {activeTool === "plot-select" && selectionStart && selectionEnd ? (
-                  <rect
-                    x={Math.min(selectionStart[0], selectionEnd[0])}
-                    y={Math.min(selectionStart[1], selectionEnd[1])}
-                    width={Math.abs(selectionStart[0] - selectionEnd[0])}
-                    height={Math.abs(selectionStart[1] - selectionEnd[1])}
-                    fill="rgba(59,130,246,0.18)"
-                    stroke="rgb(37,99,235)"
-                    strokeDasharray="4 3"
-                    strokeWidth={2}
-                  />
-                ) : null}
-              </svg>
-
-              {/* Pins Layer */}
-              {plots.flatMap((plot) => plot.pins).map((pin, index) => {
-                const [pinX, pinY] = toStagePoint([pin.x_coordinate, pin.y_coordinate], pageSize);
-                const isPersisted = pin.id > 0;
-                const statusObj = statuses.find(s => s.id === pin.status_id);
-                const color = "#10b981";
-                const productName = compositeLabelById[pin.composite_item ?? 0] || "PIN";
-                const abbreviation = productName
-                  .split(/[\s()]+/)
-                  .filter(Boolean)
-                  .map((word) => word[0])
-                  .join("")
-                  .slice(0, 3)
-                  .toUpperCase();
-                const isHovered = hoveredPinId === pin.id;
-
-                return (
-                  <div
-                    key={`pin-${pin.id}`}
-                    className="absolute"
-                    style={{
-                      left: pinX,
-                      top: pinY,
-                      transform: "translate(-50%, -100%)",
-                      zIndex: isHovered ? 100 : 20,
-                    }}
-                    onMouseEnter={() => setHoveredPinId(pin.id)}
-                    onMouseLeave={() => setHoveredPinId(null)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDetailPlotId(null);
-                      setDetailPin(pin);
-                      setPinEditData(pin);
-                      setIsPinEditing(false);
-                    }}
+                  <svg
+                    className="absolute p-3 left-0 top-0"
+                    width={pageSize.width}
+                    height={pageSize.height}
+                    viewBox={`0 0 ${pageSize.width} ${pageSize.height}`}
                   >
-                    {isHovered && <PinTooltip pin={pin} productName={productName} />}
-                    <div className={cn("transition-transform duration-200", isHovered && "scale-110", "cursor-pointer")}>
-                      <PinMarker label={index + 1} abbreviation={abbreviation} color={color} />
-                    </div>
-                  </div>
-                );
-              })}
+                    {plots.map((plot) => {
+                      const plotPoints = plot.coordinates.map((p) => percentToPixel(p, pageSize));
+                      const [labelX, labelY] = getCentroid(plotPoints);
+                      const isSelected = selectedPlotId === String(plot.id);
+                      const minX = plotPoints.length ? Math.min(...plotPoints.map((p) => p[0])) : 0;
+                      const minY = plotPoints.length ? Math.min(...plotPoints.map((p) => p[1])) : 0;
+                      const maxX = plotPoints.length ? Math.max(...plotPoints.map((p) => p[0])) : 0;
+                      const maxY = plotPoints.length ? Math.max(...plotPoints.map((p) => p[1])) : 0;
+                      const labelText = plot.name.length > 24 ? `${plot.name.slice(0, 24)}...` : plot.name;
+                      const badgeWidth = Math.max(90, Math.min(220, labelText.length * 7 + 20));
+                      return (
+                        <g key={plot.id}>
+                          <defs>
+                            <clipPath id={`plot-clip-${plot.id}`}>
+                              <polygon points={plotPoints.map((p) => `${p[0]},${p[1]}`).join(" ")} />
+                            </clipPath>
+                          </defs>
+                          {plotPoints.length >= 3 ? (
+                            <polygon
+                              points={plotPoints.map((p) => `${p[0]},${p[1]}`).join(" ")}
+                              fill={plot.plot_background || "#0596690D"}
+                              stroke={plot.plot_border || "#059669"}
+                              strokeWidth={isSelected ? 3.5 : 2}
+                              strokeDasharray="5 4"
+                              className="cursor-pointer transition-all"
+                              onClick={(e) => {
+                                if (activeTool === "pin") {
+                                  const pt = stagePointFromEvent(e);
+                                  if (pt) {
+                                    setSelectedPlotId(String(plot.id));
+                                    void placePin(pt, plot);
+                                  }
+                                  return;
+                                }
+                                e.stopPropagation();
+                                setSelectedPlotId(String(plot.id));
+                                setDetailPin(null);
+                                setDetailPlotId(plot.id);
+                                setPlotDetailDraftName(plot.name);
+                              }}
+                            />
+                          ) : plotPoints.length === 2 ? (
+                            <line
+                              x1={plotPoints[0][0]}
+                              y1={plotPoints[0][1]}
+                              x2={plotPoints[1][0]}
+                              y2={plotPoints[1][1]}
+                              stroke={plot.plot_border || "#059669"}
+                              strokeWidth={3}
+                              className="cursor-pointer"
+                              onClick={(e) => {
+                                if (activeTool === "pin") {
+                                  const pt = stagePointFromEvent(e);
+                                  if (pt) {
+                                    setSelectedPlotId(String(plot.id));
+                                    void placePin(pt, plot);
+                                  }
+                                  return;
+                                }
+                                e.stopPropagation();
+                                setSelectedPlotId(String(plot.id));
+                                setDetailPin(null);
+                                setDetailPlotId(plot.id);
+                                setPlotDetailDraftName(plot.name);
+                              }}
+                            />
+                          ) : null}
+                          {plotPoints.length >= 3 ? (
+                            <g clipPath={`url(#plot-clip-${plot.id})`} className="pointer-events-none opacity-80">
+                              <line x1={minX} y1={minY} x2={maxX} y2={maxY} stroke={plot.plot_border || "#059669"} strokeWidth={2.5} />
+                              <line x1={maxX} y1={minY} x2={minX} y2={maxY} stroke={plot.plot_border || "#059669"} strokeWidth={2.5} />
+                            </g>
+                          ) : null}
+                          <g className="pointer-events-none">
+                            <rect
+                              x={labelX - badgeWidth / 2}
+                              y={Math.max(8, labelY - 30)}
+                              width={badgeWidth}
+                              height={24}
+                              rx={12}
+                              fill="rgba(15,23,42,0.9)"
+                            />
+                            <text x={labelX} y={Math.max(24, labelY - 14)} fill="white" fontSize={12} fontWeight={700} textAnchor="middle">
+                              {labelText}
+                            </text>
+                          </g>
+                        </g>
+                      );
+                    })}
+
+                    {tempPoints.length > 0 ? (
+                      <>
+                        <polyline
+                          points={tempPoints.map((p) => `${p[0]},${p[1]}`).join(" ")}
+                          fill="none"
+                          stroke="rgb(37,99,235)"
+                          strokeWidth={2}
+                          strokeDasharray="4 3"
+                        />
+                        {tempPoints.map((pt, idx) => (
+                          <circle key={`pt-${idx}`} cx={pt[0]} cy={pt[1]} r={4} fill="rgb(37,99,235)" stroke="white" strokeWidth={1.5} />
+                        ))}
+                      </>
+                    ) : null}
+
+                    {activeTool === "plot-select" && selectionStart && selectionEnd ? (
+                      <rect
+                        x={Math.min(selectionStart[0], selectionEnd[0])}
+                        y={Math.min(selectionStart[1], selectionEnd[1])}
+                        width={Math.abs(selectionStart[0] - selectionEnd[0])}
+                        height={Math.abs(selectionStart[1] - selectionEnd[1])}
+                        fill="rgba(59,130,246,0.18)"
+                        stroke="rgb(37,99,235)"
+                        strokeDasharray="4 3"
+                        strokeWidth={2}
+                      />
+                    ) : null}
+                  </svg>
+
+                  {/* Pins Layer */}
+                  {plots.flatMap((plot) => plot.pins).map((pin, index) => {
+                    const [pinX, pinY] = percentToPixel([pin.x_coordinate, pin.y_coordinate], pageSize);
+                    const isPersisted = pin.id > 0;
+                    const statusObj = statuses.find(s => s.id === pin.status_id);
+                    const color = "#10b981";
+                    const productName = compositeLabelById[pin.composite_item ?? 0] || "PIN";
+                    const abbreviation = productName
+                      .split(/[\s()]+/)
+                      .filter(Boolean)
+                      .map((word) => word[0])
+                      .join("")
+                      .slice(0, 3)
+                      .toUpperCase();
+                    const isHovered = hoveredPinId === pin.id;
+
+                    return (
+                      <div
+                        key={`pin-${pin.id}`}
+                        className="absolute"
+                        style={{
+                          left: pinX,
+                          top: pinY,
+                          transform: "translate(-50%, -100%)",
+                          zIndex: isHovered ? 100 : 20,
+                        }}
+                        onMouseEnter={() => setHoveredPinId(pin.id)}
+                        onMouseLeave={() => setHoveredPinId(null)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDetailPlotId(null);
+                          setDetailPin(pin);
+                          setPinEditData(pin);
+                          setIsPinEditing(false);
+                        }}
+                      >
+                        {isHovered && <PinTooltip pin={pin} productName={productName} />}
+                        <div className={cn("transition-transform duration-200", isHovered && "scale-110", "cursor-pointer")}>
+                          <PinMarker label={index + 1} abbreviation={abbreviation} color={color} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1103,6 +1360,17 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         ) : null}
       </DetailPanel>
 
+      <ConfirmDialog
+        open={abandonPlotConfirmOpen}
+        onClose={() => setAbandonPlotConfirmOpen(false)}
+        title="Unfinished Plot"
+        body="You have an unfinished plot. Do you want to discard it and leave, or stay and complete it?"
+        confirmLabel="Discard & Leave"
+        cancelLabel="Stay & Complete"
+        confirmVariant="danger"
+        onConfirm={confirmAbandonPlot}
+      />
+
       {detailPlotId && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 px-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-950">
@@ -1179,6 +1447,27 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
           </div>
         </div>
       )}
+
+      <DrawingBottomToolbar
+        t={t}
+        plots={plots}
+        selectedPlotId={selectedPlotId}
+        setSelectedPlotId={setSelectedPlotId}
+        selectedGroupId={selectedGroupId}
+        setSelectedGroupId={setSelectedGroupId}
+        selectedCompositeId={selectedCompositeId}
+        setSelectedCompositeId={setSelectedCompositeId}
+        groupOptions={groupOptions}
+        compositeOptions={compositeOptions}
+        activeTool={activeTool}
+        setActiveTool={requestToolChange}
+        dirty={dirty}
+        savingAll={savingAll}
+        saveAllChanges={saveAllChanges}
+        selectedPlot={selectedPlot}
+        savingPin={savingPin}
+        sidebarOpen={sidebarOpen}
+      />
     </div>
   );
 }
