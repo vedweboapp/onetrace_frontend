@@ -14,11 +14,6 @@ import {
   surfaceInputClassName,
 } from "@/shared/ui";
 
-function capitalizeFirstLetter(value: string): string {
-  if (!value) return value;
-  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
-}
-
 function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) return "—";
   const units = ["B", "KB", "MB", "GB"];
@@ -136,35 +131,41 @@ export function DrawingUploadModal({
     >
       <form id="drawing-upload-form" className="space-y-5" onSubmit={(e) => void submit(e)}>
         <div>
-          <FieldLabel htmlFor={nameId} required>
-            {t("name")}
-          </FieldLabel>
-          <input
-            id={nameId}
-            type="text"
-            autoComplete="off"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => setNameTouched(true)}
-            disabled={submitting}
-            placeholder={t("namePlaceholder")}
-            className={surfaceInputClassName}
-          />
-          {nameInvalid ? <p className={fieldErrorTextClassName}>{t("nameError")}</p> : null}
-        </div>
-
-        <div>
           <FieldLabel htmlFor={fileId} required>
             {t("file")}
           </FieldLabel>
+          <label
+            htmlFor={fileId}
+            onDragOver={(e) => {
+              e.preventDefault();
+              if (!submitting) setDragActive(true);
+            }}
+            onDragLeave={() => setDragActive(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragActive(false);
+              if (submitting) return;
+              applyFiles(Array.from(e.dataTransfer.files || []));
+            }}
+            className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-7 text-center transition ${
+              dragActive
+                ? "border-[color:var(--dash-accent,#111111)] bg-slate-50 dark:bg-slate-900"
+                : "border-slate-300 hover:border-slate-400 dark:border-slate-700 dark:hover:border-slate-600"
+            }`}
+          >
+            <UploadCloud className="size-5 text-slate-500 dark:text-slate-400" />
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{t("fileHint")}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">PDF, PNG, JPG, WEBP</p>
+          </label>
           <input
             id={fileId}
             type="file"
+            multiple
             disabled={submitting}
             accept=".pdf,application/pdf,image/*"
             onBlur={() => setFileTouched(true)}
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className={surfaceInputClassName}
+            onChange={(e) => applyFiles(Array.from(e.target.files || []))}
+            className="sr-only"
           />
           <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{t("fileHint")}</p>
           {fileInvalid ? <p className={fieldErrorTextClassName}>{t("fileError")}</p> : null}

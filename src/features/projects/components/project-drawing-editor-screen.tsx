@@ -762,7 +762,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         ...(pin.id > 0 ? { id: pin.id } : {}),
         x_coordinate: pin.x_coordinate,
         y_coordinate: pin.y_coordinate,
-        status: pin.status,
+        status: pin.status ?? undefined,
         group: pin.group ?? null,
         item: pin.item ?? null,
         quantity: pin.quantity || 1,
@@ -1523,7 +1523,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     label="Status"
                     value={isPinEditing
                       ? (pinEditData.status ?? detailPin.status ?? "")
-                      : (detailPin.status_detail?.status_name || statusLabelById[String(pinEditData.status ?? detailPin.status ?? 0)] || detailPin.status)
+                      : (detailPin.status_detail?.status_name || statusLabelById[String(pinEditData.status ?? detailPin.status ?? 0)] || detailPin.status || "")
                     }
                     isEditing={isPinEditing}
                     type="select"
