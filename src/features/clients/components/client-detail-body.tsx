@@ -11,7 +11,10 @@ import {
 import { cn } from "@/core/utils/http.util";
 
 
-export type ClientsTranslator = (key: string, values?: Record<string, any>) => string;
+export type ClientsTranslator = (
+  key: string,
+  values?: Record<string, string | number | boolean | null | undefined>,
+) => string;
 
 export function ClientDetailBody({
   detail,

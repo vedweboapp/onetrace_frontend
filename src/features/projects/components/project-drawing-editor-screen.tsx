@@ -155,7 +155,30 @@ const CheckCircleIcon = () => (
   </svg>
 );
 
-const DetailRow = ({ icon: Icon, label, value, isEditing, onChange, type = "text", options = [], statusColor, statusTextColor }: any) => {
+type DetailRowProps = {
+  icon: React.ComponentType;
+  label: string;
+  value: string | number;
+  isEditing?: boolean;
+  onChange?: (v: string) => void;
+  type?: "text" | "select";
+  options?: string[];
+  statusColor?: string;
+  statusTextColor?: string;
+};
+
+const DetailRow = ({
+  icon: Icon,
+  label,
+  value,
+  isEditing = false,
+  onChange,
+  type = "text",
+  options = [],
+  statusColor,
+  statusTextColor,
+}: DetailRowProps) => {
+  const strValue = typeof value === "number" ? String(value) : value;
   return (
     <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800/50">
       <div className="flex items-center gap-3">
@@ -165,21 +188,21 @@ const DetailRow = ({ icon: Icon, label, value, isEditing, onChange, type = "text
         <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{label}</span>
       </div>
       <div className="flex-1 flex justify-end">
-        {isEditing ? (
+        {isEditing && onChange ? (
           type === "select" ? (
             <select
-              value={value}
+              value={strValue}
               onChange={(e) => onChange(e.target.value)}
               className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900"
             >
-              {options.map((opt: string) => (
+              {options.map((opt) => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
           ) : (
             <input
               type="text"
-              value={value}
+              value={strValue}
               onChange={(e) => onChange(e.target.value)}
               className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-right text-sm outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900"
             />
@@ -313,10 +336,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       cancelled = true;
     };
   }, [drawingId, projectId, t]);
-
-  React.useEffect(() => {
-    setSelectedCompositeId("");
-  }, [selectedGroupId]);
 
   React.useEffect(() => {
     if (!namingPlotOpen) return;
@@ -563,8 +582,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       pins: p.pins.map((pin) => (pin.id === detailPin.id ? { ...pin, ...pinEditData } : pin)),
     }));
     setPlots(nextPlots);
-    // @ts-ignore
-    setDetailPin({ ...detailPin, ...pinEditData });
+    setDetailPin({ ...detailPin, ...pinEditData } as DrawingPin);
     setIsPinEditing(false);
     setDirty(true);
     toastSuccess(t("pinSaved"));
@@ -664,7 +682,16 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
             onChange={setSelectedPlotId}
             emptyLabel={t("choosePlot")}
           />
-          <CheckmarkSelect listLabel={`${t("chooseGroup")} *`} options={groupOptions} value={selectedGroupId} onChange={setSelectedGroupId} emptyLabel={t("allGroups")} />
+          <CheckmarkSelect
+            listLabel={`${t("chooseGroup")} *`}
+            options={groupOptions}
+            value={selectedGroupId}
+            onChange={(v) => {
+              setSelectedGroupId(v);
+              setSelectedCompositeId("");
+            }}
+            emptyLabel={t("allGroups")}
+          />
           <CheckmarkSelect listLabel={`${t("chooseComposite")} *`} options={compositeOptions} value={selectedCompositeId} onChange={setSelectedCompositeId} emptyLabel={t("selectComposite")} />
 
           {[

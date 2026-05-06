@@ -3,7 +3,14 @@
 import * as React from "react";
 import { X } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
-import { AppButton } from "./app-button";
+
+const closeIconButtonClass = cn(
+  "absolute right-3 top-3 z-10 inline-flex size-7 items-center justify-center rounded-lg outline-none transition sm:right-4 sm:top-4",
+  "text-slate-500 hover:bg-slate-100 hover:text-slate-900",
+  "focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
+  "disabled:pointer-events-none disabled:opacity-40",
+  "dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 dark:focus-visible:ring-slate-600 dark:focus-visible:ring-offset-slate-900",
+);
 
 const sizeClass = {
   sm: "max-w-sm",
@@ -28,7 +35,10 @@ export type AppModalProps = {
   size?: AppModalSize;
   closeOnBackdrop?: boolean;
   isBusy?: boolean;
+  /** Small “X” in the top-right; default on for all modals. */
   showCloseButton?: boolean;
+  /** Accessible name for the close control (translate in forms if needed). */
+  closeButtonAriaLabel?: string;
 };
 
 /**
@@ -46,7 +56,8 @@ export function AppModal({
   size = "md",
   closeOnBackdrop = true,
   isBusy = false,
-  showCloseButton = false,
+  showCloseButton = true,
+  closeButtonAriaLabel = "Close",
 }: AppModalProps) {
   const autoTitleId = React.useId();
   const autoDescId = React.useId();
@@ -82,42 +93,45 @@ export function AppModal({
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        {(title || showCloseButton) ? (
-          <div className="flex items-start gap-3">
+        {showCloseButton ? (
+          <button
+            type="button"
+            className={closeIconButtonClass}
+            aria-label={closeButtonAriaLabel}
+            disabled={isBusy}
+            onClick={onClose}
+          >
+            <X className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
+          </button>
+        ) : null}
+        {(title || description) ? (
+          <div className={cn(showCloseButton && "pr-9 sm:pr-10")}>
             {title ? (
               <h2
                 id={titleId}
-                className={cn(
-                  "min-w-0 flex-1 text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50",
-                )}
+                className={cn("text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50")}
               >
                 {title}
               </h2>
             ) : null}
-            {showCloseButton ? (
-              <AppButton
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="size-9 shrink-0 p-0 text-slate-500"
-                aria-label="Close"
-                disabled={isBusy}
-                onClick={onClose}
+            {description ? (
+              <p
+                id={descriptionId}
+                className={cn(title ? "mt-2" : "", "text-sm text-slate-600 dark:text-slate-400")}
               >
-                <X className="size-4" strokeWidth={2} aria-hidden />
-              </AppButton>
+                {description}
+              </p>
             ) : null}
           </div>
         ) : null}
-        {description ? (
-          <p
-            id={descriptionId}
-            className={cn(title || showCloseButton ? "mt-2" : "", "text-sm text-slate-600 dark:text-slate-400")}
-          >
-            {description}
-          </p>
-        ) : null}
-        <div className={cn(title || showCloseButton || description ? "mt-5" : "")}>{children}</div>
+        <div
+          className={cn(
+            title || description || showCloseButton ? "mt-5" : "",
+            showCloseButton && !title && !description ? "pt-1" : "",
+          )}
+        >
+          {children}
+        </div>
         {footer ? <div className="mt-6 flex flex-wrap justify-end gap-2">{footer}</div> : null}
       </div>
     </div>

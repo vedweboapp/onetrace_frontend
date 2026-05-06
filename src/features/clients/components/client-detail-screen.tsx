@@ -65,11 +65,21 @@ export function ClientDetailScreen({ clientId }: Props) {
     setRefreshNonce((n) => n + 1);
   }
 
+  const detailBreadcrumb = React.useMemo(
+    () => [
+      { label: t("title"), href: routes.dashboard.clients },
+      {
+        label: detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle")),
+      },
+    ],
+    [detail?.name, loading, t],
+  );
+
   return (
     <div className="pb-12">
       <PageHeadingWithBack
-        backHref={routes.dashboard.clients}
-        backAriaLabel={tCommon("back")}
+        breadcrumb={detailBreadcrumb}
+        breadcrumbAriaLabel={tCommon("breadcrumbNav")}
         title={detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle"))}
         description={
           detail && !loading && !error ? `${detail.contact_person} · ${detail.email}` : undefined
@@ -84,7 +94,7 @@ export function ClientDetailScreen({ clientId }: Props) {
         className={cn("border-b border-slate-200/90 pb-5 dark:border-slate-800", "mb-5 sm:mb-6")}
       />
 
-      <SurfaceShell>
+      <SurfaceShell className="rounded-none">
         {loading ? (
           <div className="space-y-3 p-4 sm:p-6">
             <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />

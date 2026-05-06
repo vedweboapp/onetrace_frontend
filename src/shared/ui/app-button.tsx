@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@base-ui/react";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 
 const variants = {
@@ -81,7 +82,7 @@ export function AppButton({
       disabled={disabled || loading}
       {...props}
     >
-      {children}
+      {loading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : children}
     </Button>
   );
 }

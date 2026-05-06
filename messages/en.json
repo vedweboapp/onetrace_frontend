@@ -9,6 +9,7 @@
     "title": "Welcome back",
     "subtitle": "Sign in to your account to continue.",
     "email": "Email",
+    "workEmail": "Work Email",
     "emailPlaceholder": "you@company.com",
     "password": "Password",
     "showPassword": "Show password",
@@ -17,8 +18,23 @@
     "submit": "Sign in",
     "submitting": "Signing in…",
     "forgotPasswordLink": "Forgot password?",
+    "keepSignedIn": "Keep me signed in",
+    "otpLogin": "OTP Login",
+    "otpLabel": "OTP",
+    "continue": "Continue",
+    "sendOtp": "Send OTP",
+    "otpRequired": "Enter the 6-digit OTP.",
+    "otpSent": "OTP sent to {email}",
+    "otpSendError": "Could not send OTP. Please try again.",
+    "otpVerifyError": "Could not verify OTP. Check the code and try again.",
+    "resendIn": "Resend code in",
+    "resendNow": "Resend now",
     "noAccount": "No account yet?",
     "signUpLink": "Create one",
+    "heroLiveSync": "Live Site Sync",
+    "heroTitleLine1": "Next-Generation",
+    "heroTitleLine2": "Construction Management",
+    "heroSubtitle": "Access real-time blueprints, manage site logistics, and coordinate contractors from a single, unified platform built for modern engineering teams.",
     "errors": {
       "invalidCredentials": "Invalid email or password. Please try again."
     },
@@ -28,9 +44,27 @@
       "backToLogin": "Back to sign in"
     },
     "forgotPassword": {
-      "title": "Reset password",
-      "body": "Password reset will live here — wire your API next.",
+      "title": "Forgot Password?",
+      "body": "Enter your email to reset your password",
       "backToLogin": "Back to sign in"
+    },
+    "resetPassword": {
+      "title": "Reset Password",
+      "body": "Create a strong password for your account",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm Password",
+      "cta": "Reset Password",
+      "tokenMissing": "Reset token missing. Please request a new password reset.",
+      "passwordsDoNotMatch": "Passwords do not match.",
+      "requirements": {
+        "atLeast8": "At least 8 characters",
+        "atLeastUpper": "At least one uppercase letter (A-Z)",
+        "atLeastLower": "At least one lowercase letter (a-z)",
+        "atLeastNumber": "At least one number (0-9)",
+        "atLeastSpecial": "At least one special character (!@#$%^&*)"
+      },
+      "success": "Password reset successfully",
+      "error": "Could not reset password. Please try again."
     }
   },
   "ApiErrors": {
@@ -46,7 +80,8 @@
   },
   "Dashboard": {
     "common": {
-      "back": "Back"
+      "back": "Back",
+      "breadcrumbNav": "Breadcrumb"
     },
     "brand": {
       "appName": "One Trace"
@@ -56,12 +91,14 @@
       "eyebrowSettings": "Settings",
       "closeSettings": "Close settings",
       "toggleSidebar": "Expand or collapse sidebar",
+      "notifications": "Notifications",
       "signOut": "Sign out",
       "openSettings": "Settings & appearance",
       "openProfileMenu": "Open profile menu",
       "profileMenuLabel": "Account"
     },
     "sidebar": {
+      "home": "Home",
       "clients": "Clients",
       "projects": "Projects",
       "groups": "Groups",
@@ -132,6 +169,8 @@
         "actions": "Actions"
       },
       "empty": "No pin statuses yet. Add one to get started.",
+      "emptyTitle": "No pin statuses yet",
+      "emptyDescription": "Create workflow labels for pins used across your projects.",
       "loadError": "Could not load pin statuses. Try again.",
       "modal": {
         "createTitle": "New pin status",
@@ -145,7 +184,7 @@
       "deleteConfirmTitle": "Delete this status?",
       "deleteConfirmBody": "Pins using this status may need to be updated. This action cannot be undone.",
       "confirmDelete": "Delete",
-      "pageLabel": "Page {current} of {total} ({count} records)",
+      "pageLabel": "Showing {start}-{end} of {total} statuses",
       "prev": "Previous",
       "next": "Next",
       "saved": "Status updated",
@@ -162,20 +201,36 @@
       "subtitle": "Organizations and contacts you work with. Click a row for full details.",
       "add": "Add client",
       "empty": "No clients yet. Add your first client to get started.",
+      "emptyTitle": "No clients yet",
+      "emptyDescription": "Create your first client to start organizing contacts and jobs.",
       "loadError": "Could not load clients. Try again.",
       "missingOrganization": "No workspace organization on this session. Sign out and sign in again, or contact support.",
       "createdToast": "Client created successfully",
       "updatedToast": "Client updated successfully",
-      "pageLabel": "Page {current} of {total} ({count} records)",
+      "deletedToast": "Client deleted",
+      "filterState": "Active state",
+      "filterAll": "All",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "activatedToast": "Client activated",
+      "deactivatedToast": "Client deactivated",
+      "toggleActiveError": "Could not update client status. Try again.",
+      "pageLabel": "Showing {start}-{end} of {total} clients",
       "prev": "Previous",
       "next": "Next",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteConfirmTitle": "Delete this client?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete client",
       "table": {
         "name": "Client",
         "contact": "Contact",
         "email": "Email",
         "phone": "Phone",
         "status": "Status",
-        "created": "Created"
+        "created": "Created",
+        "actions": "Actions"
       },
       "status": {
         "active": "Active",
@@ -240,12 +295,19 @@
       }
     },
     "home": {
-      "title": "Overview",
-      "body": "You are in the app shell. Add widgets, tables, and navigation here."
+      "title": "Working on this page",
+      "body": "This section is under development. Check back soon for updates."
     },
     "list": {
       "searchPlaceholder": "Search…",
-      "searchAria": "Search this list"
+      "searchAria": "Search this list",
+      "rowsPerPage": "Rows per page",
+      "tableView": "Table view",
+      "listView": "List view",
+      "openRowActions": "Open row actions",
+      "noResultsTitle": "No results found",
+      "noResultsDescription": "Nothing matches your current search or filters. Adjust them or clear filters to see more items.",
+      "clearFilters": "Clear filters"
     },
     "projects": {
       "metaTitle": "Projects",
@@ -254,6 +316,8 @@
       "subtitle": "Track work by client and schedule. Open a row for full details.",
       "add": "Add project",
       "empty": "No projects yet. Create your first project to get started.",
+      "emptyTitle": "No projects yet",
+      "emptyDescription": "Create your first project to begin planning and tracking work.",
       "loadError": "Could not load projects. Try again.",
       "missingOrganization": "No workspace organization on this session. Sign out and sign in again, or contact support.",
       "createdToast": "Project created successfully",
@@ -268,7 +332,7 @@
       "activatedToast": "Project activated",
       "deactivatedToast": "Project deactivated",
       "toggleActiveError": "Could not update project status. Try again.",
-      "pageLabel": "Page {current} of {total} ({count} records)",
+      "pageLabel": "Showing {start}-{end} of {total} projects",
       "prev": "Previous",
       "next": "Next",
       "delete": "Delete",
@@ -278,8 +342,9 @@
       "table": {
         "name": "Project",
         "client": "Client",
-        "start": "Start",
-        "end": "End",
+        "start": "Start date",
+        "end": "End date",
+        "description": "Description",
         "status": "Status",
         "activeState": "Active",
         "created": "Created",
@@ -308,23 +373,31 @@
           "specs": "Specs",
           "docs": "Docs",
           "approvals": "Approvals"
-        },
-        "tabPlaceholder": "This section will be available soon."
+        }
       },
       "drawings": {
         "title": "Drawings",
+        "subtitle": "Manage and view all construction blueprints and plans.",
+        "createDrawing": "Create drawing",
+        "searchPlaceholder": "Search drawings…",
+        "searchAria": "Search drawings",
+        "updatedLabel": "Updated",
+        "levelLabel": "Level",
         "upload": "Upload",
         "open": "Open",
         "empty": "No drawings yet. Upload a PDF or image to get started.",
         "loadError": "Could not load drawings. Try again.",
-        "pageLabel": "Page {current} of {total} ({count} drawings)",
+        "pageLabel": "Showing {start}-{end} of {total} drawings",
         "prev": "Previous",
         "next": "Next",
         "pinsLabelShort": "Pins:",
         "table": {
           "drawing": "Drawing",
+          "block": "Block",
+          "level": "Level",
           "file": "File",
           "pins": "Pins",
+          "updated": "Last updated",
           "actions": "Actions"
         },
         "modal": {
@@ -437,8 +510,10 @@
       },
       "add": "Add group",
       "empty": "No groups yet. Create one to organize composite items.",
+      "emptyTitle": "No groups yet",
+      "emptyDescription": "Create groups to organize your composite item catalog.",
       "loadError": "Could not load groups. Try again.",
-      "pageLabel": "Page {current} of {total} ({count} groups)",
+      "pageLabel": "Showing {start}-{end} of {total} groups",
       "prev": "Previous",
       "next": "Next",
       "deletedToast": "Group deleted",
@@ -480,6 +555,8 @@
       },
       "add": "Add item",
       "empty": "No composite items yet. Create a group first, then add items here.",
+      "emptyTitle": "No composite items yet",
+      "emptyDescription": "Create composite items and assign them to groups.",
       "loadError": "Could not load composite items. Try again.",
       "groupsLoadError": "Could not load groups for filters — dropdown may be empty.",
       "bulkBarLabel": "Selected",
@@ -490,7 +567,7 @@
       "bulkNoneSelected": "Select one or more items using the checkboxes.",
       "filterGroup": "Group",
       "filterAllGroups": "All groups",
-      "pageLabel": "Page {current} of {total} ({count} items)",
+      "pageLabel": "Showing {start}-{end} of {total} items",
       "prev": "Previous",
       "next": "Next",
       "deletedToast": "Composite item deleted",

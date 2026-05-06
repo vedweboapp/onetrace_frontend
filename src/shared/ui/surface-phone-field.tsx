@@ -20,6 +20,8 @@ export type SurfacePhoneFieldProps<TFieldValues extends FieldValues> = {
   defaultCountry?: Country;
   placeholder?: string;
   className?: string;
+  /** When true (default), users cannot type more national digits than allowed for the selected country. */
+  limitMaxLength?: boolean;
 };
 
 export function SurfacePhoneField<TFieldValues extends FieldValues>({
@@ -34,6 +36,7 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
   defaultCountry = "IN",
   placeholder,
   className,
+  limitMaxLength = true,
 }: SurfacePhoneFieldProps<TFieldValues>) {
   const errId = error ? `${id}-error` : undefined;
   const described = [describedBy, errId].filter(Boolean).join(" ") || undefined;
@@ -47,6 +50,7 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
         control={control}
         name={name}
         international
+        limitMaxLength={limitMaxLength}
         defaultCountry={defaultCountry}
         disabled={disabled}
         placeholder={placeholder}

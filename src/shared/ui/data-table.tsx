@@ -20,8 +20,8 @@ export function DataTableHead({ className, ...props }: ComponentPropsWithoutRef<
   return (
     <thead
       className={cn(
-        "border-b border-slate-200 bg-slate-50/90 text-xs font-semibold uppercase tracking-wide text-slate-500",
-        "dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400",
+        "border-b border-slate-200 bg-slate-100/90 text-xs font-bold uppercase tracking-wide text-slate-400",
+        "dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-500",
         className,
       )}
       {...props}
@@ -30,7 +30,7 @@ export function DataTableHead({ className, ...props }: ComponentPropsWithoutRef<
 }
 
 export function DataTableBody({ className, ...props }: ComponentPropsWithoutRef<"tbody">) {
-  return <tbody className={cn("divide-y divide-slate-100 dark:divide-slate-800", className)} {...props} />;
+  return <tbody className={cn("divide-y divide-slate-200 dark:divide-slate-800", className)} {...props} />;
 }
 
 export type DataTableRowProps = ComponentPropsWithoutRef<"tr"> & {
@@ -48,7 +48,7 @@ export function DataTableRow({
     <tr
       className={cn(
         "bg-white dark:bg-slate-950",
-        clickable && "cursor-pointer transition hover:bg-slate-50/90 dark:hover:bg-slate-900/70",
+        clickable && "cursor-pointer transition hover:bg-slate-50 dark:hover:bg-slate-900/70",
         className,
       )}
       role={clickable ? "button" : undefined}
@@ -77,7 +77,7 @@ export function DataTableTh({
   return (
     <th
       className={cn(
-        narrow ? "w-28 px-2 py-3" : "px-4 py-3 sm:px-6",
+        narrow ? "w-12 px-2 py-4 align-middle" : "px-5 py-4 align-middle",
         className,
       )}
       {...props}
@@ -96,7 +96,10 @@ export function DataTableTd({
 }: DataTableTdProps & { narrow?: boolean }) {
   return (
     <td
-      className={cn(narrow ? "w-28 px-2 py-3" : "px-4 py-3 sm:px-6", className)}
+      className={cn(
+        narrow ? "w-12 px-2 py-4 align-middle" : "px-5 py-4 align-middle text-slate-600 dark:text-slate-400",
+        className,
+      )}
       {...props}
     />
   );

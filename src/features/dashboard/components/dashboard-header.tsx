@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  Bell,
   Building2,
   FolderKanban,
+  Home,
   Layers,
   Package,
   Palette,
@@ -61,11 +63,13 @@ export function DashboardHeader() {
     "U";
 
   const clientsHref = routes.dashboard.clients;
+  const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
   const compositeHref = routes.dashboard.compositeItems;
   const appearanceHref = routes.dashboard.settingsAppearance;
   const pinStatusHref = routes.dashboard.settingsPinStatus;
+  const homeActive = pathname === homeHref;
   const clientsActive =
     pathname === clientsHref || pathname.startsWith(`${clientsHref}/`);
   const projectsActive =
@@ -78,8 +82,22 @@ export function DashboardHeader() {
   const pinStatusActive =
     pathname === pinStatusHref || pathname.startsWith(`${pinStatusHref}/`);
 
+  const sectionTitle = settingsMode
+    ? t("eyebrowSettings")
+    : homeActive
+      ? tNav("home")
+      : projectsActive
+        ? tNav("projects")
+        : clientsActive
+          ? tNav("clients")
+          : groupsActive
+            ? tNav("groups")
+            : compositeActive
+              ? tNav("compositeItems")
+              : tNav("home");
+
   return (
-    <header className="z-20 flex h-auto shrink-0 flex-col border-b border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+    <header className="z-20 flex h-auto shrink-0 flex-col border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
       <div className="flex h-14 items-center justify-between gap-2 px-4 lg:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
           <button
@@ -103,9 +121,15 @@ export function DashboardHeader() {
             )}
           </button>
 
-          {settingsMode ? (
+        
+
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{sectionTitle}</p>
+          </div>
+
+            {settingsMode ? (
             <Link
-              href={projectsHref}
+              href={homeHref}
               className={cn(
                 "inline-flex shrink-0 items-center justify-center rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-600 shadow-sm transition sm:px-3 sm:text-sm",
                 "hover:border-red-300 hover:bg-red-50 dark:border-red-900/70 dark:bg-slate-900 dark:text-red-400 dark:hover:border-red-800 dark:hover:bg-red-950/50",
@@ -115,12 +139,6 @@ export function DashboardHeader() {
               {t("closeSettings")}
             </Link>
           ) : null}
-
-          <div className="hidden min-w-0 flex-1 md:block">
-            <p className="truncate text-xs font-bold uppercase tracking-[0.12em] text-[color:var(--dash-accent)]">
-              {settingsMode ? t("eyebrowSettings") : t("eyebrowMain")}
-            </p>
-          </div>
 
           {!settingsMode ? (
             <div className="flex flex-1 justify-center md:hidden">
@@ -132,6 +150,17 @@ export function DashboardHeader() {
         </div>
 
         <div className="flex min-w-0 shrink-0 items-center gap-2 md:gap-3">
+          <button
+            type="button"
+            title={t("notifications")}
+            aria-label={t("notifications")}
+            className={cn(
+              "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition",
+              "hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+            )}
+          >
+            <Bell className="size-4" strokeWidth={1.75} />
+          </button>
           <Link
             href={appearanceHref}
             title={t("openSettings")}
@@ -139,7 +168,7 @@ export function DashboardHeader() {
             className={cn(
               "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-800 shadow-sm transition",
               "hover:border-[color:var(--dash-accent)] hover:bg-slate-50 hover:text-[color:var(--dash-accent)]",
-              "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600 dark:hover:bg-slate-800",
+              "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-100",
               settingsMode &&
                 "border-transparent bg-[color:var(--dash-accent)] text-[color:var(--dash-on-accent,#ffffff)] shadow-md hover:opacity-90 dark:hover:opacity-90",
             )}
@@ -184,6 +213,17 @@ export function DashboardHeader() {
           </>
         ) : (
           <>
+            <Link
+              href={homeHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                homeActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={homeActive ? resolved.navActiveStyle : undefined}
+            >
+              <Home className="size-3.5" strokeWidth={1.75} />
+              {tNav("home")}
+            </Link>
             <Link
               href={clientsHref}
               className={cn(

@@ -1,19 +1,25 @@
 import type { ReactNode } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/core/utils/http.util";
 
+export type PageBreadcrumbItem = {
+  label: string;
+  href?: string;
+};
+
 export type PageHeadingWithBackProps = {
-
   backHref?: string;
-
   backAriaLabel?: string;
+  /** e.g. parent list label + current entity name (no back arrow). */
+  breadcrumb?: PageBreadcrumbItem[];
+  breadcrumbAriaLabel?: string;
 
   title: string;
   description?: string;
 
   kicker?: string;
-  
+
   density?: "default" | "compact";
 
   actions?: ReactNode;
@@ -23,6 +29,8 @@ export type PageHeadingWithBackProps = {
 export function PageHeadingWithBack({
   backHref,
   backAriaLabel,
+  breadcrumb,
+  breadcrumbAriaLabel = "Breadcrumb",
   title,
   description,
   kicker,
@@ -35,6 +43,31 @@ export function PageHeadingWithBack({
 
   return (
     <header className={cn(compact ? "space-y-2" : "space-y-3", className)}>
+      {breadcrumb && breadcrumb.length > 0 ? (
+        <nav aria-label={breadcrumbAriaLabel} className="mb-1">
+          <ol className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
+            {breadcrumb.map((item, i) => (
+              <li key={`${item.label}-${i}`} className="flex min-w-0 items-center gap-1">
+                {i > 0 ? (
+                  <ChevronRight className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
+                ) : null}
+                {item.href ? (
+                  <Link
+                    href={item.href}
+                    className="truncate font-medium text-slate-600 underline-offset-4 hover:text-slate-900 hover:underline dark:text-slate-400 dark:hover:text-slate-100"
+                  >
+                    {item.label}
+                  </Link>
+                ) : (
+                  <span className="truncate font-medium text-slate-700 dark:text-slate-200" aria-current="page">
+                    {item.label}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ol>
+        </nav>
+      ) : null}
       {kicker ? (
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
           {kicker}

@@ -1,13 +1,22 @@
 import type { ReactNode } from "react";
-import { AuthCard } from "@/shared/ui";
+import { AuthMarketingCarousel } from "@/features/auth/components/auth-marketing-carousel";
 import { AuthPublicChrome } from "@/features/auth/components/auth-public-chrome";
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="relative min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-50">
+    <div className="relative flex min-h-screen" style={{ fontFamily: "'Inter', sans-serif" }}>
       <AuthPublicChrome />
-      <div className="flex min-h-screen flex-col items-center justify-center px-4 pb-16 pt-20 sm:px-6 sm:pb-12 sm:pt-16">
-        <AuthCard>{children}</AuthCard>
+
+      {/* ── Left panel ── */}
+      <div className="hidden w-[52%] lg:flex">
+        <AuthMarketingCarousel />
+      </div>
+
+      {/* ── Right panel ── */}
+      <div className="flex flex-1 items-center justify-center bg-[#f8fafc] px-6 py-16">
+        <div className="w-full max-w-[400px]">
+          {children}
+        </div>
       </div>
     </div>
   );

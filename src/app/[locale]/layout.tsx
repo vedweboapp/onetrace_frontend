@@ -31,7 +31,18 @@ export default async function LocaleLayout({ children, params }: Props) {
       <ApiErrorI18nBridge />
       <LocaleHtmlLang />
       {children}
-      <Toaster richColors position="top-center" />
+      <Toaster
+        richColors
+        closeButton
+        expand
+        visibleToasts={4}
+        position="top-center"
+        toastOptions={{
+          className: "app-sonner-toast",
+          descriptionClassName: "app-sonner-description",
+          duration: 3500,
+        }}
+      />
     </NextIntlClientProvider>
   );
 }

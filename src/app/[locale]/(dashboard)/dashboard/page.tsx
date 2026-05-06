@@ -1,12 +1,15 @@
-import { redirect } from "@/i18n/navigation";
-import { routes } from "@/shared/config/routes";
+import { getTranslations } from "next-intl/server";
+import { DashboardUnderDevelopmentState, SurfaceShell } from "@/shared/ui";
 
-type Props = {
-  params: Promise<{ locale: string }>;
-};
-
-
-export default async function DashboardIndexPage({ params }: Props) {
-  const { locale } = await params;
-  redirect({ href: routes.dashboard.projects, locale });
+export default async function DashboardIndexPage() {
+  const t = await getTranslations("Dashboard.home");
+  return (
+    <SurfaceShell className="border-dashed">
+      <DashboardUnderDevelopmentState
+        className="min-h-[calc(100vh-180px)]"
+        title={t("title")}
+        description={t("body")}
+      />
+    </SurfaceShell>
+  );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { Building2, FolderKanban, Layers, Package, Palette, Tags } from "lucide-react";
+import { Building2, FolderKanban, Home, Layers, Package, Palette, Tags } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useDashboardAppearanceStore } from "@/features/dashboard/store/dashboard-appearance.store";
@@ -32,9 +32,9 @@ export function DashboardSidebar() {
   const sidebarExpanded = useDashboardSidebarStore((s) => s.sidebarOpen);
 
   const shell = cn(
-    "hidden h-full min-h-0 shrink-0 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950",
+    "hidden h-full min-h-0 shrink-0 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900",
     "md:flex",
-    sidebarExpanded ? "md:w-64" : "md:w-14",
+    sidebarExpanded ? "md:w-64" : "md:w-[52px]",
   );
 
   if (isSettingsArea(pathname)) {
@@ -55,7 +55,7 @@ export function DashboardSidebar() {
 function navInactive() {
   return cn(
     "text-slate-800 hover:bg-slate-100 hover:text-slate-950",
-    "dark:text-slate-200 dark:hover:bg-slate-800/80 dark:hover:text-white",
+    "dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white",
   );
 }
 
@@ -80,7 +80,7 @@ function SidebarNavLink({
       title={expanded ? undefined : label}
       className={cn(
         "flex items-center rounded-lg text-sm font-medium transition",
-        expanded ? "gap-3 px-3 py-2.5" : "justify-center px-0 py-2.5",
+        expanded ? "gap-3 px-3 py-2.5" : "mx-auto size-9 justify-center p-0",
         active ? resolved.navActiveClassName : navInactive(),
       )}
       style={active ? resolved.navActiveStyle : undefined}
@@ -88,7 +88,7 @@ function SidebarNavLink({
       <Icon
         className={cn(
           "size-[18px] shrink-0",
-          active ? "opacity-95" : "text-slate-600 dark:text-slate-400",
+          active ? "opacity-95" : "text-slate-600 dark:text-slate-300",
         )}
         strokeWidth={1.75}
         aria-hidden
@@ -108,9 +108,11 @@ function DashboardMainSidebar({
   const t = useTranslations("Dashboard.sidebar");
   const pathname = usePathname();
   const clientsHref = routes.dashboard.clients;
+  const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
   const compositeHref = routes.dashboard.compositeItems;
+  const homeActive = pathname === homeHref;
   const clientsActive =
     pathname === clientsHref || pathname.startsWith(`${clientsHref}/`);
   const projectsActive =
@@ -129,7 +131,15 @@ function DashboardMainSidebar({
       >
         <DashboardAppBrand collapsed={!expanded} />
       </div>
-      <nav className="flex min-h-0 min-w-0 flex-1 flex-col gap-0.5 p-3">
+      <nav className={cn("flex min-h-0 min-w-0 flex-1 flex-col gap-0.5", expanded ? "p-3" : "items-center px-0 py-3")}>
+        <SidebarNavLink
+          href={homeHref}
+          active={homeActive}
+          label={t("home")}
+          icon={Home}
+          expanded={expanded}
+          resolved={resolved}
+        />
         <SidebarNavLink
           href={clientsHref}
           active={clientsActive}
@@ -194,7 +204,7 @@ function DashboardSettingsSidebar({
       >
         <DashboardAppBrand collapsed={!expanded} />
       </div>
-      <nav className="flex min-h-0 min-w-0 flex-1 flex-col gap-0.5 p-3">
+      <nav className={cn("flex min-h-0 min-w-0 flex-1 flex-col gap-0.5", expanded ? "p-3" : "items-center px-0 py-3")}>
         <SidebarNavLink
           href={appearanceHref}
           active={appearanceActive}

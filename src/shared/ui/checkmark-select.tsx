@@ -44,6 +44,12 @@ type Props = {
 
   emptyLabel?: string;
   portaled?: boolean;
+  /** Compact trigger (e.g. pagination page size). */
+  size?: "md" | "sm";
+  /** When false, selected option is indicated by accent text only (no check icon). */
+  showCheckmarks?: boolean;
+  /** e.g. "Rows per page" when the visible label is omitted */
+  buttonAriaLabel?: string;
 };
 
 function usePopoverRect(open: boolean, anchorRef: React.RefObject<HTMLElement | null>) {
@@ -85,6 +91,9 @@ export function CheckmarkSelect({
   invalid,
   emptyLabel = "—",
   portaled = true,
+  size = "md",
+  showCheckmarks = true,
+  buttonAriaLabel,
 }: Props) {
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
@@ -119,6 +128,9 @@ export function CheckmarkSelect({
     "max-h-60 overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
   );
 
+  const optionTextSize = size === "sm" ? "text-xs" : "text-sm";
+  const optionY = size === "sm" ? "py-2" : "py-2.5";
+
   function renderOptionList(extraStyle: CSSProperties, extraClass?: string) {
     return (
       <ul
@@ -143,24 +155,31 @@ export function CheckmarkSelect({
                   setOpen(false);
                 }}
                 className={cn(
-                  "flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm transition",
+                  "flex w-full items-center text-left transition",
+                  showCheckmarks ? "gap-2 px-3" : "px-3",
+                  optionY,
+                  optionTextSize,
                   isSelected
-                    ? "border-l-2 border-l-[color:var(--dash-accent,#111111)] bg-slate-50 font-semibold text-[color:var(--dash-accent,#111111)] dark:bg-slate-800/80"
+                    ? showCheckmarks
+                      ? "border-l-2 border-l-[color:var(--dash-accent,#111111)] bg-slate-50 font-semibold text-[color:var(--dash-accent,#111111)] dark:bg-slate-800/80"
+                      : "bg-slate-50 font-semibold text-[color:var(--dash-accent,#111111)] dark:bg-slate-800/80"
                     : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800",
                   disabled && "pointer-events-none opacity-50",
                 )}
               >
-                <span
-                  className={cn(
-                    "flex size-5 shrink-0 items-center justify-center rounded-md border",
-                    isSelected
-                      ? "border-transparent bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)] shadow-sm"
-                      : "border-transparent bg-transparent text-transparent",
-                  )}
-                  aria-hidden
-                >
-                  <Check className="size-3.5" strokeWidth={2.5} />
-                </span>
+                {showCheckmarks ? (
+                  <span
+                    className={cn(
+                      "flex size-5 shrink-0 items-center justify-center rounded-md border",
+                      isSelected
+                        ? "border-transparent bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)] shadow-sm"
+                        : "border-transparent bg-transparent text-transparent",
+                    )}
+                    aria-hidden
+                  >
+                    <Check className="size-3.5" strokeWidth={2.5} />
+                  </span>
+                ) : null}
                 <span className="min-w-0 flex-1 truncate">{opt.label}</span>
               </button>
             </li>
@@ -171,7 +190,10 @@ export function CheckmarkSelect({
   }
 
   const triggerClass = cn(
-    "flex h-11 w-full items-center justify-between gap-2 rounded-xl border px-3.5 text-left text-sm font-medium shadow-sm outline-none transition",
+    "flex w-full items-center justify-between gap-1.5 border text-left font-medium outline-none transition",
+    size === "sm"
+      ? "h-8 min-h-8 rounded-md px-2 text-xs shadow-sm"
+      : "h-11 gap-2 rounded-xl px-3.5 text-sm shadow-sm",
     disabled
       ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-600"
       : cn(
@@ -195,6 +217,7 @@ export function CheckmarkSelect({
         ref={triggerRef}
         id={id}
         type="button"
+        aria-label={buttonAriaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
         disabled={disabled}
@@ -210,7 +233,8 @@ export function CheckmarkSelect({
         <span className={cn("truncate", !value && "text-slate-400 dark:text-slate-500")}>{displayLabel}</span>
         <ChevronDown
           className={cn(
-            "size-4 shrink-0 text-[color:var(--dash-accent,#111111)] opacity-80 transition dark:opacity-90",
+            "shrink-0 text-[color:var(--dash-accent,#111111)] opacity-80 transition dark:opacity-90",
+            size === "sm" ? "size-3.5" : "size-4",
             open && !disabled && "rotate-180",
           )}
           aria-hidden
@@ -226,7 +250,7 @@ export function CheckmarkSelect({
                 position: "fixed",
                 top: popoverRect.top,
                 left: popoverRect.left,
-                width: Math.max(popoverRect.width, 200),
+                width: Math.max(popoverRect.width, size === "sm" ? 120 : 200),
                 zIndex: 200,
                 ["--dash-accent" as string]: portalAccent,
                 ["--dash-on-accent" as string]: portalOnAccent,

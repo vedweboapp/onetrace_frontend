@@ -2,6 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import * as React from "react";
+import { useSyncExternalStore } from "react";
 import { useTheme } from "@teispace/next-themes";
 import { useShallow } from "zustand/react/shallow";
 import type { DashboardAccentId } from "@/features/dashboard/store/dashboard-appearance.store";
@@ -28,14 +29,21 @@ function isMonochromeBlackPreset(
   return false;
 }
 
+function useIsClient() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+}
+
 /**
  * Sets `--dash-accent` and `--dash-on-accent` for dashboard + settings UI
  * (auth/public use root defaults from globals.css).
  */
 export function DashboardAppearanceScope({ children, className }: Props) {
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => setMounted(true), []);
+  const mounted = useIsClient();
 
   const { accentKind, accent, customAccentHex } = useDashboardAppearanceStore(
     useShallow((s) => ({

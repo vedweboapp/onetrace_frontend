@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/core/utils/http.util";
 import {
@@ -14,32 +14,50 @@ import type { CompositeItem } from "@/features/composite-items/types/composite-i
 import { fetchGroupsPage } from "@/features/groups/api/group.api";
 import type { Group } from "@/features/groups/types/group.types";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
-import { parseGroupIdParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { Link } from "@/i18n/navigation";
+import { ListPageCallout } from "@/shared/components/layout/list-page-callout";
+import { routes } from "@/shared/config/routes";
+import { hasListActiveFilters, parseGroupIdParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import {
   AppButton,
   CheckmarkSelect,
   ConfirmDialog,
   DataTable,
   DataTableBody,
-  DataTableEmptyRow,
   DataTableHead,
   DataTablePaginationBar,
   DataTableRow,
   DataTableScroll,
   DataTableTd,
   DataTableTh,
+  DashboardEmptyState,
+  DataTableRowActionsMenu,
+  ListPageCard,
+  ListPageCardGrid,
+  ListPageCardSkeleton,
+  ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
-  TableIconActionButton,
-  TableRowActions,
 } from "@/shared/ui";
+import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
+import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 
 export function CompositeItemsPanel() {
   const t = useTranslations("Dashboard.compositeItems");
   const tList = useTranslations("Dashboard.list");
   const locale = useLocale();
 
-  const { page, search, groupParam, setUrl, setPage } = useListUrlState();
+  const {
+    page,
+    pageSize,
+    listViewMode,
+    search,
+    groupParam,
+    setUrl,
+    setPage,
+    setPageSize,
+    setListViewMode,
+  } = useListUrlState();
   const filterGroupId = parseGroupIdParam(groupParam) ?? null;
 
   const [items, setItems] = React.useState<CompositeItem[]>([]);
@@ -72,6 +90,8 @@ export function CompositeItemsPanel() {
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deletingItem, setDeletingItem] = React.useState<CompositeItem | null>(null);
   const [deleting, setDeleting] = React.useState(false);
+
+  const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
   const groupOptions = React.useMemo(
     () => groups.map((g) => ({ value: String(g.id), label: g.name })),
@@ -115,8 +135,9 @@ export function CompositeItemsPanel() {
   }, [somePageSelected, allPageSelected]);
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- bulk selection applies only to the current list scope
     setSelectedIds(new Set());
-  }, [page, filterGroupId, search]);
+  }, [page, pageSize, filterGroupId, search]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -145,7 +166,7 @@ export function CompositeItemsPanel() {
       setLoading(true);
       setLoadError(null);
       try {
-        const { items: rows, pagination: p } = await fetchCompositeItemsPage(page, 20, {
+        const { items: rows, pagination: p } = await fetchCompositeItemsPage(page, pageSize, {
           groupId: filterGroupId ?? undefined,
           search: search || undefined,
         });
@@ -165,7 +186,7 @@ export function CompositeItemsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, filterGroupId, search, refreshNonce, t]);
+  }, [page, pageSize, filterGroupId, search, refreshNonce, t]);
 
   const dateFmt = React.useMemo(
     () =>
@@ -256,39 +277,73 @@ export function CompositeItemsPanel() {
     }
   }
 
+  const hasActiveFilters = hasListActiveFilters({ search, groupParam });
+  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const pageRange = getListPageRange(pagination);
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between">
-        <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
-          <ListPageSearchField
-            value={search}
-            onCommit={commitSearch}
-            placeholder={tList("searchPlaceholder")}
-            ariaLabel={tList("searchAria")}
-          />
-          <div className="min-w-0 sm:w-56">
-            <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">{t("filterGroup")}</span>
-            <CheckmarkSelect
-              listLabel={t("filterGroup")}
-              options={groupFilterSelectOptions}
-              value={groupParam ?? ""}
-              emptyLabel={t("filterAllGroups")}
-              disabled={groupOptions.length === 0}
-              portaled
-              className="w-full"
-              onChange={(v) => setUrl({ group: v || null, page: null })}
-            />
-            {groupsError ? <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">{groupsError}</p> : null}
-          </div>
-        </div>
-        <AppButton type="button" variant="primary" size="md" className="shrink-0 gap-2 self-start lg:self-center" onClick={openCreate}>
-          <Plus className="size-4" strokeWidth={2} aria-hidden />
-          {t("add")}
-        </AppButton>
-      </div>
+      <ListPageCallout>
+        <span className="text-slate-600 dark:text-slate-400">
+          {t("groupsHint.prefix")}{" "}
+          <Link
+            href={routes.dashboard.groups}
+            className="font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+          >
+            {t("groupsHint.link")}
+          </Link>
+          {t("groupsHint.suffix")}
+        </span>
+      </ListPageCallout>
+
+      {!hideListChrome ? (
+        <ListPageHeader
+          title={t("title")}
+          description={t("subtitle")}
+          viewMode={listViewMode}
+          onViewModeChange={setListViewMode}
+          tableViewLabel={tList("tableView")}
+          listViewLabel={tList("listView")}
+          action={
+            <AppButton type="button" variant="primary" size="md" onClick={openCreate} className="gap-2">
+              <Plus className="size-4" strokeWidth={2} aria-hidden />
+              {t("add")}
+            </AppButton>
+          }
+          controls={
+            <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
+              <ListPageSearchField
+                value={search}
+                onCommit={commitSearch}
+                placeholder={tList("searchPlaceholder")}
+                ariaLabel={tList("searchAria")}
+                className="sm:max-w-sm"
+              />
+              <div className="min-w-0 sm:w-56">
+                <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {t("filterGroup")}
+                </span>
+                <CheckmarkSelect
+                  listLabel={t("filterGroup")}
+                  options={groupFilterSelectOptions}
+                  value={groupParam ?? ""}
+                  emptyLabel={t("filterAllGroups")}
+                  disabled={groupOptions.length === 0}
+                  portaled
+                  className="w-full"
+                  onChange={(v) => setUrl({ group: v || null, page: null })}
+                />
+                {groupsError ? (
+                  <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">{groupsError}</p>
+                ) : null}
+              </div>
+            </div>
+          }
+        />
+      ) : null}
 
       {!loading && !loadError && items.length > 0 ? (
-        <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
+        <div className="flex flex-col gap-3 border border-slate-200/90 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
           <p className="text-sm text-slate-600 dark:text-slate-400">
             {t("bulkBarLabel")}: <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">{selectedIds.size}</span>
           </p>
@@ -311,14 +366,113 @@ export function CompositeItemsPanel() {
         </div>
       ) : null}
 
-      <SurfaceShell>
+      <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
         ) : loading ? (
-          <div className="space-y-2 p-6">
-            <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-            <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-            <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+          listViewMode === "list" ? (
+            <div className="p-4 sm:p-6">
+              <ListPageCardGrid>
+                {Array.from({ length: 6 }, (_, i) => (
+                  <ListPageCardSkeleton key={i} />
+                ))}
+              </ListPageCardGrid>
+            </div>
+          ) : (
+            <div className="space-y-2 p-6">
+              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+            </div>
+          )
+        ) : items.length === 0 ? (
+          hasActiveFilters ? (
+            <DashboardEmptyState
+              iconName="noResults"
+              title={tList("noResultsTitle")}
+              description={tList("noResultsDescription")}
+              action={
+                <AppButton
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  onClick={() => setUrl({ search: null, group: null, page: null }, { replace: true })}
+                >
+                  {tList("clearFilters")}
+                </AppButton>
+              }
+            />
+          ) : (
+            <DashboardEmptyState
+              iconName="compositeItems"
+              title={t("emptyTitle")}
+              description={t("emptyDescription")}
+              action={
+                <AppButton type="button" variant="primary" size="md" className="gap-2" onClick={openCreate}>
+                  <Plus className="size-4" strokeWidth={2} aria-hidden />
+                  {t("add")}
+                </AppButton>
+              }
+            />
+          )
+        ) : listViewMode === "list" ? (
+          <div className="p-4 sm:p-6">
+            <div className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-4 dark:border-slate-800">
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                checked={allPageSelected}
+                onChange={toggleSelectAllPage}
+                disabled={items.length === 0}
+                className="size-4 rounded border-slate-300 text-[color:var(--dash-accent)] focus:ring-[color:var(--dash-accent)] dark:border-slate-600"
+                aria-label={t("bulkBarLabel")}
+              />
+              <span className="text-sm text-slate-600 dark:text-slate-400">{t("bulkBarLabel")}</span>
+            </div>
+            <ListPageCardGrid>
+              {items.map((row) => (
+                <ListPageCard
+                  key={row.id}
+                  leading={
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(row.id)}
+                      onChange={() => toggleSelected(row.id)}
+                      className="size-4 rounded border-slate-300 text-[color:var(--dash-accent)] focus:ring-[color:var(--dash-accent)] dark:border-slate-600"
+                      aria-label={`${t("bulkBarLabel")}: ${row.name}`}
+                    />
+                  }
+                  title={row.name}
+                  subtitle={groupLabelById[row.group] ?? `#${row.group}`}
+                  meta={String(row.organization)}
+                  description={[
+                    row.is_active ? t("statusActive") : t("statusInactive"),
+                    dateFmt.format(new Date(row.created_at)),
+                  ].join(" · ")}
+                  menu={
+                    <DataTableRowActionsMenu
+                      menuAriaLabel={tList("openRowActions")}
+                      items={[
+                        {
+                          id: "edit",
+                          label: t("edit"),
+                          onSelect: () => openEdit(row),
+                        },
+                        {
+                          id: "delete",
+                          label: t("delete"),
+                          tone: "danger",
+                          onSelect: () => {
+                            setDeletingItem(row);
+                            setDeleteOpen(true);
+                          },
+                        },
+                      ]}
+                    />
+                  }
+                />
+              ))}
+            </ListPageCardGrid>
           </div>
         ) : (
           <DataTableScroll>
@@ -342,14 +496,13 @@ export function CompositeItemsPanel() {
                   <DataTableTh className="hidden md:table-cell">{t("table.organization")}</DataTableTh>
                   <DataTableTh className="hidden lg:table-cell">{t("table.created")}</DataTableTh>
                   <DataTableTh className="hidden xl:table-cell">{t("table.status")}</DataTableTh>
-                  <DataTableTh narrow>{t("table.actions")}</DataTableTh>
+                  <DataTableTh narrow>
+                    <span className="sr-only">{t("table.actions")}</span>
+                  </DataTableTh>
                 </tr>
               </DataTableHead>
               <DataTableBody>
-                {items.length === 0 ? (
-                  <DataTableEmptyRow message={t("empty")} colSpan={7} />
-                ) : (
-                  items.map((row) => (
+                {items.map((row) => (
                     <DataTableRow key={row.id}>
                       <DataTableTd narrow>
                         <input
@@ -360,7 +513,7 @@ export function CompositeItemsPanel() {
                           aria-label={`${t("bulkBarLabel")}: ${row.name}`}
                         />
                       </DataTableTd>
-                      <DataTableTd className="font-medium text-slate-900 dark:text-slate-100">{row.name}</DataTableTd>
+                      <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{row.name}</DataTableTd>
                       <DataTableTd className="hidden text-slate-700 dark:text-slate-300 sm:table-cell">
                         {groupLabelById[row.group] ?? `#${row.group}`}
                       </DataTableTd>
@@ -382,29 +535,29 @@ export function CompositeItemsPanel() {
                           {row.is_active ? t("statusActive") : t("statusInactive")}
                         </span>
                       </DataTableTd>
-                      <DataTableTd narrow className="align-middle">
-                        <TableRowActions>
-                          <TableIconActionButton
-                            label={t("edit")}
-                            variant="secondary"
-                            onClick={() => openEdit(row)}
-                            icon={<Pencil strokeWidth={2} />}
-                          />
-                          <TableIconActionButton
-                            label={t("delete")}
-                            variant="ghost"
-                            className="text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
-                            onClick={() => {
-                              setDeletingItem(row);
-                              setDeleteOpen(true);
-                            }}
-                            icon={<Trash2 strokeWidth={2} />}
-                          />
-                        </TableRowActions>
+                      <DataTableTd narrow>
+                        <DataTableRowActionsMenu
+                          menuAriaLabel={tList("openRowActions")}
+                          items={[
+                            {
+                              id: "edit",
+                              label: t("edit"),
+                              onSelect: () => openEdit(row),
+                            },
+                            {
+                              id: "delete",
+                              label: t("delete"),
+                              tone: "danger",
+                              onSelect: () => {
+                                setDeletingItem(row);
+                                setDeleteOpen(true);
+                              },
+                            },
+                          ]}
+                        />
                       </DataTableTd>
                     </DataTableRow>
-                  ))
-                )}
+                  ))}
               </DataTableBody>
             </DataTable>
           </DataTableScroll>
@@ -414,14 +567,23 @@ export function CompositeItemsPanel() {
           <DataTablePaginationBar
             pagination={pagination}
             summary={t("pageLabel", {
-              current: pagination.current_page,
-              total: pagination.total_pages,
-              count: pagination.total_records,
+              start: pageRange.start,
+              end: pageRange.end,
+              total: pagination.total_records,
             })}
             prevLabel={t("prev")}
             nextLabel={t("next")}
             onPrev={() => setPage(Math.max(1, pagination.current_page - 1))}
             onNext={() => setPage(pagination.current_page + 1)}
+            onPageSelect={(p) => setPage(p)}
+            pageSizeControl={{
+              label: tList("rowsPerPage"),
+              listLabel: tList("rowsPerPage"),
+              value: pageSize,
+              options: pageSizeOptions,
+              onChange: setPageSize,
+              disabled: loading,
+            }}
           />
         ) : null}
       </SurfaceShell>

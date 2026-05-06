@@ -40,9 +40,14 @@ export async function fetchDrawingsPage(
   projectId: number,
   page = 1,
   pageSize = 100,
+  search?: string,
 ): Promise<{ items: Drawing[]; pagination: ProjectPagination }> {
   const { data } = await api.get<DrawingListResponse>(DRAWING_PATHS.list(projectId), {
-    params: { page, page_size: pageSize },
+    params: {
+      page,
+      page_size: pageSize,
+      ...(search?.trim() ? { search: search.trim() } : {}),
+    },
   });
   assertEnvelopeSuccess(data);
   const items = sortDrawings(data.data);

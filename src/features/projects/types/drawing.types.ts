@@ -15,6 +15,10 @@ export type Drawing = {
   deleted_at: string | null;
   is_deleted: boolean;
   name: string;
+  /** Optional location metadata from API (e.g. block / zone). */
+  block?: string | null;
+  /** Optional level/phase label from API. */
+  level?: string | null;
   order: number;
   drawing_file: string;
   drawing_file_size: number;

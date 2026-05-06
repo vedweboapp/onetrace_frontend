@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { z } from "zod";
 import {
@@ -11,9 +11,9 @@ import {
   updatePinStatus,
 } from "@/features/pin-status/api/pin-status.api";
 import type { PinStatus } from "@/features/pin-status/types/pin-status.types";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess } from "@/shared/feedback/app-toast";
 import { cn } from "@/core/utils/http.util";
-import { useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import {
   AppButton,
   AppModal,
@@ -26,14 +26,22 @@ import {
   DataTableTd,
   DataTablePaginationBar,
   DataTableTh,
+  DashboardEmptyState,
+  DataTableRowActionsMenu,
   DetailPanel,
   FieldGroup,
+  ListPageCard,
+  ListPageCardGrid,
+  ListPageCardSkeleton,
+  ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
   fieldLabelClassName,
   surfaceInputClassName,
 } from "@/shared/ui";
 import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
+import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
+import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 
 const DEFAULT_BG = "#E5E7EB";
 const DEFAULT_TEXT = "#374151";
@@ -52,7 +60,10 @@ export function PinStatusSettingsPanel() {
   const t = useTranslations("Dashboard.pinStatus");
   const tList = useTranslations("Dashboard.list");
   const locale = useLocale();
-  const { page, search, setUrl, setPage } = useListUrlState();
+  const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } =
+    useListUrlState();
+
+  const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -97,7 +108,7 @@ export function PinStatusSettingsPanel() {
       setLoading(true);
       setLoadError(null);
       try {
-        const { items: nextItems, pagination: p } = await fetchPinStatusesPage(page, 20, {
+        const { items: nextItems, pagination: p } = await fetchPinStatusesPage(page, pageSize, {
           search: search || undefined,
         });
         if (!cancelled) {
@@ -116,7 +127,7 @@ export function PinStatusSettingsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, search, refreshNonce, t]);
+  }, [page, pageSize, search, refreshNonce, t]);
 
   function openCreate() {
     setEditing(null);
@@ -160,8 +171,6 @@ export function PinStatusSettingsPanel() {
         if (field === "text_colour") nextErrors.text_colour = String(issue.message);
       }
       setErrors(nextErrors);
-      const issue = parsed.error.issues[0];
-      toastError(typeof issue.message === "string" ? issue.message : t("validationName"));
       return;
     }
 
@@ -211,33 +220,130 @@ export function PinStatusSettingsPanel() {
     [locale],
   );
 
+  const hasActiveFilters = hasListActiveFilters({ search });
+  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const pageRange = getListPageRange(pagination);
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-        <ListPageSearchField
-          value={search}
-          onCommit={commitSearch}
-          placeholder={tList("searchPlaceholder")}
-          ariaLabel={tList("searchAria")}
-          className="sm:max-w-sm"
+      {!hideListChrome ? (
+        <ListPageHeader
+          title={t("title")}
+          description={t("subtitle")}
+          viewMode={listViewMode}
+          onViewModeChange={setListViewMode}
+          tableViewLabel={tList("tableView")}
+          listViewLabel={tList("listView")}
+          action={
+            <AppButton type="button" variant="primary" size="md" onClick={openCreate} className="gap-2">
+              <Plus className="size-4" strokeWidth={2} aria-hidden />
+              {t("add")}
+            </AppButton>
+          }
+          controls={
+            <ListPageSearchField
+              value={search}
+              onCommit={commitSearch}
+              placeholder={tList("searchPlaceholder")}
+              ariaLabel={tList("searchAria")}
+              className="sm:max-w-sm"
+            />
+          }
         />
-        <AppButton type="button" variant="primary" size="md" onClick={openCreate} className="shrink-0 gap-2 self-start sm:self-center">
-          <Plus className="size-4" strokeWidth={2} aria-hidden />
-          {t("add")}
-        </AppButton>
-      </div>
+      ) : null}
 
-      <SurfaceShell>
+      <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
         ) : loading ? (
-          <div className="space-y-2 p-6">
-            <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-            <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-            <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-          </div>
+          listViewMode === "list" ? (
+            <div className="p-4 sm:p-6">
+              <ListPageCardGrid>
+                {Array.from({ length: 6 }, (_, i) => (
+                  <ListPageCardSkeleton key={i} />
+                ))}
+              </ListPageCardGrid>
+            </div>
+          ) : (
+            <div className="space-y-2 p-6">
+              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+            </div>
+          )
         ) : items.length === 0 ? (
-          <p className="p-10 text-center text-sm text-slate-500 dark:text-slate-400">{t("empty")}</p>
+          hasActiveFilters ? (
+            <DashboardEmptyState
+              iconName="noResults"
+              title={tList("noResultsTitle")}
+              description={tList("noResultsDescription")}
+              action={
+                <AppButton
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  onClick={() => setUrl({ search: null, page: null }, { replace: true })}
+                >
+                  {tList("clearFilters")}
+                </AppButton>
+              }
+            />
+          ) : (
+            <DashboardEmptyState
+              iconName="pinStatus"
+              title={t("emptyTitle")}
+              description={t("emptyDescription")}
+              action={
+                <AppButton type="button" variant="primary" size="md" onClick={openCreate} className="gap-2">
+                  <Plus className="size-4" strokeWidth={2} aria-hidden />
+                  {t("add")}
+                </AppButton>
+              }
+            />
+          )
+        ) : listViewMode === "list" ? (
+          <div className="p-4 sm:p-6">
+            <ListPageCardGrid>
+              {items.map((row) => (
+                <ListPageCard
+                  key={row.id}
+                  title={row.status_name}
+                  subtitle={
+                    <span
+                      className="inline-flex rounded-md border border-black/5 px-2.5 py-1 text-xs font-semibold shadow-sm"
+                      style={{
+                        backgroundColor: normalizeHex(row.bg_colour),
+                        color: normalizeHex(row.text_colour),
+                      }}
+                    >
+                      {row.status_name}
+                    </span>
+                  }
+                  meta={dateFmt.format(new Date(row.created_at))}
+                  description={`${normalizeHex(row.bg_colour).toUpperCase()} · ${normalizeHex(row.text_colour).toUpperCase()}`}
+                  onCardClick={() => setDetailRow(row)}
+                  menu={
+                    <DataTableRowActionsMenu
+                      menuAriaLabel={tList("openRowActions")}
+                      items={[
+                        {
+                          id: "edit",
+                          label: t("edit"),
+                          onSelect: () => openEdit(row),
+                        },
+                        {
+                          id: "delete",
+                          label: t("delete"),
+                          tone: "danger",
+                          onSelect: () => setDeleteTarget(row),
+                        },
+                      ]}
+                    />
+                  }
+                />
+              ))}
+            </ListPageCardGrid>
+          </div>
         ) : (
           <DataTableScroll>
             <DataTable>
@@ -246,13 +352,15 @@ export function PinStatusSettingsPanel() {
                   <DataTableTh>{t("table.status")}</DataTableTh>
                   <DataTableTh>{t("table.preview")}</DataTableTh>
                   <DataTableTh className="hidden sm:table-cell">{t("table.created")}</DataTableTh>
-                  <DataTableTh className="w-[120px] text-right">{t("table.actions")}</DataTableTh>
+                  <DataTableTh narrow>
+                    <span className="sr-only">{t("table.actions")}</span>
+                  </DataTableTh>
                 </tr>
               </DataTableHead>
               <DataTableBody>
                 {items.map((row) => (
                   <DataTableRow key={row.id} clickable onClick={() => setDetailRow(row)}>
-                    <DataTableTd className="font-medium text-slate-900 dark:text-slate-100">
+                    <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">
                       {row.status_name}
                     </DataTableTd>
                     <DataTableTd>
@@ -269,33 +377,23 @@ export function PinStatusSettingsPanel() {
                     <DataTableTd className="hidden text-slate-500 dark:text-slate-400 sm:table-cell">
                       {dateFmt.format(new Date(row.created_at))}
                     </DataTableTd>
-                    <DataTableTd className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          className="inline-flex size-8 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEdit(row);
-                          }}
-                          aria-label={t("edit")}
-                          title={t("edit")}
-                        >
-                          <Pencil className="size-4" />
-                        </button>
-                        <button
-                          type="button"
-                          className="inline-flex size-8 items-center justify-center rounded-lg text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteTarget(row);
-                          }}
-                          aria-label={t("delete")}
-                          title={t("delete")}
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
-                      </div>
+                    <DataTableTd narrow>
+                      <DataTableRowActionsMenu
+                        menuAriaLabel={tList("openRowActions")}
+                        items={[
+                          {
+                            id: "edit",
+                            label: t("edit"),
+                            onSelect: () => openEdit(row),
+                          },
+                          {
+                            id: "delete",
+                            label: t("delete"),
+                            tone: "danger",
+                            onSelect: () => setDeleteTarget(row),
+                          },
+                        ]}
+                      />
                     </DataTableTd>
                   </DataTableRow>
                 ))}
@@ -308,14 +406,23 @@ export function PinStatusSettingsPanel() {
           <DataTablePaginationBar
             pagination={pagination}
             summary={t("pageLabel", {
-              current: pagination.current_page,
-              total: pagination.total_pages,
-              count: pagination.total_records,
+              start: pageRange.start,
+              end: pageRange.end,
+              total: pagination.total_records,
             })}
             prevLabel={t("prev")}
             nextLabel={t("next")}
             onPrev={() => setPage(Math.max(1, pagination.current_page - 1))}
             onNext={() => setPage(pagination.current_page + 1)}
+            onPageSelect={(p) => setPage(p)}
+            pageSizeControl={{
+              label: tList("rowsPerPage"),
+              listLabel: tList("rowsPerPage"),
+              value: pageSize,
+              options: pageSizeOptions,
+              onChange: setPageSize,
+              disabled: loading,
+            }}
           />
         ) : null}
       </SurfaceShell>
@@ -412,7 +519,14 @@ export function PinStatusSettingsPanel() {
         }
       >
         <div className="space-y-4">
-          <FieldGroup label={`${t("modal.statusName")} *`} htmlFor="pin-status-name">
+          <FieldGroup
+            label={
+              <span>
+                {t("modal.statusName")} <span className="text-red-500">*</span>
+              </span>
+            }
+            htmlFor="pin-status-name"
+          >
             <input
               id="pin-status-name"
               value={statusName}

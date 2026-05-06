@@ -9,6 +9,7 @@
     "title": "Bienvenido de nuevo",
     "subtitle": "Inicia sesión en tu cuenta para continuar.",
     "email": "Correo",
+    "workEmail": "Correo laboral",
     "emailPlaceholder": "tu@empresa.com",
     "password": "Contraseña",
     "showPassword": "Mostrar contraseña",
@@ -17,8 +18,23 @@
     "submit": "Entrar",
     "submitting": "Entrando…",
     "forgotPasswordLink": "¿Olvidaste la contraseña?",
+    "keepSignedIn": "Mantener sesión iniciada",
+    "otpLogin": "Inicio con OTP",
+    "otpLabel": "OTP",
+    "continue": "Continuar",
+    "sendOtp": "Enviar OTP",
+    "otpRequired": "Ingresa el OTP de 6 dígitos.",
+    "otpSent": "OTP enviado a {email}",
+    "otpSendError": "No se pudo enviar el OTP. Inténtalo de nuevo.",
+    "otpVerifyError": "No se pudo verificar el OTP. Revisa el código e inténtalo de nuevo.",
+    "resendIn": "Reenviar código en",
+    "resendNow": "Reenviar ahora",
     "noAccount": "¿No tienes cuenta?",
     "signUpLink": "Crear una",
+    "heroLiveSync": "Sincronización en vivo",
+    "heroTitleLine1": "Gestión de Construcción",
+    "heroTitleLine2": "de Nueva Generación",
+    "heroSubtitle": "Accede a planos en tiempo real, gestiona la logística de obra y coordina contratistas desde una plataforma unificada.",
     "errors": {
       "invalidCredentials": "Correo o contraseña no válidos. Inténtalo de nuevo."
     },
@@ -28,9 +44,27 @@
       "backToLogin": "Volver a iniciar sesión"
     },
     "forgotPassword": {
-      "title": "Restablecer contraseña",
-      "body": "El restablecimiento irá aquí: conecta tu API cuando toque.",
+      "title": "¿Olvidaste la contraseña?",
+      "body": "Ingresa tu correo para restablecer tu contraseña",
       "backToLogin": "Volver a iniciar sesión"
+    },
+    "resetPassword": {
+      "title": "Restablecer contraseña",
+      "body": "Crea una contraseña segura para tu cuenta",
+      "newPassword": "Nueva contraseña",
+      "confirmPassword": "Confirmar contraseña",
+      "cta": "Restablecer contraseña",
+      "tokenMissing": "Falta el token de restablecimiento. Solicita un nuevo restablecimiento.",
+      "passwordsDoNotMatch": "Las contraseñas no coinciden.",
+      "requirements": {
+        "atLeast8": "Al menos 8 caracteres",
+        "atLeastUpper": "Al menos una letra mayúscula (A-Z)",
+        "atLeastLower": "Al menos una letra minúscula (a-z)",
+        "atLeastNumber": "Al menos un número (0-9)",
+        "atLeastSpecial": "Al menos un carácter especial (!@#$%^&*)"
+      },
+      "success": "Contraseña restablecida correctamente",
+      "error": "No se pudo restablecer la contraseña. Inténtalo de nuevo."
     }
   },
   "ApiErrors": {
@@ -46,7 +80,8 @@
   },
   "Dashboard": {
     "common": {
-      "back": "Atrás"
+      "back": "Atrás",
+      "breadcrumbNav": "Migas de pan"
     },
     "brand": {
       "appName": "One Trace"
@@ -56,12 +91,14 @@
       "eyebrowSettings": "Ajustes",
       "closeSettings": "Cerrar ajustes",
       "toggleSidebar": "Expandir o contraer barra lateral",
+      "notifications": "Notificaciones",
       "signOut": "Cerrar sesión",
       "openSettings": "Ajustes y apariencia",
       "openProfileMenu": "Abrir menú de perfil",
       "profileMenuLabel": "Cuenta"
     },
     "sidebar": {
+      "home": "Inicio",
       "clients": "Clientes",
       "projects": "Proyectos",
       "groups": "Grupos",
@@ -132,6 +169,8 @@
         "actions": "Acciones"
       },
       "empty": "Aún no hay estados de pin. Añade uno para empezar.",
+      "emptyTitle": "Aún no hay estados de pin",
+      "emptyDescription": "Crea etiquetas de flujo para los pins usados en tus proyectos.",
       "loadError": "No se pudieron cargar los estados. Inténtalo de nuevo.",
       "modal": {
         "createTitle": "Nuevo estado de pin",
@@ -145,7 +184,7 @@
       "deleteConfirmTitle": "¿Eliminar este estado?",
       "deleteConfirmBody": "Los pins que usen este estado pueden verse afectados. Esta acción no se puede deshacer.",
       "confirmDelete": "Eliminar",
-      "pageLabel": "Página {current} de {total} ({count} registros)",
+      "pageLabel": "Mostrando {start}-{end} de {total} estados",
       "prev": "Anterior",
       "next": "Siguiente",
       "saved": "Estado actualizado",
@@ -162,20 +201,36 @@
       "subtitle": "Organizaciones y contactos con los que trabajas. Pulsa una fila para ver todos los datos.",
       "add": "Añadir cliente",
       "empty": "Aún no hay clientes. Añade el primero para empezar.",
+      "emptyTitle": "Aún no hay clientes",
+      "emptyDescription": "Crea tu primer cliente para organizar contactos y trabajos.",
       "loadError": "No se pudieron cargar los clientes. Inténtalo de nuevo.",
       "missingOrganization": "No hay organización de espacio de trabajo en esta sesión. Cierra sesión y vuelve a entrar, o contacta con soporte.",
       "createdToast": "Cliente creado correctamente",
       "updatedToast": "Cliente actualizado correctamente",
-      "pageLabel": "Página {current} de {total} ({count} registros)",
+      "deletedToast": "Cliente eliminado",
+      "filterState": "Estado activo",
+      "filterAll": "Todos",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "activatedToast": "Cliente activado",
+      "deactivatedToast": "Cliente desactivado",
+      "toggleActiveError": "No se pudo actualizar el estado del cliente. Inténtalo de nuevo.",
+      "pageLabel": "Mostrando {start}-{end} de {total} clientes",
       "prev": "Anterior",
       "next": "Siguiente",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "deleteConfirmTitle": "¿Eliminar este cliente?",
+      "deleteConfirmBody": "Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar cliente",
       "table": {
         "name": "Cliente",
         "contact": "Contacto",
         "email": "Correo",
         "phone": "Teléfono",
         "status": "Estado",
-        "created": "Creado"
+        "created": "Creado",
+        "actions": "Acciones"
       },
       "status": {
         "active": "Activo",
@@ -240,12 +295,19 @@
       }
     },
     "home": {
-      "title": "Resumen",
-      "body": "Estás en el shell de la app. Añade widgets, tablas y navegación aquí."
+      "title": "Trabajando en esta página",
+      "body": "Esta sección está en desarrollo. Vuelve pronto para ver novedades."
     },
     "list": {
       "searchPlaceholder": "Buscar…",
-      "searchAria": "Buscar en esta lista"
+      "searchAria": "Buscar en esta lista",
+      "rowsPerPage": "Filas por página",
+      "tableView": "Vista de tabla",
+      "listView": "Vista de lista",
+      "openRowActions": "Abrir acciones de la fila",
+      "noResultsTitle": "No hay resultados",
+      "noResultsDescription": "Nada coincide con tu búsqueda o filtros. Ajústalos o borra los filtros para ver más elementos.",
+      "clearFilters": "Borrar filtros"
     },
     "projects": {
       "metaTitle": "Proyectos",
@@ -254,6 +316,8 @@
       "subtitle": "Organiza el trabajo por cliente y fechas. Abre una fila para ver todos los datos.",
       "add": "Añadir proyecto",
       "empty": "Aún no hay proyectos. Crea el primero para empezar.",
+      "emptyTitle": "Aún no hay proyectos",
+      "emptyDescription": "Crea tu primer proyecto para empezar a planificar y dar seguimiento.",
       "loadError": "No se pudieron cargar los proyectos. Inténtalo de nuevo.",
       "missingOrganization": "No hay organización de espacio de trabajo en esta sesión. Cierra sesión y vuelve a entrar, o contacta con soporte.",
       "createdToast": "Proyecto creado correctamente",
@@ -268,7 +332,7 @@
       "activatedToast": "Proyecto activado",
       "deactivatedToast": "Proyecto desactivado",
       "toggleActiveError": "No se pudo actualizar el estado del proyecto. Inténtalo de nuevo.",
-      "pageLabel": "Página {current} de {total} ({count} registros)",
+      "pageLabel": "Mostrando {start}-{end} de {total} proyectos",
       "prev": "Anterior",
       "next": "Siguiente",
       "delete": "Eliminar",
@@ -278,8 +342,9 @@
       "table": {
         "name": "Proyecto",
         "client": "Cliente",
-        "start": "Inicio",
-        "end": "Fin",
+        "start": "Fecha de inicio",
+        "end": "Fecha de fin",
+        "description": "Descripción",
         "status": "Estado",
         "activeState": "Activo",
         "created": "Creado",
@@ -308,23 +373,31 @@
           "specs": "Especificaciones",
           "docs": "Documentos",
           "approvals": "Aprobaciones"
-        },
-        "tabPlaceholder": "Esta sección estará disponible pronto."
+        }
       },
       "drawings": {
         "title": "Planos",
+        "subtitle": "Administra y consulta planos y proyectos de construcción.",
+        "createDrawing": "Crear plano",
+        "searchPlaceholder": "Buscar planos…",
+        "searchAria": "Buscar planos",
+        "updatedLabel": "Actualizado",
+        "levelLabel": "Nivel",
         "upload": "Subir",
         "open": "Abrir",
         "empty": "Aún no hay planos. Sube un PDF o una imagen para empezar.",
         "loadError": "No se pudieron cargar los planos. Inténtalo de nuevo.",
-        "pageLabel": "Página {current} de {total} ({count} planos)",
+        "pageLabel": "Mostrando {start}-{end} de {total} planos",
         "prev": "Anterior",
         "next": "Siguiente",
         "pinsLabelShort": "Pins:",
         "table": {
           "drawing": "Plano",
+          "block": "Bloque",
+          "level": "Nivel",
           "file": "Archivo",
           "pins": "Pins",
+          "updated": "Última actualización",
           "actions": "Acciones"
         },
         "modal": {
@@ -437,8 +510,10 @@
       },
       "add": "Añadir grupo",
       "empty": "Aún no hay grupos. Crea uno para organizar ítems compuestos.",
+      "emptyTitle": "Aún no hay grupos",
+      "emptyDescription": "Crea grupos para organizar tu catálogo de ítems compuestos.",
       "loadError": "No se pudieron cargar los grupos. Inténtalo de nuevo.",
-      "pageLabel": "Página {current} de {total} ({count} grupos)",
+      "pageLabel": "Mostrando {start}-{end} de {total} grupos",
       "prev": "Anterior",
       "next": "Siguiente",
       "deletedToast": "Grupo eliminado",
@@ -480,6 +555,8 @@
       },
       "add": "Añadir ítem",
       "empty": "Aún no hay ítems compuestos. Crea primero un grupo y luego añade ítems aquí.",
+      "emptyTitle": "Aún no hay ítems compuestos",
+      "emptyDescription": "Crea ítems compuestos y asígnalos a grupos.",
       "loadError": "No se pudieron cargar los ítems compuestos. Inténtalo de nuevo.",
       "groupsLoadError": "No se pudieron cargar los grupos — el filtro puede estar vacío.",
       "bulkBarLabel": "Seleccionados",
@@ -490,7 +567,7 @@
       "bulkNoneSelected": "Selecciona uno o más ítems con las casillas.",
       "filterGroup": "Grupo",
       "filterAllGroups": "Todos los grupos",
-      "pageLabel": "Página {current} de {total} ({count} ítems)",
+      "pageLabel": "Mostrando {start}-{end} de {total} ítems",
       "prev": "Anterior",
       "next": "Siguiente",
       "deletedToast": "Ítem compuesto eliminado",

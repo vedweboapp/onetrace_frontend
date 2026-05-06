@@ -17,6 +17,7 @@ import {
   AppTabs,
   type AppTabItem,
   ConfirmDialog,
+  DashboardUnderDevelopmentState,
   SurfaceShell,
 } from "@/shared/ui";
 
@@ -27,6 +28,7 @@ type Props = {
 export function ProjectDetailScreen({ projectId }: Props) {
   const t = useTranslations("Dashboard.projects");
   const tCommon = useTranslations("Dashboard.common");
+  const tHome = useTranslations("Dashboard.home");
   const locale = useLocale();
   const router = useRouter();
 
@@ -143,11 +145,21 @@ export function ProjectDetailScreen({ projectId }: Props) {
     const e = d.end_date?.slice(0, 10);
     if (!s || !e) return "";
     try {
-      return `${dateOnlyFmt.format(new Date(`${s}T12:00:00`))} → ${dateOnlyFmt.format(new Date(`${e}T12:00:00`))}`;
+      return `${dateOnlyFmt.format(new Date(`${s}T12:00:00`))} – ${dateOnlyFmt.format(new Date(`${e}T12:00:00`))}`;
     } catch {
       return "";
     }
   }
+
+  const detailBreadcrumb = React.useMemo(
+    () => [
+      { label: t("title"), href: routes.dashboard.projects },
+      {
+        label: detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle")),
+      },
+    ],
+    [detail?.name, loading, t],
+  );
 
   async function confirmDelete() {
     if (!detail) return;
@@ -168,8 +180,8 @@ export function ProjectDetailScreen({ projectId }: Props) {
     <div className="pb-12">
       <div className="mb-5 space-y-4 border-b border-slate-200/90 pb-5 dark:border-slate-800 sm:mb-6 sm:pb-6">
         <PageHeadingWithBack
-          backHref={routes.dashboard.projects}
-          backAriaLabel={tCommon("back")}
+          breadcrumb={detailBreadcrumb}
+          breadcrumbAriaLabel={tCommon("breadcrumbNav")}
           title={detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle"))}
           description={
             detail && !loading && !error
@@ -200,7 +212,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
         />
       </div>
 
-      <SurfaceShell>
+      <SurfaceShell className="rounded-none">
         <div
           role="tabpanel"
           id={`project-detail-tab-${activeTab}`}
@@ -237,9 +249,11 @@ export function ProjectDetailScreen({ projectId }: Props) {
           ) : detail && activeTab === "drawings" ? (
             <ProjectDrawingsTab projectId={detail.id} />
           ) : activeTab !== "details" ? (
-            <div className="p-4 sm:p-6">
-              <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">{t("detail.tabPlaceholder")}</p>
-            </div>
+            <DashboardUnderDevelopmentState
+              className="min-h-[calc(100vh-280px)] rounded-none px-4 sm:min-h-[420px] sm:px-6"
+              title={tHome("title")}
+              description={tHome("body")}
+            />
           ) : null}
         </div>
       </SurfaceShell>

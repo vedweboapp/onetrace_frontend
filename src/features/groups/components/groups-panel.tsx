@@ -1,38 +1,43 @@
 "use client";
 
 import * as React from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { cn } from "@/core/utils/http.util";
 import { deleteGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import { GroupFormModal } from "@/features/groups/components/group-form-modal";
 import type { Group } from "@/features/groups/types/group.types";
 import { toastSuccess } from "@/shared/feedback/app-toast";
-import { useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import {
   AppButton,
   ConfirmDialog,
   DataTable,
   DataTableBody,
-  DataTableEmptyRow,
   DataTableHead,
   DataTablePaginationBar,
   DataTableRow,
   DataTableScroll,
   DataTableTd,
   DataTableTh,
+  DashboardEmptyState,
+  DataTableRowActionsMenu,
+  ListPageCard,
+  ListPageCardGrid,
+  ListPageCardSkeleton,
+  ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
-  TableIconActionButton,
-  TableRowActions,
 } from "@/shared/ui";
+import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
+import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 
 export function GroupsPanel() {
   const t = useTranslations("Dashboard.groups");
   const tList = useTranslations("Dashboard.list");
   const locale = useLocale();
 
-  const { page, search, setUrl, setPage } = useListUrlState();
+  const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } =
+    useListUrlState();
 
   const [items, setItems] = React.useState<Group[]>([]);
   const [pagination, setPagination] = React.useState({
@@ -56,6 +61,8 @@ export function GroupsPanel() {
   const [deletingGroup, setDeletingGroup] = React.useState<Group | null>(null);
   const [deleting, setDeleting] = React.useState(false);
 
+  const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
+
   const commitSearch = React.useCallback(
     (q: string) => {
       const trimmed = q.trim();
@@ -70,7 +77,7 @@ export function GroupsPanel() {
       setLoading(true);
       setLoadError(null);
       try {
-        const { items: nextItems, pagination: p } = await fetchGroupsPage(page, 20, {
+        const { items: nextItems, pagination: p } = await fetchGroupsPage(page, pageSize, {
           search: search || undefined,
         });
         if (!cancelled) {
@@ -89,7 +96,7 @@ export function GroupsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, search, refreshNonce, t]);
+  }, [page, pageSize, search, refreshNonce, t]);
 
   const dateFmt = React.useMemo(
     () =>
@@ -99,6 +106,10 @@ export function GroupsPanel() {
       }),
     [locale],
   );
+
+  const hasActiveFilters = hasListActiveFilters({ search });
+  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const pageRange = getListPageRange(pagination);
 
   function openCreate() {
     setFormMode("create");
@@ -136,28 +147,115 @@ export function GroupsPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-        <ListPageSearchField
-          value={search}
-          onCommit={commitSearch}
-          placeholder={tList("searchPlaceholder")}
-          ariaLabel={tList("searchAria")}
-          className="sm:max-w-sm"
+      {!hideListChrome ? (
+        <ListPageHeader
+          title={t("title")}
+          description={t("subtitle")}
+          viewMode={listViewMode}
+          onViewModeChange={setListViewMode}
+          tableViewLabel={tList("tableView")}
+          listViewLabel={tList("listView")}
+          action={
+            <AppButton type="button" variant="primary" size="md" onClick={openCreate} className="gap-2">
+              <Plus className="size-4" strokeWidth={2} aria-hidden />
+              {t("add")}
+            </AppButton>
+          }
+          controls={
+            <ListPageSearchField
+              value={search}
+              onCommit={commitSearch}
+              placeholder={tList("searchPlaceholder")}
+              ariaLabel={tList("searchAria")}
+              className="sm:max-w-sm"
+            />
+          }
         />
-        <AppButton type="button" variant="primary" size="md" onClick={openCreate} className="shrink-0 gap-2 self-start sm:self-center">
-          <Plus className="size-4" strokeWidth={2} aria-hidden />
-          {t("add")}
-        </AppButton>
-      </div>
+      ) : null}
 
-      <SurfaceShell>
+      <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
         ) : loading ? (
-          <div className="space-y-2 p-6">
-            <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-            <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-            <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+          listViewMode === "list" ? (
+            <div className="p-4 sm:p-6">
+              <ListPageCardGrid>
+                {Array.from({ length: 6 }, (_, i) => (
+                  <ListPageCardSkeleton key={i} />
+                ))}
+              </ListPageCardGrid>
+            </div>
+          ) : (
+            <div className="space-y-2 p-6">
+              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+            </div>
+          )
+        ) : items.length === 0 ? (
+          hasActiveFilters ? (
+            <DashboardEmptyState
+              iconName="noResults"
+              title={tList("noResultsTitle")}
+              description={tList("noResultsDescription")}
+              action={
+                <AppButton
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  onClick={() => setUrl({ search: null, page: null }, { replace: true })}
+                >
+                  {tList("clearFilters")}
+                </AppButton>
+              }
+            />
+          ) : (
+            <DashboardEmptyState
+              iconName="groups"
+              title={t("emptyTitle")}
+              description={t("emptyDescription")}
+              action={
+                <AppButton type="button" variant="primary" size="md" onClick={openCreate} className="gap-2">
+                  <Plus className="size-4" strokeWidth={2} aria-hidden />
+                  {t("add")}
+                </AppButton>
+              }
+            />
+          )
+        ) : listViewMode === "list" ? (
+          <div className="p-4 sm:p-6">
+            <ListPageCardGrid>
+              {items.map((row) => (
+                <ListPageCard
+                  key={row.id}
+                  title={row.name}
+                  subtitle={row.organization}
+                  meta={dateFmt.format(new Date(row.created_at))}
+                  description={row.is_active ? t("statusActive") : t("statusInactive")}
+                  menu={
+                    <DataTableRowActionsMenu
+                      menuAriaLabel={tList("openRowActions")}
+                      items={[
+                        {
+                          id: "edit",
+                          label: t("edit"),
+                          onSelect: () => openEdit(row),
+                        },
+                        {
+                          id: "delete",
+                          label: t("delete"),
+                          tone: "danger",
+                          onSelect: () => {
+                            setDeletingGroup(row);
+                            setDeleteOpen(true);
+                          },
+                        },
+                      ]}
+                    />
+                  }
+                />
+              ))}
+            </ListPageCardGrid>
           </div>
         ) : (
           <DataTableScroll>
@@ -172,12 +270,9 @@ export function GroupsPanel() {
                 </tr>
               </DataTableHead>
               <DataTableBody>
-                {items.length === 0 ? (
-                  <DataTableEmptyRow message={t("empty")} colSpan={5} />
-                ) : (
-                  items.map((row) => (
+                {items.map((row) => (
                     <DataTableRow key={row.id}>
-                      <DataTableTd className="font-medium text-slate-900 dark:text-slate-100">{row.name}</DataTableTd>
+                      <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{row.name}</DataTableTd>
                       <DataTableTd className="hidden tabular-nums text-slate-700 dark:text-slate-300 sm:table-cell">
                         {row.organization}
                       </DataTableTd>
@@ -186,39 +281,38 @@ export function GroupsPanel() {
                       </DataTableTd>
                       <DataTableTd className="hidden lg:table-cell">
                         <span
-                          className={cn(
-                            "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold",
+                          className={
                             row.is_active
-                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
-                              : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
-                          )}
+                              ? "inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                              : "inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                          }
                         >
                           {row.is_active ? t("statusActive") : t("statusInactive")}
                         </span>
                       </DataTableTd>
-                      <DataTableTd narrow className="align-middle">
-                        <TableRowActions>
-                          <TableIconActionButton
-                            label={t("edit")}
-                            variant="secondary"
-                            onClick={() => openEdit(row)}
-                            icon={<Pencil strokeWidth={2} />}
-                          />
-                          <TableIconActionButton
-                            label={t("delete")}
-                            variant="ghost"
-                            className="text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
-                            onClick={() => {
-                              setDeletingGroup(row);
-                              setDeleteOpen(true);
-                            }}
-                            icon={<Trash2 strokeWidth={2} />}
-                          />
-                        </TableRowActions>
+                      <DataTableTd narrow>
+                        <DataTableRowActionsMenu
+                          menuAriaLabel={tList("openRowActions")}
+                          items={[
+                            {
+                              id: "edit",
+                              label: t("edit"),
+                              onSelect: () => openEdit(row),
+                            },
+                            {
+                              id: "delete",
+                              label: t("delete"),
+                              tone: "danger",
+                              onSelect: () => {
+                                setDeletingGroup(row);
+                                setDeleteOpen(true);
+                              },
+                            },
+                          ]}
+                        />
                       </DataTableTd>
                     </DataTableRow>
-                  ))
-                )}
+                  ))}
               </DataTableBody>
             </DataTable>
           </DataTableScroll>
@@ -228,14 +322,23 @@ export function GroupsPanel() {
           <DataTablePaginationBar
             pagination={pagination}
             summary={t("pageLabel", {
-              current: pagination.current_page,
-              total: pagination.total_pages,
-              count: pagination.total_records,
+              start: pageRange.start,
+              end: pageRange.end,
+              total: pagination.total_records,
             })}
             prevLabel={t("prev")}
             nextLabel={t("next")}
             onPrev={() => setPage(Math.max(1, pagination.current_page - 1))}
             onNext={() => setPage(pagination.current_page + 1)}
+            onPageSelect={(p) => setPage(p)}
+            pageSizeControl={{
+              label: tList("rowsPerPage"),
+              listLabel: tList("rowsPerPage"),
+              value: pageSize,
+              options: pageSizeOptions,
+              onChange: setPageSize,
+              disabled: loading,
+            }}
           />
         ) : null}
       </SurfaceShell>

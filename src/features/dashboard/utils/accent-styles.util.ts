@@ -3,7 +3,7 @@ import type { DashboardAccentId } from "@/features/dashboard/store/dashboard-app
 export function accentActiveNavClass(accent: DashboardAccentId): string {
   switch (accent) {
     case "black":
-      return "bg-[#111111] text-white shadow-sm dark:bg-white dark:text-[#111111]";
+      return "bg-[#111111] text-white shadow-sm dark:bg-slate-700 dark:text-white";
     case "slate":
       return "bg-slate-800 text-white shadow-sm dark:bg-slate-200 dark:text-slate-900";
     case "indigo":
@@ -25,7 +25,7 @@ export function accentActiveNavClass(accent: DashboardAccentId): string {
     case "orange":
       return "bg-orange-600 text-white shadow-sm dark:bg-orange-500";
     default:
-      return "bg-slate-800 text-white shadow-sm dark:bg-slate-200 dark:text-slate-900";
+      return "bg-slate-800 text-white shadow-sm dark:bg-slate-700 dark:text-white";
   }
 }
 
