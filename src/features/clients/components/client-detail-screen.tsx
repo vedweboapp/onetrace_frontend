@@ -1,11 +1,15 @@
 "use client";
 
 import * as React from "react";
+import { Mail, Pencil, Phone, User } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { fetchClient } from "@/features/clients/api/client.api";
 import { ClientDetailBody } from "@/features/clients/components/client-detail-body";
 import { ClientFormModal } from "@/features/clients/components/client-form-modal";
 import type { Client } from "@/features/clients/types/client.types";
+import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import { AppButton, SurfaceShell } from "@/shared/ui";
 
 type Props = {
@@ -15,6 +19,8 @@ type Props = {
 export function ClientDetailScreen({ clientId }: Props) {
   const t = useTranslations("Dashboard.clients");
   const locale = useLocale();
+  const searchParams = useSearchParams();
+  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "clients");
 
   const [detail, setDetail] = React.useState<Client | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -61,20 +67,55 @@ export function ClientDetailScreen({ clientId }: Props) {
     setRefreshNonce((n) => n + 1);
   }
 
+  const phoneRaw = detail?.phone?.trim() ?? "";
+
   return (
     <div className="pb-12">
-      <div className="mb-4 flex items-center justify-between gap-3 sm:mb-5">
-        <h1 className="truncate text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          {detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle"))}
-        </h1>
-        {!loading && !error && detail ? (
-          <AppButton type="button" variant="primary" size="md" onClick={openEdit}>
-            {t("detail.edit")}
-          </AppButton>
-        ) : null}
-      </div>
+      <DetailPageHeader
+        title={detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle"))}
+        backHref={safeBack}
+        backAriaLabel={t("detail.backAria")}
+        subtitle={
+          detail ? (
+            <>
+              <span className="inline-flex items-center gap-1.5">
+                <User className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
+                {detail.contact_person}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Mail className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
+                <a
+                  href={`mailto:${detail.email}`}
+                  className="text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                >
+                  {detail.email}
+                </a>
+              </span>
+              {phoneRaw ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Phone className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
+                  <a
+                    href={`tel:${phoneRaw.replace(/\s/g, "")}`}
+                    className="text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                  >
+                    {phoneRaw}
+                  </a>
+                </span>
+              ) : null}
+            </>
+          ) : undefined
+        }
+        actions={
+          !loading && !error && detail ? (
+            <AppButton type="button" variant="primary" size="md" onClick={openEdit} className="gap-2">
+              <Pencil className="size-4" strokeWidth={2} aria-hidden />
+              {t("detail.editWithIcon")}
+            </AppButton>
+          ) : null
+        }
+      />
 
-      <SurfaceShell className="rounded-none">
+      <SurfaceShell className="rounded-none border-0 shadow-none ring-0">
         {loading ? (
           <div className="space-y-3 p-4 sm:p-6">
             <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />

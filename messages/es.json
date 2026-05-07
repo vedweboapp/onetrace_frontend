@@ -250,10 +250,21 @@
         "retry": "Reintentar",
         "close": "Cerrar panel",
         "edit": "Editar",
+        "editWithIcon": "Editar cliente",
+        "backAria": "Volver a la lista de clientes",
         "addressUnavailable": "Aún no hay dirección guardada para este cliente.",
         "sectionContact": "Contacto",
         "sectionAddress": "Dirección",
-        "sectionRecord": "Registro"
+        "sectionRecord": "Registro",
+        "panelOrganization": "Organización",
+        "legalEntityLabel": "Nombre legal de la entidad",
+        "panelPrimaryContact": "Contacto principal",
+        "panelMetaInfo": "Información meta",
+        "positionRole": "Puesto / rol",
+        "notProvided": "—",
+        "metaStatus": "Estado",
+        "metaClientId": "ID de cliente",
+        "addressLine2Empty": "No hay segunda línea de dirección"
       },
       "detailLoadError": "No se pudieron cargar los datos del cliente. Inténtalo de nuevo.",
       "form": {
@@ -316,7 +327,8 @@
       "openRowActions": "Abrir acciones de la fila",
       "noResultsTitle": "No hay resultados",
       "noResultsDescription": "Nada coincide con tu búsqueda o filtros. Ajústalos o borra los filtros para ver más elementos.",
-      "clearFilters": "Borrar filtros"
+      "clearFilters": "Borrar filtros",
+      "cardCreated": "Creado {date}"
     },
     "projects": {
       "metaTitle": "Proyectos",
@@ -367,12 +379,18 @@
         "loadingTitle": "Cargando…",
         "retry": "Reintentar",
         "edit": "Editar",
+        "editWithIcon": "Editar proyecto",
+        "backAria": "Volver a la lista de proyectos",
         "addressUnavailable": "No hay dirección estructurada guardada para este proyecto.",
         "sectionOverview": "Resumen",
         "sectionClient": "Cliente",
         "sectionSchedule": "Planificación",
         "sectionAddress": "Dirección",
         "sectionRecord": "Registro",
+        "panelDescription": "Descripción",
+        "panelBasicInfo": "Información básica",
+        "panelTimeline": "Cronología",
+        "panelSystemActivity": "Actividad del sistema",
         "tabsAria": "Secciones del proyecto",
         "tabs": {
           "details": "Resumen",
@@ -400,6 +418,9 @@
         "prev": "Anterior",
         "next": "Siguiente",
         "pinsLabelShort": "Pins:",
+        "cardByUser": "Por {user}",
+        "cardOpenAria": "Abrir plano",
+        "cardPinCount": "{count} pins",
         "table": {
           "drawing": "Plano",
           "block": "Bloque",
@@ -415,8 +436,7 @@
           "name": "Nombre del plano",
           "namePlaceholder": "p. ej. Planta baja",
           "nameError": "Introduce un nombre para este plano.",
-          "file": "Archivo",
-          "fileHint": "PDF u otros formatos de imagen habituales.",
+          "fileHint": "Haz clic para subir o arrastra y suelta",
           "fileError": "Elige un archivo para subir.",
           "cancel": "Cancelar",
           "submit": "Subir planos",
@@ -571,6 +591,7 @@
       "detail": {
         "loadingTitle": "Cargando grupo...",
         "retry": "Reintentar",
+        "backAria": "Volver a la lista de grupos",
         "sectionItems": "Ítems vinculados",
         "items": "Ítems con abreviatura",
         "noItems": "No hay ítems vinculados a este grupo.",
@@ -608,6 +629,9 @@
       "prev": "Anterior",
       "next": "Siguiente",
       "deletedToast": "Ítem compuesto eliminado",
+      "detail": {
+        "backAria": "Volver a la lista de ítems compuestos"
+      },
       "table": {
         "name": "Nombre",
         "group": "Grupo",
@@ -691,6 +715,7 @@
       "detail": {
         "loadingTitle": "Cargando ítem...",
         "retry": "Reintentar",
+        "backAria": "Volver a la lista de ítems",
         "sectionOverview": "Resumen",
         "sectionComponents": "Componentes",
         "sectionRecord": "Registro",

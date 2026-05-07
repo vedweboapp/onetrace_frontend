@@ -76,7 +76,6 @@ export function DrawingUploadModal({
         touched: false,
       })),
     );
-    setFileTouched(true);
   }, []);
 
   React.useEffect(() => {
@@ -145,9 +144,6 @@ export function DrawingUploadModal({
     >
       <form id="drawing-upload-form" className="space-y-5" onSubmit={(e) => void submit(e)}>
         <div>
-          <FieldLabel htmlFor={fileId} required>
-            {t("file")}
-          </FieldLabel>
           <label
             htmlFor={fileId}
             onDragOver={(e) => {
@@ -169,7 +165,6 @@ export function DrawingUploadModal({
           >
             <UploadCloud className="size-5 text-slate-500 dark:text-slate-400" />
             <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{t("fileHint")}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">PDF, PNG, JPG, WEBP</p>
           </label>
           <input
             id={fileId}
@@ -177,11 +172,10 @@ export function DrawingUploadModal({
             multiple
             disabled={submitting}
             accept=".pdf,application/pdf,image/*"
-            onBlur={() => setFileTouched(true)}
+            aria-label={t("fileHint")}
             onChange={(e) => applyFiles(Array.from(e.target.files || []))}
             className="sr-only"
           />
-          <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{t("fileHint")}</p>
           {fileInvalid ? <p className={fieldErrorTextClassName}>{t("fileError")}</p> : null}
         </div>
 

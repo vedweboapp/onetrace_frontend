@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { z } from "zod";
 import {
@@ -365,11 +365,13 @@ export function PinStatusSettingsPanel() {
                         {
                           id: "edit",
                           label: t("edit"),
+                          icon: Pencil,
                           onSelect: () => openEdit(row),
                         },
                         {
                           id: "delete",
                           label: t("delete"),
+                          icon: Trash2,
                           tone: "danger",
                           onSelect: () => {
                             setDetailRow(null);
@@ -429,11 +431,13 @@ export function PinStatusSettingsPanel() {
                           {
                             id: "edit",
                             label: t("edit"),
+                            icon: Pencil,
                             onSelect: () => openEdit(row),
                           },
                           {
                             id: "delete",
                             label: t("delete"),
+                            icon: Trash2,
                             tone: "danger",
                             onSelect: () => {
                               setDetailRow(null);

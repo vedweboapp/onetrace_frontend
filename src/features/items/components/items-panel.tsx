@@ -1,15 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import type { Item } from "@/features/items/types/item.types";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import { ItemFormModal } from "@/features/items/components/item-form-modal";
-import { routes } from "@/shared/config/routes";
 import {
   AppButton,
   ConfirmDialog,
@@ -31,6 +32,8 @@ import {
   ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
+import { cn } from "@/core/utils/http.util";
+import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { deleteItem } from "@/features/items/api/item.api";
@@ -55,6 +58,23 @@ export function ItemsPanel() {
   const tList = useTranslations("Dashboard.list");
   const locale = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { highlightClassName } = useListRowHighlight();
+
+  const listHref = React.useMemo(() => {
+    const p = new URLSearchParams(searchParams.toString());
+    p.delete("highlight");
+    const qs = p.toString();
+    return `${pathname}${qs ? `?${qs}` : ""}`;
+  }, [pathname, searchParams]);
+
+  const openItemDetail = React.useCallback(
+    (id: number) => {
+      router.push(buildDetailHrefWithListReturn(`${pathname}/${id}`, listHref, id));
+    },
+    [listHref, pathname, router],
+  );
 
   const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } = useListUrlState();
   const [items, setItems] = React.useState<Item[]>([]);
@@ -243,19 +263,28 @@ export function ItemsPanel() {
               {items.map((row) => (
                 <ListPageCard
                   key={row.id}
+                  dataListRowId={row.id}
+                  className={highlightClassName(row.id)}
                   title={row.name}
                   subtitle={row.sku ? <span className="font-mono text-xs">{row.sku}</span> : undefined}
-                  meta={dateFmt.format(new Date(row.created_at))}
                   description={`Qty: ${row.quantity ?? "—"} · Cost: ${moneyDisplay(row.cost_price)} · Sell: ${moneyDisplay(row.selling_price)}`}
-                  onCardClick={() => router.push(`${routes.dashboard.items}/${row.id}`)}
+                  footer={
+                    <div className="flex w-full justify-end">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}
+                      </span>
+                    </div>
+                  }
+                  onCardClick={() => openItemDetail(row.id)}
                   menu={
                     <DataTableRowActionsMenu
                       menuAriaLabel={tList("openRowActions")}
                       items={[
-                        { id: "edit", label: t("edit"), onSelect: () => openEdit(row) },
+                        { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) },
                         {
                           id: "delete",
                           label: t("delete"),
+                          icon: Trash2,
                           tone: "danger",
                           onSelect: () => {
                             setDeleteTarget(row);
@@ -289,7 +318,13 @@ export function ItemsPanel() {
                   <DataTableEmptyRow message={t("empty")} colSpan={tableColSpan} />
                 ) : (
                   items.map((row) => (
-                    <DataTableRow key={row.id} clickable onClick={() => router.push(`${routes.dashboard.items}/${row.id}`)}>
+                    <DataTableRow
+                      key={row.id}
+                      data-list-row-id={row.id}
+                      className={cn(highlightClassName(row.id))}
+                      clickable
+                      onClick={() => openItemDetail(row.id)}
+                    >
                       <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{row.name}</DataTableTd>
                       <DataTableTd className="hidden font-mono text-xs sm:table-cell">{row.sku || "—"}</DataTableTd>
                       <DataTableTd className="hidden tabular-nums md:table-cell">{row.quantity ?? "—"}</DataTableTd>
@@ -306,10 +341,11 @@ export function ItemsPanel() {
                         <DataTableRowActionsMenu
                           menuAriaLabel={tList("openRowActions")}
                           items={[
-                          { id: "edit", label: t("edit"), onSelect: () => openEdit(row) },
+                            { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) },
                             {
                               id: "delete",
                               label: t("delete"),
+                              icon: Trash2,
                               tone: "danger",
                               onSelect: () => {
                                 setDeleteTarget(row);

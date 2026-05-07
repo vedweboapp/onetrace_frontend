@@ -1,27 +1,30 @@
 "use client";
 
 import * as React from "react";
-import { Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { deleteGroup, fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import { GroupFormModal } from "@/features/groups/components/group-form-modal";
 import type { Group } from "@/features/groups/types/group.types";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
+  ActiveStatusBadge,
   AppButton,
   ConfirmDialog,
+  DashboardEmptyState,
   DataTable,
   DataTableBody,
   DataTableHead,
   DataTablePaginationBar,
   DataTableRow,
+  DataTableRowActionsMenu,
   DataTableScroll,
   DataTableTd,
   DataTableTh,
-  DashboardEmptyState,
-  DataTableRowActionsMenu,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
@@ -29,15 +32,33 @@ import {
   ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
+import { cn } from "@/core/utils/http.util";
+import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
-import { routes } from "@/shared/config/routes";
 
 export function GroupsPanel() {
   const t = useTranslations("Dashboard.groups");
   const tList = useTranslations("Dashboard.list");
   const locale = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { highlightClassName } = useListRowHighlight();
+
+  const listHref = React.useMemo(() => {
+    const p = new URLSearchParams(searchParams.toString());
+    p.delete("highlight");
+    const qs = p.toString();
+    return `${pathname}${qs ? `?${qs}` : ""}`;
+  }, [pathname, searchParams]);
+
+  const openGroupDetail = React.useCallback(
+    (id: number) => {
+      router.push(buildDetailHrefWithListReturn(`${pathname}/${id}`, listHref, id));
+    },
+    [listHref, pathname, router],
+  );
 
   const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } =
     useListUrlState();
@@ -237,24 +258,34 @@ export function GroupsPanel() {
               {items.map((row) => (
                 <ListPageCard
                   key={row.id}
+                  dataListRowId={row.id}
+                  className={highlightClassName(row.id)}
                   title={row.name}
                   subtitle={
                     row.items && row.items.length > 0
                       ? t("compositeCount", { count: row.items.length })
                       : t("noCompositeLinked")
                   }
-                  meta={dateFmt.format(new Date(row.created_at))}
                   description={
                     row.items && row.items.length > 0
                       ? row.items
                           .map((x) => `${x.item_name ?? `#${x.item}`} (${x.abbreviation})`)
                           .slice(0, 2)
                           .join(" · ")
-                      : row.is_active
-                        ? t("statusActive")
-                        : t("statusInactive")
+                      : undefined
                   }
-                  onCardClick={() => router.push(`${routes.dashboard.groups}/${row.id}`)}
+                  footer={
+                    <div className="flex w-full flex-wrap items-center justify-between gap-3">
+                      <ActiveStatusBadge
+                        active={row.is_active}
+                        label={row.is_active ? t("statusActive") : t("statusInactive")}
+                      />
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}
+                      </span>
+                    </div>
+                  }
+                  onCardClick={() => openGroupDetail(row.id)}
                   menu={
                     <DataTableRowActionsMenu
                       menuAriaLabel={tList("openRowActions")}
@@ -262,11 +293,13 @@ export function GroupsPanel() {
                         {
                           id: "edit",
                           label: t("edit"),
+                          icon: Pencil,
                           onSelect: () => void openEdit(row),
                         },
                         {
                           id: "delete",
                           label: t("delete"),
+                          icon: Trash2,
                           tone: "danger",
                           onSelect: () => {
                             setDeletingGroup(row);
@@ -294,7 +327,13 @@ export function GroupsPanel() {
               </DataTableHead>
               <DataTableBody>
                 {items.map((row) => (
-                    <DataTableRow key={row.id} clickable onClick={() => router.push(`${routes.dashboard.groups}/${row.id}`)}>
+                    <DataTableRow
+                      key={row.id}
+                      data-list-row-id={row.id}
+                      className={cn(highlightClassName(row.id))}
+                      clickable
+                      onClick={() => openGroupDetail(row.id)}
+                    >
                       <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{row.name}</DataTableTd>
                       <DataTableTd className="hidden tabular-nums text-slate-700 dark:text-slate-300 sm:table-cell">
                         {row.items && row.items.length > 0
@@ -308,15 +347,10 @@ export function GroupsPanel() {
                         {dateFmt.format(new Date(row.created_at))}
                       </DataTableTd>
                       <DataTableTd className="hidden lg:table-cell">
-                        <span
-                          className={
-                            row.is_active
-                              ? "inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
-                              : "inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                          }
-                        >
-                          {row.is_active ? t("statusActive") : t("statusInactive")}
-                        </span>
+                        <ActiveStatusBadge
+                          active={row.is_active}
+                          label={row.is_active ? t("statusActive") : t("statusInactive")}
+                        />
                       </DataTableTd>
                       <DataTableTd narrow onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                         <DataTableRowActionsMenu
@@ -325,11 +359,13 @@ export function GroupsPanel() {
                             {
                               id: "edit",
                               label: t("edit"),
+                              icon: Pencil,
                               onSelect: () => void openEdit(row),
                             },
                             {
                               id: "delete",
                               label: t("delete"),
+                              icon: Trash2,
                               tone: "danger",
                               onSelect: () => {
                                 setDeletingGroup(row);

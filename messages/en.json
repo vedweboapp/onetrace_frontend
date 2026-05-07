@@ -250,10 +250,21 @@
         "retry": "Retry",
         "close": "Close panel",
         "edit": "Edit",
+        "editWithIcon": "Edit client",
+        "backAria": "Back to clients list",
         "addressUnavailable": "No address saved for this client yet.",
         "sectionContact": "Contact",
         "sectionAddress": "Address",
-        "sectionRecord": "Record"
+        "sectionRecord": "Record",
+        "panelOrganization": "Organization",
+        "legalEntityLabel": "Legal entity name",
+        "panelPrimaryContact": "Primary contact",
+        "panelMetaInfo": "Meta info",
+        "positionRole": "Position / role",
+        "notProvided": "—",
+        "metaStatus": "Status",
+        "metaClientId": "Client ID",
+        "addressLine2Empty": "No secondary address provided"
       },
       "detailLoadError": "Could not load client details. Try again.",
       "form": {
@@ -316,7 +327,8 @@
       "openRowActions": "Open row actions",
       "noResultsTitle": "No results found",
       "noResultsDescription": "Nothing matches your current search or filters. Adjust them or clear filters to see more items.",
-      "clearFilters": "Clear filters"
+      "clearFilters": "Clear filters",
+      "cardCreated": "Created {date}"
     },
     "projects": {
       "metaTitle": "Projects",
@@ -367,12 +379,18 @@
         "loadingTitle": "Loading…",
         "retry": "Retry",
         "edit": "Edit",
+        "editWithIcon": "Edit project",
+        "backAria": "Back to projects list",
         "addressUnavailable": "No structured address on file for this project.",
         "sectionOverview": "Overview",
         "sectionClient": "Client",
         "sectionSchedule": "Schedule",
         "sectionAddress": "Address",
         "sectionRecord": "Record",
+        "panelDescription": "Description",
+        "panelBasicInfo": "Basic information",
+        "panelTimeline": "Timeline",
+        "panelSystemActivity": "System activity",
         "tabsAria": "Project sections",
         "tabs": {
           "details": "Overview",
@@ -400,6 +418,9 @@
         "prev": "Previous",
         "next": "Next",
         "pinsLabelShort": "Pins:",
+        "cardByUser": "By {user}",
+        "cardOpenAria": "Open drawing",
+        "cardPinCount": "{count} pins",
         "table": {
           "drawing": "Drawing",
           "block": "Block",
@@ -415,8 +436,7 @@
           "name": "Drawing name",
           "namePlaceholder": "e.g. Ground floor plan",
           "nameError": "Enter a name for this drawing.",
-          "file": "File",
-          "fileHint": "PDF or common image formats.",
+          "fileHint": "Click to upload and drag and drop",
           "fileError": "Choose a file to upload.",
           "cancel": "Cancel",
           "submit": "Upload drawings",
@@ -571,6 +591,7 @@
       "detail": {
         "loadingTitle": "Loading group...",
         "retry": "Retry",
+        "backAria": "Back to groups list",
         "sectionItems": "Linked items",
         "items": "Items with abbreviation",
         "noItems": "No items linked to this group.",
@@ -608,6 +629,9 @@
       "prev": "Previous",
       "next": "Next",
       "deletedToast": "Composite item deleted",
+      "detail": {
+        "backAria": "Back to composite items list"
+      },
       "table": {
         "name": "Name",
         "group": "Group",
@@ -691,6 +715,7 @@
       "detail": {
         "loadingTitle": "Loading item...",
         "retry": "Retry",
+        "backAria": "Back to items list",
         "sectionOverview": "Overview",
         "sectionComponents": "Components",
         "sectionRecord": "Record",
