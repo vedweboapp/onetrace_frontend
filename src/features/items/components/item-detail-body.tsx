@@ -1,19 +1,14 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { Item } from "@/features/items/types/item.types";
 import { cn } from "@/core/utils/http.util";
 import {
   DetailMetricCard,
   DetailMetricsGrid,
   DetailPagePadding,
-  DetailSectionTitle,
-  DetailWideCard,
+  DetailPanelCard,
 } from "@/shared/components/layout/detail-metric-card";
-
-export type ItemsTranslator = (
-  key: string,
-  values?: Record<string, string | number | boolean | null | undefined>,
-) => string;
 
 function moneyDisplay(v: unknown): string {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : Number.NaN;
@@ -23,29 +18,27 @@ function moneyDisplay(v: unknown): string {
 export function ItemDetailBody({
   detail,
   dateFmt,
-  t,
 }: {
   detail: Item;
   dateFmt: Intl.DateTimeFormat;
-  t: ItemsTranslator;
 }) {
+  const t = useTranslations("Dashboard.items");
+
   return (
     <DetailPagePadding>
-      <div className="flex flex-wrap items-center gap-2">
-        <span
-          className={cn(
-            "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold",
-            detail.is_composite
-              ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300"
-              : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-          )}
-        >
-          {detail.is_composite ? t("detail.compositeYes") : t("detail.compositeNo")}
-        </span>
-      </div>
-
-      <div className="space-y-3">
-        <DetailSectionTitle>{t("detail.sectionOverview")}</DetailSectionTitle>
+      <DetailPanelCard title={t("detail.sectionOverview")}>
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span
+            className={cn(
+              "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold",
+              detail.is_composite
+                ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300"
+                : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+            )}
+          >
+            {detail.is_composite ? t("detail.compositeYes") : t("detail.compositeNo")}
+          </span>
+        </div>
         <DetailMetricsGrid>
           <DetailMetricCard label={t("detail.sku")}>
             <span className="font-mono">{detail.sku?.trim() ? detail.sku : "—"}</span>
@@ -66,23 +59,25 @@ export function ItemDetailBody({
             {detail.is_composite ? t("detail.compositeYes") : t("detail.compositeNo")}
           </DetailMetricCard>
         </DetailMetricsGrid>
-      </div>
+      </DetailPanelCard>
 
-      <div className="space-y-3">
-        <DetailSectionTitle>{t("detail.sectionComponents")}</DetailSectionTitle>
-        <DetailWideCard label={t("detail.components")}>
+      {detail.is_composite ? (
+        <DetailPanelCard title={t("detail.sectionComponents")}>
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500 dark:text-slate-400">
+            {t("detail.components")}
+          </p>
           {detail.components && detail.components.length > 0 ? (
-            <div className="space-y-2">
+            <div className="max-w-xl space-y-2">
               {detail.components.map((component, index) => (
                 <div
                   key={`${component.child_item}-${index}`}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900"
+                  className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900/60"
                 >
-                  <span className="text-sm">
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 dark:text-slate-200">
                     {t("detail.componentItem")} #{component.child_item}
                   </span>
-                  <span className="tabular-nums text-sm font-semibold">
-                    {t("detail.componentQty")}: {component.quantity}
+                  <span className="shrink-0 rounded-md bg-slate-200/90 px-2 py-1 text-xs font-semibold tabular-nums text-slate-800 dark:bg-slate-700 dark:text-slate-100">
+                    {t("detail.componentQty")} {component.quantity}
                   </span>
                 </div>
               ))}
@@ -90,11 +85,10 @@ export function ItemDetailBody({
           ) : (
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.noComponents")}</p>
           )}
-        </DetailWideCard>
-      </div>
+        </DetailPanelCard>
+      ) : null}
 
-      <div className="space-y-3 border-t border-slate-100 pt-6 dark:border-slate-800">
-        <DetailSectionTitle>{t("detail.sectionRecord")}</DetailSectionTitle>
+      <DetailPanelCard title={t("detail.sectionRecord")}>
         <DetailMetricsGrid>
           <DetailMetricCard label={t("detail.createdAt")}>
             <span className="tabular-nums">{dateFmt.format(new Date(detail.created_at))}</span>
@@ -127,7 +121,7 @@ export function ItemDetailBody({
             )}
           </DetailMetricCard>
         </DetailMetricsGrid>
-      </div>
+      </DetailPanelCard>
     </DetailPagePadding>
   );
 }

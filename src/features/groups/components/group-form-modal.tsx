@@ -7,6 +7,7 @@ import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import { toastSuccess } from "@/shared/feedback/app-toast";
+import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
   AppModal,
@@ -176,7 +177,7 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
             type="text"
             autoComplete="off"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => setName(capitalizeFirstLetter(e.target.value))}
             onBlur={() => setNameTouched(true)}
             disabled={submitting}
             placeholder={t("namePlaceholder")}
@@ -221,7 +222,7 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
                     autoComplete="off"
                     value={row.abbreviation}
                     onChange={(e) => {
-                      const value = e.target.value;
+                      const value = e.target.value.toUpperCase();
                       setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, abbreviation: value } : x)));
                     }}
                     disabled={submitting}

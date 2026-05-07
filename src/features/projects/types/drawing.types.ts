@@ -74,11 +74,13 @@ export type DrawingPlotUpsert = {
   id?: number;
   name: string;
   coordinates: number[][];
+  plot_border?: string;
+  plot_bg?: string;
   pins?: Array<{
     id?: number;
     x_coordinate: number;
     y_coordinate: number;
-    status: string;
+    status?: string | number;
     status_id?: number;
     group?: number | null;
     item?: number | null;

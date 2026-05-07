@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { Pencil } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
 import {
   deleteCompositeItem,
@@ -12,7 +14,8 @@ import type { CompositeItem } from "@/features/composite-items/types/composite-i
 import { ItemDetailBody } from "@/features/items/components/item-detail-body";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess } from "@/shared/feedback/app-toast";
-import { PageHeadingWithBack } from "@/shared/components/layout/page-heading-with-back";
+import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import { AppButton, ConfirmDialog, SurfaceShell } from "@/shared/ui";
 
 type Props = {
@@ -22,9 +25,10 @@ type Props = {
 export function CompositeItemDetailScreen({ itemId }: Props) {
   const t = useTranslations("Dashboard.compositeItems");
   const tItems = useTranslations("Dashboard.items");
-  const tCommon = useTranslations("Dashboard.common");
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "composite-items");
 
   const [detail, setDetail] = React.useState<CompositeItem | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -75,36 +79,33 @@ export function CompositeItemDetailScreen({ itemId }: Props) {
     }
   }
 
-  const detailBreadcrumb = React.useMemo(
-    () => [
-      { label: t("title"), href: routes.dashboard.compositeItems },
-      { label: detail?.name ?? (loading ? tItems("detail.loadingTitle") : tItems("detailMetaTitle")) },
-    ],
-    [detail?.name, loading, t, tItems],
-  );
-
   return (
     <div className="pb-12">
-      <PageHeadingWithBack
-        breadcrumb={detailBreadcrumb}
-        breadcrumbAriaLabel={tCommon("breadcrumbNav")}
+      <DetailPageHeader
         title={detail?.name ?? (loading ? tItems("detail.loadingTitle") : tItems("detailMetaTitle"))}
+        backHref={safeBack}
+        backAriaLabel={t("detail.backAria")}
+        subtitle={
+          detail?.sku?.trim() ? (
+            <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{detail.sku}</span>
+          ) : undefined
+        }
         actions={
           !loading && !error && detail ? (
-            <>
+            <div className="flex flex-wrap gap-2">
               <AppButton type="button" variant="secondary" size="md" onClick={() => setDeleteOpen(true)}>
                 {t("delete")}
               </AppButton>
-              <AppButton type="button" variant="primary" size="md" onClick={() => setFormOpen(true)}>
+              <AppButton type="button" variant="primary" size="md" onClick={() => setFormOpen(true)} className="gap-2">
+                <Pencil className="size-4" strokeWidth={2} aria-hidden />
                 {t("edit")}
               </AppButton>
-            </>
-          ) : undefined
+            </div>
+          ) : null
         }
-        className="mb-5 border-b border-slate-200/90 pb-5 dark:border-slate-800 sm:mb-6"
       />
 
-      <SurfaceShell className="rounded-none">
+      <SurfaceShell className="rounded-none border-0 shadow-none ring-0">
         {loading ? (
           <div className="space-y-3 p-4 sm:p-6">
             <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
@@ -119,7 +120,7 @@ export function CompositeItemDetailScreen({ itemId }: Props) {
             </AppButton>
           </div>
         ) : detail ? (
-          <ItemDetailBody detail={detail} dateFmt={dateFmt} t={tItems} />
+          <ItemDetailBody detail={detail} dateFmt={dateFmt} />
         ) : null}
       </SurfaceShell>
 

@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { Pencil } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { fetchClient, fetchClientsPage } from "@/features/clients/api/client.api";
 import { deleteProject, fetchProject } from "@/features/projects/api/project.api";
 import { ProjectDetailBody } from "@/features/projects/components/project-detail-body";
@@ -9,9 +11,10 @@ import { ProjectDrawingsTab } from "@/features/projects/components/project-drawi
 import { ProjectFormModal } from "@/features/projects/components/project-form-modal";
 import type { Project } from "@/features/projects/types/project.types";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
-import { PageHeadingWithBack } from "@/shared/components/layout/page-heading-with-back";
 import { routes } from "@/shared/config/routes";
 import { useRouter } from "@/i18n/navigation";
+import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
   AppTabs,
@@ -27,10 +30,11 @@ type Props = {
 
 export function ProjectDetailScreen({ projectId }: Props) {
   const t = useTranslations("Dashboard.projects");
-  const tCommon = useTranslations("Dashboard.common");
   const tHome = useTranslations("Dashboard.home");
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "projects");
 
   const [detail, setDetail] = React.useState<Project | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -75,11 +79,22 @@ export function ProjectDetailScreen({ projectId }: Props) {
     [locale],
   );
 
+  function formatDay(iso: string | undefined) {
+    if (!iso) return "—";
+    const d = iso.slice(0, 10);
+    if (!d) return "—";
+    try {
+      return dateOnlyFmt.format(new Date(`${d}T12:00:00`));
+    } catch {
+      return "—";
+    }
+  }
+
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchClientsPage(1, 500);
+        const { items } = await fetchClientsPage(1, 500, undefined, { silent: true });
         if (!cancelled) {
           setClientOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
         }
@@ -120,7 +135,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const c = await fetchClient(detail.client);
+        const c = await fetchClient(detail.client, { silent: true });
         if (!cancelled) setClientName(c.name);
       } catch {
         if (!cancelled) setClientName(null);
@@ -140,27 +155,6 @@ export function ProjectDetailScreen({ projectId }: Props) {
     setRefreshNonce((n) => n + 1);
   }
 
-  function scheduleSummary(d: Project) {
-    const s = d.start_date?.slice(0, 10);
-    const e = d.end_date?.slice(0, 10);
-    if (!s || !e) return "";
-    try {
-      return `${dateOnlyFmt.format(new Date(`${s}T12:00:00`))} – ${dateOnlyFmt.format(new Date(`${e}T12:00:00`))}`;
-    } catch {
-      return "";
-    }
-  }
-
-  const detailBreadcrumb = React.useMemo(
-    () => [
-      { label: t("title"), href: routes.dashboard.projects },
-      {
-        label: detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle")),
-      },
-    ],
-    [detail?.name, loading, t],
-  );
-
   async function confirmDelete() {
     if (!detail) return;
     setDeleting(true);
@@ -179,27 +173,33 @@ export function ProjectDetailScreen({ projectId }: Props) {
   return (
     <div className="pb-12">
       <div className="mb-5 space-y-4 border-b border-slate-200/90 pb-5 dark:border-slate-800 sm:mb-6 sm:pb-6">
-        <PageHeadingWithBack
-          breadcrumb={detailBreadcrumb}
-          breadcrumbAriaLabel={tCommon("breadcrumbNav")}
+        <DetailPageHeader
           title={detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle"))}
-          description={
-            detail && !loading && !error
-              ? [clientName ?? `Client #${detail.client}`, scheduleSummary(detail)].filter(Boolean).join(" · ") ||
-                undefined
-              : undefined
+          backHref={safeBack}
+          backAriaLabel={t("detail.backAria")}
+          subtitle={
+            detail ? (
+              <span className="text-slate-500 dark:text-slate-400">
+                {clientName ?? `#${detail.client}`}
+                <span className="mx-2 text-slate-300 dark:text-slate-600" aria-hidden>
+                  •
+                </span>
+                {formatDay(detail.start_date)} – {formatDay(detail.end_date)}
+              </span>
+            ) : undefined
           }
           actions={
             !loading && !error && detail ? (
-              <>
+              <div className="flex flex-wrap gap-2">
                 <AppButton type="button" variant="secondary" size="md" onClick={() => setDeleteOpen(true)}>
                   {t("delete")}
                 </AppButton>
-                <AppButton type="button" variant="primary" size="md" onClick={openEdit}>
-                  {t("detail.edit")}
+                <AppButton type="button" variant="primary" size="md" onClick={openEdit} className="gap-2">
+                  <Pencil className="size-4" strokeWidth={2} aria-hidden />
+                  {t("detail.editWithIcon")}
                 </AppButton>
-              </>
-            ) : undefined
+              </div>
+            ) : null
           }
         />
         <AppTabs
@@ -212,7 +212,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
         />
       </div>
 
-      <SurfaceShell className="rounded-none">
+      <SurfaceShell className="rounded-none border-0 shadow-none ring-0">
         <div
           role="tabpanel"
           id={`project-detail-tab-${activeTab}`}
@@ -232,7 +232,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
               </AppButton>
             </div>
           ) : detail && activeTab === "details" ? (
-            <ProjectDetailBody detail={detail} dateFmt={dateFmt} dateOnlyFmt={dateOnlyFmt} clientName={clientName} t={t} />
+            <ProjectDetailBody detail={detail} dateFmt={dateFmt} dateOnlyFmt={dateOnlyFmt} clientName={clientName} />
           ) : loading ? (
             <div className="space-y-3 p-4 sm:p-6">
               <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />

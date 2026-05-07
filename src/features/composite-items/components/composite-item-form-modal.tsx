@@ -21,6 +21,7 @@ import {
   fieldErrorTextClassName,
   surfaceInputClassName,
 } from "@/shared/ui";
+import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 
 type Props = {
   open: boolean;
@@ -236,7 +237,7 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
             type="text"
             autoComplete="off"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => setName(capitalizeFirstLetter(e.target.value))}
             onBlur={() => setNameTouched(true)}
             disabled={submitting}
             placeholder={t("namePlaceholder")}

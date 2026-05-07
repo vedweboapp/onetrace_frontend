@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { z } from "zod";
 import {
@@ -41,6 +41,7 @@ import {
   surfaceInputClassName,
 } from "@/shared/ui";
 import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
+import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 
@@ -364,11 +365,13 @@ export function PinStatusSettingsPanel() {
                         {
                           id: "edit",
                           label: t("edit"),
+                          icon: Pencil,
                           onSelect: () => openEdit(row),
                         },
                         {
                           id: "delete",
                           label: t("delete"),
+                          icon: Trash2,
                           tone: "danger",
                           onSelect: () => {
                             setDetailRow(null);
@@ -428,11 +431,13 @@ export function PinStatusSettingsPanel() {
                           {
                             id: "edit",
                             label: t("edit"),
+                            icon: Pencil,
                             onSelect: () => openEdit(row),
                           },
                           {
                             id: "delete",
                             label: t("delete"),
+                            icon: Trash2,
                             tone: "danger",
                             onSelect: () => {
                               setDetailRow(null);
@@ -605,7 +610,7 @@ export function PinStatusSettingsPanel() {
               id="pin-status-name"
               value={statusName}
               onChange={(e) => {
-                setStatusName(e.target.value);
+                setStatusName(capitalizeFirstLetter(e.target.value));
                 if (errors.status_name) setErrors((prev) => ({ ...prev, status_name: undefined }));
               }}
               className={cn(surfaceInputClassName, errors.status_name && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
