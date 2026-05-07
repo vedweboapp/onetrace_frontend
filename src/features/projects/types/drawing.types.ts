@@ -40,6 +40,8 @@ export type DrawingPin = {
   group?: number | null;
   item?: number | null;
   quantity?: number;
+  variation?: boolean;
+
   item_detail?: {
     id: number;
     name: string;
