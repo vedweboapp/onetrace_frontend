@@ -362,6 +362,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const viewportRef = React.useRef<HTMLDivElement>(null);
   const stageRef = React.useRef<HTMLDivElement>(null);
   const nameInputRef = React.useRef<HTMLInputElement>(null);
+  const lastPinConstraintToastRef = React.useRef(0);
+
 
   const selectedPlot = React.useMemo(
     () => plots.find((p) => String(p.id) === selectedPlotId) ?? null,
@@ -780,7 +782,26 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
               if (segmentsIntersect(newPt, p2, edgeStart, edgeEnd)) return;
             }
           }
+
+          // 3. Pin containment check: Ensure no pin is left outside the transformed boundary
+          const nextLogicalCoords = [...targetPlot.coordinates];
+          nextLogicalCoords[vertex.index] = pixelToPercent([x, y], ps);
+          const nextPolyPixels = nextLogicalCoords.map(c => percentToPixel(c, ps));
+
+          for (const pin of targetPlot.pins) {
+            const pinPt = percentToPixel([pin.x_coordinate, pin.y_coordinate], ps);
+            if (!inside(pinPt, nextPolyPixels)) {
+              const now = Date.now();
+              if (now - lastPinConstraintToastRef.current > 2000) {
+                toastError("Cannot move boundary: Pin would be outside the plot. Move the pin first or remove it.");
+                lastPinConstraintToastRef.current = now;
+              }
+              return; // Block movement if any pin would be outside
+            }
+          }
         }
+
+
 
         const pct = pixelToPercent([x, y], ps);
         setPlots(prev => prev.map(p => {
