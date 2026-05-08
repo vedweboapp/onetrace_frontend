@@ -567,11 +567,11 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     const stage = stageRef.current;
     if (!stage) return null;
     const rect = stage.getBoundingClientRect();
-    const x = Math.round((e.clientX - rect.left) / zoom);
-    const y = Math.round((e.clientY - rect.top) / zoom);
-    if (x < 0 || y < 0 || x > pageSize.width || y > pageSize.height) return null;
+    const x = Math.max(0, Math.min(Math.round((e.clientX - rect.left) / zoom), pageSize.width));
+    const y = Math.max(0, Math.min(Math.round((e.clientY - rect.top) / zoom), pageSize.height));
     return [x, y];
   }
+
 
   function onStageClick(e: React.MouseEvent<HTMLDivElement>) {
     if (activeTool === "hand" || activeTool === "select" || activeTool === "plot-select") return;
@@ -724,10 +724,11 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       if (!stage) return;
       const rect = stage.getBoundingClientRect();
       const currentZoom = zoom;
-      const x = Math.round((e.clientX - rect.left) / currentZoom);
-      const y = Math.round((e.clientY - rect.top) / currentZoom);
       const ps = pageSizeRef.current;
+      const x = Math.max(0, Math.min(Math.round((e.clientX - rect.left) / currentZoom), ps.width));
+      const y = Math.max(0, Math.min(Math.round((e.clientY - rect.top) / currentZoom), ps.height));
       const currentPlots = plotsRef.current;
+
 
       if (!wasDraggingRef.current) {
         wasDraggingRef.current = true;
@@ -1096,7 +1097,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
   const pinLabels = React.useMemo(() => {
     const map = new Map<number, number>();
-    
+
     // Pass 1: Saved pins WITH baked-in location
     let maxSavedLoc = 0;
     for (const plot of plots) {
@@ -1225,7 +1226,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
       <div
         className={cn(
-          "fixed top-14 right-0 z-40 flex flex-col space-y-3 border-b border-slate-200 bg-white p-3 shadow-sm transition-all dark:border-slate-800 dark:bg-slate-950",
+          "fixed top-14 right-0 z-40 flex flex-col space-y-3 border-y border-slate-200 bg-white p-3  transition-all dark:border-slate-800 dark:bg-slate-950",
           sidebarOpen ? "md:left-64" : "md:left-[52px]",
           "left-0"
         )}
