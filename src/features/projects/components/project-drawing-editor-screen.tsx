@@ -134,6 +134,23 @@ function getCentroid(points: number[][]): number[] {
   return [Math.round(sx / points.length), Math.round(sy / points.length)];
 }
 
+function applyStableLocations(plots: LocalPlot[]) {
+  let maxLoc = 0;
+  for (const p of plots) {
+    for (const pin of p.pins) {
+      if (pin.location) maxLoc = Math.max(maxLoc, Number(pin.location));
+    }
+  }
+  let fallback = maxLoc > 0 ? maxLoc + 1 : 1;
+  for (const p of plots) {
+    for (const pin of p.pins) {
+      if (!pin.location) {
+        pin.location = fallback++;
+      }
+    }
+  }
+}
+
 // ─── Pin Components ──────────────────────────────────────────────────────────
 type PinMarkerProps = {
   label: string | number;
@@ -413,6 +430,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       if (results[0].status === "fulfilled") {
         const detail = results[0].value;
         const normalized = (detail.plots ?? []).map(normalizePlot);
+        applyStableLocations(normalized);
         setDrawingName(detail.name);
         setFilePath(detail.drawing_file);
         setPlots(normalized);
@@ -871,6 +889,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         item: pin.item ?? null,
         quantity: pin.quantity || 1,
         variation: pin.variation ?? false,
+        location: pinLabels.get(pin.id) || 1,
       })),
     }));
   }
@@ -878,6 +897,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   async function persistPlots(localPlots: LocalPlot[]) {
     const updated = await updateDrawingPlots(projectId, drawingId, { plots: toPayload(localPlots) });
     const normalized = (updated.plots ?? []).map(normalizePlot);
+    applyStableLocations(normalized);
     setPlots(normalized);
     setDirty(false);
   }
@@ -1073,6 +1093,35 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   }
 
   const allPins = React.useMemo(() => plots.flatMap((p) => p.pins), [plots]);
+
+  const pinLabels = React.useMemo(() => {
+    const map = new Map<number, number>();
+    
+    // Pass 1: Saved pins WITH baked-in location
+    let maxSavedLoc = 0;
+    for (const plot of plots) {
+      for (const pin of plot.pins) {
+        if (pin.id > 0 && pin.location) {
+          const loc = Number(pin.location);
+          map.set(pin.id, loc);
+          if (loc > maxSavedLoc) maxSavedLoc = loc;
+        }
+      }
+    }
+
+    // Pass 2: Unsaved pins (id < 0) dynamic numbering
+    let unsavedCounter = maxSavedLoc + 1;
+    for (const plot of plots) {
+      for (const pin of plot.pins) {
+        if (pin.id < 0) {
+          map.set(pin.id, unsavedCounter);
+          unsavedCounter++;
+        }
+      }
+    }
+
+    return map;
+  }, [plots]);
 
   const detailPlot = React.useMemo(
     () => (detailPlotId ? plots.find((p) => p.id === detailPlotId) ?? null : null),
@@ -1553,6 +1602,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                             style={{
                               left: pinX,
                               top: pinY,
+                              transformOrigin: "bottom center",
                               transform: `translate(-50%, -100%) scale(${1 / zoom})`,
                               zIndex: draggingPinId === pin.id ? 200 : isHovered ? 100 : 20,
                               cursor: activeTool === "select" ? (draggingPinId === pin.id ? "grabbing" : "grab") : "pointer",
@@ -1588,8 +1638,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                             }}
                           >
                             {isHovered && <PinTooltip pin={pin} productName={productName} />}
-                            <div className={cn("duration-200", draggingPinId === pin.id ? "scale-125" : isHovered ? "scale-110" : "", "cursor-grab")}>
-                              <PinMarker label={index + 1} abbreviation={abbreviation} color={color} />
+                            <div className={cn("duration-200 origin-bottom", draggingPinId === pin.id ? "scale-125" : isHovered ? "scale-110" : "", "cursor-grab")}>
+                              <PinMarker label={pinLabels.get(pin.id) || (index + 1)} abbreviation={abbreviation} color={color} />
                             </div>
                           </div>
                         );
@@ -1610,7 +1660,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
           setIsPinEditing(false);
           setPinDeleteConfirmOpen(false);
         }}
-        title={detailPin ? (pinDeleteConfirmOpen ? "Delete Pin?" : `Location #${allPins.findIndex(p => p.id === detailPin.id) + 1}`) : ""}
+        title={detailPin ? (pinDeleteConfirmOpen ? "Delete Pin?" : `Location #${pinLabels.get(detailPin.id) || (allPins.findIndex(p => p.id === detailPin.id) + 1)}`) : ""}
         subtitle={detailPin ? (pinDeleteConfirmOpen ? "This action cannot be undone" : (detailPin.item_detail?.name || compositeLabelById[detailPin.item ?? 0] || "Pin Details")) : ""}
         action={
           detailPin && !pinDeleteConfirmOpen && (

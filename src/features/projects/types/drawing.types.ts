@@ -41,6 +41,7 @@ export type DrawingPin = {
   item?: number | null;
   quantity?: number;
   variation?: boolean;
+  location?: number | string;
 
   item_detail?: {
     id: number;
@@ -85,6 +86,7 @@ export type DrawingPlotUpsert = {
     group?: number | null;
     item?: number | null;
     quantity?: number;
+    location?: number | string;
   }>;
 };
 
