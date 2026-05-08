@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
+import type { LucideIcon } from "lucide-react";
 import { MoreVertical } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 
@@ -11,6 +12,7 @@ export type DataTableRowMenuItem = {
   onSelect: () => void;
   tone?: "default" | "danger";
   disabled?: boolean;
+  icon?: LucideIcon;
 };
 
 type DataTableRowActionsMenuProps = {
@@ -63,10 +65,7 @@ export function DataTableRowActionsMenu({
   }, [open, align, items.length]);
 
   React.useLayoutEffect(() => {
-    if (!open) {
-      setCoords(null);
-      return;
-    }
+    if (!open) return;
     updatePosition();
     const id = requestAnimationFrame(() => updatePosition());
     window.addEventListener("scroll", updatePosition, true);
@@ -120,27 +119,33 @@ export function DataTableRowActionsMenu({
         coords ? "opacity-100" : "opacity-0 pointer-events-none",
       )}
     >
-      {items.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          role="menuitem"
-          disabled={item.disabled}
-          onClick={() => {
-            setOpen(false);
-            item.onSelect();
-          }}
-          className={cn(
-            "flex w-full items-center px-3 py-2 text-left text-sm font-medium transition",
-            item.tone === "danger"
-              ? "text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
-              : "text-slate-800 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/80",
-            item.disabled && "pointer-events-none opacity-50",
-          )}
-        >
-          {item.label}
-        </button>
-      ))}
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            role="menuitem"
+            disabled={item.disabled}
+            onClick={() => {
+              setOpen(false);
+              item.onSelect();
+            }}
+            className={cn(
+              "flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium transition",
+              item.tone === "danger"
+                ? "text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                : "text-slate-800 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/80",
+              item.disabled && "pointer-events-none opacity-50",
+            )}
+          >
+            {Icon ? (
+              <Icon className="size-4 shrink-0 opacity-90" strokeWidth={1.75} aria-hidden />
+            ) : null}
+            <span className="min-w-0 flex-1">{item.label}</span>
+          </button>
+        );
+      })}
     </div>
   ) : null;
 

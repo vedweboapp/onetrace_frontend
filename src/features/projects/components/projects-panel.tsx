@@ -1,37 +1,41 @@
 "use client";
 
 import * as React from "react";
-import { Plus } from "lucide-react";
+import { Pencil, Plus, Power, PowerOff, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { deleteProject, fetchProjectsPage, patchProject } from "@/features/projects/api/project.api";
 import { ProjectFormModal } from "@/features/projects/components/project-form-modal";
 import type { Project } from "@/features/projects/types/project.types";
-import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
+  ActiveStatusBadge,
   AppButton,
   CheckmarkSelect,
   ConfirmDialog,
+  DashboardEmptyState,
   DataTable,
   DataTableBody,
   DataTableHead,
   DataTablePaginationBar,
   DataTableRow,
+  DataTableRowActionsMenu,
   DataTableScroll,
   DataTableTd,
   DataTableTh,
-  DashboardEmptyState,
-  DataTableRowActionsMenu,
-  ListPageSearchField,
-  ListPageHeader,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
+  ListPageHeader,
+  ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
+import { cn } from "@/core/utils/http.util";
+import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 
@@ -40,6 +44,23 @@ export function ProjectsPanel() {
   const tList = useTranslations("Dashboard.list");
   const locale = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { highlightClassName } = useListRowHighlight();
+
+  const listHref = React.useMemo(() => {
+    const p = new URLSearchParams(searchParams.toString());
+    p.delete("highlight");
+    const qs = p.toString();
+    return `${pathname}${qs ? `?${qs}` : ""}`;
+  }, [pathname, searchParams]);
+
+  const openProjectDetail = React.useCallback(
+    (id: number) => {
+      router.push(buildDetailHrefWithListReturn(`${pathname}/${id}`, listHref, id));
+    },
+    [listHref, pathname, router],
+  );
 
   const {
     page,
@@ -315,11 +336,24 @@ export function ProjectsPanel() {
               {items.map((row) => (
                 <ListPageCard
                   key={row.id}
+                  dataListRowId={row.id}
+                  className={highlightClassName(row.id)}
                   title={row.name}
                   subtitle={clientLabelById[row.client] ?? `#${row.client}`}
                   meta={`${formatDay(row.start_date)} – ${formatDay(row.end_date)}`}
                   description={row.description?.trim() || undefined}
-                  onCardClick={() => router.push(`${routes.dashboard.projects}/${row.id}`)}
+                  footer={
+                    <div className="flex w-full flex-wrap items-center justify-between gap-3">
+                      <ActiveStatusBadge
+                        active={row.is_active}
+                        label={row.is_active ? t("status.active") : t("status.inactive")}
+                      />
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}
+                      </span>
+                    </div>
+                  }
+                  onCardClick={() => openProjectDetail(row.id)}
                   menu={
                     <DataTableRowActionsMenu
                       menuAriaLabel={tList("openRowActions")}
@@ -327,11 +361,13 @@ export function ProjectsPanel() {
                         {
                           id: "edit",
                           label: t("detail.edit"),
+                          icon: Pencil,
                           onSelect: () => openEdit(row),
                         },
                         {
                           id: "delete",
                           label: t("delete"),
+                          icon: Trash2,
                           tone: "danger",
                           onSelect: () => {
                             setDeletingProject(row);
@@ -342,12 +378,14 @@ export function ProjectsPanel() {
                           ? {
                               id: "deactivate",
                               label: t("deactivate"),
+                              icon: PowerOff,
                               onSelect: () => void handleToggleActive(row, false),
                               disabled: togglingId === row.id,
                             }
                           : {
                               id: "activate",
                               label: t("activate"),
+                              icon: Power,
                               onSelect: () => void handleToggleActive(row, true),
                               disabled: togglingId === row.id,
                             },
@@ -368,6 +406,7 @@ export function ProjectsPanel() {
                   <DataTableTh>{t("table.start")}</DataTableTh>
                   <DataTableTh>{t("table.end")}</DataTableTh>
                   <DataTableTh className="min-w-[12rem]">{t("table.description")}</DataTableTh>
+                  <DataTableTh className="hidden lg:table-cell">{t("table.status")}</DataTableTh>
                   <DataTableTh narrow>
                     <span className="sr-only">{t("table.actions")}</span>
                   </DataTableTh>
@@ -377,8 +416,10 @@ export function ProjectsPanel() {
                 {items.map((row) => (
                     <DataTableRow
                       key={row.id}
+                      data-list-row-id={row.id}
+                      className={cn(highlightClassName(row.id))}
                       clickable
-                      onClick={() => router.push(`${routes.dashboard.projects}/${row.id}`)}
+                      onClick={() => openProjectDetail(row.id)}
                     >
                       <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{row.name}</DataTableTd>
                       <DataTableTd>{clientLabelById[row.client] ?? `#${row.client}`}</DataTableTd>
@@ -388,6 +429,12 @@ export function ProjectsPanel() {
                         <span className="block truncate" title={row.description?.trim() || undefined}>
                           {row.description?.trim() ? row.description : "—"}
                         </span>
+                      </DataTableTd>
+                      <DataTableTd className="hidden lg:table-cell">
+                        <ActiveStatusBadge
+                          active={row.is_active}
+                          label={row.is_active ? t("status.active") : t("status.inactive")}
+                        />
                       </DataTableTd>
                       <DataTableTd
                         narrow
@@ -400,11 +447,13 @@ export function ProjectsPanel() {
                             {
                               id: "edit",
                               label: t("detail.edit"),
+                              icon: Pencil,
                               onSelect: () => openEdit(row),
                             },
                             {
                               id: "delete",
                               label: t("delete"),
+                              icon: Trash2,
                               tone: "danger",
                               onSelect: () => {
                                 setDeletingProject(row);
@@ -415,12 +464,14 @@ export function ProjectsPanel() {
                               ? {
                                   id: "deactivate",
                                   label: t("deactivate"),
+                                  icon: PowerOff,
                                   onSelect: () => void handleToggleActive(row, false),
                                   disabled: togglingId === row.id,
                                 }
                               : {
                                   id: "activate",
                                   label: t("activate"),
+                                  icon: Power,
                                   onSelect: () => void handleToggleActive(row, true),
                                   disabled: togglingId === row.id,
                                 },

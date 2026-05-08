@@ -5,6 +5,7 @@ import { FileText, UploadCloud, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { createDrawing } from "@/features/projects/api/drawing.api";
 import { toastSuccess } from "@/shared/feedback/app-toast";
+import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
   AppModal,
@@ -12,11 +13,6 @@ import {
   fieldErrorTextClassName,
   surfaceInputClassName,
 } from "@/shared/ui";
-
-function capitalizeFirstLetter(value: string): string {
-  if (!value) return value;
-  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
-}
 
 function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) return "—";
@@ -29,6 +25,13 @@ function formatBytes(bytes: number): string {
   }
   const rounded = idx === 0 ? Math.round(value) : value < 10 ? Number(value.toFixed(1)) : Math.round(value);
   return `${rounded} ${units[idx]}`;
+}
+
+function makeClientId(): string {
+  const hasRandomUUID =
+    typeof globalThis.crypto !== "undefined" && typeof globalThis.crypto.randomUUID === "function";
+  if (hasRandomUUID) return globalThis.crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 type Props = {
@@ -67,14 +70,20 @@ export function DrawingUploadModal({
     if (incoming.length === 0) return;
     setRows(
       incoming.map((file) => ({
-        id: `${file.name}-${file.size}-${crypto.randomUUID()}`,
+        id: `${file.name}-${file.size}-${makeClientId()}`,
         file,
         name: toNameFromFile(file),
         touched: false,
       })),
     );
-    setFileTouched(true);
   }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    setRows([]);
+    setFileTouched(false);
+    setDragActive(false);
+  }, [open]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -135,46 +144,38 @@ export function DrawingUploadModal({
     >
       <form id="drawing-upload-form" className="space-y-5" onSubmit={(e) => void submit(e)}>
         <div>
-          <FieldLabel required>{t("file")}</FieldLabel>
           <label
             htmlFor={fileId}
             onDragOver={(e) => {
               e.preventDefault();
               if (!submitting) setDragActive(true);
             }}
-            onDragLeave={(e) => {
-              e.preventDefault();
-              setDragActive(false);
-            }}
+            onDragLeave={() => setDragActive(false)}
             onDrop={(e) => {
               e.preventDefault();
               setDragActive(false);
               if (submitting) return;
-              applyFiles(Array.from(e.dataTransfer.files ?? []));
+              applyFiles(Array.from(e.dataTransfer.files || []));
             }}
-            className={[
-              "mt-1 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-8 text-center transition",
+            className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-7 text-center transition ${
               dragActive
-                ? "border-slate-500 bg-slate-100 dark:border-slate-500 dark:bg-slate-800/70"
-                : "border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/60 dark:hover:border-slate-600 dark:hover:bg-slate-900",
-            ].join(" ")}
+                ? "border-[color:var(--dash-accent,#111111)] bg-slate-50 dark:bg-slate-900"
+                : "border-slate-300 hover:border-slate-400 dark:border-slate-700 dark:hover:border-slate-600"
+            }`}
           >
-            <UploadCloud className="size-8 text-slate-500 dark:text-slate-400" />
-            <p className="mt-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
-              Click to upload or drag and drop
-            </p>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("fileHint")}</p>
-            <input
-              id={fileId}
-              type="file"
-              multiple
-              disabled={submitting}
-              accept=".pdf,application/pdf,image/*"
-              onBlur={() => setFileTouched(true)}
-              onChange={(e) => applyFiles(Array.from(e.target.files ?? []))}
-              className="sr-only"
-            />
+            <UploadCloud className="size-5 text-slate-500 dark:text-slate-400" />
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{t("fileHint")}</p>
           </label>
+          <input
+            id={fileId}
+            type="file"
+            multiple
+            disabled={submitting}
+            accept=".pdf,application/pdf,image/*"
+            aria-label={t("fileHint")}
+            onChange={(e) => applyFiles(Array.from(e.target.files || []))}
+            className="sr-only"
+          />
           {fileInvalid ? <p className={fieldErrorTextClassName}>{t("fileError")}</p> : null}
         </div>
 

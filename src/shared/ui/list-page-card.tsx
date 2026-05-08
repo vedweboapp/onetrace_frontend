@@ -23,24 +23,31 @@ type ListPageCardProps = {
   subtitle?: ReactNode;
   meta?: ReactNode;
   description?: string;
+  /** Bottom row (e.g. phone + status badge left, created date right). Uses mt-auto so it sits at the bottom in a grid. */
+  footer?: ReactNode;
   onCardClick?: () => void;
   menu: ReactNode;
   className?: string;
+  /** When set, adds `data-list-row-id` for return-from-detail highlight + scroll. */
+  dataListRowId?: number;
 };
 
-/** Card row for list (grid) view — matches dashboard table/list mock: title, kebab, secondary lines, clamped body. */
+/** Card row for list (grid) view — title, kebab, secondary lines, optional body, optional footer. */
 export function ListPageCard({
   leading,
   title,
   subtitle,
   meta,
   description,
+  footer,
   onCardClick,
   menu,
   className,
+  dataListRowId,
 }: ListPageCardProps) {
   return (
     <div
+      data-list-row-id={dataListRowId != null ? String(dataListRowId) : undefined}
       role={onCardClick ? "button" : undefined}
       tabIndex={onCardClick ? 0 : undefined}
       onClick={onCardClick}
@@ -52,7 +59,8 @@ export function ListPageCard({
         }
       }}
       className={cn(
-        "relative rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-950/[0.03] dark:border-slate-800 dark:bg-slate-950 dark:ring-white/[0.04]",
+        "relative flex h-full flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-950/[0.03] dark:border-slate-800 dark:bg-slate-950 dark:ring-white/[0.04]",
+        footer && "min-h-[8.5rem]",
         onCardClick &&
           "cursor-pointer transition hover:border-slate-300 hover:bg-slate-50/90 dark:hover:border-slate-600 dark:hover:bg-slate-900/80",
         className,
@@ -83,6 +91,15 @@ export function ListPageCard({
       {meta ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">{meta}</p> : null}
       {description ? (
         <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{description}</p>
+      ) : null}
+      {footer ? (
+        <div
+          className="mt-auto border-t border-slate-100 pt-3 dark:border-slate-800/80"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          {footer}
+        </div>
       ) : null}
     </div>
   );

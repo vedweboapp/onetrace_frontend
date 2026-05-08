@@ -31,7 +31,7 @@ type Props = {
   drawingId: number;
 };
 
-export type Tool = "pen" | "plot-select" | "pin" | "hand";
+export type Tool = "pen" | "plot-select" | "pin" | "hand" | "select";
 
 export type LocalPlot = {
   id: number;
@@ -68,7 +68,7 @@ const PLOT_PALETTE = [
 ];
 
 function normalizePlot(p: DrawingPlot): LocalPlot {
-  // Use the ID to consistently pick a color from the palette
+  // Use the ID to consistently pick a color from the palette if one isn't provided
   const colorIndex = Math.abs(p.id) % PLOT_PALETTE.length;
   const defaultColor = PLOT_PALETTE[colorIndex]!;
 
@@ -291,7 +291,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [filePath, setFilePath] = React.useState("");
   const [plots, setPlots] = React.useState<LocalPlot[]>([]);
   const [selectedPlotId, setSelectedPlotId] = React.useState<string>("");
-  const [activeTool, setActiveTool] = React.useState<Tool>("hand");
+  const [activeTool, setActiveTool] = React.useState<Tool>("select");
   const [dirty, setDirty] = React.useState(false);
   const [zoom, setZoom] = React.useState(0.4);
 
@@ -318,6 +318,10 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [abandonPlotConfirmOpen, setAbandonPlotConfirmOpen] = React.useState(false);
   const [pendingTool, setPendingTool] = React.useState<Tool | null>(null);
   const [isLeavingEditor, setIsLeavingEditor] = React.useState(false);
+  const [draggingPinId, setDraggingPinId] = React.useState<number | null>(null);
+  const [dragOffset, setDragOffset] = React.useState({ x: 0, y: 0 });
+  const wasDraggingRef = React.useRef(false);
+  const originalPinStateRef = React.useRef<{ x: number, y: number, plotId: number } | null>(null);
 
   const [pageSize, setPageSize] = React.useState({ width: 1200, height: 900 });
   const [panMode, setPanMode] = React.useState(false);
@@ -475,9 +479,10 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       const tag = target?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea" || target?.isContentEditable) return;
       const key = e.key.toLowerCase();
+      if (key === "v") setActiveTool("select");
       if (key === "p") setActiveTool("pen");
       if (key === "b") setActiveTool("plot-select");
-      if (key === "z") setActiveTool("pin");
+      if (key === "a") setActiveTool("pin");
       if (key === "h") setActiveTool("hand");
       if (key === "+") setZoom((z) => Math.min(3, Number((z + 0.1).toFixed(2))));
       if (key === "-") setZoom((z) => Math.max(0.4, Number((z - 0.1).toFixed(2))));
@@ -531,7 +536,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   }
 
   function onStageClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (activeTool === "hand" || activeTool === "plot-select") return;
+    if (activeTool === "hand" || activeTool === "select" || activeTool === "plot-select") return;
     const pt = stagePointFromEvent(e);
     if (!pt) return;
     if (activeTool === "pen") {
@@ -580,35 +585,124 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   }
 
   function onPointerDown(e: React.MouseEvent<HTMLDivElement>) {
-    if (activeTool === "plot-select") {
-      const pt = stagePointFromEvent(e);
-      if (pt) {
-        setSelectionStart(pt);
-        setSelectionEnd(pt);
-      }
+    if (activeTool === "hand") {
+      const vp = viewportRef.current;
+      if (!vp) return;
+      setPanMode(true);
+      setPanStart({ x: e.clientX, y: e.clientY });
+      setScrollStart({ left: vp.scrollLeft, top: vp.scrollTop });
       return;
     }
-    if (activeTool !== "hand") return;
-    const vp = viewportRef.current;
-    if (!vp) return;
-    setPanMode(true);
-    setPanStart({ x: e.clientX, y: e.clientY });
-    setScrollStart({ left: vp.scrollLeft, top: vp.scrollTop });
+
+    if (activeTool === "plot-select") {
+      const pt = stagePointFromEvent(e);
+      if (pt) { setSelectionStart(pt); setSelectionEnd(pt); }
+      return;
+    }
   }
 
   function onPointerMove(e: React.MouseEvent<HTMLDivElement>) {
-    if (activeTool === "plot-select" && selectionStart) {
-      const pt = stagePointFromEvent(e);
-      if (pt) setSelectionEnd(pt);
+    const pt = stagePointFromEvent(e);
+    if (!pt) {
+      if (panMode) {
+        const vp = viewportRef.current;
+        if (!vp) return;
+        const dx = e.clientX - panStart.x;
+        const dy = e.clientY - panStart.y;
+        vp.scrollLeft = scrollStart.left - dx;
+        vp.scrollTop = scrollStart.top - dy;
+      }
       return;
     }
-    if (!panMode || activeTool !== "hand") return;
-    const vp = viewportRef.current;
-    if (!vp) return;
-    e.preventDefault();
-    vp.scrollLeft = scrollStart.left - (e.clientX - panStart.x);
-    vp.scrollTop = scrollStart.top - (e.clientY - panStart.y);
+
+    if (activeTool === "plot-select" && selectionStart) {
+      setSelectionEnd(pt);
+      return;
+    }
+
+    if (panMode) {
+      const vp = viewportRef.current;
+      if (!vp) return;
+      const dx = e.clientX - panStart.x;
+      const dy = e.clientY - panStart.y;
+      vp.scrollLeft = scrollStart.left - dx;
+      vp.scrollTop = scrollStart.top - dy;
+    }
   }
+
+  // Use refs to avoid stale closures in window event listeners
+  const draggingPinIdRef = React.useRef<number | null>(null);
+  const pageSizeRef = React.useRef(pageSize);
+  const plotsRef = React.useRef(plots);
+  React.useEffect(() => { pageSizeRef.current = pageSize; }, [pageSize]);
+  React.useEffect(() => { plotsRef.current = plots; }, [plots]);
+  React.useEffect(() => { draggingPinIdRef.current = draggingPinId; }, [draggingPinId]);
+
+  // Attach window-level drag listeners once on mount
+  React.useEffect(() => {
+    function handleMouseMove(e: MouseEvent) {
+      const pinId = draggingPinIdRef.current;
+      if (pinId === null) return;
+      const stage = stageRef.current;
+      if (!stage) return;
+      const rect = stage.getBoundingClientRect();
+      const currentZoom = zoom;
+      const x = Math.round((e.clientX - rect.left) / currentZoom);
+      const y = Math.round((e.clientY - rect.top) / currentZoom);
+      const ps = pageSizeRef.current;
+      const currentPlots = plotsRef.current;
+
+      if (!wasDraggingRef.current) {
+        wasDraggingRef.current = true;
+      }
+
+      // Find the plot this pin belongs to
+      const ownerPlot = currentPlots.find(p => p.pins.some(pin => pin.id === pinId));
+      if (!ownerPlot) return;
+
+      // RESTRICTION: Pin never leaves its plot
+      const poly = ownerPlot.coordinates.map(c => percentToPixel(c, ps));
+      if (!inside([x, y], poly)) {
+        return; // Stop update if moving outside plot boundary
+      }
+
+      const pct = pixelToPercent([x, y], ps);
+      setPlots(prev => prev.map(p => ({
+        ...p,
+        pins: p.pins.map(pin =>
+          pin.id === pinId
+            ? { ...pin, x_coordinate: pct[0]!, y_coordinate: pct[1]! }
+            : pin
+        )
+      })));
+    }
+
+    function handleMouseUp() {
+      const pinId = draggingPinIdRef.current;
+      if (pinId !== null) {
+        setDraggingPinId(null);
+        draggingPinIdRef.current = null;
+        
+        // Delay resetting wasDraggingRef so the 'click' event can see it
+        setTimeout(() => {
+          wasDraggingRef.current = false;
+        }, 50);
+
+        // Movement is already restricted to stay inside the plot in handleMouseMove
+        setDirty(true);
+        originalPinStateRef.current = null;
+      }
+      setPanMode(false);
+    }
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoom]);
 
   function onPointerUp() {
     if (activeTool === "plot-select" && selectionStart && selectionEnd) {
@@ -668,9 +762,9 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         ...(pin.id > 0 ? { id: pin.id } : {}),
         x_coordinate: pin.x_coordinate,
         y_coordinate: pin.y_coordinate,
-        status: pin.status_id,
+        status: pin.status ?? undefined,
         group: pin.group ?? null,
-        item: pin.composite_item ?? null,
+        item: pin.item ?? null,
         quantity: pin.quantity || 1,
       })),
     }));
@@ -720,7 +814,26 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   }
 
   async function placePin(point: number[], targetPlot?: LocalPlot) {
-    const plot = targetPlot ?? selectedPlot;
+    if (!selectedCompositeId) {
+      toastError(t("compositeRequired"));
+      return;
+    }
+
+    let plot = targetPlot ?? selectedPlot;
+    
+    // If no plot matches or we are clicking a different one, try to find the actual plot under the point
+    const plotUnderPoint = plots.find(p => {
+      const poly = p.coordinates.map(c => percentToPixel(c, pageSize));
+      return inside(point, poly);
+    });
+
+    if (plotUnderPoint) {
+      plot = plotUnderPoint;
+      if (String(plot.id) !== selectedPlotId) {
+        setSelectedPlotId(String(plot.id));
+      }
+    }
+
     if (!plot) {
       toastError(t("pinOutsidePlot"));
       return;
@@ -738,13 +851,26 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       return;
     }
 
+    const selectedItem = items.find(i => String(i.id) === selectedCompositeId);
+
     const nextPin = {
       x_coordinate: Number(((point[0] / pageSize.width) * 100).toFixed(6)),
       y_coordinate: Number(((point[1] / pageSize.height) * 100).toFixed(6)),
-      status: selectedStatus.status_name,
-      status_id: selectedStatus.id,
+      status: selectedStatus.id,
       group: selectedGroupId ? Number.parseInt(selectedGroupId, 10) : undefined,
-      composite_item: selectedCompositeId ? Number.parseInt(selectedCompositeId, 10) : undefined,
+      item: selectedCompositeId ? Number.parseInt(selectedCompositeId, 10) : undefined,
+      status_detail: {
+        id: selectedStatus.id,
+        status_name: selectedStatus.status_name,
+        bg_colour: selectedStatus.bg_colour,
+        text_colour: selectedStatus.text_colour
+      },
+      item_detail: selectedItem ? {
+        id: selectedItem.id,
+        name: selectedItem.name,
+        sku: selectedItem.sku || "",
+        is_composite: selectedItem.is_composite
+      } : null
     };
 
     const nextPlots = plots.map((p) =>
@@ -794,12 +920,33 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
   async function savePinChanges() {
     if (!detailPin) return;
+
+    const nextStatus = statuses.find(s => s.id === (pinEditData.status ?? detailPin.status));
+    const nextItem = items.find(i => i.id === (pinEditData.item ?? detailPin.item));
+
+    const updatedPin = {
+      ...detailPin,
+      ...pinEditData,
+      status_detail: nextStatus ? {
+        id: nextStatus.id,
+        status_name: nextStatus.status_name,
+        bg_colour: nextStatus.bg_colour,
+        text_colour: nextStatus.text_colour
+      } : detailPin.status_detail,
+      item_detail: nextItem ? {
+        id: nextItem.id,
+        name: nextItem.name,
+        sku: nextItem.sku || "",
+        is_composite: nextItem.is_composite
+      } : detailPin.item_detail
+    };
+
     const nextPlots = plots.map((p) => ({
       ...p,
-      pins: p.pins.map((pin) => (pin.id === detailPin.id ? { ...pin, ...pinEditData } : pin)),
+      pins: p.pins.map((pin) => (pin.id === detailPin.id ? updatedPin : pin)),
     }));
     setPlots(nextPlots);
-    setDetailPin({ ...detailPin, ...pinEditData } as DrawingPin);
+    setDetailPin(updatedPin as DrawingPin);
     setIsPinEditing(false);
     setDirty(true);
     toastSuccess(t("pinSaved"));
@@ -917,9 +1064,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
             <h1 className="truncate text-lg font-semibold text-slate-900 dark:text-slate-50">{drawingName || t("title")}</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
           </div>
-          <AppButton type="button" variant="secondary" size="sm" onClick={requestClose}>
-            {t("close")}
-          </AppButton>
         </div>
       </div>
 
@@ -1020,10 +1164,13 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     transform: `scale(${zoom})`,
                     transformOrigin: "top left",
                     width: pageSize.width,
-                    height: pageSize.height
+                    height: pageSize.height,
+                    cursor: activeTool === "hand" ? "grab" : activeTool === "pen" ? "crosshair" : activeTool === "pin" ? "crosshair" : activeTool === "plot-select" ? "crosshair" : "default",
                   }}
                   onClick={onStageClick}
                   onMouseDown={onPointerDown}
+                  onMouseMove={onPointerMove}
+                  onMouseUp={onPointerUp}
                   onDoubleClick={() => {
                     if (activeTool === "pen" && tempPoints.length >= 3) {
                       // Check for overlap with existing plots
@@ -1108,6 +1255,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               strokeDasharray="5 4"
                               className="cursor-pointer transition-all"
                               onClick={(e) => {
+                                e.stopPropagation();
                                 if (activeTool === "pin") {
                                   const pt = stagePointFromEvent(e);
                                   if (pt) {
@@ -1116,7 +1264,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                                   }
                                   return;
                                 }
-                                e.stopPropagation();
                                 setSelectedPlotId(String(plot.id));
                                 setDetailPin(null);
                                 setDetailPlotId(plot.id);
@@ -1133,6 +1280,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               strokeWidth={3}
                               className="cursor-pointer"
                               onClick={(e) => {
+                                e.stopPropagation();
                                 if (activeTool === "pin") {
                                   const pt = stagePointFromEvent(e);
                                   if (pt) {
@@ -1141,7 +1289,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                                   }
                                   return;
                                 }
-                                e.stopPropagation();
                                 setSelectedPlotId(String(plot.id));
                                 setDetailPin(null);
                                 setDetailPlotId(plot.id);
@@ -1202,48 +1349,72 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                   </svg>
 
                   {/* Pins Layer */}
-                  {plots.flatMap((plot) => plot.pins).map((pin, index) => {
-                    const [pinX, pinY] = percentToPixel([pin.x_coordinate, pin.y_coordinate], pageSize);
-                    const isPersisted = pin.id > 0;
-                    const statusObj = statuses.find(s => s.id === pin.status_id);
-                    const color = "#10b981";
-                    const productName = compositeLabelById[pin.composite_item ?? 0] || "PIN";
-                    const abbreviation = productName
-                      .split(/[\s()]+/)
-                      .filter(Boolean)
-                      .map((word) => word[0])
-                      .join("")
-                      .slice(0, 3)
-                      .toUpperCase();
-                    const isHovered = hoveredPinId === pin.id;
+                  {plots.map((plot) => (
+                    <React.Fragment key={`pins-for-plot-${plot.id}`}>
+                      {plot.pins.map((pin, index) => {
+                        const [pinX, pinY] = percentToPixel([pin.x_coordinate, pin.y_coordinate], pageSize);
+                        const statusObj = statuses.find(s => s.id === pin.status);
+                        const color = pin.status_detail?.bg_colour || statusObj?.bg_colour || "#10b981";
+                        const productName = pin.item_detail?.name || compositeLabelById[pin.item ?? 0] || "PIN";
+                        const abbreviation = productName
+                          .split(/[\s()]+/)
+                          .filter(Boolean)
+                          .map((word) => word[0])
+                          .join("")
+                          .slice(0, 3)
+                          .toUpperCase();
+                        const isHovered = hoveredPinId === pin.id;
 
-                    return (
-                      <div
-                        key={`pin-${pin.id}`}
-                        className="absolute"
-                        style={{
-                          left: pinX,
-                          top: pinY,
-                          transform: "translate(-50%, -100%)",
-                          zIndex: isHovered ? 100 : 20,
-                        }}
-                        onMouseEnter={() => setHoveredPinId(pin.id)}
-                        onMouseLeave={() => setHoveredPinId(null)}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDetailPlotId(null);
-                          setDetailPin(pin);
-                          setPinEditData(pin);
-                          setIsPinEditing(false);
-                        }}
-                      >
-                        {isHovered && <PinTooltip pin={pin} productName={productName} />}
-                        <div className={cn("transition-transform duration-200", isHovered && "scale-110", "cursor-pointer")}>
-                          <PinMarker label={index + 1} abbreviation={abbreviation} color={color} />
-                        </div>
-                      </div>
-                    );
-                  })}
+                        return (
+                          <div
+                            key={`pin-${pin.id}`}
+                            className="absolute"
+                            style={{
+                              left: pinX,
+                              top: pinY,
+                              transform: "translate(-50%, -100%)",
+                              zIndex: draggingPinId === pin.id ? 200 : isHovered ? 100 : 20,
+                              cursor: activeTool === "select" ? (draggingPinId === pin.id ? "grabbing" : "grab") : "pointer",
+                            }}
+                            onMouseEnter={() => setHoveredPinId(pin.id)}
+                            onMouseLeave={() => setHoveredPinId(null)}
+                            onMouseDown={(e) => {
+                              if (activeTool !== "select") return;
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setDraggingPinId(pin.id);
+                              setDragOffset({ x: 0, y: 0 });
+                              originalPinStateRef.current = { 
+                                x: pin.x_coordinate, 
+                                y: pin.y_coordinate, 
+                                plotId: plot.id 
+                              };
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (wasDraggingRef.current) return;
+                              
+                              setDetailPlotId(null);
+                              setDetailPin(pin);
+                              setPinEditData(pin);
+                              
+                              // Pre-populate dropdowns for editing
+                              setSelectedGroupId(pin.group ? String(pin.group) : "");
+                              setSelectedCompositeId(pin.item ? String(pin.item) : "");
+                              setSelectedStatusId(pin.status ? String(pin.status) : "");
+                              
+                              setIsPinEditing(false);
+                            }}
+                          >
+                            {isHovered && <PinTooltip pin={pin} productName={productName} />}
+                            <div className={cn("duration-200", draggingPinId === pin.id ? "scale-125" : isHovered ? "scale-110" : "", "cursor-grab")}>
+                              <PinMarker label={index + 1} abbreviation={abbreviation} color={color} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </React.Fragment>
+                  ))}
                 </div>
               </div>
             </div>
@@ -1259,7 +1430,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
           setPinDeleteConfirmOpen(false);
         }}
         title={detailPin ? (pinDeleteConfirmOpen ? "Delete Pin?" : `Location #${allPins.findIndex(p => p.id === detailPin.id) + 1}`) : ""}
-        subtitle={detailPin ? (pinDeleteConfirmOpen ? "This action cannot be undone" : (compositeLabelById[detailPin.composite_item ?? 0] || "Pin Details")) : ""}
+        subtitle={detailPin ? (pinDeleteConfirmOpen ? "This action cannot be undone" : (detailPin.item_detail?.name || compositeLabelById[detailPin.item ?? 0] || "Pin Details")) : ""}
         action={
           detailPin && !pinDeleteConfirmOpen && (
             <div className="flex items-center gap-2 pr-1">
@@ -1330,14 +1501,14 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     icon={PackageIcon}
                     label="Product Name"
                     value={isPinEditing 
-                      ? (pinEditData.composite_item ?? detailPin.composite_item ?? "")
-                      : (compositeLabelById[String(pinEditData.composite_item ?? detailPin.composite_item ?? 0)] || "-")
+                      ? (pinEditData.item ?? detailPin.item ?? "")
+                      : (detailPin.item_detail?.name || compositeLabelById[String(pinEditData.item ?? detailPin.item ?? 0)] || "-")
                     }
                     isEditing={isPinEditing}
                     type="select"
                     options={filteredItems.map(i => ({ value: i.id, label: i.name }))}
                     onChange={(val: string) => {
-                      setPinEditData(prev => ({ ...prev, composite_item: parseInt(val) || undefined }));
+                      setPinEditData(prev => ({ ...prev, item: parseInt(val) || undefined }));
                     }}
                   />
                   <DetailRow
@@ -1351,17 +1522,17 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     icon={StatusIcon}
                     label="Status"
                     value={isPinEditing
-                      ? (pinEditData.status_id ?? detailPin.status_id ?? detailPin.status ?? "")
-                      : (statusLabelById[String(pinEditData.status_id ?? detailPin.status_id ?? detailPin.status ?? 0)] || detailPin.status)
+                      ? (pinEditData.status ?? detailPin.status ?? "")
+                      : (detailPin.status_detail?.status_name || statusLabelById[String(pinEditData.status ?? detailPin.status ?? 0)] || detailPin.status || "")
                     }
                     isEditing={isPinEditing}
                     type="select"
                     options={statuses.map(s => ({ value: s.id, label: s.status_name }))}
-                    statusColor={statuses.find(s => s.id === (pinEditData.status_id || detailPin.status_id))?.bg_colour}
-                    statusTextColor={statuses.find(s => s.id === (pinEditData.status_id || detailPin.status_id))?.text_colour}
+                    statusColor={detailPin.status_detail?.bg_colour || statuses.find(s => s.id === (pinEditData.status || detailPin.status))?.bg_colour}
+                    statusTextColor={detailPin.status_detail?.text_colour || statuses.find(s => s.id === (pinEditData.status || detailPin.status))?.text_colour}
                     onChange={(val: string) => {
                       const s = statuses.find(st => String(st.id) === val);
-                      if (s) setPinEditData(prev => ({ ...prev, status_id: s.id, status: s.status_name }));
+                      if (s) setPinEditData(prev => ({ ...prev, status: s.id }));
                     }}
                   />
                   <DetailRow
@@ -1518,6 +1689,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         selectedPlot={selectedPlot}
         savingPin={savingPin}
         sidebarOpen={sidebarOpen}
+        onClose={requestClose}
       />
     </div>
   );

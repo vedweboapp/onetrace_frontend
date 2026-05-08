@@ -16,6 +16,7 @@ import {
 } from "@/features/clients/utils/client-form-map";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
   AppModal,
@@ -149,7 +150,11 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved }: Props)
                 aria-invalid={errors.name ? true : undefined}
                 aria-describedby={errors.name ? "client-name-err" : undefined}
                 className={cn(surfaceInputClassName, errors.name && "border-red-500 dark:border-red-500")}
-                {...register("name")}
+                {...register("name", {
+                  onChange: (e) => {
+                    e.target.value = capitalizeFirstLetter(e.target.value);
+                  },
+                })}
               />
               <FieldErrorText id="client-name-err">{errors.name?.message}</FieldErrorText>
             </FieldGroup>
@@ -171,7 +176,11 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved }: Props)
                   surfaceInputClassName,
                   errors.contact_person && "border-red-500 dark:border-red-500",
                 )}
-                {...register("contact_person")}
+                {...register("contact_person", {
+                  onChange: (e) => {
+                    e.target.value = capitalizeFirstLetter(e.target.value);
+                  },
+                })}
               />
               <FieldErrorText id="client-contact-err">{errors.contact_person?.message}</FieldErrorText>
             </FieldGroup>

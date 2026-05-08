@@ -16,6 +16,7 @@ import {
 } from "@/features/projects/utils/project-form-map";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
   AppModal,
@@ -150,7 +151,11 @@ export function ProjectFormModal({ open, onClose, mode, project, clientOptions, 
               aria-invalid={errors.name ? true : undefined}
               aria-describedby={errors.name ? "project-name-err" : undefined}
               className={cn(surfaceInputClassName, errors.name && "border-red-500 dark:border-red-500")}
-              {...register("name")}
+              {...register("name", {
+                onChange: (e) => {
+                  e.target.value = capitalizeFirstLetter(e.target.value);
+                },
+              })}
             />
             <FieldErrorText id="project-name-err">{errors.name?.message}</FieldErrorText>
           </FieldGroup>

@@ -35,24 +35,37 @@ export type DrawingPin = {
   id: number;
   x_coordinate: number;
   y_coordinate: number;
-  status: string;
+  status: number | null;
   status_id?: number;
   group?: number | null;
-  composite_item?: number | null;
+  item?: number | null;
   quantity?: number;
+  item_detail?: {
+    id: number;
+    name: string;
+    sku: string;
+    is_composite: boolean;
+  } | null;
+  group_detail?: any;
+  status_detail?: {
+    id: number;
+    status_name: string;
+    bg_colour: string;
+    text_colour: string;
+  } | null;
 };
 
 export type DrawingPlot = {
   id: number;
   name: string;
   coordinates: number[][];
-  pins?: DrawingPin[];
+  pins: DrawingPin[];
   plot_border?: string;
   plot_bg?: string;
 };
 
 export type DrawingDetail = Drawing & {
-  plots?: DrawingPlot[];
+  plots: DrawingPlot[];
 };
 
 export type DrawingPlotUpsert = {
@@ -68,7 +81,7 @@ export type DrawingPlotUpsert = {
     status?: string | number;
     status_id?: number;
     group?: number | null;
-    composite_item?: number | null;
+    item?: number | null;
     quantity?: number;
   }>;
 };
