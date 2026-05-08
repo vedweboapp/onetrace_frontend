@@ -2,10 +2,13 @@
 
 import {
   Bell,
+  BookUser,
   Building2,
+  FileText,
   FolderKanban,
   Home,
   Layers,
+  MapPinHouse,
   Package,
   Palette,
   PanelLeft,
@@ -63,6 +66,9 @@ export function DashboardHeader() {
     "U";
 
   const clientsHref = routes.dashboard.clients;
+  const contactsHref = routes.dashboard.contacts;
+  const sitesHref = routes.dashboard.sites;
+  const quotationsHref = routes.dashboard.quotations;
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
@@ -72,6 +78,11 @@ export function DashboardHeader() {
   const homeActive = pathname === homeHref;
   const clientsActive =
     pathname === clientsHref || pathname.startsWith(`${clientsHref}/`);
+  const contactsActive =
+    pathname === contactsHref || pathname.startsWith(`${contactsHref}/`);
+  const sitesActive = pathname === sitesHref || pathname.startsWith(`${sitesHref}/`);
+  const quotationsActive =
+    pathname === quotationsHref || pathname.startsWith(`${quotationsHref}/`);
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
   const groupsActive = pathname === groupsHref || pathname.startsWith(`${groupsHref}/`);
@@ -88,13 +99,19 @@ export function DashboardHeader() {
       ? tNav("home")
       : projectsActive
         ? tNav("projects")
-        : clientsActive
-          ? tNav("clients")
-          : groupsActive
-            ? tNav("groups")
-            : compositeActive
-              ? tNav("compositeItems")
-              : tNav("home");
+        : quotationsActive
+          ? tNav("quotations")
+          : sitesActive
+            ? tNav("sites")
+            : contactsActive
+              ? tNav("contacts")
+              : clientsActive
+                ? tNav("clients")
+                : groupsActive
+                  ? tNav("groups")
+                  : compositeActive
+                    ? tNav("compositeItems")
+                    : tNav("home");
 
   return (
     <header className="z-20 flex h-auto shrink-0 flex-col border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
@@ -234,6 +251,39 @@ export function DashboardHeader() {
             >
               <Building2 className="size-3.5" strokeWidth={1.75} />
               {tNav("clients")}
+            </Link>
+            <Link
+              href={contactsHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                contactsActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={contactsActive ? resolved.navActiveStyle : undefined}
+            >
+              <BookUser className="size-3.5" strokeWidth={1.75} />
+              {tNav("contacts")}
+            </Link>
+            <Link
+              href={sitesHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                sitesActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={sitesActive ? resolved.navActiveStyle : undefined}
+            >
+              <MapPinHouse className="size-3.5" strokeWidth={1.75} />
+              {tNav("sites")}
+            </Link>
+            <Link
+              href={quotationsHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                quotationsActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={quotationsActive ? resolved.navActiveStyle : undefined}
+            >
+              <FileText className="size-3.5" strokeWidth={1.75} />
+              {tNav("quotations")}
             </Link>
             <Link
               href={projectsHref}

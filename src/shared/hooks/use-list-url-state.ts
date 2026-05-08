@@ -30,11 +30,21 @@ export function hasListActiveFilters(args: {
   search: string;
   isActiveParam?: string | null;
   groupParam?: string | null;
+  clientParam?: string | null;
+  customerParam?: string | null;
+  siteParam?: string | null;
+  projectParam?: string | null;
+  statusParam?: string | null;
 }): boolean {
   if (args.search.trim() !== "") return true;
   /** Default list is active-only; only “inactive” is treated as an applied filter. */
   if (args.isActiveParam === "false") return true;
   if (args.groupParam != null && args.groupParam.trim() !== "") return true;
+  if (args.clientParam != null && args.clientParam.trim() !== "") return true;
+  if (args.customerParam != null && args.customerParam.trim() !== "") return true;
+  if (args.siteParam != null && args.siteParam.trim() !== "") return true;
+  if (args.projectParam != null && args.projectParam.trim() !== "") return true;
+  if (args.statusParam != null && args.statusParam.trim() !== "") return true;
   return false;
 }
 
