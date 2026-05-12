@@ -8,6 +8,7 @@ import { cn } from "@/core/utils/http.util";
 import { createItem, fetchItem, updateItem } from "@/features/items/api/item.api";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+import { routes } from "@/shared/config/routes";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { AppButton, FieldLabel, fieldErrorTextClassName, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
@@ -128,7 +129,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
         subtitle={isEdit ? t("page.editSubtitle") : t("page.createSubtitle")}
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="md" disabled={submitting} onClick={() => router.push(safeBack)}>
+            <AppButton type="button" variant="secondary" size="md" disabled={submitting} onClick={() => router.push(safeBack ?? routes.dashboard.items)}>
               {tModal("cancel")}
             </AppButton>
             <AppButton type="submit" form="item-form-screen" variant="primary" size="md" loading={submitting}>

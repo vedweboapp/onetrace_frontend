@@ -10,6 +10,7 @@ import { fetchCompositeItemsPage } from "@/features/composite-items/api/composit
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+import { routes } from "@/shared/config/routes";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
@@ -169,7 +170,7 @@ export function GroupFormScreen({ mode, groupId }: Props) {
         subtitle={isEdit ? t("page.editSubtitle") : t("page.createSubtitle")}
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="md" disabled={submitting} onClick={() => router.push(safeBack)}>
+            <AppButton type="button" variant="secondary" size="md" disabled={submitting} onClick={() => router.push(safeBack ?? routes.dashboard.groups)}>
               {tModal("cancel")}
             </AppButton>
             <AppButton type="submit" form="group-form-screen" variant="primary" size="md" loading={submitting}>

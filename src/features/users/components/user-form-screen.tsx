@@ -12,6 +12,7 @@ import { emptyUserFormDefaults, mapInviteUserFormToPayload, mapUserFormToUpdateP
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+import { routes } from "@/shared/config/routes";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
@@ -107,7 +108,7 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
         await inviteUser(mapInviteUserFormToPayload(values));
         toastSuccess(t("createdToast"));
       }
-      router.replace(safeBack);
+      router.replace(safeBack ?? routes.dashboard.settingsUsers);
     } catch {
       toastError(t("saveError"));
     } finally {
@@ -122,7 +123,7 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
         backHref={safeBack}
         backAriaLabel={t("detail.backAria")}
         subtitle={isEdit ? t("page.editSubtitle") : t("page.createSubtitle")}
-        actions={<div className="flex items-center gap-2"><AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => router.push(safeBack)}>{t("modal.cancel")}</AppButton><AppButton type="submit" form="user-upsert-screen-form" variant="primary" size="md" loading={saving}>{isEdit ? t("modal.saveChanges") : t("modal.save")}</AppButton></div>}
+        actions={<div className="flex items-center gap-2"><AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.settingsUsers)}>{t("modal.cancel")}</AppButton><AppButton type="submit" form="user-upsert-screen-form" variant="primary" size="md" loading={saving}>{isEdit ? t("modal.saveChanges") : t("modal.save")}</AppButton></div>}
       />
       <SurfaceShell className="rounded-none border-0 shadow-none ring-0">
         {loadingExisting ? (

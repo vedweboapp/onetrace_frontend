@@ -10,6 +10,7 @@ import { fetchContact } from "@/features/contacts/api/contact.api";
 import { ContactDetailBody } from "@/features/contacts/components/contact-detail-body";
 import type { Contact } from "@/features/contacts/types/contact.types";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+import { routes } from "@/shared/config/routes";
 import { AppButton, SurfaceShell } from "@/shared/ui";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 
@@ -139,7 +140,7 @@ export function ContactDetailScreen({ contactId }: Props) {
               variant="primary"
               size="md"
               className="gap-2"
-              onClick={() => router.push(`${pathname}/edit?back=${encodeURIComponent(safeBack)}`)}
+              onClick={() => router.push(`${pathname}/edit?back=${encodeURIComponent(safeBack ?? routes.dashboard.contacts)}`)}
             >
               <Pencil className="size-4" strokeWidth={2} aria-hidden />
               {t("edit")}

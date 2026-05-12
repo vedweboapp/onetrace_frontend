@@ -9,6 +9,7 @@ import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchSite } from "@/features/sites/api/site.api";
 import { SiteDetailBody } from "@/features/sites/components/site-detail-body";
 import type { Site } from "@/features/sites/types/site.types";
+import { routes } from "@/shared/config/routes";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { AppButton, SurfaceShell } from "@/shared/ui";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
@@ -118,7 +119,7 @@ export function SiteDetailScreen({ siteId }: Props) {
               type="button"
               variant="primary"
               size="md"
-              onClick={() => router.push(`${pathname}/edit?back=${encodeURIComponent(safeBack)}`)}
+              onClick={() => router.push(`${pathname}/edit?back=${encodeURIComponent(safeBack ?? routes.dashboard.sites)}`)}
               className="gap-2"
             >
               <Pencil className="size-4" strokeWidth={2} aria-hidden />

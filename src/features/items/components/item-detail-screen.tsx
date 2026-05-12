@@ -97,7 +97,7 @@ export function ItemDetailScreen({ itemId }: Props) {
                 type="button"
                 variant="primary"
                 size="md"
-                onClick={() => router.push(`${pathname}/edit?back=${encodeURIComponent(safeBack)}`)}
+                onClick={() => router.push(`${pathname}/edit?back=${encodeURIComponent(safeBack ?? routes.dashboard.items)}`)}
                 className="gap-2"
               >
                 <Pencil className="size-4" strokeWidth={2} aria-hidden />

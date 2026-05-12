@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchUserProfile } from "@/features/users/api/user.api";
 import type { UserProfile } from "@/features/users/types/user.types";
+import { routes } from "@/shared/config/routes";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import { AppButton, FieldGroup, SurfaceShell } from "@/shared/ui";
@@ -59,7 +60,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
         backHref={safeBack}
         backAriaLabel={t("detail.backAria")}
         subtitle={detail ? <><span className="inline-flex items-center gap-1.5"><User className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />{userRoleLabel(detail)}</span><span className="inline-flex items-center gap-1.5"><Mail className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden /><a href={`mailto:${detail.user_detail.email}`} className="text-[color:var(--dash-accent)] underline-offset-2 hover:underline">{detail.user_detail.email}</a></span>{detail.user_detail.phone_number ? <span className="inline-flex items-center gap-1.5"><Phone className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />{detail.user_detail.phone_number}</span> : null}</> : undefined}
-        actions={!loading && !error && detail ? <AppButton type="button" variant="primary" size="md" className="gap-2" onClick={() => router.push(`${pathname}/edit?back=${encodeURIComponent(safeBack)}`)}><Pencil className="size-4" strokeWidth={2} aria-hidden />{t("detail.editWithIcon")}</AppButton> : null}
+        actions={!loading && !error && detail ? <AppButton type="button" variant="primary" size="md" className="gap-2" onClick={() => router.push(`${pathname}/edit?back=${encodeURIComponent(safeBack ?? routes.dashboard.settingsUsers)}`)}><Pencil className="size-4" strokeWidth={2} aria-hidden />{t("detail.editWithIcon")}</AppButton> : null}
       />
 
       <SurfaceShell className="rounded-none border-0 shadow-none ring-0">
