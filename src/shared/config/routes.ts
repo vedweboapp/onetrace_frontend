@@ -8,6 +8,9 @@ export const routes = {
   dashboard: {
     root: "/dashboard",
     clients: "/dashboard/clients",
+    contacts: "/dashboard/contacts",
+    sites: "/dashboard/sites",
+    quotations: "/dashboard/quotations",
     projects: "/dashboard/projects",
     groups: "/dashboard/groups",
     items: "/dashboard/items",

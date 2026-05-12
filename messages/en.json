@@ -100,6 +100,9 @@
     "sidebar": {
       "home": "Home",
       "clients": "Clients",
+      "contacts": "Contacts",
+      "sites": "Sites",
+      "quotations": "Quotations",
       "projects": "Projects",
       "groups": "Groups",
       "products": "Products",
@@ -312,6 +315,280 @@
         "state": "Select a state or region.",
         "city": "Enter or select a city.",
         "pincode": "Enter a postal or ZIP code."
+      }
+    },
+    "contacts": {
+      "metaTitle": "Contacts",
+      "detailMetaTitle": "Contact details",
+      "title": "Contacts",
+      "subtitle": "People associated with clients. Use search and filters to find them quickly.",
+      "add": "Add contact",
+      "openDetail": "View details",
+      "emptyTitle": "No contacts yet",
+      "emptyDescription": "Create your first contact to start tracking client communication.",
+      "loadError": "Could not load contacts. Try again.",
+      "missingOrganization": "No workspace organization on this session. Sign out and sign in again, or contact support.",
+      "createdToast": "Contact created successfully",
+      "noClientsHint": "Add at least one client before you can create a contact.",
+      "filterState": "Active state",
+      "filterClient": "Client",
+      "filterAllClients": "All clients",
+      "pageLabel": "Showing {start}-{end} of {total} contacts",
+      "prev": "Previous",
+      "next": "Next",
+      "table": {
+        "name": "Contact",
+        "client": "Client",
+        "email": "Email",
+        "phone": "Phone",
+        "status": "Status",
+        "created": "Created"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "detail": {
+        "loadingTitle": "Loading…",
+        "retry": "Retry",
+        "backAria": "Back to contacts list",
+        "sectionOverview": "Overview",
+        "sectionAddress": "Address",
+        "sectionRecord": "Record",
+        "addressUnavailable": "No address saved for this contact yet.",
+        "addressLine2Empty": "No secondary address provided"
+      },
+      "detailLoadError": "Could not load contact details. Try again.",
+      "fields": {
+        "name": "Name",
+        "client": "Client",
+        "email": "Email",
+        "phone": "Phone",
+        "addressLine1": "Address line 1",
+        "addressLine2": "Address line 2",
+        "status": "Status",
+        "city": "City",
+        "stateProvince": "State / province",
+        "country": "Country",
+        "pincode": "Postal / ZIP code",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "createdBy": "Created by"
+      },
+      "modal": {
+        "createTitle": "New contact",
+        "cancel": "Cancel",
+        "save": "Create contact"
+      },
+      "placeholders": {
+        "client": "Select client",
+        "country": "Select country",
+        "state": "Select state / region",
+        "city": "Select or type city"
+      },
+      "validation": {
+        "name": "Enter a contact name.",
+        "email": "Enter a valid email address.",
+        "phone": "Enter a phone number.",
+        "client": "Select a client.",
+        "addressLine1": "Enter address line 1.",
+        "country": "Select a country.",
+        "state": "Select a state or region.",
+        "city": "Enter or select a city.",
+        "pincode": "Enter a postal or ZIP code."
+      }
+    },
+    "sites": {
+      "metaTitle": "Sites",
+      "detailMetaTitle": "Site details",
+      "title": "Sites",
+      "subtitle": "Track client sites and their addresses. Open a row for full details.",
+      "add": "Add site",
+      "emptyTitle": "No sites yet",
+      "emptyDescription": "Create your first site to manage location-wise work.",
+      "loadError": "Could not load sites. Try again.",
+      "missingOrganization": "No workspace organization on this session. Sign out and sign in again, or contact support.",
+      "createdToast": "Site created successfully",
+      "updatedToast": "Site updated successfully",
+      "deletedToast": "Site deleted",
+      "deleteError": "Could not delete this site. Try again.",
+      "noClientsHint": "Add at least one client before you can create a site.",
+      "filterState": "Active state",
+      "filterClient": "Client",
+      "filterAllClients": "All clients",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "activatedToast": "Site activated",
+      "deactivatedToast": "Site deactivated",
+      "toggleActiveError": "Could not update site status. Try again.",
+      "pageLabel": "Showing {start}-{end} of {total} sites",
+      "prev": "Previous",
+      "next": "Next",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteConfirmTitle": "Delete this site?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete site",
+      "table": {
+        "name": "Site",
+        "client": "Client",
+        "address": "Address",
+        "status": "Status",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "detail": {
+        "loadingTitle": "Loading…",
+        "retry": "Retry",
+        "editWithIcon": "Edit site",
+        "backAria": "Back to sites list",
+        "sectionOverview": "Overview",
+        "sectionAddress": "Address",
+        "sectionRecord": "Record",
+        "addressUnavailable": "No structured address on file for this site."
+      },
+      "detailLoadError": "Could not load site details. Try again.",
+      "placeholders": {
+        "client": "Select client",
+        "country": "Select country",
+        "state": "Select state / region",
+        "city": "Select or type city"
+      },
+      "fields": {
+        "siteName": "Site name",
+        "client": "Client",
+        "addressLine1": "Address line 1",
+        "addressLine2": "Address line 2",
+        "country": "Country",
+        "stateProvince": "State / province",
+        "city": "City",
+        "pincode": "Postal / ZIP code",
+        "status": "Status",
+        "createdAt": "Created",
+        "updatedAt": "Last updated"
+      },
+      "modal": {
+        "createTitle": "New site",
+        "editTitle": "Edit site",
+        "cancel": "Cancel",
+        "save": "Create site",
+        "saveChanges": "Save changes"
+      },
+      "validation": {
+        "siteName": "Enter a site name.",
+        "client": "Select a client.",
+        "addressLine1": "Enter address line 1.",
+        "country": "Select a country.",
+        "state": "Select a state or region.",
+        "city": "Enter or select a city.",
+        "pincode": "Enter a postal or ZIP code."
+      }
+    },
+    "quotations": {
+      "metaTitle": "Quotations",
+      "detailMetaTitle": "Quotation details",
+      "title": "Quotations",
+      "subtitle": "Create and track quotes linked to clients, sites, and projects. Switch between table and card view.",
+      "add": "New quotation",
+      "openDetail": "View details",
+      "emptyTitle": "No quotations yet",
+      "emptyDescription": "Create your first quotation to capture scope, schedule, and team assignments.",
+      "loadError": "Could not load quotations. Try again.",
+      "detailLoadError": "Could not load quotation details. Try again.",
+      "createdToast": "Quotation created successfully",
+      "saveError": "Could not save the quotation. Check the fields and try again.",
+      "noClientsHint": "Add at least one client before you can create a quotation.",
+      "filterState": "Active state",
+      "filterCustomer": "Client",
+      "filterAllCustomers": "All clients",
+      "filterSite": "Site",
+      "filterAllSites": "All sites",
+      "filterProject": "Project",
+      "filterAllProjects": "All projects",
+      "filterStatus": "Quote status",
+      "filterAllStatuses": "All statuses",
+      "pageLabel": "Showing {start}-{end} of {total} quotations",
+      "prev": "Previous",
+      "next": "Next",
+      "quoteStatus": {
+        "draft": "Draft",
+        "sent": "Sent",
+        "accepted": "Accepted",
+        "rejected": "Rejected"
+      },
+      "table": {
+        "quote": "Quote",
+        "customer": "Client",
+        "site": "Site",
+        "project": "Project",
+        "status": "Status",
+        "due": "Due date",
+        "created": "Created"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "detail": {
+        "loadingTitle": "Loading…",
+        "retry": "Retry",
+        "backAria": "Back to quotations list",
+        "sectionOverview": "Overview",
+        "sectionPeople": "People & roles",
+        "sectionProject": "Project & levels",
+        "sectionRecord": "Record",
+        "noDescription": "No description provided.",
+        "allLevelsSelected": "All levels"
+      },
+      "placeholders": {
+        "customer": "Select client",
+        "site": "Select site",
+        "project": "Select project",
+        "contactOptional": "Optional",
+        "userOptional": "Optional",
+        "tags": "e.g. 1, 2, 3"
+      },
+      "hints": {
+        "tags": "Enter tag IDs separated by commas or spaces (organization tags).",
+        "noLevels": "No levels returned for this project. Confirm the project levels API path if you need floor selection.",
+        "noUsers": "No users were returned from the users API. Technician and role fields stay optional."
+      },
+      "fields": {
+        "quoteName": "Quote name",
+        "customer": "Client",
+        "site": "Site",
+        "project": "Project",
+        "primaryContact": "Primary contact",
+        "additionalContact": "Additional contact",
+        "siteContact": "Site contact",
+        "orderNumber": "Order number",
+        "dueDate": "Due date",
+        "salesperson": "Salesperson",
+        "projectManager": "Project manager",
+        "technicians": "Technicians",
+        "tags": "Tags",
+        "description": "Description",
+        "levels": "Levels",
+        "selectAllLevels": "Select all levels in this project",
+        "status": "Active state",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "createdBy": "Created by"
+      },
+      "modal": {
+        "createTitle": "New quotation",
+        "cancel": "Cancel",
+        "save": "Create quotation"
+      },
+      "validation": {
+        "quoteName": "Enter a quotation name.",
+        "customer": "Select a client.",
+        "site": "Select a site.",
+        "project": "Select a project."
       }
     },
     "home": {

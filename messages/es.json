@@ -100,6 +100,9 @@
     "sidebar": {
       "home": "Inicio",
       "clients": "Clientes",
+      "contacts": "Contactos",
+      "sites": "Sitios",
+      "quotations": "Cotizaciones",
       "projects": "Proyectos",
       "groups": "Grupos",
       "products": "Productos",
@@ -312,6 +315,280 @@
         "state": "Selecciona un estado o provincia.",
         "city": "Selecciona o escribe una ciudad.",
         "pincode": "Introduce un código postal."
+      }
+    },
+    "contacts": {
+      "metaTitle": "Contactos",
+      "detailMetaTitle": "Detalle del contacto",
+      "title": "Contactos",
+      "subtitle": "Personas asociadas a clientes. Usa búsqueda y filtros para encontrarlas rápido.",
+      "add": "Añadir contacto",
+      "openDetail": "Ver detalles",
+      "emptyTitle": "Aún no hay contactos",
+      "emptyDescription": "Crea tu primer contacto para comenzar el seguimiento con clientes.",
+      "loadError": "No se pudieron cargar los contactos. Inténtalo de nuevo.",
+      "missingOrganization": "No hay organización de espacio de trabajo en esta sesión. Cierra sesión y vuelve a entrar, o contacta con soporte.",
+      "createdToast": "Contacto creado correctamente",
+      "noClientsHint": "Añade al menos un cliente antes de poder crear un contacto.",
+      "filterState": "Estado activo",
+      "filterClient": "Cliente",
+      "filterAllClients": "Todos los clientes",
+      "pageLabel": "Mostrando {start}-{end} de {total} contactos",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "table": {
+        "name": "Contacto",
+        "client": "Cliente",
+        "email": "Correo",
+        "phone": "Teléfono",
+        "status": "Estado",
+        "created": "Creado"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "detail": {
+        "loadingTitle": "Cargando…",
+        "retry": "Reintentar",
+        "backAria": "Volver a la lista de contactos",
+        "sectionOverview": "Resumen",
+        "sectionAddress": "Dirección",
+        "sectionRecord": "Registro",
+        "addressUnavailable": "Aún no hay dirección guardada para este contacto.",
+        "addressLine2Empty": "No hay segunda línea de dirección"
+      },
+      "detailLoadError": "No se pudieron cargar los detalles del contacto. Inténtalo de nuevo.",
+      "fields": {
+        "name": "Nombre",
+        "client": "Cliente",
+        "email": "Correo",
+        "phone": "Teléfono",
+        "addressLine1": "Línea de dirección 1",
+        "addressLine2": "Línea de dirección 2",
+        "status": "Estado",
+        "city": "Ciudad",
+        "stateProvince": "Estado / provincia",
+        "country": "País",
+        "pincode": "Código postal",
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "createdBy": "Creado por"
+      },
+      "modal": {
+        "createTitle": "Nuevo contacto",
+        "cancel": "Cancelar",
+        "save": "Crear contacto"
+      },
+      "placeholders": {
+        "client": "Seleccionar cliente",
+        "country": "Seleccionar país",
+        "state": "Seleccionar estado / provincia",
+        "city": "Seleccionar o escribir ciudad"
+      },
+      "validation": {
+        "name": "Introduce un nombre de contacto.",
+        "email": "Introduce un correo válido.",
+        "phone": "Introduce un teléfono.",
+        "client": "Selecciona un cliente.",
+        "addressLine1": "Introduce la línea 1 de la dirección.",
+        "country": "Selecciona un país.",
+        "state": "Selecciona un estado o provincia.",
+        "city": "Selecciona o escribe una ciudad.",
+        "pincode": "Introduce un código postal."
+      }
+    },
+    "sites": {
+      "metaTitle": "Sitios",
+      "detailMetaTitle": "Detalle del sitio",
+      "title": "Sitios",
+      "subtitle": "Gestiona los sitios de clientes y sus direcciones. Abre una fila para ver todos los datos.",
+      "add": "Añadir sitio",
+      "emptyTitle": "Aún no hay sitios",
+      "emptyDescription": "Crea tu primer sitio para gestionar trabajo por ubicación.",
+      "loadError": "No se pudieron cargar los sitios. Inténtalo de nuevo.",
+      "missingOrganization": "No hay organización de espacio de trabajo en esta sesión. Cierra sesión y vuelve a entrar, o contacta con soporte.",
+      "createdToast": "Sitio creado correctamente",
+      "updatedToast": "Sitio actualizado correctamente",
+      "deletedToast": "Sitio eliminado",
+      "deleteError": "No se pudo eliminar este sitio. Inténtalo de nuevo.",
+      "noClientsHint": "Añade al menos un cliente antes de poder crear un sitio.",
+      "filterState": "Estado activo",
+      "filterClient": "Cliente",
+      "filterAllClients": "Todos los clientes",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "activatedToast": "Sitio activado",
+      "deactivatedToast": "Sitio desactivado",
+      "toggleActiveError": "No se pudo actualizar el estado del sitio. Inténtalo de nuevo.",
+      "pageLabel": "Mostrando {start}-{end} de {total} sitios",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "deleteConfirmTitle": "¿Eliminar este sitio?",
+      "deleteConfirmBody": "Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar sitio",
+      "table": {
+        "name": "Sitio",
+        "client": "Cliente",
+        "address": "Dirección",
+        "status": "Estado",
+        "created": "Creado",
+        "actions": "Acciones"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "detail": {
+        "loadingTitle": "Cargando…",
+        "retry": "Reintentar",
+        "editWithIcon": "Editar sitio",
+        "backAria": "Volver a la lista de sitios",
+        "sectionOverview": "Resumen",
+        "sectionAddress": "Dirección",
+        "sectionRecord": "Registro",
+        "addressUnavailable": "No hay dirección estructurada guardada para este sitio."
+      },
+      "detailLoadError": "No se pudieron cargar los detalles del sitio. Inténtalo de nuevo.",
+      "placeholders": {
+        "client": "Seleccionar cliente",
+        "country": "Seleccionar país",
+        "state": "Seleccionar estado / provincia",
+        "city": "Seleccionar o escribir ciudad"
+      },
+      "fields": {
+        "siteName": "Nombre del sitio",
+        "client": "Cliente",
+        "addressLine1": "Línea de dirección 1",
+        "addressLine2": "Línea de dirección 2",
+        "country": "País",
+        "stateProvince": "Estado / provincia",
+        "city": "Ciudad",
+        "pincode": "Código postal",
+        "status": "Estado",
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización"
+      },
+      "modal": {
+        "createTitle": "Nuevo sitio",
+        "editTitle": "Editar sitio",
+        "cancel": "Cancelar",
+        "save": "Crear sitio",
+        "saveChanges": "Guardar cambios"
+      },
+      "validation": {
+        "siteName": "Introduce un nombre de sitio.",
+        "client": "Selecciona un cliente.",
+        "addressLine1": "Introduce la línea 1 de la dirección.",
+        "country": "Selecciona un país.",
+        "state": "Selecciona un estado o provincia.",
+        "city": "Selecciona o escribe una ciudad.",
+        "pincode": "Introduce un código postal."
+      }
+    },
+    "quotations": {
+      "metaTitle": "Cotizaciones",
+      "detailMetaTitle": "Detalle de la cotización",
+      "title": "Cotizaciones",
+      "subtitle": "Crea y supervisa cotizaciones vinculadas a clientes, sitios y proyectos. Cambia entre vista tabla y tarjetas.",
+      "add": "Nueva cotización",
+      "openDetail": "Ver detalles",
+      "emptyTitle": "Aún no hay cotizaciones",
+      "emptyDescription": "Crea la primera cotización para definir alcance, fechas y equipo.",
+      "loadError": "No se pudieron cargar las cotizaciones. Inténtalo de nuevo.",
+      "detailLoadError": "No se pudieron cargar los detalles de la cotización. Inténtalo de nuevo.",
+      "createdToast": "Cotización creada correctamente",
+      "saveError": "No se pudo guardar la cotización. Revisa los campos e inténtalo de nuevo.",
+      "noClientsHint": "Añade al menos un cliente antes de crear una cotización.",
+      "filterState": "Estado activo",
+      "filterCustomer": "Cliente",
+      "filterAllCustomers": "Todos los clientes",
+      "filterSite": "Sitio",
+      "filterAllSites": "Todos los sitios",
+      "filterProject": "Proyecto",
+      "filterAllProjects": "Todos los proyectos",
+      "filterStatus": "Estado de la cotización",
+      "filterAllStatuses": "Todos los estados",
+      "pageLabel": "Mostrando {start}-{end} de {total} cotizaciones",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "quoteStatus": {
+        "draft": "Borrador",
+        "sent": "Enviada",
+        "accepted": "Aceptada",
+        "rejected": "Rechazada"
+      },
+      "table": {
+        "quote": "Cotización",
+        "customer": "Cliente",
+        "site": "Sitio",
+        "project": "Proyecto",
+        "status": "Estado",
+        "due": "Vencimiento",
+        "created": "Creado"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "detail": {
+        "loadingTitle": "Cargando…",
+        "retry": "Reintentar",
+        "backAria": "Volver al listado de cotizaciones",
+        "sectionOverview": "Resumen",
+        "sectionPeople": "Personas y roles",
+        "sectionProject": "Proyecto y niveles",
+        "sectionRecord": "Registro",
+        "noDescription": "Sin descripción.",
+        "allLevelsSelected": "Todos los niveles"
+      },
+      "placeholders": {
+        "customer": "Selecciona cliente",
+        "site": "Selecciona sitio",
+        "project": "Selecciona proyecto",
+        "contactOptional": "Opcional",
+        "userOptional": "Opcional",
+        "tags": "p. ej. 1, 2, 3"
+      },
+      "hints": {
+        "tags": "Introduce IDs de etiquetas separados por comas o espacios.",
+        "noLevels": "No hay niveles devueltos para este proyecto. Verifica la ruta del API de niveles si necesitas elegir plantas.",
+        "noUsers": "No se obtuvieron usuarios desde el API. Los campos de equipo siguen siendo opcionales."
+      },
+      "fields": {
+        "quoteName": "Nombre de la cotización",
+        "customer": "Cliente",
+        "site": "Sitio",
+        "project": "Proyecto",
+        "primaryContact": "Contacto principal",
+        "additionalContact": "Contacto adicional",
+        "siteContact": "Contacto del sitio",
+        "orderNumber": "Número de pedido",
+        "dueDate": "Fecha límite",
+        "salesperson": "Comercial",
+        "projectManager": "Jefe de proyecto",
+        "technicians": "Técnicos",
+        "tags": "Etiquetas",
+        "description": "Descripción",
+        "levels": "Niveles",
+        "selectAllLevels": "Seleccionar todos los niveles de este proyecto",
+        "status": "Estado activo",
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "createdBy": "Creado por"
+      },
+      "modal": {
+        "createTitle": "Nueva cotización",
+        "cancel": "Cancelar",
+        "save": "Crear cotización"
+      },
+      "validation": {
+        "quoteName": "Introduce un nombre para la cotización.",
+        "customer": "Selecciona un cliente.",
+        "site": "Selecciona un sitio.",
+        "project": "Selecciona un proyecto."
       }
     },
     "home": {
