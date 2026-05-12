@@ -1,6 +1,6 @@
 export const QUOTATION_PATHS = {
   list: "quotations/",
   detail: (id: number) => `quotations/${id}/`,
-  /** Project levels for quotation form; adjust path if backend differs. */
-  projectLevels: (projectId: number) => `project/${projectId}/levels/`,
+  /** Project levels (drawings) for quotation form. */
+  projectLevels: (projectId: number) => `project/${projectId}/level/`,
 } as const;

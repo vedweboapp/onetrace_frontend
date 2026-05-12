@@ -3,7 +3,7 @@ import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { CONTACT_PATHS } from "./contact.paths";
-import type { Contact, ContactCreatePayload, ContactListResponse } from "../types/contact.types";
+import type { Contact, ContactCreatePayload, ContactListResponse, ContactUpdatePayload } from "../types/contact.types";
 
 function assertEnvelopeSuccess(envelope: { success: boolean; message?: string }) {
   if (!envelope.success) {
@@ -44,6 +44,15 @@ export async function fetchContact(id: number): Promise<Contact> {
 
 export async function createContact(body: ContactCreatePayload): Promise<Contact> {
   const { data } = await api.post<ApiEnvelope<Contact>>(CONTACT_PATHS.list, body);
+  assertApiSuccess(data);
+  return data.data;
+}
+
+export async function updateContact(
+  id: number,
+  body: Partial<ContactUpdatePayload> & { is_active?: boolean },
+): Promise<Contact> {
+  const { data } = await api.patch<ApiEnvelope<Contact>>(CONTACT_PATHS.detail(id), body);
   assertApiSuccess(data);
   return data.data;
 }

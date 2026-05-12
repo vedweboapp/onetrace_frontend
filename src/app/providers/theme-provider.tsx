@@ -13,7 +13,7 @@ export function ThemeProvider({ children }: Props) {
       attribute="class"
       defaultTheme="light"
       enableSystem={false}
-      storageKey="one-trace-ui-theme"
+      storageKey="SimHo-ui-theme"
       disableTransitionOnChange
     >
       {children}

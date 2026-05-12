@@ -1,13 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { ChevronRight, Phone, Plus } from "lucide-react";
+import { Pencil, Phone, Plus, Power, PowerOff } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { ContactFormModal } from "@/features/contacts/components/contact-form-modal";
-import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { fetchContactsPage, updateContact } from "@/features/contacts/api/contact.api";
 import type { Contact } from "@/features/contacts/types/contact.types";
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
@@ -36,6 +35,22 @@ import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.u
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { cn } from "@/core/utils/http.util";
+import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+
+function contactClientId(row: Contact): number | null {
+  if (typeof row.client === "number" && Number.isFinite(row.client) && row.client > 0) return row.client;
+  if (row.client && typeof row.client === "object" && Number.isFinite(row.client.id) && row.client.id > 0) {
+    return row.client.id;
+  }
+  return null;
+}
+
+function contactClientName(row: Contact, clientNameById: Record<number, string>): string {
+  if (row.client && typeof row.client === "object" && row.client.name?.trim()) return row.client.name.trim();
+  const id = contactClientId(row);
+  if (id && clientNameById[id]) return clientNameById[id];
+  return id ? `#${id}` : "—";
+}
 
 export function ContactsPanel() {
   const t = useTranslations("Dashboard.contacts");
@@ -78,9 +93,19 @@ export function ContactsPanel() {
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
+  const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [formOpen, setFormOpen] = React.useState(false);
+  const openCreate = React.useCallback(() => {
+    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
+  }, [listHref, pathname, router]);
+
+  const openEdit = React.useCallback(
+    (id: number) => {
+      router.push(`${pathname}/${id}/edit?back=${encodeURIComponent(listHref)}`);
+    },
+    [listHref, pathname, router],
+  );
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
@@ -104,7 +129,7 @@ export function ContactsPanel() {
     let cancelled = false;
     (async () => {
       try {
-        const { items: clients } = await fetchClientsPage(1, 500);
+        const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
         if (!cancelled) {
           setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
         }
@@ -168,6 +193,19 @@ export function ContactsPanel() {
   const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
   const pageRange = getListPageRange(pagination);
 
+  async function handleToggleActive(row: Contact, next: boolean) {
+    setTogglingId(row.id);
+    try {
+      await updateContact(row.id, { is_active: next });
+      toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
+      setRefreshNonce((n) => n + 1);
+    } catch {
+      toastError(t("toggleActiveError"));
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
   return (
     <div className="space-y-4">
       {!hideListChrome ? (
@@ -179,7 +217,7 @@ export function ContactsPanel() {
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
           action={
-            <AppButton type="button" variant="primary" size="md" onClick={() => setFormOpen(true)} className="gap-2">
+            <AppButton type="button" variant="primary" size="md" onClick={openCreate} className="gap-2">
               <Plus className="size-4" strokeWidth={2} aria-hidden />
               {t("add")}
             </AppButton>
@@ -200,6 +238,8 @@ export function ContactsPanel() {
                 value={clientParam ?? ""}
                 emptyLabel={t("filterAllClients")}
                 portaled
+                clearable
+                clearAriaLabel={tList("clearFilter")}
                 className="w-full min-w-0 sm:w-56"
                 onChange={(v) => setUrl({ client: v || null, page: null }, { replace: true })}
               />
@@ -262,7 +302,7 @@ export function ContactsPanel() {
               title={t("emptyTitle")}
               description={t("emptyDescription")}
               action={
-                <AppButton type="button" variant="primary" size="md" onClick={() => setFormOpen(true)} className="gap-2">
+                <AppButton type="button" variant="primary" size="md" onClick={openCreate} className="gap-2">
                   <Plus className="size-4" strokeWidth={2} aria-hidden />
                   {t("add")}
                 </AppButton>
@@ -278,7 +318,7 @@ export function ContactsPanel() {
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
                   title={row.name}
-                  subtitle={clientLabelById[row.client] ?? `#${row.client}`}
+                  subtitle={contactClientName(row, clientLabelById)}
                   meta={row.email}
                   footer={
                     <div className="flex w-full flex-wrap items-center justify-between gap-3">
@@ -305,11 +345,26 @@ export function ContactsPanel() {
                       menuAriaLabel={tList("openRowActions")}
                       items={[
                         {
-                          id: "open",
-                          label: t("openDetail"),
-                          icon: ChevronRight,
-                          onSelect: () => openContactDetail(row.id),
+                          id: "edit",
+                          label: t("edit"),
+                          icon: Pencil,
+                          onSelect: () => openEdit(row.id),
                         },
+                        row.is_active
+                          ? {
+                              id: "deactivate",
+                              label: t("deactivate"),
+                              icon: PowerOff,
+                              onSelect: () => void handleToggleActive(row, false),
+                              disabled: togglingId === row.id,
+                            }
+                          : {
+                              id: "activate",
+                              label: t("activate"),
+                              icon: Power,
+                              onSelect: () => void handleToggleActive(row, true),
+                              disabled: togglingId === row.id,
+                            },
                       ]}
                     />
                   }
@@ -328,6 +383,9 @@ export function ContactsPanel() {
                   <DataTableTh>{t("table.phone")}</DataTableTh>
                   <DataTableTh>{t("table.status")}</DataTableTh>
                   <DataTableTh>{t("table.created")}</DataTableTh>
+                  <DataTableTh narrow>
+                    <span className="sr-only">{t("table.actions")}</span>
+                  </DataTableTh>
                 </tr>
               </DataTableHead>
               <DataTableBody>
@@ -340,7 +398,7 @@ export function ContactsPanel() {
                     onClick={() => openContactDetail(row.id)}
                   >
                     <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{row.name}</DataTableTd>
-                    <DataTableTd>{clientLabelById[row.client] ?? `#${row.client}`}</DataTableTd>
+                    <DataTableTd>{contactClientName(row, clientLabelById)}</DataTableTd>
                     <DataTableTd className="max-w-[14rem] truncate">{row.email}</DataTableTd>
                     <DataTableTd>{row.phone?.trim() || "—"}</DataTableTd>
                     <DataTableTd>
@@ -350,6 +408,34 @@ export function ContactsPanel() {
                       />
                     </DataTableTd>
                     <DataTableTd>{dateFmt.format(new Date(row.created_at))}</DataTableTd>
+                    <DataTableTd narrow onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                      <DataTableRowActionsMenu
+                        menuAriaLabel={tList("openRowActions")}
+                        items={[
+                          {
+                            id: "edit",
+                            label: t("edit"),
+                            icon: Pencil,
+                            onSelect: () => openEdit(row.id),
+                          },
+                          row.is_active
+                            ? {
+                                id: "deactivate",
+                                label: t("deactivate"),
+                                icon: PowerOff,
+                                onSelect: () => void handleToggleActive(row, false),
+                                disabled: togglingId === row.id,
+                              }
+                            : {
+                                id: "activate",
+                                label: t("activate"),
+                                icon: Power,
+                                onSelect: () => void handleToggleActive(row, true),
+                                disabled: togglingId === row.id,
+                              },
+                        ]}
+                      />
+                    </DataTableTd>
                   </DataTableRow>
                 ))}
               </DataTableBody>
@@ -382,12 +468,6 @@ export function ContactsPanel() {
         ) : null}
       </SurfaceShell>
 
-      <ContactFormModal
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        clientOptions={clientOptions}
-        onSaved={() => setRefreshNonce((n) => n + 1)}
-      />
     </div>
   );
 }

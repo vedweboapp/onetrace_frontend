@@ -41,6 +41,7 @@ export type { SurfacePhoneFieldProps } from "./surface-phone-field";
 export { SurfaceShell } from "./surface-shell";
 export { CheckmarkSelect } from "./checkmark-select";
 export type { CheckmarkSelectOption } from "./checkmark-select";
+export { MultiCheckSelect } from "./multi-check-select";
 export { AppButton } from "./app-button";
 export type { AppButtonProps, AppButtonSize, AppButtonVariant } from "./app-button";
 export { AuthCard } from "./auth-card";

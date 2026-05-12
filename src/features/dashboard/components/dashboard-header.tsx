@@ -15,6 +15,8 @@ import {
   PanelLeftClose,
   Settings,
   Tags,
+  Tag,
+  UserRound,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
@@ -75,6 +77,8 @@ export function DashboardHeader() {
   const compositeHref = routes.dashboard.compositeItems;
   const appearanceHref = routes.dashboard.settingsAppearance;
   const pinStatusHref = routes.dashboard.settingsPinStatus;
+  const tagHref = routes.dashboard.settingsTags;
+  const usersHref = routes.dashboard.settingsUsers;
   const homeActive = pathname === homeHref;
   const clientsActive =
     pathname === clientsHref || pathname.startsWith(`${clientsHref}/`);
@@ -92,6 +96,8 @@ export function DashboardHeader() {
     pathname === appearanceHref || pathname.startsWith(`${appearanceHref}/`);
   const pinStatusActive =
     pathname === pinStatusHref || pathname.startsWith(`${pinStatusHref}/`);
+  const tagActive = pathname === tagHref || pathname.startsWith(`${tagHref}/`);
+  const usersActive = pathname === usersHref || pathname.startsWith(`${usersHref}/`);
 
   const sectionTitle = settingsMode
     ? t("eyebrowSettings")
@@ -226,6 +232,28 @@ export function DashboardHeader() {
             >
               <Tags className="size-3.5" strokeWidth={1.75} />
               {tSettingsNav("pinStatus")}
+            </Link>
+            <Link
+              href={tagHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                tagActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={tagActive ? resolved.navActiveStyle : undefined}
+            >
+              <Tag className="size-3.5" strokeWidth={1.75} />
+              {tSettingsNav("tags")}
+            </Link>
+            <Link
+              href={usersHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                usersActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={usersActive ? resolved.navActiveStyle : undefined}
+            >
+              <UserRound className="size-3.5" strokeWidth={1.75} />
+              {tSettingsNav("users")}
             </Link>
           </>
         ) : (

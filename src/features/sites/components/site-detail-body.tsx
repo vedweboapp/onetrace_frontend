@@ -1,9 +1,11 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import type { Site } from "@/features/sites/types/site.types";
 import { routes } from "@/shared/config/routes";
+import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
   DetailMetricCard,
   DetailMetricsGrid,
@@ -11,6 +13,16 @@ import {
   DetailPanelCard,
 } from "@/shared/components/layout/detail-metric-card";
 import { ActiveStatusBadge } from "@/shared/ui";
+
+const AddressMiniMap = dynamic(
+  () => import("@/shared/components/maps/address-mini-map").then((m) => m.AddressMiniMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-[200px] animate-pulse rounded-lg bg-slate-200/80 dark:bg-slate-800/80" />
+    ),
+  },
+);
 
 export function SiteDetailBody({
   detail,
@@ -22,11 +34,12 @@ export function SiteDetailBody({
   clientName: string | null;
 }) {
   const t = useTranslations("Dashboard.sites");
-  const line1 = detail.address_line_1?.trim() ?? "";
-  const line2 = detail.address_line_2?.trim() ?? "";
-  const structured =
-    !!(line1 || line2 || detail.city?.trim() || detail.state?.trim() || detail.country?.trim() || detail.pincode?.trim());
-
+  const clientId =
+    typeof detail.client === "number"
+      ? detail.client
+      : typeof detail.client?.id === "number"
+        ? detail.client.id
+        : null;
   return (
     <DetailPagePadding>
       <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
@@ -37,31 +50,43 @@ export function SiteDetailBody({
                 <span className="break-words">{detail.site_name}</span>
               </DetailMetricCard>
               <DetailMetricCard label={t("fields.client")}>
-                <Link
-                  href={`${routes.dashboard.clients}/${detail.client}`}
-                  className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                >
-                  {clientName ?? `#${detail.client}`}
-                </Link>
+                {clientId ? (
+                  <Link
+                    href={`${routes.dashboard.clients}/${clientId}`}
+                    className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                  >
+                    {clientName ?? `#${clientId}`}
+                  </Link>
+                ) : (
+                  <span>{clientName ?? "—"}</span>
+                )}
               </DetailMetricCard>
             </DetailMetricsGrid>
           </DetailPanelCard>
 
           <DetailPanelCard title={t("detail.sectionAddress")}>
-            {structured ? (
-              <div className="grid gap-3 text-sm leading-relaxed text-slate-800 sm:grid-cols-2 dark:text-slate-200">
-                <div className="space-y-2">
-                  {line1 ? <p>{line1}</p> : null}
-                  {line2 ? <p>{line2}</p> : null}
-                </div>
-                <div className="space-y-2">
-                  <p>{[detail.city?.trim(), detail.state?.trim()].filter(Boolean).join(", ") || "—"}</p>
-                  <p>{[detail.country?.trim(), detail.pincode?.trim()].filter(Boolean).join(" · ") || "—"}</p>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>
-            )}
+            <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+              <DetailFormattedAddress
+                line1={detail.address_line_1}
+                line2={detail.address_line_2}
+                city={detail.city}
+                state={detail.state}
+                pincode={detail.pincode}
+                country={detail.country}
+                emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>}
+              />
+              <AddressMiniMap
+                addressParts={{
+                  line1: detail.address_line_1,
+                  line2: detail.address_line_2,
+                  city: detail.city,
+                  state: detail.state,
+                  pincode: detail.pincode,
+                  country: detail.country,
+                }}
+                className="min-h-[200px] lg:min-h-[220px]"
+              />
+            </div>
           </DetailPanelCard>
         </div>
 

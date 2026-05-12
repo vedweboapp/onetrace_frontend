@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Mail, Phone, User } from "lucide-react";
+import { Mail, Pencil, Phone, User } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContact } from "@/features/contacts/api/contact.api";
 import { ContactDetailBody } from "@/features/contacts/components/contact-detail-body";
@@ -12,6 +13,21 @@ import { DetailPageHeader } from "@/shared/components/layout/detail-page-header"
 import { AppButton, SurfaceShell } from "@/shared/ui";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 
+function contactClientId(detail: Contact): number | null {
+  if (typeof detail.client === "number" && Number.isFinite(detail.client) && detail.client > 0) return detail.client;
+  if (detail.client && typeof detail.client === "object" && Number.isFinite(detail.client.id) && detail.client.id > 0) {
+    return detail.client.id;
+  }
+  return null;
+}
+
+function contactClientName(detail: Contact, clientNames: Record<number, string>): string {
+  if (detail.client && typeof detail.client === "object" && detail.client.name?.trim()) return detail.client.name.trim();
+  const id = contactClientId(detail);
+  if (id && clientNames[id]) return clientNames[id];
+  return id ? `#${id}` : "—";
+}
+
 type Props = {
   contactId: number;
 };
@@ -19,6 +35,8 @@ type Props = {
 export function ContactDetailScreen({ contactId }: Props) {
   const t = useTranslations("Dashboard.contacts");
   const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const safeBack = sanitizeInternalListBack(searchParams.get("back"), "contacts");
 
@@ -89,7 +107,7 @@ export function ContactDetailScreen({ contactId }: Props) {
             <>
               <span className="inline-flex items-center gap-1.5">
                 <User className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
-                {clientNames[detail.client] ?? `#${detail.client}`}
+                {contactClientName(detail, clientNames)}
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <Mail className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
@@ -114,6 +132,20 @@ export function ContactDetailScreen({ contactId }: Props) {
             </>
           ) : undefined
         }
+        actions={
+          !loading && !error && detail ? (
+            <AppButton
+              type="button"
+              variant="primary"
+              size="md"
+              className="gap-2"
+              onClick={() => router.push(`${pathname}/edit?back=${encodeURIComponent(safeBack)}`)}
+            >
+              <Pencil className="size-4" strokeWidth={2} aria-hidden />
+              {t("edit")}
+            </AppButton>
+          ) : null
+        }
       />
 
       <SurfaceShell className="rounded-none border-0 shadow-none ring-0">
@@ -131,7 +163,7 @@ export function ContactDetailScreen({ contactId }: Props) {
             </AppButton>
           </div>
         ) : detail ? (
-          <ContactDetailBody detail={detail} clientName={clientNames[detail.client]} dateFmt={dateFmt} />
+          <ContactDetailBody detail={detail} clientName={contactClientName(detail, clientNames)} dateFmt={dateFmt} />
         ) : null}
       </SurfaceShell>
     </div>

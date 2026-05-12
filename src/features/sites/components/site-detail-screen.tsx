@@ -4,14 +4,29 @@ import * as React from "react";
 import { MapPinHouse, Pencil } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchSite } from "@/features/sites/api/site.api";
 import { SiteDetailBody } from "@/features/sites/components/site-detail-body";
-import { SiteFormModal } from "@/features/sites/components/site-form-modal";
 import type { Site } from "@/features/sites/types/site.types";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { AppButton, SurfaceShell } from "@/shared/ui";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+
+function siteClientId(site: Site): number | null {
+  if (typeof site.client === "number" && Number.isFinite(site.client) && site.client > 0) return site.client;
+  if (site.client && typeof site.client === "object" && Number.isFinite(site.client.id) && site.client.id > 0) {
+    return site.client.id;
+  }
+  return null;
+}
+
+function siteClientName(site: Site, clientNameById: Record<number, string>): string {
+  if (site.client && typeof site.client === "object" && site.client.name?.trim()) return site.client.name.trim();
+  const id = siteClientId(site);
+  if (id && clientNameById[id]) return clientNameById[id];
+  return id ? `#${id}` : "—";
+}
 
 type Props = {
   siteId: number;
@@ -20,6 +35,8 @@ type Props = {
 export function SiteDetailScreen({ siteId }: Props) {
   const t = useTranslations("Dashboard.sites");
   const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const safeBack = sanitizeInternalListBack(searchParams.get("back"), "sites");
 
@@ -28,8 +45,6 @@ export function SiteDetailScreen({ siteId }: Props) {
   const [error, setError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [formOpen, setFormOpen] = React.useState(false);
-
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -93,13 +108,19 @@ export function SiteDetailScreen({ siteId }: Props) {
           detail ? (
             <span className="inline-flex items-center gap-1.5">
               <MapPinHouse className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
-              {clientNameById[detail.client] ?? `#${detail.client}`}
+              {siteClientName(detail, clientNameById)}
             </span>
           ) : undefined
         }
         actions={
           !loading && !error && detail ? (
-            <AppButton type="button" variant="primary" size="md" onClick={() => setFormOpen(true)} className="gap-2">
+            <AppButton
+              type="button"
+              variant="primary"
+              size="md"
+              onClick={() => router.push(`${pathname}/edit?back=${encodeURIComponent(safeBack)}`)}
+              className="gap-2"
+            >
               <Pencil className="size-4" strokeWidth={2} aria-hidden />
               {t("detail.editWithIcon")}
             </AppButton>
@@ -122,18 +143,10 @@ export function SiteDetailScreen({ siteId }: Props) {
             </AppButton>
           </div>
         ) : detail ? (
-          <SiteDetailBody detail={detail} clientName={clientNameById[detail.client] ?? null} dateFmt={dateFmt} />
+          <SiteDetailBody detail={detail} clientName={siteClientName(detail, clientNameById)} dateFmt={dateFmt} />
         ) : null}
       </SurfaceShell>
 
-      <SiteFormModal
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        mode="edit"
-        site={detail}
-        clientOptions={clientOptions}
-        onSaved={() => setRefreshNonce((n) => n + 1)}
-      />
     </div>
   );
 }

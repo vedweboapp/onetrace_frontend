@@ -72,10 +72,13 @@ export function DetailPanelCard({
   title,
   children,
   className,
+  bodyClassName,
 }: {
   title: ReactNode;
   children: ReactNode;
   className?: string;
+  /** Merged onto the body wrapper under the title (default keeps `mt-4`). */
+  bodyClassName?: string;
 }) {
   return (
     <div
@@ -86,7 +89,7 @@ export function DetailPanelCard({
       )}
     >
       <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{title}</h2>
-      <div className="mt-4">{children}</div>
+      <div className={cn("mt-4", bodyClassName)}>{children}</div>
     </div>
   );
 }

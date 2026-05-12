@@ -70,8 +70,7 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
 
   if (isImageFile(drawingFile, fileType)) {
     return shell(
-      // Drawing files use dynamic API/media URLs; next/image would require remotePatterns per deployment.
-      // eslint-disable-next-line @next/next/no-img-element -- dynamic drawing preview URL
+      
       <img
         src={url}
         alt={alt}
@@ -83,7 +82,6 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
   }
 
   return shell(
-    // eslint-disable-next-line @next/next/no-img-element -- dynamic drawing preview URL
     <img
       src={url}
       alt={alt}

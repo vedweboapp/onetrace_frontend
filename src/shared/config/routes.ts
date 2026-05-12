@@ -18,5 +18,7 @@ export const routes = {
     settings: "/dashboard/settings",
     settingsAppearance: "/dashboard/settings/appearance",
     settingsPinStatus: "/dashboard/settings/pin-status",
+    settingsTags: "/dashboard/settings/tag",
+    settingsUsers: "/dashboard/settings/users",
   },
 } as const;

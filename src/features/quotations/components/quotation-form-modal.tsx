@@ -6,12 +6,11 @@ import { useTranslations } from "next-intl";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
-import {
-  createQuotation,
-  fetchProjectLevelsForQuotation,
-  fetchWorkspaceUsers,
-} from "@/features/quotations/api/quotation.api";
-import type { QuotationLevelRef } from "@/features/quotations/types/quotation.types";
+import { createQuotation, fetchProjectLevelRowsForQuotation, fetchWorkspaceUsers } from "@/features/quotations/api/quotation.api";
+import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
+import { useQuotationDraftState } from "@/features/quotations/hooks/use-quotation-draft-state";
+import type { ProjectLevelForQuotation } from "@/features/quotations/types/quotation.types";
+import { applyQuotationSiteSnapshot, mergeQuotationDraftIntoPayload } from "@/features/quotations/utils/quotation-draft-payload.util";
 import {
   createQuotationFormSchema,
   type QuotationFormValues,
@@ -19,20 +18,25 @@ import {
 import {
   emptyQuotationFormDefaults,
   mapQuotationFormToPayload,
+  parseOptionalId,
 } from "@/features/quotations/utils/quotation-form-map";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
+import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
   AppModal,
+  AppTabs,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
+  MultiCheckSelect,
   surfaceInputClassName,
 } from "@/shared/ui";
 
@@ -49,12 +53,17 @@ type Props = {
 export function QuotationFormModal({ open, onClose, onSaved }: Props) {
   const t = useTranslations("Dashboard.quotations");
   const [saving, setSaving] = React.useState(false);
+  const [formTab, setFormTab] = React.useState<"project" | "pricing">("project");
+
+  React.useEffect(() => {
+    if (open) setFormTab("project");
+  }, [open]);
   const [clientOptions, setClientOptions] = React.useState<Option[]>([]);
   const [siteRows, setSiteRows] = React.useState<Site[]>([]);
   const [projectRows, setProjectRows] = React.useState<Project[]>([]);
   const [contactOptions, setContactOptions] = React.useState<Option[]>([]);
   const [userOptions, setUserOptions] = React.useState<Option[]>([]);
-  const [levelRows, setLevelRows] = React.useState<QuotationLevelRef[]>([]);
+  const [levelRows, setLevelRows] = React.useState<ProjectLevelForQuotation[]>([]);
 
   const schema = React.useMemo(
     () =>
@@ -67,18 +76,24 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     [t],
   );
 
-  const { control, register, reset, setValue, getValues, handleSubmit, formState: { errors } } =
+  const { control, register, reset, setValue, handleSubmit, formState: { errors } } =
     useForm<QuotationFormValues>({
       resolver: zodResolver(schema),
       defaultValues: emptyQuotationFormDefaults(),
     });
 
+  const quoteNameRegister = register("quote_name");
+
   const customerIdStr = useWatch({ control, name: "customer" });
   const projectIdStr = useWatch({ control, name: "project" });
-  const selectAllLevels = useWatch({ control, name: "select_all_levels" });
-  const technicianIds = useWatch({ control, name: "technician_ids" }) ?? [];
-  const levelIds = useWatch({ control, name: "level_ids" }) ?? [];
+  const siteIdStr = useWatch({ control, name: "site" });
 
+  const selectedSiteForPayload = React.useMemo(() => {
+    const raw = siteIdStr?.trim();
+    if (!raw || !/^\d+$/.test(raw)) return null;
+    const id = Number.parseInt(raw, 10);
+    return siteRows.find((s) => s.id === id) ?? null;
+  }, [siteIdStr, siteRows]);
   React.useEffect(() => {
     if (!open) return;
     reset(emptyQuotationFormDefaults());
@@ -89,7 +104,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     if (!open) return;
     (async () => {
       try {
-        const { items: clients } = await fetchClientsPage(1, 500);
+        const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
         if (!cancelled) setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
       } catch {
         if (!cancelled) setClientOptions([]);
@@ -105,7 +120,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     if (!open) return;
     (async () => {
       try {
-        const { items: projects } = await fetchProjectsPage(1, 500);
+        const { items: projects } = await fetchProjectsPage(1, 500, { is_active: true });
         if (!cancelled) setProjectRows(projects);
       } catch {
         if (!cancelled) setProjectRows([]);
@@ -126,7 +141,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
           setUserOptions(
             users.map((u) => ({
               value: String(u.id),
-              label: `${u.username} (${u.email})`,
+              label: u.username?.trim() || u.email?.trim() || `#${u.id}`,
             })),
           );
         }
@@ -152,7 +167,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     }
     (async () => {
       try {
-        const { items } = await fetchSitesPage(1, 500, { client: customerId });
+        const { items } = await fetchSitesPage(1, 500, { client: customerId, is_active: true });
         if (!cancelled) setSiteRows(items);
       } catch {
         if (!cancelled) setSiteRows([]);
@@ -171,7 +186,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     }
     (async () => {
       try {
-        const { items } = await fetchContactsPage(1, 500, { client: customerId });
+        const { items } = await fetchContactsPage(1, 500, { client: customerId, is_active: true });
         if (!cancelled) {
           setContactOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
         }
@@ -196,16 +211,15 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
       return;
     }
     (async () => {
-      const levels = await fetchProjectLevelsForQuotation(projectId);
+      const levels = await fetchProjectLevelRowsForQuotation(projectId);
       if (!cancelled) {
         setLevelRows(levels);
-        setValue("level_ids", []);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [open, projectId, setValue]);
+  }, [open, projectId]);
 
   const siteOptions = React.useMemo<Option[]>(
     () => siteRows.map((s) => ({ value: String(s.id), label: s.site_name })),
@@ -215,28 +229,20 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
   const projectOptions = React.useMemo<Option[]>(() => {
     if (!customerId || customerId <= 0) return [];
     return projectRows
-      .filter((p) => p.client === customerId)
+      .filter((p) => getProjectClientId(p) === customerId)
       .map((p) => ({ value: String(p.id), label: p.name }));
   }, [projectRows, customerId]);
-
-  function toggleInNumberList(field: "technician_ids" | "level_ids", id: number) {
-    const key = field;
-    const current = getValues(key) ?? [];
-    if (current.includes(id)) {
-      setValue(
-        key,
-        current.filter((x) => x !== id),
-        { shouldValidate: true, shouldDirty: true },
-      );
-    } else {
-      setValue(key, [...current, id], { shouldValidate: true, shouldDirty: true });
-    }
-  }
 
   async function submit(values: QuotationFormValues) {
     setSaving(true);
     try {
-      const payload = mapQuotationFormToPayload(values);
+      const base = mapQuotationFormToPayload(values);
+      const withDraft = quoteDraft ? mergeQuotationDraftIntoPayload(base, quoteDraft) : base;
+      const payload = applyQuotationSiteSnapshot(
+        withDraft,
+        selectedSiteForPayload,
+        parseOptionalId(values.site_contact),
+      );
       await createQuotation(payload);
       toastSuccess(t("createdToast"));
       onSaved();
@@ -249,6 +255,19 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
   }
 
   const noClients = clientOptions.length === 0;
+  const canShowLevels = !!projectId && projectId > 0;
+
+  const sortedLevelRows = React.useMemo(() => {
+    const rows = Array.isArray(levelRows) ? levelRows : [];
+    return [...rows].sort((a, b) => {
+      const ao = typeof a.order === "number" ? a.order : Number.POSITIVE_INFINITY;
+      const bo = typeof b.order === "number" ? b.order : Number.POSITIVE_INFINITY;
+      if (ao !== bo) return ao - bo;
+      return (a.name ?? "").localeCompare(b.name ?? "");
+    });
+  }, [levelRows]);
+
+  const [quoteDraft, setQuoteDraft] = useQuotationDraftState(open, projectId, sortedLevelRows);
 
   return (
     <AppModal
@@ -258,7 +277,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
       titleId="quotation-modal-title"
       closeOnBackdrop={!saving}
       isBusy={saving}
-      size="3xl"
+      size="5xl"
       footer={
         <>
           <AppButton
@@ -283,13 +302,34 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
           </p>
         ) : null}
 
+        <AppTabs
+          tabs={[
+            { id: "project", label: t("formTabs.project") },
+            { id: "pricing", label: t("formTabs.pricing") },
+          ]}
+          value={formTab}
+          onValueChange={(id) => setFormTab(id === "pricing" ? "pricing" : "project")}
+          ariaLabel={t("formTabs.aria")}
+          panelIdPrefix="quotation-form-modal"
+        />
+        <div
+          role="tabpanel"
+          id="quotation-form-modal-project"
+          aria-labelledby="quotation-form-modal-trigger-project"
+          className={cn("space-y-6", formTab !== "project" && "hidden")}
+        >
         <FormFieldRow cols="2">
           <FieldGroup label={t("fields.quoteName")} htmlFor="quotation-name" required>
             <input
               id="quotation-name"
               aria-invalid={errors.quote_name ? true : undefined}
               className={cn(surfaceInputClassName, errors.quote_name && "border-red-500 dark:border-red-500")}
-              {...register("quote_name")}
+              {...quoteNameRegister}
+              onBlur={(e) => {
+                quoteNameRegister.onBlur(e);
+                const next = capitalizeFirstLetter(e.target.value);
+                if (next !== e.target.value) setValue("quote_name", next, { shouldValidate: true });
+              }}
             />
             <FieldErrorText>{errors.quote_name?.message}</FieldErrorText>
           </FieldGroup>
@@ -472,6 +512,9 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
               )}
             />
           </FieldGroup>
+        </FormFieldRow>
+
+        <FormFieldRow cols="2">
           <FieldGroup label={t("fields.tags")} htmlFor="quotation-tags">
             <input
               id="quotation-tags"
@@ -481,67 +524,53 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
             />
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("hints.tags")}</p>
           </FieldGroup>
+          <FieldGroup label={t("fields.technicians")} htmlFor="quotation-modal-technicians">
+            {userOptions.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t("hints.noUsers")}</p>
+            ) : (
+              <Controller
+                control={control}
+                name="technician_ids"
+                render={({ field }) => (
+                  <MultiCheckSelect
+                    id="quotation-modal-technicians"
+                    options={userOptions}
+                    values={(field.value ?? []).map(String)}
+                    onChange={(next) =>
+                      field.onChange(
+                        next.map((v) => Number.parseInt(v, 10)).filter((n) => Number.isFinite(n) && n > 0),
+                      )
+                    }
+                    onBlur={field.onBlur}
+                    disabled={saving}
+                    listLabel={t("fields.technicians")}
+                    placeholder={t("placeholders.userOptional")}
+                  />
+                )}
+              />
+            )}
+          </FieldGroup>
         </FormFieldRow>
 
         <FieldGroup label={t("fields.description")} htmlFor="quotation-desc">
           <textarea id="quotation-desc" rows={3} className={cn(surfaceInputClassName, "min-h-[5rem]")} {...register("description")} />
         </FieldGroup>
-
-        <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
-          <label className="flex cursor-pointer items-start gap-3 text-sm font-medium text-slate-800 dark:text-slate-100">
-            <input type="checkbox" className="mt-1" {...register("select_all_levels")} disabled={saving} />
-            <span>{t("fields.selectAllLevels")}</span>
-          </label>
-          {!selectAllLevels ? (
-            <div className="mt-4 space-y-2">
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{t("fields.levels")}</p>
-              {levelRows.length === 0 ? (
-                <p className="text-sm text-slate-500 dark:text-slate-400">{t("hints.noLevels")}</p>
-              ) : (
-                <ul className="max-h-40 space-y-2 overflow-y-auto pr-1">
-                  {levelRows.map((lv) => (
-                    <li key={lv.id}>
-                      <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                        <input
-                          type="checkbox"
-                          checked={levelIds.includes(lv.id)}
-                          onChange={() => toggleInNumberList("level_ids", lv.id)}
-                          disabled={saving}
-                        />
-                        <span>{lv.name}</span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ) : null}
         </div>
-
-        <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
-          <p className="mb-3 text-sm font-medium text-slate-800 dark:text-slate-100">{t("fields.technicians")}</p>
-          {userOptions.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t("hints.noUsers")}</p>
-          ) : (
-            <ul className="max-h-40 space-y-2 overflow-y-auto pr-1">
-              {userOptions.map((o) => {
-                const uid = Number.parseInt(o.value, 10);
-                return (
-                  <li key={o.value}>
-                    <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                      <input
-                        type="checkbox"
-                        checked={technicianIds.includes(uid)}
-                        onChange={() => toggleInNumberList("technician_ids", uid)}
-                        disabled={saving}
-                      />
-                      <span>{o.label}</span>
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+        <div
+          role="tabpanel"
+          id="quotation-form-modal-pricing"
+          aria-labelledby="quotation-form-modal-trigger-pricing"
+          className={cn(formTab !== "pricing" && "hidden")}
+        >
+          <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+            <p className="mb-3 text-sm font-medium text-slate-800 dark:text-slate-100">{t("levels.sectionsTitle")}</p>
+            <QuotationDraftComposer
+              draft={quoteDraft}
+              onDraftChange={setQuoteDraft}
+              saving={saving}
+              canShow={canShowLevels}
+            />
+          </div>
         </div>
       </form>
     </AppModal>

@@ -3,6 +3,22 @@ import type { Client } from "@/features/clients/types/client.types";
 import type { ClientFormValues } from "@/features/clients/schemas/client-form-schema";
 import type { ClientUpsertPayload } from "@/features/clients/types/client.types";
 
+function normalizePhoneForPhoneInput(raw: string | null | undefined): string {
+  const value = (raw ?? "").trim();
+  if (!value) return "";
+  if (value.startsWith("+")) return value;
+
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+
+  // Legacy records may store national numbers without +country code.
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length === 11 && digits.startsWith("0")) return `+91${digits.slice(1)}`;
+
+  // Fallback: prefix plus so react-phone-number-input accepts it as E.164-like.
+  return `+${digits}`;
+}
+
 export function mapClientFormToPayload(values: ClientFormValues, organizationId: number): ClientUpsertPayload {
   const country = Country.getCountryByCode(values.country_iso);
   const subdivisions = State.getStatesOfCountry(values.country_iso);
@@ -27,7 +43,6 @@ export function mapClientFormToPayload(values: ClientFormValues, organizationId:
   return {
     organization: organizationId,
     name: values.name.trim(),
-    contact_person: values.contact_person.trim(),
     email: values.email.trim(),
     phone: values.phone,
     address_line_1: values.address_line_1.trim(),
@@ -42,7 +57,6 @@ export function mapClientFormToPayload(values: ClientFormValues, organizationId:
 export function emptyClientFormDefaults(): ClientFormValues {
   return {
     name: "",
-    contact_person: "",
     email: "",
     phone: "",
     address_line_1: "",
@@ -78,9 +92,8 @@ export function clientToFormDefaults(client: Client): ClientFormValues {
 
   return {
     name: client.name ?? "",
-    contact_person: client.contact_person ?? "",
     email: client.email ?? "",
-    phone: client.phone ?? "",
+    phone: normalizePhoneForPhoneInput(client.phone),
     address_line_1: line1,
     address_line_2: line2,
     country_iso: countryIso,

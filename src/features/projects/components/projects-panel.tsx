@@ -7,8 +7,8 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { deleteProject, fetchProjectsPage, patchProject } from "@/features/projects/api/project.api";
-import { ProjectFormModal } from "@/features/projects/components/project-form-modal";
 import type { Project } from "@/features/projects/types/project.types";
+import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
@@ -38,6 +38,12 @@ import { cn } from "@/core/utils/http.util";
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+
+function projectRowClientLabel(row: Project, labels: Record<number, string>): string {
+  const cid = getProjectClientId(row);
+  if (!cid) return "—";
+  return labels[cid] ?? `#${cid}`;
+}
 
 export function ProjectsPanel() {
   const t = useTranslations("Dashboard.projects");
@@ -90,9 +96,6 @@ export function ProjectsPanel() {
 
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
 
-  const [formOpen, setFormOpen] = React.useState(false);
-  const [formMode, setFormMode] = React.useState<"create" | "edit">("create");
-  const [editingProject, setEditingProject] = React.useState<Project | null>(null);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deletingProject, setDeletingProject] = React.useState<Project | null>(null);
   const [deleting, setDeleting] = React.useState(false);
@@ -121,7 +124,7 @@ export function ProjectsPanel() {
     let cancelled = false;
     (async () => {
       try {
-        const { items: clients } = await fetchClientsPage(1, 500);
+        const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
         if (!cancelled) {
           setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
         }
@@ -172,19 +175,11 @@ export function ProjectsPanel() {
   }, [clientOptions]);
 
   function openCreate() {
-    setFormMode("create");
-    setEditingProject(null);
-    setFormOpen(true);
+    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
   }
 
   function openEdit(row: Project) {
-    setFormMode("edit");
-    setEditingProject(row);
-    setFormOpen(true);
-  }
-
-  function handleFormSaved() {
-    setRefreshNonce((n) => n + 1);
+    router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`);
   }
 
   async function handleToggleActive(row: Project, next: boolean) {
@@ -339,7 +334,7 @@ export function ProjectsPanel() {
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
                   title={row.name}
-                  subtitle={clientLabelById[row.client] ?? `#${row.client}`}
+                  subtitle={projectRowClientLabel(row, clientLabelById)}
                   meta={`${formatDay(row.start_date)} – ${formatDay(row.end_date)}`}
                   description={row.description?.trim() || undefined}
                   footer={
@@ -422,7 +417,7 @@ export function ProjectsPanel() {
                       onClick={() => openProjectDetail(row.id)}
                     >
                       <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{row.name}</DataTableTd>
-                      <DataTableTd>{clientLabelById[row.client] ?? `#${row.client}`}</DataTableTd>
+                      <DataTableTd>{projectRowClientLabel(row, clientLabelById)}</DataTableTd>
                       <DataTableTd>{formatDay(row.start_date)}</DataTableTd>
                       <DataTableTd>{formatDay(row.end_date)}</DataTableTd>
                       <DataTableTd className="max-w-[14rem] lg:max-w-xs xl:max-w-md">
@@ -509,15 +504,6 @@ export function ProjectsPanel() {
           />
         ) : null}
       </SurfaceShell>
-
-      <ProjectFormModal
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        mode={formMode}
-        project={editingProject}
-        clientOptions={clientOptions}
-        onSaved={handleFormSaved}
-      />
 
       <ConfirmDialog
         open={deleteOpen}

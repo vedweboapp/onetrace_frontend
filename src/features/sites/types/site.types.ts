@@ -4,6 +4,14 @@ export type SiteUserRef = {
   username: string;
 };
 
+export type SiteClientRef = {
+  id: number;
+  name: string;
+  contact_person?: string | null;
+  email?: string | null;
+  phone?: string | null;
+};
+
 export type SiteUpsertPayload = {
   organization: number;
   site_name: string;
@@ -28,7 +36,7 @@ export type Site = {
   deleted_at: string | null;
   is_deleted: boolean;
   site_name: string;
-  client: number;
+  client: number | SiteClientRef;
   address_line_1?: string | null;
   address_line_2?: string | null;
   city?: string | null;

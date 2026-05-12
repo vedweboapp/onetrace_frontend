@@ -57,7 +57,7 @@ export const useDashboardAppearanceStore = create<State>()(
         }),
     }),
     {
-      name: "one-trace-dashboard-accent",
+      name: "SimHo-dashboard-accent",
       merge: (persisted, current) => {
         const p = persisted as Partial<State> | undefined;
         return {

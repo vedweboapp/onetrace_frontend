@@ -35,6 +35,7 @@ const baseURL = resolveApiBaseUrl();
 function rejectIfEnvelopeFailed(
   response: AxiosResponse,
 ): AxiosResponse | Promise<never> {
+  if (response.config.responseType === "blob") return response;
   const d = response.data;
   if (
     d &&

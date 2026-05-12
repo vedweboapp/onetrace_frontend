@@ -56,9 +56,16 @@ export function siteToFormDefaults(site: Site): SiteFormValues {
   const states = State.getStatesOfCountry(countryIso);
   const stateIso = states.find((s) => s.name.toLowerCase() === (site.state ?? "").trim().toLowerCase())?.isoCode ?? "";
 
+  const clientId =
+    typeof site.client === "number"
+      ? site.client
+      : typeof site.client?.id === "number"
+        ? site.client.id
+        : 0;
+
   return {
     site_name: site.site_name ?? "",
-    client: String(site.client),
+    client: clientId > 0 ? String(clientId) : "",
     address_line_1: site.address_line_1?.trim() ?? "",
     address_line_2: site.address_line_2?.trim() ?? "",
     country_iso: countryIso,

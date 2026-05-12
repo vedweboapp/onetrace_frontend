@@ -5,10 +5,10 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "One Trace",
-    template: "%s · One Trace",
+    default: "SimHo",
+    template: "%s · SimHo",
   },
-  description: "One Trace",
+  description: "SimHo",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

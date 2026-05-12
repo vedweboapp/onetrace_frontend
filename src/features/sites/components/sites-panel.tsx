@@ -7,7 +7,6 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { deleteSite, fetchSitesPage, patchSite } from "@/features/sites/api/site.api";
-import { SiteFormModal } from "@/features/sites/components/site-form-modal";
 import type { Site } from "@/features/sites/types/site.types";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
@@ -38,6 +37,21 @@ import {
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+
+function siteClientId(row: Site): number | null {
+  if (typeof row.client === "number" && Number.isFinite(row.client) && row.client > 0) return row.client;
+  if (row.client && typeof row.client === "object" && Number.isFinite(row.client.id) && row.client.id > 0) {
+    return row.client.id;
+  }
+  return null;
+}
+
+function siteClientName(row: Site, clientNameById: Record<number, string>): string {
+  if (row.client && typeof row.client === "object" && row.client.name?.trim()) return row.client.name.trim();
+  const id = siteClientId(row);
+  if (id && clientNameById[id]) return clientNameById[id];
+  return id ? `#${id}` : "—";
+}
 
 export function SitesPanel() {
   const t = useTranslations("Dashboard.sites");
@@ -81,9 +95,6 @@ export function SitesPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [formOpen, setFormOpen] = React.useState(false);
-  const [formMode, setFormMode] = React.useState<"create" | "edit">("create");
-  const [editingSite, setEditingSite] = React.useState<Site | null>(null);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deletingSite, setDeletingSite] = React.useState<Site | null>(null);
   const [deleting, setDeleting] = React.useState(false);
@@ -102,7 +113,7 @@ export function SitesPanel() {
     let cancelled = false;
     (async () => {
       try {
-        const { items: clients } = await fetchClientsPage(1, 500);
+        const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
         if (!cancelled) setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
       } catch {
         if (!cancelled) setClientOptions([]);
@@ -164,6 +175,19 @@ export function SitesPanel() {
   const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
   const pageRange = getListPageRange(pagination);
 
+  async function handleToggleActive(row: Site, next: boolean) {
+    setTogglingId(row.id);
+    try {
+      await patchSite(row.id, { is_active: next });
+      toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
+      setRefreshNonce((n) => n + 1);
+    } catch {
+      toastError(t("toggleActiveError"));
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
   return (
     <div className="space-y-4">
       {!hideListChrome ? (
@@ -175,7 +199,7 @@ export function SitesPanel() {
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
           action={
-            <AppButton type="button" variant="primary" size="md" onClick={() => { setFormMode("create"); setEditingSite(null); setFormOpen(true); }} className="gap-2">
+            <AppButton type="button" variant="primary" size="md" onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)} className="gap-2">
               <Plus className="size-4" strokeWidth={2} aria-hidden />
               {t("add")}
             </AppButton>
@@ -196,6 +220,8 @@ export function SitesPanel() {
                 value={clientParam ?? ""}
                 emptyLabel={t("filterAllClients")}
                 portaled
+                clearable
+                clearAriaLabel={tList("clearFilter")}
                 className="w-full min-w-0 sm:w-56"
                 onChange={(v) => setUrl({ client: v || null, page: null }, { replace: true })}
               />
@@ -236,7 +262,7 @@ export function SitesPanel() {
               iconName="projects"
               title={t("emptyTitle")}
               description={t("emptyDescription")}
-              action={<AppButton type="button" variant="primary" size="md" onClick={() => { setFormMode("create"); setEditingSite(null); setFormOpen(true); }} className="gap-2"><Plus className="size-4" strokeWidth={2} aria-hidden />{t("add")}</AppButton>}
+              action={<AppButton type="button" variant="primary" size="md" onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)} className="gap-2"><Plus className="size-4" strokeWidth={2} aria-hidden />{t("add")}</AppButton>}
             />
           )
         ) : listViewMode === "list" ? (
@@ -248,7 +274,7 @@ export function SitesPanel() {
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
                   title={row.site_name}
-                  subtitle={clientLabelById[row.client] ?? `#${row.client}`}
+                  subtitle={siteClientName(row, clientLabelById)}
                   meta={row.city?.trim() || row.state?.trim() || row.country?.trim() || "—"}
                   footer={<div className="flex w-full items-center justify-between gap-3"><ActiveStatusBadge active={row.is_active} label={row.is_active ? t("status.active") : t("status.inactive")} /><span className="text-xs text-slate-500 dark:text-slate-400">{tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}</span></div>}
                   onCardClick={() => openSiteDetail(row.id)}
@@ -256,11 +282,23 @@ export function SitesPanel() {
                     <DataTableRowActionsMenu
                       menuAriaLabel={tList("openRowActions")}
                       items={[
-                        { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => { setFormMode("edit"); setEditingSite(row); setFormOpen(true); } },
+                        { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`) },
                         { id: "delete", label: t("delete"), icon: Trash2, tone: "danger", onSelect: () => { setDeletingSite(row); setDeleteOpen(true); } },
                         row.is_active
-                          ? { id: "deactivate", label: t("deactivate"), icon: PowerOff, onSelect: () => void (async () => { setTogglingId(row.id); try { await patchSite(row.id, { is_active: false }); toastSuccess(t("deactivatedToast")); setRefreshNonce((n) => n + 1); } catch { toastError(t("toggleActiveError")); } finally { setTogglingId(null); } })(), disabled: togglingId === row.id }
-                          : { id: "activate", label: t("activate"), icon: Power, onSelect: () => void (async () => { setTogglingId(row.id); try { await patchSite(row.id, { is_active: true }); toastSuccess(t("activatedToast")); setRefreshNonce((n) => n + 1); } catch { toastError(t("toggleActiveError")); } finally { setTogglingId(null); } })(), disabled: togglingId === row.id },
+                          ? {
+                              id: "deactivate",
+                              label: t("deactivate"),
+                              icon: PowerOff,
+                              onSelect: () => void handleToggleActive(row, false),
+                              disabled: togglingId === row.id,
+                            }
+                          : {
+                              id: "activate",
+                              label: t("activate"),
+                              icon: Power,
+                              onSelect: () => void handleToggleActive(row, true),
+                              disabled: togglingId === row.id,
+                            },
                       ]}
                     />
                   }
@@ -285,7 +323,7 @@ export function SitesPanel() {
                 {items.map((row) => (
                   <DataTableRow key={row.id} data-list-row-id={row.id} className={cn(highlightClassName(row.id))} clickable onClick={() => openSiteDetail(row.id)}>
                     <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{row.site_name}</DataTableTd>
-                    <DataTableTd>{clientLabelById[row.client] ?? `#${row.client}`}</DataTableTd>
+                    <DataTableTd>{siteClientName(row, clientLabelById)}</DataTableTd>
                     <DataTableTd className="max-w-[16rem] truncate">{row.address_line_1?.trim() || "—"}</DataTableTd>
                     <DataTableTd><ActiveStatusBadge active={row.is_active} label={row.is_active ? t("status.active") : t("status.inactive")} /></DataTableTd>
                     <DataTableTd>{dateFmt.format(new Date(row.created_at))}</DataTableTd>
@@ -293,8 +331,23 @@ export function SitesPanel() {
                       <DataTableRowActionsMenu
                         menuAriaLabel={tList("openRowActions")}
                         items={[
-                          { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => { setFormMode("edit"); setEditingSite(row); setFormOpen(true); } },
+                          { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`) },
                           { id: "delete", label: t("delete"), icon: Trash2, tone: "danger", onSelect: () => { setDeletingSite(row); setDeleteOpen(true); } },
+                          row.is_active
+                            ? {
+                                id: "deactivate",
+                                label: t("deactivate"),
+                                icon: PowerOff,
+                                onSelect: () => void handleToggleActive(row, false),
+                                disabled: togglingId === row.id,
+                              }
+                            : {
+                                id: "activate",
+                                label: t("activate"),
+                                icon: Power,
+                                onSelect: () => void handleToggleActive(row, true),
+                                disabled: togglingId === row.id,
+                              },
                         ]}
                       />
                     </DataTableTd>
@@ -319,7 +372,6 @@ export function SitesPanel() {
         ) : null}
       </SurfaceShell>
 
-      <SiteFormModal open={formOpen} onClose={() => setFormOpen(false)} mode={formMode} site={editingSite} clientOptions={clientOptions} onSaved={() => setRefreshNonce((n) => n + 1)} />
       <ConfirmDialog
         open={deleteOpen}
         onClose={() => (!deleting ? setDeleteOpen(false) : undefined)}

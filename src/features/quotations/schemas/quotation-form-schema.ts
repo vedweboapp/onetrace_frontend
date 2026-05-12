@@ -25,6 +25,7 @@ export function createQuotationFormSchema(messages: QuotationFormMessages) {
     additional_customer_contact: z.string(),
     site_contact: z.string(),
     tags_raw: z.string(),
+    tag_ids: z.array(z.number()),
     order_number: z.string(),
     due_date: z.string(),
     salesperson: z.string(),

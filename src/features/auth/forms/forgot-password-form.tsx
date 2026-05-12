@@ -37,7 +37,6 @@ export function ForgotPasswordForm() {
       await requestForgotPasswordOtp({ email: values.email });
       setSuccessMessage(t("otpSent", { email: values.email }));
     } catch {
-      // Reuse the existing OTP send error key for consistent UX.
       setApiError(t("otpSendError"));
     } finally {
       setIsSubmitting(false);

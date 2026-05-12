@@ -1,4 +1,5 @@
 import { City, Country, State } from "country-state-city";
+import type { Contact } from "@/features/contacts/types/contact.types";
 import type { ContactCreatePayload } from "@/features/contacts/types/contact.types";
 import type { ContactFormValues } from "@/features/contacts/schemas/contact-form-schema";
 
@@ -45,5 +46,34 @@ export function emptyContactFormDefaults(): ContactFormValues {
     state_iso: "",
     city: "",
     pincode: "",
+  };
+}
+
+export function contactToFormDefaults(contact: Contact): ContactFormValues {
+  const allCountries = Country.getAllCountries();
+  const matchedCountry = allCountries.find((c) => c.name.toLowerCase() === (contact.country ?? "").trim().toLowerCase());
+  const countryIso = matchedCountry?.isoCode ?? "IN";
+  const states = State.getStatesOfCountry(countryIso);
+  const matchedState = states.find((s) => s.name.toLowerCase() === (contact.state ?? "").trim().toLowerCase());
+  const stateIso = matchedState?.isoCode ?? "";
+
+  const clientId =
+    typeof contact.client === "number"
+      ? contact.client
+      : typeof contact.client?.id === "number"
+        ? contact.client.id
+        : 0;
+
+  return {
+    name: contact.name ?? "",
+    email: contact.email ?? "",
+    phone: (contact.phone ?? "").trim(),
+    client: clientId > 0 ? String(clientId) : "",
+    address_line_1: (contact.address_line_1 ?? "").trim(),
+    address_line_2: (contact.address_line_2 ?? "").trim(),
+    country_iso: countryIso,
+    state_iso: stateIso,
+    city: (contact.city ?? "").trim(),
+    pincode: (contact.pincode ?? "").trim(),
   };
 }

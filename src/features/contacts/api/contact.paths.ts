@@ -1,4 +1,4 @@
 export const CONTACT_PATHS = {
-  list: "contacts/",
-  detail: (id: number) => `contacts/${id}/`,
+  list: "contact/",
+  detail: (id: number) => `contact/${id}/`,
 } as const;

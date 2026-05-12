@@ -1,11 +1,11 @@
 {
   "HomePage": {
-    "title": "One Trace",
+    "title": "SimHo",
     "description": "Trace and manage your work in one place.",
     "signIn": "Sign in"
   },
   "Auth": {
-    "brandKicker": "One Trace",
+    "brandKicker": "SimHo",
     "title": "Welcome back",
     "subtitle": "Sign in to your account to continue.",
     "email": "Email",
@@ -81,10 +81,19 @@
   "Dashboard": {
     "common": {
       "back": "Back",
-      "breadcrumbNav": "Breadcrumb"
+      "breadcrumbNav": "Breadcrumb",
+      "map": {
+        "loading": "Finding location…",
+        "noAddress": "Add address fields to see this location on the map.",
+        "notFound": "Could not place a pin for this address. Add a valid postcode, city, state, and country, or shorten unusual street text.",
+        "error": "Location lookup failed. Try again later.",
+        "ariaMap": "Map preview for the address",
+        "openFullMap": "Open full map in new tab",
+        "openFullMapAria": "Open this location on OpenStreetMap in a new tab"
+      }
     },
     "brand": {
-      "appName": "One Trace"
+      "appName": "SimHo"
     },
     "header": {
       "eyebrowMain": "Workspace",
@@ -116,6 +125,8 @@
       "backToApp": "Projects",
       "appearance": "Appearance",
       "pinStatus": "Pin statuses",
+      "tags": "Tags",
+      "users": "Users",
       "hint": "Customize theme and accent for this workspace."
     },
     "appearance": {
@@ -206,6 +217,139 @@
       "validationName": "Enter a status name.",
       "validationHex": "Use a valid 6-digit hex color (e.g. #E5E7EB)."
     },
+    "tags": {
+      "metaTitle": "Tags",
+      "title": "Tags",
+      "subtitle": "Create and manage tags used across the app. Colors are shown as chips.",
+      "add": "Add tag",
+      "edit": "Edit",
+      "delete": "Delete",
+      "filterState": "Active state",
+      "filterAll": "All",
+      "table": {
+        "tag": "Tag",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "emptyTitle": "No tags yet",
+      "emptyDescription": "Create your first tag to organize pin annotations.",
+      "loadError": "Could not load tags. Try again.",
+      "modal": {
+        "createTitle": "New tag",
+        "editTitle": "Edit tag",
+        "tagName": "Tag name",
+        "bgColour": "Background color",
+        "textColour": "Text color",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this tag?",
+      "deleteConfirmBody": "Pins using this tag may need to be updated. This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} tags",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Tag updated",
+      "created": "Tag created",
+      "deleted": "Tag deleted",
+      "hexPlaceholder": "#000000",
+      "validationName": "Enter a tag name.",
+      "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
+    },
+    "users": {
+      "metaTitle": "Users",
+      "detailMetaTitle": "User details",
+      "title": "Users",
+      "subtitle": "Invite and manage users in your organization.",
+      "invite": "Invite user",
+      "edit": "Edit",
+      "loadError": "Could not load users. Try again.",
+      "detailLoadError": "Could not load user details. Try again.",
+      "createdToast": "User invited successfully",
+      "updatedToast": "User updated successfully",
+      "saveError": "Could not save user. Try again.",
+      "emptyTitle": "No users yet",
+      "emptyDescription": "Invite your first user to collaborate.",
+      "pageLabel": "Showing {start}-{end} of {total} users",
+      "prev": "Previous",
+      "next": "Next",
+      "table": {
+        "name": "Name",
+        "email": "Email",
+        "phone": "Phone",
+        "role": "Role",
+        "inviteStatus": "Invite status",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "fields": {
+        "firstName": "First name",
+        "lastName": "Last name",
+        "email": "Email",
+        "phone": "Phone number",
+        "gender": "Gender",
+        "role": "Role",
+        "address1": "Address line 1",
+        "address2": "Address line 2",
+        "country": "Country",
+        "state": "State",
+        "city": "City",
+        "pincode": "Pincode",
+        "inviteStatus": "Invite status",
+        "invitationSentAt": "Invitation sent at"
+      },
+      "genders": {
+        "male": "Male",
+        "female": "Female",
+        "other": "Other"
+      },
+      "placeholders": {
+        "gender": "Select gender",
+        "role": "Select role",
+        "country": "Select country",
+        "state": "Select state",
+        "city": "Select city"
+      },
+      "validation": {
+        "firstName": "Enter first name.",
+        "lastName": "Enter last name.",
+        "email": "Enter a valid email.",
+        "phone": "Enter a valid phone number.",
+        "gender": "Select gender.",
+        "role": "Select role.",
+        "country": "Select country.",
+        "state": "Select state.",
+        "city": "Select city.",
+        "pincode": "Enter pincode."
+      },
+      "modal": {
+        "save": "Save",
+        "saveChanges": "Save changes",
+        "cancel": "Cancel"
+      },
+      "detail": {
+        "retry": "Retry",
+        "backAria": "Back to users list",
+        "editWithIcon": "Edit user"
+      },
+      "page": {
+        "createTitle": "Invite user",
+        "createSubtitle": "Fill in user details and send invitation.",
+        "editTitle": "Edit user",
+        "editSubtitle": "Update user details and save changes."
+      }
+    },
     "clients": {
       "metaTitle": "Clients",
       "detailMetaTitle": "Client details",
@@ -237,7 +381,6 @@
       "confirmDelete": "Delete client",
       "table": {
         "name": "Client",
-        "contact": "Contact",
         "email": "Email",
         "phone": "Phone",
         "status": "Status",
@@ -259,11 +402,8 @@
         "sectionContact": "Contact",
         "sectionAddress": "Address",
         "sectionRecord": "Record",
-        "panelOrganization": "Organization",
-        "legalEntityLabel": "Legal entity name",
-        "panelPrimaryContact": "Primary contact",
-        "panelMetaInfo": "Meta info",
-        "positionRole": "Position / role",
+        "panelOverview": "Details",
+        "panelMetaInfo": "Record",
         "notProvided": "—",
         "metaStatus": "Status",
         "metaClientId": "Client ID",
@@ -272,8 +412,6 @@
       "detailLoadError": "Could not load client details. Try again.",
       "form": {
         "section": {
-          "organization": "Organization",
-          "contact": "Primary contact",
           "address": "Address"
         }
       },
@@ -284,7 +422,6 @@
       },
       "fields": {
         "name": "Client name",
-        "contactPerson": "Contact person",
         "email": "Email",
         "phone": "Phone",
         "addressLine1": "Address line 1",
@@ -304,10 +441,15 @@
         "save": "Create client",
         "saveChanges": "Save changes"
       },
+      "page": {
+        "createTitle": "Create client",
+        "createSubtitle": "Fill in client details and save.",
+        "editTitle": "Edit client",
+        "editSubtitle": "Update client details and save changes."
+      },
       "validation": {
         "generic": "Check the form and try again.",
         "name": "Enter a client name.",
-        "contact": "Enter a contact person.",
         "email": "Enter a valid email address.",
         "phoneInvalid": "Enter a valid phone number including country.",
         "addressLine1": "Enter address line 1.",
@@ -323,12 +465,18 @@
       "title": "Contacts",
       "subtitle": "People associated with clients. Use search and filters to find them quickly.",
       "add": "Add contact",
-      "openDetail": "View details",
+      "edit": "Edit contact",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "activatedToast": "Contact activated",
+      "deactivatedToast": "Contact deactivated",
+      "toggleActiveError": "Could not update contact status. Try again.",
       "emptyTitle": "No contacts yet",
       "emptyDescription": "Create your first contact to start tracking client communication.",
       "loadError": "Could not load contacts. Try again.",
       "missingOrganization": "No workspace organization on this session. Sign out and sign in again, or contact support.",
       "createdToast": "Contact created successfully",
+      "updatedToast": "Contact updated successfully",
       "noClientsHint": "Add at least one client before you can create a contact.",
       "filterState": "Active state",
       "filterClient": "Client",
@@ -342,7 +490,8 @@
         "email": "Email",
         "phone": "Phone",
         "status": "Status",
-        "created": "Created"
+        "created": "Created",
+        "actions": "Actions"
       },
       "status": {
         "active": "Active",
@@ -378,7 +527,14 @@
       "modal": {
         "createTitle": "New contact",
         "cancel": "Cancel",
-        "save": "Create contact"
+        "save": "Create contact",
+        "saveChanges": "Save changes"
+      },
+      "page": {
+        "createTitle": "Create contact",
+        "createSubtitle": "Fill in contact details and save.",
+        "editTitle": "Edit contact",
+        "editSubtitle": "Update contact details and save changes."
       },
       "placeholders": {
         "client": "Select client",
@@ -478,6 +634,12 @@
         "save": "Create site",
         "saveChanges": "Save changes"
       },
+      "page": {
+        "createTitle": "Create site",
+        "createSubtitle": "Fill in site details and save.",
+        "editTitle": "Edit site",
+        "editSubtitle": "Update site details and save changes."
+      },
       "validation": {
         "siteName": "Enter a site name.",
         "client": "Select a client.",
@@ -494,12 +656,25 @@
       "title": "Quotations",
       "subtitle": "Create and track quotes linked to clients, sites, and projects. Switch between table and card view.",
       "add": "New quotation",
+      "edit": "Edit quotation",
       "openDetail": "View details",
+      "export": {
+        "button": "Export",
+        "buttonAria": "Export quotation",
+        "menuAria": "Choose export format",
+        "exporting": "Exporting…",
+        "pdf": "PDF",
+        "excel": "Excel",
+        "csv": "CSV",
+        "all": "All formats",
+        "failed": "Could not export. Try again."
+      },
       "emptyTitle": "No quotations yet",
       "emptyDescription": "Create your first quotation to capture scope, schedule, and team assignments.",
       "loadError": "Could not load quotations. Try again.",
       "detailLoadError": "Could not load quotation details. Try again.",
       "createdToast": "Quotation created successfully",
+      "updatedToast": "Quotation updated successfully",
       "saveError": "Could not save the quotation. Check the fields and try again.",
       "noClientsHint": "Add at least one client before you can create a quotation.",
       "filterState": "Active state",
@@ -525,6 +700,8 @@
         "customer": "Client",
         "site": "Site",
         "project": "Project",
+        "technicians": "Technicians",
+        "tags": "Tags",
         "status": "Status",
         "due": "Due date",
         "created": "Created"
@@ -541,21 +718,93 @@
         "sectionPeople": "People & roles",
         "sectionProject": "Project & levels",
         "sectionRecord": "Record",
+        "sectionSiteLocation": "Site location",
+        "sectionQuoteScope": "Quoted scope",
         "noDescription": "No description provided.",
         "allLevelsSelected": "All levels"
       },
+      "selectedSiteMapTitle": "Site address & map",
+      "mapNoStructuredAddress": "No structured address on file for this site. The map still tries to locate it from available fields.",
       "placeholders": {
         "customer": "Select client",
         "site": "Select site",
         "project": "Select project",
         "contactOptional": "Optional",
         "userOptional": "Optional",
-        "tags": "e.g. 1, 2, 3"
+        "tags": "Select tags"
       },
       "hints": {
         "tags": "Enter tag IDs separated by commas or spaces (organization tags).",
         "noLevels": "No levels returned for this project. Confirm the project levels API path if you need floor selection.",
         "noUsers": "No users were returned from the users API. Technician and role fields stay optional."
+      },
+      "levels": {
+        "create": "Create level",
+        "newPlaceholder": "New level name",
+        "createSection": "Add section",
+        "newSectionPlaceholder": "Section name",
+        "selectProjectHint": "Select a project to load levels.",
+        "sectionsTitle": "Project sections & pricing",
+        "selectAllSections": "Select all sections in this project",
+        "includedViaSelectAll": "Included because all sections are selected",
+        "plotSubtotal": "Plot subtotal",
+        "sectionTotal": "Section total",
+        "grandTotal": "Grand total (selected sections)",
+        "colItem": "Composite item",
+        "colQty": "Qty",
+        "colUnit": "Unit price",
+        "colLine": "Line total",
+        "plotEmptyPins": "No priced pins in this plot.",
+        "noPlotsInSection": "No plots in this section.",
+        "selectedCount": "{count} selected",
+        "previewCounts": "{plots} plots · {pins} pins",
+        "drawingLabel": "Drawing",
+        "orderTitle": "Selected levels order",
+        "orderHint": "Check each section to include it in the quotation. Expand plots for composite items and prices.",
+        "dragHandle": "Drag to reorder",
+        "createdToast": "Level created",
+        "createError": "Could not create level. Please check the level API supports creating by name."
+      },
+      "draft": {
+        "intro": "",
+        "selectAllSections": "Select all blocks",
+        "selectProjectHint": "Select a project to load drawings and plots.",
+        "loadingDraft": "Loading sections…",
+        "newSectionLabel": "New section name",
+        "newSectionPlaceholder": "Section name",
+        "addSection": "Add section",
+        "newPlotLabel": "New plot name",
+        "newPlotPlaceholder": "Plot name",
+        "defaultPlotName": "Plot",
+        "plotsHeading": "Plots",
+        "addPlot": "Add plot",
+        "duplicatePlot": "Duplicate",
+        "duplicateLine": "Duplicate",
+        "rowActions": "Actions",
+        "emptyPlots": "No plots in this section yet.",
+        "emptySections": "No sections loaded. Pick a project with levels or add sections manually.",
+        "includeSection": "Include",
+        "quoteOnlySection": "Quote-only (not linked to a project level)",
+        "sectionTotal": "Section total",
+        "grandTotal": "Grand total",
+        "plotSubtotal": "Plot subtotal",
+        "addComposite": "Add composite item",
+        "pickCompositeTitle": "Add composite item",
+        "pickCompositePlaceholder": "Select composite item",
+        "noComposites": "No composite items found.",
+        "emptyLines": "No line items. Add composites or ensure pins exist on plots.",
+        "qty": "Qty",
+        "unitPrice": "Unit price",
+        "removePlot": "Delete",
+        "removeLine": "Delete",
+        "sectionActions": "Section actions",
+        "editSection": "Edit section",
+        "duplicateSection": "Duplicate",
+        "copySection": "Copy section",
+        "deleteSection": "Delete",
+        "cancel": "Cancel",
+        "toggleRowExpand": "Expand or collapse",
+        "editRowName": "Edit name"
       },
       "fields": {
         "quoteName": "Quote name",
@@ -572,8 +821,8 @@
         "technicians": "Technicians",
         "tags": "Tags",
         "description": "Description",
-        "levels": "Levels",
-        "selectAllLevels": "Select all levels in this project",
+        "levels": "Section name",
+        "selectAllLevels": "Select all sections in this project",
         "status": "Active state",
         "createdAt": "Created",
         "updatedAt": "Last updated",
@@ -583,6 +832,21 @@
         "createTitle": "New quotation",
         "cancel": "Cancel",
         "save": "Create quotation"
+      },
+      "page": {
+        "createTitle": "Create quotation",
+        "createSubtitle": "Fill in quotation details and save.",
+        "editTitle": "Edit quotation",
+        "saveEdit": "Save changes",
+        "lastUpdated": "Last updated {date}",
+        "editQuoteScopeTitle": "Quoted scope",
+        "editQuoteScopeHint": "Sections, plots, and line items as saved on this quotation (from the quotation API).",
+        "editQuoteScopeEmpty": "No quoted scope is stored on this quotation yet."
+      },
+      "formTabs": {
+        "aria": "Quotation sections",
+        "project": "Project & details",
+        "pricing": "Scope & pricing"
       },
       "validation": {
         "quoteName": "Enter a quotation name.",
@@ -605,6 +869,7 @@
       "noResultsTitle": "No results found",
       "noResultsDescription": "Nothing matches your current search or filters. Adjust them or clear filters to see more items.",
       "clearFilters": "Clear filters",
+      "clearFilter": "Remove this filter",
       "cardCreated": "Created {date}"
     },
     "projects": {
@@ -657,16 +922,20 @@
         "retry": "Retry",
         "edit": "Edit",
         "editWithIcon": "Edit project",
+        "quoteToProject": "Quote project",
+        "quoteToProjectAria": "Create a quotation from this project with all levels selected",
+        "quoteFromProjectToast": "Quotation created from project",
+        "quoteFromProjectError": "Could not create a quotation from this project. Try again.",
         "backAria": "Back to projects list",
-        "addressUnavailable": "No structured address on file for this project.",
         "sectionOverview": "Overview",
         "sectionClient": "Client",
         "sectionSchedule": "Schedule",
-        "sectionAddress": "Address",
         "sectionRecord": "Record",
         "panelDescription": "Description",
         "panelBasicInfo": "Basic information",
         "panelTimeline": "Timeline",
+        "panelSites": "Sites",
+        "sitesEmpty": "No sites linked to this project yet.",
         "panelSystemActivity": "System activity",
         "tabsAria": "Project sections",
         "tabs": {
@@ -779,11 +1048,13 @@
       },
       "detailLoadError": "Could not load project details. Try again.",
       "placeholders": {
-        "client": "Select client"
+        "client": "Select client",
+        "site": "Select site"
       },
       "fields": {
         "name": "Project name",
         "client": "Client",
+        "sites": "Sites",
         "description": "Description",
         "startDate": "Start date",
         "endDate": "End date",
@@ -791,12 +1062,21 @@
         "updatedAt": "Last updated",
         "createdBy": "Created by"
       },
+      "hints": {
+        "sitesMultiSelect": "Select one or more sites for this project."
+      },
       "modal": {
         "createTitle": "New project",
         "editTitle": "Edit project",
         "cancel": "Cancel",
         "save": "Create project",
         "saveChanges": "Save changes"
+      },
+      "page": {
+        "createTitle": "Create project",
+        "createSubtitle": "Fill in project details and save.",
+        "editTitle": "Edit project",
+        "editSubtitle": "Update project details and save changes."
       },
       "validation": {
         "name": "Enter a project name.",
@@ -864,6 +1144,12 @@
         "atLeastOneCompositeItemError": "Select at least one composite item.",
         "createdToast": "Group created",
         "updatedToast": "Group updated"
+      },
+      "page": {
+        "createTitle": "Create group",
+        "createSubtitle": "Fill in group details and save.",
+        "editTitle": "Edit group",
+        "editSubtitle": "Update group details and save changes."
       },
       "detail": {
         "loadingTitle": "Loading group...",
@@ -954,6 +1240,12 @@
         "noGroupsHint": "No groups found. Create at least one group before adding composite items.",
         "createdToast": "Composite item created",
         "updatedToast": "Composite item updated"
+      },
+      "page": {
+        "createTitle": "Create composite item",
+        "createSubtitle": "Fill in composite item details and save.",
+        "editTitle": "Edit composite item",
+        "editSubtitle": "Update composite item details and save changes."
       }
     },
     "items": {
@@ -1030,6 +1322,12 @@
         "sellingPrice": "Selling price",
         "createdToast": "Item created",
         "updatedToast": "Item updated"
+      },
+      "page": {
+        "createTitle": "Create item",
+        "createSubtitle": "Fill in item details and save.",
+        "editTitle": "Edit item",
+        "editSubtitle": "Update item details and save changes."
       }
     },
     "settings": {

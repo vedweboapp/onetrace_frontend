@@ -13,7 +13,6 @@ export function normalizeListPageSize(raw: number): ListPageSizeChoice {
     : DEFAULT_LIST_PAGE_SIZE;
 }
 
-/** Parse `page_size` URL param; invalid or missing → default. */
 export function parsePageSizeParam(param: string | null): ListPageSizeChoice {
   if (param == null || param === "") return DEFAULT_LIST_PAGE_SIZE;
   const n = Number.parseInt(param, 10);
