@@ -8,6 +8,5 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ForgotPasswordPage() {
-  // The form component renders the title/subtitle and card UI.
   return <ForgotPasswordForm />;
 }

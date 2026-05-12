@@ -5,7 +5,6 @@ import { zTrimmedNonEmpty } from "@/shared/form";
 
 export type ClientFormMessages = {
   name: string;
-  contact: string;
   email: string;
   phoneInvalid: string;
   addressLine1: string;
@@ -19,7 +18,6 @@ export function createClientFormSchema(messages: ClientFormMessages) {
   return z
     .object({
       name: zTrimmedNonEmpty(messages.name),
-      contact_person: zTrimmedNonEmpty(messages.contact),
       email: z.string().trim().email(messages.email),
       phone: z.string().refine((val) => isValidPhoneNumber(val), {
         message: messages.phoneInvalid,

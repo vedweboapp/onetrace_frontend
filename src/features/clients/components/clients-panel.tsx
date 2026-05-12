@@ -6,7 +6,6 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { deleteClient, fetchClientsPage, updateClient } from "@/features/clients/api/client.api";
-import { ClientFormModal } from "@/features/clients/components/client-form-modal";
 import type { Client } from "@/features/clients/types/client.types";
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
@@ -88,9 +87,6 @@ export function ClientsPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
 
-  const [formOpen, setFormOpen] = React.useState(false);
-  const [formMode, setFormMode] = React.useState<"create" | "edit">("create");
-  const [formClient, setFormClient] = React.useState<Client | null>(null);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deletingClient, setDeletingClient] = React.useState<Client | null>(null);
   const [deleting, setDeleting] = React.useState(false);
@@ -143,19 +139,11 @@ export function ClientsPanel() {
   }, [page, pageSize, search, isActiveFilter, refreshNonce, t]);
 
   function openCreate() {
-    setFormMode("create");
-    setFormClient(null);
-    setFormOpen(true);
-  }
-
-  function handleFormSaved() {
-    setRefreshNonce((n) => n + 1);
+    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
   }
 
   function openEdit(row: Client) {
-    setFormMode("edit");
-    setFormClient(row);
-    setFormOpen(true);
+    router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`);
   }
 
   async function confirmDelete() {
@@ -298,8 +286,7 @@ export function ClientsPanel() {
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
                   title={row.name}
-                  subtitle={row.contact_person}
-                  meta={row.email}
+                  subtitle={row.email}
                   footer={
                     <div className="flex w-full flex-wrap items-center justify-between gap-3">
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -368,7 +355,6 @@ export function ClientsPanel() {
               <DataTableHead>
                 <tr>
                   <DataTableTh>{t("table.name")}</DataTableTh>
-                  <DataTableTh>{t("table.contact")}</DataTableTh>
                   <DataTableTh>{t("table.email")}</DataTableTh>
                   <DataTableTh>{t("table.phone")}</DataTableTh>
                   <DataTableTh>{t("table.status")}</DataTableTh>
@@ -388,7 +374,6 @@ export function ClientsPanel() {
                       onClick={() => openClientDetail(row.id)}
                     >
                       <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{row.name}</DataTableTd>
-                      <DataTableTd>{row.contact_person}</DataTableTd>
                       <DataTableTd className="max-w-[14rem] truncate">{row.email}</DataTableTd>
                       <DataTableTd>{row.phone?.trim() ? row.phone : "—"}</DataTableTd>
                       <DataTableTd>
@@ -471,14 +456,6 @@ export function ClientsPanel() {
           />
         ) : null}
       </SurfaceShell>
-
-      <ClientFormModal
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        mode={formMode}
-        client={formClient}
-        onSaved={handleFormSaved}
-      />
 
       <ConfirmDialog
         open={deleteOpen}

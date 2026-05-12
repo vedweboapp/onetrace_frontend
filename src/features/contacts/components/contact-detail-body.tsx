@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import type { Contact } from "@/features/contacts/types/contact.types";
+import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
   DetailMetricCard,
   DetailPagePadding,
@@ -17,17 +18,13 @@ type Props = {
 
 export function ContactDetailBody({ detail, clientName, dateFmt }: Props) {
   const t = useTranslations("Dashboard.contacts");
-  const line1 = detail.address_line_1?.trim() ?? "";
-  const line2 = detail.address_line_2?.trim() ?? "";
+  const clientId =
+    typeof detail.client === "number"
+      ? detail.client
+      : typeof detail.client?.id === "number"
+        ? detail.client.id
+        : null;
   const phoneRaw = detail.phone?.trim() ?? "";
-  const hasAddress = !!(
-    line1 ||
-    line2 ||
-    detail.city?.trim() ||
-    detail.state?.trim() ||
-    detail.country?.trim() ||
-    detail.pincode?.trim()
-  );
 
   const createdByUser =
     detail.created_by && typeof detail.created_by === "object" ? detail.created_by : null;
@@ -40,7 +37,7 @@ export function ContactDetailBody({ detail, clientName, dateFmt }: Props) {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <DetailMetricCard label={t("fields.name")}>{detail.name}</DetailMetricCard>
               <DetailMetricCard label={t("fields.client")}>
-                {clientName ?? `#${detail.client}`}
+                {clientName ?? (clientId ? `#${clientId}` : "—")}
               </DetailMetricCard>
               <DetailMetricCard label={t("fields.email")}>
                 <a
@@ -88,22 +85,16 @@ export function ContactDetailBody({ detail, clientName, dateFmt }: Props) {
 
         <div className="space-y-5">
           <DetailPanelCard title={t("detail.sectionAddress")}>
-            {hasAddress ? (
-              <div className="space-y-3 text-sm">
-                <p className="font-medium text-slate-900 dark:text-slate-100">{line1 || "—"}</p>
-                <p className={line2 ? "text-slate-700 dark:text-slate-300" : "text-slate-500 dark:text-slate-400"}>
-                  {line2 || t("detail.addressLine2Empty")}
-                </p>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <DetailMetricCard label={t("fields.city")}>{detail.city?.trim() || "—"}</DetailMetricCard>
-                  <DetailMetricCard label={t("fields.stateProvince")}>{detail.state?.trim() || "—"}</DetailMetricCard>
-                  <DetailMetricCard label={t("fields.country")}>{detail.country?.trim() || "—"}</DetailMetricCard>
-                  <DetailMetricCard label={t("fields.pincode")}>{detail.pincode?.trim() || "—"}</DetailMetricCard>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>
-            )}
+            <DetailFormattedAddress
+              line1={detail.address_line_1}
+              line2={detail.address_line_2}
+              city={detail.city}
+              state={detail.state}
+              pincode={detail.pincode}
+              country={detail.country}
+              line2Fallback={t("detail.addressLine2Empty")}
+              emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>}
+            />
           </DetailPanelCard>
 
           {createdByUser ? (

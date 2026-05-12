@@ -1,4 +1,4 @@
 export const SITE_PATHS = {
-  list: "sites/",
-  detail: (id: number) => `sites/${id}/`,
+  list: "site/",
+  detail: (id: number) => `site/${id}/`,
 } as const;

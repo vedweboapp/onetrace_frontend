@@ -48,7 +48,6 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved }: Props)
     () =>
       createClientFormSchema({
         name: t("validation.name"),
-        contact: t("validation.contact"),
         email: t("validation.email"),
         phoneInvalid: t("validation.phoneInvalid"),
         addressLine1: t("validation.addressLine1"),
@@ -146,7 +145,7 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved }: Props)
             <FieldGroup label={t("fields.name")} htmlFor="client-name" required>
               <input
                 id="client-name"
-                autoComplete="organization"
+                autoComplete="name"
                 aria-invalid={errors.name ? true : undefined}
                 aria-describedby={errors.name ? "client-name-err" : undefined}
                 className={cn(surfaceInputClassName, errors.name && "border-red-500 dark:border-red-500")}
@@ -163,27 +162,9 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved }: Props)
 
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            {t("form.section.contact")}
+            {t("detail.sectionContact")}
           </h3>
           <FormFieldRow cols="2" className="mt-3">
-            <FieldGroup label={t("fields.contactPerson")} htmlFor="client-contact" required>
-              <input
-                id="client-contact"
-                autoComplete="name"
-                aria-invalid={errors.contact_person ? true : undefined}
-                aria-describedby={errors.contact_person ? "client-contact-err" : undefined}
-                className={cn(
-                  surfaceInputClassName,
-                  errors.contact_person && "border-red-500 dark:border-red-500",
-                )}
-                {...register("contact_person", {
-                  onChange: (e) => {
-                    e.target.value = capitalizeFirstLetter(e.target.value);
-                  },
-                })}
-              />
-              <FieldErrorText id="client-contact-err">{errors.contact_person?.message}</FieldErrorText>
-            </FieldGroup>
             <FieldGroup label={t("fields.email")} htmlFor="client-email" required>
               <input
                 id="client-email"

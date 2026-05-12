@@ -9,7 +9,6 @@ import {
   deleteCompositeItem,
   fetchCompositeItemsPage,
 } from "@/features/composite-items/api/composite-item.api";
-import { CompositeItemFormModal } from "@/features/composite-items/components/composite-item-form-modal";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
@@ -88,11 +87,6 @@ export function CompositeItemsPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
 
-  const [formOpen, setFormOpen] = React.useState(false);
-  const [formMode, setFormMode] = React.useState<"create" | "edit">("create");
-  const [editingItem, setEditingItem] = React.useState<CompositeItem | null>(null);
-  const [formKey, setFormKey] = React.useState(0);
-
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deletingItem, setDeletingItem] = React.useState<CompositeItem | null>(null);
   const [deleting, setDeleting] = React.useState(false);
@@ -117,7 +111,6 @@ export function CompositeItemsPanel() {
           search: search || undefined,
         });
         if (!cancelled) {
-          // Guard client-side to ensure this page only shows composite items.
           setItems(rows.filter((r) => r.is_composite === true));
           setPagination(p);
         }
@@ -145,17 +138,11 @@ export function CompositeItemsPanel() {
   );
 
   function openCreate() {
-    setFormMode("create");
-    setEditingItem(null);
-    setFormKey((k) => k + 1);
-    setFormOpen(true);
+    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
   }
 
   function openEdit(row: CompositeItem) {
-    setFormMode("edit");
-    setEditingItem(row);
-    setFormKey((k) => k + 1);
-    setFormOpen(true);
+    router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`);
   }
 
   function handleSaved() {
@@ -406,15 +393,6 @@ export function CompositeItemsPanel() {
           />
         ) : null}
       </SurfaceShell>
-
-      <CompositeItemFormModal
-        key={formKey}
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        mode={formMode}
-        item={editingItem}
-        onSaved={handleSaved}
-      />
 
       <ConfirmDialog
         open={deleteOpen}

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import type { CSSProperties } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, X } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 
 /** Portaled lists are under `document.body` and skip inherited theme vars; copy from trigger. */
@@ -52,6 +52,16 @@ type Props = {
   buttonAriaLabel?: string;
   /** Opening direction. Defaults to "bottom". */
   side?: "top" | "bottom";
+  /** Enables option search input inside dropdown. */
+  searchable?: boolean;
+  searchPlaceholder?: string;
+  /**
+   * When true, shows a compact clear control inside the trigger (when a value is set)
+   * and a small clear control at the top of the dropdown list.
+   */
+  clearable?: boolean;
+  /** Accessible label for the clear control (recommended when `clearable` is true). */
+  clearAriaLabel?: string;
 };
 
 function usePopoverRect(open: boolean, anchorRef: React.RefObject<HTMLElement | null>, side: "top" | "bottom" = "bottom") {
@@ -101,13 +111,20 @@ export function CheckmarkSelect({
   showCheckmarks = true,
   buttonAriaLabel,
   side = "bottom",
+  searchable = true,
+  searchPlaceholder = "Search...",
+  clearable = false,
+  clearAriaLabel,
 }: Props) {
   const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState("");
   const rootRef = React.useRef<HTMLDivElement>(null);
+  const anchorRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
-  const listRef = React.useRef<HTMLUListElement>(null);
+  const listRef = React.useRef<HTMLDivElement>(null);
   const selected = options.find((o) => o.value === value);
-  const popoverRect = usePopoverRect(open && portaled, triggerRef, side);
+  const canClear = Boolean(clearable && !disabled && value.trim() !== "");
+  const popoverRect = usePopoverRect(open && portaled, anchorRef, side);
   const [portalAccent, setPortalAccent] = React.useState("#111111");
   const [portalOnAccent, setPortalOnAccent] = React.useState("#ffffff");
 
@@ -129,6 +146,10 @@ export function CheckmarkSelect({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
+  React.useEffect(() => {
+    if (open) setSearch("");
+  }, [open]);
+
   const displayLabel = value && selected ? selected.label : emptyLabel;
 
   const listClasses = cn(
@@ -137,62 +158,103 @@ export function CheckmarkSelect({
 
   const optionTextSize = size === "sm" ? "text-xs" : "text-sm";
   const optionY = size === "sm" ? "py-2" : "py-2.5";
+  const filteredOptions = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((opt) => opt.label.toLowerCase().includes(q));
+  }, [options, search]);
 
   function renderOptionList(extraStyle: CSSProperties, extraClass?: string) {
     return (
-      <ul
+      <div
         ref={listRef}
-        role="listbox"
-        aria-label={listLabel}
         className={cn(listClasses, extraClass)}
         style={extraStyle}
       >
-        {options.map((opt) => {
-          const isSelected = opt.value === value;
-          return (
-            <li key={opt.value === "" ? "__empty__" : opt.value} role="presentation">
-              <button
-                type="button"
-                role="option"
-                aria-selected={isSelected}
-                disabled={disabled}
-                onClick={() => {
-                  if (disabled) return;
-                  onChange(opt.value);
-                  setOpen(false);
-                }}
-                className={cn(
-                  "flex w-full items-center text-left transition",
-                  showCheckmarks ? "gap-2 px-3" : "px-3",
-                  optionY,
-                  optionTextSize,
-                  isSelected
-                    ? showCheckmarks
-                      ? "border-l-2 border-l-[color:var(--dash-accent,#111111)] bg-slate-50 font-semibold text-[color:var(--dash-accent,#111111)] dark:bg-slate-800/80"
-                      : "bg-slate-50 font-semibold text-[color:var(--dash-accent,#111111)] dark:bg-slate-800/80"
-                    : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800",
-                  disabled && "pointer-events-none opacity-50",
-                )}
-              >
-                {showCheckmarks ? (
-                  <span
-                    className={cn(
-                      "flex size-5 shrink-0 items-center justify-center rounded-md border",
-                      isSelected
-                        ? "border-transparent bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)] shadow-sm"
-                        : "border-transparent bg-transparent text-transparent",
-                    )}
-                    aria-hidden
-                  >
-                    <Check className="size-3.5" strokeWidth={2.5} />
-                  </span>
-                ) : null}
-                <span className="min-w-0 flex-1 truncate">{opt.label}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+        {canClear ? (
+          <div className="flex items-center justify-end border-b border-slate-200 px-2 py-1 dark:border-slate-600">
+            <button
+              type="button"
+              className={cn(
+                "flex items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-800",
+                size === "sm" ? "size-6" : "size-7",
+                "dark:hover:bg-slate-800 dark:hover:text-slate-100",
+              )}
+              aria-label={clearAriaLabel ?? "Clear"}
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+            >
+              <X className={size === "sm" ? "size-3" : "size-3.5"} strokeWidth={2} aria-hidden />
+            </button>
+          </div>
+        ) : null}
+        {searchable ? (
+          <div className="p-2">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={searchPlaceholder}
+              className={cn(
+                "h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm outline-none",
+                "focus-visible:border-[color:var(--dash-accent,#111111)] focus-visible:ring-2 focus-visible:ring-[color:var(--dash-accent,#111111)]/20",
+                "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100",
+              )}
+            />
+          </div>
+        ) : null}
+        <ul role="listbox" aria-label={listLabel} className="max-h-52 overflow-auto py-1">
+          {filteredOptions.map((opt) => {
+            const isSelected = opt.value === value;
+            return (
+              <li key={opt.value === "" ? "__empty__" : opt.value} role="presentation">
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  disabled={disabled}
+                  onClick={() => {
+                    if (disabled) return;
+                    onChange(opt.value);
+                    setOpen(false);
+                  }}
+                  className={cn(
+                    "flex w-full items-center text-left transition",
+                    showCheckmarks ? "gap-2 px-3" : "px-3",
+                    optionY,
+                    optionTextSize,
+                    isSelected
+                      ? showCheckmarks
+                        ? "border-l-2 border-l-[color:var(--dash-accent,#111111)] bg-slate-50 font-semibold text-[color:var(--dash-accent,#111111)] dark:bg-slate-800/80"
+                        : "bg-slate-50 font-semibold text-[color:var(--dash-accent,#111111)] dark:bg-slate-800/80"
+                      : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800",
+                    disabled && "pointer-events-none opacity-50",
+                  )}
+                >
+                  {showCheckmarks ? (
+                    <span
+                      className={cn(
+                        "flex size-5 shrink-0 items-center justify-center rounded-md border",
+                        isSelected
+                          ? "border-transparent bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)] shadow-sm"
+                          : "border-transparent bg-transparent text-transparent",
+                      )}
+                      aria-hidden
+                    >
+                      <Check className="size-3.5" strokeWidth={2.5} />
+                    </span>
+                  ) : null}
+                  <span className="min-w-0 flex-1 truncate">{opt.label}</span>
+                </button>
+              </li>
+            );
+          })}
+          {filteredOptions.length === 0 ? (
+            <li className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">No results</li>
+          ) : null}
+        </ul>
+      </div>
     );
   }
 
@@ -213,6 +275,44 @@ export function CheckmarkSelect({
         ),
   );
 
+  const splitFrameClass = cn(
+    "flex w-full min-w-0 items-stretch overflow-hidden border text-left font-medium shadow-sm outline-none transition",
+    size === "sm" ? "h-8 min-h-8 rounded-md text-xs" : "h-11 min-h-11 rounded-xl text-sm",
+    disabled
+      ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-600"
+      : cn(
+          "border-slate-200 bg-white text-slate-900",
+          "hover:border-[color:var(--dash-accent,#111111)]",
+          "focus-within:border-[color:var(--dash-accent,#111111)] focus-within:ring-2 focus-within:ring-[color:var(--dash-accent,#111111)]/25",
+          "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-500 dark:focus-within:border-slate-500",
+          invalid && "border-red-500 focus-within:border-red-500 focus-within:ring-red-500/25 dark:border-red-500",
+        ),
+  );
+
+  const openSplitButtonClass = cn(
+    "flex min-w-0 flex-1 items-center justify-between gap-1.5 border-0 bg-transparent text-left font-medium outline-none transition",
+    size === "sm" ? "px-2 text-xs" : "gap-2 px-3.5 text-sm",
+    disabled
+      ? "cursor-not-allowed"
+      : cn(
+          "cursor-pointer hover:bg-slate-50",
+          "focus-visible:z-[1] focus-visible:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[color:var(--dash-accent,#111111)]/25 focus-visible:ring-inset",
+          "dark:hover:bg-slate-800/90 dark:focus-visible:bg-slate-800/90",
+        ),
+  );
+
+  const clearSplitButtonClass = cn(
+    "flex shrink-0 items-center justify-center border-l border-slate-200 bg-transparent outline-none transition dark:border-slate-600",
+    size === "sm" ? "w-7" : "w-8",
+    disabled
+      ? "cursor-not-allowed text-slate-400"
+      : cn(
+          "cursor-pointer text-slate-500 hover:bg-slate-50 hover:text-slate-800",
+          "focus-visible:z-[1] focus-visible:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[color:var(--dash-accent,#111111)]/25 focus-visible:ring-inset",
+          "dark:hover:bg-slate-800 dark:hover:text-slate-100 dark:focus-visible:bg-slate-800/90",
+        ),
+  );
+
   return (
     <div ref={rootRef} className={cn("relative", className)}>
       {label ? (
@@ -220,33 +320,83 @@ export function CheckmarkSelect({
           {label}
         </span>
       ) : null}
-      <button
-        ref={triggerRef}
-        id={id}
-        type="button"
-        aria-label={buttonAriaLabel}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        disabled={disabled}
-        data-invalid={invalid ? true : undefined}
-        onFocus={(e) => onTriggerFocus?.(e)}
-        onBlur={(e) => {
-          onTriggerBlur?.(e);
-          onBlur?.();
-        }}
-        onClick={() => !disabled && setOpen((o) => !o)}
-        className={triggerClass}
-      >
-        <span className={cn("truncate", !value && "text-slate-400 dark:text-slate-500")}>{displayLabel}</span>
-        <ChevronDown
-          className={cn(
-            "shrink-0 text-[color:var(--dash-accent,#111111)] opacity-80 transition dark:opacity-90",
-            size === "sm" ? "size-3.5" : "size-4",
-            open && !disabled && "rotate-180",
-          )}
-          aria-hidden
-        />
-      </button>
+      {canClear ? (
+        <div ref={anchorRef} className={splitFrameClass} data-invalid={invalid ? true : undefined}>
+          <button
+            ref={triggerRef}
+            id={id}
+            type="button"
+            aria-label={buttonAriaLabel}
+            aria-haspopup="listbox"
+            aria-expanded={open}
+            disabled={disabled}
+            onFocus={(e) => onTriggerFocus?.(e)}
+            onBlur={(e) => {
+              onTriggerBlur?.(e);
+              onBlur?.();
+            }}
+            onClick={() => !disabled && setOpen((o) => !o)}
+            className={openSplitButtonClass}
+          >
+            <span className={cn("min-w-0 flex-1 truncate", !value && "text-slate-400 dark:text-slate-500")}>
+              {displayLabel}
+            </span>
+            <ChevronDown
+              className={cn(
+                "shrink-0 text-[color:var(--dash-accent,#111111)] opacity-80 transition dark:opacity-90",
+                size === "sm" ? "size-3.5" : "size-4",
+                open && !disabled && "rotate-180",
+              )}
+              aria-hidden
+            />
+          </button>
+          <button
+            type="button"
+            aria-label={clearAriaLabel ?? "Clear"}
+            disabled={disabled}
+            className={clearSplitButtonClass}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (disabled) return;
+              onChange("");
+              setOpen(false);
+            }}
+          >
+            <X className={size === "sm" ? "size-3" : "size-3.5"} strokeWidth={2} aria-hidden />
+          </button>
+        </div>
+      ) : (
+        <div ref={anchorRef} className="w-full min-w-0">
+          <button
+            ref={triggerRef}
+            id={id}
+            type="button"
+            aria-label={buttonAriaLabel}
+            aria-haspopup="listbox"
+            aria-expanded={open}
+            disabled={disabled}
+            data-invalid={invalid ? true : undefined}
+            onFocus={(e) => onTriggerFocus?.(e)}
+            onBlur={(e) => {
+              onTriggerBlur?.(e);
+              onBlur?.();
+            }}
+            onClick={() => !disabled && setOpen((o) => !o)}
+            className={triggerClass}
+          >
+            <span className={cn("truncate", !value && "text-slate-400 dark:text-slate-500")}>{displayLabel}</span>
+            <ChevronDown
+              className={cn(
+                "shrink-0 text-[color:var(--dash-accent,#111111)] opacity-80 transition dark:opacity-90",
+                size === "sm" ? "size-3.5" : "size-4",
+                open && !disabled && "rotate-180",
+              )}
+              aria-hidden
+            />
+          </button>
+        </div>
+      )}
       {open && !disabled && !portaled
         ? renderOptionList({}, "absolute left-0 right-0 z-50 mt-1 min-w-0")
         : null}

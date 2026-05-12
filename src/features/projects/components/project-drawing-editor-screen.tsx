@@ -78,7 +78,7 @@ function distanceToSegment(pt: number[], a: number[], b: number[]): number {
 }
 
 function normalizePlot(p: DrawingPlot): LocalPlot {
-  // Use the ID to consistently pick a color from the palette if one isn't provided
+
   const colorIndex = Math.abs(p.id) % PLOT_PALETTE.length;
   const defaultColor = PLOT_PALETTE[colorIndex]!;
 
@@ -578,7 +578,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     const pt = stagePointFromEvent(e);
     if (!pt) return;
     if (activeTool === "pen") {
-      // Real-time validation: Prevent drawing inside or crossing other plots
       for (const p of plots) {
         if (p.id === editingPlotId) continue;
         const poly = p.coordinates.map((c) => percentToPixel(c, pageSize));
@@ -628,7 +627,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
           prev.map((p) => {
             if (p.id !== editingPlotId) return p;
 
-            // Find the nearest segment to insert the new vertex into the correct order
+        
             const coords = p.coordinates.map(c => percentToPixel(c, pageSize));
             let bestIdx = coords.length;
             let minDist = Infinity;
@@ -704,7 +703,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     }
   }
 
-  // Use refs to avoid stale closures in window event listeners
   const draggingPinIdRef = React.useRef<number | null>(null);
   const pageSizeRef = React.useRef(pageSize);
   const plotsRef = React.useRef(plots);
@@ -713,7 +711,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   React.useEffect(() => { draggingPinIdRef.current = draggingPinId; }, [draggingPinId]);
   React.useEffect(() => { draggingVertexRef.current = draggingVertex; }, [draggingVertex]);
 
-  // Attach window-level drag listeners once on mount
   React.useEffect(() => {
     function handleMouseMove(e: MouseEvent) {
       const pinId = draggingPinIdRef.current;

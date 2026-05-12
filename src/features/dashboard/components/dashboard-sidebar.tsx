@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
-import { BookUser, Building2, FileText, FolderKanban, Home, Layers, MapPinHouse, Package, Palette, Tags } from "lucide-react";
+import { BookUser, Building2, FileText, FolderKanban, Home, Layers, MapPinHouse, Package, Palette, Tag, Tags, UserRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useDashboardAppearanceStore } from "@/features/dashboard/store/dashboard-appearance.store";
@@ -318,11 +318,17 @@ function DashboardSettingsSidebar({
   const pathname = usePathname();
   const appearanceHref = routes.dashboard.settingsAppearance;
   const pinStatusHref = routes.dashboard.settingsPinStatus;
+  const tagHref = routes.dashboard.settingsTags;
+  const usersHref = routes.dashboard.settingsUsers;
 
   const appearanceActive =
     pathname === appearanceHref || pathname.startsWith(`${appearanceHref}/`);
   const pinStatusActive =
     pathname === pinStatusHref || pathname.startsWith(`${pinStatusHref}/`);
+  const tagActive =
+    pathname === tagHref || pathname.startsWith(`${tagHref}/`);
+  const usersActive =
+    pathname === usersHref || pathname.startsWith(`${usersHref}/`);
 
   return (
     <>
@@ -348,6 +354,22 @@ function DashboardSettingsSidebar({
           active={pinStatusActive}
           label={t("pinStatus")}
           icon={Tags}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={tagHref}
+          active={tagActive}
+          label={t("tags")}
+          icon={Tag}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={usersHref}
+          active={usersActive}
+          label={t("users")}
+          icon={UserRound}
           expanded={expanded}
           resolved={resolved}
         />

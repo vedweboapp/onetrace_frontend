@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import type { Client } from "@/features/clients/types/client.types";
+import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
   DetailMetricCard,
   DetailMetricsGrid,
@@ -19,11 +20,7 @@ export function ClientDetailBody({
   dateFmt: Intl.DateTimeFormat;
 }) {
   const t = useTranslations("Dashboard.clients");
-  const line1 = detail.address_line_1?.trim() ?? "";
-  const line2 = detail.address_line_2?.trim() ?? "";
   const legacyOnly = detail.address?.trim() ?? "";
-  const structured =
-    !!(line1 || line2 || detail.city?.trim() || detail.state?.trim() || detail.country?.trim() || detail.pincode?.trim());
 
   const phoneRaw = typeof detail.phone === "string" ? detail.phone.trim() : "";
   const telHref = phoneRaw ? `tel:${phoneRaw.replace(/\s/g, "")}` : null;
@@ -39,21 +36,9 @@ export function ClientDetailBody({
     <DetailPagePadding>
       <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
         <div className="space-y-5">
-          <DetailPanelCard title={t("detail.panelOrganization")}>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500 dark:text-slate-400">
-              {t("detail.legalEntityLabel")}
-            </p>
-            <p className="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">{detail.name}</p>
-          </DetailPanelCard>
-
-          <DetailPanelCard title={t("detail.panelPrimaryContact")}>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <DetailMetricCard label={t("fields.contactPerson")}>
-                <span>{detail.contact_person}</span>
-              </DetailMetricCard>
-              <DetailMetricCard label={t("detail.positionRole")}>
-                <span className="font-normal text-slate-500 dark:text-slate-400">{t("detail.notProvided")}</span>
-              </DetailMetricCard>
+          <DetailPanelCard title={t("detail.panelOverview")}>
+            <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">{detail.name}</p>
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <DetailMetricCard label={t("fields.email")}>
                 <a
                   href={`mailto:${detail.email}`}
@@ -94,48 +79,17 @@ export function ClientDetailBody({
         </div>
 
         <DetailPanelCard title={t("detail.sectionAddress")}>
-          {structured ? (
-            <div className="space-y-4">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500 dark:text-slate-400">
-                  {t("fields.addressLine1")}
-                </p>
-                <p className="mt-1.5 text-sm font-medium text-slate-900 dark:text-slate-100">{line1 || "—"}</p>
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500 dark:text-slate-400">
-                  {t("fields.addressLine2")}
-                </p>
-                <p
-                  className={
-                    line2
-                      ? "mt-1.5 text-sm font-medium text-slate-900 dark:text-slate-100"
-                      : "mt-1.5 text-sm italic text-slate-400 dark:text-slate-500"
-                  }
-                >
-                  {line2 || t("detail.addressLine2Empty")}
-                </p>
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <DetailMetricCard label={t("fields.city")}>
-                  {detail.city?.trim() || "—"}
-                </DetailMetricCard>
-                <DetailMetricCard label={t("fields.stateProvince")}>
-                  {detail.state?.trim() || "—"}
-                </DetailMetricCard>
-                <DetailMetricCard label={t("fields.country")}>
-                  {detail.country?.trim() || "—"}
-                </DetailMetricCard>
-                <DetailMetricCard label={t("fields.pincode")}>
-                  {detail.pincode?.trim() || "—"}
-                </DetailMetricCard>
-              </div>
-            </div>
-          ) : legacyOnly ? (
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800 dark:text-slate-200">{legacyOnly}</p>
-          ) : (
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>
-          )}
+          <DetailFormattedAddress
+            line1={detail.address_line_1}
+            line2={detail.address_line_2}
+            city={detail.city}
+            state={detail.state}
+            pincode={detail.pincode}
+            country={detail.country}
+            legacySingleLine={legacyOnly}
+            line2Fallback={t("detail.addressLine2Empty")}
+            emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>}
+          />
         </DetailPanelCard>
       </div>
 

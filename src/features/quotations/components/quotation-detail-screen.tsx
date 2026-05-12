@@ -1,17 +1,30 @@
 "use client";
 
 import * as React from "react";
-import { CalendarDays, FolderKanban } from "lucide-react";
+import { CalendarDays, FolderKanban, Pencil } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchQuotation } from "@/features/quotations/api/quotation.api";
 import { QuotationDetailBody } from "@/features/quotations/components/quotation-detail-body";
+import { QuotationExportDropdown } from "@/features/quotations/components/quotation-export-dropdown";
 import type { QuotationDetail } from "@/features/quotations/types/quotation.types";
-import { fetchSitesPage } from "@/features/sites/api/site.api";
+import {
+  getQuotationCustomerId,
+  getQuotationNestedSite,
+  getQuotationSiteId,
+  quotationCustomerLabel,
+} from "@/features/quotations/utils/quotation-nested-fields.util";
+import { fetchTagsPage } from "@/features/tags/api/tag.api";
+import { fetchSite, fetchSitesPage } from "@/features/sites/api/site.api";
+import type { Site } from "@/features/sites/types/site.types";
+import { hasDetailAddress } from "@/shared/components/layout/detail-formatted-address";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { AppButton, SurfaceShell } from "@/shared/ui";
+import { routes } from "@/shared/config/routes";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { parseFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 
 type Props = {
   quotationId: number;
@@ -20,6 +33,8 @@ type Props = {
 export function QuotationDetailScreen({ quotationId }: Props) {
   const t = useTranslations("Dashboard.quotations");
   const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const safeBack = sanitizeInternalListBack(searchParams.get("back"), "quotations");
 
@@ -29,6 +44,9 @@ export function QuotationDetailScreen({ quotationId }: Props) {
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
   const [siteNames, setSiteNames] = React.useState<Record<number, string>>({});
+  const [tagNames, setTagNames] = React.useState<Record<number, string>>({});
+  const [siteDetail, setSiteDetail] = React.useState<Site | null>(null);
+  const [siteDetailLoading, setSiteDetailLoading] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -61,6 +79,28 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         }
       } catch {
         if (!cancelled) setSiteNames({});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items: tags } = await fetchTagsPage(1, 500, { is_active: true });
+        if (!cancelled) {
+          const mapped: Record<number, string> = {};
+          for (const row of tags) {
+            const label = (row.name ?? row.tag_name ?? "").trim();
+            if (label) mapped[row.id] = label;
+          }
+          setTagNames(mapped);
+        }
+      } catch {
+        if (!cancelled) setTagNames({});
       }
     })();
     return () => {
@@ -105,8 +145,75 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     };
   }, [quotationId, refreshNonce, t]);
 
+  React.useEffect(() => {
+    let cancelled = false;
+    /* Reset and optionally load site row for the map/address panel when the quotation changes.
+       Snapshot-backed quotations skip the network when `site_snapshot` already has a structured address. */
+    /* eslint-disable react-hooks/set-state-in-effect */
+    const snap = detail?.site_snapshot;
+    const snapshotAddressUsable =
+      !!snap &&
+      hasDetailAddress({
+        line1: snap.address_line_1,
+        line2: snap.address_line_2,
+        city: snap.city,
+        state: snap.state,
+        pincode: snap.pincode,
+        country: snap.country,
+      });
+    const nestedSite = getQuotationNestedSite(detail?.site);
+    const nestedSiteAddressUsable =
+      !!nestedSite &&
+      hasDetailAddress({
+        line1: nestedSite.address_line_1,
+        line2: nestedSite.address_line_2,
+        city: nestedSite.city,
+        state: nestedSite.state,
+        pincode: nestedSite.pincode,
+        country: nestedSite.country,
+      });
+    if (snapshotAddressUsable || nestedSiteAddressUsable) {
+      setSiteDetail(null);
+      setSiteDetailLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const siteId = detail?.site != null ? getQuotationSiteId(detail.site) : null;
+    if (siteId == null || !Number.isFinite(siteId)) {
+      setSiteDetail(null);
+      setSiteDetailLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setSiteDetailLoading(true);
+    setSiteDetail(null);
+    void (async () => {
+      try {
+        const row = await fetchSite(siteId);
+        if (!cancelled) setSiteDetail(row);
+      } catch {
+        if (!cancelled) setSiteDetail(null);
+      } finally {
+        if (!cancelled) setSiteDetailLoading(false);
+      }
+    })();
+    /* eslint-enable react-hooks/set-state-in-effect */
+    return () => {
+      cancelled = true;
+    };
+  }, [detail?.site, detail?.site_snapshot]);
+
   const projectSubtitle =
     detail?.project && typeof detail.project === "object" ? detail.project.name : null;
+
+  const dueDateForHeader = detail ? parseFlexibleApiDate(detail.due_date) : null;
+
+  const customerIdForLookup = detail ? getQuotationCustomerId(detail.customer) : null;
+  const siteIdForLookup = detail ? getQuotationSiteId(detail.site) : null;
 
   return (
     <div className="pb-12">
@@ -119,7 +226,10 @@ export function QuotationDetailScreen({ quotationId }: Props) {
             <>
               <span className="inline-flex items-center gap-1.5">
                 <FolderKanban className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
-                {clientNames[detail.customer] ?? `#${detail.customer}`}
+                {quotationCustomerLabel(
+                  detail.customer,
+                  customerIdForLookup != null ? clientNames[customerIdForLookup] : null,
+                )}
               </span>
               {projectSubtitle ? (
                 <span className="inline-flex items-center gap-1.5">
@@ -129,14 +239,33 @@ export function QuotationDetailScreen({ quotationId }: Props) {
                   {projectSubtitle}
                 </span>
               ) : null}
-              {detail.due_date ? (
+              {dueDateForHeader ? (
                 <span className="inline-flex items-center gap-1.5">
                   <CalendarDays className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
-                  {dueFmt.format(new Date(`${detail.due_date}T12:00:00`))}
+                  {dueFmt.format(dueDateForHeader)}
                 </span>
               ) : null}
             </>
           ) : undefined
+        }
+        actions={
+          !loading && !error && detail ? (
+            <>
+              <QuotationExportDropdown quotationId={quotationId} quoteName={detail.quote_name} />
+              <AppButton
+                type="button"
+                variant="primary"
+                size="md"
+                className="gap-2"
+                onClick={() =>
+                  router.push(`${pathname}/edit?back=${encodeURIComponent(safeBack ?? routes.dashboard.quotations)}`)
+                }
+              >
+                <Pencil className="size-4" strokeWidth={2} aria-hidden />
+                {t("edit")}
+              </AppButton>
+            </>
+          ) : null
         }
       />
 
@@ -157,8 +286,14 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         ) : detail ? (
           <QuotationDetailBody
             detail={detail}
-            customerName={clientNames[detail.customer]}
-            siteName={siteNames[detail.site]}
+            customerName={customerIdForLookup != null ? clientNames[customerIdForLookup] : undefined}
+            siteName={
+              detail.site_snapshot?.site_name?.trim() ||
+              (siteIdForLookup != null ? siteNames[siteIdForLookup] : undefined)
+            }
+            tagLookup={tagNames}
+            siteDetail={siteDetail}
+            siteDetailLoading={siteDetailLoading}
             dateFmt={dateFmt}
             dueFmt={dueFmt}
           />
