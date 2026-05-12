@@ -88,21 +88,24 @@ export type QuotationProjectRef = {
   name: string;
 };
 
-/** Line item sent with create/update quotation when the API supports structured scope. */
-export type QuotationQuoteSectionLine = {
-  line_order: number;
+/** Pin row on a quote section plot (create/update quotation scope). */
+export type QuotationQuoteSectionPin = {
+  pins_order: number;
+  /** Persisted drawing pin id when known; null for newly added pins. */
+  pin_id: number | null;
   composite_item_id: number | null;
   name: string;
   quantity: number;
-  unit_price: number;
-  line_total: number;
+  selling_price: number;
+  pins_total: number;
 };
 
 export type QuotationQuoteSectionPlot = {
   plot_order: number;
   plot_id: number | null;
   name: string;
-  lines: QuotationQuoteSectionLine[];
+  /** Present on new API; omitted or legacy `lines` handled by `getQuotePlotPinsForDisplay`. */
+  pins?: QuotationQuoteSectionPin[];
   plot_total: number;
 };
 
@@ -145,7 +148,7 @@ export type QuotationCreatePayload = {
   project: number;
   levels: number[];
   select_all_levels: boolean;
-  /** Optional: full section/plot/line ordering and totals for quotation scope. */
+  /** Optional: full section/plot/pin ordering and totals for quotation scope. */
   quote_sections?: QuotationQuoteSection[];
   grand_total?: number | null;
   /** Nested snapshot of the selected site (address + `site_contact` at submission time). */

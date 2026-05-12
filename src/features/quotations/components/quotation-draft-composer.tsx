@@ -11,7 +11,7 @@ import type { QuotationDraft, QuotationDraftLine, QuotationDraftPlot } from "@/f
 import { newQuotationDraftId } from "@/features/quotations/utils/quotation-draft-id.util";
 import {
   draftGrandTotal,
-  draftLineTotal,
+  draftPinTotal,
   draftPlotTotal,
   draftSectionTotal,
 } from "@/features/quotations/utils/quotation-draft-compute.util";
@@ -119,7 +119,7 @@ type CompositeDraftLinesDrag = {
 };
 
 function CompositeDraftLinesBody({
-  lines,
+  pins,
   saving,
   locale,
   emptyHint,
@@ -131,12 +131,12 @@ function CompositeDraftLinesBody({
   drag,
   readOnly = false,
 }: {
-  lines: QuotationDraftLine[];
+  pins: QuotationDraftLine[];
   saving: boolean;
   locale: string;
-  /** Shown when there are no lines and hideWhenEmpty is false. */
+  /** Shown when there are no pins and hideWhenEmpty is false. */
   emptyHint?: string;
-  /** When true, render nothing if there are no lines (no empty placeholder). */
+  /** When true, render nothing if there are no pins (no empty placeholder). */
   hideWhenEmpty?: boolean;
   labels: CompositeLineLabels;
   onDuplicateLine: (li: number) => void;
@@ -147,7 +147,7 @@ function CompositeDraftLinesBody({
 }) {
   const draggable = Boolean(drag) && !saving && !readOnly;
 
-  if (lines.length === 0) {
+  if (pins.length === 0) {
     if (hideWhenEmpty) return null;
     return (
       <div className="rounded-md border border-dashed border-slate-300 bg-slate-50/60 px-3 py-3 dark:border-slate-600 dark:bg-slate-950/40">
@@ -159,7 +159,7 @@ function CompositeDraftLinesBody({
   return (
     <div className="rounded-md border border-dashed border-slate-300 bg-slate-50/70 p-2 dark:border-slate-600 dark:bg-slate-950/45">
       <ul className="space-y-1.5">
-        {lines.map((line, li) => (
+        {pins.map((line, li) => (
           <li
             key={line.id}
             draggable={draggable}
@@ -215,17 +215,17 @@ function CompositeDraftLinesBody({
                 </span>
                 {readOnly ? (
                   <span className="inline-block min-w-[4.5rem] text-right text-xs font-medium tabular-nums text-slate-800 dark:text-slate-200 sm:min-w-[5rem]">
-                    {formatMoneyDisplay(line.unit_price, locale)}
+                    {formatMoneyDisplay(line.selling_price, locale)}
                   </span>
                 ) : (
                   <input
                     type="number"
                     min={0}
                     step={0.01}
-                    value={Number.isFinite(line.unit_price) ? line.unit_price : 0}
+                    value={Number.isFinite(line.selling_price) ? line.selling_price : 0}
                     onChange={(e) => {
                       const n = Number.parseFloat(e.target.value);
-                      onPatchLine(li, { unit_price: Number.isFinite(n) && n >= 0 ? n : 0 });
+                      onPatchLine(li, { selling_price: Number.isFinite(n) && n >= 0 ? n : 0 });
                     }}
                     disabled={saving}
                     className={cn(inlineEditClassName, "w-[4.75rem] cursor-text text-right text-xs tabular-nums sm:w-[5.25rem]")}
@@ -235,7 +235,7 @@ function CompositeDraftLinesBody({
             </div>
             <div className="flex items-center justify-end gap-3 sm:ml-auto sm:w-auto sm:shrink-0">
               <span className="min-w-[5.5rem] shrink-0 text-right text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100 sm:min-w-[6rem]">
-                {formatMoneyDisplay(draftLineTotal(line), locale)}
+                {formatMoneyDisplay(draftPinTotal(line), locale)}
               </span>
               {!readOnly ? (
                 <DataTableRowActionsMenu
@@ -388,7 +388,7 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
           level_id: null,
           name,
           included: true,
-          section_lines: [],
+          section_pins: [],
           plots: [],
         },
       ],
@@ -404,11 +404,11 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
         ...source,
         id: newQuotationDraftId("sec"),
         name: `${source.name} (Copy)`,
-        section_lines: (source.section_lines ?? []).map((ln) => ({ ...ln, id: newQuotationDraftId("line") })),
+        section_pins: (source.section_pins ?? []).map((ln) => ({ ...ln, id: newQuotationDraftId("line") })),
         plots: source.plots.map((p) => ({
           ...p,
           id: newQuotationDraftId("plot"),
-          lines: p.lines.map((ln) => ({ ...ln, id: newQuotationDraftId("line") })),
+          pins: p.pins.map((ln) => ({ ...ln, id: newQuotationDraftId("line") })),
         })),
       };
       const sections = [...d.sections];
@@ -430,7 +430,7 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
         ...plot,
         id: newQuotationDraftId("plot"),
         name: `${plot.name} (Copy)`,
-        lines: plot.lines.map((ln) => ({ ...ln, id: newQuotationDraftId("line") })),
+        pins: plot.pins.map((ln) => ({ ...ln, id: newQuotationDraftId("line") })),
       };
       const plots = [...sec.plots];
       plots.splice(pi + 1, 0, clone);
@@ -447,17 +447,17 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
 
   function duplicateLine(si: number, pi: number, li: number) {
     patchDraft((d) => {
-      const line = d.sections[si]?.plots[pi]?.lines[li];
+      const line = d.sections[si]?.plots[pi]?.pins[li];
       if (!line) return d;
       const clone = { ...line, id: newQuotationDraftId("line") };
-      const lines = [...d.sections[si].plots[pi].lines];
-      lines.splice(li + 1, 0, clone);
+      const plotPins = [...d.sections[si].plots[pi].pins];
+      plotPins.splice(li + 1, 0, clone);
       return {
         sections: d.sections.map((s, i) =>
           i === si
             ? {
                 ...s,
-                plots: s.plots.map((p, j) => (j === pi ? { ...p, lines } : p)),
+                plots: s.plots.map((p, j) => (j === pi ? { ...p, pins: plotPins } : p)),
               }
             : s,
         ),
@@ -472,7 +472,7 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
           ? {
               ...s,
               plots: s.plots.map((p, j) =>
-                j === pi ? { ...p, lines: p.lines.filter((_, k) => k !== li) } : p,
+                j === pi ? { ...p, pins: p.pins.filter((_, k) => k !== li) } : p,
               ),
             }
           : s,
@@ -484,14 +484,14 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
     patchDraft((d) => {
       const sec = d.sections[si];
       if (!sec) return d;
-      const prevLines = sec.section_lines ?? [];
-      const line = prevLines[li];
+      const prevPins = sec.section_pins ?? [];
+      const line = prevPins[li];
       if (!line) return d;
       const clone = { ...line, id: newQuotationDraftId("line") };
-      const section_lines = [...prevLines];
-      section_lines.splice(li + 1, 0, clone);
+      const section_pins = [...prevPins];
+      section_pins.splice(li + 1, 0, clone);
       return {
-        sections: d.sections.map((s, i) => (i === si ? { ...s, section_lines } : s)),
+        sections: d.sections.map((s, i) => (i === si ? { ...s, section_pins } : s)),
       };
     });
   }
@@ -499,7 +499,7 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
   function removeSectionLine(si: number, li: number) {
     patchDraft((d) => ({
       sections: d.sections.map((s, i) =>
-        i === si ? { ...s, section_lines: (s.section_lines ?? []).filter((_, k) => k !== li) } : s,
+        i === si ? { ...s, section_pins: (s.section_pins ?? []).filter((_, k) => k !== li) } : s,
       ),
     }));
   }
@@ -510,7 +510,7 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
         i === si
           ? {
               ...s,
-              section_lines: (s.section_lines ?? []).map((ln, k) => (k === li ? { ...ln, ...patch } : ln)),
+              section_pins: (s.section_pins ?? []).map((ln, k) => (k === li ? { ...ln, ...patch } : ln)),
             }
           : s,
       ),
@@ -527,7 +527,7 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
                 j === pi
                   ? {
                       ...p,
-                      lines: p.lines.map((ln, k) => (k === li ? { ...ln, ...patch } : ln)),
+                      pins: p.pins.map((ln, k) => (k === li ? { ...ln, ...patch } : ln)),
                     }
                   : p,
               ),
@@ -614,7 +614,7 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
           ? {
               ...s,
               plots: s.plots.map((p, pi) =>
-                pi === plotIndex ? { ...p, lines: reorderArray(p.lines, parsed.fromIndex, toIndex) } : p,
+                pi === plotIndex ? { ...p, pins: reorderArray(p.pins, parsed.fromIndex, toIndex) } : p,
               ),
             }
           : s,
@@ -630,7 +630,7 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
     patchDraft((d) => ({
       sections: d.sections.map((s, si) =>
         si === sectionIndex
-          ? { ...s, section_lines: reorderArray(s.section_lines ?? [], parsed.fromIndex, toIndex) }
+          ? { ...s, section_pins: reorderArray(s.section_pins ?? [], parsed.fromIndex, toIndex) }
           : s,
       ),
     }));
@@ -651,15 +651,16 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
     const unit = picked ? parseMoneyValue(picked.selling_price ?? picked.cost_price) : 0;
     const newLine: QuotationDraftLine = {
       id: newQuotationDraftId("line"),
+      pin_id: null,
       composite_item_id: id,
       name: label,
       quantity: 1,
-      unit_price: unit,
+      selling_price: unit,
     };
     if (addTarget.pi === null) {
       patchDraft((d) => ({
         sections: d.sections.map((s, si) =>
-          si === addTarget.si ? { ...s, section_lines: [...(s.section_lines ?? []), newLine] } : s,
+          si === addTarget.si ? { ...s, section_pins: [...(s.section_pins ?? []), newLine] } : s,
         ),
       }));
     } else {
@@ -670,7 +671,7 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
             ? {
                 ...s,
                 plots: s.plots.map((p, j) =>
-                  j === pi ? { ...p, lines: [...p.lines, newLine] } : p,
+                  j === pi ? { ...p, pins: [...p.pins, newLine] } : p,
                 ),
               }
             : s,
@@ -964,7 +965,7 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
                   ) : null}
                   <CompositeDraftLinesBody
                     hideWhenEmpty
-                    lines={section.section_lines ?? []}
+                    pins={section.section_pins ?? []}
                     saving={saving}
                     locale={loc}
                     labels={{
@@ -1002,7 +1003,7 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
                     }
                   />
 
-                  {(section.section_lines ?? []).length === 0 && section.plots.length === 0 ? (
+                  {(section.section_pins ?? []).length === 0 && section.plots.length === 0 ? (
                     <p className="text-xs text-slate-500 dark:text-slate-400">{t("emptyPlots")}</p>
                   ) : section.plots.length > 0 ? (
                     <ul className="space-y-2">
@@ -1349,7 +1350,7 @@ function PlotBlock({
             </div>
           ) : null}
           <CompositeDraftLinesBody
-            lines={plot.lines}
+            pins={plot.pins}
             saving={saving}
             locale={locale}
             emptyHint={t("emptyLines")}

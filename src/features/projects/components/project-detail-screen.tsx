@@ -3,7 +3,8 @@
 import * as React from "react";
 import { FileText, Pencil } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
 import { fetchClient } from "@/features/clients/api/client.api";
 import { createQuotationFromProject } from "@/features/quotations/api/quotation.api";
 import { deleteProject, fetchProject } from "@/features/projects/api/project.api";
@@ -13,9 +14,8 @@ import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
-import { useRouter } from "@/i18n/navigation";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { mergeUrlQueryParam, sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
   AppTabs,
@@ -34,8 +34,8 @@ export function ProjectDetailScreen({ projectId }: Props) {
   const tHome = useTranslations("Dashboard.home");
   const locale = useLocale();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const safeBack = sanitizeInternalListBack(searchParams.get("back"), "projects");
 
   const [detail, setDetail] = React.useState<Project | null>(null);
@@ -61,6 +61,18 @@ export function ProjectDetailScreen({ projectId }: Props) {
     ],
     [t],
   );
+
+  const allowedDetailTabIds = React.useMemo(() => new Set(detailTabs.map((x) => x.id)), [detailTabs]);
+
+  React.useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (!tab || !allowedDetailTabIds.has(tab)) return;
+    setActiveTab(tab);
+    const p = new URLSearchParams(searchParams.toString());
+    p.delete("tab");
+    const qs = p.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
+  }, [searchParams, pathname, router, allowedDetailTabIds]);
 
   const dateFmt = React.useMemo(
     () =>
@@ -156,9 +168,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
     try {
       const q = await createQuotationFromProject(projectId);
       toastSuccess(t("detail.quoteFromProjectToast"));
-      router.push(
-        `${routes.dashboard.quotations}/${q.id}?back=${encodeURIComponent(pathname)}`,
-      );
+      router.push(mergeUrlQueryParam(routes.dashboard.quotations, "highlight", String(q.id)));
     } catch {
       toastError(t("detail.quoteFromProjectError"));
     } finally {
