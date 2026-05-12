@@ -10,6 +10,7 @@ import { fetchSite } from "@/features/sites/api/site.api";
 import { SiteDetailBody } from "@/features/sites/components/site-detail-body";
 import type { Site } from "@/features/sites/types/site.types";
 import { routes } from "@/shared/config/routes";
+import { detailRecordSurfaceShellClassName } from "@/shared/components/layout/detail-metric-card";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { AppButton, SurfaceShell } from "@/shared/ui";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
@@ -129,7 +130,7 @@ export function SiteDetailScreen({ siteId }: Props) {
         }
       />
 
-      <SurfaceShell className="rounded-none border-0 shadow-none ring-0">
+      <SurfaceShell className={detailRecordSurfaceShellClassName}>
         {loading ? (
           <div className="space-y-3 p-4 sm:p-6">
             <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />

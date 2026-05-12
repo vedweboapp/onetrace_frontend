@@ -10,6 +10,7 @@ import { GroupDetailBody } from "@/features/groups/components/group-detail-body"
 import type { Group } from "@/features/groups/types/group.types";
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { detailRecordSurfaceShellClassName } from "@/shared/components/layout/detail-metric-card";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import { AppButton, ConfirmDialog, SurfaceShell } from "@/shared/ui";
@@ -103,7 +104,7 @@ export function GroupDetailScreen({ groupId }: Props) {
         }
       />
 
-      <SurfaceShell className="rounded-none border-0 shadow-none ring-0">
+      <SurfaceShell className={detailRecordSurfaceShellClassName}>
         {loading ? (
           <div className="space-y-3 p-4 sm:p-6">
             <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
