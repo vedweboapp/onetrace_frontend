@@ -4,10 +4,9 @@ import * as React from "react";
 import { Pencil } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { deleteGroup, fetchGroup } from "@/features/groups/api/group.api";
 import { GroupDetailBody } from "@/features/groups/components/group-detail-body";
-import { GroupFormModal } from "@/features/groups/components/group-form-modal";
 import type { Group } from "@/features/groups/types/group.types";
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
@@ -23,6 +22,7 @@ export function GroupDetailScreen({ groupId }: Props) {
   const t = useTranslations("Dashboard.groups");
   const locale = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const safeBack = sanitizeInternalListBack(searchParams.get("back"), "groups");
 
@@ -30,7 +30,6 @@ export function GroupDetailScreen({ groupId }: Props) {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
-  const [formOpen, setFormOpen] = React.useState(false);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
 
@@ -89,7 +88,13 @@ export function GroupDetailScreen({ groupId }: Props) {
               <AppButton type="button" variant="secondary" size="md" onClick={() => setDeleteOpen(true)}>
                 {t("delete")}
               </AppButton>
-              <AppButton type="button" variant="primary" size="md" onClick={() => setFormOpen(true)} className="gap-2">
+              <AppButton
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={() => router.push(`${pathname}/edit?back=${encodeURIComponent(safeBack ?? routes.dashboard.groups)}`)}
+                className="gap-2"
+              >
                 <Pencil className="size-4" strokeWidth={2} aria-hidden />
                 {t("edit")}
               </AppButton>
@@ -116,14 +121,6 @@ export function GroupDetailScreen({ groupId }: Props) {
           <GroupDetailBody detail={detail} dateFmt={dateFmt} />
         ) : null}
       </SurfaceShell>
-
-      <GroupFormModal
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        mode="edit"
-        group={detail}
-        onSaved={() => setRefreshNonce((n) => n + 1)}
-      />
 
       <ConfirmDialog
         open={deleteOpen}

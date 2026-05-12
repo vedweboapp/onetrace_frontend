@@ -5,8 +5,7 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { deleteGroup, fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
-import { GroupFormModal } from "@/features/groups/components/group-form-modal";
+import { deleteGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import type { Group } from "@/features/groups/types/group.types";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
@@ -76,11 +75,6 @@ export function GroupsPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
 
-  const [formOpen, setFormOpen] = React.useState(false);
-  const [formMode, setFormMode] = React.useState<"create" | "edit">("create");
-  const [editingGroup, setEditingGroup] = React.useState<Group | null>(null);
-  const [formKey, setFormKey] = React.useState(0);
-
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deletingGroup, setDeletingGroup] = React.useState<Group | null>(null);
   const [deleting, setDeleting] = React.useState(false);
@@ -136,23 +130,11 @@ export function GroupsPanel() {
   const pageRange = getListPageRange(pagination);
 
   function openCreate() {
-    setFormMode("create");
-    setEditingGroup(null);
-    setFormKey((k) => k + 1);
-    setFormOpen(true);
+    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
   }
 
-  async function openEdit(row: Group) {
-    setFormMode("edit");
-    setEditingGroup(row);
-    setFormKey((k) => k + 1);
-    setFormOpen(true);
-    try {
-      const fullGroup = await fetchGroup(row.id);
-      setEditingGroup(fullGroup);
-    } catch {
-      toastError(t("detailLoadError"));
-    }
+  function openEdit(row: Group) {
+    router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`);
   }
 
   function handleSaved() {
@@ -406,15 +388,6 @@ export function GroupsPanel() {
           />
         ) : null}
       </SurfaceShell>
-
-      <GroupFormModal
-        key={formKey}
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        mode={formMode}
-        group={editingGroup}
-        onSaved={handleSaved}
-      />
 
       <ConfirmDialog
         open={deleteOpen}

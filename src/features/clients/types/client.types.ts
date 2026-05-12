@@ -8,7 +8,6 @@ export type ClientUserRef = {
 export type ClientUpsertPayload = {
   organization: number;
   name: string;
-  contact_person: string;
   email: string;
   phone: string;
   address_line_1: string;
@@ -31,7 +30,6 @@ export type Client = {
   deleted_at: string | null;
   is_deleted: boolean;
   name: string;
-  contact_person: string;
   email: string;
   phone?: string | null;
   address_line_1?: string | null;
@@ -44,7 +42,7 @@ export type Client = {
   address?: string | null;
   is_active: boolean;
   deleted_by: unknown;
-  organization: number;
+  organization?: number;
 };
 
 export type ClientPagination = {

@@ -9,6 +9,7 @@ export type ProjectUpsertPayload = {
   name: string;
   client: number;
   description: string;
+  sites?: number[];
 
   start_date: string;
 
@@ -17,6 +18,19 @@ export type ProjectUpsertPayload = {
 
 export type ProjectCreatePayload = ProjectUpsertPayload;
 export type ProjectUpdatePayload = ProjectUpsertPayload;
+
+/** When the API embeds client on project detail/list rows. */
+export type ProjectClientRef = {
+  id: number;
+  name?: string | null;
+};
+
+/** Site row embedded on project detail from the API. */
+export type ProjectSiteRef = {
+  id: number;
+  site_name?: string | null;
+  is_active?: boolean;
+};
 
 export type Project = {
   id: number;
@@ -28,7 +42,8 @@ export type Project = {
   is_deleted: boolean;
   name: string;
   description: string;
-  client: number;
+  client: number | ProjectClientRef;
+  sites?: Array<number | ProjectSiteRef> | null;
   address_line_1?: string | null;
   address_line_2?: string | null;
   city?: string | null;

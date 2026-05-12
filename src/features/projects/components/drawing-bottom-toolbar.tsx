@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Crosshair, Hand, MapPin, MapPinned, MousePointer2, PenTool, SquareDashed } from "lucide-react";
+import { Hand, Layers, MapPin, MousePointer2, PenTool, SquareDashed } from "lucide-react";
 import { AppButton, CheckmarkSelect } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import type { LocalPlot, Tool } from "./project-drawing-editor-screen";
@@ -19,13 +19,11 @@ type Props = {
     compositeOptions: { value: string; label: string }[];
     activeTool: Tool;
     setActiveTool: (tool: Tool) => void;
-    dirty: boolean;
-    savingAll: boolean;
-    saveAllChanges: () => void;
     selectedPlot: LocalPlot | null;
     savingPin: boolean;
     sidebarOpen: boolean;
-    onClose: () => void;
+    showVariations: boolean;
+    onToggleVariations: () => void;
 };
 
 const DrawingBottomToolbar = ({
@@ -41,13 +39,11 @@ const DrawingBottomToolbar = ({
     compositeOptions,
     activeTool,
     setActiveTool,
-    dirty,
-    savingAll,
-    saveAllChanges,
     selectedPlot,
     savingPin,
     sidebarOpen,
-    onClose,
+    showVariations,
+    onToggleVariations,
 }: Props) => {
     return (
         <div className={cn(
@@ -65,6 +61,7 @@ const DrawingBottomToolbar = ({
                         emptyLabel={t("choosePlot")}
                         side="top"
                     />
+
                     <CheckmarkSelect
                         listLabel={`${t("chooseGroup")} *`}
                         options={groupOptions}
@@ -84,6 +81,30 @@ const DrawingBottomToolbar = ({
                         emptyLabel={t("selectComposite")}
                         side="top"
                     />
+                </div>
+
+                <div className="h-8 w-px bg-slate-200 dark:bg-slate-800" />
+
+                {/* Variation Switch */}
+                <div className="flex items-center gap-2.5 px-1">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={showVariations}
+                    onClick={onToggleVariations}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none ${
+                      showVariations ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-700"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                        showVariations ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                  <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 select-none whitespace-nowrap">
+                    Variations
+                  </span>
                 </div>
 
                 <div className="h-8 w-px bg-slate-200 dark:bg-slate-800" />
@@ -135,28 +156,6 @@ const DrawingBottomToolbar = ({
                 </div>
             </div>
 
-            <div className="absolute right-6 flex items-center gap-3 lg:right-10">
-                <AppButton
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="h-10 px-6 font-bold border-slate-200 dark:border-slate-800"
-                    onClick={onClose}
-                >
-                    {t("close")}
-                </AppButton>
-                <AppButton
-                    type="button"
-                    size="sm"
-                    variant="primary"
-                    className="h-10 px-6 font-bold shadow-lg shadow-blue-500/20"
-                    disabled={!dirty || savingAll}
-                    loading={savingAll}
-                    onClick={() => void saveAllChanges()}
-                >
-                    {t("saveAll")}
-                </AppButton>
-            </div>
         </div>
     );
 };

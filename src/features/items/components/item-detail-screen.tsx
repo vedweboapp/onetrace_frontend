@@ -4,10 +4,9 @@ import * as React from "react";
 import { Pencil } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { deleteItem, fetchItem } from "@/features/items/api/item.api";
 import { ItemDetailBody } from "@/features/items/components/item-detail-body";
-import { ItemFormModal } from "@/features/items/components/item-form-modal";
 import type { Item } from "@/features/items/types/item.types";
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
@@ -23,6 +22,7 @@ export function ItemDetailScreen({ itemId }: Props) {
   const t = useTranslations("Dashboard.items");
   const locale = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const safeBack = sanitizeInternalListBack(searchParams.get("back"), "items");
 
@@ -30,7 +30,6 @@ export function ItemDetailScreen({ itemId }: Props) {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
-  const [formOpen, setFormOpen] = React.useState(false);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
 
@@ -94,7 +93,13 @@ export function ItemDetailScreen({ itemId }: Props) {
               <AppButton type="button" variant="secondary" size="md" onClick={() => setDeleteOpen(true)}>
                 {t("delete")}
               </AppButton>
-              <AppButton type="button" variant="primary" size="md" onClick={() => setFormOpen(true)} className="gap-2">
+              <AppButton
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={() => router.push(`${pathname}/edit?back=${encodeURIComponent(safeBack ?? routes.dashboard.items)}`)}
+                className="gap-2"
+              >
                 <Pencil className="size-4" strokeWidth={2} aria-hidden />
                 {t("edit")}
               </AppButton>
@@ -121,14 +126,6 @@ export function ItemDetailScreen({ itemId }: Props) {
           <ItemDetailBody detail={detail} dateFmt={dateFmt} />
         ) : null}
       </SurfaceShell>
-
-      <ItemFormModal
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        mode="edit"
-        item={detail}
-        onSaved={() => setRefreshNonce((n) => n + 1)}
-      />
 
       <ConfirmDialog
         open={deleteOpen}

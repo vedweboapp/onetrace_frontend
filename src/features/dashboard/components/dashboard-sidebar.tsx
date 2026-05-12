@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
-import { Building2, FolderKanban, Home, Layers, Package, Palette, Tags } from "lucide-react";
+import { BookUser, Building2, FileText, FolderKanban, Home, Layers, MapPinHouse, Package, Palette, Tag, Tags, UserRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useDashboardAppearanceStore } from "@/features/dashboard/store/dashboard-appearance.store";
@@ -147,6 +147,9 @@ function DashboardMainSidebar({
   const pathname = usePathname();
   const [itemsOpen, setItemsOpen] = React.useState(false);
   const clientsHref = routes.dashboard.clients;
+  const contactsHref = routes.dashboard.contacts;
+  const sitesHref = routes.dashboard.sites;
+  const quotationsHref = routes.dashboard.quotations;
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
@@ -155,6 +158,11 @@ function DashboardMainSidebar({
   const homeActive = pathname === homeHref;
   const clientsActive =
     pathname === clientsHref || pathname.startsWith(`${clientsHref}/`);
+  const contactsActive =
+    pathname === contactsHref || pathname.startsWith(`${contactsHref}/`);
+  const sitesActive = pathname === sitesHref || pathname.startsWith(`${sitesHref}/`);
+  const quotationsActive =
+    pathname === quotationsHref || pathname.startsWith(`${quotationsHref}/`);
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
   const groupsActive = pathname === groupsHref || pathname.startsWith(`${groupsHref}/`);
@@ -190,6 +198,30 @@ function DashboardMainSidebar({
           active={clientsActive}
           label={t("clients")}
           icon={Building2}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={contactsHref}
+          active={contactsActive}
+          label={t("contacts")}
+          icon={BookUser}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={sitesHref}
+          active={sitesActive}
+          label={t("sites")}
+          icon={MapPinHouse}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={quotationsHref}
+          active={quotationsActive}
+          label={t("quotations")}
+          icon={FileText}
           expanded={expanded}
           resolved={resolved}
         />
@@ -286,11 +318,17 @@ function DashboardSettingsSidebar({
   const pathname = usePathname();
   const appearanceHref = routes.dashboard.settingsAppearance;
   const pinStatusHref = routes.dashboard.settingsPinStatus;
+  const tagHref = routes.dashboard.settingsTags;
+  const usersHref = routes.dashboard.settingsUsers;
 
   const appearanceActive =
     pathname === appearanceHref || pathname.startsWith(`${appearanceHref}/`);
   const pinStatusActive =
     pathname === pinStatusHref || pathname.startsWith(`${pinStatusHref}/`);
+  const tagActive =
+    pathname === tagHref || pathname.startsWith(`${tagHref}/`);
+  const usersActive =
+    pathname === usersHref || pathname.startsWith(`${usersHref}/`);
 
   return (
     <>
@@ -316,6 +354,22 @@ function DashboardSettingsSidebar({
           active={pinStatusActive}
           label={t("pinStatus")}
           icon={Tags}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={tagHref}
+          active={tagActive}
+          label={t("tags")}
+          icon={Tag}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={usersHref}
+          active={usersActive}
+          label={t("users")}
+          icon={UserRound}
           expanded={expanded}
           resolved={resolved}
         />

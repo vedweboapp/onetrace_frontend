@@ -1,20 +1,21 @@
 "use client";
 
 import * as React from "react";
-import { Pencil } from "lucide-react";
+import { FileText, Pencil } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
-import { fetchClient, fetchClientsPage } from "@/features/clients/api/client.api";
+import { fetchClient } from "@/features/clients/api/client.api";
+import { createQuotationFromProject } from "@/features/quotations/api/quotation.api";
 import { deleteProject, fetchProject } from "@/features/projects/api/project.api";
 import { ProjectDetailBody } from "@/features/projects/components/project-detail-body";
 import { ProjectDrawingsTab } from "@/features/projects/components/project-drawings-tab";
-import { ProjectFormModal } from "@/features/projects/components/project-form-modal";
 import type { Project } from "@/features/projects/types/project.types";
+import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
-import { useRouter } from "@/i18n/navigation";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { mergeUrlQueryParam, sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
   AppTabs,
@@ -33,6 +34,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
   const tHome = useTranslations("Dashboard.home");
   const locale = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const safeBack = sanitizeInternalListBack(searchParams.get("back"), "projects");
 
@@ -42,11 +44,9 @@ export function ProjectDetailScreen({ projectId }: Props) {
   const [refreshNonce, setRefreshNonce] = React.useState(0);
 
   const [clientName, setClientName] = React.useState<string | null>(null);
-  const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
-
-  const [formOpen, setFormOpen] = React.useState(false);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
+  const [quoting, setQuoting] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("details");
 
   const detailTabs = React.useMemo<AppTabItem[]>(
@@ -61,6 +61,18 @@ export function ProjectDetailScreen({ projectId }: Props) {
     ],
     [t],
   );
+
+  const allowedDetailTabIds = React.useMemo(() => new Set(detailTabs.map((x) => x.id)), [detailTabs]);
+
+  React.useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (!tab || !allowedDetailTabIds.has(tab)) return;
+    setActiveTab(tab);
+    const p = new URLSearchParams(searchParams.toString());
+    p.delete("tab");
+    const qs = p.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
+  }, [searchParams, pathname, router, allowedDetailTabIds]);
 
   const dateFmt = React.useMemo(
     () =>
@@ -93,23 +105,6 @@ export function ProjectDetailScreen({ projectId }: Props) {
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        const { items } = await fetchClientsPage(1, 500, undefined, { silent: true });
-        if (!cancelled) {
-          setClientOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
-        }
-      } catch {
-        if (!cancelled) setClientOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
       setLoading(true);
       setError(null);
       setDetail(null);
@@ -132,10 +127,15 @@ export function ProjectDetailScreen({ projectId }: Props) {
       queueMicrotask(() => setClientName(null));
       return;
     }
+    const cid = getProjectClientId(detail);
+    if (!cid) {
+      queueMicrotask(() => setClientName(null));
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
-        const c = await fetchClient(detail.client, { silent: true });
+        const c = await fetchClient(cid, { silent: true });
         if (!cancelled) setClientName(c.name);
       } catch {
         if (!cancelled) setClientName(null);
@@ -146,14 +146,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
     };
   }, [detail]);
 
-  function openEdit() {
-    if (!detail) return;
-    setFormOpen(true);
-  }
-
-  function handleFormSaved() {
-    setRefreshNonce((n) => n + 1);
-  }
+  const subtitleClientId = detail ? getProjectClientId(detail) : null;
 
   async function confirmDelete() {
     if (!detail) return;
@@ -170,6 +163,19 @@ export function ProjectDetailScreen({ projectId }: Props) {
     }
   }
 
+  async function handleQuoteProject() {
+    setQuoting(true);
+    try {
+      const q = await createQuotationFromProject(projectId);
+      toastSuccess(t("detail.quoteFromProjectToast"));
+      router.push(mergeUrlQueryParam(routes.dashboard.quotations, "highlight", String(q.id)));
+    } catch {
+      toastError(t("detail.quoteFromProjectError"));
+    } finally {
+      setQuoting(false);
+    }
+  }
+
   return (
     <div className="pb-12">
       <div className="mb-5 space-y-4 border-b border-slate-200/90 pb-5 dark:border-slate-800 sm:mb-6 sm:pb-6">
@@ -180,7 +186,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
           subtitle={
             detail ? (
               <span className="text-slate-500 dark:text-slate-400">
-                {clientName ?? `#${detail.client}`}
+                {clientName ?? (subtitleClientId ? `#${subtitleClientId}` : "—")}
                 <span className="mx-2 text-slate-300 dark:text-slate-600" aria-hidden>
                   •
                 </span>
@@ -191,10 +197,33 @@ export function ProjectDetailScreen({ projectId }: Props) {
           actions={
             !loading && !error && detail ? (
               <div className="flex flex-wrap gap-2">
+                <AppButton
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  className="gap-2"
+                  loading={quoting}
+                  disabled={quoting}
+                  aria-label={t("detail.quoteToProjectAria")}
+                  onClick={() => void handleQuoteProject()}
+                >
+                  <FileText className="size-4" strokeWidth={2} aria-hidden />
+                  {t("detail.quoteToProject")}
+                </AppButton>
                 <AppButton type="button" variant="secondary" size="md" onClick={() => setDeleteOpen(true)}>
                   {t("delete")}
                 </AppButton>
-                <AppButton type="button" variant="primary" size="md" onClick={openEdit} className="gap-2">
+                <AppButton
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  onClick={() =>
+                    router.push(
+                      `${routes.dashboard.projects}/${projectId}/edit?back=${encodeURIComponent(safeBack ?? routes.dashboard.projects)}`,
+                    )
+                  }
+                  className="gap-2"
+                >
                   <Pencil className="size-4" strokeWidth={2} aria-hidden />
                   {t("detail.editWithIcon")}
                 </AppButton>
@@ -257,15 +286,6 @@ export function ProjectDetailScreen({ projectId }: Props) {
           ) : null}
         </div>
       </SurfaceShell>
-
-      <ProjectFormModal
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        mode="edit"
-        project={detail}
-        clientOptions={clientOptions}
-        onSaved={handleFormSaved}
-      />
 
       <ConfirmDialog
         open={deleteOpen}

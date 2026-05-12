@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import type { Project } from "@/features/projects/types/project.types";
+import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { routes } from "@/shared/config/routes";
 import {
   DetailMetricCard,
@@ -11,6 +12,25 @@ import {
   DetailPanelCard,
 } from "@/shared/components/layout/detail-metric-card";
 import { ActiveStatusBadge } from "@/shared/ui";
+
+function projectSiteListRows(detail: Project): { id: number; label: string; isActive?: boolean }[] {
+  const sites = detail.sites;
+  if (!Array.isArray(sites) || sites.length === 0) return [];
+  const rows: { id: number; label: string; isActive?: boolean }[] = [];
+  for (const entry of sites) {
+    if (typeof entry === "number" && Number.isFinite(entry) && entry > 0) {
+      rows.push({ id: entry, label: `#${entry}` });
+    } else if (entry && typeof entry === "object" && typeof entry.id === "number") {
+      const name = entry.site_name?.trim();
+      rows.push({
+        id: entry.id,
+        label: name || `#${entry.id}`,
+        isActive: typeof entry.is_active === "boolean" ? entry.is_active : undefined,
+      });
+    }
+  }
+  return rows;
+}
 
 export function ProjectDetailBody({
   detail,
@@ -24,20 +44,24 @@ export function ProjectDetailBody({
   clientName: string | null;
 }) {
   const t = useTranslations("Dashboard.projects");
-  const line1 = detail.address_line_1?.trim() ?? "";
-  const line2 = detail.address_line_2?.trim() ?? "";
-  const structured =
-    !!(line1 || line2 || detail.city?.trim() || detail.state?.trim() || detail.country?.trim() || detail.pincode?.trim());
+  const clientId = getProjectClientId(detail);
 
   const start = detail.start_date?.slice(0, 10) ?? "";
   const end = detail.end_date?.slice(0, 10) ?? "";
+  const siteRows = projectSiteListRows(detail);
 
   return (
     <DetailPagePadding>
       <DetailPanelCard title={t("detail.panelDescription")}>
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800 dark:text-slate-200">
-          {detail.description?.trim() ? detail.description : "—"}
-        </p>
+        {detail.description?.trim() ? (
+          <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/40">
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800 dark:text-slate-200">
+              {detail.description}
+            </p>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500 dark:text-slate-400">—</p>
+        )}
       </DetailPanelCard>
 
       <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
@@ -48,12 +72,16 @@ export function ProjectDetailBody({
                 <span className="break-words">{detail.name}</span>
               </DetailMetricCard>
               <DetailMetricCard label={t("fields.client")}>
-                <Link
-                  href={`${routes.dashboard.clients}/${detail.client}`}
-                  className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                >
-                  {clientName ?? `#${detail.client}`}
-                </Link>
+                {clientId ? (
+                  <Link
+                    href={`${routes.dashboard.clients}/${clientId}`}
+                    className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                  >
+                    {clientName ?? `#${clientId}`}
+                  </Link>
+                ) : (
+                  <span>{clientName ?? "—"}</span>
+                )}
               </DetailMetricCard>
               <div className="sm:col-span-2">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500 dark:text-slate-400">
@@ -106,20 +134,28 @@ export function ProjectDetailBody({
             </DetailMetricsGrid>
           </DetailPanelCard>
 
-          <DetailPanelCard title={t("detail.sectionAddress")}>
-            {structured ? (
-              <div className="grid gap-3 text-sm leading-relaxed text-slate-800 sm:grid-cols-2 dark:text-slate-200">
-                <div className="space-y-2">
-                  {line1 ? <p>{line1}</p> : null}
-                  {line2 ? <p>{line2}</p> : null}
-                </div>
-                <div className="space-y-2">
-                  <p>{[detail.city?.trim(), detail.state?.trim()].filter(Boolean).join(", ") || "—"}</p>
-                  <p>{[detail.country?.trim(), detail.pincode?.trim()].filter(Boolean).join(" · ") || "—"}</p>
-                </div>
-              </div>
+          <DetailPanelCard title={t("detail.panelSites")}>
+            {siteRows.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.sitesEmpty")}</p>
             ) : (
-              <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>
+              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                {siteRows.map((row) => (
+                  <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                    <Link
+                      href={`${routes.dashboard.sites}/${row.id}`}
+                      className="min-w-0 font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                    >
+                      <span className="break-words">{row.label}</span>
+                    </Link>
+                    {typeof row.isActive === "boolean" ? (
+                      <ActiveStatusBadge
+                        active={row.isActive}
+                        label={row.isActive ? t("status.active") : t("status.inactive")}
+                      />
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
             )}
           </DetailPanelCard>
         </div>

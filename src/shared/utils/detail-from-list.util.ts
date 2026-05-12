@@ -15,7 +15,17 @@ export function buildDetailHrefWithListReturn(detailPath: string, currentListHre
   return `${detailPath}?back=${encodeURIComponent(backTarget)}`;
 }
 
-export type DashboardListSection = "clients" | "projects" | "groups" | "items" | "composite-items";
+export type DashboardListSection =
+  | "clients"
+  | "contacts"
+  | "sites"
+  | "quotations"
+  | "projects"
+  | "groups"
+  | "items"
+  | "composite-items"
+  | "settings/users";
+
 
 export function sanitizeInternalListBack(
   raw: string | null | undefined,

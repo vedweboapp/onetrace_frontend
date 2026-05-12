@@ -103,7 +103,6 @@ export function LoginForm() {
     if (val && index < 5) otpRefs.current[index + 1]?.focus();
   }
 
-  // Shared input class
   const inputCls =
     "h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-[14px] text-slate-900 placeholder:text-slate-400 outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-900/8";
 

@@ -17,9 +17,11 @@ import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-ur
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
+import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { AppButton, ConfirmDialog, DetailPanel, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import DrawingBottomToolbar from "./drawing-bottom-toolbar";
+import PlotToolbar from "./plot-toolbar";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -67,8 +69,17 @@ const PLOT_PALETTE = [
   { border: "#DC2626", bg: "#DC26260D" },  // Red
 ];
 
+function distanceToSegment(pt: number[], a: number[], b: number[]): number {
+  const dx = (b[0] ?? 0) - (a[0] ?? 0);
+  const dy = (b[1] ?? 0) - (a[1] ?? 0);
+  if (dx === 0 && dy === 0) return Math.hypot(pt[0] - (a[0] ?? 0), pt[1] - (a[1] ?? 0));
+  const t = ((pt[0] - (a[0] ?? 0)) * dx + (pt[1] - (a[1] ?? 0)) * dy) / (dx * dx + dy * dy);
+  const tt = Math.max(0, Math.min(1, t));
+  return Math.hypot(pt[0] - ((a[0] ?? 0) + tt * dx), pt[1] - ((a[1] ?? 0) + tt * dy));
+}
+
 function normalizePlot(p: DrawingPlot): LocalPlot {
-  // Use the ID to consistently pick a color from the palette if one isn't provided
+
   const colorIndex = Math.abs(p.id) % PLOT_PALETTE.length;
   const defaultColor = PLOT_PALETTE[colorIndex]!;
 
@@ -122,6 +133,23 @@ function getCentroid(points: number[][]): number[] {
   if (!points.length) return [0, 0];
   const [sx, sy] = points.reduce((acc, p) => [acc[0] + (p[0] ?? 0), acc[1] + (p[1] ?? 0)], [0, 0]);
   return [Math.round(sx / points.length), Math.round(sy / points.length)];
+}
+
+function applyStableLocations(plots: LocalPlot[]) {
+  let maxLoc = 0;
+  for (const p of plots) {
+    for (const pin of p.pins) {
+      if (pin.location) maxLoc = Math.max(maxLoc, Number(pin.location));
+    }
+  }
+  let fallback = maxLoc > 0 ? maxLoc + 1 : 1;
+  for (const p of plots) {
+    for (const pin of p.pins) {
+      if (!pin.location) {
+        pin.location = fallback++;
+      }
+    }
+  }
 }
 
 // ─── Pin Components ──────────────────────────────────────────────────────────
@@ -283,6 +311,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
   const [plotNameDraft, setPlotNameDraft] = React.useState("");
   const [plotColorDraft, setPlotColorDraft] = React.useState(PLOT_PALETTE[0]!);
+  const [editingPlotId, setEditingPlotId] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [savingPlot, setSavingPlot] = React.useState(false);
   const [savingPin, setSavingPin] = React.useState(false);
@@ -294,6 +323,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [activeTool, setActiveTool] = React.useState<Tool>("select");
   const [dirty, setDirty] = React.useState(false);
   const [zoom, setZoom] = React.useState(0.4);
+  const [showVariations, setShowVariations] = React.useState(false);
 
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [items, setItems] = React.useState<CompositeItem[]>([]);
@@ -319,9 +349,11 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [pendingTool, setPendingTool] = React.useState<Tool | null>(null);
   const [isLeavingEditor, setIsLeavingEditor] = React.useState(false);
   const [draggingPinId, setDraggingPinId] = React.useState<number | null>(null);
+  const [draggingVertex, setDraggingVertex] = React.useState<{ plotId: number, index: number } | null>(null);
   const [dragOffset, setDragOffset] = React.useState({ x: 0, y: 0 });
   const wasDraggingRef = React.useRef(false);
   const originalPinStateRef = React.useRef<{ x: number, y: number, plotId: number } | null>(null);
+  const draggingVertexRef = React.useRef<{ plotId: number, index: number } | null>(null);
 
   const [pageSize, setPageSize] = React.useState({ width: 1200, height: 900 });
   const [panMode, setPanMode] = React.useState(false);
@@ -399,6 +431,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       if (results[0].status === "fulfilled") {
         const detail = results[0].value;
         const normalized = (detail.plots ?? []).map(normalizePlot);
+        applyStableLocations(normalized);
         setDrawingName(detail.name);
         setFilePath(detail.drawing_file);
         setPlots(normalized);
@@ -496,6 +529,9 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   }, [activeTool]);
 
   function requestToolChange(tool: Tool) {
+    if (tool !== "hand" && tool !== "pen" && tool !== "plot-select") {
+      setEditingPlotId(null);
+    }
     if (tempPoints.length > 0 && activeTool === "pen") {
       setPendingTool(tool);
       setIsLeavingEditor(false);
@@ -511,7 +547,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       setPendingTool(null);
       setAbandonPlotConfirmOpen(true);
     } else {
-      router.push(`${routes.dashboard.projects}/${projectId}`);
+      router.push(mergeUrlQueryParam(`${routes.dashboard.projects}/${projectId}`, "tab", "drawings"));
     }
   }
 
@@ -519,8 +555,11 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setTempPoints([]);
     setAbandonPlotConfirmOpen(false);
     if (isLeavingEditor) {
-      router.push(`${routes.dashboard.projects}/${projectId}`);
+      router.push(mergeUrlQueryParam(`${routes.dashboard.projects}/${projectId}`, "tab", "drawings"));
     } else if (pendingTool) {
+      if (pendingTool !== "hand" && pendingTool !== "pen" && pendingTool !== "plot-select") {
+        setEditingPlotId(null);
+      }
       setActiveTool(pendingTool);
     }
   }
@@ -529,26 +568,32 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     const stage = stageRef.current;
     if (!stage) return null;
     const rect = stage.getBoundingClientRect();
-    const x = Math.round((e.clientX - rect.left) / zoom);
-    const y = Math.round((e.clientY - rect.top) / zoom);
-    if (x < 0 || y < 0 || x > pageSize.width || y > pageSize.height) return null;
+    const x = Math.max(0, Math.min(Math.round((e.clientX - rect.left) / zoom), pageSize.width));
+    const y = Math.max(0, Math.min(Math.round((e.clientY - rect.top) / zoom), pageSize.height));
     return [x, y];
   }
+
 
   function onStageClick(e: React.MouseEvent<HTMLDivElement>) {
     if (activeTool === "hand" || activeTool === "select" || activeTool === "plot-select") return;
     const pt = stagePointFromEvent(e);
     if (!pt) return;
     if (activeTool === "pen") {
-      // Real-time validation: Prevent drawing inside or crossing other plots
       for (const p of plots) {
+        if (p.id === editingPlotId) continue;
         const poly = p.coordinates.map((c) => percentToPixel(c, pageSize));
         if (inside(pt, poly)) {
           toastError("Cannot draw inside another plot");
           return;
         }
-        if (tempPoints.length > 0) {
-          const last = tempPoints[tempPoints.length - 1];
+
+        // If we have points, check if the new segment crosses other plots
+        const pointsToCompare = editingPlotId
+          ? plots.find(pl => pl.id === editingPlotId)?.coordinates.map(c => percentToPixel(c, pageSize))
+          : tempPoints;
+
+        if (pointsToCompare && pointsToCompare.length > 0) {
+          const last = pointsToCompare[pointsToCompare.length - 1];
           for (let i = 0; i < poly.length; i++) {
             if (segmentsIntersect(last!, pt, poly[i]!, poly[(i + 1) % poly.length]!)) {
               toastError("Line cannot cross another plot boundary");
@@ -576,6 +621,35 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         setTempPoints((prev) => prev.filter((_, idx) => idx !== nearIndex));
         return;
       }
+
+      if (editingPlotId) {
+        const pct = pixelToPercent(pt, pageSize);
+        setPlots((prev) =>
+          prev.map((p) => {
+            if (p.id !== editingPlotId) return p;
+
+        
+            const coords = p.coordinates.map(c => percentToPixel(c, pageSize));
+            let bestIdx = coords.length;
+            let minDist = Infinity;
+
+            for (let i = 0; i < coords.length; i++) {
+              const d = distanceToSegment(pt, coords[i]!, coords[(i + 1) % coords.length]!);
+              if (d < minDist) {
+                minDist = d;
+                bestIdx = i + 1;
+              }
+            }
+
+            const nextCoords = [...p.coordinates];
+            nextCoords.splice(bestIdx, 0, pct);
+            return { ...p, coordinates: nextCoords };
+          })
+        );
+        setDirty(true);
+        return;
+      }
+
       setTempPoints((prev) => [...prev, pt]);
       return;
     }
@@ -630,66 +704,113 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     }
   }
 
-  // Use refs to avoid stale closures in window event listeners
   const draggingPinIdRef = React.useRef<number | null>(null);
   const pageSizeRef = React.useRef(pageSize);
   const plotsRef = React.useRef(plots);
   React.useEffect(() => { pageSizeRef.current = pageSize; }, [pageSize]);
   React.useEffect(() => { plotsRef.current = plots; }, [plots]);
   React.useEffect(() => { draggingPinIdRef.current = draggingPinId; }, [draggingPinId]);
+  React.useEffect(() => { draggingVertexRef.current = draggingVertex; }, [draggingVertex]);
 
-  // Attach window-level drag listeners once on mount
   React.useEffect(() => {
     function handleMouseMove(e: MouseEvent) {
       const pinId = draggingPinIdRef.current;
-      if (pinId === null) return;
+      const vertex = draggingVertexRef.current;
+      if (pinId === null && vertex === null) return;
+
       const stage = stageRef.current;
       if (!stage) return;
       const rect = stage.getBoundingClientRect();
       const currentZoom = zoom;
-      const x = Math.round((e.clientX - rect.left) / currentZoom);
-      const y = Math.round((e.clientY - rect.top) / currentZoom);
       const ps = pageSizeRef.current;
+      const x = Math.max(0, Math.min(Math.round((e.clientX - rect.left) / currentZoom), ps.width));
+      const y = Math.max(0, Math.min(Math.round((e.clientY - rect.top) / currentZoom), ps.height));
       const currentPlots = plotsRef.current;
+
 
       if (!wasDraggingRef.current) {
         wasDraggingRef.current = true;
       }
 
-      // Find the plot this pin belongs to
-      const ownerPlot = currentPlots.find(p => p.pins.some(pin => pin.id === pinId));
-      if (!ownerPlot) return;
+      if (pinId !== null) {
+        // Find the plot this pin belongs to
+        const ownerPlot = currentPlots.find(p => p.pins.some(pin => pin.id === pinId));
+        if (!ownerPlot) return;
 
-      // RESTRICTION: Pin never leaves its plot
-      const poly = ownerPlot.coordinates.map(c => percentToPixel(c, ps));
-      if (!inside([x, y], poly)) {
-        return; // Stop update if moving outside plot boundary
+        // RESTRICTION: Pin never leaves its plot
+        const poly = ownerPlot.coordinates.map(c => percentToPixel(c, ps));
+        if (!inside([x, y], poly)) {
+          return; // Stop update if moving outside plot boundary
+        }
+
+        const pct = pixelToPercent([x, y], ps);
+        setPlots(prev => prev.map(p => ({
+          ...p,
+          pins: p.pins.map(pin =>
+            pin.id === pinId
+              ? { ...pin, x_coordinate: pct[0]!, y_coordinate: pct[1]! }
+              : pin
+          )
+        })));
+      } else if (vertex !== null) {
+        // Validation: Prevent dragging vertex into another plot or crossing boundaries
+        const targetPlot = currentPlots.find(p => p.id === vertex.plotId);
+        if (targetPlot) {
+          const coords = targetPlot.coordinates.map(c => percentToPixel(c, ps));
+          const prevIdx = (vertex.index + coords.length - 1) % coords.length;
+          const nextIdx = (vertex.index + 1) % coords.length;
+          const p1 = coords[prevIdx]!;
+          const p2 = coords[nextIdx]!;
+          const newPt = [x, y] as [number, number];
+
+          for (const p of currentPlots) {
+            if (p.id === vertex.plotId) continue;
+            const poly = p.coordinates.map((c) => percentToPixel(c, ps));
+
+            // 1. Point-in-poly check
+            if (inside(newPt, poly)) return;
+
+            // 2. Segment intersection check for both connected lines
+            for (let i = 0; i < poly.length; i++) {
+              const edgeStart = poly[i]!;
+              const edgeEnd = poly[(i + 1) % poly.length]!;
+              if (segmentsIntersect(p1, newPt, edgeStart, edgeEnd)) return;
+              if (segmentsIntersect(newPt, p2, edgeStart, edgeEnd)) return;
+            }
+          }
+        }
+
+        const pct = pixelToPercent([x, y], ps);
+        setPlots(prev => prev.map(p => {
+          if (p.id !== vertex.plotId) return p;
+          const nextCoords = [...p.coordinates];
+          nextCoords[vertex.index] = pct;
+          return { ...p, coordinates: nextCoords };
+        }));
       }
-
-      const pct = pixelToPercent([x, y], ps);
-      setPlots(prev => prev.map(p => ({
-        ...p,
-        pins: p.pins.map(pin =>
-          pin.id === pinId
-            ? { ...pin, x_coordinate: pct[0]!, y_coordinate: pct[1]! }
-            : pin
-        )
-      })));
     }
 
     function handleMouseUp() {
       const pinId = draggingPinIdRef.current;
+      const vertex = draggingVertexRef.current;
+
       if (pinId !== null) {
         setDraggingPinId(null);
         draggingPinIdRef.current = null;
-        
+        setDirty(true);
+      }
+
+      if (vertex !== null) {
+        setDraggingVertex(null);
+        draggingVertexRef.current = null;
+        setDirty(true);
+      }
+
+      if (pinId !== null || vertex !== null) {
         // Delay resetting wasDraggingRef so the 'click' event can see it
         setTimeout(() => {
           wasDraggingRef.current = false;
         }, 50);
-
-        // Movement is already restricted to stay inside the plot in handleMouseMove
-        setDirty(true);
         originalPinStateRef.current = null;
       }
       setPanMode(false);
@@ -701,7 +822,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoom]);
 
   function onPointerUp() {
@@ -766,6 +887,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         group: pin.group ?? null,
         item: pin.item ?? null,
         quantity: pin.quantity || 1,
+        variation: pin.variation ?? false,
+        location: pinLabels.get(pin.id) || 1,
       })),
     }));
   }
@@ -773,6 +896,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   async function persistPlots(localPlots: LocalPlot[]) {
     const updated = await updateDrawingPlots(projectId, drawingId, { plots: toPayload(localPlots) });
     const normalized = (updated.plots ?? []).map(normalizePlot);
+    applyStableLocations(normalized);
     setPlots(normalized);
     setDirty(false);
   }
@@ -820,7 +944,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     }
 
     let plot = targetPlot ?? selectedPlot;
-    
+
     // If no plot matches or we are clicking a different one, try to find the actual plot under the point
     const plotUnderPoint = plots.find(p => {
       const poly = p.coordinates.map(c => percentToPixel(c, pageSize));
@@ -857,6 +981,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       x_coordinate: Number(((point[0] / pageSize.width) * 100).toFixed(6)),
       y_coordinate: Number(((point[1] / pageSize.height) * 100).toFixed(6)),
       status: selectedStatus.id,
+      variation: showVariations,
       group: selectedGroupId ? Number.parseInt(selectedGroupId, 10) : undefined,
       item: selectedCompositeId ? Number.parseInt(selectedCompositeId, 10) : undefined,
       status_detail: {
@@ -968,6 +1093,35 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
   const allPins = React.useMemo(() => plots.flatMap((p) => p.pins), [plots]);
 
+  const pinLabels = React.useMemo(() => {
+    const map = new Map<number, number>();
+
+    // Pass 1: Saved pins WITH baked-in location
+    let maxSavedLoc = 0;
+    for (const plot of plots) {
+      for (const pin of plot.pins) {
+        if (pin.id > 0 && pin.location) {
+          const loc = Number(pin.location);
+          map.set(pin.id, loc);
+          if (loc > maxSavedLoc) maxSavedLoc = loc;
+        }
+      }
+    }
+
+    // Pass 2: Unsaved pins (id < 0) dynamic numbering
+    let unsavedCounter = maxSavedLoc + 1;
+    for (const plot of plots) {
+      for (const pin of plot.pins) {
+        if (pin.id < 0) {
+          map.set(pin.id, unsavedCounter);
+          unsavedCounter++;
+        }
+      }
+    }
+
+    return map;
+  }, [plots]);
+
   const detailPlot = React.useMemo(
     () => (detailPlotId ? plots.find((p) => p.id === detailPlotId) ?? null : null),
     [detailPlotId, plots],
@@ -1018,7 +1172,23 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                   <button
                     key={i}
                     type="button"
-                    onClick={() => setPlotColorDraft(c)}
+                    onClick={() => {
+                      setPlotColorDraft(c);
+                      if (detailPlotId) {
+                        setPlots((prev) =>
+                          prev.map((plot) =>
+                            plot.id === detailPlotId
+                              ? {
+                                ...plot,
+                                plot_border: c.border,
+                                plot_bg: c.bg,
+                              }
+                              : plot
+                          )
+                        );
+                        setDirty(true);
+                      }
+                    }}
                     className={cn(
                       "size-8 rounded-full border-2 transition-all",
                       plotColorDraft.border === c.border
@@ -1054,7 +1224,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
       <div
         className={cn(
-          "fixed top-14 right-0 z-40 flex flex-col space-y-3 border-b border-slate-200 bg-white p-3 shadow-sm transition-all dark:border-slate-800 dark:bg-slate-950",
+          "fixed top-14 right-0 z-40 flex flex-col space-y-3 border-y border-slate-200 bg-white p-3  transition-all dark:border-slate-800 dark:bg-slate-950",
           sidebarOpen ? "md:left-64" : "md:left-[52px]",
           "left-0"
         )}
@@ -1063,6 +1233,29 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
           <div className="min-w-0">
             <h1 className="truncate text-lg font-semibold text-slate-900 dark:text-slate-50">{drawingName || t("title")}</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <AppButton
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="h-10 px-6 font-bold border-slate-200 dark:border-slate-800"
+              onClick={requestClose}
+            >
+              {t("close")}
+            </AppButton>
+            <AppButton
+              type="button"
+              size="sm"
+              variant="primary"
+              className="h-10 px-6 font-bold shadow-lg shadow-blue-500/20"
+              disabled={!dirty || savingAll}
+              loading={savingAll}
+              onClick={() => void saveAllChanges()}
+            >
+              {t("saveAll")}
+            </AppButton>
           </div>
         </div>
       </div>
@@ -1138,7 +1331,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
               <p className="text-sm font-medium">{t("renderUnavailable")}</p>
             </div>
           ) : (
-            <div 
+            <div
               style={{
                 display: 'flex',
                 minWidth: '100%',
@@ -1224,19 +1417,20 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                   )}
 
                   <svg
-                    className="absolute p-3 left-0 top-0"
+                    className="absolute left-0 top-0"
                     width={pageSize.width}
                     height={pageSize.height}
                     viewBox={`0 0 ${pageSize.width} ${pageSize.height}`}
                   >
                     {plots.map((plot) => {
                       const plotPoints = plot.coordinates.map((p) => percentToPixel(p, pageSize));
-                      const [labelX, labelY] = getCentroid(plotPoints);
-                      const isSelected = selectedPlotId === String(plot.id);
                       const minX = plotPoints.length ? Math.min(...plotPoints.map((p) => p[0])) : 0;
                       const minY = plotPoints.length ? Math.min(...plotPoints.map((p) => p[1])) : 0;
                       const maxX = plotPoints.length ? Math.max(...plotPoints.map((p) => p[0])) : 0;
                       const maxY = plotPoints.length ? Math.max(...plotPoints.map((p) => p[1])) : 0;
+                      const labelX = minX + (maxX - minX) / 2;
+                      const labelY = minY + (maxY - minY) / 2;
+                      const isSelected = selectedPlotId === String(plot.id);
                       const labelText = plot.name.length > 24 ? `${plot.name.slice(0, 24)}...` : plot.name;
                       const badgeWidth = Math.max(90, Math.min(220, labelText.length * 7 + 20));
                       return (
@@ -1266,8 +1460,9 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                                 }
                                 setSelectedPlotId(String(plot.id));
                                 setDetailPin(null);
-                                setDetailPlotId(plot.id);
-                                setPlotDetailDraftName(plot.name);
+                                if (editingPlotId !== plot.id) {
+                                  setEditingPlotId(null);
+                                }
                               }}
                             />
                           ) : plotPoints.length === 2 ? (
@@ -1291,11 +1486,45 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                                 }
                                 setSelectedPlotId(String(plot.id));
                                 setDetailPin(null);
-                                setDetailPlotId(plot.id);
-                                setPlotDetailDraftName(plot.name);
+                                if (editingPlotId !== plot.id) {
+                                  setEditingPlotId(null);
+                                }
                               }}
                             />
                           ) : null}
+                          {editingPlotId === plot.id && plotPoints.map((pt, idx) => (
+                            <circle
+                              key={`vertex-${plot.id}-${idx}`}
+                              cx={pt[0]}
+                              cy={pt[1]}
+                              r={8}
+                              fill="white"
+                              stroke={plot.plot_border || "#059669"}
+                              strokeWidth={2}
+                              className="cursor-move"
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                if (activeTool === "hand") return;
+                                setDraggingVertex({ plotId: plot.id, index: idx });
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (plot.coordinates.length <= 3) {
+                                  toastError("Polygon must have at least 3 points");
+                                  return;
+                                }
+                                setPlots(prev => prev.map(p => {
+                                  if (p.id !== plot.id) return p;
+                                  const nextCoords = [...p.coordinates];
+                                  nextCoords.splice(idx, 1);
+                                  return { ...p, coordinates: nextCoords };
+                                }));
+                                setDirty(true);
+                              }}
+                            />
+                          ))}
                           {plotPoints.length >= 3 ? (
                             <g clipPath={`url(#plot-clip-${plot.id})`} className="pointer-events-none opacity-80">
                               <line x1={minX} y1={minY} x2={maxX} y2={maxY} stroke={plot.plot_border || "#059669"} strokeWidth={2.5} />
@@ -1372,7 +1601,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                             style={{
                               left: pinX,
                               top: pinY,
-                              transform: "translate(-50%, -100%)",
+                              transformOrigin: "bottom center",
+                              transform: `translate(-50%, -100%) scale(${1 / zoom})`,
                               zIndex: draggingPinId === pin.id ? 200 : isHovered ? 100 : 20,
                               cursor: activeTool === "select" ? (draggingPinId === pin.id ? "grabbing" : "grab") : "pointer",
                             }}
@@ -1384,31 +1614,31 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               e.preventDefault();
                               setDraggingPinId(pin.id);
                               setDragOffset({ x: 0, y: 0 });
-                              originalPinStateRef.current = { 
-                                x: pin.x_coordinate, 
-                                y: pin.y_coordinate, 
-                                plotId: plot.id 
+                              originalPinStateRef.current = {
+                                x: pin.x_coordinate,
+                                y: pin.y_coordinate,
+                                plotId: plot.id
                               };
                             }}
                             onClick={(e) => {
                               e.stopPropagation();
                               if (wasDraggingRef.current) return;
-                              
+
                               setDetailPlotId(null);
                               setDetailPin(pin);
                               setPinEditData(pin);
-                              
+
                               // Pre-populate dropdowns for editing
                               setSelectedGroupId(pin.group ? String(pin.group) : "");
                               setSelectedCompositeId(pin.item ? String(pin.item) : "");
                               setSelectedStatusId(pin.status ? String(pin.status) : "");
-                              
+
                               setIsPinEditing(false);
                             }}
                           >
                             {isHovered && <PinTooltip pin={pin} productName={productName} />}
-                            <div className={cn("duration-200", draggingPinId === pin.id ? "scale-125" : isHovered ? "scale-110" : "", "cursor-grab")}>
-                              <PinMarker label={index + 1} abbreviation={abbreviation} color={color} />
+                            <div className={cn("duration-200 origin-bottom", draggingPinId === pin.id ? "scale-125" : isHovered ? "scale-110" : "", "cursor-grab")}>
+                              <PinMarker label={pinLabels.get(pin.id) || (index + 1)} abbreviation={abbreviation} color={color} />
                             </div>
                           </div>
                         );
@@ -1429,7 +1659,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
           setIsPinEditing(false);
           setPinDeleteConfirmOpen(false);
         }}
-        title={detailPin ? (pinDeleteConfirmOpen ? "Delete Pin?" : `Location #${allPins.findIndex(p => p.id === detailPin.id) + 1}`) : ""}
+        title={detailPin ? (pinDeleteConfirmOpen ? "Delete Pin?" : `Location #${pinLabels.get(detailPin.id) || (allPins.findIndex(p => p.id === detailPin.id) + 1)}`) : ""}
         subtitle={detailPin ? (pinDeleteConfirmOpen ? "This action cannot be undone" : (detailPin.item_detail?.name || compositeLabelById[detailPin.item ?? 0] || "Pin Details")) : ""}
         action={
           detailPin && !pinDeleteConfirmOpen && (
@@ -1500,7 +1730,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                   <DetailRow
                     icon={PackageIcon}
                     label="Product Name"
-                    value={isPinEditing 
+                    value={isPinEditing
                       ? (pinEditData.item ?? detailPin.item ?? "")
                       : (detailPin.item_detail?.name || compositeLabelById[String(pinEditData.item ?? detailPin.item ?? 0)] || "-")
                     }
@@ -1547,6 +1777,37 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     value={drawingName || "N/A"}
                     isEditing={false}
                   />
+                  {/* Variation toggle row */}
+                  <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800/50">
+                    <div className="flex items-center gap-3">
+                      <div className="text-slate-400">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>
+                      </div>
+                      <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Variation</span>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={!!(isPinEditing ? pinEditData.variation : detailPin.variation)}
+                      disabled={!isPinEditing}
+                      onClick={() => {
+                        if (isPinEditing) {
+                          setPinEditData(prev => ({ ...prev, variation: !prev.variation }));
+                        }
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${(isPinEditing ? pinEditData.variation : detailPin.variation)
+                        ? "bg-blue-600"
+                        : "bg-slate-200 dark:bg-slate-700"
+                        } ${!isPinEditing ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${(isPinEditing ? pinEditData.variation : detailPin.variation)
+                          ? "translate-x-6"
+                          : "translate-x-1"
+                          }`}
+                      />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1670,6 +1931,29 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         </div>
       )}
 
+      {selectedPlot && (activeTool === "pen" || activeTool === "plot-select") && (
+        <div className={cn(
+          "fixed bottom-24 left-0 right-0 z-50 flex justify-center px-6 transition-all",
+          sidebarOpen ? "md:left-64" : "md:left-[52px]"
+        )}>
+          <PlotToolbar
+            isEditing={editingPlotId === selectedPlot.id}
+            onEditPolygon={() => {
+              setEditingPlotId(prev => prev === selectedPlot.id ? null : selectedPlot.id);
+            }}
+            onRename={() => {
+              setDetailPlotId(selectedPlot.id);
+              setPlotDetailDraftName(selectedPlot.name);
+              setPlotColorDraft({ border: selectedPlot.plot_border || "", bg: selectedPlot.plot_bg || "" });
+            }}
+            onDelete={() => {
+              setDetailPlotId(selectedPlot.id);
+              setDeleteConfirmOpen(true);
+            }}
+          />
+        </div>
+      )}
+
       <DrawingBottomToolbar
         t={t}
         plots={plots}
@@ -1683,13 +1967,11 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         compositeOptions={compositeOptions}
         activeTool={activeTool}
         setActiveTool={requestToolChange}
-        dirty={dirty}
-        savingAll={savingAll}
-        saveAllChanges={saveAllChanges}
         selectedPlot={selectedPlot}
         savingPin={savingPin}
         sidebarOpen={sidebarOpen}
-        onClose={requestClose}
+        showVariations={showVariations}
+        onToggleVariations={() => setShowVariations(prev => !prev)}
       />
     </div>
   );

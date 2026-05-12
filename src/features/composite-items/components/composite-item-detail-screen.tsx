@@ -4,12 +4,11 @@ import * as React from "react";
 import { Pencil } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import {
   deleteCompositeItem,
   fetchCompositeItem,
 } from "@/features/composite-items/api/composite-item.api";
-import { CompositeItemFormModal } from "@/features/composite-items/components/composite-item-form-modal";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import { ItemDetailBody } from "@/features/items/components/item-detail-body";
 import { routes } from "@/shared/config/routes";
@@ -27,6 +26,7 @@ export function CompositeItemDetailScreen({ itemId }: Props) {
   const tItems = useTranslations("Dashboard.items");
   const locale = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const safeBack = sanitizeInternalListBack(searchParams.get("back"), "composite-items");
 
@@ -34,7 +34,6 @@ export function CompositeItemDetailScreen({ itemId }: Props) {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
-  const [formOpen, setFormOpen] = React.useState(false);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
 
@@ -96,7 +95,17 @@ export function CompositeItemDetailScreen({ itemId }: Props) {
               <AppButton type="button" variant="secondary" size="md" onClick={() => setDeleteOpen(true)}>
                 {t("delete")}
               </AppButton>
-              <AppButton type="button" variant="primary" size="md" onClick={() => setFormOpen(true)} className="gap-2">
+              <AppButton
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={() =>
+                  router.push(
+                    `${pathname}/edit?back=${encodeURIComponent(safeBack ?? routes.dashboard.compositeItems)}`,
+                  )
+                }
+                className="gap-2"
+              >
                 <Pencil className="size-4" strokeWidth={2} aria-hidden />
                 {t("edit")}
               </AppButton>
@@ -123,14 +132,6 @@ export function CompositeItemDetailScreen({ itemId }: Props) {
           <ItemDetailBody detail={detail} dateFmt={dateFmt} />
         ) : null}
       </SurfaceShell>
-
-      <CompositeItemFormModal
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        mode="edit"
-        item={detail}
-        onSaved={() => setRefreshNonce((n) => n + 1)}
-      />
 
       <ConfirmDialog
         open={deleteOpen}

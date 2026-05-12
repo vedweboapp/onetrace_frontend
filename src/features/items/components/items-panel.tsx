@@ -10,7 +10,6 @@ import type { Item } from "@/features/items/types/item.types";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
-import { ItemFormModal } from "@/features/items/components/item-form-modal";
 import {
   AppButton,
   ConfirmDialog,
@@ -90,11 +89,6 @@ export function ItemsPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
 
-  const [formOpen, setFormOpen] = React.useState(false);
-  const [formMode, setFormMode] = React.useState<"create" | "edit">("create");
-  const [editingItem, setEditingItem] = React.useState<Item | null>(null);
-  const [formKey, setFormKey] = React.useState(0);
-
   const [deleteTarget, setDeleteTarget] = React.useState<Item | null>(null);
   const [deleting, setDeleting] = React.useState(false);
 
@@ -150,17 +144,11 @@ export function ItemsPanel() {
   const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
 
   function openCreate() {
-    setFormMode("create");
-    setEditingItem(null);
-    setFormKey((k) => k + 1);
-    setFormOpen(true);
+    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
   }
 
   function openEdit(row: Item) {
-    setFormMode("edit");
-    setEditingItem(row);
-    setFormKey((k) => k + 1);
-    setFormOpen(true);
+    router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`);
   }
 
   async function confirmDelete() {
@@ -386,15 +374,6 @@ export function ItemsPanel() {
           />
         ) : null}
       </SurfaceShell>
-
-      <ItemFormModal
-        key={formKey}
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        mode={formMode}
-        item={editingItem}
-        onSaved={() => setRefreshNonce((n) => n + 1)}
-      />
 
       <ConfirmDialog
         open={deleteTarget !== null}
