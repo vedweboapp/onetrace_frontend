@@ -9,6 +9,7 @@ import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContact } from "@/features/contacts/api/contact.api";
 import { ContactDetailBody } from "@/features/contacts/components/contact-detail-body";
 import type { Contact } from "@/features/contacts/types/contact.types";
+import { detailRecordSurfaceShellClassName } from "@/shared/components/layout/detail-metric-card";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { AppButton, SurfaceShell } from "@/shared/ui";
@@ -149,7 +150,7 @@ export function ContactDetailScreen({ contactId }: Props) {
         }
       />
 
-      <SurfaceShell className="rounded-none border-0 shadow-none ring-0">
+      <SurfaceShell className={detailRecordSurfaceShellClassName}>
         {loading ? (
           <div className="space-y-3 p-4 sm:p-6">
             <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />

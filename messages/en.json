@@ -90,6 +90,19 @@
         "ariaMap": "Map preview for the address",
         "openFullMap": "Open full map in new tab",
         "openFullMapAria": "Open this location on OpenStreetMap in a new tab"
+      },
+      "address": {
+        "legacy": "Address",
+        "line1": "Address line 1",
+        "line2": "Address line 2",
+        "city": "City",
+        "state": "State / region",
+        "pincode": "Postal code",
+        "country": "Country"
+      },
+      "user": {
+        "username": "Username",
+        "email": "Email"
       }
     },
     "brand": {
@@ -341,7 +354,8 @@
       "detail": {
         "retry": "Retry",
         "backAria": "Back to users list",
-        "editWithIcon": "Edit user"
+        "editWithIcon": "Edit user",
+        "sectionOverview": "Overview"
       },
       "page": {
         "createTitle": "Invite user",
@@ -604,6 +618,7 @@
         "backAria": "Back to sites list",
         "sectionOverview": "Overview",
         "sectionAddress": "Address",
+        "sectionMap": "Map",
         "sectionRecord": "Record",
         "addressUnavailable": "No structured address on file for this site."
       },
@@ -719,6 +734,8 @@
         "sectionProject": "Project & levels",
         "sectionRecord": "Record",
         "sectionSiteLocation": "Site location",
+        "sectionSiteAddress": "Site address",
+        "sectionMap": "Map",
         "sectionQuoteScope": "Quoted scope",
         "noDescription": "No description provided.",
         "allLevelsSelected": "All levels"
@@ -789,6 +806,7 @@
         "grandTotal": "Grand total",
         "plotSubtotal": "Plot subtotal",
         "addComposite": "Add composite item",
+        "saveComposite": "Save",
         "pickCompositeTitle": "Add composite item",
         "pickCompositePlaceholder": "Select composite item",
         "noComposites": "No composite items found.",
@@ -800,6 +818,12 @@
         "sectionActions": "Section actions",
         "editSection": "Edit section",
         "duplicateSection": "Duplicate",
+        "duplicateCountTitle": "Duplicate",
+        "duplicateCountDescription": "Choose how many copies to add right after the original.",
+        "duplicateCountLabel": "Number of copies",
+        "duplicateCountHint": "Whole number from 1 to 50.",
+        "duplicateCountConfirm": "Duplicate",
+        "duplicateCountInvalid": "Enter a whole number between 1 and 50.",
         "copySection": "Copy section",
         "deleteSection": "Delete",
         "cancel": "Cancel",
@@ -928,6 +952,9 @@
         "quoteFromProjectError": "Could not create a quotation from this project. Try again.",
         "backAria": "Back to projects list",
         "sectionOverview": "Overview",
+        "sectionAddress": "Address",
+        "addressUnavailable": "No address saved for this project yet.",
+        "metaProjectId": "Project ID",
         "sectionClient": "Client",
         "sectionSchedule": "Schedule",
         "sectionRecord": "Record",
@@ -1118,6 +1145,10 @@
       },
       "statusActive": "Active",
       "statusInactive": "Inactive",
+      "fields": {
+        "createdAt": "Created",
+        "updatedAt": "Last updated"
+      },
       "edit": "Edit",
       "delete": "Delete",
       "deleteConfirmTitle": "Delete this group?",
@@ -1155,6 +1186,8 @@
         "loadingTitle": "Loading group...",
         "retry": "Retry",
         "backAria": "Back to groups list",
+        "sectionOverview": "Overview",
+        "metaGroupId": "Group ID",
         "sectionItems": "Linked items",
         "items": "Items with abbreviation",
         "noItems": "No items linked to this group.",
@@ -1162,7 +1195,9 @@
         "createdAt": "Created at",
         "updatedAt": "Updated at",
         "createdBy": "Created by",
-        "modifiedBy": "Modified by"
+        "modifiedBy": "Modified by",
+        "sectionCreatedBy": "Created by",
+        "sectionModifiedBy": "Last modified by"
       }
     },
     "compositeItems": {
@@ -1286,6 +1321,7 @@
         "retry": "Retry",
         "backAria": "Back to items list",
         "sectionOverview": "Overview",
+        "group": "Group",
         "sectionComponents": "Components",
         "sectionRecord": "Record",
         "sku": "SKU",
@@ -1303,7 +1339,9 @@
         "createdAt": "Created at",
         "updatedAt": "Updated at",
         "createdBy": "Created by",
-        "modifiedBy": "Modified by"
+        "modifiedBy": "Modified by",
+        "sectionCreatedBy": "Created by",
+        "sectionModifiedBy": "Last modified by"
       },
       "modal": {
         "createTitle": "New item",

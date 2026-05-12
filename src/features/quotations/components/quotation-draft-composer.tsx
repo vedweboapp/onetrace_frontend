@@ -1,13 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown, Copy, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Copy, Pencil, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
-import type { QuotationDraft, QuotationDraftLine, QuotationDraftPlot } from "@/features/quotations/types/quotation-draft.types";
+import type { QuotationDraft, QuotationDraftLine, QuotationDraftPlot, QuotationDraftSection } from "@/features/quotations/types/quotation-draft.types";
 import { newQuotationDraftId } from "@/features/quotations/utils/quotation-draft-id.util";
 import {
   draftGrandTotal,
@@ -19,7 +19,8 @@ import { reorderArray } from "@/features/quotations/utils/quotation-draft-ops.ut
 import { formatMoneyDisplay, parseMoneyValue } from "@/features/quotations/utils/quotation-level-pricing.util";
 import { cn } from "@/core/utils/http.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
-import { AppButton, AppModal, CheckmarkSelect, DataTableRowActionsMenu, surfaceInputClassName } from "@/shared/ui";
+import { AppButton, AppModal, CheckmarkSelect, DataTableRowActionsMenu, FieldLabel, surfaceInputClassName } from "@/shared/ui";
+import type { CheckmarkSelectOption } from "@/shared/ui";
 
 type DndPayload =
   | { scope: "section"; fromIndex: number }
@@ -28,6 +29,19 @@ type DndPayload =
   | { scope: "section-line"; sectionIndex: number; fromIndex: number };
 
 const DND_TYPE = "application/x-quotation-draft";
+
+const DUPLICATE_COUNT_MIN = 1;
+const DUPLICATE_COUNT_MAX = 50;
+
+function clampDuplicateCount(n: number): number {
+  if (!Number.isFinite(n)) return DUPLICATE_COUNT_MIN;
+  return Math.min(DUPLICATE_COUNT_MAX, Math.max(DUPLICATE_COUNT_MIN, Math.floor(n)));
+}
+
+function draftCompositeRowKey(sectionId: string, plotId: string | null) {
+  return plotId == null ? `sec:${sectionId}` : `plot:${sectionId}:${plotId}`;
+}
+
 const inlineEditClassName =
   "appearance-none border-0 bg-transparent px-0 py-0 text-inherit shadow-none ring-0 outline-none focus:border-0 focus:ring-0 focus:outline-none";
 
@@ -266,6 +280,81 @@ function CompositeDraftLinesBody({
   );
 }
 
+function DraftCompositeAddRow({
+  idPrefix,
+  saving,
+  groupOptions,
+  compositeOptions,
+  groupId,
+  compositeId,
+  onGroupChange,
+  onCompositeChange,
+  onSave,
+  saveDisabled,
+  showNoCompositesMessage,
+  saveLabel,
+}: {
+  idPrefix: string;
+  saving: boolean;
+  groupOptions: CheckmarkSelectOption[];
+  compositeOptions: CheckmarkSelectOption[];
+  groupId: string;
+  compositeId: string;
+  onGroupChange: (v: string) => void;
+  onCompositeChange: (v: string) => void;
+  onSave: () => void;
+  saveDisabled: boolean;
+  showNoCompositesMessage: boolean;
+  saveLabel: string;
+}) {
+  const tDraw = useTranslations("Dashboard.projects.drawings.editor");
+  const t = useTranslations("Dashboard.quotations.draft");
+  return (
+    <div className="w-full min-w-0 space-y-1.5" data-draft-composite-add>
+      <div className="flex max-w-3xl min-w-0 flex-row flex-wrap items-end gap-1.5">
+        <div className="min-w-0 flex-1 sm:min-w-[11rem]">
+          <CheckmarkSelect
+            id={`${idPrefix}-group`}
+            portaled
+            listLabel={`${tDraw("chooseGroup")} *`}
+            options={groupOptions}
+            value={groupId}
+            emptyLabel={tDraw("allGroups")}
+            disabled={saving}
+            onChange={onGroupChange}
+            className="w-full"
+          />
+        </div>
+        <div className="min-w-0 flex-1 sm:min-w-[11rem]">
+          <CheckmarkSelect
+            id={`${idPrefix}-composite`}
+            portaled
+            listLabel={`${tDraw("chooseComposite")} *`}
+            options={compositeOptions}
+            value={compositeId}
+            emptyLabel={tDraw("selectComposite")}
+            disabled={compositeOptions.length <= 1 || saving}
+            onChange={onCompositeChange}
+            className="w-full"
+          />
+        </div>
+        <AppButton type="button" variant="secondary" size="md" disabled={saveDisabled || saving} onClick={onSave}>
+          {saveLabel}
+        </AppButton>
+      </div>
+      {showNoCompositesMessage ? (
+        <p className="text-xs text-slate-500 dark:text-slate-400">{t("noComposites")}</p>
+      ) : null}
+    </div>
+  );
+}
+
+type DuplicatePrompt =
+  | { kind: "section"; si: number }
+  | { kind: "plot"; si: number; pi: number }
+  | { kind: "line"; si: number; pi: number; li: number }
+  | { kind: "section-line"; si: number; li: number };
+
 type Props = {
   draft: QuotationDraft | null;
   onDraftChange: React.Dispatch<React.SetStateAction<QuotationDraft | null>>;
@@ -280,43 +369,55 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
   const tDraw = useTranslations("Dashboard.projects.drawings.editor");
   const locale = useLocale();
   const loc = locale === "es" ? "es" : "en";
+  const compositeFormId = React.useId();
 
   const [newSectionName, setNewSectionName] = React.useState("");
-  const [addTarget, setAddTarget] = React.useState<{ si: number; pi: number | null } | null>(null);
+  const [rowPick, setRowPick] = React.useState<Record<string, { groupId: string; compositeId: string }>>({});
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [compositeRows, setCompositeRows] = React.useState<CompositeItem[]>([]);
-  const [pickValue, setPickValue] = React.useState("");
-  const [selectedGroupId, setSelectedGroupId] = React.useState("");
-  const [selectedGroupItems, setSelectedGroupItems] = React.useState<GroupItemRef[] | null>(null);
+  const [groupItemsByGroupId, setGroupItemsByGroupId] = React.useState<Record<string, GroupItemRef[]>>({});
   const [openSectionIds, setOpenSectionIds] = React.useState<Set<string>>(() => new Set());
   const [openPlotIds, setOpenPlotIds] = React.useState<Set<string>>(() => new Set());
   const [sectionTitleEditId, setSectionTitleEditId] = React.useState<string | null>(null);
+  const [duplicatePrompt, setDuplicatePrompt] = React.useState<DuplicatePrompt | null>(null);
+  const [duplicateCountInput, setDuplicateCountInput] = React.useState("1");
+  const [duplicateCountError, setDuplicateCountError] = React.useState<string | null>(null);
+  const duplicateCountFieldId = React.useId();
 
   const groupOptions = React.useMemo(
     () => [{ value: "", label: tDraw("allGroups") }, ...groups.map((g) => ({ value: String(g.id), label: g.name }))],
     [groups, tDraw],
   );
 
-  const compositeOptions = React.useMemo(() => {
-    if (!selectedGroupId) {
-      return [{ value: "", label: tDraw("selectComposite") }, ...compositeRows.map((ci) => ({ value: String(ci.id), label: ci.name }))];
-    }
-    const itemNameById: Record<number, string> = {};
-    for (const ci of compositeRows) itemNameById[ci.id] = ci.name;
-    const uniqueByItem = new Map<number, { value: string; label: string }>();
-    for (const entry of selectedGroupItems ?? []) {
-      if (uniqueByItem.has(entry.item)) continue;
-      uniqueByItem.set(entry.item, {
-        value: String(entry.item),
-        label: entry.item_name ?? itemNameById[entry.item] ?? `#${entry.item}`,
-      });
-    }
-    const groupScoped = Array.from(uniqueByItem.values());
-    return [{ value: "", label: tDraw("selectComposite") }, ...groupScoped];
-  }, [selectedGroupId, compositeRows, selectedGroupItems, tDraw]);
+  const getCompositeOptions = React.useCallback(
+    (groupId: string): CheckmarkSelectOption[] => {
+      if (!groupId) {
+        return [
+          { value: "", label: tDraw("selectComposite") },
+          ...compositeRows.map((ci) => ({ value: String(ci.id), label: ci.name })),
+        ];
+      }
+      const entries = groupItemsByGroupId[groupId];
+      if (entries === undefined) {
+        return [{ value: "", label: tDraw("selectComposite") }];
+      }
+      const itemNameById: Record<number, string> = {};
+      for (const ci of compositeRows) itemNameById[ci.id] = ci.name;
+      const uniqueByItem = new Map<number, { value: string; label: string }>();
+      for (const entry of entries) {
+        if (uniqueByItem.has(entry.item)) continue;
+        uniqueByItem.set(entry.item, {
+          value: String(entry.item),
+          label: entry.item_name ?? itemNameById[entry.item] ?? `#${entry.item}`,
+        });
+      }
+      return [{ value: "", label: tDraw("selectComposite") }, ...Array.from(uniqueByItem.values())];
+    },
+    [compositeRows, groupItemsByGroupId, tDraw],
+  );
 
   React.useEffect(() => {
-    if (!addTarget) return;
+    if (readOnly || !canShow) return;
     let cancelled = false;
     (async () => {
       try {
@@ -335,34 +436,7 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
     return () => {
       cancelled = true;
     };
-  }, [addTarget]);
-
-  function resetCompositePickerFields() {
-    setPickValue("");
-    setSelectedGroupId("");
-    setSelectedGroupItems(null);
-  }
-
-  function closeCompositePickerModal() {
-    setAddTarget(null);
-    resetCompositePickerFields();
-  }
-
-  React.useEffect(() => {
-    if (!addTarget || !selectedGroupId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const g = await fetchGroup(Number.parseInt(selectedGroupId, 10));
-        if (!cancelled) setSelectedGroupItems(g.items ?? []);
-      } catch {
-        if (!cancelled) setSelectedGroupItems([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [addTarget, selectedGroupId]);
+  }, [readOnly, canShow]);
 
   function patchDraft(cb: (d: QuotationDraft) => QuotationDraft) {
     if (readOnly) return;
@@ -396,23 +470,28 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
     setNewSectionName("");
   }
 
-  function duplicateSection(si: number) {
+  function duplicateSectionAt(si: number, count: number) {
+    const n = clampDuplicateCount(count);
     patchDraft((d) => {
       const source = d.sections[si];
       if (!source) return d;
-      const cloned = {
-        ...source,
-        id: newQuotationDraftId("sec"),
-        name: `${source.name} (Copy)`,
-        section_pins: (source.section_pins ?? []).map((ln) => ({ ...ln, id: newQuotationDraftId("line") })),
-        plots: source.plots.map((p) => ({
-          ...p,
-          id: newQuotationDraftId("plot"),
-          pins: p.pins.map((ln) => ({ ...ln, id: newQuotationDraftId("line") })),
-        })),
-      };
+      const clones: QuotationDraftSection[] = [];
+      for (let i = 0; i < n; i++) {
+        const nameSuffix = n === 1 ? " (Copy)" : ` (Copy ${i + 1})`;
+        clones.push({
+          ...source,
+          id: newQuotationDraftId("sec"),
+          name: `${source.name}${nameSuffix}`,
+          section_pins: (source.section_pins ?? []).map((ln) => ({ ...ln, id: newQuotationDraftId("line") })),
+          plots: source.plots.map((p) => ({
+            ...p,
+            id: newQuotationDraftId("plot"),
+            pins: p.pins.map((ln) => ({ ...ln, id: newQuotationDraftId("line") })),
+          })),
+        });
+      }
       const sections = [...d.sections];
-      sections.splice(si + 1, 0, cloned);
+      sections.splice(si + 1, 0, ...clones);
       return { sections };
     });
   }
@@ -421,19 +500,24 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
     patchDraft((d) => ({ sections: d.sections.filter((_, i) => i !== si) }));
   }
 
-  function duplicatePlot(si: number, pi: number) {
+  function duplicatePlotAt(si: number, pi: number, count: number) {
+    const n = clampDuplicateCount(count);
     patchDraft((d) => {
       const sec = d.sections[si];
       const plot = sec?.plots[pi];
       if (!sec || !plot) return d;
-      const clone: QuotationDraftPlot = {
-        ...plot,
-        id: newQuotationDraftId("plot"),
-        name: `${plot.name} (Copy)`,
-        pins: plot.pins.map((ln) => ({ ...ln, id: newQuotationDraftId("line") })),
-      };
+      const clones: QuotationDraftPlot[] = [];
+      for (let i = 0; i < n; i++) {
+        const nameSuffix = n === 1 ? " (Copy)" : ` (Copy ${i + 1})`;
+        clones.push({
+          ...plot,
+          id: newQuotationDraftId("plot"),
+          name: `${plot.name}${nameSuffix}`,
+          pins: plot.pins.map((ln) => ({ ...ln, id: newQuotationDraftId("line") })),
+        });
+      }
       const plots = [...sec.plots];
-      plots.splice(pi + 1, 0, clone);
+      plots.splice(pi + 1, 0, ...clones);
       return { sections: d.sections.map((s, i) => (i === si ? { ...s, plots } : s)) };
     });
   }
@@ -445,13 +529,14 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
     });
   }
 
-  function duplicateLine(si: number, pi: number, li: number) {
+  function duplicateLineAt(si: number, pi: number, li: number, count: number) {
+    const n = clampDuplicateCount(count);
     patchDraft((d) => {
       const line = d.sections[si]?.plots[pi]?.pins[li];
       if (!line) return d;
-      const clone = { ...line, id: newQuotationDraftId("line") };
+      const clones = Array.from({ length: n }, () => ({ ...line, id: newQuotationDraftId("line") }));
       const plotPins = [...d.sections[si].plots[pi].pins];
-      plotPins.splice(li + 1, 0, clone);
+      plotPins.splice(li + 1, 0, ...clones);
       return {
         sections: d.sections.map((s, i) =>
           i === si
@@ -480,20 +565,63 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
     }));
   }
 
-  function duplicateSectionLine(si: number, li: number) {
+  function duplicateSectionLineAt(si: number, li: number, count: number) {
+    const n = clampDuplicateCount(count);
     patchDraft((d) => {
       const sec = d.sections[si];
       if (!sec) return d;
       const prevPins = sec.section_pins ?? [];
       const line = prevPins[li];
       if (!line) return d;
-      const clone = { ...line, id: newQuotationDraftId("line") };
+      const clones = Array.from({ length: n }, () => ({ ...line, id: newQuotationDraftId("line") }));
       const section_pins = [...prevPins];
-      section_pins.splice(li + 1, 0, clone);
+      section_pins.splice(li + 1, 0, ...clones);
       return {
         sections: d.sections.map((s, i) => (i === si ? { ...s, section_pins } : s)),
       };
     });
+  }
+
+  function openDuplicatePrompt(next: DuplicatePrompt) {
+    if (readOnly) return;
+    setDuplicateCountInput("1");
+    setDuplicateCountError(null);
+    setDuplicatePrompt(next);
+  }
+
+  function closeDuplicatePrompt() {
+    if (saving) return;
+    setDuplicatePrompt(null);
+    setDuplicateCountError(null);
+  }
+
+  function confirmDuplicatePrompt() {
+    if (!duplicatePrompt || readOnly) return;
+    const raw = duplicateCountInput.trim();
+    const parsed = Number.parseInt(raw, 10);
+    if (!Number.isFinite(parsed) || parsed < DUPLICATE_COUNT_MIN || parsed > DUPLICATE_COUNT_MAX) {
+      setDuplicateCountError(t("duplicateCountInvalid"));
+      return;
+    }
+    const n = clampDuplicateCount(parsed);
+    const p = duplicatePrompt;
+    setDuplicatePrompt(null);
+    setDuplicateCountInput("1");
+    setDuplicateCountError(null);
+    switch (p.kind) {
+      case "section":
+        duplicateSectionAt(p.si, n);
+        break;
+      case "plot":
+        duplicatePlotAt(p.si, p.pi, n);
+        break;
+      case "line":
+        duplicateLineAt(p.si, p.pi, p.li, n);
+        break;
+      case "section-line":
+        duplicateSectionLineAt(p.si, p.li, n);
+        break;
+    }
   }
 
   function removeSectionLine(si: number, li: number) {
@@ -636,18 +764,32 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
     }));
   }
 
-  function openPickCompositeModal(si: number, pi: number | null) {
-    if (readOnly) return;
-    resetCompositePickerFields();
-    setAddTarget({ si, pi });
+  function handleGroupPickChange(rowKey: string, g: string) {
+    setRowPick((prev) => ({
+      ...prev,
+      [rowKey]: { ...(prev[rowKey] ?? { groupId: "", compositeId: "" }), groupId: g, compositeId: "" },
+    }));
+    if (!g) return;
+    void fetchGroup(Number.parseInt(g, 10))
+      .then((row) => {
+        setGroupItemsByGroupId((cur) => ({ ...cur, [g]: row.items ?? [] }));
+      })
+      .catch(() => {
+        setGroupItemsByGroupId((cur) => ({ ...cur, [g]: [] }));
+      });
   }
 
-  function confirmPickComposite() {
-    if (!addTarget || !pickValue) return;
-    const id = Number.parseInt(pickValue, 10);
+  function addCompositeLineForKey(si: number, pi: number | null, sectionId: string, plotId: string | null) {
+    if (readOnly) return;
+    const key = draftCompositeRowKey(sectionId, plotId);
+    const row = rowPick[key] ?? { groupId: "", compositeId: "" };
+    const pickVal = row.compositeId;
+    if (!pickVal) return;
+    const id = Number.parseInt(pickVal, 10);
     if (!Number.isFinite(id) || id <= 0) return;
+    const opts = getCompositeOptions(row.groupId);
     const picked = compositeRows.find((r) => r.id === id);
-    const label = picked?.name ?? compositeOptions.find((o) => o.value === pickValue)?.label ?? `Item ${id}`;
+    const label = picked?.name ?? opts.find((o) => o.value === pickVal)?.label ?? `Item ${id}`;
     const unit = picked ? parseMoneyValue(picked.selling_price ?? picked.cost_price) : 0;
     const newLine: QuotationDraftLine = {
       id: newQuotationDraftId("line"),
@@ -657,33 +799,32 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
       quantity: 1,
       selling_price: unit,
     };
-    if (addTarget.pi === null) {
+    if (pi === null) {
       patchDraft((d) => ({
-        sections: d.sections.map((s, si) =>
-          si === addTarget.si ? { ...s, section_pins: [...(s.section_pins ?? []), newLine] } : s,
-        ),
+        sections: d.sections.map((s, i) => (i === si ? { ...s, section_pins: [...(s.section_pins ?? []), newLine] } : s)),
       }));
     } else {
-      const pi = addTarget.pi;
       patchDraft((d) => ({
-        sections: d.sections.map((s, si) =>
-          si === addTarget.si
+        sections: d.sections.map((s, i) =>
+          i === si
             ? {
                 ...s,
-                plots: s.plots.map((p, j) =>
-                  j === pi ? { ...p, pins: [...p.pins, newLine] } : p,
-                ),
+                plots: s.plots.map((p, j) => (j === pi ? { ...p, pins: [...p.pins, newLine] } : p)),
               }
             : s,
         ),
       }));
     }
-    closeCompositePickerModal();
+    setRowPick((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   }
 
   function onSectionSummaryClick(e: React.MouseEvent<HTMLElement>, sectionId: string, isOpen: boolean) {
-    const t = e.target as HTMLElement;
-    if (t.closest("textarea, input") || t.closest("[data-draft-row-actions]")) {
+    const el = e.target as HTMLElement;
+    if (el.closest("textarea, input") || el.closest("[data-draft-row-actions]") || el.closest("[data-draft-composite-add]")) {
       e.preventDefault();
       return;
     }
@@ -692,8 +833,8 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
   }
 
   function onPlotSummaryClick(e: React.MouseEvent<HTMLElement>, plotId: string, isOpen: boolean) {
-    const t = e.target as HTMLElement;
-    if (t.closest("textarea, input") || t.closest("[data-draft-row-actions]")) {
+    const el = e.target as HTMLElement;
+    if (el.closest("textarea, input") || el.closest("[data-draft-row-actions]") || el.closest("[data-draft-composite-add]")) {
       e.preventDefault();
       return;
     }
@@ -755,7 +896,17 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
         <p className="text-sm text-slate-500 dark:text-slate-400">{t("emptySections")}</p>
       ) : (
         <ul className="space-y-3">
-          {draft.sections.map((section, si) => (
+          {draft.sections.map((section, si) => {
+            const secKey = draftCompositeRowKey(section.id, null);
+            const secPick = rowPick[secKey] ?? { groupId: "", compositeId: "" };
+            const secGroupId = secPick.groupId;
+            const secCompositeOpts = getCompositeOptions(secGroupId);
+            const secSaveDisabled =
+              !secPick.compositeId ||
+              secCompositeOpts.length <= 1 ||
+              (Boolean(secGroupId) && groupItemsByGroupId[secGroupId] === undefined);
+
+            return (
             <li
               key={section.id}
               className={cn(
@@ -927,7 +1078,7 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
                                 id: "dup-sec",
                                 label: t("duplicateSection"),
                                 icon: Copy,
-                                onSelect: () => duplicateSection(si),
+                                onSelect: () => openDuplicatePrompt({ kind: "section", si }),
                               },
                               {
                                 id: "del-sec",
@@ -949,19 +1100,25 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
 
                 <div className="mt-3 space-y-3 rounded-lg border border-slate-200 bg-slate-50/40 p-3 dark:border-slate-700 dark:bg-slate-950/25">
                   {!readOnly ? (
-                    <div className="flex flex-wrap items-center justify-start gap-2">
-                      <AppButton
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        className="shrink-0 gap-1.5"
-                        disabled={saving}
-                        onClick={() => openPickCompositeModal(si, null)}
-                      >
-                        <Plus className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                        {t("addComposite")}
-                      </AppButton>
-                    </div>
+                    <DraftCompositeAddRow
+                      idPrefix={`${compositeFormId}-s-${section.id}`}
+                      saving={saving}
+                      groupOptions={groupOptions}
+                      compositeOptions={secCompositeOpts}
+                      groupId={secGroupId}
+                      compositeId={secPick.compositeId}
+                      onGroupChange={(g) => handleGroupPickChange(secKey, g)}
+                      onCompositeChange={(c) =>
+                        setRowPick((prev) => {
+                          const cur = prev[secKey] ?? { groupId: "", compositeId: "" };
+                          return { ...prev, [secKey]: { ...cur, compositeId: c } };
+                        })
+                      }
+                      onSave={() => addCompositeLineForKey(si, null, section.id, null)}
+                      saveDisabled={secSaveDisabled}
+                      showNoCompositesMessage={compositeRows.length === 0}
+                      saveLabel={t("saveComposite")}
+                    />
                   ) : null}
                   <CompositeDraftLinesBody
                     hideWhenEmpty
@@ -975,7 +1132,7 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
                       removeLine: t("removeLine"),
                       rowActions: t("rowActions"),
                     }}
-                    onDuplicateLine={(li) => duplicateSectionLine(si, li)}
+                    onDuplicateLine={(li) => openDuplicatePrompt({ kind: "section-line", si, li })}
                     onRemoveLine={(li) => removeSectionLine(si, li)}
                     onPatchLine={(li, patch) => updateSectionLine(si, li, patch)}
                     readOnly={readOnly}
@@ -1007,7 +1164,17 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
                     <p className="text-xs text-slate-500 dark:text-slate-400">{t("emptyPlots")}</p>
                   ) : section.plots.length > 0 ? (
                     <ul className="space-y-2">
-                      {section.plots.map((plot, pi) => (
+                      {section.plots.map((plot, pi) => {
+                        const plotKey = draftCompositeRowKey(section.id, plot.id);
+                        const plotPick = rowPick[plotKey] ?? { groupId: "", compositeId: "" };
+                        const plotGroupId = plotPick.groupId;
+                        const plotCompositeOpts = getCompositeOptions(plotGroupId);
+                        const plotSaveDisabled =
+                          !plotPick.compositeId ||
+                          plotCompositeOpts.length <= 1 ||
+                          (Boolean(plotGroupId) && groupItemsByGroupId[plotGroupId] === undefined);
+
+                        return (
                         <PlotBlock
                           key={plot.id}
                           plot={plot}
@@ -1016,7 +1183,29 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
                           isOpen={openPlotIds.has(plot.id)}
                           onToggleOpen={(open) => togglePlotOpen(plot.id, open)}
                           onPlotName={(name) => updatePlotName(si, pi, name)}
-                          onOpenAddComposite={() => openPickCompositeModal(si, pi)}
+                          addCompositeToolbar={
+                            readOnly ? null : (
+                            <DraftCompositeAddRow
+                              idPrefix={`${compositeFormId}-p-${section.id}-${plot.id}`}
+                              saving={saving}
+                              groupOptions={groupOptions}
+                              compositeOptions={plotCompositeOpts}
+                              groupId={plotGroupId}
+                              compositeId={plotPick.compositeId}
+                              onGroupChange={(g) => handleGroupPickChange(plotKey, g)}
+                              onCompositeChange={(c) =>
+                                setRowPick((prev) => {
+                                  const cur = prev[plotKey] ?? { groupId: "", compositeId: "" };
+                                  return { ...prev, [plotKey]: { ...cur, compositeId: c } };
+                                })
+                              }
+                              onSave={() => addCompositeLineForKey(si, pi, section.id, plot.id)}
+                              saveDisabled={plotSaveDisabled}
+                              showNoCompositesMessage={compositeRows.length === 0}
+                              saveLabel={t("saveComposite")}
+                            />
+                            )
+                          }
                           onDragStart={(e) => {
                             e.dataTransfer.effectAllowed = "move";
                             e.dataTransfer.setData(
@@ -1029,9 +1218,9 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
                             e.dataTransfer.dropEffect = "move";
                           }}
                           onDrop={(e) => onDropPlot(e, si, pi)}
-                          onDuplicatePlot={() => duplicatePlot(si, pi)}
+                          onDuplicatePlot={() => openDuplicatePrompt({ kind: "plot", si, pi })}
                           onRemovePlot={() => removePlot(si, pi)}
-                          onDuplicateLine={(li) => duplicateLine(si, pi, li)}
+                          onDuplicateLine={(li) => openDuplicatePrompt({ kind: "line", si, pi, li })}
                           onRemoveLine={(li) => removeLine(si, pi, li)}
                           onDragLineStart={(li, ev) => {
                             ev.dataTransfer.effectAllowed = "move";
@@ -1054,13 +1243,15 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
                           onSummaryClick={(e) => onPlotSummaryClick(e, plot.id, openPlotIds.has(plot.id))}
                           readOnly={readOnly}
                         />
-                      ))}
+                        );
+                      })}
                     </ul>
                   ) : null}
                 </div>
               </details>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 
@@ -1071,52 +1262,57 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
       </div>
 
       <AppModal
-        open={!readOnly && addTarget !== null}
-        onClose={closeCompositePickerModal}
-        title={t("pickCompositeTitle")}
-        size="md"
+        open={!readOnly && duplicatePrompt !== null}
+        onClose={closeDuplicatePrompt}
+        title={t("duplicateCountTitle")}
+        description={t("duplicateCountDescription")}
+        size="sm"
+        closeOnBackdrop={!saving}
+        isBusy={saving}
         footer={
           <>
-            <AppButton type="button" variant="secondary" size="md" onClick={closeCompositePickerModal}>
+            <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={closeDuplicatePrompt}>
               {t("cancel")}
             </AppButton>
-            <AppButton type="button" variant="primary" size="md" disabled={!pickValue} onClick={confirmPickComposite}>
-              {t("addComposite")}
+            <AppButton type="button" variant="primary" size="md" disabled={saving} onClick={confirmDuplicatePrompt}>
+              {t("duplicateCountConfirm")}
             </AppButton>
           </>
         }
       >
-        {addTarget ? (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <CheckmarkSelect
-              id="draft-pick-group"
-              portaled
-              listLabel={`${tDraw("chooseGroup")} *`}
-              options={groupOptions}
-              value={selectedGroupId}
-              emptyLabel={tDraw("allGroups")}
-              disabled={saving}
-              onChange={(v) => {
-                setSelectedGroupId(v);
-                setPickValue("");
-                setSelectedGroupItems(null);
+        <div className="space-y-3">
+          <div>
+            <FieldLabel htmlFor={duplicateCountFieldId}>{t("duplicateCountLabel")}</FieldLabel>
+            <input
+              id={duplicateCountFieldId}
+              type="number"
+              inputMode="numeric"
+              min={DUPLICATE_COUNT_MIN}
+              max={DUPLICATE_COUNT_MAX}
+              value={duplicateCountInput}
+              onChange={(e) => {
+                setDuplicateCountInput(e.target.value);
+                setDuplicateCountError(null);
               }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  confirmDuplicatePrompt();
+                }
+              }}
+              className={cn(surfaceInputClassName, "mt-1.5 w-full max-w-[12rem] tabular-nums")}
+              disabled={saving}
+              autoFocus
+              aria-invalid={duplicateCountError != null}
             />
-            <CheckmarkSelect
-              id="draft-pick-composite"
-              portaled
-              listLabel={`${tDraw("chooseComposite")} *`}
-              options={compositeOptions}
-              value={pickValue}
-              emptyLabel={tDraw("selectComposite")}
-              disabled={compositeOptions.length <= 1}
-              onChange={setPickValue}
-            />
+            <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{t("duplicateCountHint")}</p>
           </div>
-        ) : null}
-        {addTarget && compositeRows.length === 0 ? (
-          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t("noComposites")}</p>
-        ) : null}
+          {duplicateCountError ? (
+            <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+              {duplicateCountError}
+            </p>
+          ) : null}
+        </div>
       </AppModal>
     </div>
   );
@@ -1129,7 +1325,8 @@ type PlotBlockProps = {
   isOpen: boolean;
   onToggleOpen: (open: boolean) => void;
   onPlotName: (name: string) => void;
-  onOpenAddComposite: () => void;
+  /** Permanent row: group + composite + Save (hidden when `readOnly` or null). */
+  addCompositeToolbar: React.ReactNode;
   onDragStart: (e: React.DragEvent) => void;
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
@@ -1152,7 +1349,7 @@ function PlotBlock({
   isOpen,
   onToggleOpen,
   onPlotName,
-  onOpenAddComposite,
+  addCompositeToolbar,
   onDragStart,
   onDragOver,
   onDrop,
@@ -1334,20 +1531,8 @@ function PlotBlock({
         </summary>
 
         <div className="m-2 space-y-3">
-          {!readOnly ? (
-            <div className="flex flex-wrap items-center justify-start gap-2">
-              <AppButton
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="shrink-0 gap-1.5"
-                disabled={saving}
-                onClick={() => onOpenAddComposite()}
-              >
-                <Plus className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                {t("addComposite")}
-              </AppButton>
-            </div>
+          {!readOnly && addCompositeToolbar ? (
+            <div className="flex w-full min-w-0 flex-wrap items-center justify-start gap-2">{addCompositeToolbar}</div>
           ) : null}
           <CompositeDraftLinesBody
             pins={plot.pins}

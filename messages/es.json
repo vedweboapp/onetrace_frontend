@@ -90,6 +90,19 @@
         "ariaMap": "Vista previa del mapa para la dirección",
         "openFullMap": "Abrir mapa completo en pestaña nueva",
         "openFullMapAria": "Abrir esta ubicación en OpenStreetMap en una pestaña nueva"
+      },
+      "address": {
+        "legacy": "Dirección",
+        "line1": "Dirección línea 1",
+        "line2": "Dirección línea 2",
+        "city": "Ciudad",
+        "state": "Provincia / región",
+        "pincode": "Código postal",
+        "country": "País"
+      },
+      "user": {
+        "username": "Usuario",
+        "email": "Correo"
       }
     },
     "brand": {
@@ -341,7 +354,8 @@
       "detail": {
         "retry": "Reintentar",
         "backAria": "Volver a la lista de usuarios",
-        "editWithIcon": "Editar usuario"
+        "editWithIcon": "Editar usuario",
+        "sectionOverview": "Resumen"
       },
       "page": {
         "createTitle": "Invitar usuario",
@@ -604,6 +618,7 @@
         "backAria": "Volver a la lista de sitios",
         "sectionOverview": "Resumen",
         "sectionAddress": "Dirección",
+        "sectionMap": "Mapa",
         "sectionRecord": "Registro",
         "addressUnavailable": "No hay dirección estructurada guardada para este sitio."
       },
@@ -719,6 +734,8 @@
         "sectionProject": "Proyecto y niveles",
         "sectionRecord": "Registro",
         "sectionSiteLocation": "Ubicación del sitio",
+        "sectionSiteAddress": "Dirección del sitio",
+        "sectionMap": "Mapa",
         "sectionQuoteScope": "Alcance cotizado",
         "noDescription": "Sin descripción.",
         "allLevelsSelected": "Todos los niveles"
@@ -789,6 +806,7 @@
         "grandTotal": "Total general",
         "plotSubtotal": "Subtotal parcela",
         "addComposite": "Añadir ítem compuesto",
+        "saveComposite": "Guardar",
         "pickCompositeTitle": "Añadir ítem compuesto",
         "pickCompositePlaceholder": "Selecciona ítem compuesto",
         "noComposites": "No se encontraron ítems compuestos.",
@@ -800,6 +818,12 @@
         "sectionActions": "Acciones de sección",
         "editSection": "Editar sección",
         "duplicateSection": "Duplicar",
+        "duplicateCountTitle": "Duplicar",
+        "duplicateCountDescription": "Elige cuántas copias quieres añadir justo después del original.",
+        "duplicateCountLabel": "Número de copias",
+        "duplicateCountHint": "Número entero de 1 a 50.",
+        "duplicateCountConfirm": "Duplicar",
+        "duplicateCountInvalid": "Introduce un número entero entre 1 y 50.",
         "copySection": "Copiar sección",
         "deleteSection": "Eliminar",
         "cancel": "Cancelar",
@@ -928,6 +952,9 @@
         "quoteFromProjectError": "No se pudo crear la cotización desde este proyecto. Inténtalo de nuevo.",
         "backAria": "Volver a la lista de proyectos",
         "sectionOverview": "Resumen",
+        "sectionAddress": "Dirección",
+        "addressUnavailable": "Este proyecto aún no tiene dirección guardada.",
+        "metaProjectId": "ID del proyecto",
         "sectionClient": "Cliente",
         "sectionSchedule": "Planificación",
         "sectionRecord": "Registro",
@@ -1118,6 +1145,10 @@
       },
       "statusActive": "Activo",
       "statusInactive": "Inactivo",
+      "fields": {
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización"
+      },
       "edit": "Editar",
       "delete": "Eliminar",
       "deleteConfirmTitle": "¿Eliminar este grupo?",
@@ -1155,6 +1186,8 @@
         "loadingTitle": "Cargando grupo...",
         "retry": "Reintentar",
         "backAria": "Volver a la lista de grupos",
+        "sectionOverview": "Resumen",
+        "metaGroupId": "ID del grupo",
         "sectionItems": "Ítems vinculados",
         "items": "Ítems con abreviatura",
         "noItems": "No hay ítems vinculados a este grupo.",
@@ -1162,7 +1195,9 @@
         "createdAt": "Creado el",
         "updatedAt": "Actualizado el",
         "createdBy": "Creado por",
-        "modifiedBy": "Modificado por"
+        "modifiedBy": "Modificado por",
+        "sectionCreatedBy": "Creado por",
+        "sectionModifiedBy": "Última modificación por"
       }
     },
     "compositeItems": {
@@ -1286,6 +1321,7 @@
         "retry": "Reintentar",
         "backAria": "Volver a la lista de ítems",
         "sectionOverview": "Resumen",
+        "group": "Grupo",
         "sectionComponents": "Componentes",
         "sectionRecord": "Registro",
         "sku": "SKU",
@@ -1303,7 +1339,9 @@
         "createdAt": "Creado el",
         "updatedAt": "Actualizado el",
         "createdBy": "Creado por",
-        "modifiedBy": "Modificado por"
+        "modifiedBy": "Modificado por",
+        "sectionCreatedBy": "Creado por",
+        "sectionModifiedBy": "Última modificación por"
       },
       "modal": {
         "createTitle": "Nuevo ítem",

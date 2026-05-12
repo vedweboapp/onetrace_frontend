@@ -219,7 +219,7 @@ export function AddressMiniMap({ addressParts, className, mapClassName }: Props)
     >
       <div
         ref={containerRef}
-        className={cn("z-0 h-full min-h-[200px] w-full", mapClassName)}
+        className={cn("z-0 min-h-[200px] w-full flex-1 basis-0", mapClassName)}
         role="img"
         aria-label={t("ariaMap")}
       />

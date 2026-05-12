@@ -43,24 +43,24 @@ function QuotationPersonCell({
   const empty = primary === "—" || primary.trim() === "";
   const hasLabel = typeof label === "string" && label.trim().length > 0;
   return (
-    <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-slate-700 dark:bg-slate-900/45">
+    <div className="rounded-md border border-slate-100 bg-slate-50/50 p-3 dark:border-slate-800 dark:bg-slate-900/35">
       {hasLabel ? (
-        <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500 dark:text-slate-400">{label}</p>
+        <p className="text-xs font-medium leading-snug text-slate-500 dark:text-slate-400">{label}</p>
       ) : null}
       {empty ? (
-        <p className={cn("text-sm text-slate-500 dark:text-slate-400", hasLabel && "mt-2")}>—</p>
+        <p className={cn("text-sm font-medium text-slate-500 dark:text-slate-400", hasLabel && "mt-1.5")}>—</p>
       ) : (
         <>
           <p
             className={cn(
-              "break-words text-base font-semibold leading-snug text-slate-900 dark:text-slate-100",
-              hasLabel && "mt-2",
+              "break-words text-sm font-medium leading-snug text-slate-900 dark:text-slate-100",
+              hasLabel && "mt-1.5",
             )}
           >
             {primary}
           </p>
           {secondary ? (
-            <p className="mt-1 break-words text-sm leading-relaxed text-slate-600 dark:text-slate-400">{secondary}</p>
+            <p className="mt-1 break-words text-sm font-normal leading-relaxed text-slate-600 dark:text-slate-400">{secondary}</p>
           ) : null}
         </>
       )}
@@ -150,6 +150,7 @@ export function QuotationDetailBody({
   dueFmt,
 }: Props) {
   const t = useTranslations("Dashboard.quotations");
+  const tUser = useTranslations("Dashboard.common.user");
   const locale = useLocale();
   const [detailTab, setDetailTab] = React.useState<"project" | "pricing">("project");
 
@@ -220,7 +221,7 @@ export function QuotationDetailBody({
 
   const overviewCard = (
     <DetailPanelCard title={t("detail.sectionOverview")}>
-      <DetailMetricsGrid>
+      <DetailMetricsGrid className="grid-cols-1 sm:grid-cols-1 lg:grid-cols-1">
         <DetailMetricCard label={t("fields.quoteName")}>{detail.quote_name}</DetailMetricCard>
         <DetailMetricCard label={t("fields.customer")}>
           {quotationCustomerLabel(detail.customer, customerName ?? null)}
@@ -239,7 +240,7 @@ export function QuotationDetailBody({
   const descriptionCard = (
     <DetailPanelCard title={t("fields.description")}>
       {desc ? (
-        <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/40">
+        <div className="rounded-md border border-slate-100 bg-slate-50/60 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/35">
           <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800 dark:text-slate-100">{desc}</p>
         </div>
       ) : (
@@ -248,104 +249,130 @@ export function QuotationDetailBody({
     </DetailPanelCard>
   );
 
-  const siteLocationCard =
-    siteIdResolved != null &&
-    (snapshotAddressUsable || nestedSiteAddressUsable || siteDetailLoading || siteDetail) ? (
-      <DetailPanelCard
-        title={t("detail.sectionSiteLocation")}
-        className="flex h-full min-h-0 flex-col"
-        bodyClassName="flex min-h-0 flex-1 flex-col"
-      >
-        {snapshotAddressUsable && snap ? (
-          <div className="flex min-h-0 flex-1 flex-col gap-4">
-            <DetailFormattedAddress
-              line1={snap.address_line_1}
-              line2={snap.address_line_2}
-              city={snap.city}
-              state={snap.state}
-              pincode={snap.pincode}
-              country={snap.country}
-              emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">—</p>}
-            />
-            <AddressMiniMap
-              addressParts={{
-                line1: snap.address_line_1,
-                line2: snap.address_line_2,
-                city: snap.city,
-                state: snap.state,
-                pincode: snap.pincode,
-                country: snap.country,
-              }}
-              className="flex min-h-[200px] flex-1 flex-col"
-              mapClassName="min-h-0 flex-1"
-            />
-          </div>
-        ) : nestedSiteAddressUsable && nestedSite ? (
-          <div className="flex min-h-0 flex-1 flex-col gap-4">
-            <DetailFormattedAddress
-              line1={nestedSite.address_line_1}
-              line2={nestedSite.address_line_2}
-              city={nestedSite.city}
-              state={nestedSite.state}
-              pincode={nestedSite.pincode}
-              country={nestedSite.country}
-              emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">—</p>}
-            />
-            <AddressMiniMap
-              addressParts={{
-                line1: nestedSite.address_line_1,
-                line2: nestedSite.address_line_2,
-                city: nestedSite.city,
-                state: nestedSite.state,
-                pincode: nestedSite.pincode,
-                country: nestedSite.country,
-              }}
-              className="flex min-h-[200px] flex-1 flex-col"
-              mapClassName="min-h-0 flex-1"
-            />
-          </div>
-        ) : siteDetailLoading ? (
-          <div className="min-h-[13rem] flex-1 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-        ) : siteDetail ? (
-          <div className="flex min-h-0 flex-1 flex-col gap-4">
-            {hasDetailAddress({
-              line1: siteDetail.address_line_1,
-              line2: siteDetail.address_line_2,
-              city: siteDetail.city,
-              state: siteDetail.state,
-              pincode: siteDetail.pincode,
-              country: siteDetail.country,
-            }) ? (
-              <DetailFormattedAddress
-                line1={siteDetail.address_line_1}
-                line2={siteDetail.address_line_2}
-                city={siteDetail.city}
-                state={siteDetail.state}
-                pincode={siteDetail.pincode}
-                country={siteDetail.country}
-                emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">—</p>}
-              />
-            ) : (
-              <p className="text-sm text-slate-500 dark:text-slate-400">{t("mapNoStructuredAddress")}</p>
-            )}
-            <AddressMiniMap
-              addressParts={{
-                line1: siteDetail.address_line_1,
-                line2: siteDetail.address_line_2,
-                city: siteDetail.city,
-                state: siteDetail.state,
-                pincode: siteDetail.pincode,
-                country: siteDetail.country,
-              }}
-              className="flex min-h-[200px] flex-1 flex-col"
-              mapClassName="min-h-0 flex-1"
-            />
-          </div>
-        ) : null}
-      </DetailPanelCard>
-    ) : null;
+  const siteLocationSplit = React.useMemo(() => {
+    if (siteIdResolved == null) return null;
+    if (!(snapshotAddressUsable || nestedSiteAddressUsable || siteDetailLoading || siteDetail)) return null;
 
-  const showSiteMapColumn = siteLocationCard != null;
+    const mapShell = (addressParts: {
+      line1?: string | null;
+      line2?: string | null;
+      city?: string | null;
+      state?: string | null;
+      pincode?: string | null;
+      country?: string | null;
+    }) => (
+      <AddressMiniMap
+        addressParts={addressParts}
+        className="flex h-full min-h-0 w-full flex-1 flex-col"
+        mapClassName="min-h-[200px] flex-1"
+      />
+    );
+
+    if (snapshotAddressUsable && snap) {
+      const parts = {
+        line1: snap.address_line_1,
+        line2: snap.address_line_2,
+        city: snap.city,
+        state: snap.state,
+        pincode: snap.pincode,
+        country: snap.country,
+      };
+      return {
+        address: (
+          <DetailFormattedAddress
+            line1={parts.line1}
+            line2={parts.line2}
+            city={parts.city}
+            state={parts.state}
+            pincode={parts.pincode}
+            country={parts.country}
+            emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">—</p>}
+          />
+        ),
+        map: mapShell(parts),
+      };
+    }
+
+    if (nestedSiteAddressUsable && nestedSite) {
+      const parts = {
+        line1: nestedSite.address_line_1,
+        line2: nestedSite.address_line_2,
+        city: nestedSite.city,
+        state: nestedSite.state,
+        pincode: nestedSite.pincode,
+        country: nestedSite.country,
+      };
+      return {
+        address: (
+          <DetailFormattedAddress
+            line1={parts.line1}
+            line2={parts.line2}
+            city={parts.city}
+            state={parts.state}
+            pincode={parts.pincode}
+            country={parts.country}
+            emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">—</p>}
+          />
+        ),
+        map: mapShell(parts),
+      };
+    }
+
+    if (siteDetailLoading) {
+      return {
+        address: null as React.ReactNode,
+        map: <div className="h-full min-h-[220px] flex-1 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800" />,
+      };
+    }
+
+    if (siteDetail) {
+      const parts = {
+        line1: siteDetail.address_line_1,
+        line2: siteDetail.address_line_2,
+        city: siteDetail.city,
+        state: siteDetail.state,
+        pincode: siteDetail.pincode,
+        country: siteDetail.country,
+      };
+      const hasAddr = hasDetailAddress({
+        line1: parts.line1,
+        line2: parts.line2,
+        city: parts.city,
+        state: parts.state,
+        pincode: parts.pincode,
+        country: parts.country,
+      });
+      return {
+        address: hasAddr ? (
+          <DetailFormattedAddress
+            line1={parts.line1}
+            line2={parts.line2}
+            city={parts.city}
+            state={parts.state}
+            pincode={parts.pincode}
+            country={parts.country}
+            emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">—</p>}
+          />
+        ) : (
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t("mapNoStructuredAddress")}</p>
+        ),
+        map: mapShell(parts),
+      };
+    }
+
+    return null;
+  }, [
+    nestedSite,
+    nestedSiteAddressUsable,
+    siteDetail,
+    siteDetailLoading,
+    siteIdResolved,
+    snap,
+    snapshotAddressUsable,
+    t,
+  ]);
+
+  const showSiteMapColumn = siteLocationSplit != null;
 
   return (
     <DetailPagePadding>
@@ -368,28 +395,33 @@ export function QuotationDetailBody({
       >
         <div
           className={cn(
-            showSiteMapColumn && "grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch lg:gap-8",
-            !showSiteMapColumn && "space-y-5",
+            showSiteMapColumn &&
+              "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,50%)] lg:items-stretch lg:gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(400px,52%)]",
+            !showSiteMapColumn && "space-y-3.5",
           )}
         >
-          <div className="min-w-0 space-y-5">
+          <div className="flex min-h-0 min-w-0 flex-col space-y-3.5">
             {overviewCard}
             {descriptionCard}
 
+            {siteLocationSplit?.address ? (
+              <DetailPanelCard title={t("detail.sectionSiteAddress")}>{siteLocationSplit.address}</DetailPanelCard>
+            ) : null}
+
             <DetailPanelCard title={t("detail.sectionPeople")}>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4">
                 <QuotationUserPersonCell label={t("fields.salesperson")} user={detail.salesperson} />
                 <QuotationUserPersonCell label={t("fields.projectManager")} user={detail.project_manager} />
                 <QuotationContactPersonCell label={t("fields.primaryContact")} contact={detail.primary_customer_contact} />
                 <QuotationContactPersonCell label={t("fields.additionalContact")} contact={detail.additional_customer_contact} />
-                <div className="sm:col-span-2 xl:col-span-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500 dark:text-slate-400">
+                <div>
+                  <p className="text-xs font-medium leading-snug text-slate-500 dark:text-slate-400">
                     {t("fields.technicians")}
                   </p>
                   {technicianEntries.length === 0 ? (
                     <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">—</p>
                   ) : (
-                    <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <ul className="mt-3 grid grid-cols-1 gap-3">
                       {technicianEntries.map((entry, ti) =>
                         entry.kind === "id" ? (
                           <li key={`tech-id-${entry.id}-${ti}`}>
@@ -407,44 +439,79 @@ export function QuotationDetailBody({
               </div>
             </DetailPanelCard>
 
-            <div
-              className={cn(
-                "grid gap-5",
-                createdByUser ? "sm:grid-cols-2" : "grid-cols-1",
-              )}
-            >
+            <div className="grid grid-cols-1 gap-3.5">
               <DetailPanelCard title={t("detail.sectionRecord")}>
-                <div className="space-y-3 text-sm">
-                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                    <span className="text-slate-600 dark:text-slate-400">{t("fields.createdAt")}</span>
-                    <span className="font-medium break-words text-slate-900 dark:text-slate-100">
-                      {dateFmt.format(new Date(detail.created_at))}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                    <span className="text-slate-600 dark:text-slate-400">{t("fields.updatedAt")}</span>
-                    <span className="font-medium break-words text-slate-900 dark:text-slate-100">{modifiedAtLabel}</span>
-                  </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <DetailMetricCard label={t("fields.createdAt")}>
+                    <span className="break-words tabular-nums">{dateFmt.format(new Date(detail.created_at))}</span>
+                  </DetailMetricCard>
+                  <DetailMetricCard label={t("fields.updatedAt")}>
+                    <span className="break-words tabular-nums">{modifiedAtLabel}</span>
+                  </DetailMetricCard>
                 </div>
               </DetailPanelCard>
 
               {createdByUser ? (
                 <DetailPanelCard title={t("fields.createdBy")}>
-                  <p className="break-words text-base font-semibold text-slate-900 dark:text-slate-100">
-                    {createdByUser.username?.trim() || createdByUser.email?.trim() || `#${createdByUser.id}`}
-                  </p>
-                  {createdByUser.email?.trim() &&
-                  createdByUser.username?.trim() &&
-                  createdByUser.email.trim() !== createdByUser.username.trim() ? (
-                    <p className="mt-1 break-all text-sm text-slate-600 dark:text-slate-400">{createdByUser.email}</p>
-                  ) : null}
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {(() => {
+                      const uname = createdByUser.username?.trim() ?? "";
+                      const em = createdByUser.email?.trim() ?? "";
+                      const nodes: React.ReactNode[] = [];
+                      if (em && (!uname || uname === em)) {
+                        nodes.push(
+                          <DetailMetricCard key="e" label={tUser("email")}>
+                            <a
+                              href={`mailto:${em}`}
+                              className="break-all font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                            >
+                              {em}
+                            </a>
+                          </DetailMetricCard>,
+                        );
+                      } else {
+                        if (uname) {
+                          nodes.push(
+                            <DetailMetricCard key="u" label={tUser("username")}>
+                              {uname}
+                            </DetailMetricCard>,
+                          );
+                        }
+                        if (em && uname !== em) {
+                          nodes.push(
+                            <DetailMetricCard key="e" label={tUser("email")}>
+                              <a
+                                href={`mailto:${em}`}
+                                className="break-all font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                              >
+                                {em}
+                              </a>
+                            </DetailMetricCard>,
+                          );
+                        }
+                      }
+                      if (!uname && !em) {
+                        nodes.push(
+                          <DetailMetricCard key="id" label={tUser("username")}>
+                            #{createdByUser.id}
+                          </DetailMetricCard>,
+                        );
+                      }
+                      return nodes;
+                    })()}
+                  </div>
                 </DetailPanelCard>
               ) : null}
             </div>
           </div>
 
-          {showSiteMapColumn ? (
-            <div className="flex min-h-0 min-w-0 flex-col lg:h-full">{siteLocationCard}</div>
+          {showSiteMapColumn && siteLocationSplit?.map ? (
+            <div className="flex min-h-0 w-full min-w-0 flex-col lg:h-full">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <h2 className="sr-only">{t("detail.sectionMap")}</h2>
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col">{siteLocationSplit.map}</div>
+              </div>
+            </div>
           ) : null}
         </div>
       </div>
@@ -455,8 +522,7 @@ export function QuotationDetailBody({
         aria-labelledby="quotation-detail-trigger-pricing"
         className={cn(detailTab !== "pricing" && "hidden")}
       >
-        <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
-          <p className="mb-3 text-sm font-medium text-slate-800 dark:text-slate-100">{t("levels.sectionsTitle")}</p>
+        <DetailPanelCard title={t("levels.sectionsTitle")}>
           {viewDraft ? (
             <QuotationDraftComposer
               draft={viewDraft}
@@ -468,7 +534,7 @@ export function QuotationDetailBody({
           ) : (
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("page.editQuoteScopeEmpty")}</p>
           )}
-        </div>
+        </DetailPanelCard>
       </div>
     </DetailPagePadding>
   );
