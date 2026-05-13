@@ -34,18 +34,7 @@ export function ItemDetailBody({
     <DetailPagePadding>
       <div className="space-y-3.5">
         <DetailPanelCard title={t("detail.sectionOverview")}>
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={cn(
-                "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold",
-                detail.is_composite
-                  ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300"
-                  : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-              )}
-            >
-              {detail.is_composite ? t("detail.compositeYes") : t("detail.compositeNo")}
-            </span>
-          </div>
+        
           <DetailMetricsGrid className="mt-4 lg:grid-cols-2">
             <DetailMetricCard label={t("detail.sku")}>
               <span className="font-mono">{detail.sku?.trim() ? detail.sku : "—"}</span>

@@ -105,6 +105,7 @@ export function MultiCheckSelect({
   const panel = (
     <div
       ref={panelRef}
+      data-ot-checkmark-portal=""
       className="z-[200] max-h-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10"
       style={
         portaled

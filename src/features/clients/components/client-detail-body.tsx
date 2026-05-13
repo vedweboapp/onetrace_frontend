@@ -27,7 +27,7 @@ export function ClientDetailBody({
 
   return (
     <DetailPagePadding>
-      <div className="space-y-3.5">
+      <div className="space-y-3">
         <DetailPanelCard title={t("detail.panelOverview")}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <DetailMetricCard label={t("fields.email")}>

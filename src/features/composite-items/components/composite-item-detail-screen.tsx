@@ -80,26 +80,26 @@ export function CompositeItemDetailScreen({ itemId }: Props) {
   }
 
   return (
-    <div className="pb-12">
+    <div className="pb-8 sm:pb-10">
       <DetailPageHeader
         title={detail?.name ?? (loading ? tItems("detail.loadingTitle") : tItems("detailMetaTitle"))}
         backHref={safeBack}
         backAriaLabel={t("detail.backAria")}
-        subtitle={
-          detail?.sku?.trim() ? (
-            <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{detail.sku}</span>
-          ) : undefined
-        }
+        // subtitle={
+        //   detail?.sku?.trim() ? (
+        //     <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{detail.sku}</span>
+        //   ) : undefined
+        // }
         actions={
           !loading && !error && detail ? (
             <div className="flex flex-wrap gap-2">
-              <AppButton type="button" variant="secondary" size="md" onClick={() => setDeleteOpen(true)}>
+              <AppButton type="button" variant="secondary" size="sm" onClick={() => setDeleteOpen(true)}>
                 {t("delete")}
               </AppButton>
               <AppButton
                 type="button"
                 variant="primary"
-                size="md"
+                size="sm"
                 onClick={() =>
                   router.push(
                     `${pathname}/edit?back=${encodeURIComponent(safeBack ?? routes.dashboard.compositeItems)}`,
@@ -125,7 +125,7 @@ export function CompositeItemDetailScreen({ itemId }: Props) {
         ) : error ? (
           <div className="space-y-4 p-4 sm:p-6">
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            <AppButton type="button" variant="secondary" size="md" onClick={() => setRefreshNonce((k) => k + 1)}>
+            <AppButton type="button" variant="secondary" size="sm" onClick={() => setRefreshNonce((k) => k + 1)}>
               {tItems("detail.retry")}
             </AppButton>
           </div>
