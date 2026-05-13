@@ -158,7 +158,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
         ) : (
           <form id="client-upsert-screen-form" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(submit)}>
             <div>
-              <FormFieldRow cols="2" className="mt-3">
+            
                 <FieldGroup label={t("fields.name")} htmlFor="client-name" required>
                   <input
                     id="client-name"
@@ -174,7 +174,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
                   />
                   <FieldErrorText id="client-name-err">{errors.name?.message}</FieldErrorText>
                 </FieldGroup>
-              </FormFieldRow>
+              
             </div>
 
             <div>
@@ -194,7 +194,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
                   />
                   <FieldErrorText id="client-email-err">{errors.email?.message}</FieldErrorText>
                 </FieldGroup>
-                <FormFieldSpanFull className="sm:col-span-2 lg:col-span-2">
+                {/* <FormFieldSpanFull className="sm:col-span-2 lg:col-span-2"> */}
                   <SurfacePhoneField
                     control={control}
                     name="phone"
@@ -204,7 +204,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
                     error={errors.phone?.message}
                     disabled={saving}
                   />
-                </FormFieldSpanFull>
+                {/* </FormFieldSpanFull> */}
               </FormFieldRow>
             </div>
 

@@ -131,7 +131,7 @@ export function AppearancePanel() {
 
   return (
     <div className="space-y-6">
-      <ListPageHeader title={t("title")} description={t("subtitle")} showViewToggle={false} />
+      <ListPageHeader variant="page" title={t("title")} description={t("subtitle")} showViewToggle={false} />
       <div
         className={cn(
           "overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm",

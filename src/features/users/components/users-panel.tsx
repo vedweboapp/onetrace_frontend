@@ -120,14 +120,34 @@ export function UsersPanel() {
     <div className="space-y-4">
       {!hideListChrome ? (
         <ListPageHeader
-          title={t("title")}
-          description={t("subtitle")}
+          filtersActive={hasActiveFilters}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
-          action={<AppButton type="button" variant="primary" size="md" onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)} className="gap-2"><Plus className="size-4" strokeWidth={2} aria-hidden />{t("invite")}</AppButton>}
-          controls={<ListPageSearchField value={search} onCommit={commitSearch} placeholder={tList("searchPlaceholder")} ariaLabel={tList("searchAria")} className="sm:max-w-sm" />}
+          action={
+            <AppButton
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)}
+              className="gap-2"
+            >
+              <Plus className="size-4" strokeWidth={2} aria-hidden />
+              {t("invite")}
+            </AppButton>
+          }
+          controls={
+            <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <ListPageSearchField
+                value={search}
+                onCommit={commitSearch}
+                placeholder={tList("searchPlaceholder")}
+                ariaLabel={tList("searchAria")}
+                className="sm:max-w-sm"
+              />
+            </div>
+          }
         />
       ) : null}
 

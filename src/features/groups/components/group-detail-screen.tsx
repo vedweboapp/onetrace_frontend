@@ -78,7 +78,7 @@ export function GroupDetailScreen({ groupId }: Props) {
   }
 
   return (
-    <div className="pb-12">
+    <div className="pb-8 sm:pb-10">
       <DetailPageHeader
         title={detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle"))}
         backHref={safeBack}
@@ -86,13 +86,13 @@ export function GroupDetailScreen({ groupId }: Props) {
         actions={
           !loading && !error && detail ? (
             <div className="flex flex-wrap gap-2">
-              <AppButton type="button" variant="secondary" size="md" onClick={() => setDeleteOpen(true)}>
+              <AppButton type="button" variant="secondary" size="sm" onClick={() => setDeleteOpen(true)}>
                 {t("delete")}
               </AppButton>
               <AppButton
                 type="button"
                 variant="primary"
-                size="md"
+                size="sm"
                 onClick={() => router.push(`${pathname}/edit?back=${encodeURIComponent(safeBack ?? routes.dashboard.groups)}`)}
                 className="gap-2"
               >
@@ -114,7 +114,7 @@ export function GroupDetailScreen({ groupId }: Props) {
         ) : error ? (
           <div className="space-y-4 p-4 sm:p-6">
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            <AppButton type="button" variant="secondary" size="md" onClick={() => setRefreshNonce((k) => k + 1)}>
+            <AppButton type="button" variant="secondary" size="sm" onClick={() => setRefreshNonce((k) => k + 1)}>
               {t("detail.retry")}
             </AppButton>
           </div>

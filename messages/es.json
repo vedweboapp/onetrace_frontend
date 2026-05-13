@@ -894,6 +894,8 @@
       "noResultsDescription": "Nada coincide con tu búsqueda o filtros. Ajústalos o borra los filtros para ver más elementos.",
       "clearFilters": "Borrar filtros",
       "clearFilter": "Quitar este filtro",
+      "filterMenu": "Filtros",
+      "filterMenuAria": "Abrir búsqueda y filtros",
       "cardCreated": "Creado {date}"
     },
     "projects": {
@@ -969,8 +971,8 @@
           "details": "Resumen",
           "forms": "Formularios",
           "drawings": "Planos",
-          "locations": "Ubicaciones",
-          "specs": "Especificaciones",
+          "jobsheets": "Hojas de trabajo",
+          "jobs": "Trabajos",
           "docs": "Documentos",
           "approvals": "Aprobaciones"
         }

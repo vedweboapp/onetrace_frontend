@@ -35,7 +35,7 @@ export function DashboardSidebar() {
   const shell = cn(
     "hidden h-full min-h-0 shrink-0 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900",
     "md:flex",
-    sidebarExpanded ? "md:w-64" : "md:w-[52px]",
+    sidebarExpanded ? "md:w-50" : "md:w-[42px]",
   );
 
   if (isSettingsArea(pathname)) {

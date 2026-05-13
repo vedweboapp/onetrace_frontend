@@ -101,25 +101,25 @@ export function SiteDetailScreen({ siteId }: Props) {
   }, [siteId, refreshNonce, t]);
 
   return (
-    <div className="pb-12">
+    <div className="pb-8 sm:pb-10">
       <DetailPageHeader
         title={detail?.site_name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle"))}
         backHref={safeBack}
         backAriaLabel={t("detail.backAria")}
-        subtitle={
-          detail ? (
-            <span className="inline-flex items-center gap-1.5">
-              <MapPinHouse className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
-              {siteClientName(detail, clientNameById)}
-            </span>
-          ) : undefined
-        }
+        // subtitle={
+        //   detail ? (
+        //     <span className="inline-flex items-center gap-1.5">
+        //       <MapPinHouse className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
+        //       {siteClientName(detail, clientNameById)}
+        //     </span>
+        //   ) : undefined
+        // }
         actions={
           !loading && !error && detail ? (
             <AppButton
               type="button"
               variant="primary"
-              size="md"
+              size="sm"
               onClick={() => router.push(`${pathname}/edit?back=${encodeURIComponent(safeBack ?? routes.dashboard.sites)}`)}
               className="gap-2"
             >
@@ -140,7 +140,7 @@ export function SiteDetailScreen({ siteId }: Props) {
         ) : error ? (
           <div className="space-y-4 p-4 sm:p-6">
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            <AppButton type="button" variant="secondary" size="md" onClick={() => setRefreshNonce((k) => k + 1)}>
+            <AppButton type="button" variant="secondary" size="sm" onClick={() => setRefreshNonce((k) => k + 1)}>
               {t("detail.retry")}
             </AppButton>
           </div>

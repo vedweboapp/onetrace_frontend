@@ -217,38 +217,38 @@ export function QuotationDetailScreen({ quotationId }: Props) {
   const siteIdForLookup = detail ? getQuotationSiteId(detail.site) : null;
 
   return (
-    <div className="pb-12">
+    <div className="pb-8 sm:pb-10">
       <DetailPageHeader
         title={detail?.quote_name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle"))}
         backHref={safeBack}
         backAriaLabel={t("detail.backAria")}
-        subtitle={
-          detail ? (
-            <>
-              <span className="inline-flex items-center gap-1.5">
-                <FolderKanban className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
-                {quotationCustomerLabel(
-                  detail.customer,
-                  customerIdForLookup != null ? clientNames[customerIdForLookup] : null,
-                )}
-              </span>
-              {projectSubtitle ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="text-slate-400 dark:text-slate-500" aria-hidden>
-                    ·
-                  </span>
-                  {projectSubtitle}
-                </span>
-              ) : null}
-              {dueDateForHeader ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <CalendarDays className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
-                  {dueFmt.format(dueDateForHeader)}
-                </span>
-              ) : null}
-            </>
-          ) : undefined
-        }
+        // subtitle={
+        //   detail ? (
+        //     <>
+        //       <span className="inline-flex items-center gap-1.5">
+        //         <FolderKanban className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
+        //         {quotationCustomerLabel(
+        //           detail.customer,
+        //           customerIdForLookup != null ? clientNames[customerIdForLookup] : null,
+        //         )}
+        //       </span>
+        //       {projectSubtitle ? (
+        //         <span className="inline-flex items-center gap-1.5">
+        //           <span className="text-slate-400 dark:text-slate-500" aria-hidden>
+        //             ·
+        //           </span>
+        //           {projectSubtitle}
+        //         </span>
+        //       ) : null}
+        //       {dueDateForHeader ? (
+        //         <span className="inline-flex items-center gap-1.5">
+        //           <CalendarDays className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
+        //           {dueFmt.format(dueDateForHeader)}
+        //         </span>
+        //       ) : null}
+        //     </>
+        //   ) : undefined
+        // }
         actions={
           !loading && !error && detail ? (
             <>
@@ -256,7 +256,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
               <AppButton
                 type="button"
                 variant="primary"
-                size="md"
+                size="sm"
                 className="gap-2"
                 onClick={() =>
                   router.push(`${pathname}/edit?back=${encodeURIComponent(safeBack ?? routes.dashboard.quotations)}`)
@@ -280,7 +280,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         ) : error ? (
           <div className="space-y-4 p-4 sm:p-6">
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            <AppButton type="button" variant="secondary" size="md" onClick={() => setRefreshNonce((k) => k + 1)}>
+            <AppButton type="button" variant="secondary" size="sm" onClick={() => setRefreshNonce((k) => k + 1)}>
               {t("detail.retry")}
             </AppButton>
           </div>

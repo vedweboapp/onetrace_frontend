@@ -59,7 +59,7 @@ export function DetailSectionTitle({ children }: { children: ReactNode }) {
 
 /** Vertical stack spacing for detail bodies (cards use their own padding). */
 export function DetailPagePadding({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("space-y-3 px-4 py-4 sm:space-y-3.5 sm:px-6 sm:py-5", className)}>{children}</div>;
+  return <div className={cn("space-y-3 px-4 py-3 sm:px-5 sm:py-4", className)}>{children}</div>;
 }
 
 /** Section card: title row + optional header actions (Zoho-style record blocks). */
@@ -88,14 +88,14 @@ export function DetailPanelCard({
     >
       <div
         className={cn(
-          "flex flex-col gap-2 border-b border-slate-100 bg-white px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-3",
+          "flex flex-col gap-1.5 border-b border-slate-100 bg-white px-4 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-2.5",
           "dark:border-slate-800 dark:bg-slate-900",
         )}
       >
         <h2 className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">{title}</h2>
         {headerRight ? <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">{headerRight}</div> : null}
       </div>
-      <div className={cn("px-4 py-3 sm:px-5 sm:py-4", bodyClassName)}>{children}</div>
+      <div className={cn("px-4 py-2.5 sm:px-5 sm:py-3", bodyClassName)}>{children}</div>
     </div>
   );
 }

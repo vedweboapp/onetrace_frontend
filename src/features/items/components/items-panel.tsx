@@ -172,26 +172,27 @@ export function ItemsPanel() {
     <div className="space-y-6">
       {!hideListChrome ? (
         <ListPageHeader
-          title={t("title")}
-          description={t("subtitle")}
+          filtersActive={hasActiveFilters}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
           action={
-            <AppButton type="button" variant="primary" size="md" className="gap-2" onClick={openCreate}>
+            <AppButton type="button" variant="primary" size="sm" className="gap-2" onClick={openCreate}>
               <Plus className="size-4" strokeWidth={2} aria-hidden />
               {t("add")}
             </AppButton>
           }
           controls={
-            <ListPageSearchField
-              value={search}
-              onCommit={commitSearch}
-              placeholder={tList("searchPlaceholder")}
-              ariaLabel={tList("searchAria")}
-              className="sm:max-w-sm"
-            />
+            <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <ListPageSearchField
+                value={search}
+                onCommit={commitSearch}
+                placeholder={tList("searchPlaceholder")}
+                ariaLabel={tList("searchAria")}
+                className="sm:max-w-sm"
+              />
+            </div>
           }
         />
       ) : null}

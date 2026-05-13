@@ -894,6 +894,8 @@
       "noResultsDescription": "Nothing matches your current search or filters. Adjust them or clear filters to see more items.",
       "clearFilters": "Clear filters",
       "clearFilter": "Remove this filter",
+      "filterMenu": "Filters",
+      "filterMenuAria": "Open search and filters",
       "cardCreated": "Created {date}"
     },
     "projects": {
@@ -969,8 +971,8 @@
           "details": "Overview",
           "forms": "Forms",
           "drawings": "Drawings",
-          "locations": "Locations",
-          "specs": "Specs",
+          "jobsheets": "Job Sheets",
+          "jobs": "Jobs",
           "docs": "Docs",
           "approvals": "Approvals"
         }

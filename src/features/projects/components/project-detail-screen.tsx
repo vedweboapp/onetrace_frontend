@@ -55,8 +55,8 @@ export function ProjectDetailScreen({ projectId }: Props) {
       { id: "details", label: t("detail.tabs.details") },
       { id: "forms", label: t("detail.tabs.forms") },
       { id: "drawings", label: t("detail.tabs.drawings") },
-      { id: "locations", label: t("detail.tabs.locations") },
-      { id: "specs", label: t("detail.tabs.specs") },
+      { id: "jobs", label: t("detail.tabs.jobs") },
+      { id: "jobsheets", label: t("detail.tabs.jobsheets") },
       { id: "docs", label: t("detail.tabs.docs") },
       { id: "approvals", label: t("detail.tabs.approvals") },
     ],
@@ -178,30 +178,30 @@ export function ProjectDetailScreen({ projectId }: Props) {
   }
 
   return (
-    <div className="pb-12">
-      <div className="mb-5 space-y-4 border-b border-slate-200/90 pb-5 dark:border-slate-800 sm:mb-6 sm:pb-6">
+    <div className="pb-8 sm:pb-10">
+      <div className="mb-3 space-y-3 border-b border-slate-200/90 pb-3 dark:border-slate-800 sm:mb-4 sm:pb-4">
         <DetailPageHeader
           title={detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle"))}
           backHref={safeBack}
           backAriaLabel={t("detail.backAria")}
-          subtitle={
-            detail ? (
-              <span className="text-slate-500 dark:text-slate-400">
-                {clientName ?? (subtitleClientId ? `#${subtitleClientId}` : "—")}
-                <span className="mx-2 text-slate-300 dark:text-slate-600" aria-hidden>
-                  •
-                </span>
-                {formatDay(detail.start_date)} – {formatDay(detail.end_date)}
-              </span>
-            ) : undefined
-          }
+          // subtitle={
+          //   detail ? (
+          //     <span className="text-slate-500 dark:text-slate-400">
+          //       {clientName ?? (subtitleClientId ? `#${subtitleClientId}` : "—")}
+          //       <span className="mx-2 text-slate-300 dark:text-slate-600" aria-hidden>
+          //         •
+          //       </span>
+          //       {formatDay(detail.start_date)} – {formatDay(detail.end_date)}
+          //     </span>
+          //   ) : undefined
+          // }
           actions={
             !loading && !error && detail ? (
               <div className="flex flex-wrap gap-2">
                 <AppButton
                   type="button"
                   variant="secondary"
-                  size="md"
+                  size="sm"
                   className="gap-2"
                   loading={quoting}
                   disabled={quoting}
@@ -211,13 +211,13 @@ export function ProjectDetailScreen({ projectId }: Props) {
                   <FileText className="size-4" strokeWidth={2} aria-hidden />
                   {t("detail.quoteToProject")}
                 </AppButton>
-                <AppButton type="button" variant="secondary" size="md" onClick={() => setDeleteOpen(true)}>
+                <AppButton type="button" variant="secondary" size="sm" onClick={() => setDeleteOpen(true)}>
                   {t("delete")}
                 </AppButton>
                 <AppButton
                   type="button"
                   variant="primary"
-                  size="md"
+                  size="sm"
                   onClick={() =>
                     router.push(
                       `${routes.dashboard.projects}/${projectId}/edit?back=${encodeURIComponent(safeBack ?? routes.dashboard.projects)}`,
@@ -257,7 +257,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
           ) : error && activeTab === "details" ? (
             <div className="space-y-4 p-4 sm:p-6">
               <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-              <AppButton type="button" variant="secondary" size="md" onClick={() => setRefreshNonce((k) => k + 1)}>
+              <AppButton type="button" variant="secondary" size="sm" onClick={() => setRefreshNonce((k) => k + 1)}>
                 {t("detail.retry")}
               </AppButton>
             </div>
@@ -272,7 +272,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
           ) : error ? (
             <div className="space-y-4 p-4 sm:p-6">
               <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-              <AppButton type="button" variant="secondary" size="md" onClick={() => setRefreshNonce((k) => k + 1)}>
+              <AppButton type="button" variant="secondary" size="sm" onClick={() => setRefreshNonce((k) => k + 1)}>
                 {t("detail.retry")}
               </AppButton>
             </div>
