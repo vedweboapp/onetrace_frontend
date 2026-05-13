@@ -1,0 +1,43 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build / Next.js
+.next
+out
+build
+dist
+
+# Environment (secrets — never commit)
+.env
+.env.*
+!.env.example
+
+# Logs & debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+# Vercel / Turbo
+.vercel
+.turbo
+
+# Testing
+coverage
+
+# TypeScript
+*.tsbuildinfo
+
+# Lockfile — you asked to exclude; many teams commit this for reproducible installs.
+package-lock.json
