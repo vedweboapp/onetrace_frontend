@@ -13,6 +13,7 @@ import { fetchItemsPage } from "@/features/items/api/item.api";
 import { cn } from "@/core/utils/http.util";
 import type { ItemComponentRef } from "@/features/items/types/item.types";
 import type { Item } from "@/features/items/types/item.types";
+import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
@@ -208,7 +209,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
         subtitle={isEdit ? t("page.editSubtitle") : t("page.createSubtitle")}
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="md" disabled={submitting} onClick={() => router.push(safeBack)}>
+            <AppButton type="button" variant="secondary" size="md" disabled={submitting} onClick={() => router.push(safeBack ?? routes.dashboard.compositeItems)}>
               {tModal("cancel")}
             </AppButton>
             <AppButton type="submit" form="composite-item-form-screen" variant="primary" size="md" loading={submitting} disabled={noItems}>

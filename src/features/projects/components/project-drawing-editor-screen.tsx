@@ -17,6 +17,7 @@ import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-ur
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
+import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { AppButton, ConfirmDialog, DetailPanel, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import DrawingBottomToolbar from "./drawing-bottom-toolbar";
@@ -564,7 +565,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       setPendingTool(null);
       setAbandonPlotConfirmOpen(true);
     } else {
-      router.push(`${routes.dashboard.projects}/${projectId}`);
+      router.push(mergeUrlQueryParam(`${routes.dashboard.projects}/${projectId}`, "tab", "drawings"));
     }
   }
 
@@ -572,7 +573,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setTempPoints([]);
     setAbandonPlotConfirmOpen(false);
     if (isLeavingEditor) {
-      router.push(`${routes.dashboard.projects}/${projectId}`);
+      router.push(mergeUrlQueryParam(`${routes.dashboard.projects}/${projectId}`, "tab", "drawings"));
     } else if (pendingTool) {
       if (pendingTool !== "hand" && pendingTool !== "pen" && pendingTool !== "plot-select") {
         setEditingPlotId(null);

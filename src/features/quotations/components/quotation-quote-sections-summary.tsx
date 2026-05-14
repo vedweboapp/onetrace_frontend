@@ -4,6 +4,7 @@ import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { QuotationQuoteSection } from "@/features/quotations/types/quotation.types";
 import { formatMoneyDisplay } from "@/features/quotations/utils/quotation-level-pricing.util";
+import { getQuotePlotPinsForDisplay } from "@/features/quotations/utils/quotation-quote-plot-pins.util";
 import { cn } from "@/core/utils/http.util";
 
 type Props = {
@@ -55,21 +56,21 @@ export function QuotationQuoteSectionsSummary({ sections, grandTotal, className 
                     {plot.name}
                   </div>
                   <ul className="mt-1.5 space-y-1">
-                    {[...(Array.isArray(plot.lines) ? plot.lines : [])]
-                      .sort((a, b) => a.line_order - b.line_order)
-                      .map((line, lineIndex) => (
+                    {[...getQuotePlotPinsForDisplay(plot)]
+                      .sort((a, b) => a.pins_order - b.pins_order)
+                      .map((pin, pinIndex) => (
                         <li
-                          key={`quote-summary-section-${sectionIndex}-plot-${plotIndex}-line-${lineIndex}-${line.line_order ?? "o"}-${String(line.name ?? "")}`}
+                          key={`quote-summary-section-${sectionIndex}-plot-${plotIndex}-pin-${pinIndex}-${pin.pins_order ?? "o"}-${String(pin.name ?? "")}`}
                           className="flex flex-wrap items-baseline justify-between gap-2 text-slate-800 dark:text-slate-200"
                         >
                           <span className="min-w-0 flex-1">
-                            {line.name}
+                            {pin.name}
                             <span className="ml-1.5 tabular-nums text-slate-500 dark:text-slate-400">
-                              ×{line.quantity} @ {formatMoneyDisplay(line.unit_price, locale)}
+                              ×{pin.quantity} @ {formatMoneyDisplay(pin.selling_price, locale)}
                             </span>
                           </span>
                           <span className="shrink-0 tabular-nums font-medium">
-                            {formatMoneyDisplay(line.line_total, locale)}
+                            {formatMoneyDisplay(pin.pins_total, locale)}
                           </span>
                         </li>
                       ))}

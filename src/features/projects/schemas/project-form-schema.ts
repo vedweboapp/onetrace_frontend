@@ -19,7 +19,7 @@ export function createProjectFormSchema(messages: ProjectFormMessages) {
         .regex(/^\d+$/, messages.client)
         .refine((s) => Number.parseInt(s, 10) > 0, { message: messages.client }),
       description: z.string().trim().min(1, messages.description),
-      sites: z.array(z.string()).default([]),
+      sites: z.array(z.string()),
       start_date: z.string().trim().min(1, messages.startDate),
       end_date: z.string().trim().min(1, messages.endDate),
     })

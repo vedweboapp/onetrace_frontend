@@ -60,7 +60,7 @@ function textHex(row: Tag): string {
   return normalizeHex(value, DEFAULT_TEXT);
 }
 
-function tagName(row: Tag): string {
+function formatTagRowLabel(row: Tag): string {
   return row.name?.trim() || row.tag_name?.trim() || `Tag #${row.id}`;
 }
 
@@ -82,7 +82,7 @@ function TagChip({ row, className }: { row: Tag; className?: string }) {
       )}
       style={{ backgroundColor: bgHex(row as Tag), color: textHex(row as Tag) }}
     >
-      {tagName(row)}
+      {formatTagRowLabel(row)}
     </span>
   );
 }
@@ -164,7 +164,7 @@ export function TagSettingsPanel() {
   function openEdit(row: Tag) {
     setDetailRow(null);
     setEditing(row);
-    setTagName(tagName(row));
+    setTagName(formatTagRowLabel(row));
     setBgColour(bgHex(row));
     setTextColour(textHex(row));
     setErrors({});
@@ -234,17 +234,27 @@ export function TagSettingsPanel() {
     <div className="space-y-6">
       {!hideListChrome ? (
         <ListPageHeader
-          title={t("title")}
-          description={t("subtitle")}
+          filtersActive={hasActiveFilters}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
-          action={<AppButton type="button" variant="primary" size="md" onClick={openCreate} className="gap-2"><Plus className="size-4" strokeWidth={2} aria-hidden />{t("add")}</AppButton>}
+          action={
+            <AppButton type="button" variant="primary" size="sm" onClick={openCreate} className="gap-2">
+              <Plus className="size-4" strokeWidth={2} aria-hidden />
+              {t("add")}
+            </AppButton>
+          }
           controls={
-            <>
-              <ListPageSearchField value={search} onCommit={commitSearch} placeholder={tList("searchPlaceholder")} ariaLabel={tList("searchAria")} className="sm:max-w-sm" />
-            </>
+            <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <ListPageSearchField
+                value={search}
+                onCommit={commitSearch}
+                placeholder={tList("searchPlaceholder")}
+                ariaLabel={tList("searchAria")}
+                className="sm:max-w-sm"
+              />
+            </div>
           }
         />
       ) : null}
@@ -322,7 +332,7 @@ export function TagSettingsPanel() {
       >
         {detailRow ? (
           <div className="space-y-5">
-            <FieldGroup label={t("table.tag")}><p className="text-sm text-slate-800 dark:text-slate-200">{tagName(detailRow)}</p></FieldGroup>
+            <FieldGroup label={t("table.tag")}><p className="text-sm text-slate-800 dark:text-slate-200">{formatTagRowLabel(detailRow)}</p></FieldGroup>
             {detailRow.uuid ? (
               <FieldGroup label="UUID">
                 <p className="break-all font-mono text-xs text-slate-700 dark:text-slate-200">{detailRow.uuid}</p>
@@ -377,7 +387,7 @@ export function TagSettingsPanel() {
         onConfirm={() => void confirmDelete()}
         title={t("deleteConfirmTitle")}
         body={t("deleteConfirmBody")}
-        highlight={deleteTarget ? tagName(deleteTarget) : undefined}
+        highlight={deleteTarget ? formatTagRowLabel(deleteTarget) : undefined}
         confirmLabel={t("confirmDelete")}
         cancelLabel={t("modal.cancel")}
         isBusy={deleting}

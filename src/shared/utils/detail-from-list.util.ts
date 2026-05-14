@@ -23,7 +23,8 @@ export type DashboardListSection =
   | "projects"
   | "groups"
   | "items"
-  | "composite-items";
+  | "composite-items"
+  | "settings/users";
 
 export function sanitizeInternalListBack(
   raw: string | null | undefined,

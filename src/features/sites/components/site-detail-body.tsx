@@ -8,7 +8,6 @@ import { routes } from "@/shared/config/routes";
 import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
   DetailMetricCard,
-  DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
 } from "@/shared/components/layout/detail-metric-card";
@@ -19,7 +18,7 @@ const AddressMiniMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="min-h-[200px] animate-pulse rounded-lg bg-slate-200/80 dark:bg-slate-800/80" />
+      <div className="min-h-[240px] animate-pulse rounded-none bg-slate-100 dark:bg-slate-800" />
     ),
   },
 );
@@ -40,73 +39,69 @@ export function SiteDetailBody({
       : typeof detail.client?.id === "number"
         ? detail.client.id
         : null;
+  const addressParts = {
+    line1: detail.address_line_1,
+    line2: detail.address_line_2,
+    city: detail.city,
+    state: detail.state,
+    pincode: detail.pincode,
+    country: detail.country,
+  };
+
   return (
     <DetailPagePadding>
-      <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
-        <div className="space-y-5">
-          <DetailPanelCard title={t("detail.sectionOverview")}>
-            <DetailMetricsGrid className="lg:grid-cols-2">
-              <DetailMetricCard label={t("fields.siteName")}>
-                <span className="break-words">{detail.site_name}</span>
-              </DetailMetricCard>
-              <DetailMetricCard label={t("fields.client")}>
-                {clientId ? (
-                  <Link
-                    href={`${routes.dashboard.clients}/${clientId}`}
-                    className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                  >
-                    {clientName ?? `#${clientId}`}
-                  </Link>
-                ) : (
-                  <span>{clientName ?? "—"}</span>
-                )}
-              </DetailMetricCard>
-            </DetailMetricsGrid>
-          </DetailPanelCard>
+      <div className="space-y-3.5">
+        <DetailPanelCard title={t("detail.sectionOverview")}>
+          <div className="grid grid-cols-1 gap-4 sm:max-w-xl">
+            <DetailMetricCard label={t("fields.client")}>
+              {clientId ? (
+                <Link
+                  href={`${routes.dashboard.clients}/${clientId}`}
+                  className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                >
+                  {clientName ?? `#${clientId}`}
+                </Link>
+              ) : (
+                <span>{clientName ?? "—"}</span>
+              )}
+            </DetailMetricCard>
+          </div>
+        </DetailPanelCard>
 
-          <DetailPanelCard title={t("detail.sectionAddress")}>
-            <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-              <DetailFormattedAddress
-                line1={detail.address_line_1}
-                line2={detail.address_line_2}
-                city={detail.city}
-                state={detail.state}
-                pincode={detail.pincode}
-                country={detail.country}
-                emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>}
-              />
-              <AddressMiniMap
-                addressParts={{
-                  line1: detail.address_line_1,
-                  line2: detail.address_line_2,
-                  city: detail.city,
-                  state: detail.state,
-                  pincode: detail.pincode,
-                  country: detail.country,
-                }}
-                className="min-h-[200px] lg:min-h-[220px]"
-              />
-            </div>
-          </DetailPanelCard>
-        </div>
+        <DetailPanelCard title={t("detail.sectionAddress")}>
+          <DetailFormattedAddress
+            line1={addressParts.line1}
+            line2={addressParts.line2}
+            city={addressParts.city}
+            state={addressParts.state}
+            pincode={addressParts.pincode}
+            country={addressParts.country}
+            emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>}
+          />
+        </DetailPanelCard>
+
+        <DetailPanelCard title={t("detail.sectionMap")} bodyClassName="p-0">
+          <AddressMiniMap
+            addressParts={addressParts}
+            className="flex min-h-[280px] w-full flex-col lg:min-h-[360px]"
+            mapClassName="min-h-[240px] flex-1 rounded-none lg:min-h-[320px]"
+          />
+        </DetailPanelCard>
 
         <DetailPanelCard title={t("detail.sectionRecord")}>
-          <div className="space-y-3 text-sm">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-slate-600 dark:text-slate-400">{t("fields.status")}</span>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <DetailMetricCard label={t("fields.status")}>
               <ActiveStatusBadge
                 active={detail.is_active}
                 label={detail.is_active ? t("status.active") : t("status.inactive")}
               />
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-slate-600 dark:text-slate-400">{t("fields.createdAt")}</span>
+            </DetailMetricCard>
+            <DetailMetricCard label={t("fields.createdAt")}>
               <span className="font-medium tabular-nums">{dateFmt.format(new Date(detail.created_at))}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-slate-600 dark:text-slate-400">{t("fields.updatedAt")}</span>
+            </DetailMetricCard>
+            <DetailMetricCard label={t("fields.updatedAt")}>
               <span className="font-medium tabular-nums">{dateFmt.format(new Date(detail.modified_at))}</span>
-            </div>
+            </DetailMetricCard>
           </div>
         </DetailPanelCard>
       </div>

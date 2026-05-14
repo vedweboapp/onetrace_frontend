@@ -1,28 +1,29 @@
 import type {
   QuotationCreatePayload,
   QuotationQuoteSection,
-  QuotationQuoteSectionLine,
+  QuotationQuoteSectionPin,
   QuotationQuoteSectionPlot,
   QuotationSiteSnapshot,
 } from "@/features/quotations/types/quotation.types";
 import type { QuotationDraft, QuotationDraftLine } from "@/features/quotations/types/quotation-draft.types";
-import { draftGrandTotal, draftLineTotal, draftSectionTotal } from "@/features/quotations/utils/quotation-draft-compute.util";
+import { draftGrandTotal, draftPinTotal, draftSectionTotal } from "@/features/quotations/utils/quotation-draft-compute.util";
 import type { Site } from "@/features/sites/types/site.types";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 
-/** Synthetic plot `name` in `quote_sections` when the section has `section_lines` (no drawing plot). */
+/** Synthetic plot `name` in `quote_sections` when the section has `section_pins` (no drawing plot). */
 export const SECTION_DIRECT_PLOT_NAME = "Section items";
 
-function mapQuoteLines(lines: QuotationDraftLine[]): QuotationQuoteSectionLine[] {
-  return lines.map((line, li) => {
-    const line_total = draftLineTotal(line);
+function mapDraftPinsToQuotePins(pins: QuotationDraftLine[]): QuotationQuoteSectionPin[] {
+  return pins.map((pin, i) => {
+    const pins_total = draftPinTotal(pin);
     return {
-      line_order: li,
-      composite_item_id: line.composite_item_id,
-      name: line.name,
-      quantity: line.quantity,
-      unit_price: line.unit_price,
-      line_total,
+      pins_order: i,
+      pin_id: pin.pin_id != null && Number.isFinite(pin.pin_id) && pin.pin_id > 0 ? pin.pin_id : null,
+      composite_item_id: pin.composite_item_id,
+      name: pin.name,
+      quantity: pin.quantity,
+      selling_price: pin.selling_price,
+      pins_total,
     };
   });
 }
@@ -64,26 +65,26 @@ export function mergeQuotationDraftIntoPayload(base: QuotationCreatePayload, dra
   const quote_sections: QuotationQuoteSection[] = includedSections.map((section, si) => {
     const plotsOut: QuotationQuoteSectionPlot[] = [];
     let plotOrder = 0;
-    const sectionLines = section.section_lines ?? [];
-    if (sectionLines.length > 0) {
-      const lines = mapQuoteLines(sectionLines);
-      const plot_total = lines.reduce((a, x) => a + x.line_total, 0);
+    const sectionPins = section.section_pins ?? [];
+    if (sectionPins.length > 0) {
+      const pins = mapDraftPinsToQuotePins(sectionPins);
+      const plot_total = pins.reduce((a, x) => a + x.pins_total, 0);
       plotsOut.push({
         plot_order: plotOrder++,
         plot_id: null,
         name: SECTION_DIRECT_PLOT_NAME,
-        lines,
+        pins,
         plot_total,
       });
     }
     for (const plot of section.plots) {
-      const lines = mapQuoteLines(plot.lines);
-      const plot_total = lines.reduce((a, x) => a + x.line_total, 0);
+      const pins = mapDraftPinsToQuotePins(plot.pins);
+      const plot_total = pins.reduce((a, x) => a + x.pins_total, 0);
       plotsOut.push({
         plot_order: plotOrder++,
         plot_id: plot.plot_id,
         name: plot.name,
-        lines,
+        pins,
         plot_total,
       });
     }

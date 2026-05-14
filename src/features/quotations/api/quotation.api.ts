@@ -198,7 +198,8 @@ export async function exportQuotation(
     },
   });
   const blob = res.data;
-  const contentType = (res.headers["content-type"] ?? "").toLowerCase();
+  const rawContentType = res.headers["content-type"];
+  const contentType = (typeof rawContentType === "string" ? rawContentType : "").toLowerCase();
   if (contentType.includes("application/json")) {
     const text = await blob.text();
     try {
@@ -213,7 +214,10 @@ export async function exportQuotation(
     throw new ApiBusinessError("Export failed");
   }
 
-  const fromHeader = parseFilenameFromContentDisposition(res.headers["content-disposition"]);
+  const rawDisposition = res.headers["content-disposition"];
+  const fromHeader = parseFilenameFromContentDisposition(
+    typeof rawDisposition === "string" ? rawDisposition : undefined,
+  );
   const filename = fromHeader ?? defaultExportFilename(id, quoteName, type);
 
   const url = URL.createObjectURL(blob);

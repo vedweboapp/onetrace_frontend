@@ -1,7 +1,10 @@
 "use client";
 
+import * as React from "react";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import type { Item } from "@/features/items/types/item.types";
+import { routes } from "@/shared/config/routes";
 import { cn } from "@/core/utils/http.util";
 import {
   DetailMetricCard,
@@ -23,105 +26,187 @@ export function ItemDetailBody({
   dateFmt: Intl.DateTimeFormat;
 }) {
   const t = useTranslations("Dashboard.items");
+  const tUser = useTranslations("Dashboard.common.user");
+
+  const groupId = typeof detail.group === "number" && Number.isFinite(detail.group) && detail.group > 0 ? detail.group : null;
 
   return (
     <DetailPagePadding>
-      <DetailPanelCard title={t("detail.sectionOverview")}>
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span
-            className={cn(
-              "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold",
-              detail.is_composite
-                ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300"
-                : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-            )}
-          >
-            {detail.is_composite ? t("detail.compositeYes") : t("detail.compositeNo")}
-          </span>
-        </div>
-        <DetailMetricsGrid>
-          <DetailMetricCard label={t("detail.sku")}>
-            <span className="font-mono">{detail.sku?.trim() ? detail.sku : "—"}</span>
-          </DetailMetricCard>
-          <DetailMetricCard label={t("detail.quantity")}>
-            <span className="tabular-nums">{detail.quantity ?? "—"}</span>
-          </DetailMetricCard>
-          <DetailMetricCard label={t("detail.reorder")}>
-            <span className="tabular-nums">{detail.reorder_quantity ?? "—"}</span>
-          </DetailMetricCard>
-          <DetailMetricCard label={t("detail.cost")}>
-            <span className="tabular-nums">{moneyDisplay(detail.cost_price)}</span>
-          </DetailMetricCard>
-          <DetailMetricCard label={t("detail.sell")}>
-            <span className="tabular-nums">{moneyDisplay(detail.selling_price)}</span>
-          </DetailMetricCard>
-          <DetailMetricCard label={t("detail.itemType")}>
-            {detail.is_composite ? t("detail.compositeYes") : t("detail.compositeNo")}
-          </DetailMetricCard>
-        </DetailMetricsGrid>
-      </DetailPanelCard>
-
-      {detail.is_composite ? (
-        <DetailPanelCard title={t("detail.sectionComponents")}>
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500 dark:text-slate-400">
-            {t("detail.components")}
-          </p>
-          {detail.components && detail.components.length > 0 ? (
-            <div className="max-w-xl space-y-2">
-              {detail.components.map((component, index) => (
-                <div
-                  key={`${component.child_item}-${index}`}
-                  className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900/60"
+      <div className="space-y-3.5">
+        <DetailPanelCard title={t("detail.sectionOverview")}>
+        
+          <DetailMetricsGrid className="mt-4 lg:grid-cols-2">
+            <DetailMetricCard label={t("detail.sku")}>
+              <span className="font-mono">{detail.sku?.trim() ? detail.sku : "—"}</span>
+            </DetailMetricCard>
+            <DetailMetricCard label={t("detail.quantity")}>
+              <span className="tabular-nums">{detail.quantity ?? "—"}</span>
+            </DetailMetricCard>
+            <DetailMetricCard label={t("detail.reorder")}>
+              <span className="tabular-nums">{detail.reorder_quantity ?? "—"}</span>
+            </DetailMetricCard>
+            <DetailMetricCard label={t("detail.cost")}>
+              <span className="tabular-nums">{moneyDisplay(detail.cost_price)}</span>
+            </DetailMetricCard>
+            <DetailMetricCard label={t("detail.sell")}>
+              <span className="tabular-nums">{moneyDisplay(detail.selling_price)}</span>
+            </DetailMetricCard>
+            {groupId ? (
+              <DetailMetricCard label={t("detail.group")}>
+                <Link
+                  href={`${routes.dashboard.groups}/${groupId}`}
+                  className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                 >
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 dark:text-slate-200">
-                    {t("detail.componentItem")} #{component.child_item}
-                  </span>
-                  <span className="shrink-0 rounded-md bg-slate-200/90 px-2 py-1 text-xs font-semibold tabular-nums text-slate-800 dark:bg-slate-700 dark:text-slate-100">
-                    {t("detail.componentQty")} {component.quantity}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.noComponents")}</p>
-          )}
+                  #{groupId}
+                </Link>
+              </DetailMetricCard>
+            ) : null}
+          </DetailMetricsGrid>
         </DetailPanelCard>
-      ) : null}
 
-      <DetailPanelCard title={t("detail.sectionRecord")}>
-        <DetailMetricsGrid>
-          <DetailMetricCard label={t("detail.createdAt")}>
-            <span className="tabular-nums">{dateFmt.format(new Date(detail.created_at))}</span>
-          </DetailMetricCard>
-          <DetailMetricCard label={t("detail.updatedAt")}>
-            <span className="tabular-nums">{dateFmt.format(new Date(detail.modified_at))}</span>
-          </DetailMetricCard>
-          <DetailMetricCard label={t("detail.createdBy")}>
-            {detail.created_by ? (
-              <div className="space-y-1">
-                <span className="block">{detail.created_by.username}</span>
-                <span className="block text-xs font-normal text-slate-500 dark:text-slate-400">
-                  {detail.created_by.email}
-                </span>
-              </div>
+        {detail.is_composite ? (
+          <DetailPanelCard title={t("detail.sectionComponents")}>
+            <p className="text-xs font-medium leading-snug text-slate-500 dark:text-slate-400">{t("detail.components")}</p>
+            {detail.components && detail.components.length > 0 ? (
+              <ul className="mt-3 grid grid-cols-1 gap-3">
+                {detail.components.map((component, index) => (
+                  <li
+                    key={`${component.child_item}-${index}`}
+                    className="flex items-center gap-3 rounded-md border border-slate-100 bg-slate-50/50 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900/35"
+                  >
+                    <Link
+                      href={`${routes.dashboard.items}/${component.child_item}`}
+                      className="min-w-0 flex-1 truncate text-sm font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                    >
+                      {t("detail.componentItem")} #{component.child_item}
+                    </Link>
+                    <span className="shrink-0 rounded-md bg-slate-200/90 px-2 py-1 text-xs font-semibold tabular-nums text-slate-800 dark:bg-slate-700 dark:text-slate-100">
+                      {t("detail.componentQty")} {component.quantity}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             ) : (
-              <span className="text-slate-500 dark:text-slate-400">—</span>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t("detail.noComponents")}</p>
             )}
-          </DetailMetricCard>
-          <DetailMetricCard label={t("detail.modifiedBy")}>
-            {detail.modified_by ? (
-              <div className="space-y-1">
-                <span className="block">{detail.modified_by.username}</span>
-                <span className="block text-xs font-normal text-slate-500 dark:text-slate-400">
-                  {detail.modified_by.email}
-                </span>
-              </div>
-            ) : (
-              <span className="text-slate-500 dark:text-slate-400">—</span>
-            )}
-          </DetailMetricCard>
-        </DetailMetricsGrid>
-      </DetailPanelCard>
+          </DetailPanelCard>
+        ) : null}
+
+        <DetailPanelCard title={t("detail.sectionRecord")}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <DetailMetricCard label={t("detail.createdAt")}>
+              <span className="break-words tabular-nums">{dateFmt.format(new Date(detail.created_at))}</span>
+            </DetailMetricCard>
+            <DetailMetricCard label={t("detail.updatedAt")}>
+              <span className="break-words tabular-nums">{dateFmt.format(new Date(detail.modified_at))}</span>
+            </DetailMetricCard>
+          </div>
+        </DetailPanelCard>
+
+        {detail.created_by ? (
+          <DetailPanelCard title={t("detail.sectionCreatedBy")}>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {(() => {
+                const uname = detail.created_by!.username?.trim() ?? "";
+                const em = detail.created_by!.email?.trim() ?? "";
+                const nodes: React.ReactNode[] = [];
+                if (em && (!uname || uname === em)) {
+                  nodes.push(
+                    <DetailMetricCard key="e" label={tUser("email")}>
+                      <a
+                        href={`mailto:${em}`}
+                        className="break-all font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                      >
+                        {em}
+                      </a>
+                    </DetailMetricCard>,
+                  );
+                } else {
+                  if (uname) {
+                    nodes.push(
+                      <DetailMetricCard key="u" label={tUser("username")}>
+                        {uname}
+                      </DetailMetricCard>,
+                    );
+                  }
+                  if (em && uname !== em) {
+                    nodes.push(
+                      <DetailMetricCard key="e" label={tUser("email")}>
+                        <a
+                          href={`mailto:${em}`}
+                          className="break-all font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                        >
+                          {em}
+                        </a>
+                      </DetailMetricCard>,
+                    );
+                  }
+                }
+                if (!uname && !em) {
+                  nodes.push(
+                    <DetailMetricCard key="id" label={tUser("username")}>
+                      #{detail.created_by!.id}
+                    </DetailMetricCard>,
+                  );
+                }
+                return nodes;
+              })()}
+            </div>
+          </DetailPanelCard>
+        ) : null}
+
+        {detail.modified_by ? (
+          <DetailPanelCard title={t("detail.sectionModifiedBy")}>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {(() => {
+                const uname = detail.modified_by!.username?.trim() ?? "";
+                const em = detail.modified_by!.email?.trim() ?? "";
+                const nodes: React.ReactNode[] = [];
+                if (em && (!uname || uname === em)) {
+                  nodes.push(
+                    <DetailMetricCard key="e" label={tUser("email")}>
+                      <a
+                        href={`mailto:${em}`}
+                        className="break-all font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                      >
+                        {em}
+                      </a>
+                    </DetailMetricCard>,
+                  );
+                } else {
+                  if (uname) {
+                    nodes.push(
+                      <DetailMetricCard key="u" label={tUser("username")}>
+                        {uname}
+                      </DetailMetricCard>,
+                    );
+                  }
+                  if (em && uname !== em) {
+                    nodes.push(
+                      <DetailMetricCard key="e" label={tUser("email")}>
+                        <a
+                          href={`mailto:${em}`}
+                          className="break-all font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                        >
+                          {em}
+                        </a>
+                      </DetailMetricCard>,
+                    );
+                  }
+                }
+                if (!uname && !em) {
+                  nodes.push(
+                    <DetailMetricCard key="id" label={tUser("username")}>
+                      #{detail.modified_by!.id}
+                    </DetailMetricCard>,
+                  );
+                }
+                return nodes;
+              })()}
+            </div>
+          </DetailPanelCard>
+        ) : null}
+      </div>
     </DetailPagePadding>
   );
 }

@@ -8,6 +8,7 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClient } from "@/features/clients/api/client.api";
 import { ClientDetailBody } from "@/features/clients/components/client-detail-body";
 import type { Client } from "@/features/clients/types/client.types";
+import { detailRecordSurfaceShellClassName } from "@/shared/components/layout/detail-metric-card";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
@@ -68,43 +69,43 @@ export function ClientDetailScreen({ clientId }: Props) {
   const phoneRaw = detail?.phone?.trim() ?? "";
 
   return (
-    <div className="pb-12">
+    <div className="pb-8 sm:pb-10">
       <DetailPageHeader
         title={detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle"))}
         backHref={listBack}
         backAriaLabel={t("detail.backAria")}
-        subtitle={
-          detail ? (
-            <>
-              <span className="inline-flex items-center gap-1.5">
-                <Mail className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
-                <a
-                  href={`mailto:${detail.email}`}
-                  className="text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                >
-                  {detail.email}
-                </a>
-              </span>
-              {phoneRaw ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <Phone className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
-                  <a
-                    href={`tel:${phoneRaw.replace(/\s/g, "")}`}
-                    className="text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                  >
-                    {phoneRaw}
-                  </a>
-                </span>
-              ) : null}
-            </>
-          ) : undefined
-        }
+        // subtitle={
+        //   detail ? (
+        //     <>
+        //       <span className="inline-flex items-center gap-1.5">
+        //         <Mail className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
+        //         <a
+        //           href={`mailto:${detail.email}`}
+        //           className="text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+        //         >
+        //           {detail.email}
+        //         </a>
+        //       </span>
+        //       {phoneRaw ? (
+        //         <span className="inline-flex items-center gap-1.5">
+        //           <Phone className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
+        //           <a
+        //             href={`tel:${phoneRaw.replace(/\s/g, "")}`}
+        //             className="text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+        //           >
+        //             {phoneRaw}
+        //           </a>
+        //         </span>
+        //       ) : null}
+        //     </>
+        //   ) : undefined
+        // }
         actions={
           !loading && !error && detail ? (
             <AppButton
               type="button"
               variant="primary"
-              size="md"
+              size="sm"
               className="gap-2"
               onClick={() => router.push(`${pathname}/edit?back=${encodeURIComponent(listBack)}`)}
             >
@@ -115,7 +116,7 @@ export function ClientDetailScreen({ clientId }: Props) {
         }
       />
 
-      <SurfaceShell className="rounded-none border-0 shadow-none ring-0">
+      <SurfaceShell className={detailRecordSurfaceShellClassName}>
         {loading ? (
           <div className="space-y-3 p-4 sm:p-6">
             <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
@@ -125,7 +126,7 @@ export function ClientDetailScreen({ clientId }: Props) {
         ) : error ? (
           <div className="space-y-4 p-4 sm:p-6">
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            <AppButton type="button" variant="secondary" size="md" onClick={() => setRefreshNonce((k) => k + 1)}>
+            <AppButton type="button" variant="secondary" size="sm" onClick={() => setRefreshNonce((k) => k + 1)}>
               {t("detail.retry")}
             </AppButton>
           </div>

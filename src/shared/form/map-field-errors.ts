@@ -31,3 +31,4 @@ function firstStringInTree(raw: unknown): string | undefined {
   }
   return undefined;
 }
+

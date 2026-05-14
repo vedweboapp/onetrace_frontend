@@ -21,8 +21,8 @@ export function createUserFormSchema(messages: {
       phone_number: z.string().trim().min(8, messages.phone),
       gender: z.string().trim().min(1, messages.gender),
       role: z.string().trim().regex(/^\d+$/, messages.role),
-      address1: z.string().trim().optional().default(""),
-      address2: z.string().trim().optional().default(""),
+      address1: z.string().trim(),
+      address2: z.string().trim(),
       country_iso: z
         .string()
         .trim()

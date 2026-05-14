@@ -535,7 +535,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         }
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => router.push(safeBack)}>
+            <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.quotations)}>
               {t("modal.cancel")}
             </AppButton>
             <AppButton type="submit" form="quotation-form-screen" variant="primary" size="md" loading={saving} disabled={noProjects}>

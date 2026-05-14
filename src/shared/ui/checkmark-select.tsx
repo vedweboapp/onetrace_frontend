@@ -168,6 +168,7 @@ export function CheckmarkSelect({
     return (
       <div
         ref={listRef}
+        data-ot-checkmark-portal=""
         className={cn(listClasses, extraClass)}
         style={extraStyle}
       >

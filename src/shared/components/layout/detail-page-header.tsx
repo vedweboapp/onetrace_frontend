@@ -18,38 +18,35 @@ type Props = {
 
 export function DetailPageHeader({ title, backHref, backAriaLabel, actions, subtitle, className }: Props) {
   return (
-    <div className={cn("mb-6 space-y-3", className)}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+    <div className={cn("mb-3 min-w-0 sm:mb-4", className)}>
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 sm:items-center">
+        <div className="flex min-w-0 flex-1 items-start gap-2">
           {backHref ? (
             <Link
               href={backHref}
               className={cn(
-                "inline-flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition",
-                "hover:bg-slate-100 hover:text-slate-800",
-                "dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+                "mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-transparent text-slate-500 transition",
+                "hover:border-slate-200 hover:bg-slate-50 hover:text-slate-800",
+                "dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-100",
               )}
               aria-label={backAriaLabel}
             >
               <ArrowLeft className="size-4" strokeWidth={2} aria-hidden />
             </Link>
           ) : null}
-          <h1 className="min-w-0 truncate text-xl font-bold tracking-tight text-slate-900 sm:text-2xl dark:text-slate-100">
-            {title}
-          </h1>
+          <div className="min-w-0 flex-1">
+            <h1 className="min-w-0 truncate text-lg font-semibold leading-snug tracking-tight text-slate-900 sm:text-xl dark:text-slate-100">
+              {title}
+            </h1>
+            {subtitle ? (
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs leading-snug text-slate-600 sm:text-sm dark:text-slate-400">
+                {subtitle}
+              </div>
+            ) : null}
+          </div>
         </div>
         {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
-      {subtitle ? (
-        <div
-          className={cn(
-            "flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-600 dark:text-slate-400",
-            backHref && "sm:pl-10",
-          )}
-        >
-          {subtitle}
-        </div>
-      ) : null}
     </div>
   );
 }

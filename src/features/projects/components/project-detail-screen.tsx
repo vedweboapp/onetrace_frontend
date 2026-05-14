@@ -3,7 +3,8 @@
 import * as React from "react";
 import { FileText, Pencil } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
 import { fetchClient } from "@/features/clients/api/client.api";
 import { createQuotationFromProject } from "@/features/quotations/api/quotation.api";
 import { deleteProject, fetchProject } from "@/features/projects/api/project.api";
@@ -13,9 +14,9 @@ import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
-import { useRouter } from "@/i18n/navigation";
+import { detailRecordSurfaceShellClassName } from "@/shared/components/layout/detail-metric-card";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { mergeUrlQueryParam, sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
   AppTabs,
@@ -34,8 +35,8 @@ export function ProjectDetailScreen({ projectId }: Props) {
   const tHome = useTranslations("Dashboard.home");
   const locale = useLocale();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const safeBack = sanitizeInternalListBack(searchParams.get("back"), "projects");
 
   const [detail, setDetail] = React.useState<Project | null>(null);
@@ -54,13 +55,25 @@ export function ProjectDetailScreen({ projectId }: Props) {
       { id: "details", label: t("detail.tabs.details") },
       { id: "forms", label: t("detail.tabs.forms") },
       { id: "drawings", label: t("detail.tabs.drawings") },
-      { id: "locations", label: t("detail.tabs.locations") },
-      { id: "specs", label: t("detail.tabs.specs") },
+      { id: "jobs", label: t("detail.tabs.jobs") },
+      { id: "jobsheets", label: t("detail.tabs.jobsheets") },
       { id: "docs", label: t("detail.tabs.docs") },
       { id: "approvals", label: t("detail.tabs.approvals") },
     ],
     [t],
   );
+
+  const allowedDetailTabIds = React.useMemo(() => new Set(detailTabs.map((x) => x.id)), [detailTabs]);
+
+  React.useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (!tab || !allowedDetailTabIds.has(tab)) return;
+    setActiveTab(tab);
+    const p = new URLSearchParams(searchParams.toString());
+    p.delete("tab");
+    const qs = p.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
+  }, [searchParams, pathname, router, allowedDetailTabIds]);
 
   const dateFmt = React.useMemo(
     () =>
@@ -156,9 +169,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
     try {
       const q = await createQuotationFromProject(projectId);
       toastSuccess(t("detail.quoteFromProjectToast"));
-      router.push(
-        `${routes.dashboard.quotations}/${q.id}?back=${encodeURIComponent(pathname)}`,
-      );
+      router.push(mergeUrlQueryParam(routes.dashboard.quotations, "highlight", String(q.id)));
     } catch {
       toastError(t("detail.quoteFromProjectError"));
     } finally {
@@ -167,30 +178,30 @@ export function ProjectDetailScreen({ projectId }: Props) {
   }
 
   return (
-    <div className="pb-12">
-      <div className="mb-5 space-y-4 border-b border-slate-200/90 pb-5 dark:border-slate-800 sm:mb-6 sm:pb-6">
+    <div className="pb-8 sm:pb-10">
+      <div className="mb-3 space-y-3 border-b border-slate-200/90 pb-3 dark:border-slate-800 sm:mb-4 sm:pb-4">
         <DetailPageHeader
           title={detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle"))}
           backHref={safeBack}
           backAriaLabel={t("detail.backAria")}
-          subtitle={
-            detail ? (
-              <span className="text-slate-500 dark:text-slate-400">
-                {clientName ?? (subtitleClientId ? `#${subtitleClientId}` : "—")}
-                <span className="mx-2 text-slate-300 dark:text-slate-600" aria-hidden>
-                  •
-                </span>
-                {formatDay(detail.start_date)} – {formatDay(detail.end_date)}
-              </span>
-            ) : undefined
-          }
+          // subtitle={
+          //   detail ? (
+          //     <span className="text-slate-500 dark:text-slate-400">
+          //       {clientName ?? (subtitleClientId ? `#${subtitleClientId}` : "—")}
+          //       <span className="mx-2 text-slate-300 dark:text-slate-600" aria-hidden>
+          //         •
+          //       </span>
+          //       {formatDay(detail.start_date)} – {formatDay(detail.end_date)}
+          //     </span>
+          //   ) : undefined
+          // }
           actions={
             !loading && !error && detail ? (
               <div className="flex flex-wrap gap-2">
                 <AppButton
                   type="button"
                   variant="secondary"
-                  size="md"
+                  size="sm"
                   className="gap-2"
                   loading={quoting}
                   disabled={quoting}
@@ -200,13 +211,13 @@ export function ProjectDetailScreen({ projectId }: Props) {
                   <FileText className="size-4" strokeWidth={2} aria-hidden />
                   {t("detail.quoteToProject")}
                 </AppButton>
-                <AppButton type="button" variant="secondary" size="md" onClick={() => setDeleteOpen(true)}>
+                <AppButton type="button" variant="secondary" size="sm" onClick={() => setDeleteOpen(true)}>
                   {t("delete")}
                 </AppButton>
                 <AppButton
                   type="button"
                   variant="primary"
-                  size="md"
+                  size="sm"
                   onClick={() =>
                     router.push(
                       `${routes.dashboard.projects}/${projectId}/edit?back=${encodeURIComponent(safeBack ?? routes.dashboard.projects)}`,
@@ -231,7 +242,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
         />
       </div>
 
-      <SurfaceShell className="rounded-none border-0 shadow-none ring-0">
+      <SurfaceShell className={detailRecordSurfaceShellClassName}>
         <div
           role="tabpanel"
           id={`project-detail-tab-${activeTab}`}
@@ -246,7 +257,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
           ) : error && activeTab === "details" ? (
             <div className="space-y-4 p-4 sm:p-6">
               <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-              <AppButton type="button" variant="secondary" size="md" onClick={() => setRefreshNonce((k) => k + 1)}>
+              <AppButton type="button" variant="secondary" size="sm" onClick={() => setRefreshNonce((k) => k + 1)}>
                 {t("detail.retry")}
               </AppButton>
             </div>
@@ -261,7 +272,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
           ) : error ? (
             <div className="space-y-4 p-4 sm:p-6">
               <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-              <AppButton type="button" variant="secondary" size="md" onClick={() => setRefreshNonce((k) => k + 1)}>
+              <AppButton type="button" variant="secondary" size="sm" onClick={() => setRefreshNonce((k) => k + 1)}>
                 {t("detail.retry")}
               </AppButton>
             </div>

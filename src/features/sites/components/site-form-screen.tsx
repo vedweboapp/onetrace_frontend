@@ -15,6 +15,7 @@ import { emptySiteFormDefaults, mapSiteFormToPayload, siteToFormDefaults } from 
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+import { routes } from "@/shared/config/routes";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
@@ -143,7 +144,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
         subtitle={isEdit ? t("page.editSubtitle") : t("page.createSubtitle")}
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => router.push(safeBack)}>
+            <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.sites)}>
               {t("modal.cancel")}
             </AppButton>
             <AppButton type="submit" form="site-upsert-screen-form" variant="primary" size="md" loading={saving} disabled={noClients}>
