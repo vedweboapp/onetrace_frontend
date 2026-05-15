@@ -30,9 +30,10 @@ const variants = {
     "focus-visible:ring-slate-400/45",
   ),
   ghost: cn(
-    "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
-    "focus-visible:ring-slate-400/40",
+    "text-[color:var(--dash-accent,#111111)] hover:bg-[color:var(--dash-accent,#111111)]/10",
+    "focus-visible:ring-[color:color-mix(in_srgb,var(--dash-accent,#111111)_42%,transparent)]",
   ),
+
   danger: cn(
     "bg-red-600 text-white shadow-sm hover:bg-red-700",
     "focus-visible:ring-red-400/40",

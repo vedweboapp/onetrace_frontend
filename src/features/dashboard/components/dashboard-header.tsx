@@ -21,7 +21,7 @@ import {
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useAuthStore } from "@/features/auth/store/auth.store";
-import { useDashboardAppearanceStore } from "@/features/dashboard/store/dashboard-appearance.store";
+import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import { resolveDashboardAccent } from "@/features/dashboard/utils/accent-resolve.util";
 import { dashboardContentHorizontalGutterClassName } from "@/shared/config/dashboard-shell";
@@ -75,7 +75,7 @@ export function DashboardHeader() {
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
   const compositeHref = routes.dashboard.compositeItems;
-  const appearanceHref = routes.dashboard.settingsAppearance;
+  const personalProfileHref = routes.dashboard.settingsPersonalProfile;
   const pinStatusHref = routes.dashboard.settingsPinStatus;
   const tagHref = routes.dashboard.settingsTags;
   const usersHref = routes.dashboard.settingsUsers;
@@ -92,8 +92,8 @@ export function DashboardHeader() {
   const groupsActive = pathname === groupsHref || pathname.startsWith(`${groupsHref}/`);
   const compositeActive =
     pathname === compositeHref || pathname.startsWith(`${compositeHref}/`);
-  const appearanceActive =
-    pathname === appearanceHref || pathname.startsWith(`${appearanceHref}/`);
+  const personalProfileActive =
+    pathname === personalProfileHref || pathname.startsWith(`${personalProfileHref}/`);
   const pinStatusActive =
     pathname === pinStatusHref || pathname.startsWith(`${pinStatusHref}/`);
   const tagActive = pathname === tagHref || pathname.startsWith(`${tagHref}/`);
@@ -144,13 +144,13 @@ export function DashboardHeader() {
             )}
           </button>
 
-        
+
 
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{sectionTitle}</p>
           </div>
 
-            {settingsMode ? (
+          {settingsMode ? (
             <Link
               href={homeHref}
               className={cn(
@@ -185,7 +185,7 @@ export function DashboardHeader() {
             <Bell className="size-4" strokeWidth={1.75} />
           </button> */}
           <Link
-            href={appearanceHref}
+            href={personalProfileHref}
             title={t("openSettings")}
             aria-label={t("openSettings")}
             className={cn(
@@ -193,7 +193,7 @@ export function DashboardHeader() {
               "hover:border-[color:var(--dash-accent)] hover:bg-slate-50 hover:text-[color:var(--dash-accent)]",
               "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-100",
               settingsMode &&
-                "border-transparent bg-[color:var(--dash-accent)] text-[color:var(--dash-on-accent,#ffffff)] shadow-md hover:opacity-90 dark:hover:opacity-90",
+              "border-transparent bg-[color:var(--dash-accent)] text-[color:var(--dash-on-accent,#ffffff)] shadow-md hover:opacity-90 dark:hover:opacity-90",
             )}
             aria-current={settingsMode ? "page" : undefined}
           >
@@ -212,12 +212,12 @@ export function DashboardHeader() {
         {settingsMode ? (
           <>
             <Link
-              href={appearanceHref}
+              href={personalProfileHref}
               className={cn(
                 "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
-                appearanceActive ? resolved.navActiveClassName : mobileInactive(),
+                personalProfileActive ? resolved.navActiveClassName : mobileInactive(),
               )}
-              style={appearanceActive ? resolved.navActiveStyle : undefined}
+              style={personalProfileActive ? resolved.navActiveStyle : undefined}
             >
               <Palette className="size-3.5" strokeWidth={1.75} />
               {tSettingsNav("appearance")}

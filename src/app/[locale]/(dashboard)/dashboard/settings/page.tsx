@@ -7,5 +7,5 @@ type Props = {
 
 export default async function DashboardSettingsIndexPage({ params }: Props) {
   const { locale } = await params;
-  redirect({ href: routes.dashboard.settingsAppearance, locale });
+  redirect({ href: routes.dashboard.settingsPersonalProfile, locale });
 }

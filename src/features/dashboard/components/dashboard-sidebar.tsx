@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
-import { BookUser, Building2, FileText, FolderKanban, Home, Layers, MapPinHouse, Package, Palette, Tag, Tags, UserRound } from "lucide-react";
+import { BookUser, Building2, FileText, FolderKanban, Home, Layers, MapPinHouse, Package, Palette, Settings, Tag, Tags, UserRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
-import { useDashboardAppearanceStore } from "@/features/dashboard/store/dashboard-appearance.store";
+import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import { resolveDashboardAccent } from "@/features/dashboard/utils/accent-resolve.util";
 import { routes } from "@/shared/config/routes";
@@ -316,20 +316,25 @@ function DashboardSettingsSidebar({
 }) {
   const t = useTranslations("Dashboard.settingsNav");
   const pathname = usePathname();
-  const appearanceHref = routes.dashboard.settingsAppearance;
   const pinStatusHref = routes.dashboard.settingsPinStatus;
   const tagHref = routes.dashboard.settingsTags;
   const usersHref = routes.dashboard.settingsUsers;
+  const personalProfileHref = routes.dashboard.settingsPersonalProfile;
+  const companySettingsHref = routes.dashboard.settingsCompanySettings;
+  const formBuilderHref = routes.dashboard.settingsFormBuilder;
 
-  const appearanceActive =
-    pathname === appearanceHref || pathname.startsWith(`${appearanceHref}/`);
   const pinStatusActive =
     pathname === pinStatusHref || pathname.startsWith(`${pinStatusHref}/`);
   const tagActive =
     pathname === tagHref || pathname.startsWith(`${tagHref}/`);
   const usersActive =
     pathname === usersHref || pathname.startsWith(`${usersHref}/`);
-
+  const personalProfileActive =
+    pathname === personalProfileHref || pathname.startsWith(`${personalProfileHref}/`);
+  const companySettingsActive =
+    pathname === companySettingsHref || pathname.startsWith(`${companySettingsHref}/`);
+  const formBuilderActive =
+    pathname === formBuilderHref || pathname.startsWith(`${formBuilderHref}/`);
   return (
     <>
       <div
@@ -341,11 +346,28 @@ function DashboardSettingsSidebar({
         <DashboardAppBrand collapsed={!expanded} />
       </div>
       <nav className={cn("flex min-h-0 min-w-0 flex-1 flex-col gap-0.5", expanded ? "p-3" : "items-center px-0 py-3")}>
+
         <SidebarNavLink
-          href={appearanceHref}
-          active={appearanceActive}
-          label={t("appearance")}
-          icon={Palette}
+          href={personalProfileHref}
+          active={personalProfileActive}
+          label={t("personalProfile")}
+          icon={UserRound}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={companySettingsHref}
+          active={companySettingsActive}
+          label={t("companySettings")}
+          icon={Building2}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={formBuilderHref}
+          active={formBuilderActive}
+          label={t("formBuilder")}
+          icon={Settings}
           expanded={expanded}
           resolved={resolved}
         />

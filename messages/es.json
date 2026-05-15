@@ -140,6 +140,9 @@
       "pinStatus": "Estados de pin",
       "tags": "Etiquetas",
       "users": "Usuarios",
+      "personalProfile": "Perfil personal",
+      "companySettings": "Ajustes de la empresa",
+      "formBuilder": "Creador de formularios",
       "hint": "Personaliza el tema y el color de acento de este espacio."
     },
     "appearance": {

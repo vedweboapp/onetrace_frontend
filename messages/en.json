@@ -140,6 +140,9 @@
       "pinStatus": "Pin statuses",
       "tags": "Tags",
       "users": "Users",
+      "personalProfile": "Personal Profile",
+      "companySettings": "Company Settings",
+      "formBuilder": "Form Builder",
       "hint": "Customize theme and accent for this workspace."
     },
     "appearance": {

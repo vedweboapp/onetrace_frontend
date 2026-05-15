@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { DashboardAccentId } from "@/features/dashboard/store/dashboard-appearance.store";
+import type { DashboardAccentId } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 import {
   accentActiveNavClass,
   accentHeaderStripeClass,
