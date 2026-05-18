@@ -221,7 +221,8 @@ export function QuotationDetailBody({
 
   const overviewCard = (
     <DetailPanelCard title={t("detail.sectionOverview")}>
-      <DetailMetricsGrid className="grid-cols-1 sm:grid-cols-1 lg:grid-cols-1">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
         <DetailMetricCard label={t("fields.quoteName")}>{detail.quote_name}</DetailMetricCard>
         <DetailMetricCard label={t("fields.customer")}>
           {quotationCustomerLabel(detail.customer, customerName ?? null)}
@@ -233,7 +234,9 @@ export function QuotationDetailBody({
         <DetailMetricCard label={t("fields.orderNumber")}>{detail.order_number?.trim() || "—"}</DetailMetricCard>
         <DetailMetricCard label={t("fields.dueDate")}>{dueLabel}</DetailMetricCard>
         <DetailMetricCard label={t("table.status")}>{quoteStatusLabel(detail.status)}</DetailMetricCard>
-      </DetailMetricsGrid>
+    
+        </div>
+    
     </DetailPanelCard>
   );
 
@@ -321,7 +324,7 @@ export function QuotationDetailBody({
     if (siteDetailLoading) {
       return {
         address: null as React.ReactNode,
-        map: <div className="h-full min-h-[220px] flex-1 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800" />,
+        map: <div className=" min-h-[220px] flex-1 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800" />,
       };
     }
 
@@ -414,6 +417,7 @@ export function QuotationDetailBody({
                 <QuotationUserPersonCell label={t("fields.projectManager")} user={detail.project_manager} />
                 <QuotationContactPersonCell label={t("fields.primaryContact")} contact={detail.primary_customer_contact} />
                 <QuotationContactPersonCell label={t("fields.additionalContact")} contact={detail.additional_customer_contact} />
+                </div>
                 <div>
                   <p className="text-xs font-medium leading-snug text-slate-500 dark:text-slate-400">
                     {t("fields.technicians")}
@@ -436,7 +440,7 @@ export function QuotationDetailBody({
                     </ul>
                   )}
                 </div>
-              </div>
+              
             </DetailPanelCard>
 
             <div className="grid grid-cols-1 gap-3.5">

@@ -12,7 +12,6 @@ import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
   ActiveStatusBadge,
   AppButton,
-  CheckmarkSelect,
   ConfirmDialog,
   DashboardEmptyState,
   DataTable,
@@ -27,6 +26,7 @@ import {
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
+  ListPageActiveFilter,
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
@@ -93,14 +93,6 @@ export function ClientsPanel() {
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
-
-  const stateFilterOptions = React.useMemo(
-    () => [
-      { value: "true", label: t("status.active") },
-      { value: "false", label: t("status.inactive") },
-    ],
-    [t],
-  );
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -210,16 +202,14 @@ export function ClientsPanel() {
                 ariaLabel={tList("searchAria")}
                 className="sm:max-w-sm"
               />
-              <CheckmarkSelect
-                listLabel={t("filterState")}
-                buttonAriaLabel={t("filterState")}
-                options={stateFilterOptions}
-                value={isActiveParam === "false" ? "false" : "true"}
-                emptyLabel={t("status.active")}
-                portaled
-                className="w-full min-w-0 sm:w-44"
-                onChange={(v) =>
-                  setUrl({ is_active: v === "false" ? "false" : null, page: null }, { replace: true })
+              <ListPageActiveFilter
+                activeLabel={t("status.active")}
+                inactiveLabel={t("status.inactive")}
+                filterLabel={t("filterState")}
+                filterAriaLabel={t("filterState")}
+                isActiveParam={isActiveParam}
+                onChange={(isActive) =>
+                  setUrl({ is_active: isActive ? null : "false", page: null }, { replace: true })
                 }
               />
             </div>

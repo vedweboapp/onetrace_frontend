@@ -15,6 +15,7 @@ export type LoginRequest = {
 
 export type OtpRequestBody = {
   email: string;
+  purpose:string
 };
 
 export type OtpVerifyBody = {
@@ -24,6 +25,7 @@ export type OtpVerifyBody = {
 
 export type ForgotOtpRequestBody = {
   email: string;
+  purpose:string
 };
 
 export type PasswordResetConfirmBody = {

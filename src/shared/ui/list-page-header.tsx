@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { LayoutGrid, List, SlidersHorizontal } from "lucide-react";
+import { LayoutGrid, List, Funnel } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ListPageViewMode } from "@/shared/hooks/use-list-url-state";
 import { cn } from "@/core/utils/http.util";
@@ -174,7 +174,7 @@ export function ListPageHeader({
                   filtersOpen && "border-slate-300 bg-slate-50 dark:border-slate-600 dark:bg-slate-800",
                 )}
               >
-                <SlidersHorizontal className="size-4" strokeWidth={2} aria-hidden />
+                <Funnel className="size-4" strokeWidth={2} aria-hidden />
                 {filtersActive ? (
                   <span
                     className="absolute right-1 top-1 size-1.5 rounded-full ring-2 ring-white dark:ring-slate-900"
