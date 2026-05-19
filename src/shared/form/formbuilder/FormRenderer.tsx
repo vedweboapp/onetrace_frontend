@@ -20,9 +20,9 @@ import ProfilePictureUploader from "../../components/profile-picture-uploader";
 import { Country, State, City } from "country-state-city";
 
 interface Field {
-  name: string;
-  label: string;
-  type: string;
+  api_name: string;
+  field_label: string;
+  field_type: string;
   order?: number;
   required?: boolean | string;
   placeholder?: string;
@@ -34,8 +34,8 @@ interface Field {
 }
 
 interface Section {
-  sectionHeader?: string;
-  columns?: number;
+  name?: string;
+  column_count?: number;
   is_subform?: boolean;
   subform_field_name?: string;
   fields: Field[];
@@ -58,21 +58,20 @@ export interface FormRendererRef {
 }
 
 const FIELD_COMPONENTS: Record<string, any> = {
-  text: Input,
+  single_line: Input,
   number: (props: any) => <Input type="number" {...props} />,
   url: (props: any) => <Input type="url" {...props} />,
   email: (props: any) => <Input type="email" {...props} />,
   date: (props: any) => <Input type="date" {...props} />,
-  "date-time": (props: any) => <Input type="datetime-local" {...props} />,
-  textarea: TextBox,
-  "multi-line": TextBox,
-  "pick-list": Select,
+  date_time: (props: any) => <Input type="datetime-local" {...props} />,
+  multi_line: TextBox,
+  picklist: Select,
   select: Select,
   radio: RadioGroup,
   phone: FormPhoneInput,
   currency: CurrencySelect,
-  "file-upload": FileUploader,
-  "image-upload": (props: any) => (
+  file_upload: FileUploader,
+  image_upload: (props: any) => (
     <div className="flex flex-col gap-2">
       {props.label && <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{props.label}</span>}
       <ProfilePictureUploader 
@@ -82,7 +81,7 @@ const FIELD_COMPONENTS: Record<string, any> = {
       />
     </div>
   ),
-  "multi-select": MultiSelect,
+  multi_select: MultiSelect,
 };
 
 const deepEqual = (a: any, b: any): boolean => {
@@ -103,24 +102,7 @@ const deepEqual = (a: any, b: any): boolean => {
 };
 
 const getNormalizedType = (type: string) => {
-  if (!type) return "text";
-  const aliases: Record<string, string> = {
-    pick_list: "pick-list",
-    multi_line: "multi-line",
-    "multi-line": "multi-line",
-    "multi-text": "multi-line",
-    multi_select: "multi-select",
-    "date-time": "date-time",
-    date: "date",
-    radio: "radio",
-    auto_number: "text",
-    file_upload: "file-upload",
-    image_upload: "image-upload",
-    rollup_summary: "text",
-    multi_select_lookup: "multi-select-lookup",
-    long_integer: "number",
-  };
-  return aliases[type] || type;
+  return type || "single_line";
 };
 
 const getCountryISO = (name: string) => {
@@ -153,15 +135,15 @@ const FormField: React.FC<{
   isSubmitted,
   dirtyFields,
 }) => {
-  if (!field || !field.name) return null;
+  if (!field || !field.api_name) return null;
 
-  const normType = getNormalizedType(field.type);
+  const normType = getNormalizedType(field.field_type);
   const Component = FIELD_COMPONENTS[normType] || Input;
 
   const validations: any = { ...field.validations };
   if (field.required === true || field.required === "true") {
     if (!validations.required) {
-      validations.required = `${field.label || "This field"} is required`;
+      validations.required = `${field.field_label || "This field"} is required`;
     }
   }
 
@@ -170,7 +152,7 @@ const FormField: React.FC<{
   const label = (
     <div className="flex items-center gap-1 mb-1">
       <span className="text-[13px] font-bold text-gray-600 uppercase tracking-wide">
-        {field.label}
+        {field.field_label}
       </span>
       {isRequired && (
         <span className="text-red-500 font-bold text-sm ml-0.5">*</span>
@@ -191,7 +173,7 @@ const FormField: React.FC<{
       <div className={colSpanClass}>
         <FormPhoneInput
           feildName={label}
-          name={field.name}
+          name={field.api_name}
           control={control}
           errors={errors}
           rules={validations}
@@ -203,21 +185,21 @@ const FormField: React.FC<{
   }
 
   // Use Controller for complex components
-  if (["file-upload", "image-upload", "multi-select"].includes(normType)) {
+  if (["file_upload", "image_upload", "multi_select"].includes(normType)) {
     return (
       <div className={colSpanClass}>
         <Controller
-          name={field.name}
+          name={field.api_name}
           control={control}
           rules={validations}
           render={({ field: { onChange, value } }) => (
             <Component
-              label={field.label}
-              name={field.name}
+              label={field.field_label}
+              name={field.api_name}
               value={value}
               onChange={onChange}
               control={control} // For FileUploader
-              errors={getError(field.name)}
+              errors={getError(field.api_name)}
               readOnly={field.readOnly}
               options={field.options || []}
               placeholder={field.placeholder}
@@ -230,9 +212,9 @@ const FormField: React.FC<{
 
   const commonProps = {
     label: label,
-    name: field.name,
-    register: register(field.name, validations),
-    errors: getError(field.name),
+    name: field.api_name,
+    register: register(field.api_name, validations),
+    errors: getError(field.api_name),
     readOnly: field.readOnly,
     placeholder: field.placeholder,
     className: "w-full",
@@ -253,7 +235,7 @@ const sanitizeOutput = (data: any, schema: Section[]) => {
     if (!section) return;
 
     if (section.is_subform) {
-      const sfKey = section.subform_field_name || section.sectionHeader;
+      const sfKey = section.subform_field_name || section.name;
       if (!sfKey) return;
 
       const rawRows = data[sfKey] || [];
@@ -263,14 +245,14 @@ const sanitizeOutput = (data: any, schema: Section[]) => {
           let hasAnyValue = false;
 
           section.fields?.forEach((field) => {
-            let val = row[field.name];
+            let val = row[field.api_name];
             if (val === undefined || val === null) return;
             
-            const normType = getNormalizedType(field.type);
+            const normType = getNormalizedType(field.field_type);
             if (normType === "number" && val !== "") {
               val = Number(val);
             }
-            sanitizedValues[field.name] = val;
+            sanitizedValues[field.api_name] = val;
             if (val !== "" && val !== null && val !== undefined) {
               hasAnyValue = true;
             }
@@ -284,10 +266,10 @@ const sanitizeOutput = (data: any, schema: Section[]) => {
       sanitized[sfKey] = transformedRows;
     } else {
       section?.fields?.forEach((field) => {
-        const val = data[field.name];
+        const val = data[field.api_name];
         if (val === undefined || val === null || val === "") return;
-        const normType = getNormalizedType(field.type);
-        if (normType === "number") sanitized[field.name] = Number(val);
+        const normType = getNormalizedType(field.field_type);
+        if (normType === "number") sanitized[field.api_name] = Number(val);
       });
     }
   });
@@ -301,7 +283,7 @@ const mapDataToFormFields = (data: any, schema: Section[], defaultValues = {}) =
 
   schema.forEach((s) => {
     if (s.is_subform) {
-      const sfKey = s.subform_field_name || s.sectionHeader;
+      const sfKey = s.subform_field_name || s.name;
       if (!sfKey) return;
 
       const rawValue = data[sfKey];
@@ -317,23 +299,23 @@ const mapDataToFormFields = (data: any, schema: Section[], defaultValues = {}) =
       }
     } else {
       s?.fields?.forEach((f) => {
-        if (!f.name) return;
-        const val = data[f.name];
+        if (!f.api_name) return;
+        const val = data[f.api_name];
         if (val !== undefined && val !== null) {
-          const normType = getNormalizedType(f.type);
+          const normType = getNormalizedType(f.field_type);
           if (typeof val === "object" && val?.id !== undefined) {
-            formData[f.name] = val.id;
+            formData[f.api_name] = val.id;
           } else if (Array.isArray(val)) {
-            formData[f.name] = val.map((item) =>
+            formData[f.api_name] = val.map((item) =>
               item?.id !== undefined ? item.id : item,
             );
           } else {
-            formData[f.name] = normType === "country" ? getCountryISO(val) : val;
+            formData[f.api_name] = normType === "country" ? getCountryISO(val) : val;
           }
-        } else if ((defaultValues as any)[f.name] !== undefined) {
-          formData[f.name] = (defaultValues as any)[f.name];
+        } else if ((defaultValues as any)[f.api_name] !== undefined) {
+          formData[f.api_name] = (defaultValues as any)[f.api_name];
         } else {
-          formData[f.name] = "";
+          formData[f.api_name] = "";
         }
       });
     }
@@ -429,14 +411,14 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
           if (section.is_subform) {
             const sfKey =
               section.subform_field_name ||
-              section.sectionHeader ||
+              section.name ||
               `subform_${sIdx}`;
             return (
               <div key={sIdx} className="form-section my-6 first:mt-0">
-                {section.sectionHeader && (
+                {section.name && (
                   <div className="flex items-center gap-4 mb-4">
                     <h3 className="text-[14px] font-bold text-gray-800 uppercase tracking-widest">
-                      {section.sectionHeader}
+                      {section.name}
                     </h3>
                     <div className="h-px bg-gradient-to-r from-gray-100 to-transparent flex-1"></div>
                   </div>
@@ -466,22 +448,22 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
               key={sIdx}
               className="form-section my-6 first:mt-0 bg-white/40 p-1 rounded-2xl"
             >
-              {section.sectionHeader && (
+              {section.name && (
                 <div className="flex items-center gap-4 mb-4">
                   <h3 className="text-[14px] font-bold text-gray-800 uppercase tracking-widest">
-                    {section.sectionHeader}
+                    {section.name}
                   </h3>
                   <div className="h-px bg-gradient-to-r from-gray-100 to-transparent flex-1"></div>
                 </div>
               )}
               <div
-                className={`grid grid-cols-1 md:grid-cols-${section.columns || 2} gap-x-10 gap-y-7`}
+                className={`grid grid-cols-1 md:grid-cols-${section.column_count || 2} gap-x-10 gap-y-7`}
               >
                 {[...(section.fields || [])]
                   .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
                   .map((f, fIdx) => (
                     <FormField
-                      key={f?.name || fIdx}
+                      key={f?.api_name || fIdx}
                       field={f}
                       control={control}
                       register={register}

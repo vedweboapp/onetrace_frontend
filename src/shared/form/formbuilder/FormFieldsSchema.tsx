@@ -37,10 +37,10 @@ export interface FormFieldSchemaItem {
 
 // Build field list — Add Section/Subform buttons live in ModuleBar footer, not here
 const fieldItems: FormFieldSchemaItem[] = FormFieldsConfig.map(field => ({
-  type: field.type.replace('-text', '-line'),
+  type: field.type,
   label: field.label,
   component: (
-    <DraggableField type={field.type.replace('-text', '-line')}>
+    <DraggableField type={field.type}>
       <FieldButton icon={field.icon} label={field.label} />
     </DraggableField>
   ),

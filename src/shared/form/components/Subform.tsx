@@ -6,9 +6,9 @@ import { Country, State, City } from "country-state-city";
 import { FormPhoneInput } from "./phone-input";
 
 interface SubformField {
-  name: string;
-  label: string;
-  type: string;
+  api_name: string;
+  field_label: string;
+  field_type: string;
   order?: number;
   is_deleted?: boolean;
   required?: boolean | string;
@@ -32,28 +32,28 @@ interface SubFormProps {
 }
 
 const getNormalizedType = (type: string) => {
-  if (!type) return "text";
+  if (!type) return "single_line";
   const aliases: Record<string, string> = {
-    pick_list: "pick-list",
     multi_line: "textarea",
-    "multi-line": "textarea",
+    picklist: "pick-list",
     multi_select: "multi-select",
     date_time: "date-time",
-    auto_number: "text",
-    rollup_summary: "text",
+    auto_number: "single_line",
+    rollup_summary: "single_line",
     long_integer: "number",
     multi_select_lookup: "multi-select-lookup",
     file_upload: "file",
     image_upload: "image_uploader",
+    receiver_lookup: "receiver-lookup",
   };
   return aliases[type] || type;
 };
 
 const buildEmptyRow = (fields: SubformField[] = []) =>
   fields.reduce((acc: any, f) => {
-    if (!f?.name) return acc;
-    const norm = getNormalizedType(f.type);
-    acc[f.name] =
+    if (!f?.api_name) return acc;
+    const norm = getNormalizedType(f.field_type);
+    acc[f.api_name] =
       norm === "multi-select" || norm === "multi-select-lookup" ? [] : "";
     return acc;
   }, {});
@@ -67,7 +67,7 @@ const CellInput: React.FC<{
   onChange: (val: any) => void;
   rowData: any;
 }> = ({ field, value, onChange, rowData = {} }) => {
-  const norm = getNormalizedType(field.type);
+  const norm = getNormalizedType(field.field_type);
 
   // For now, we'll implement a simplified version of lookup/user components
   // until they are fully ported to onetrace_frontend.
@@ -233,7 +233,7 @@ const SubForm: React.FC<SubFormProps> = ({
   readOnly = false,
 }) => {
   const activeFields = [...fields]
-    .filter((f) => f?.name && !f.is_deleted)
+    .filter((f) => f?.api_name && !f.is_deleted)
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   const [internalRows, setInternalRows] = useState(() =>
@@ -281,10 +281,10 @@ const SubForm: React.FC<SubFormProps> = ({
             <tr className="bg-gray-50/80">
               {activeFields.map((f) => (
                 <th
-                  key={f.name}
+                  key={f.api_name}
                   className="px-4 py-3 text-left text-[12px] font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-200 whitespace-nowrap"
                 >
-                  <span>{f.label}</span>
+                  <span>{f.field_label}</span>
                   {(f.required === true || f.required === "true") && (
                     <span className="text-red-400 ml-0.5">*</span>
                   )}
@@ -304,13 +304,13 @@ const SubForm: React.FC<SubFormProps> = ({
               >
                 {activeFields.map((f) => (
                   <td
-                    key={f.name}
+                    key={f.api_name}
                     className="border-r border-gray-100 last:border-none align-middle"
                   >
                     <CellInput
                       field={f}
-                      value={rowData[f.name] ?? ""}
-                      onChange={(val) => handleCellChange(rowIdx, f.name, val)}
+                      value={rowData[f.api_name] ?? ""}
+                      onChange={(val) => handleCellChange(rowIdx, f.api_name, val)}
                       rowData={rowData}
                     />
                   </td>

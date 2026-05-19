@@ -35,13 +35,13 @@ export interface FieldConfigItem {
 export const FormFieldsConfig: FieldConfigItem[] = [
   {
     key: "singleLine",
-    type: "text",
+    type: "single_line",
     label: "Single Line",
     icon: Minus
   },
   {
     key: "multiLine",
-    type: "multi-text",
+    type: "multi_line",
     label: "Multi-Line",
     icon: AlignLeft
   },
@@ -59,13 +59,13 @@ export const FormFieldsConfig: FieldConfigItem[] = [
   },
   {
     key: "pickList",
-    type: "pick-list",
+    type: "picklist",
     label: "Pick List",
     icon: List
   },
   {
     key: "multiSelect",
-    type: "multi-select",
+    type: "multi_select",
     label: "Multi-Select",
     icon: ListChecks
   },
@@ -77,7 +77,7 @@ export const FormFieldsConfig: FieldConfigItem[] = [
   },
   {
     key: "dateTime",
-    type: "date-time",
+    type: "date_time",
     label: "Date/Time",
     icon: Clock
   },
@@ -89,7 +89,7 @@ export const FormFieldsConfig: FieldConfigItem[] = [
   },
   {
     key: "autoNumber",
-    type: "auto-number",
+    type: "auto_number",
     label: "Auto-Number",
     icon: ArrowUpDown
   },
@@ -113,7 +113,7 @@ export const FormFieldsConfig: FieldConfigItem[] = [
   },
   {
     key: "longInteger",
-    type: "long-integer",
+    type: "long_integer",
     label: "Long Integer",
     icon: MapPin
   },
@@ -143,13 +143,13 @@ export const FormFieldsConfig: FieldConfigItem[] = [
   },
   {
     key: "fileUpload",
-    type: "file-upload",
+    type: "file_upload",
     label: "File Upload",
     icon: FileUp
   },
   {
     key: "imageUpload",
-    type: "image-upload",
+    type: "image_upload",
     label: "Image Upload",
     icon: Image
   },
@@ -161,13 +161,13 @@ export const FormFieldsConfig: FieldConfigItem[] = [
   },
   {
     key: "multiSelectLookup",
-    type: "multi-select-lookup",
+    type: "multi_select_lookup",
     label: "Multi-Select Lookup",
     icon: ListChecks
   },
   {
     key: "receiver-lookup",
-    type: "receiver-lookup",
+    type: "receiver_lookup",
     label: "Receiver Lookup",
     icon: Home,
   }

@@ -25,6 +25,7 @@ import {
   Globe,
   LucideIcon,
 } from "lucide-react";
+import { currencyList } from "./currency-list";
 
 export interface FieldConfig {
   type: string;
@@ -65,11 +66,11 @@ export interface FieldTypeDefinition {
 }
 
 export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
-  text: {
+  single_line: {
     label: "Single Line",
     icon: Minus,
     defaultConfig: () => ({
-      type: "text",
+      type: "single_line",
       label: "Single Line Text",
       name: "",
       placeholder: "",
@@ -87,15 +88,15 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       { type: "number", label: "Max Length", key: "maxLength" },
       { type: "number", label: "Min Length", key: "minLength" },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
-  "multi-line": {
+  multi_line: {
     label: "Multi-Line",
     icon: AlignLeft,
     defaultConfig: () => ({
-      type: "multi-line",
+      type: "multi_line",
       label: "Description",
       name: "",
       placeholder: "Enter details...",
@@ -111,8 +112,8 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       { type: "textarea", label: "Placeholder", key: "placeholder" },
       { type: "number", label: "Character limit", key: "maxLength" },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
   email: {
@@ -134,8 +135,8 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       { type: "text", label: "Placeholder", key: "placeholder" },
       { type: "checkbox", label: "Is Unique", key: "is_unique" },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
   phone: {
@@ -157,15 +158,15 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       { type: "text", label: "Placeholder", key: "placeholder" },
       { type: "number", label: "Max Length", key: "maxLength" },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
-  "pick-list": {
+  picklist: {
     label: "Pick List",
     icon: List,
     defaultConfig: () => ({
-      type: "pick-list",
+      type: "picklist",
       label: "Status",
       name: "",
       options: ["Open", "In Progress", "Closed"],
@@ -185,15 +186,15 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       },
       { type: "text", label: "Default Value", key: "defaultValue" },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
-  "multi-select": {
+  multi_select: {
     label: "Multi-Select",
     icon: ListChecks,
     defaultConfig: () => ({
-      type: "multi-select",
+      type: "multi_select",
       label: "Categories",
       name: "",
       options: ["Option 1", "Option 2", "Option 3"],
@@ -211,8 +212,8 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
         required: true,
       },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
   date: {
@@ -230,15 +231,15 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
     configFields: [
       { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
-  "date-time": {
+  date_time: {
     label: "Date/Time",
     icon: Clock,
     defaultConfig: () => ({
-      type: "date-time",
+      type: "date_time",
       label: "Date & Time",
       name: "",
       required: false,
@@ -249,8 +250,8 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
     configFields: [
       { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
   number: {
@@ -282,15 +283,15 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
         ],
       },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
-  "auto-number": {
+  auto_number: {
     label: "Auto-Number",
     icon: ArrowUpDown,
     defaultConfig: () => ({
-      type: "auto-number",
+      type: "auto_number",
       label: "Auto Number",
       name: "",
       prefix: "",
@@ -308,8 +309,8 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       { type: "number", label: "Starting Number", key: "startingNumber" },
       { type: "text", label: "suffix", key: "suffix" },
       { type: "checkbox", label: "Is Unique", key: "unique", required: true },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
   currency: {
@@ -329,7 +330,15 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
     }),
     configFields: [
       { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
-      { type: "text", label: "Currency Code", key: "currency" },
+      {
+        type: "drop-down",
+        label: "Currency Code",
+        key: "currency",
+        options: currencyList.map((c) => ({
+          value: c.value,
+          label: `${c.label} - ${c.value}`,
+        })),
+      },
       {
         type: "drop-down",
         label: "Maximum digits allowed",
@@ -346,8 +355,8 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
         key: "max",
       },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
   decimal: {
@@ -394,8 +403,8 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
         key: "decimalPlaces",
       },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
   percent: {
@@ -415,15 +424,15 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
       { type: "text", label: "Placeholder", key: "placeholder" },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
-  "long-integer": {
+  long_integer: {
     label: "Long Integer",
     icon: MapPin,
     defaultConfig: () => ({
-      type: "long-integer",
+      type: "long_integer",
       label: "Long Integer",
       name: "",
       placeholder: "0",
@@ -451,8 +460,8 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       },
       { type: "checkbox", label: "Is Unique", key: "is_unique" },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
   checkbox: {
@@ -472,8 +481,8 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
       { type: "checkbox", label: "Required", key: "required" },
       { type: "checkbox", label: "Checked by Default", key: "defaultChecked" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
   url: {
@@ -495,8 +504,8 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       { type: "number", label: "Number of characters allowed", key: "max" },
       { type: "text", label: "Placeholder", key: "placeholder" },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
   lookup: {
@@ -529,8 +538,8 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
         ],
       },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
   user: {
@@ -557,15 +566,15 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
           { value: "multiple", label: "Multiple Users" },
         ],
       },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
-  "file-upload": {
+  file_upload: {
     label: "File Upload",
     icon: FileUp,
     defaultConfig: () => ({
-      type: "file-upload",
+      type: "file_upload",
       label: "Attachments",
       name: "",
       maxFileSize: 5,
@@ -580,15 +589,15 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       { type: "number", label: "Max File Size (MB)", key: "maxFileSize" },
       { type: "text", label: "Allowed File Types", key: "allowedTypes" },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
-  "image-upload": {
+  image_upload: {
     label: "Image Upload",
     icon: Image,
     defaultConfig: () => ({
-      type: "image-upload",
+      type: "image_upload",
       label: "Image",
       name: "",
       maxFileSize: 5,
@@ -601,15 +610,15 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
       { type: "number", label: "Max File Size (MB)", key: "maxFileSize" },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
-  "rollup-summary": {
+  rollup_summary: {
     label: "Rollup Summary",
     icon: BarChart3,
     defaultConfig: () => ({
-      type: "rollup-summary",
+      type: "rollup_summary",
       label: "Total count",
       name: "",
       summaryType: "SUM",
@@ -621,8 +630,8 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
       { type: "text", label: "Related Object", key: "relatedObject" },
       { type: "text", label: "Summary Type (SUM/COUNT/AVG)", key: "summaryType" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
   country: {
@@ -640,15 +649,15 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
     configFields: [
       { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
-  "multi-select-lookup": {
+  multi_select_lookup: {
     label: "Multi-Select Lookup",
     icon: ListChecks,
     defaultConfig: () => ({
-      type: "multi-select-lookup",
+      type: "multi_select_lookup",
       label: "Related Records",
       name: "",
       lookup_module: "deal",
@@ -674,15 +683,15 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
         ],
       },
       { type: "checkbox", label: "Required", key: "required" },
-      { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
-  "receiver-lookup": {
+  receiver_lookup: {
     label: "Receiver Lookup",
     icon: Home,
     defaultConfig: () => ({
-      type: "receiver-lookup",
+      type: "receiver_lookup",
       label: "Receiver Record",
       name: "",
     }),
@@ -704,30 +713,4 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
   }
 };
 
-const aliases: Record<string, string> = {
-  "pick_list": "pick-list",
-  "multi_line": "multi-line",
-  "multi_text": "multi-line",
-  "multi-text": "multi-line",
-  "multi_select": "multi-select",
-  "date_time": "date-time",
-  "auto_number": "auto-number",
-  "file_upload": "file-upload",
-  "rollup_summary": "rollup-summary",
-  "multi_select_lookup": "multi-select-lookup",
-  "image_uploader": "image-upload",
-  "image_upload": "image-upload",
-};
-
-Object.keys(aliases).forEach(backendType => {
-  const frontendType = aliases[backendType];
-  if (FIELD_TYPES[frontendType]) {
-    FIELD_TYPES[backendType] = {
-      ...FIELD_TYPES[frontendType],
-      defaultConfig: () => ({
-        ...FIELD_TYPES[frontendType].defaultConfig(),
-        type: backendType,
-      })
-    };
-  }
-});
+// No aliases or backward compatibility mappings needed for new development

@@ -1,11 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
-import {
-    usePathname,
-    useRouter,
-    useSearchParams,
-} from "next/navigation";
+import { useMemo, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "@/i18n/navigation";
 
 type DefaultParams = {
     page: number;
@@ -29,16 +26,17 @@ export const useUrlParams = (
 
     const searchParams = useSearchParams();
 
-    const globalDefaults: DefaultParams = {
+    const globalDefaults = useMemo<DefaultParams>(() => ({
         page: 1,
         page_size: 10,
         search: "",
-    };
+    }), []);
 
-    const defaults: DefaultParams = {
+    const customDefaultsSerialized = JSON.stringify(customDefaults);
+    const defaults = useMemo<DefaultParams>(() => ({
         ...globalDefaults,
         ...customDefaults,
-    };
+    }), [globalDefaults, customDefaultsSerialized]);
 
     const params = useMemo(() => {
         const result: DefaultParams = { ...defaults };
@@ -62,11 +60,11 @@ export const useUrlParams = (
         return result;
     }, [searchParams, defaults]);
 
-    const updateParams = (newParams: URLSearchParams) => {
+    const updateParams = useCallback((newParams: URLSearchParams) => {
         router.push(`${pathname}?${newParams.toString()}`);
-    };
+    }, [router, pathname]);
 
-    const setParam = (
+    const setParam = useCallback((
         key: string,
         value: ParamsValue
     ) => {
@@ -81,9 +79,9 @@ export const useUrlParams = (
         }
 
         updateParams(newParams);
-    };
+    }, [searchParams, updateParams]);
 
-    const setPageSize = (newSize: number) => {
+    const setPageSize = useCallback((newSize: number) => {
         const currentPage =
             Number(searchParams.get("page")) || 1;
 
@@ -106,7 +104,7 @@ export const useUrlParams = (
         newParams.set("page", String(newPage));
 
         updateParams(newParams);
-    };
+    }, [searchParams, updateParams]);
 
     return [params, setParam, setPageSize];
 };

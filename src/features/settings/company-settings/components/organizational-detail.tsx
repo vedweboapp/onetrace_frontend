@@ -11,17 +11,19 @@ import { LocationSelectorGroup } from "@/shared/form/components/location-selecto
 import { getOrganizationDetails, updateOrganizationDetails } from "../api/company-settings.api";
 import { OrganizationDetails } from "../types/types";
 import { toast } from "sonner";
+import { timeZones } from "@/shared/constants/timezones";
 
 interface OrganizationalDetailProps {
     isEditing: boolean;
-    onSaveSuccess?: () => void;
+    initialData: OrganizationDetails;
+    onSaveSuccess?: (data?: OrganizationDetails) => void;
 }
 
 export interface OrganizationalDetailRef {
     submit: () => void;
 }
 
-const OrganizationalDetail = React.forwardRef<OrganizationalDetailRef, OrganizationalDetailProps>(({ isEditing, onSaveSuccess }, ref) => {
+const OrganizationalDetail = React.forwardRef<OrganizationalDetailRef, OrganizationalDetailProps>(({ isEditing, initialData, onSaveSuccess }, ref) => {
     const { register, control, watch, handleSubmit, reset, formState: { errors } } = useForm<any>({
         defaultValues: {
             logo: null,
@@ -38,30 +40,21 @@ const OrganizationalDetail = React.forwardRef<OrganizationalDetailRef, Organizat
         }
     });
 
-    const [isLoading, setIsLoading] = React.useState(true);
+    const [isLoading, setIsLoading] = React.useState(false);
 
-    // Fetch data on mount
+    // Reset form when initialData changes
     React.useEffect(() => {
-        const fetchData = async () => {
-            try {
-                // Using hardcoded ID 1 for now as per path example, or could be from auth context
-                const data = await getOrganizationDetails(1);
-                reset(data);
-            } catch (error) {
-                console.error("Failed to fetch organization details:", error);
-                toast.error("Failed to load organization details");
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchData();
-    }, [reset]);
+        if (initialData) {
+            reset(initialData);
+        }
+    }, [initialData, reset]);
 
     const onSubmit = async (data: any) => {
         try {
-            await updateOrganizationDetails(1, data);
+            const payload = { ...initialData, ...data };
+            await updateOrganizationDetails(1, payload);
             toast.success("Organization details updated successfully");
-            onSaveSuccess?.();
+            onSaveSuccess?.(payload);
         } catch (error) {
             console.error("Failed to update organization details:", error);
             toast.error("Failed to save changes");
@@ -88,13 +81,6 @@ const OrganizationalDetail = React.forwardRef<OrganizationalDetailRef, Organizat
         "51-200 employees",
         "201-500 employees",
         "500+ employees"
-    ];
-
-    const timezoneOptions = [
-        "UTC-8 (Pacific Time)",
-        "UTC-5 (Eastern Time)",
-        "UTC+0 (GMT)",
-        "UTC+1 (Central European Time)"
     ];
 
     return (
@@ -190,7 +176,7 @@ const OrganizationalDetail = React.forwardRef<OrganizationalDetailRef, Organizat
                         <Select
                             label="Timezone"
                             register={register("timezone")}
-                            options={timezoneOptions}
+                            options={timeZones}
                             errors={errors.timezone as any}
                             readOnly={!isEditing}
                         />

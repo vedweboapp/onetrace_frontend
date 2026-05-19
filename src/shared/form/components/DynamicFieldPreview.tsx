@@ -32,16 +32,15 @@ import {
 } from "@/shared/ui/data-table-row-actions-menu";
 
 const icons: Record<string, LucideIcon> = {
-  text: Minus,
-  "multi-text": AlignLeft,
+  single_line: Minus,
   email: Mail,
   phone: Phone,
-  "pick-list": List,
-  "multi-select": ListChecks,
+  picklist: List,
+  multi_select: ListChecks,
   date: Calendar,
-  "date-time": Clock,
+  date_time: Clock,
   number: Hash,
-  "auto-number": ArrowUpDown,
+  auto_number: ArrowUpDown,
   currency: DollarSign,
   decimal: Circle,
   percent: Percent,
@@ -50,30 +49,21 @@ const icons: Record<string, LucideIcon> = {
   lookup: Search,
   formula: Calculator,
   user: User,
-  "file-upload": FileUp,
-  "image-upload": Image,
-  "image_uploader": Image,
-  "rollup-summary": BarChart3,
+  file_upload: FileUp,
+  image_upload: Image,
+  rollup_summary: BarChart3,
   address: Home,
-  "multi-select-lookup": ListChecks,
-  "long-integer": Hash,
-  "pick_list": List,
-  "multi_line": AlignLeft,
-  "multi_select": ListChecks,
-  "date_time": Clock,
-  "auto_number": ArrowUpDown,
-  "file_upload": FileUp,
-  "rollup_summary": BarChart3,
-  "multi_select_lookup": ListChecks,
-  "long_integer": Hash,
+  multi_select_lookup: ListChecks,
+  long_integer: Hash,
+  receiver_lookup: Home,
   country: Globe,
 };
 
 interface Field {
   _uid: string;
-  type: string;
-  label: string;
-  name?: string;
+  field_type: string;
+  field_label: string;
+  api_name?: string;
   required?: boolean;
   is_deleted?: boolean;
   [key: string]: any;
@@ -103,7 +93,7 @@ export default function DynamicFieldPreview({
   const [{ isDragging }, drag] = useDrag(
     () => ({
       type: "FIELD",
-      item: { _uid: field._uid, index, sectionUid, type: field.type },
+      item: { _uid: field._uid, index, sectionUid, type: field.field_type },
       collect: (monitor) => ({ isDragging: !!monitor.isDragging() }),
     }),
     [field._uid, index, sectionUid]
@@ -137,10 +127,10 @@ export default function DynamicFieldPreview({
       >
         <div className="flex items-center justify-between mb-2">
           <span className="font-medium text-gray-800 flex items-center gap-1.5">
-            {field.label || "Untitled Field"}
-            {field.name && (
+            {field.field_label || "Untitled Field"}
+            {field.api_name && (
               <span className="text-xs font-normal text-gray-400">
-                ({field.name})
+                ({field.api_name})
               </span>
             )}
           </span>
@@ -152,7 +142,7 @@ export default function DynamicFieldPreview({
                 label: "Edit properties",
                 onSelect: () =>
                   modalsetter({
-                    type: field.type,
+                    type: field.field_type,
                     config: field,
                     sectionUid: sectionUid,
                     _fieldUid: field._uid,
@@ -168,7 +158,7 @@ export default function DynamicFieldPreview({
           />
         </div>
         <span className="font-medium text-gray-500 text-md">
-          {field.type || "text"}
+          {field.field_type || "text"}
         </span>
       </div>
     );
@@ -187,14 +177,14 @@ export default function DynamicFieldPreview({
       <div className="flex items-center gap-3">
         <div className="font-medium text-gray-800 flex flex-col">
           <span className="flex items-center gap-2">
-            {field.label || "Untitled Field"}
-            {field.name && (
+            {field.field_label || "Untitled Field"}
+            {field.api_name && (
               <span className="text-[11px] font-normal text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
-                {field.name}
+                {field.api_name}
               </span>
             )}
           </span>
-          <span className="text-sm text-gray-500">{field.type || "text"}</span>
+          <span className="text-sm text-gray-500">{field.field_type || "text"}</span>
         </div>
       </div>
       <DataTableRowActionsMenu
@@ -205,7 +195,7 @@ export default function DynamicFieldPreview({
             label: "Edit properties",
             onSelect: () =>
               modalsetter({
-                type: field.type,
+                type: field.field_type,
                 config: field,
                 sectionUid: sectionUid,
                 _fieldUid: field._uid,

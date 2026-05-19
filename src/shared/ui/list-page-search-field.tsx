@@ -31,16 +31,21 @@ export function ListPageSearchField({
     setLocal(value);
   }, [value]);
 
+  const onCommitRef = React.useRef(onCommit);
+  React.useEffect(() => {
+    onCommitRef.current = onCommit;
+  }, [onCommit]);
+
   React.useEffect(() => {
     const t = window.setTimeout(() => {
       const trimmed = local.trim();
       const urlTrimmed = value.trim();
       if (trimmed !== urlTrimmed) {
-        onCommit(local);
+        onCommitRef.current(local);
       }
     }, debounceMs);
     return () => window.clearTimeout(t);
-  }, [debounceMs, local, onCommit, value]);
+  }, [debounceMs, local, value]);
 
   return (
     <div className={cn("relative min-w-0 flex-1 sm:max-w-sm", className)}>

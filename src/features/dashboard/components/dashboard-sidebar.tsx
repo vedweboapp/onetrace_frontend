@@ -321,7 +321,7 @@ function DashboardSettingsSidebar({
   const usersHref = routes.dashboard.settingsUsers;
   const personalProfileHref = routes.dashboard.settingsPersonalProfile;
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
-  const formBuilderHref = routes.dashboard.settingsFormBuilder;
+  const modulesHref = routes.dashboard.settingsModules;
 
   const pinStatusActive =
     pathname === pinStatusHref || pathname.startsWith(`${pinStatusHref}/`);
@@ -333,8 +333,7 @@ function DashboardSettingsSidebar({
     pathname === personalProfileHref || pathname.startsWith(`${personalProfileHref}/`);
   const companySettingsActive =
     pathname === companySettingsHref || pathname.startsWith(`${companySettingsHref}/`);
-  const formBuilderActive =
-    pathname === formBuilderHref || pathname.startsWith(`${formBuilderHref}/`);
+  const modulesActive = pathname === modulesHref || pathname.startsWith(`${modulesHref}/`);
   return (
     <>
       <div
@@ -364,9 +363,9 @@ function DashboardSettingsSidebar({
           resolved={resolved}
         />
         <SidebarNavLink
-          href={formBuilderHref}
-          active={formBuilderActive}
-          label={t("formBuilder")}
+          href={modulesHref}
+          active={modulesActive}
+          label={t("modules")}
           icon={Settings}
           expanded={expanded}
           resolved={resolved}

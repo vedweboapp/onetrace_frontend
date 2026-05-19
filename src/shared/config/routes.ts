@@ -23,8 +23,7 @@ export const routes = {
     settingsUsers: "/dashboard/settings/users",
     settingsPersonalProfile: "/dashboard/settings/personal-profile",
     settingsCompanySettings: "/dashboard/settings/company-settings",
-    settingsFormBuilder: "/dashboard/settings/form-builder",
-
+    settingsModules: "/dashboard/settings/modules",
   },
 
 } as const;

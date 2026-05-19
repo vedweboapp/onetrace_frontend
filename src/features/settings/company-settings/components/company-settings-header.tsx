@@ -16,8 +16,8 @@ const CompanySettingsHeader = ({ isEditing, setIsEditing, onSave, showEdit = tru
 
     const tabs: PersonalProfileHeaderTabKey[] = [
         { id: "organization", label: "ORGANIZATION DETAILS" },
+        { id: "currencies", label: "CURRENCIES" },
         { id: "schedule", label: "SCHEDULE" },
-        { id: "Currencies", label: "CURRENCIES" },
     ];
 
     return (

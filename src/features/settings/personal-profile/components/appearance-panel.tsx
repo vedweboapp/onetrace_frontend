@@ -65,6 +65,11 @@ function SectionShell({
 }
 
 export function AppearancePanel() {
+  const [isMounted, setIsMounted] = React.useState(false);
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const t = useTranslations("Dashboard.appearance");
   const { theme, setTheme } = useTheme();
   const mounted = useIsClient();
@@ -112,7 +117,7 @@ export function AppearancePanel() {
   }
 
   return (
-    <div className="w-full space-y-8 pb-10">
+    <div className={`w-full space-y-8 pb-10 transition-opacity duration-500 ${isMounted ? "animate-in fade-in duration-500 opacity-100" : "opacity-0"}`}>
       <ListPageHeader variant="page" title={t("title")} description={t("subtitle")} showViewToggle={false} />
 
       {/* Workspace Preferences */}

@@ -11,13 +11,14 @@ import {
 import { AppButton as Button } from "@/shared/ui/app-button";
 import { useFormStore } from "@/features/form-builder/store/form-builder.store";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
+import { useSearchParams, useRouter, useParams } from "next/navigation";
 
 interface Field {
   _uid: string;
   id?: string | number;
-  type: string;
-  label: string;
-  name: string;
+  field_type: string;
+  field_label: string;
+  api_name: string;
   order: number;
   is_deleted?: boolean;
   is_active?: boolean;
@@ -28,8 +29,8 @@ interface Field {
 interface Section {
   _uid: string;
   id?: string | number;
-  sectionHeader: string;
-  columns: number;
+  name: string;
+  column_count: number;
   is_subform?: boolean;
   is_deleted?: boolean;
   is_active?: boolean;
@@ -136,11 +137,11 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
             <h3
               onClick={() => {
                 setEditingSectionId(section._uid);
-                setTempName(section.sectionHeader);
+                setTempName(section.name);
               }}
               className={`text-xl font-semibold cursor-pointer text-gray-600 hover:text-gray-700`}
             >
-              {section.sectionHeader || "Untitled Section"}
+              {section.name || "Untitled Section"}
             </h3>
           )}
           {!section.is_subform && (
@@ -212,7 +213,7 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
             </div>
           ) : (
             <div
-              className={`grid gap-8 ${section.columns === 2 ? "grid-cols-2" : "grid-cols-1"}`}
+              className={`grid gap-8 ${section.column_count === 2 ? "grid-cols-2" : "grid-cols-1"}`}
             >
               {section.fields
                 .filter((f) => !f.is_deleted)
@@ -260,41 +261,104 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
   const {
     formSchema,
     createForm,
+    createModule,
     editForm,
     getFormSchema,
     getFormSchemaById,
+    clearSchema,
   } = useFormStore();
 
+  const searchParams = useSearchParams();
+  const purpose = searchParams.get("purpose");
+  const router = useRouter();
+  const params = useParams();
+  const routeModuleId = params?.id as string;
+  const targetModule = routeModuleId || activeModule || "untitled module";
+  const resolvedLayoutId = layoutId || searchParams.get("layout_id") || searchParams.get("layoutId") || undefined;
+
+  const [moduleName, setModuleName] = useState(
+    purpose === "create_layout" ? "New Layout" : (purpose === "edit_layout" ? "Loading Layout..." : (targetModule || "Untitled"))
+  );
+
   const [sections, setSections] = useState<Section[]>([
-    { _uid: "basic", sectionHeader: "Basic Information", columns: 2, fields: [] },
+    { _uid: "basic", name: "Basic Information", column_count: 2, fields: [] },
   ]);
+
+  useEffect(() => {
+    clearSchema();
+    return () => {
+      clearSchema();
+    };
+  }, [clearSchema, resolvedLayoutId, targetModule, purpose]);
+
+  useEffect(() => {
+    const loadSchema = async () => {
+      if (purpose === "edit_layout" && resolvedLayoutId) {
+        const data = await getFormSchemaById(resolvedLayoutId, routeModuleId);
+        const layoutObj = data?.data || data;
+        if (layoutObj?.name) {
+          setModuleName(layoutObj.name);
+        } else if (layoutObj?.layout?.name) {
+          setModuleName(layoutObj.layout.name);
+        }
+      } else if (purpose !== "create_module" && purpose !== "create_layout" && purpose !== "edit_layout") {
+        const data = await getFormSchema(targetModule);
+        const layoutObj = data?.data || data;
+        if (layoutObj?.name) {
+          setModuleName(layoutObj.name);
+        }
+      }
+    };
+    loadSchema();
+  }, [resolvedLayoutId, targetModule, purpose]);
 
   useEffect(() => {
     if (formSchema && formSchema.length > 0) {
       const initializedSections: Section[] = formSchema.map((sec: any, sIdx: number) => ({
         ...sec,
         _uid: sec.id?.toString() || `section-${sIdx}-${Date.now()}`,
+        name: sec.name || sec.sectionHeader || "",
+        column_count: sec.column_count || sec.columns || 2,
         fields: (sec.fields || [])
-          .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
-          .map((f: any, fIdx: number) => ({
-            ...f,
-            _uid: f.id?.toString() || `field-${fIdx}-${Date.now()}`,
-            order: f.order ?? fIdx,
-            original_name: f.name,
-          })),
+          .sort((a: any, b: any) => (a.sequence ?? a.order ?? 0) - (b.sequence ?? b.order ?? 0))
+          .map((f: any, fIdx: number) => {
+            const validationRules: any = {};
+            if (f.properties?.validation_rules) {
+              Object.keys(f.properties.validation_rules).forEach((key) => {
+                const camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+                validationRules[camelKey] = f.properties.validation_rules[key];
+              });
+            }
+
+            return {
+              ...f,
+              _uid: f.id?.toString() || `field-${fIdx}-${Date.now()}`,
+              order: f.order ?? f.sequence ?? fIdx,
+              original_name: f.api_name || f.name,
+              field_label: f.field_label || f.label || "",
+              api_name: f.api_name || f.name || "",
+              field_type: f.field_type || f.type || "",
+              required: f.required !== undefined ? f.required : (f.properties?.is_required || false),
+              is_searchable: f.is_searchable !== undefined ? f.is_searchable : (f.properties?.is_searchable || false),
+              is_filterable: f.is_filterable !== undefined ? f.is_filterable : (f.properties?.is_filterable || false),
+              is_sortable: f.is_sortable !== undefined ? f.is_sortable : (f.properties?.is_sortable || false),
+              is_public: f.is_public !== undefined ? f.is_public : (f.properties?.is_public || false),
+              ...validationRules,
+            };
+          }),
       }));
       setSections(initializedSections);
-    } else {
+    } else if (purpose === "create_module" || purpose === "create_layout") {
       setSections([
         {
           _uid: "basic",
-          sectionHeader: "Basic Information",
-          columns: 2,
+          name: "Basic Information",
+          column_count: 2,
           fields: [],
         },
       ]);
     }
-  }, [formSchema, activeModule]);
+  }, [formSchema, targetModule, purpose]);
 
   const [showModal, setShowModal] = useState<any>(null);
   const [dirty, setDirty] = useState(false);
@@ -346,8 +410,8 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
   const addNewSectionAfter = (afterUid: string | null = null, isSubform = false) => {
     const newSection: Section = {
       _uid: `section-${Date.now()}`,
-      sectionHeader: "",
-      columns: isSubform ? 1 : 2,
+      name: "",
+      column_count: isSubform ? 1 : 2,
       is_subform: isSubform,
       fields: [],
     };
@@ -367,10 +431,10 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
   };
 
   const saveSectionName = () => {
-    const sectionHeader = tempName.trim() || "Untitled Section";
+    const name = tempName.trim() || "Untitled Section";
     setSections((prev) =>
       prev.map((s) =>
-        s._uid === editingSectionId ? { ...s, sectionHeader } : s,
+        s._uid === editingSectionId ? { ...s, name } : s,
       ),
     );
     setEditingSectionId(null);
@@ -401,54 +465,221 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
   const handleColumnChange = (sectionUid: string, newColumns: number) => {
     setSections((prev) =>
       prev.map((s) =>
-        s._uid === sectionUid ? { ...s, columns: newColumns } : s,
+        s._uid === sectionUid ? { ...s, column_count: newColumns } : s,
       ),
     );
     setDirty(true);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (isClose = false) => {
     try {
       setSaving(true);
       const isNew = !formSchema || formSchema.length === 0;
 
-      const sanitizedSections = sections.map((sec) => {
-        const { _uid, fields, ...sectionRest } = sec;
-        if (typeof sectionRest.id === "string" && sectionRest.id.startsWith("section-")) {
-          delete sectionRest.id;
+      const formatFieldPayload = (f: any, fIdx: number) => {
+        const fieldPayload: any = {
+          field_label: f.field_label,
+          api_name: f.api_name,
+          field_type: f.field_type,
+          sequence: fIdx + 1,
+        };
+
+        if (f.placeholder) fieldPayload.placeholder = f.placeholder;
+        if (f.helpText) fieldPayload.help_text = f.helpText;
+        if (f.options && f.options.length > 0) fieldPayload.options = f.options;
+
+        const validationRules: any = {};
+        const excludeKeys = [
+          "id", "_uid", "field_label", "api_name", "field_type", "order", "original_name",
+          "is_deleted", "is_active", "placeholder", "helpText", "options",
+          "required", "is_searchable", "is_filterable", "is_sortable", "is_public",
+          "markAsPublic", "show_tooltip", "tool_tip", "properties"
+        ];
+        
+        Object.keys(f).forEach((key) => {
+          if (!excludeKeys.includes(key)) {
+            // convert camelCase to snake_case
+            const snakeKey = key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+            validationRules[snakeKey] = f[key];
+          }
+        });
+
+        fieldPayload.properties = {
+          is_required: f.required || false,
+          is_searchable: f.is_searchable || false,
+          is_filterable: f.is_filterable || false,
+          is_sortable: f.is_sortable || false,
+          is_public: f.is_public || false,
+          validation_rules: validationRules,
+        };
+
+        if (f.properties?.id) {
+          fieldPayload.properties.id = f.properties.id;
         }
 
-        const sectionFields = (fields || []).map((field) => {
-          const { _uid: _fUid, ...fieldRest } = field;
-          if (typeof fieldRest.id === "string" && fieldRest.id.startsWith("field-")) {
-            delete fieldRest.id;
-          }
-          return {
-            ...fieldRest,
-            name: field.original_name || fieldRest.name,
+        return fieldPayload;
+      };
+
+      let finalPayload: any;
+
+      if (purpose === "edit_layout") {
+        // Build differential update structure as requested by the API
+        const createdSections = sections
+          .filter((sec) => !sec.is_deleted && (!sec.id || String(sec.id).startsWith("section-")))
+          .map((sec, secIdx) => {
+            const activeFields = (sec.fields || []).filter((f) => !f.is_deleted);
+            return {
+              name: sec.name,
+              sequence: secIdx + 1,
+              column_count: sec.column_count,
+              fields: activeFields.map((f, fIdx) => formatFieldPayload(f, fIdx)),
+            };
+          });
+
+        const updatedSections = sections
+          .filter((sec) => !sec.is_deleted && sec.id && !String(sec.id).startsWith("section-"))
+          .map((sec, secIdx) => {
+            const activeFields = (sec.fields || [])
+              .filter((f) => !f.is_deleted)
+              .map((f, fIdx) => {
+                const payload = formatFieldPayload(f, fIdx);
+                if (f.id && !String(f.id).startsWith("field-")) {
+                  payload.id = Number(f.id) || f.id;
+                }
+                return payload;
+              });
+
+            return {
+              id: Number(sec.id) || sec.id,
+              name: sec.name,
+              sequence: secIdx + 1,
+              column_count: sec.column_count,
+              fields: activeFields,
+            };
+          });
+
+        const deletedSections = sections
+          .filter((sec) => sec.is_deleted && sec.id && !String(sec.id).startsWith("section-"))
+          .map((sec) => {
+            return {
+              id: Number(sec.id) || sec.id,
+              fields: [],
+            };
+          });
+
+        const allDeletedFields: any[] = [];
+        sections
+          .filter((sec) => !sec.is_deleted)
+          .forEach((sec) => {
+            (sec.fields || []).forEach((f) => {
+              if (f.is_deleted && f.id && !String(f.id).startsWith("field-")) {
+                allDeletedFields.push({ id: Number(f.id) || f.id });
+              }
+            });
+          });
+
+        const finalDeletePayload: any[] = [...deletedSections];
+        if (allDeletedFields.length > 0) {
+          finalDeletePayload.push({
+            fields: allDeletedFields,
+          });
+        }
+
+        finalPayload = {
+          layout: {
+            name: moduleName,
+            description: "",
+            sequence: 1,
+            is_active: false,
+          },
+          name: moduleName,
+          create: createdSections,
+          update: updatedSections,
+          delete: finalDeletePayload,
+        };
+      } else {
+        // Fallback/standard flat payload for fresh create_module / create_layout
+        const sectionsPayload = sections
+          .filter((sec) => !sec.is_deleted)
+          .map((sec: any, secIdx: number) => {
+            const secPayload: any = {
+              name: sec.name,
+              sequence: secIdx + 1,
+              column_count: sec.column_count,
+            };
+
+            if (sec.id && !String(sec.id).startsWith("section-")) {
+              secPayload.id = Number(sec.id) || sec.id;
+            }
+
+            const activeFields = (sec.fields || []).filter((f: any) => !f.is_deleted);
+            secPayload.fields = activeFields.map((f: any, fIdx: number) => {
+              const payload = formatFieldPayload(f, fIdx);
+              if (f.id && !String(f.id).startsWith("field-")) {
+                payload.id = Number(f.id) || f.id;
+              }
+              return payload;
+            });
+
+            return secPayload;
+          });
+
+        if (purpose === "create_module") {
+          finalPayload = {
+            module: {
+              name: moduleName,
+              api_name: moduleName.toLowerCase().replace(/[^a-z0-9]/g, "_"),
+              singular_label: moduleName,
+              plural_label: moduleName,
+              description: "",
+              icon: "",
+              color: "",
+              is_active: true,
+            },
+            sections: sectionsPayload,
           };
-        });
-        return { ...sectionRest, fields: sectionFields };
-      });
-
-      const payload = { sections: sanitizedSections };
-
-      if (isNew) {
-        await createForm(activeModule, payload);
-      } else if (layoutId) {
-        await editForm(layoutId, payload);
+        } else {
+          finalPayload = {
+            layout: {
+              name: moduleName,
+              description: "",
+              sequence: 1,
+              is_active: false,
+            },
+            sections: sectionsPayload,
+          };
+        }
       }
 
-      if (layoutId) {
-        await getFormSchemaById(layoutId);
+      if (purpose === "create_module") {
+        await createModule(finalPayload);
+      } else if (purpose === "create_layout") {
+        await createForm(targetModule, finalPayload, purpose);
       } else {
-        await getFormSchema(activeModule);
+        if (purpose === "edit_layout" && resolvedLayoutId) {
+          await editForm(resolvedLayoutId, finalPayload, routeModuleId, purpose);
+        } else if (isNew) {
+          await createForm(targetModule, finalPayload, purpose);
+        } else if (resolvedLayoutId) {
+          await editForm(resolvedLayoutId, finalPayload, routeModuleId, purpose);
+        }
+      }
+
+      setDirty(false);
+
+      if (isClose) {
+        if (purpose === "create_module") {
+          router.push("/dashboard/settings/modules");
+        } else if (purpose === "create_layout" || purpose === "edit_layout") {
+          router.push(`/dashboard/settings/modules/${targetModule}/layout`);
+        } else {
+          router.back();
+        }
       }
     } catch (err) {
       console.error("Save failed", err);
     } finally {
       setSaving(false);
-      setDirty(false);
     }
   };
 
@@ -518,9 +749,15 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
             <div className="w-4 h-4 bg-white rounded-full opacity-80" />
           </div>
           <div className="flex items-center gap-2">
-            <span className="font-bold text-gray-900 dark:text-gray-100">Untitled</span>
-            <div className="w-px h-4 bg-gray-300 dark:bg-gray-600" />
-            <span className="text-sm text-gray-500 uppercase tracking-wider">Standard</span>
+            <input
+              value={moduleName}
+              onChange={(e) => {
+                setModuleName(e.target.value);
+                setDirty(true);
+              }}
+              className="font-bold text-gray-900 dark:text-gray-100 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 outline-none w-auto max-w-[200px]"
+              placeholder="Untitled"
+            />
           </div>
         </div>
 
@@ -531,8 +768,8 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
               setSections([
                 {
                   _uid: "basic",
-                  sectionHeader: "Basic Information",
-                  columns: 2,
+                  name: "Basic Information",
+                  column_count: 2,
                   fields: [],
                 },
               ])
@@ -540,10 +777,10 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
           >
             Cancel
           </Button>
-          <Button variant="secondary" onClick={handleSave} disabled={!dirty || saving}>
+          <Button variant="secondary" onClick={() => handleSave(true)} disabled={!dirty || saving}>
             Save and Close
           </Button>
-          <Button onClick={handleSave} disabled={!dirty || saving}>
+          <Button onClick={() => handleSave(false)} disabled={!dirty || saving}>
             {saving ? "Saving..." : "Save"}
           </Button>
         </div>
@@ -553,7 +790,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
 
       {/* Main builder canvas offset past sidebar + ModuleBar */}
       <div
-        className="p-6 transition-all duration-300 pt-32"
+        className="p-6 transition-all duration-300 pt-10"
         style={{ marginLeft: canvasMarginLeft }}
       >
         <div className="mx-auto">

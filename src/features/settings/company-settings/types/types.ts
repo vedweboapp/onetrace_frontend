@@ -11,6 +11,17 @@ export interface OrganizationDetails {
     state: string;
     zip: string;
     country: string;
+    currencyCode?: string;
+    currencyName?: string;
+    formatType?: string;
+    symbol?: string;
+    symbolPosition?: string;
+    digitSeparator?: string;
+    decimalPlaces?: number;
+    startTime?: string;
+    endTime?: string;
+    workingDays?: string[];
+    breakDuration?: string;
 }
 
 export interface UpdateOrganizationRequest extends Omit<OrganizationDetails, 'id'> {}

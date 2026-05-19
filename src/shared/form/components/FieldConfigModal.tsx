@@ -30,14 +30,22 @@ export default function FieldConfigModal({
   onSave,
   onClose,
 }: FieldConfigModalProps) {
-  const typeConfig = FIELD_TYPES[fieldType] || FIELD_TYPES.text;
+  const typeConfig = FIELD_TYPES[fieldType] || FIELD_TYPES.single_line;
   
   const [config, setConfig] = useState<any>(() => {
-    const base = initialConfig || (typeConfig ? typeConfig.defaultConfig() : FIELD_TYPES.text.defaultConfig());
-    return {
+    const base = initialConfig || (typeConfig ? typeConfig.defaultConfig() : FIELD_TYPES.single_line.defaultConfig());
+    const normalized = {
       ...base,
-      name: (base.name || base.label || "").trim().replace(/\s+/g, "_").toLowerCase(),
+      field_label: base.field_label || base.label || "",
+      api_name: base.api_name || base.name || "",
+      field_type: base.field_type || base.type || fieldType,
     };
+    delete normalized.label;
+    delete normalized.name;
+    delete normalized.type;
+
+    normalized.api_name = (normalized.api_name || normalized.field_label || "").trim().replace(/\s+/g, "_").toLowerCase();
+    return normalized;
   });
 
   const [optionsText, setOptionsText] = useState(
@@ -48,9 +56,14 @@ export default function FieldConfigModal({
 
   const handleChange = (key: string, value: any) => {
     setConfig((prev: any) => {
-      const newConfig = { ...prev, [key]: value };
-      if (key === "label") {
-        newConfig.name = value.trim().replace(/\s+/g, "_").toLowerCase();
+      let mappedKey = key;
+      if (key === "label") mappedKey = "field_label";
+      if (key === "name") mappedKey = "api_name";
+      if (key === "type") mappedKey = "field_type";
+
+      const newConfig = { ...prev, [mappedKey]: value };
+      if (mappedKey === "field_label") {
+        newConfig.api_name = value.trim().replace(/\s+/g, "_").toLowerCase();
       }
       return newConfig;
     });
@@ -87,7 +100,12 @@ export default function FieldConfigModal({
 
     const newErrors: Record<string, string> = {};
     (typeConfig.configFields || []).forEach((f: any) => {
-      const val = finalConfig[f.key];
+      let mappedKey = f.key;
+      if (f.key === "label") mappedKey = "field_label";
+      if (f.key === "name") mappedKey = "api_name";
+      if (f.key === "type") mappedKey = "field_type";
+
+      const val = finalConfig[mappedKey];
       if (f.required) {
         if (f.type === "checkbox") {
           if (!val) newErrors[f.key] = "Required";
@@ -119,6 +137,11 @@ export default function FieldConfigModal({
   };
 
   const renderField = (field: any) => {
+    let mappedKey = field.key;
+    if (field.key === "label") mappedKey = "field_label";
+    if (field.key === "name") mappedKey = "api_name";
+    if (field.key === "type") mappedKey = "field_type";
+
     switch (field.type) {
       case "text":
         return (
@@ -129,7 +152,7 @@ export default function FieldConfigModal({
             </label>
             <input
               type="text"
-              value={config[field.key] || ""}
+              value={config[mappedKey] || ""}
               onChange={(e) => handleChange(field.key, e.target.value)}
               aria-required={field.required}
               maxLength={field.maxLength || undefined}
@@ -137,7 +160,7 @@ export default function FieldConfigModal({
             />
             {field.maxLength && (
               <p className="text-xs text-gray-400 mt-1 text-right">
-                {String(config[field.key] || "").length} / {field.maxLength}
+                {String(config[mappedKey] || "").length} / {field.maxLength}
               </p>
             )}
             {errors[field.key] && (
@@ -153,7 +176,7 @@ export default function FieldConfigModal({
               {field.label}
             </label>
             <textarea
-              value={config[field.key] || ""}
+              value={config[mappedKey] || ""}
               onChange={(e) => handleChange(field.key, e.target.value)}
               rows={3}
               className={`w-full px-4 py-2 border border-gray-300 rounded-[8px] focus:ring-2 focus:ring-blue-500 outline-none ${errors[field.key] ? "border-red-500" : ""}`}
@@ -172,7 +195,7 @@ export default function FieldConfigModal({
             </label>
             <input
               type="number"
-              value={config[field.key] || ""}
+              value={config[mappedKey] || ""}
               onChange={(e) =>
                 handleChange(field.key, parseInt(e.target.value) || 0)
               }
@@ -190,7 +213,7 @@ export default function FieldConfigModal({
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
-                checked={config[field.key] || false}
+                checked={config[mappedKey] || false}
                 onChange={(e) => handleChange(field.key, e.target.checked)}
                 className="w-4 h-4"
               />
@@ -210,14 +233,14 @@ export default function FieldConfigModal({
               <input
                 type="checkbox"
                 id={`chk-${field.key}`}
-                checked={config[field.key] || false}
+                checked={config[mappedKey] || false}
                 onChange={(e) => handleChange(field.key, e.target.checked)}
                 className="w-4 h-4"
               />
               <span className="text-sm text-gray-700">{field.label}</span>
               {field.showInfoIcon && <InfoIcon />}
             </label>
-            {config[field.key] && field.panelFields?.length > 0 && (
+            {config[mappedKey] && field.panelFields?.length > 0 && (
               <div className="mt-3 ml-1 p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-3">
                 {field.panelFields.map((pf: any) => renderField(pf))}
               </div>
@@ -241,7 +264,7 @@ export default function FieldConfigModal({
                     type="radio"
                     name={field.key}
                     value={opt.value}
-                    checked={config[field.key] === opt.value}
+                    checked={config[mappedKey] === opt.value}
                     onChange={() => handleChange(field.key, opt.value)}
                     className="w-4 h-4 accent-blue-600"
                   />
@@ -259,7 +282,7 @@ export default function FieldConfigModal({
               {field.label}
             </label>
             <select
-              value={config[field.key] ?? ""}
+              value={config[mappedKey] ?? ""}
               onChange={(e) => {
                 const val = isNaN(Number(e.target.value))
                   ? e.target.value

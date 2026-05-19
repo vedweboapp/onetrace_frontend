@@ -25,6 +25,10 @@ const PersonalProfileForm = ({
 }) => {
     const [image, setImage] = useState<File | string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
     
     const {
         register,
@@ -132,7 +136,7 @@ const PersonalProfileForm = ({
     }
 
     return (
-        <form className='flex flex-col gap-6 w-full pb-10' encType='multipart/form-data' onSubmit={handleSubmit(handleActualSubmit)}>
+        <form className={`flex flex-col gap-6 w-full pb-10 transition-opacity duration-500 ${isMounted ? 'animate-in fade-in duration-500 opacity-100' : 'opacity-0'}`} encType='multipart/form-data' onSubmit={handleSubmit(handleActualSubmit)}>
             {/* Header / Basic Info Summary */}
             <div className='flex w-full border border-gray-200 rounded-xl shadow-sm p-5 bg-white gap-6 items-center dark:bg-slate-800 dark:border-slate-700'>
                 <ProfilePictureUploader 
