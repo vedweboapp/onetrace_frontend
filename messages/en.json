@@ -157,6 +157,10 @@
       "jobStatus": "Job statuses",
       "tags": "Tags",
       "users": "Users",
+      "personalProfile": "Personal Profile",
+      "companySettings": "Company Settings",
+      "formBuilder": "Form Builder",
+      "modules": "Modules",
       "hint": "Customize theme and accent for this workspace."
     },
     "appearance": {

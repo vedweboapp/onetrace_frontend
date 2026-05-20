@@ -5,8 +5,8 @@ import * as React from "react";
 import { useSyncExternalStore } from "react";
 import { useTheme } from "@teispace/next-themes";
 import { useShallow } from "zustand/react/shallow";
-import type { DashboardAccentId } from "@/features/dashboard/store/dashboard-appearance.store";
-import { useDashboardAppearanceStore } from "@/features/dashboard/store/dashboard-appearance.store";
+import type { DashboardAccentId } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
+import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 import {
   ACCENT_HEX,
   accentOnAccentHex,
@@ -31,7 +31,7 @@ function isMonochromeBlackPreset(
 
 function useIsClient() {
   return useSyncExternalStore(
-    () => () => {},
+    () => () => { },
     () => true,
     () => false,
   );

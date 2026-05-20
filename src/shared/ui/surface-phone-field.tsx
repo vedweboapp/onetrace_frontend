@@ -21,6 +21,7 @@ export type SurfacePhoneFieldProps<TFieldValues extends FieldValues> = {
   placeholder?: string;
   className?: string;
   limitMaxLength?: boolean;
+  rules?: any;
 };
 
 export function SurfacePhoneField<TFieldValues extends FieldValues>({
@@ -36,6 +37,7 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
   placeholder,
   className,
   limitMaxLength = true,
+  rules,
 }: SurfacePhoneFieldProps<TFieldValues>) {
   const errId = error ? `${id}-error` : undefined;
   const described = [describedBy, errId].filter(Boolean).join(" ") || undefined;
@@ -48,6 +50,7 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
       <PhoneInput
         control={control}
         name={name}
+        rules={rules}
         international
         limitMaxLength={limitMaxLength}
         defaultCountry={defaultCountry}

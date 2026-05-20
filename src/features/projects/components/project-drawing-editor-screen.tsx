@@ -367,9 +367,13 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [panStart, setPanStart] = React.useState({ x: 0, y: 0 });
   const [scrollStart, setScrollStart] = React.useState({ left: 0, top: 0 });
 
+  const lastPlacementTimeRef = React.useRef<number>(0);
+  const [isQKeyPressed, setIsQKeyPressed] = React.useState(false);
   const viewportRef = React.useRef<HTMLDivElement>(null);
   const stageRef = React.useRef<HTMLDivElement>(null);
   const nameInputRef = React.useRef<HTMLInputElement>(null);
+  const lastPinConstraintToastRef = React.useRef(0);
+
 
   const selectedPlot = React.useMemo(
     () => plots.find((p) => String(p.id) === selectedPlotId) ?? null,
@@ -585,6 +589,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       const tag = target?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea" || target?.isContentEditable) return;
       const key = e.key.toLowerCase();
+      if (key === "q") setIsQKeyPressed(true);
       if (key === "v") setActiveTool("select");
       if (key === "p") setActiveTool("pen");
       if (key === "b") setActiveTool("plot-select");
@@ -597,8 +602,21 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         setTempPoints((prev) => prev.slice(0, -1));
       }
     }
+    function onKeyUp(e: KeyboardEvent) {
+      if (e.key.toLowerCase() === "q") setIsQKeyPressed(false);
+    }
+    function onBlur() {
+      setIsQKeyPressed(false);
+      lastPlacementTimeRef.current = 0;
+    }
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+    };
   }, [activeTool]);
 
   function requestToolChange(tool: Tool) {
@@ -767,6 +785,15 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       return;
     }
 
+    if (activeTool === "pin" && isQKeyPressed && e.buttons === 1) {
+      const now = Date.now();
+      if (now - lastPlacementTimeRef.current > 200) {
+        lastPlacementTimeRef.current = now;
+        void placePin(pt);
+      }
+      return;
+    }
+
     if (panMode) {
       const vp = viewportRef.current;
       if (!vp) return;
@@ -851,7 +878,26 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
               if (segmentsIntersect(newPt, p2, edgeStart, edgeEnd)) return;
             }
           }
+
+          // 3. Pin containment check: Ensure no pin is left outside the transformed boundary
+          const nextLogicalCoords = [...targetPlot.coordinates];
+          nextLogicalCoords[vertex.index] = pixelToPercent([x, y], ps);
+          const nextPolyPixels = nextLogicalCoords.map(c => percentToPixel(c, ps));
+
+          for (const pin of targetPlot.pins) {
+            const pinPt = percentToPixel([pin.x_coordinate, pin.y_coordinate], ps);
+            if (!inside(pinPt, nextPolyPixels)) {
+              const now = Date.now();
+              if (now - lastPinConstraintToastRef.current > 2000) {
+                toastError("Cannot move boundary: Pin would be outside the plot. Move the pin first or remove it.");
+                lastPinConstraintToastRef.current = now;
+              }
+              return; // Block movement if any pin would be outside
+            }
+          }
         }
+
+
 
         const pct = pixelToPercent([x, y], ps);
         setPlots(prev => prev.map(p => {
@@ -886,6 +932,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         }, 50);
         originalPinStateRef.current = null;
       }
+      lastPlacementTimeRef.current = 0;
       setPanMode(false);
     }
 
@@ -961,7 +1008,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         item: pin.item ?? null,
         quantity: pin.quantity || 1,
         variation: pin.variation ?? false,
-        location: pinLabels.get(pin.id) || 1,
+        location: pinLabels.get(pin.id),
       })),
     }));
   }
@@ -1168,27 +1215,29 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const allPins = React.useMemo(() => plots.flatMap((p) => p.pins), [plots]);
 
   const pinLabels = React.useMemo(() => {
-    const map = new Map<number, number>();
+    const map = new Map<number, string | number>();
 
-    // Pass 1: Saved pins WITH baked-in location
-    let maxSavedLoc = 0;
+    // Pass 1: Find the max numeric location to continue numbering
+    let maxLoc = 0;
     for (const plot of plots) {
       for (const pin of plot.pins) {
-        if (pin.id > 0 && pin.location) {
-          const loc = Number(pin.location);
-          map.set(pin.id, loc);
-          if (loc > maxSavedLoc) maxSavedLoc = loc;
+        if (pin.location) {
+          const num = Number(pin.location);
+          if (!isNaN(num)) maxLoc = Math.max(maxLoc, num);
         }
       }
     }
 
-    // Pass 2: Unsaved pins (id < 0) dynamic numbering
-    let unsavedCounter = maxSavedLoc + 1;
+    let nextCounter = maxLoc + 1;
+
+    // Pass 2: Assign labels
     for (const plot of plots) {
       for (const pin of plot.pins) {
-        if (pin.id < 0) {
-          map.set(pin.id, unsavedCounter);
-          unsavedCounter++;
+        if (pin.location) {
+          map.set(pin.id, pin.location);
+        } else {
+          map.set(pin.id, nextCounter);
+          nextCounter++;
         }
       }
     }
@@ -1237,7 +1286,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                 if (e.key === "Enter") void savePlotFromModal();
               }}
             />
-            <div className="mb-4">
+            <div className="my-4">
               <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                 Select Color
               </label>
@@ -1833,6 +1882,12 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                       const s = statuses.find(st => String(st.id) === val);
                       if (s) setPinEditData(prev => ({ ...prev, status: s.id }));
                     }}
+                  />
+                  <DetailRow
+                    icon={MapPinned}
+                    label="Location"
+                    value={detailPin.location || pinLabels.get(detailPin.id) || "-"}
+                    isEditing={false}
                   />
                   <DetailRow
                     icon={BlockIcon}
