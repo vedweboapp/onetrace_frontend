@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { FileSpreadsheet, FileStack, FileText } from "lucide-react";
+import { FileSpreadsheet, FileStack, FileText, type LucideIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { exportQuotation, type QuotationExportType } from "@/features/quotations/api/quotation.api";
 import { toastError } from "@/shared/feedback/app-toast";
@@ -92,7 +92,7 @@ export function QuotationExportDropdown({ quotationId, quoteName }: Props) {
     }
   }
 
-  const items: { id: QuotationExportType; label: string; icon: typeof Download }[] = [
+  const items: { id: QuotationExportType; label: string; icon: LucideIcon }[] = [
     { id: "pdf", label: t("pdf"), icon: FileText },
     { id: "excel", label: t("excel"), icon: FileSpreadsheet },
     { id: "csv", label: t("csv"), icon: FileStack },

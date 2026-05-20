@@ -1,5 +1,5 @@
 /**
- * Block scope detail (disabled). Routes under `quotations/**/block` redirect to Scope & Pricing.
+ * Block scope detail (disabled). Routes under quotations/.../block redirect to Scope & Pricing.
  * Inline composite rows show qty, unit price, and total on the draft composer.
  */
 "use client";

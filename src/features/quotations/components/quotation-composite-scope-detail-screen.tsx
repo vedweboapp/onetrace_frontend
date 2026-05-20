@@ -1,5 +1,5 @@
 /**
- * Per-composite catalog breakdown (disabled). Routes under `quotations/**/composite/**` redirect.
+ * Per-composite catalog breakdown (disabled). Routes under quotations/.../composite/... redirect.
  * Use Scope & Pricing composite rows for qty / unit / total instead.
  */
 "use client";

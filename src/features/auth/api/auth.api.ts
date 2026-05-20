@@ -13,9 +13,17 @@ export type LoginRequest = {
   password: string;
 };
 
+/** OTP request purposes — must match backend `purpose` values. */
+export const AUTH_OTP_PURPOSE = {
+  login: "login",
+  passwordReset: "password_reset",
+} as const;
+
+export type AuthOtpPurpose = (typeof AUTH_OTP_PURPOSE)[keyof typeof AUTH_OTP_PURPOSE];
+
 export type OtpRequestBody = {
   email: string;
-  purpose:string
+  purpose: AuthOtpPurpose;
 };
 
 export type OtpVerifyBody = {
@@ -25,7 +33,7 @@ export type OtpVerifyBody = {
 
 export type ForgotOtpRequestBody = {
   email: string;
-  purpose:string
+  purpose: AuthOtpPurpose;
 };
 
 export type PasswordResetConfirmBody = {
