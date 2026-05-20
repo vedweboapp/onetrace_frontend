@@ -312,7 +312,7 @@ export function ContactsPanel() {
               title={t("emptyTitle")}
               description={t("emptyDescription")}
               action={
-                <AddButton type="button" size="sm" onClick={openCreate} />
+                <AddButton type="button" onClick={openCreate} />
               }
             />
           )

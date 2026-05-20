@@ -18,11 +18,14 @@ type PageProps = {
 export const metadata: Metadata = { title: "Composite scope" };
 
 export default async function QuotationEditCompositeScopePage({ params }: PageProps) {
-  const { id, compositeId } = await params;
+  const { locale, id, compositeId } = await params;
   const quotationId = Number.parseInt(id, 10);
   const numericCompositeId = Number.parseInt(compositeId, 10);
   if (!Number.isFinite(quotationId) || quotationId <= 0) notFound();
   if (!Number.isFinite(numericCompositeId) || numericCompositeId <= 0) notFound();
 
-  redirect(mergeUrlQueryParam(`${routes.dashboard.quotations}/${quotationId}/edit`, "tab", "pricing"));
+  redirect({
+    href: mergeUrlQueryParam(`${routes.dashboard.quotations}/${quotationId}/edit`, "tab", "pricing"),
+    locale,
+  });
 }

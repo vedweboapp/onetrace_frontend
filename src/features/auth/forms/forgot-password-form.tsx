@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTranslations } from "next-intl";
 import { Mail, Loader2 } from "lucide-react";
-import { requestForgotPasswordOtp } from "@/features/auth/api/auth.api";
+import { AUTH_OTP_PURPOSE, requestForgotPasswordOtp } from "@/features/auth/api/auth.api";
 import { cn } from "@/core/utils/http.util";
 
 const forgotPasswordSchema = z.object({
@@ -34,7 +34,10 @@ export function ForgotPasswordForm() {
     setSuccessMessage(null);
     setIsSubmitting(true);
     try {
-      await requestForgotPasswordOtp({ email: values.email });
+      await requestForgotPasswordOtp({
+        email: values.email,
+        purpose: AUTH_OTP_PURPOSE.passwordReset,
+      });
       setSuccessMessage(t("otpSent", { email: values.email }));
     } catch {
       setApiError(t("otpSendError"));

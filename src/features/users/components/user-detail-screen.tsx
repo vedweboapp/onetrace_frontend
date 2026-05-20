@@ -18,7 +18,7 @@ import {
 } from "@/shared/components/layout/detail-metric-card";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
-import { EditButton, SurfaceShell } from "@/shared/ui";
+import { AppButton, EditButton, SurfaceShell } from "@/shared/ui";
 
 function userRoleLabel(row: UserProfile | null): string {
   if (!row?.role_detail) return "—";

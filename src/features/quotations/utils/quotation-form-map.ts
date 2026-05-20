@@ -5,6 +5,7 @@ import {
   getQuotationCustomerId,
   getQuotationLevelIds,
   getQuotationOptionalUserId,
+  getQuotationProjectId,
   getQuotationSiteId,
   getQuotationTagIds,
   getQuotationTechnicianIds,
@@ -91,7 +92,7 @@ export function mapQuotationDetailToFormDefaults(detail: QuotationDetail): Quota
     quote_name: detail.quote_name ?? "",
     customer: asIdString(getQuotationCustomerId(detail.customer)),
     site: asIdString(getQuotationSiteId(detail.site)),
-    project: asIdString(typeof detail.project === "object" && detail.project ? detail.project.id : detail.project),
+    project: asIdString(getQuotationProjectId(detail.project)),
     primary_customer_contact: asIdString(getQuotationContactId(detail.primary_customer_contact)),
     additional_customer_contact: asIdString(getQuotationContactId(detail.additional_customer_contact)),
     site_contact: asIdString(

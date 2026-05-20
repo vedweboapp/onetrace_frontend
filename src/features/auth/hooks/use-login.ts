@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "@/i18n/navigation";
-import { loginRequest, requestLoginOtp, verifyLoginOtp } from "@/features/auth/api/auth.api";
+import { AUTH_OTP_PURPOSE, loginRequest, requestLoginOtp, verifyLoginOtp } from "@/features/auth/api/auth.api";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { routes } from "@/shared/config/routes";
 import type { LoginFormValues } from "@/features/auth/schemas/login-schema";
@@ -33,7 +33,7 @@ export function useLogin() {
   async function sendOtp(email: string) {
     setIsOtpSubmitting(true);
     try {
-      await requestLoginOtp({ email });
+      await requestLoginOtp({ email, purpose: AUTH_OTP_PURPOSE.login });
     } finally {
       setIsOtpSubmitting(false);
     }
