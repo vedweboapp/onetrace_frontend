@@ -35,7 +35,7 @@ interface Section {
   is_subform?: boolean;
   is_deleted?: boolean;
   is_active?: boolean;
-  section_fields: Field[];
+  fields: Field[];
 }
 
 interface TopDropZoneProps {
@@ -180,19 +180,19 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
 
         <div
           ref={drop as any}
-          className={`min-h-[150px] bg-white rounded-[8px] p-6 transition-all ${section.section_fields.length === 0
+          className={`min-h-[150px] bg-white rounded-[8px] p-6 transition-all ${section.fields.length === 0
             ? "flex items-center justify-center border-dotted border-2 border-gray-300"
             : ""
             } ${isOver ? "border-blue-500 bg-blue-50 shadow-sm" : ""}`}
         >
-          {section.section_fields.length === 0 ? (
+          {section.fields.length === 0 ? (
             <div className="flex items-center justify-center w-full">
               <p className="text-center text-gray-400">Drop fields here</p>
             </div>
           ) : section.is_subform ? (
             <div className="w-0 min-w-full overflow-hidden">
               <div className="flex border border-gray-200 rounded-lg overflow-x-auto bg-gray-50/30 max-w-full custom-scrollbar">
-                {section.section_fields
+                {section.fields
                   .filter((f) => !f.is_deleted)
                   .map((field, idx) => (
                     <div
@@ -216,7 +216,7 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
             <div
               className={`grid gap-8 ${section.column_count === 2 ? "grid-cols-2" : "grid-cols-1"}`}
             >
-              {section.section_fields
+              {section.fields
                 .filter((f) => !f.is_deleted)
                 .map((field, idx) => (
                   <div
@@ -282,7 +282,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
   );
 
   const [sections, setSections] = useState<Section[]>([
-    { _uid: "basic", name: "Basic Information", column_count: 2, section_fields: [] },
+    { _uid: "basic", name: "Basic Information", column_count: 2, fields: [] },
   ]);
 
   const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
@@ -327,7 +327,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
         _uid: sec.id?.toString() || `section-${sIdx}-${Date.now()}`,
         name: sec.name || sec.sectionHeader || "",
         column_count: sec.column_count || sec.columns || 2,
-        section_fields: (sec.section_fields || sec.fields || [])
+        fields: (sec.fields || sec.fields || [])
           .sort((a: any, b: any) => (a.sequence ?? a.order ?? 0) - (b.sequence ?? b.order ?? 0))
           .map((f: any, fIdx: number) => {
             const validationRules: any = {};
@@ -362,7 +362,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
           _uid: "basic",
           name: "Basic Information",
           column_count: 2,
-          section_fields: [],
+          fields: [],
         },
       ]);
     }
@@ -381,11 +381,11 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
         sec._uid === sectionUid
           ? {
             ...sec,
-            section_fields: [
-              ...sec.section_fields,
+            fields: [
+              ...sec.fields,
               {
                 _uid: `${Date.now()}`,
-                order: sec.section_fields.length,
+                order: sec.fields.length,
                 ...fieldConfig,
               },
             ],
@@ -404,7 +404,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
         sec._uid === sectionUid
           ? {
             ...sec,
-            section_fields: sec.section_fields.map((f) =>
+            fields: sec.fields.map((f) =>
               f._uid === fieldUid ? { ...f, ...newConfig } : f,
             ),
           }
@@ -421,7 +421,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
       name: "",
       column_count: isSubform ? 1 : 2,
       is_subform: isSubform,
-      section_fields: [],
+      fields: [],
     };
     setSections((prev) => {
       if (afterUid === "__TOP__") return [newSection, ...prev];
@@ -458,7 +458,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
             ...s,
             is_active: false,
             is_deleted: true,
-            section_fields: (s.section_fields || []).map((f) => ({
+            fields: (s.fields || []).map((f) => ({
               ...f,
               is_active: false,
               is_deleted: true,
@@ -535,20 +535,20 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
         const createdSections = sections
           .filter((sec) => !sec.is_deleted && (!sec.id || String(sec.id).startsWith("section-")))
           .map((sec, secIdx) => {
-            const activeFields = (sec.section_fields || []).filter((f) => !f.is_deleted);
+            const activeFields = (sec.fields || []).filter((f) => !f.is_deleted);
             return {
               name: sec.name,
               sequence: secIdx + 1,
               column_count: sec.column_count,
               is_subform: !!sec.is_subform,
-              section_fields: activeFields.map((f, fIdx) => formatFieldPayload(f, fIdx)),
+              fields: activeFields.map((f, fIdx) => formatFieldPayload(f, fIdx)),
             };
           });
 
         const updatedSections = sections
           .filter((sec) => !sec.is_deleted && sec.id && !String(sec.id).startsWith("section-"))
           .map((sec, secIdx) => {
-            const activeFields = (sec.section_fields || [])
+            const activeFields = (sec.fields || [])
               .filter((f) => !f.is_deleted)
               .map((f, fIdx) => {
                 const payload = formatFieldPayload(f, fIdx);
@@ -564,7 +564,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
               sequence: secIdx + 1,
               column_count: sec.column_count,
               is_subform: !!sec.is_subform,
-              section_fields: activeFields,
+              fields: activeFields,
             };
           });
 
@@ -573,7 +573,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
           .map((sec) => {
             return {
               id: Number(sec.id) || sec.id,
-              section_fields: [],
+              fields: [],
             };
           });
 
@@ -581,7 +581,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
         sections
           .filter((sec) => !sec.is_deleted)
           .forEach((sec) => {
-            (sec.section_fields || []).forEach((f) => {
+            (sec.fields || []).forEach((f) => {
               if (f.is_deleted && f.id && !String(f.id).startsWith("field-")) {
                 allDeletedFields.push({ id: Number(f.id) || f.id });
               }
@@ -591,7 +591,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
         const finalDeletePayload: any[] = [...deletedSections];
         if (allDeletedFields.length > 0) {
           finalDeletePayload.push({
-            section_fields: allDeletedFields,
+            fields: allDeletedFields,
           });
         }
 
@@ -624,8 +624,8 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
               secPayload.id = Number(sec.id) || sec.id;
             }
 
-            const activeFields = (sec.section_fields || []).filter((f: any) => !f.is_deleted);
-            secPayload.section_fields = activeFields.map((f: any, fIdx: number) => {
+            const activeFields = (sec.fields || []).filter((f: any) => !f.is_deleted);
+            secPayload.fields = activeFields.map((f: any, fIdx: number) => {
               const payload = formatFieldPayload(f, fIdx);
               if (f.id && !String(f.id).startsWith("field-")) {
                 payload.id = Number(f.id) || f.id;
@@ -701,7 +701,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
         sec._uid === sectionUid
           ? {
             ...sec,
-            section_fields: sec.section_fields.map((f) =>
+            fields: sec.fields.map((f) =>
               f._uid === fieldUid
                 ? { ...f, is_active: false, is_deleted: true }
                 : f,
@@ -717,7 +717,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
     setSections((prev) =>
       prev.map((sec) => {
         if (sec._uid !== sectionUid) return sec;
-        const allFields = [...sec.section_fields];
+        const allFields = [...sec.fields];
         const fromIndex = allFields.findIndex((f) => f._uid === fromUid);
         const visibleFields = allFields.filter((f) => !f.is_deleted);
         const targetField = visibleFields[toFilteredIndex];
@@ -734,7 +734,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
           order: idx,
         }));
 
-        return { ...sec, section_fields: reorderedFields };
+        return { ...sec, fields: reorderedFields };
       }),
     );
     setDirty(true);
