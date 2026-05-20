@@ -24,6 +24,7 @@ import {
   MapPin,
   Globe,
   LucideIcon,
+  PenTool,
 } from "lucide-react";
 import { currencyList } from "./currency-list";
 
@@ -710,6 +711,24 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       { type: "text", label: "Parent Field", key: "parent_field", required: true },
       { type: "text", label: "Search for", key: "search_for", required: true },
     ]
+  },
+  signature: {
+    label: "Signature",
+    icon: PenTool,
+    defaultConfig: () => ({
+      type: "signature",
+      label: "Signature",
+      name: "",
+      required: false,
+      placeholder: "Sign here...",
+      height: 200,
+    }),
+    configFields: [
+      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
+      { type: "text", label: "Placeholder", key: "placeholder" },
+      { type: "number", label: "Canvas Height (px)", key: "height" },
+      { type: "checkbox", label: "Required", key: "required" },
+    ],
   }
 };
 

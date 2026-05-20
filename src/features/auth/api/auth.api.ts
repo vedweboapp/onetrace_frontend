@@ -4,6 +4,7 @@ import { AUTH_API_PATHS } from "./auth.paths";
 import type {
   AuthLoginData,
   AuthLoginEnvelope,
+  AuthLoginRawData,
   AuthLogoutEnvelope,
 } from "../types/auth.types";
 import api from "@/core/api/axios";
@@ -34,10 +35,24 @@ export type PasswordResetConfirmBody = {
 
 export { AUTH_API_PATHS };
 
+/**
+ * Normalise the inner `data` object from the login envelope into the flat
+ * shape consumed by the auth store.
+ * The backend now puts `access` and `organizations` inside `user`.
+ */
+function normaliseLoginResponse(raw: AuthLoginRawData): AuthLoginData {
+  const { access, organizations: userOrgs, ...userFields } = raw.user;
+  return {
+    access,
+    user: userFields,
+    organizations: userOrgs ?? [],
+  };
+}
+
 export async function loginRequest(body: LoginRequest): Promise<AuthLoginData> {
   const { data } = await api.post<AuthLoginEnvelope>(AUTH_API_PATHS.login, body);
   assertApiSuccess(data);
-  return data.data;
+  return normaliseLoginResponse(data.data);
 }
 
 export async function logoutRequest(): Promise<void> {
@@ -57,7 +72,7 @@ export async function requestLoginOtp(body: OtpRequestBody): Promise<void> {
 export async function verifyLoginOtp(body: OtpVerifyBody): Promise<AuthLoginData> {
   const { data } = await api.post<AuthLoginEnvelope>(AUTH_API_PATHS.otpVerify, body);
   assertApiSuccess(data);
-  return data.data;
+  return normaliseLoginResponse(data.data);
 }
 
 export async function requestForgotPasswordOtp(body: ForgotOtpRequestBody): Promise<void> {

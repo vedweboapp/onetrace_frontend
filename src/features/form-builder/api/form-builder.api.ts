@@ -44,7 +44,7 @@ export async function editFormSchema(
   purpose?: string | null
 ): Promise<any> {
   if (purpose === "edit_layout" && moduleId) {
-    const url = `/modules/${moduleId}/sections/bulk`;
+    const url = `/modules/${moduleId}/sections/bulk/`;
     const { data } = await api.post(url, payload);
     assertApiSuccess(data);
     return data.data;

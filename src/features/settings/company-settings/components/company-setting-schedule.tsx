@@ -6,7 +6,7 @@ import { getOrganizationDetails, updateOrganizationDetails } from "../api/compan
 import { toast } from "sonner";
 import { OrganizationDetails } from "../types/types";
 
-const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DAYS_OF_WEEK = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const BREAK_OPTIONS = ["15 minutes", "30 minutes", "45 minutes", "1 hour"];
 
 interface CompanySettingScheduleProps {
@@ -21,7 +21,7 @@ const CompanySettingSchedule = ({ initialData, onSaveSuccess }: CompanySettingSc
   const [workingDays, setWorkingDays] = useState<string[]>(
     initialData.workingDays && initialData.workingDays.length > 0
       ? initialData.workingDays
-      : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+      : ["monday", "tuesday", "wednesday", "thursday", "friday"]
   );
   const [startTime, setStartTime] = useState(initialData.startTime || "09:00");
   const [endTime, setEndTime] = useState(initialData.endTime || "17:00");

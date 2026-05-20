@@ -25,6 +25,7 @@ import {
   EllipsisIcon,
   Globe,
   LucideIcon,
+  PenTool,
 } from "lucide-react";
 import { useDrag, useDrop } from "react-dnd";
 import {
@@ -57,6 +58,7 @@ const icons: Record<string, LucideIcon> = {
   long_integer: Hash,
   receiver_lookup: Home,
   country: Globe,
+  signature: PenTool,
 };
 
 interface Field {

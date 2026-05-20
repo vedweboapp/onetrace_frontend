@@ -28,7 +28,7 @@ export const getOrganizationDetails = async (id: number): Promise<OrganizationDe
         decimalPlaces: responseData.decimal_places !== undefined ? Number(responseData.decimal_places) : 2,
         startTime: responseData.start_time || "09:00",
         endTime: responseData.end_time || "17:00",
-        workingDays: responseData.working_days || ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        workingDays: responseData.working_days || ["monday", "tuesday", "wednesday", "thursday", "friday"],
         breakDuration: responseData.break_duration || "30 minutes",
     };
 };
@@ -101,7 +101,7 @@ export const updateOrganizationDetails = async (id: number, body: UpdateOrganiza
         decimalPlaces: responseData.decimal_places !== undefined ? Number(responseData.decimal_places) : 2,
         startTime: responseData.start_time || "09:00",
         endTime: responseData.end_time || "17:00",
-        workingDays: responseData.working_days || ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        workingDays: responseData.working_days || ["monday", "tuesday", "wednesday", "thursday", "friday"],
         breakDuration: responseData.break_duration || "30 minutes",
     };
 };

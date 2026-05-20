@@ -15,7 +15,7 @@ const ProfilePictureUploader = ({
     image,
     setImage,
     allowedTypes = ["image/png", "image/jpeg", "image/jpg"],
-    size = 140,
+    size = 96,
     readOnly = false,
 }: ProfilePictureUploaderProps) => {
     const inputRef = useRef<HTMLInputElement | null>(null);
@@ -63,6 +63,7 @@ const ProfilePictureUploader = ({
           rounded-full
           overflow-hidden
           bg-gray-200
+          border border-gray-200
         "
             >
                 {previewUrl ? (
@@ -94,10 +95,10 @@ const ProfilePictureUploader = ({
                     onClick={() => inputRef.current?.click()}
                     className="
               absolute
-              bottom-1
-              right-1
-              w-10
-              h-10
+              bottom-0
+              right-0
+              w-8
+              h-8
               rounded-full
               bg-black
               text-white
@@ -105,11 +106,13 @@ const ProfilePictureUploader = ({
               items-center
               justify-center
               shadow-md
+              border-2
+              border-white
               hover:scale-105
               transition
             "
                 >
-                    <Pencil size={18} />
+                    <Pencil size={14} />
                 </button>
             )}
 

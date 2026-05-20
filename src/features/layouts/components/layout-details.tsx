@@ -32,7 +32,7 @@ const LayoutDetails = () => {
             try {
                 setLoading(true);
                 const data = await getLayoutMetadata(moduleId as string);
-                
+
                 let layoutList: any[] = [];
                 if (Array.isArray(data)) {
                     layoutList = data;
@@ -45,7 +45,7 @@ const LayoutDetails = () => {
                 } else if (data.name || data.id) {
                     layoutList = [data];
                 }
-                
+
                 setLayouts(layoutList);
             } catch (err) {
                 console.error("Failed to load layouts", err);
@@ -125,13 +125,13 @@ const LayoutDetails = () => {
                                     const layoutName = row.name || row.displayName || row.layoutName || "Standard Layout";
                                     const lastModified = row.updated_at || row.updatedAt || row.created_at || row.lastModified || "";
                                     const activeStatus = row.is_active !== undefined ? row.is_active : true;
-                                    
+
                                     const formattedDate = lastModified ? new Date(lastModified).toLocaleDateString() : "N/A";
                                     const formattedTime = lastModified ? new Date(lastModified).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
 
                                     return (
-                                        <DataTableRow key={row.id || idx} clickable={true} onClick={()=>route.push(`/dashboard/settings/modules/${moduleId}/layout/edit?layout_id=${row.id}&purpose=edit_layout`)}>
-                                            <DataTableTd className="font-semibold text-slate-800 dark:text-slate-100">
+                                        <DataTableRow key={row.id || idx} clickable={true}>
+                                            <DataTableTd className="font-semibold text-slate-800 dark:text-slate-100" onClick={() => route.push(`/dashboard/settings/modules/${moduleId}/layout/edit?layout_id=${row.id}&purpose=edit_layout`)}>
                                                 {layoutName}
                                             </DataTableTd>
                                             <DataTableTd>
@@ -140,7 +140,7 @@ const LayoutDetails = () => {
                                                     {formattedTime && <span className="text-[11px] font-medium text-slate-400">{formattedTime}</span>}
                                                 </div>
                                             </DataTableTd>
-                                            <DataTableTd className="text-right w-24">
+                                            <DataTableTd className="text-right w-24" >
                                                 <div className="flex items-center justify-end">
                                                     <button
                                                         type="button"

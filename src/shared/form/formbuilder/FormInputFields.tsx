@@ -4,7 +4,7 @@ import {
   Calendar, Clock, ArrowUpDown, DollarSign, Circle,
   Percent, MapPin, CheckSquare, Link, Search,
   Calculator, User, FileUp, Image, BarChart3,
-  Home, ListChecks, Globe, LucideIcon
+  Home, ListChecks, Globe, LucideIcon, PenTool
 } from "lucide-react";
 
 interface FieldButtonProps {
@@ -170,6 +170,12 @@ export const FormFieldsConfig: FieldConfigItem[] = [
     type: "receiver_lookup",
     label: "Receiver Lookup",
     icon: Home,
+  },
+  {
+    key: "signature",
+    type: "signature",
+    label: "Signature",
+    icon: PenTool,
   }
 ];
 
