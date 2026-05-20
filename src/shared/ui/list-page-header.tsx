@@ -65,7 +65,6 @@ export function ListPageHeader({
 
   React.useEffect(() => {
     if (!filtersOpen) return;
-    /** Use `click` (not `mousedown`) so row ⋮ menus receive the same gesture without the filter closing first. */
     function onDocClick(e: MouseEvent) {
       const t = e.target as Node;
       const el = t as Element;

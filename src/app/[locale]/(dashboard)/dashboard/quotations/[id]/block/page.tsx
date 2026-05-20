@@ -3,12 +3,6 @@ import { notFound } from "next/navigation";
 import { redirect } from "@/i18n/navigation";
 import { routes } from "@/shared/config/routes";
 
-/*
- * Block scope detail page (disabled). See `quotations/new/block/page.tsx`.
- *
- * import { getTranslations } from "next-intl/server";
- * import { QuotationBlockScopeDetailScreen } from "@/features/quotations/components/quotation-block-scope-detail-screen";
- */
 
 type PageProps = {
   params: Promise<{ locale: string; id: string }>;

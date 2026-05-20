@@ -27,7 +27,6 @@ export function ListPageSearchField({
   const [local, setLocal] = React.useState(value);
 
   React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- controlled sync when URL/search param changes
     setLocal(value);
   }, [value]);
 
