@@ -14,7 +14,7 @@ const OSM_ATTRIB =
 
 const DEFAULT_CENTER: L.LatLngExpression = [20.5937, 78.9629];
 const MAP_ZOOM_PIN = 16;
-const GEOCODE_DEBOUNCE_MS = 450;
+const GEOCODE_DEBOUNCE_MS = 150;
 
 let leafletIconFixed = false;
 function ensureLeafletDefaultIcons() {
@@ -98,10 +98,9 @@ export function SiteLocationMapPicker({
   const displayLatLon = React.useMemo(() => {
     if (coordsLocked && lat != null && lon != null) return { lat, lon };
     if (geocoded) return geocoded;
-    if (geoStatus === "loading") return null;
     if (lat != null && lon != null) return { lat, lon };
     return null;
-  }, [coordsLocked, lat, lon, geocoded, geoStatus]);
+  }, [coordsLocked, lat, lon, geocoded]);
 
   const destroyMap = React.useCallback(() => {
     markerRef.current?.remove();
@@ -181,7 +180,6 @@ export function SiteLocationMapPicker({
     }
 
     setGeoStatus("loading");
-    setGeocoded(null);
     setHint(null);
 
     const sp = buildGeocodeRequestSearchParams(norm);
@@ -218,6 +216,37 @@ export function SiteLocationMapPicker({
     };
   }, [addressKey, canGeocode, coordsLocked, lat, lon, norm]);
 
+  React.useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el || mapRef.current) return;
+
+    const map = L.map(el, { scrollWheelZoom: true, zoomControl: true }).setView(DEFAULT_CENTER, 5);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: OSM_ATTRIB,
+    }).addTo(map);
+
+    mapRef.current = map;
+
+    if (!disabled) {
+      map.on("click", (e) => {
+        coordsForAddressKeyRef.current = addressKey;
+        onCoordinatesChangeRef.current(e.latlng.lat, e.latlng.lng);
+        setGeocoded({ lat: e.latlng.lat, lon: e.latlng.lng });
+        placeOrMoveMarker(map, e.latlng.lat, e.latlng.lng, true);
+        void reverseGeocodeAt(e.latlng.lat, e.latlng.lng);
+      });
+    }
+
+    requestAnimationFrame(() => {
+      try {
+        map.invalidateSize();
+      } catch {
+        /* ignore */
+      }
+    });
+  }, [addressKey, disabled, placeOrMoveMarker, reverseGeocodeAt]);
+
   React.useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -231,32 +260,11 @@ export function SiteLocationMapPicker({
     }
 
     const { lat: nextLat, lon: nextLon } = displayLatLon;
-
-    if (!mapRef.current) {
-      const map = L.map(el, { scrollWheelZoom: true, zoomControl: true }).setView([nextLat, nextLon], MAP_ZOOM_PIN);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: OSM_ATTRIB,
-      }).addTo(map);
-
-      mapRef.current = map;
-
-      if (!disabled) {
-        map.on("click", (e) => {
-          coordsForAddressKeyRef.current = addressKey;
-          onCoordinatesChangeRef.current(e.latlng.lat, e.latlng.lng);
-          setGeocoded({ lat: e.latlng.lat, lon: e.latlng.lng });
-          placeOrMoveMarker(map, e.latlng.lat, e.latlng.lng, true);
-          void reverseGeocodeAt(e.latlng.lat, e.latlng.lng);
-        });
-      }
-    } else {
-      mapRef.current.setView([nextLat, nextLon], MAP_ZOOM_PIN, { animate: false });
-    }
-
-    placeOrMoveMarker(mapRef.current, nextLat, nextLon, true);
-
     const map = mapRef.current;
+    if (!map) return;
+
+    placeOrMoveMarker(map, nextLat, nextLon, true);
+
     requestAnimationFrame(() => {
       try {
         map.invalidateSize();
@@ -291,10 +299,10 @@ export function SiteLocationMapPicker({
     [destroyMap],
   );
 
-  const waitingGeocode = geoStatus === "loading" || (geoStatus === "idle" && canGeocode && lat == null && lon == null);
+  const showLoadingOverlay = geoStatus === "loading" && displayLatLon == null;
 
   const overlay =
-    waitingGeocode
+    showLoadingOverlay
       ? tMap("loading")
       : geoStatus === "error"
         ? tMap("error")

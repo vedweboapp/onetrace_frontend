@@ -18,9 +18,12 @@ type PageProps = {
 export const metadata: Metadata = { title: "Block scope" };
 
 export default async function QuotationEditBlockScopePage({ params }: PageProps) {
-  const { id } = await params;
+  const { locale, id } = await params;
   const quotationId = Number.parseInt(id, 10);
   if (!Number.isFinite(quotationId) || quotationId <= 0) notFound();
 
-  redirect(mergeUrlQueryParam(`${routes.dashboard.quotations}/${quotationId}/edit`, "tab", "pricing"));
+  redirect({
+    href: mergeUrlQueryParam(`${routes.dashboard.quotations}/${quotationId}/edit`, "tab", "pricing"),
+    locale,
+  });
 }

@@ -133,7 +133,7 @@ export function AddressMiniMap({ addressParts, coordinates, className, mapClassN
       } catch {
         if (!cancelled) setStatus("error");
       }
-    }, 550);
+    }, 200);
 
     return () => {
       cancelled = true;

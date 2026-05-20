@@ -407,7 +407,7 @@ export function JobsPanel() {
               iconName="jobStatus"
               title={t("emptyTitle")}
               description={t("emptyDescription")}
-              action={<AddButton type="button" size="sm" onClick={openCreate} />}
+              action={<AddButton type="button" onClick={openCreate} />}
             />
           )
         ) : listViewMode === "list" ? (
