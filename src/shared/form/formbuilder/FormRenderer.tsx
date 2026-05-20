@@ -20,6 +20,9 @@ import SignaturePad from "../components/signature-pad";
 import UsersSelect from "../components/users-select";
 import ProfilePictureUploader from "../../components/profile-picture-uploader";
 import { Country } from "country-state-city";
+import CountrySelect from "../components/CountrySelect";
+import StateSelect from "../components/StateSelect";
+import CitySelect from "../components/CitySelect";
 
 interface Field {
   api_name: string;
@@ -40,7 +43,7 @@ interface Section {
   column_count?: number;
   is_subform?: boolean;
   subform_field_name?: string;
-  section_fields: Field[];
+  fields: Field[];
 }
 
 interface FormRendererProps {
@@ -86,6 +89,9 @@ const FIELD_COMPONENTS: Record<string, any> = {
   multi_select: MultiSelect,
   signature: SignaturePad,
   user: UsersSelect,
+  country: CountrySelect,
+  state: StateSelect,
+  city: CitySelect,
 };
 
 const deepEqual = (a: any, b: any): boolean => {
@@ -128,6 +134,7 @@ const FormField: React.FC<{
   errors: any;
   isSubmitted: boolean;
   dirtyFields: any;
+  sectionFields?: Field[];
 }> = ({
   field,
   control,
@@ -138,11 +145,27 @@ const FormField: React.FC<{
   errors,
   isSubmitted,
   dirtyFields,
+  sectionFields = [],
 }) => {
   if (!field || !field.api_name) return null;
 
   const normType = getNormalizedType(field.field_type);
   const Component = FIELD_COMPONENTS[normType] || Input;
+
+  let extraProps: any = {};
+  if (normType === "state") {
+    const countryField = sectionFields?.find((f) => getNormalizedType(f.field_type) === "country");
+    const countryFieldName = countryField?.api_name || "country";
+    extraProps.countryCode = watch(countryFieldName);
+  } else if (normType === "city") {
+    const countryField = sectionFields?.find((f) => getNormalizedType(f.field_type) === "country");
+    const countryFieldName = countryField?.api_name || "country";
+    extraProps.countryCode = watch(countryFieldName);
+
+    const stateField = sectionFields?.find((f) => getNormalizedType(f.field_type) === "state");
+    const stateFieldName = stateField?.api_name || "state";
+    extraProps.stateCode = watch(stateFieldName);
+  }
 
   const validations: any = { ...field.validations };
   if (field.required === true || field.required === "true") {
@@ -223,6 +246,7 @@ const FormField: React.FC<{
     readOnly: field.readOnly,
     placeholder: field.placeholder,
     className: "w-full",
+    ...extraProps,
   };
 
   return (
@@ -249,7 +273,7 @@ const sanitizeOutput = (data: any, schema: Section[]) => {
           const sanitizedValues: any = {};
           let hasAnyValue = false;
 
-          section.section_fields?.forEach((field) => {
+          section.fields?.forEach((field) => {
             let val = row[field.api_name];
             if (val === undefined || val === null) return;
             
@@ -270,7 +294,7 @@ const sanitizeOutput = (data: any, schema: Section[]) => {
 
       sanitized[sfKey] = transformedRows;
     } else {
-      section?.section_fields?.forEach((field) => {
+      section?.fields?.forEach((field) => {
         const val = data[field.api_name];
         if (val === undefined || val === null || val === "") return;
         const normType = getNormalizedType(field.field_type);
@@ -303,7 +327,7 @@ const mapDataToFormFields = (data: any, schema: Section[], defaultValues = {}) =
         formData[sfKey] = rawValue || [];
       }
     } else {
-      s?.section_fields?.forEach((f) => {
+      s?.fields?.forEach((f) => {
         if (!f.api_name) return;
         const val = data[f.api_name];
         if (val !== undefined && val !== null) {
@@ -435,7 +459,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
                   render={({ field: { onChange, value } }) => (
                     <SubForm
                       label={null}
-                      fields={[...(section.section_fields || [])].filter((f) => !f.is_deleted).sort(
+                      fields={[...(section.fields || [])].filter((f) => !f.is_deleted).sort(
                         (a, b) => (a.order ?? 0) - (b.order ?? 0),
                       )}
                       value={Array.isArray(value) ? value : [{}]}
@@ -464,7 +488,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
               <div
                 className={`grid grid-cols-1 md:grid-cols-${section.column_count || 2} gap-x-10 gap-y-7`}
               >
-                {[...(section.section_fields || [])]
+                {[...(section.fields || [])]
                   .filter((f) => !f.is_deleted)
                   .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
                   .map((f, fIdx) => (
@@ -479,6 +503,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
                       errors={errors}
                       isSubmitted={isSubmitted}
                       dirtyFields={dirtyFields}
+                      sectionFields={section.fields}
                     />
                   ))}
               </div>

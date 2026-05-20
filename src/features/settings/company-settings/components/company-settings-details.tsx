@@ -1,11 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
-import CompanySettingsHeader from './company-settings-header';
 import { useUrlParams } from '@/shared/hooks/use-url-params';
 import OrganizationalDetail, { OrganizationalDetailRef } from './organizational-detail';
-
-import CompanySettingsCurrency from './company-settings-currency';
-import CompanySettingSchedule from './company-setting-schedule';
 import { getOrganizationDetails } from '../api/company-settings.api';
 import { OrganizationDetails } from '../types/types';
 
@@ -38,7 +34,6 @@ const defaultOrgDetails: OrganizationDetails = {
 const CompanySettingsDetails = () => {
     const orgDetailRef = React.useRef<OrganizationalDetailRef>(null);
     const [isEditing, setIsEditing] = React.useState(false);
-    const [params] = useUrlParams({ tab: "organization" });
 
     const [orgDetails, setOrgDetails] = useState<OrganizationDetails | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -60,12 +55,6 @@ const CompanySettingsDetails = () => {
         fetchOrgDetails();
     }, []);
 
-    const handleSave = () => {
-        if (params.tab === "organization") {
-            orgDetailRef.current?.submit();
-        }
-    };
-
     const handleUpdateSuccess = (updatedData?: OrganizationDetails) => {
         if (updatedData) {
             setOrgDetails(updatedData);
@@ -85,32 +74,11 @@ const CompanySettingsDetails = () => {
 
     return (
         <div className='flex flex-col gap-4 w-full'>
-            <CompanySettingsHeader
-                isEditing={isEditing}
-                setIsEditing={setIsEditing}
-                onSave={handleSave}
-                showEdit={params.tab === "organization"}
-            />
-            
-            {params.tab === "organization" && orgDetails && (
+            {orgDetails && (
                 <OrganizationalDetail 
                     ref={orgDetailRef} 
                     isEditing={isEditing} 
                     initialData={orgDetails}
-                    onSaveSuccess={handleUpdateSuccess}
-                />
-            )}
-
-            {params.tab === "currencies" && orgDetails && (
-                <CompanySettingsCurrency 
-                    initialData={orgDetails} 
-                    onSaveSuccess={handleUpdateSuccess}
-                />
-            )}
-
-            {params.tab === "schedule" && orgDetails && (
-                <CompanySettingSchedule 
-                    initialData={orgDetails} 
                     onSaveSuccess={handleUpdateSuccess}
                 />
             )}

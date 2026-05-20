@@ -74,6 +74,8 @@ interface SectionDropZoneProps {
   saveSectionName: () => void;
   setEditingSectionId: (id: string | null) => void;
   setShowModal: (modal: any) => void;
+  setSections: React.Dispatch<React.SetStateAction<Section[]>>;
+  setDirty: (dirty: boolean) => void;
   addNewSectionAfter: (afterUid: string | null, isSubform: boolean) => void;
   deleteSection: (sectionUid: string) => void;
   handleColumnChange: (sectionUid: string, columns: number) => void;
@@ -89,6 +91,8 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
   saveSectionName,
   setEditingSectionId,
   setShowModal,
+  setSections,
+  setDirty,
   addNewSectionAfter,
   deleteSection,
   handleColumnChange,
@@ -96,9 +100,33 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
   moveField,
 }) => {
   const [{ isOver }, drop] = useDrop(() => ({
-    accept: ["FIELD"],
-    drop: (item: { type: string, _uid?: string }) => {
+    accept: ["FIELD", "ADDRESS", "address"],
+    drop: (item: { type: string; _uid?: string }) => {
       if (item._uid) return;
+      if (item.type === "address" || item.type === "ADDRESS") {
+        const newSectionUid = `section-${Date.now()}`;
+        const addressFields = [
+          { _uid: `${Date.now()}-country`, field_type: "country", field_label: "Country", api_name: "country", order: 0 },
+          { _uid: `${Date.now()}-state`, field_type: "state", field_label: "State", api_name: "state", order: 1 },
+          { _uid: `${Date.now()}-city`, field_type: "city", field_label: "City", api_name: "city", order: 2 },
+          { _uid: `${Date.now()}-zip`, field_type: "zip", field_label: "Zip Code", api_name: "zip_code", order: 3 },
+        ];
+        setSections((prev) => {
+          const copy = [...prev];
+          const index = copy.findIndex((s) => s._uid === section._uid);
+          const newSection = {
+            _uid: newSectionUid,
+            name: "Address",
+            column_count: 2,
+            is_subform: false,
+            fields: addressFields,
+          };
+          copy.splice(index + 1, 0, newSection);
+          return copy;
+        });
+        setDirty(true);
+        return;
+      }
       setShowModal({ type: item.type, sectionUid: section._uid });
     },
     collect: (monitor) => ({ isOver: !!monitor.isOver() }),
@@ -820,6 +848,8 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
                     saveSectionName={saveSectionName}
                     setEditingSectionId={setEditingSectionId}
                     setShowModal={setShowModal}
+                    setSections={setSections}
+                    setDirty={setDirty}
                     addNewSectionAfter={addNewSectionAfter}
                     deleteSection={deleteSection}
                     handleColumnChange={handleColumnChange}

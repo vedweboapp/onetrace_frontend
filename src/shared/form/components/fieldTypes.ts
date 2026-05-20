@@ -429,42 +429,42 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
-  long_integer: {
-    label: "Long Integer",
-    icon: MapPin,
-    defaultConfig: () => ({
-      type: "long_integer",
-      label: "Long Integer",
-      name: "",
-      placeholder: "0",
-      required: false,
-      markAsPublic: false,
-      show_tooltip: false,
-      tool_tip: "",
-    }),
-    configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
-      {
-        type: "drop-down",
-        label: "Maximum digits allowed",
-        options: [
-          { value: 1, label: "1" }, { value: 2, label: "2" },
-          { value: 3, label: "3" }, { value: 4, label: "4" },
-          { value: 5, label: "5" }, { value: 6, label: "6" },
-          { value: 7, label: "7" }, { value: 8, label: "8" },
-          { value: 9, label: "9" }, { value: 10, label: "10" },
-          { value: 11, label: "11" }, { value: 12, label: "12" },
-          { value: 13, label: "13" }, { value: 14, label: "14" },
-          { value: 15, label: "15" }, { value: 16, label: "16" },
-        ],
-        key: "max",
-      },
-      { type: "checkbox", label: "Is Unique", key: "is_unique" },
-      { type: "checkbox", label: "Required", key: "required" },
-      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
-    ],
-  },
+  // long_integer: {
+  //   label: "Long Integer",
+  //   icon: MapPin,
+  //   defaultConfig: () => ({
+  //     type: "long_integer",
+  //     label: "Long Integer",
+  //     name: "",
+  //     placeholder: "0",
+  //     required: false,
+  //     markAsPublic: false,
+  //     show_tooltip: false,
+  //     tool_tip: "",
+  //   }),
+  //   configFields: [
+  //     { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
+  //     {
+  //       type: "drop-down",
+  //       label: "Maximum digits allowed",
+  //       options: [
+  //         { value: 1, label: "1" }, { value: 2, label: "2" },
+  //         { value: 3, label: "3" }, { value: 4, label: "4" },
+  //         { value: 5, label: "5" }, { value: 6, label: "6" },
+  //         { value: 7, label: "7" }, { value: 8, label: "8" },
+  //         { value: 9, label: "9" }, { value: 10, label: "10" },
+  //         { value: 11, label: "11" }, { value: 12, label: "12" },
+  //         { value: 13, label: "13" }, { value: 14, label: "14" },
+  //         { value: 15, label: "15" }, { value: 16, label: "16" },
+  //       ],
+  //       key: "max",
+  //     },
+  //     { type: "checkbox", label: "Is Unique", key: "is_unique" },
+  //     { type: "checkbox", label: "Required", key: "required" },
+  //     // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+  //     // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+  //   ],
+  // },
   checkbox: {
     label: "Checkbox",
     icon: CheckSquare,
@@ -543,34 +543,34 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
-  user: {
-    label: "User",
-    icon: User,
-    defaultConfig: () => ({
-      type: "user",
-      label: "Assigned To",
-      name: "",
-      userType: "single",
-      required: false,
-      markAsPublic: false,
-      show_tooltip: false,
-      tool_tip: "",
-    }),
-    configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
-      {
-        type: "radio-group",
-        label: "Type",
-        key: "userType",
-        options: [
-          { value: "single", label: "Single User" },
-          { value: "multiple", label: "Multiple Users" },
-        ],
-      },
-      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
-    ],
-  },
+  // user: {
+  //   label: "User",
+  //   icon: User,
+  //   defaultConfig: () => ({
+  //     type: "user",
+  //     label: "Assigned To",
+  //     name: "",
+  //     userType: "single",
+  //     required: false,
+  //     markAsPublic: false,
+  //     show_tooltip: false,
+  //     tool_tip: "",
+  //   }),
+  //   configFields: [
+  //     { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
+  //     {
+  //       type: "radio-group",
+  //       label: "Type",
+  //       key: "userType",
+  //       options: [
+  //         { value: "single", label: "Single User" },
+  //         { value: "multiple", label: "Multiple Users" },
+  //       ],
+  //     },
+  //     // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+  //     // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+  //   ],
+  // },
   file_upload: {
     label: "File Upload",
     icon: FileUp,
@@ -588,7 +588,16 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
     configFields: [
       { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
       { type: "number", label: "Max File Size (MB)", key: "maxFileSize" },
-      { type: "text", label: "Allowed File Types", key: "allowedTypes" },
+      { type: "drop-down", label: "Allowed File Types", key: "allowedTypes", options: 
+        [
+           { value: "*", label: "All Files" }
+        , { value: "image/*", label: "Images" }
+        , { value: "application/pdf", label: "PDFs" }
+        , { value: "application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document", label: "Word Documents" }
+        , { value: "application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", label: "Excel Spreadsheets" }
+        , { value: "text/csv", label: "CSV Files" }
+        ]
+       },
       { type: "checkbox", label: "Required", key: "required" },
       // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
       // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
@@ -652,6 +661,40 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       { type: "checkbox", label: "Required", key: "required" },
       // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
       // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+    ],
+  },
+  state: {
+    label: "State",
+    icon: Globe,
+    defaultConfig: () => ({
+      type: "state",
+      label: "State",
+      name: "",
+      required: false,
+      markAsPublic: false,
+      show_tooltip: false,
+      tool_tip: "",
+    }),
+    configFields: [
+      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
+      { type: "checkbox", label: "Required", key: "required" },
+    ],
+  },
+  city: {
+    label: "City",
+    icon: Globe,
+    defaultConfig: () => ({
+      type: "city",
+      label: "City",
+      name: "",
+      required: false,
+      markAsPublic: false,
+      show_tooltip: false,
+      tool_tip: "",
+    }),
+    configFields: [
+      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
+      { type: "checkbox", label: "Required", key: "required" },
     ],
   },
   multi_select_lookup: {
@@ -732,4 +775,4 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
   }
 };
 
-// No aliases or backward compatibility mappings needed for new development
+// No aliases or backward compatibility mappings needed for new development

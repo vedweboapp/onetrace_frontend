@@ -76,6 +76,8 @@ export function DashboardHeader() {
   const groupsHref = routes.dashboard.groups;
   const compositeHref = routes.dashboard.compositeItems;
   const personalProfileHref = routes.dashboard.settingsPersonalProfile;
+  const companySettingsHref = routes.dashboard.settingsCompanySettings;
+  const modulesHref = routes.dashboard.settingsModules;
   const pinStatusHref = routes.dashboard.settingsPinStatus;
   const tagHref = routes.dashboard.settingsTags;
   const usersHref = routes.dashboard.settingsUsers;
@@ -94,30 +96,44 @@ export function DashboardHeader() {
     pathname === compositeHref || pathname.startsWith(`${compositeHref}/`);
   const personalProfileActive =
     pathname === personalProfileHref || pathname.startsWith(`${personalProfileHref}/`);
+  const companySettingsActive =
+    pathname === companySettingsHref || pathname.startsWith(`${companySettingsHref}/`);
+  const modulesActive =
+    pathname === modulesHref || pathname.startsWith(`${modulesHref}/`);
   const pinStatusActive =
     pathname === pinStatusHref || pathname.startsWith(`${pinStatusHref}/`);
   const tagActive = pathname === tagHref || pathname.startsWith(`${tagHref}/`);
   const usersActive = pathname === usersHref || pathname.startsWith(`${usersHref}/`);
 
-  const sectionTitle = settingsMode
-    ? t("eyebrowSettings")
-    : homeActive
-      ? tNav("home")
-      : projectsActive
-        ? tNav("projects")
-        : quotationsActive
-          ? tNav("quotations")
-          : sitesActive
-            ? tNav("sites")
-            : contactsActive
-              ? tNav("contacts")
-              : clientsActive
-                ? tNav("clients")
-                : groupsActive
-                  ? tNav("groups")
-                  : compositeActive
-                    ? tNav("compositeItems")
-                    : tNav("home");
+  const sectionTitle = homeActive
+    ? tNav("home")
+    : projectsActive
+      ? tNav("projects")
+      : quotationsActive
+        ? tNav("quotations")
+        : sitesActive
+          ? tNav("sites")
+          : contactsActive
+            ? tNav("contacts")
+            : clientsActive
+              ? tNav("clients")
+              : groupsActive
+                ? tNav("groups")
+                : compositeActive
+                  ? tNav("compositeItems")
+                  : personalProfileActive
+                    ? tSettingsNav("personalProfile")
+                    : companySettingsActive
+                      ? tSettingsNav("companySettings")
+                      : modulesActive
+                        ? tSettingsNav("modules")
+                        : pinStatusActive
+                          ? tSettingsNav("pinStatus")
+                          : tagActive
+                            ? tSettingsNav("tags")
+                            : usersActive
+                              ? tSettingsNav("users")
+                              : tNav("home");
 
   return (
     <header className="z-20 flex h-auto shrink-0 flex-col border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
@@ -221,6 +237,28 @@ export function DashboardHeader() {
             >
               <Palette className="size-3.5" strokeWidth={1.75} />
               {tSettingsNav("appearance")}
+            </Link>
+            <Link
+              href={companySettingsHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                companySettingsActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={companySettingsActive ? resolved.navActiveStyle : undefined}
+            >
+              <Building2 className="size-3.5" strokeWidth={1.75} />
+              {tSettingsNav("companySettings")}
+            </Link>
+            <Link
+              href={modulesHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                modulesActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={modulesActive ? resolved.navActiveStyle : undefined}
+            >
+              <Settings className="size-3.5" strokeWidth={1.75} />
+              {tSettingsNav("modules")}
             </Link>
             <Link
               href={pinStatusHref}

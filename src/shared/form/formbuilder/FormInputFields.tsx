@@ -111,12 +111,12 @@ export const FormFieldsConfig: FieldConfigItem[] = [
     label: "Percent",
     icon: Percent
   },
-  {
-    key: "longInteger",
-    type: "long_integer",
-    label: "Long Integer",
-    icon: MapPin
-  },
+  // {
+  //   key: "longInteger",
+  //   type: "long_integer",
+  //   label: "Long Integer",
+  //   icon: MapPin
+  // },
   {
     key: "checkbox",
     type: "checkbox",
@@ -135,12 +135,12 @@ export const FormFieldsConfig: FieldConfigItem[] = [
     label: "Lookup",
     icon: Search
   },
-  {
-    key: "user",
-    type: "user",
-    label: "User",
-    icon: User
-  },
+  // {
+  //   key: "user",
+  //   type: "user",
+  //   label: "User",
+  //   icon: User
+  // },
   {
     key: "fileUpload",
     type: "file_upload",
@@ -170,6 +170,12 @@ export const FormFieldsConfig: FieldConfigItem[] = [
     type: "receiver_lookup",
     label: "Receiver Lookup",
     icon: Home,
+  },
+  {
+    key: "address",
+    type: "address",
+    label: "Address",
+    icon: MapPin,
   },
   {
     key: "signature",
@@ -272,6 +278,10 @@ export const CountryButton: React.FC<{ onClick?: () => void }> = ({ onClick }) =
   <FieldButton icon={Globe} label="Country" onClick={onClick} />
 );
 
+export const AddressButton: React.FC<{ onClick?: () => void }> = ({ onClick }) => (
+  <FieldButton icon={MapPin} label="Address" onClick={onClick} />
+);
+
 export const MultiSelectLookupButton: React.FC<{ onClick?: () => void }> = ({ onClick }) => (
   <FieldButton icon={ListChecks} label="Multi-Select Lookup" onClick={onClick} />
-);
+);
