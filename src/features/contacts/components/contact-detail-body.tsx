@@ -2,17 +2,15 @@
 
 import { useTranslations } from "next-intl";
 import type { Contact } from "@/features/contacts/types/contact.types";
-import {
-  DetailCreatedBySection,
-  DetailEmailLink,
-  DetailPhoneLink,
-  DetailRecordMetaSection,
-} from "@/shared/components/entity";
+import { DetailEmailLink, DetailPhoneLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
   DetailMetricCard,
+  DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
+  DetailStatusMetric,
+  detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 
 type Props = {
@@ -23,7 +21,7 @@ type Props = {
 
 export function ContactDetailBody({ detail, clientName, dateFmt }: Props) {
   const t = useTranslations("Dashboard.contacts");
-  const tUser = useTranslations("Dashboard.common.user");
+  const tMeta = useTranslations("Dashboard.common.detail");
   const clientId =
     typeof detail.client === "number"
       ? detail.client
@@ -31,14 +29,17 @@ export function ContactDetailBody({ detail, clientName, dateFmt }: Props) {
         ? detail.client.id
         : null;
 
-  const createdByUser =
-    detail.created_by && typeof detail.created_by === "object" ? detail.created_by : null;
-
   return (
     <DetailPagePadding>
-      <div className="space-y-3.5">
-        <DetailPanelCard title={t("detail.sectionOverview")}>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className={detailPageStackClassName}>
+        <DetailPanelCard>
+          <DetailMetricsGrid>
+            <DetailStatusMetric
+              label={t("fields.status")}
+              isActive={detail.is_active}
+              activeLabel={t("status.active")}
+              inactiveLabel={t("status.inactive")}
+            />
             <DetailMetricCard label={t("fields.client")}>
               {clientName ?? (clientId ? `#${clientId}` : "—")}
             </DetailMetricCard>
@@ -48,22 +49,7 @@ export function ContactDetailBody({ detail, clientName, dateFmt }: Props) {
             <DetailMetricCard label={t("fields.phone")}>
               <DetailPhoneLink phone={detail.phone} />
             </DetailMetricCard>
-          </div>
-        </DetailPanelCard>
-
-        <DetailPanelCard title={t("detail.sectionRecord")}>
-          <DetailRecordMetaSection
-            isActive={detail.is_active}
-            activeLabel={t("status.active")}
-            inactiveLabel={t("status.inactive")}
-            statusLabel={t("fields.status")}
-            createdAtLabel={t("fields.createdAt")}
-            updatedAtLabel={t("fields.updatedAt")}
-            createdAt={detail.created_at}
-            modifiedAt={detail.modified_at}
-            dateFmt={dateFmt}
-            gridClassName="grid-cols-1 sm:grid-cols-2"
-          />
+          </DetailMetricsGrid>
         </DetailPanelCard>
 
         <DetailPanelCard title={t("detail.sectionAddress")}>
@@ -79,14 +65,21 @@ export function ContactDetailBody({ detail, clientName, dateFmt }: Props) {
           />
         </DetailPanelCard>
 
-        {createdByUser ? (
-          <DetailCreatedBySection
-            title={t("fields.createdBy")}
-            user={createdByUser}
-            usernameLabel={tUser("username")}
-            emailLabel={tUser("email")}
-          />
-        ) : null}
+        <DetailSystemMetadataSection
+          createdAt={detail.created_at}
+          modifiedAt={detail.modified_at}
+          dateFmt={dateFmt}
+          createdBy={detail.created_by}
+          modifiedBy={detail.modified_by}
+          labels={{
+            sectionTitle: tMeta("systemMetadata"),
+            createdAt: t("fields.createdAt"),
+            updatedAt: t("fields.updatedAt"),
+            createdBy: t("fields.createdBy"),
+            modifiedBy: tMeta("modifiedBy"),
+            notModifiedYet: tMeta("notModifiedYet"),
+          }}
+        />
       </div>
     </DetailPagePadding>
   );

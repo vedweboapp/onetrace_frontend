@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
-import { BookUser, Building2, FileText, FolderKanban, Home, Layers, MapPinHouse, Package, Palette, Tag, Tags, UserRound } from "lucide-react";
+import { BookUser, Building2, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, Tag, Tags, UserRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useDashboardAppearanceStore } from "@/features/dashboard/store/dashboard-appearance.store";
@@ -150,6 +150,7 @@ function DashboardMainSidebar({
   const contactsHref = routes.dashboard.contacts;
   const sitesHref = routes.dashboard.sites;
   const quotationsHref = routes.dashboard.quotations;
+  const jobsHref = routes.dashboard.jobs;
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
@@ -163,6 +164,7 @@ function DashboardMainSidebar({
   const sitesActive = pathname === sitesHref || pathname.startsWith(`${sitesHref}/`);
   const quotationsActive =
     pathname === quotationsHref || pathname.startsWith(`${quotationsHref}/`);
+  const jobsActive = pathname === jobsHref || pathname.startsWith(`${jobsHref}/`);
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
   const groupsActive = pathname === groupsHref || pathname.startsWith(`${groupsHref}/`);
@@ -222,6 +224,14 @@ function DashboardMainSidebar({
           active={quotationsActive}
           label={t("quotations")}
           icon={FileText}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={jobsHref}
+          active={jobsActive}
+          label={t("jobs")}
+          icon={ListTodo}
           expanded={expanded}
           resolved={resolved}
         />
@@ -318,6 +328,7 @@ function DashboardSettingsSidebar({
   const pathname = usePathname();
   const appearanceHref = routes.dashboard.settingsAppearance;
   const pinStatusHref = routes.dashboard.settingsPinStatus;
+  const jobStatusHref = routes.dashboard.settingsJobStatus;
   const tagHref = routes.dashboard.settingsTags;
   const usersHref = routes.dashboard.settingsUsers;
 
@@ -325,6 +336,8 @@ function DashboardSettingsSidebar({
     pathname === appearanceHref || pathname.startsWith(`${appearanceHref}/`);
   const pinStatusActive =
     pathname === pinStatusHref || pathname.startsWith(`${pinStatusHref}/`);
+  const jobStatusActive =
+    pathname === jobStatusHref || pathname.startsWith(`${jobStatusHref}/`);
   const tagActive =
     pathname === tagHref || pathname.startsWith(`${tagHref}/`);
   const usersActive =
@@ -354,6 +367,14 @@ function DashboardSettingsSidebar({
           active={pinStatusActive}
           label={t("pinStatus")}
           icon={Tags}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={jobStatusHref}
+          active={jobStatusActive}
+          label={t("jobStatus")}
+          icon={ListTodo}
           expanded={expanded}
           resolved={resolved}
         />

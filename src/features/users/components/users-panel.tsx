@@ -2,25 +2,21 @@
 
 import * as React from "react";
 import { Pencil, Plus } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchUsersPage } from "@/features/users/api/user.api";
 import type { UserProfile } from "@/features/users/types/user.types";
+import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
+import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import {
+  AddButton,
   AppButton,
   DashboardEmptyState,
-  DataTable,
-  DataTableBody,
-  DataTableHead,
   DataTablePaginationBar,
-  DataTableRow,
   DataTableRowActionsMenu,
-  DataTableScroll,
-  DataTableTd,
-  DataTableTh,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
@@ -28,10 +24,10 @@ import {
   ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
+import { cn } from "@/core/utils/http.util";
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
-import { cn } from "@/core/utils/http.util";
 
 function fullName(row: UserProfile) {
   const first = row.user_detail.first_name?.trim() ?? "";
@@ -46,7 +42,7 @@ function roleLabel(row: UserProfile): string {
 export function UsersPanel() {
   const t = useTranslations("Dashboard.users");
   const tList = useTranslations("Dashboard.list");
-  const locale = useLocale();
+  const dateFmt = useDashboardDateFormat();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -111,10 +107,31 @@ export function UsersPanel() {
   const hasActiveFilters = hasListActiveFilters({ search });
   const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
   const pageRange = getListPageRange(pagination);
-  const dateFmt = React.useMemo(
-    () => new Intl.DateTimeFormat(locale === "es" ? "es" : "en", { dateStyle: "medium", timeStyle: "short" }),
-    [locale],
-  );
+
+  const tableColumns = React.useMemo(() => {
+    const c = entityCol<UserProfile>();
+    return [
+      c.primary("name", t("table.name"), (r) => fullName(r)),
+      c.truncate("email", t("table.email"), (r) => r.user_detail.email, { title: (r) => r.user_detail.email }),
+      c.phone("phone", t("table.phone"), (r) => r.user_detail.phone_number),
+      c.text("role", t("table.role"), (r) => roleLabel(r)),
+      c.text("invite", t("table.inviteStatus"), (r) => r.user_detail.invite_status ?? "—"),
+      c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
+      c.actions("actions", t("table.actions"), (row) => (
+        <DataTableRowActionsMenu
+          menuAriaLabel={tList("openRowActions")}
+          items={[
+            {
+              id: "edit",
+              label: t("edit"),
+              icon: Pencil,
+              onSelect: () => router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`),
+            },
+          ]}
+        />
+      )),
+    ];
+  }, [t, tList, dateFmt, router, pathname, listHref]);
 
   return (
     <div className="space-y-4">
@@ -131,9 +148,8 @@ export function UsersPanel() {
               variant="primary"
               size="sm"
               onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)}
-              className="gap-2"
+             
             >
-              <Plus className="size-4" strokeWidth={2} aria-hidden />
               {t("invite")}
             </AppButton>
           }
@@ -155,12 +171,12 @@ export function UsersPanel() {
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
         ) : loading ? (
-          listViewMode === "list" ? <div className="p-4 sm:p-6"><ListPageCardGrid>{Array.from({ length: 6 }, (_, i) => <ListPageCardSkeleton key={i} />)}</ListPageCardGrid></div> : <div className="space-y-2 p-6"><div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /></div>
+          listViewMode === "list" ? <div className="p-4 sm:p-6"><ListPageCardGrid>{Array.from({ length: 6 }, (_, i) => <ListPageCardSkeleton key={i} />)}</ListPageCardGrid></div> : <div className="space-y-2 p-6"><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /></div>
         ) : items.length === 0 ? (
           hasActiveFilters ? (
-            <DashboardEmptyState iconName="noResults" title={tList("noResultsTitle")} description={tList("noResultsDescription")} action={<AppButton type="button" variant="secondary" size="md" onClick={() => setUrl({ search: null, page: null }, { replace: true })}>{tList("clearFilters")}</AppButton>} />
+            <DashboardEmptyState iconName="noResults" title={tList("noResultsTitle")} description={tList("noResultsDescription")} action={<AppButton type="button" variant="secondary" size="sm" onClick={() => setUrl({ search: null, page: null }, { replace: true })}>{tList("clearFilters")}</AppButton>} />
           ) : (
-            <DashboardEmptyState iconName="clients" title={t("emptyTitle")} description={t("emptyDescription")} action={<AppButton type="button" variant="primary" size="md" onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)} className="gap-2"><Plus className="size-4" strokeWidth={2} aria-hidden />{t("invite")}</AppButton>} />
+            <DashboardEmptyState iconName="clients" title={t("emptyTitle")} description={t("emptyDescription")} action={<AddButton type="button" onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)} />} />
           )
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
@@ -182,26 +198,12 @@ export function UsersPanel() {
             </ListPageCardGrid>
           </div>
         ) : (
-          <DataTableScroll>
-            <DataTable>
-              <DataTableHead><tr><DataTableTh>{t("table.name")}</DataTableTh><DataTableTh>{t("table.email")}</DataTableTh><DataTableTh>{t("table.phone")}</DataTableTh><DataTableTh>{t("table.role")}</DataTableTh><DataTableTh>{t("table.inviteStatus")}</DataTableTh><DataTableTh>{t("table.created")}</DataTableTh><DataTableTh narrow><span className="sr-only">{t("table.actions")}</span></DataTableTh></tr></DataTableHead>
-              <DataTableBody>
-                {items.map((row) => (
-                  <DataTableRow key={row.id} data-list-row-id={row.id} className={cn(highlightClassName(row.id))} clickable onClick={() => openDetail(row.id)}>
-                    <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{fullName(row)}</DataTableTd>
-                    <DataTableTd>{row.user_detail.email}</DataTableTd>
-                    <DataTableTd>{row.user_detail.phone_number?.trim() || "—"}</DataTableTd>
-                    <DataTableTd>{roleLabel(row)}</DataTableTd>
-                    <DataTableTd>{row.user_detail.invite_status ?? "—"}</DataTableTd>
-                    <DataTableTd>{dateFmt.format(new Date(row.created_at))}</DataTableTd>
-                    <DataTableTd narrow onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                      <DataTableRowActionsMenu menuAriaLabel={tList("openRowActions")} items={[{ id: "edit", label: t("edit"), icon: Pencil, onSelect: () => router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`) }]} />
-                    </DataTableTd>
-                  </DataTableRow>
-                ))}
-              </DataTableBody>
-            </DataTable>
-          </DataTableScroll>
+          <EntityDataTable
+            columns={tableColumns}
+            rows={items}
+            onRowClick={(row) => openDetail(row.id)}
+            getRowClassName={(row) => highlightClassName(row.id)}
+          />
         )}
 
         {!loading && !loadError && items.length > 0 ? (

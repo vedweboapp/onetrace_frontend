@@ -169,10 +169,10 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
         subtitle={isEdit ? t("page.editSubtitle") : t("page.createSubtitle")}
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.projects)}>
+            <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.projects)}>
               {t("modal.cancel")}
             </AppButton>
-            <AppButton type="submit" form="project-upsert-screen-form" variant="primary" size="md" loading={saving} disabled={noClients}>
+            <AppButton type="submit" form="project-upsert-screen-form" variant="primary" size="sm" loading={saving} disabled={noClients}>
               {isEdit ? t("modal.saveChanges") : t("modal.save")}
             </AppButton>
           </div>
@@ -219,6 +219,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                     <CheckmarkSelect
                       id="project-client"
                       portaled
+                      searchable
                       listLabel={t("fields.client")}
                       options={clientOptions}
                       value={field.value}

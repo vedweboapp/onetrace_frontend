@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import type { ReactNode } from "react";
 import { detailRecordSurfaceShellClassName } from "@/shared/components/layout/detail-metric-card";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -17,6 +18,15 @@ export type EntityDetailScreenLabels = {
   retry: string;
 };
 
+export type EntityDetailScreenContext<T> = {
+  detail: T | null;
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+  dateFmt: Intl.DateTimeFormat;
+  listBack: string;
+};
+
 export type EntityDetailScreenProps<T> = {
   entityId: number;
   listSection: DashboardListSection;
@@ -25,18 +35,16 @@ export type EntityDetailScreenProps<T> = {
   loadError: string;
   fetch: (id: number) => Promise<T>;
   getTitle: (detail: T) => string;
-  /** Optional header subtitle — omit globally by not passing from any feature. */
   subtitle?: (detail: T) => ReactNode;
-  actions?: (ctx: { detail: T; listBack: string }) => ReactNode;
-  children: (ctx: { detail: T; dateFmt: Intl.DateTimeFormat }) => ReactNode;
+  actions?: (ctx: { detail: T; listBack: string; retry: () => void }) => ReactNode;
+  headerExtension?: ReactNode;
+  children?: (ctx: { detail: T; dateFmt: Intl.DateTimeFormat }) => ReactNode;
+  renderSurface?: (ctx: EntityDetailScreenContext<T>) => ReactNode;
+  onDetailChange?: (detail: T | null) => void;
   footer?: ReactNode;
   className?: string;
 };
 
-/**
- * Entity detail page shell: back header, loading/error states, record surface.
- * Features only supply data fetch, title, actions, and body content.
- */
 export function EntityDetailScreen<T>({
   entityId,
   listSection,
@@ -48,6 +56,9 @@ export function EntityDetailScreen<T>({
   subtitle,
   actions,
   children,
+  renderSurface,
+  headerExtension,
+  onDetailChange,
   footer,
   className,
 }: EntityDetailScreenProps<T>) {
@@ -58,7 +69,28 @@ export function EntityDetailScreen<T>({
     loadError,
   });
 
+  React.useEffect(() => {
+    onDetailChange?.(detail);
+  }, [detail, onDetailChange]);
+
   const title = detail ? getTitle(detail) : loading ? labels.loadingTitle : labels.metaTitle;
+  const screenCtx: EntityDetailScreenContext<T> = {
+    detail,
+    loading,
+    error,
+    retry,
+    dateFmt,
+    listBack,
+  };
+
+  const defaultSurface =
+    loading ? (
+      <EntityDetailLoadingSkeleton />
+    ) : error ? (
+      <EntityDetailErrorState message={error} retryLabel={labels.retry} onRetry={retry} />
+    ) : detail && children ? (
+      children({ detail, dateFmt })
+    ) : null;
 
   return (
     <div className={className ?? "pb-8 sm:pb-10"}>
@@ -67,17 +99,12 @@ export function EntityDetailScreen<T>({
         backHref={listBack}
         backAriaLabel={labels.backAria}
         subtitle={detail && subtitle ? subtitle(detail) : undefined}
-        actions={!loading && !error && detail && actions ? actions({ detail, listBack }) : null}
+        extension={headerExtension}
+        actions={!loading && !error && detail && actions ? actions({ detail, listBack, retry }) : null}
       />
 
       <SurfaceShell className={detailRecordSurfaceShellClassName}>
-        {loading ? (
-          <EntityDetailLoadingSkeleton />
-        ) : error ? (
-          <EntityDetailErrorState message={error} retryLabel={labels.retry} onRetry={retry} />
-        ) : detail ? (
-          children({ detail, dateFmt })
-        ) : null}
+        {renderSurface ? renderSurface(screenCtx) : defaultSurface}
       </SurfaceShell>
 
       {footer}

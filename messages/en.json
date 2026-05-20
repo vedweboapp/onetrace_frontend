@@ -82,6 +82,16 @@
     "common": {
       "back": "Back",
       "breadcrumbNav": "Breadcrumb",
+      "actions": {
+        "add": "Add",
+        "save": "Save",
+        "cancel": "Cancel",
+        "export": "Export",
+        "edit": "Edit",
+        "delete": "Delete",
+        "confirm": "Confirm",
+        "retry": "Retry"
+      },
       "map": {
         "loading": "Finding location…",
         "noAddress": "Add address fields to see this location on the map.",
@@ -103,6 +113,11 @@
       "user": {
         "username": "Username",
         "email": "Email"
+      },
+      "detail": {
+        "systemMetadata": "System metadata",
+        "modifiedBy": "Modified by",
+        "notModifiedYet": "Not modified yet"
       }
     },
     "brand": {
@@ -125,6 +140,7 @@
       "contacts": "Contacts",
       "sites": "Sites",
       "quotations": "Quotations",
+      "jobs": "Jobs",
       "projects": "Projects",
       "groups": "Groups",
       "products": "Products",
@@ -138,6 +154,7 @@
       "backToApp": "Projects",
       "appearance": "Appearance",
       "pinStatus": "Pin statuses",
+      "jobStatus": "Job statuses",
       "tags": "Tags",
       "users": "Users",
       "hint": "Customize theme and accent for this workspace."
@@ -189,11 +206,18 @@
       "metaTitle": "Pin statuses",
       "title": "Pin statuses",
       "subtitle": "Create and manage workflow labels for pins. Colors are used when displaying status chips across the app.",
-      "add": "Add status",
+      "add": "Add",
       "edit": "Edit",
       "delete": "Delete",
       "table": {
+        "type": "Type",
+        "kindPin": "Pin",
+        "kindJob": "Job",
+        "name": "Name",
+        "tag": "Tag",
         "status": "Status",
+        "createdBy": "Created by",
+        "createdAt": "Created at",
         "created": "Created",
         "updated": "Last updated",
         "actions": "Actions"
@@ -210,7 +234,7 @@
       "loadError": "Could not load pin statuses. Try again.",
       "modal": {
         "createTitle": "New pin status",
-        "editTitle": "Edit pin status",
+        "editTitle": "Edit",
         "statusName": "Status name",
         "bgColour": "Background color",
         "textColour": "Text color",
@@ -230,11 +254,63 @@
       "validationName": "Enter a status name.",
       "validationHex": "Use a valid 6-digit hex color (e.g. #E5E7EB)."
     },
+    "jobStatus": {
+      "metaTitle": "Job statuses",
+      "title": "Job statuses",
+      "subtitle": "Create and manage workflow labels for jobs. Colors are used when displaying status chips across the app.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "table": {
+        "type": "Type",
+        "kindPin": "Pin",
+        "kindJob": "Job",
+        "name": "Name",
+        "tag": "Tag",
+        "status": "Status",
+        "createdBy": "Created by",
+        "createdAt": "Created at",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "empty": "No job statuses yet. Add one to get started.",
+      "emptyTitle": "No job statuses yet",
+      "emptyDescription": "Create workflow labels for jobs used across your projects.",
+      "loadError": "Could not load job statuses. Try again.",
+      "modal": {
+        "createTitle": "New job status",
+        "editTitle": "Edit",
+        "statusName": "Status name",
+        "bgColour": "Background color",
+        "textColour": "Text color",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this status?",
+      "deleteConfirmBody": "Jobs using this status may need to be updated. This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} statuses",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Status updated",
+      "created": "Status created",
+      "deleted": "Status deleted",
+      "hexPlaceholder": "#000000",
+      "validationName": "Enter a status name.",
+      "validationHex": "Use a valid 6-digit hex color (e.g. #E5E7EB)."
+    },
     "tags": {
       "metaTitle": "Tags",
       "title": "Tags",
       "subtitle": "Create and manage tags used across the app. Colors are shown as chips.",
-      "add": "Add tag",
+      "add": "Add",
       "edit": "Edit",
       "delete": "Delete",
       "filterState": "Active state",
@@ -260,7 +336,7 @@
       "loadError": "Could not load tags. Try again.",
       "modal": {
         "createTitle": "New tag",
-        "editTitle": "Edit tag",
+        "editTitle": "Edit",
         "tagName": "Tag name",
         "bgColour": "Background color",
         "textColour": "Text color",
@@ -285,7 +361,7 @@
       "detailMetaTitle": "User details",
       "title": "Users",
       "subtitle": "Invite and manage users in your organization.",
-      "invite": "Invite user",
+      "invite": "Add",
       "edit": "Edit",
       "loadError": "Could not load users. Try again.",
       "detailLoadError": "Could not load user details. Try again.",
@@ -348,19 +424,19 @@
       },
       "modal": {
         "save": "Save",
-        "saveChanges": "Save changes",
+        "saveChanges": "Save",
         "cancel": "Cancel"
       },
       "detail": {
         "retry": "Retry",
         "backAria": "Back to users list",
-        "editWithIcon": "Edit user",
+        "editWithIcon": "Edit",
         "sectionOverview": "Overview"
       },
       "page": {
         "createTitle": "Invite user",
         "createSubtitle": "Fill in user details and send invitation.",
-        "editTitle": "Edit user",
+        "editTitle": "Edit",
         "editSubtitle": "Update user details and save changes."
       }
     },
@@ -369,7 +445,7 @@
       "detailMetaTitle": "Client details",
       "title": "Clients",
       "subtitle": "Organizations and contacts you work with. Click a row for full details.",
-      "add": "Add client",
+      "add": "Add",
       "empty": "No clients yet. Add your first client to get started.",
       "emptyTitle": "No clients yet",
       "emptyDescription": "Create your first client to start organizing contacts and jobs.",
@@ -410,7 +486,7 @@
         "retry": "Retry",
         "close": "Close panel",
         "edit": "Edit",
-        "editWithIcon": "Edit client",
+        "editWithIcon": "Edit",
         "backAria": "Back to clients list",
         "addressUnavailable": "No address saved for this client yet.",
         "sectionContact": "Contact",
@@ -421,7 +497,17 @@
         "notProvided": "—",
         "metaStatus": "Status",
         "metaClientId": "Client ID",
-        "addressLine2Empty": "No secondary address provided"
+        "addressLine2Empty": "No secondary address provided",
+        "tabsAria": "Client sections",
+        "tabs": {
+          "details": "Overview",
+          "contacts": "Contacts",
+          "sites": "Sites"
+        },
+        "contactsEmptyTitle": "No contacts for this client",
+        "contactsEmptyDescription": "Contacts linked to this client will appear here.",
+        "sitesEmptyTitle": "No sites for this client",
+        "sitesEmptyDescription": "Sites linked to this client will appear here."
       },
       "detailLoadError": "Could not load client details. Try again.",
       "form": {
@@ -450,15 +536,15 @@
       },
       "modal": {
         "createTitle": "New client",
-        "editTitle": "Edit client",
+        "editTitle": "Edit",
         "cancel": "Cancel",
-        "save": "Create client",
+        "save": "Save",
         "saveChanges": "Save changes"
       },
       "page": {
         "createTitle": "Create client",
         "createSubtitle": "Fill in client details and save.",
-        "editTitle": "Edit client",
+        "editTitle": "Edit",
         "editSubtitle": "Update client details and save changes."
       },
       "validation": {
@@ -478,8 +564,8 @@
       "detailMetaTitle": "Contact details",
       "title": "Contacts",
       "subtitle": "People associated with clients. Use search and filters to find them quickly.",
-      "add": "Add contact",
-      "edit": "Edit contact",
+      "add": "Add",
+      "edit": "Edit",
       "activate": "Activate",
       "deactivate": "Deactivate",
       "activatedToast": "Contact activated",
@@ -541,13 +627,13 @@
       "modal": {
         "createTitle": "New contact",
         "cancel": "Cancel",
-        "save": "Create contact",
+        "save": "Save",
         "saveChanges": "Save changes"
       },
       "page": {
         "createTitle": "Create contact",
         "createSubtitle": "Fill in contact details and save.",
-        "editTitle": "Edit contact",
+        "editTitle": "Edi",
         "editSubtitle": "Update contact details and save changes."
       },
       "placeholders": {
@@ -573,7 +659,7 @@
       "detailMetaTitle": "Site details",
       "title": "Sites",
       "subtitle": "Track client sites and their addresses. Open a row for full details.",
-      "add": "Add site",
+      "add": "Add",
       "emptyTitle": "No sites yet",
       "emptyDescription": "Create your first site to manage location-wise work.",
       "loadError": "Could not load sites. Try again.",
@@ -603,6 +689,7 @@
         "name": "Site",
         "client": "Client",
         "address": "Address",
+        "what3words": "what3words",
         "status": "Status",
         "created": "Created",
         "actions": "Actions"
@@ -614,7 +701,7 @@
       "detail": {
         "loadingTitle": "Loading…",
         "retry": "Retry",
-        "editWithIcon": "Edit site",
+        "editWithIcon": "Edit",
         "backAria": "Back to sites list",
         "sectionOverview": "Overview",
         "sectionAddress": "Address",
@@ -627,7 +714,8 @@
         "client": "Select client",
         "country": "Select country",
         "state": "Select state / region",
-        "city": "Select or type city"
+        "city": "Select or type city",
+        "what3words": "e.g. filled.count.soap"
       },
       "fields": {
         "siteName": "Site name",
@@ -638,21 +726,23 @@
         "stateProvince": "State / province",
         "city": "City",
         "pincode": "Postal / ZIP code",
+        "what3words": "What3words",
         "status": "Status",
         "createdAt": "Created",
-        "updatedAt": "Last updated"
+        "updatedAt": "Last updated",
+        "createdBy": "Created by"
       },
       "modal": {
         "createTitle": "New site",
-        "editTitle": "Edit site",
+        "editTitle": "Edit",
         "cancel": "Cancel",
-        "save": "Create site",
+        "save": "Save",
         "saveChanges": "Save changes"
       },
       "page": {
         "createTitle": "Create site",
         "createSubtitle": "Fill in site details and save.",
-        "editTitle": "Edit site",
+        "editTitle": "Edit",
         "editSubtitle": "Update site details and save changes."
       },
       "validation": {
@@ -663,6 +753,18 @@
         "state": "Select a state or region.",
         "city": "Enter or select a city.",
         "pincode": "Enter a postal or ZIP code."
+      },
+      "location": {
+        "searchPlaceholder": "Start typing street address…",
+        "searchPlaceholderLine2": "Apartment, suite, building (optional)…",
+        "searching": "Searching places…",
+        "noResults": "No matches — you can still enter the address manually.",
+        "mapTitle": "Pin location on map",
+        "dragPinHint": "Drag the pin or click the map to set the exact location.",
+        "mapPickHint": "Add address details or search above, then place the pin on the map.",
+        "mapNotFoundHint": "Could not locate this address — set city, state, and postal code, or click the map to place the pin.",
+        "addressFromPin": "Address fields updated from the pin location.",
+        "coordsLabel": "Coordinates: {lat}, {lon}"
       }
     },
     "quotations": {
@@ -670,8 +772,8 @@
       "detailMetaTitle": "Quotation details",
       "title": "Quotations",
       "subtitle": "Create and track quotes linked to clients, sites, and projects. Switch between table and card view.",
-      "add": "New quotation",
-      "edit": "Edit quotation",
+      "add": "Add",
+      "edit": "Edit",
       "openDetail": "View details",
       "export": {
         "button": "Export",
@@ -828,12 +930,49 @@
         "deleteSection": "Delete",
         "cancel": "Cancel",
         "toggleRowExpand": "Expand or collapse",
-        "editRowName": "Edit name"
+        "editRowName": "Edit name",
+        "editComposite": "View details"
+      },
+      "blockScope": {
+        "metaTitle": "Block items",
+        "loadingTitle": "Loading…",
+        "missingTitle": "Block not available",
+        "missingBody": "Open this page from Scope & Pricing by clicking a composite row.",
+        "backAria": "Back to quote scope",
+        "blockLabel": "Block name",
+        "colProduct": "Product name",
+        "colQty": "Qty",
+        "colListPrice": "List price",
+        "colAmount": "Amount",
+        "colDiscount": "Discount",
+        "colTax": "Tax",
+        "colTotal": "Total",
+        "plotSubtotal": "Plot subtotal",
+        "emptyBlock": "No composite items in this block."
+      },
+      "compositeScope": {
+        "metaTitle": "Composite item details",
+        "loadingTitle": "Loading…",
+        "loadError": "Could not load this composite item.",
+        "backAria": "Back to quote scope",
+        "repeatBadge": "Included ×{count}",
+        "sectionQuoteLine": "On this quote",
+        "includedTimes": "Times on quote",
+        "packagePrice": "Package price",
+        "scopeLineTotal": "Line total on quote",
+        "openCatalogItem": "Open in composite items catalog",
+        "sectionComponents": "Package contents",
+        "colQtyPerPackage": "Qty / package",
+        "colQtyInScope": "Qty on quote",
+        "colUnitPrice": "Unit price",
+        "colLineTotal": "Line total",
+        "noComponents": "No component items defined for this package."
       },
       "fields": {
         "quoteName": "Quote name",
         "customer": "Client",
         "site": "Site",
+        "what3words": "What3words",
         "project": "Project",
         "primaryContact": "Primary contact",
         "additionalContact": "Additional contact",
@@ -855,12 +994,12 @@
       "modal": {
         "createTitle": "New quotation",
         "cancel": "Cancel",
-        "save": "Create quotation"
+        "save": "Save"
       },
       "page": {
         "createTitle": "Create quotation",
         "createSubtitle": "Fill in quotation details and save.",
-        "editTitle": "Edit quotation",
+        "editTitle": "Edit",
         "saveEdit": "Save changes",
         "lastUpdated": "Last updated {date}",
         "editQuoteScopeTitle": "Quoted scope",
@@ -877,6 +1016,111 @@
         "customer": "Select a client.",
         "site": "Select a site.",
         "project": "Select a project."
+      }
+    },
+    "jobs": {
+      "metaTitle": "Jobs",
+      "detailMetaTitle": "Job details",
+      "title": "Jobs",
+      "subtitle": "Schedule and track field work. Assign technicians and update job status as work progresses.",
+      "add": "Add",
+      "edit": "Edit",
+      "emptyTitle": "No jobs yet",
+      "emptyDescription": "Create your first job to assign work to technicians and track status.",
+      "loadError": "Could not load jobs. Try again.",
+      "detailLoadError": "Could not load job details. Try again.",
+      "createdToast": "Job created successfully",
+      "updatedToast": "Job updated successfully",
+      "createError": "Could not create the job. Try again.",
+      "updateError": "Could not update the job. Try again.",
+      "deleteError": "Could not delete the job. Try again.",
+      "deletedToast": "Job deleted",
+      "statusUpdatedToast": "Job status updated",
+      "statusUpdateError": "Could not update job status. Try again.",
+      "filterState": "Active state",
+      "filterJobStatus": "Job status",
+      "filterAllStatuses": "All statuses",
+      "filterAssignedWorker": "Assigned worker",
+      "filterAllWorkers": "All technicians",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "activatedToast": "Job activated",
+      "deactivatedToast": "Job deactivated",
+      "toggleActiveError": "Could not update job status. Try again.",
+      "pageLabel": "Showing {start}-{end} of {total} jobs",
+      "prev": "Previous",
+      "next": "Next",
+      "delete": "Delete",
+      "deleteConfirmTitle": "Delete this job?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete job",
+      "table": {
+        "title": "Job",
+        "jobStatus": "Job status",
+        "assignedWorker": "Assigned worker",
+        "start": "Start",
+        "end": "End",
+        "recordStatus": "Record",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "detail": {
+        "loadingTitle": "Loading…",
+        "retry": "Retry",
+        "backAria": "Back to jobs list",
+        "editWithIcon": "Edit",
+        "sectionSchedule": "Schedule",
+        "sectionDescription": "Description",
+        "statusUnknown": "Not set",
+        "notCompleted": "Not completed"
+      },
+      "updateStatus": {
+        "action": "Update status",
+        "title": "Update job status",
+        "body": "Choose a new status for “{title}”.",
+        "confirm": "Update status",
+        "placeholder": "Select status",
+        "loading": "Loading statuses…"
+      },
+      "page": {
+        "createTitle": "New job",
+        "createSubtitle": "Define the work, schedule, and assigned technician.",
+        "editTitle": "Edit job",
+        "editSubtitle": "Update job details and save."
+      },
+      "placeholders": {
+        "assignedWorker": "Select technician"
+      },
+      "fields": {
+        "title": "Title",
+        "description": "Description",
+        "assignedWorker": "Assigned worker",
+        "startDate": "Start date & time",
+        "endDate": "End date & time",
+        "jobStatus": "Job status",
+        "recordStatus": "Record status",
+        "isActive": "Active",
+        "jobId": "Job ID",
+        "pinStatus": "Pin status",
+        "completedAt": "Completed",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "createdBy": "Created by"
+      },
+      "modal": {
+        "cancel": "Cancel",
+        "save": "Save",
+        "saveChanges": "Save changes"
+      },
+      "validation": {
+        "title": "Enter a job title.",
+        "assignedWorker": "Select an assigned worker.",
+        "startDate": "Enter a start date and time.",
+        "endDate": "Enter an end date and time.",
+        "endBeforeStart": "End must be on or after the start."
       }
     },
     "home": {
@@ -903,7 +1147,7 @@
       "detailMetaTitle": "Project details",
       "title": "Projects",
       "subtitle": "Track work by client and schedule. Open a row for full details.",
-      "add": "Add project",
+      "add": "Add",
       "empty": "No projects yet. Create your first project to get started.",
       "emptyTitle": "No projects yet",
       "emptyDescription": "Create your first project to begin planning and tracking work.",
@@ -947,8 +1191,9 @@
         "loadingTitle": "Loading…",
         "retry": "Retry",
         "edit": "Edit",
-        "editWithIcon": "Edit project",
+        "editWithIcon": "Edit",
         "quoteToProject": "Quote project",
+        "quoteToProjectShort": "Quote",
         "quoteToProjectAria": "Create a quotation from this project with all levels selected",
         "quoteFromProjectToast": "Quotation created from project",
         "quoteFromProjectError": "Could not create a quotation from this project. Try again.",
@@ -1096,15 +1341,15 @@
       },
       "modal": {
         "createTitle": "New project",
-        "editTitle": "Edit project",
+        "editTitle": "Edit",
         "cancel": "Cancel",
-        "save": "Create project",
+        "save": "Save",
         "saveChanges": "Save changes"
       },
       "page": {
         "createTitle": "Create project",
         "createSubtitle": "Fill in project details and save.",
-        "editTitle": "Edit project",
+        "editTitle": "Edit",
         "editSubtitle": "Update project details and save changes."
       },
       "validation": {
@@ -1140,7 +1385,9 @@
       "deletedToast": "Group deleted",
       "table": {
         "name": "Name",
+        "itemCount": "Linked items",
         "compositeItems": "Composite items",
+        "moreCompositeItems": "+{count} more",
         "created": "Created",
         "status": "Status",
         "actions": "Actions"
@@ -1158,10 +1405,10 @@
       "confirmDelete": "Delete group",
       "modal": {
         "createTitle": "New group",
-        "editTitle": "Edit group",
+        "editTitle": "Edit",
         "cancel": "Cancel",
-        "save": "Create group",
-        "saveChanges": "Save changes",
+        "save": "Save",
+        "saveChanges": "Save",
         "name": "Group name",
         "namePlaceholder": "e.g. Materials",
         "nameError": "Enter a group name.",
@@ -1175,13 +1422,14 @@
         "addCompositeItem": "Add row",
         "removeCompositeItem": "Remove",
         "atLeastOneCompositeItemError": "Select at least one composite item.",
+        "duplicateCompositeItemError": "Each composite item can only be added once.",
         "createdToast": "Group created",
         "updatedToast": "Group updated"
       },
       "page": {
         "createTitle": "Create group",
         "createSubtitle": "Fill in group details and save.",
-        "editTitle": "Edit group",
+        "editTitle": "Edit",
         "editSubtitle": "Update group details and save changes."
       },
       "detail": {
@@ -1191,6 +1439,12 @@
         "sectionOverview": "Overview",
         "metaGroupId": "Group ID",
         "sectionItems": "Linked items",
+        "colNo": "#",
+        "colItem": "Composite item",
+        "colComponentCount": "Components",
+        "colQuantity": "Qty",
+        "colCost": "Cost",
+        "colSell": "Sell",
         "items": "Items with abbreviation",
         "noItems": "No items linked to this group.",
         "sectionRecord": "Record",
@@ -1211,7 +1465,7 @@
         "link": "Manage groups",
         "suffix": "— then pick it in the filter or when adding items."
       },
-      "add": "Add item",
+      "add": "Add",
       "empty": "No composite items yet. Create a group first, then add items here.",
       "emptyTitle": "No composite items yet",
       "emptyDescription": "Create composite items and assign them to groups.",
@@ -1235,6 +1489,7 @@
       "table": {
         "name": "Name",
         "group": "Group",
+        "componentCount": "Components",
         "organization": "Organization",
         "created": "Created",
         "status": "Status",
@@ -1249,10 +1504,10 @@
       "confirmDelete": "Delete",
       "modal": {
         "createTitle": "New composite item",
-        "editTitle": "Edit composite item",
+        "editTitle": "Edit",
         "cancel": "Cancel",
-        "save": "Create item",
-        "saveChanges": "Save changes",
+        "save": "Save",
+        "saveChanges": "Save",
         "name": "Name",
         "namePlaceholder": "e.g. Ambuja cement",
         "nameError": "Enter a name.",
@@ -1271,6 +1526,7 @@
         "addComponent": "Add row",
         "removeComponent": "Remove",
         "atLeastOneComponentError": "Select at least one item.",
+        "duplicateComponentError": "Each item can only be added once as a component.",
         "group": "Group",
         "groupPlaceholder": "Select group",
         "groupError": "Select a group.",
@@ -1281,7 +1537,7 @@
       "page": {
         "createTitle": "Create composite item",
         "createSubtitle": "Fill in composite item details and save.",
-        "editTitle": "Edit composite item",
+        "editTitle": "Edit",
         "editSubtitle": "Update composite item details and save changes."
       }
     },
@@ -1290,7 +1546,7 @@
       "detailMetaTitle": "Item details",
       "title": "Items",
       "subtitle": "Catalog items and materials. Search, view details, and delete.",
-      "add": "Add item",
+      "add": "Add",
       "empty": "No items yet.",
       "emptyTitle": "No items yet",
       "emptyDescription": "Create your first item to start building your catalog.",
@@ -1335,6 +1591,7 @@
         "compositeYes": "Composite item",
         "compositeNo": "Standard item",
         "components": "Component list",
+        "colNo": "#",
         "componentItem": "Item",
         "componentQty": "Qty",
         "noComponents": "No components linked to this item.",
@@ -1347,10 +1604,10 @@
       },
       "modal": {
         "createTitle": "New item",
-        "editTitle": "Edit item",
+        "editTitle": "Edit",
         "cancel": "Cancel",
-        "save": "Create item",
-        "saveChanges": "Save changes",
+        "save": "Save",
+        "saveChanges": "Save",
         "name": "Name",
         "namePlaceholder": "e.g. Hinges",
         "nameError": "Enter a name.",
@@ -1366,7 +1623,7 @@
       "page": {
         "createTitle": "Create item",
         "createSubtitle": "Fill in item details and save.",
-        "editTitle": "Edit item",
+        "editTitle": "Edit",
         "editSubtitle": "Update item details and save changes."
       }
     },

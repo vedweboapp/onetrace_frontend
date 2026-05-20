@@ -11,6 +11,8 @@ export type DetailAddressParts = {
   state?: string | null;
   pincode?: string | null;
   country?: string | null;
+  /** ISO 3166-1 alpha-2 — biases geocoding (e.g. `IN`). */
+  countryIso?: string | null;
 };
 
 export function hasDetailAddress(parts: DetailAddressParts): boolean {

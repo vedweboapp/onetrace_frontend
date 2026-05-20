@@ -121,14 +121,14 @@ export function ProjectFormModal({ open, onClose, mode, project, clientOptions, 
       size="2xl"
       footer={
         <>
-          <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => handleCloseAttempt()}>
+          <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => handleCloseAttempt()}>
             {t("modal.cancel")}
           </AppButton>
           <AppButton
             type="submit"
             form={FORM_DOM_ID}
             variant="primary"
-            size="md"
+            size="sm"
             loading={saving}
             disabled={noClients}
           >
@@ -168,6 +168,7 @@ export function ProjectFormModal({ open, onClose, mode, project, clientOptions, 
                 <CheckmarkSelect
                   id="project-client"
                   portaled
+                  searchable
                   listLabel={t("fields.client")}
                   options={clientOptions}
                   value={field.value}

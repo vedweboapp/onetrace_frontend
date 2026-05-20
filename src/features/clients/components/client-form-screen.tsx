@@ -134,10 +134,10 @@ export function ClientFormScreen({ mode, clientId }: Props) {
         subtitle={isEdit ? t("page.editSubtitle") : t("page.createSubtitle")}
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => router.push(listBack)}>
+            <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => router.push(listBack)}>
               {t("modal.cancel")}
             </AppButton>
-            <AppButton type="submit" form="client-upsert-screen-form" variant="primary" size="md" loading={saving}>
+            <AppButton type="submit" form="client-upsert-screen-form" variant="primary" size="sm" loading={saving}>
               {isEdit ? t("modal.saveChanges") : t("modal.save")}
             </AppButton>
           </div>

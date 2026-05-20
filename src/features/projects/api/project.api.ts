@@ -20,6 +20,7 @@ function assertEnvelopeSuccess(envelope: { success: boolean; message?: string })
 export type ProjectListFilters = {
   search?: string;
   is_active?: boolean;
+  client?: number;
 };
 
 export async function fetchProjectsPage(
@@ -35,6 +36,9 @@ export async function fetchProjectsPage(
   if (q) params.search = q;
   if (filters?.is_active === true) params.is_active = true;
   if (filters?.is_active === false) params.is_active = false;
+  if (typeof filters?.client === "number" && Number.isFinite(filters.client) && filters.client > 0) {
+    params.client = filters.client;
+  }
 
   const { data } = await api.get<ProjectListResponse>(PROJECT_PATHS.list, { params });
   assertEnvelopeSuccess(data);

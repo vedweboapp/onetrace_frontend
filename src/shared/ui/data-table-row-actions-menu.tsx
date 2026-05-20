@@ -102,6 +102,7 @@ export function DataTableRowActionsMenu({
       ref={menuRef}
       role="menu"
       aria-label={menuAriaLabel}
+      data-ot-row-actions-portal=""
       style={
         coords
           ? {
@@ -154,6 +155,9 @@ export function DataTableRowActionsMenu({
       <div
         ref={triggerWrapRef}
         className={cn("relative flex justify-end", className)}
+        data-ot-row-actions-trigger=""
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >

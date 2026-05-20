@@ -3,15 +3,21 @@
 import * as React from "react";
 import { useLocale } from "next-intl";
 
-/** Shared medium date + short time formatter for dashboard entity views. */
-export function useDashboardDateFormat() {
+type DateFormatOptions = {
+  /** Date only (no time), e.g. due dates and project ranges. */
+  dateOnly?: boolean;
+};
+
+/** Shared formatter for dashboard entity views. */
+export function useDashboardDateFormat(options?: DateFormatOptions) {
   const locale = useLocale();
+  const dateOnly = options?.dateOnly ?? false;
   return React.useMemo(
     () =>
       new Intl.DateTimeFormat(locale === "es" ? "es" : "en", {
         dateStyle: "medium",
-        timeStyle: "short",
+        ...(dateOnly ? {} : { timeStyle: "short" as const }),
       }),
-    [locale],
+    [locale, dateOnly],
   );
 }

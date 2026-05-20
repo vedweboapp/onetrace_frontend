@@ -20,6 +20,7 @@ export type DashboardListSection =
   | "contacts"
   | "sites"
   | "quotations"
+  | "jobs"
   | "projects"
   | "groups"
   | "items"

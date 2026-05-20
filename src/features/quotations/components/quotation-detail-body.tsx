@@ -19,7 +19,18 @@ import {
 } from "@/features/quotations/utils/quotation-nested-fields.util";
 import { seedDraftFromQuoteSections } from "@/features/quotations/utils/quotation-draft-seed.util";
 import type { Site } from "@/features/sites/types/site.types";
+import {
+  DetailSystemMetadataSection,
+  DetailUserAttribution,
+  normalizeDetailAuditUser,
+} from "@/shared/components/entity";
 import { DetailFormattedAddress, hasDetailAddress } from "@/shared/components/layout/detail-formatted-address";
+import { What3WordsInline } from "@/shared/components/layout/what3words-inline";
+import {
+  DetailPageMapLayout,
+  detailMapFillClassName,
+  detailMapViewportClassName,
+} from "@/shared/components/layout/detail-page-map-layout";
 import {
   DetailMetricCard,
   DetailMetricsGrid,
@@ -30,89 +41,78 @@ import { AppTabs } from "@/shared/ui";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { cn } from "@/core/utils/http.util";
 
-function QuotationPersonCell({
-  label,
-  primary,
-  secondary,
-}: {
-  /** Omit or leave empty for compact tiles (e.g. technician list). */
-  label?: string;
-  primary: string;
-  secondary: string | null;
-}) {
-  const empty = primary === "—" || primary.trim() === "";
-  const hasLabel = typeof label === "string" && label.trim().length > 0;
-  return (
-    <div className="rounded-md border border-slate-100 bg-slate-50/50 p-3 dark:border-slate-800 dark:bg-slate-900/35">
-      {hasLabel ? (
-        <p className="text-xs font-medium leading-snug text-slate-500 dark:text-slate-400">{label}</p>
-      ) : null}
-      {empty ? (
-        <p className={cn("text-sm font-medium text-slate-500 dark:text-slate-400", hasLabel && "mt-1.5")}>—</p>
-      ) : (
-        <>
-          <p
-            className={cn(
-              "break-words text-sm font-medium leading-snug text-slate-900 dark:text-slate-100",
-              hasLabel && "mt-1.5",
-            )}
-          >
-            {primary}
-          </p>
-          {secondary ? (
-            <p className="mt-1 break-words text-sm font-normal leading-relaxed text-slate-600 dark:text-slate-400">{secondary}</p>
-          ) : null}
-        </>
-      )}
-    </div>
-  );
-}
-
-function QuotationUserPersonCell({
-  label,
-  user,
-}: {
-  label?: string;
-  user: string | number | QuotationUserRef | null | undefined;
-}) {
-  if (user == null) return <QuotationPersonCell label={label} primary="—" secondary={null} />;
-  if (typeof user === "number")
-    return <QuotationPersonCell label={label} primary={Number.isFinite(user) && user > 0 ? `#${user}` : "—"} secondary={null} />;
+function quotationAssigneeToAudit(
+  user: string | number | QuotationUserRef | null | undefined,
+): ReturnType<typeof normalizeDetailAuditUser> {
+  if (user == null) return null;
+  if (typeof user === "number") return normalizeDetailAuditUser(user);
   if (typeof user === "string") {
     const s = user.trim();
-    return <QuotationPersonCell label={label} primary={s.length > 0 ? s : "—"} secondary={null} />;
+    return s ? { username: s } : null;
   }
-  const u = user.username?.trim() ?? "";
-  const mail = user.email?.trim() ?? "";
-  const primary = u || mail || (user.id > 0 ? `#${user.id}` : "—");
-  const secondary = u && mail && u !== mail ? mail : null;
-  return <QuotationPersonCell label={label} primary={primary} secondary={secondary} />;
+  return normalizeDetailAuditUser(user);
 }
 
-function QuotationContactPersonCell({
-  label,
-  contact,
+function quotationContactToAudit(
+  contact: number | QuotationContactNested | null | undefined,
+): ReturnType<typeof normalizeDetailAuditUser> {
+  if (contact == null) return null;
+  if (typeof contact === "number") return normalizeDetailAuditUser(contact);
+  return normalizeDetailAuditUser({
+    id: contact.id,
+    name: contact.name,
+    email: contact.email,
+    phone: contact.phone,
+  });
+}
+
+type TechnicianEntry = ReturnType<typeof getQuotationTechnicianEntries>[number];
+
+function QuotationDetailPeopleSection({
+  detail,
+  technicianEntries,
+  t,
 }: {
-  label?: string;
-  contact: number | QuotationContactNested | null | undefined;
+  detail: QuotationDetail;
+  technicianEntries: TechnicianEntry[];
+  t: ReturnType<typeof useTranslations<"Dashboard.quotations">>;
 }) {
-  if (contact == null) return <QuotationPersonCell label={label} primary="—" secondary={null} />;
-  if (typeof contact === "number")
-    return (
-      <QuotationPersonCell label={label} primary={Number.isFinite(contact) && contact > 0 ? `#${contact}` : "—"} secondary={null} />
-    );
-  const name = typeof contact.name === "string" ? contact.name.trim() : "";
-  const email = typeof contact.email === "string" ? contact.email.trim() : "";
-  const phone = typeof contact.phone === "string" ? contact.phone.trim() : "";
-  const primary = name || email || phone || (contact.id > 0 ? `#${contact.id}` : "—");
-  let secondary: string | null = null;
-  if (name) {
-    if (email) secondary = email;
-    else if (phone) secondary = phone;
-  } else if (email && phone) secondary = phone;
-  else if (email && !name) secondary = null;
-  if (secondary && secondary === primary) secondary = null;
-  return <QuotationPersonCell label={label} primary={primary} secondary={secondary} />;
+  return (
+    <DetailPanelCard title={t("detail.sectionPeople")}>
+      <DetailMetricsGrid className="sm:grid-cols-2">
+        <DetailMetricCard label={t("fields.salesperson")}>
+          <DetailUserAttribution user={quotationAssigneeToAudit(detail.salesperson)} />
+        </DetailMetricCard>
+        <DetailMetricCard label={t("fields.projectManager")}>
+          <DetailUserAttribution user={quotationAssigneeToAudit(detail.project_manager)} />
+        </DetailMetricCard>
+        <DetailMetricCard label={t("fields.primaryContact")}>
+          <DetailUserAttribution user={quotationContactToAudit(detail.primary_customer_contact)} />
+        </DetailMetricCard>
+        <DetailMetricCard label={t("fields.additionalContact")}>
+          <DetailUserAttribution user={quotationContactToAudit(detail.additional_customer_contact)} />
+        </DetailMetricCard>
+        <DetailMetricCard label={t("fields.technicians")} className="sm:col-span-2">
+          {technicianEntries.length === 0 ? (
+            <span className="text-sm font-normal text-slate-500 dark:text-slate-400">—</span>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {technicianEntries.map((entry, ti) =>
+                entry.kind === "id" ? (
+                  <DetailUserAttribution key={`tech-id-${entry.id}-${ti}`} user={{ id: entry.id }} />
+                ) : (
+                  <DetailUserAttribution
+                    key={`tech-${entry.user.id}-${ti}`}
+                    user={quotationAssigneeToAudit(entry.user)}
+                  />
+                ),
+              )}
+            </div>
+          )}
+        </DetailMetricCard>
+      </DetailMetricsGrid>
+    </DetailPanelCard>
+  );
 }
 
 const AddressMiniMap = dynamic(
@@ -120,7 +120,7 @@ const AddressMiniMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="min-h-[200px] animate-pulse rounded-lg bg-slate-200/80 dark:bg-slate-800/80" />
+      <div className={cn(detailMapViewportClassName, "w-full animate-pulse bg-slate-200/80 dark:bg-slate-800/80")} />
     ),
   },
 );
@@ -150,7 +150,7 @@ export function QuotationDetailBody({
   dueFmt,
 }: Props) {
   const t = useTranslations("Dashboard.quotations");
-  const tUser = useTranslations("Dashboard.common.user");
+  const tMeta = useTranslations("Dashboard.common.detail");
   const locale = useLocale();
   const [detailTab, setDetailTab] = React.useState<"project" | "pricing">("project");
 
@@ -194,19 +194,16 @@ export function QuotationDetailBody({
   );
 
   const siteIdResolved = getQuotationSiteId(detail.site);
-  const modifiedAtLabel = detail.modified_at
-    ? dateFmt.format(new Date(detail.modified_at))
-    : "—";
+  const siteWhat3Words =
+    snap?.what3words?.trim() || nestedSite?.what3words?.trim() || siteDetail?.what3words?.trim() || "";
 
   const tagsLabel = quotationTagsLabels(detail.tags, tagLookup);
   const technicianEntries = React.useMemo(() => getQuotationTechnicianEntries(detail), [detail]);
 
   const dueLabel = formatFlexibleApiDate(detail.due_date, dueFmt);
 
-  const createdByUser =
-    detail.created_by && typeof detail.created_by === "object" ? detail.created_by : null;
-
   const desc = detail.description?.trim() ?? "";
+  const modifiedAt = detail.modified_at ?? detail.created_at;
 
   function quoteStatusLabel(code: string | null | undefined) {
     const raw = code == null ? "" : String(code).trim();
@@ -222,7 +219,7 @@ export function QuotationDetailBody({
   const overviewCard = (
     <DetailPanelCard title={t("detail.sectionOverview")}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-
+        <DetailMetricCard label={t("table.status")}>{quoteStatusLabel(detail.status)}</DetailMetricCard>
         <DetailMetricCard label={t("fields.quoteName")}>{detail.quote_name}</DetailMetricCard>
         <DetailMetricCard label={t("fields.customer")}>
           {quotationCustomerLabel(detail.customer, customerName ?? null)}
@@ -233,19 +230,16 @@ export function QuotationDetailBody({
         <DetailMetricCard label={t("fields.tags")}>{tagsLabel}</DetailMetricCard>
         <DetailMetricCard label={t("fields.orderNumber")}>{detail.order_number?.trim() || "—"}</DetailMetricCard>
         <DetailMetricCard label={t("fields.dueDate")}>{dueLabel}</DetailMetricCard>
-        <DetailMetricCard label={t("table.status")}>{quoteStatusLabel(detail.status)}</DetailMetricCard>
-    
         </div>
-    
     </DetailPanelCard>
   );
 
   const descriptionCard = (
-    <DetailPanelCard title={t("fields.description")}>
+    <DetailPanelCard title={t("fields.description")} bodyClassName="min-w-0">
       {desc ? (
-        <div className="rounded-md border border-slate-100 bg-slate-50/60 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/35">
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800 dark:text-slate-100">{desc}</p>
-        </div>
+        <p className="min-w-0 whitespace-pre-wrap break-words text-sm leading-relaxed [overflow-wrap:anywhere] text-slate-700 dark:text-slate-300">
+          {desc}
+        </p>
       ) : (
         <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.noDescription")}</p>
       )}
@@ -266,8 +260,8 @@ export function QuotationDetailBody({
     }) => (
       <AddressMiniMap
         addressParts={addressParts}
-        className="flex h-full min-h-0 w-full flex-1 flex-col"
-        mapClassName="min-h-[200px] flex-1"
+        className={detailMapFillClassName}
+        mapClassName="h-full min-h-0 flex-1"
       />
     );
 
@@ -324,7 +318,7 @@ export function QuotationDetailBody({
     if (siteDetailLoading) {
       return {
         address: null as React.ReactNode,
-        map: <div className=" min-h-[220px] flex-1 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800" />,
+        map: <div className="h-full w-full animate-pulse bg-slate-100 dark:bg-slate-800" />,
       };
     }
 
@@ -375,7 +369,7 @@ export function QuotationDetailBody({
     t,
   ]);
 
-  const showSiteMapColumn = siteLocationSplit != null;
+  const showMapColumn = siteLocationSplit != null;
 
   return (
     <DetailPagePadding>
@@ -396,128 +390,45 @@ export function QuotationDetailBody({
         aria-labelledby="quotation-detail-trigger-project"
         className={cn(detailTab !== "project" && "hidden")}
       >
-        <div
-          className={cn(
-            showSiteMapColumn &&
-              "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,50%)] lg:items-stretch lg:gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(400px,52%)]",
-            !showSiteMapColumn && "space-y-3.5",
-          )}
+        <DetailPageMapLayout
+          showMap={showMapColumn}
+          mapTitle={t("detail.sectionMap")}
+          map={siteLocationSplit?.map ?? null}
         >
-          <div className="flex min-h-0 min-w-0 flex-col space-y-3.5">
             {overviewCard}
             {descriptionCard}
 
-            {siteLocationSplit?.address ? (
-              <DetailPanelCard title={t("detail.sectionSiteAddress")}>{siteLocationSplit.address}</DetailPanelCard>
+            {showMapColumn ? (
+              <DetailPanelCard title={t("detail.sectionSiteAddress")}>
+                {siteLocationSplit?.address ?? (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{t("mapNoStructuredAddress")}</p>
+                )}
+                <What3WordsInline
+                  value={siteWhat3Words}
+                  label={t("fields.what3words")}
+                  className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800"
+                />
+              </DetailPanelCard>
             ) : null}
 
-            <DetailPanelCard title={t("detail.sectionPeople")}>
-              <div className="grid grid-cols-1 gap-4">
-                <QuotationUserPersonCell label={t("fields.salesperson")} user={detail.salesperson} />
-                <QuotationUserPersonCell label={t("fields.projectManager")} user={detail.project_manager} />
-                <QuotationContactPersonCell label={t("fields.primaryContact")} contact={detail.primary_customer_contact} />
-                <QuotationContactPersonCell label={t("fields.additionalContact")} contact={detail.additional_customer_contact} />
-                </div>
-                <div>
-                  <p className="text-xs font-medium leading-snug text-slate-500 dark:text-slate-400">
-                    {t("fields.technicians")}
-                  </p>
-                  {technicianEntries.length === 0 ? (
-                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">—</p>
-                  ) : (
-                    <ul className="mt-3 grid grid-cols-1 gap-3">
-                      {technicianEntries.map((entry, ti) =>
-                        entry.kind === "id" ? (
-                          <li key={`tech-id-${entry.id}-${ti}`}>
-                            <QuotationPersonCell primary={`#${entry.id}`} secondary={null} />
-                          </li>
-                        ) : (
-                          <li key={`tech-${entry.user.id}-${ti}`}>
-                            <QuotationUserPersonCell user={entry.user} />
-                          </li>
-                        ),
-                      )}
-                    </ul>
-                  )}
-                </div>
-              
-            </DetailPanelCard>
+            <QuotationDetailPeopleSection detail={detail} technicianEntries={technicianEntries} t={t} />
 
-            <div className="grid grid-cols-1 gap-3.5">
-              <DetailPanelCard title={t("detail.sectionRecord")}>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <DetailMetricCard label={t("fields.createdAt")}>
-                    <span className="break-words tabular-nums">{dateFmt.format(new Date(detail.created_at))}</span>
-                  </DetailMetricCard>
-                  <DetailMetricCard label={t("fields.updatedAt")}>
-                    <span className="break-words tabular-nums">{modifiedAtLabel}</span>
-                  </DetailMetricCard>
-                </div>
-              </DetailPanelCard>
-
-              {createdByUser ? (
-                <DetailPanelCard title={t("fields.createdBy")}>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    {(() => {
-                      const uname = createdByUser.username?.trim() ?? "";
-                      const em = createdByUser.email?.trim() ?? "";
-                      const nodes: React.ReactNode[] = [];
-                      if (em && (!uname || uname === em)) {
-                        nodes.push(
-                          <DetailMetricCard key="e" label={tUser("email")}>
-                            <a
-                              href={`mailto:${em}`}
-                              className="break-all font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                            >
-                              {em}
-                            </a>
-                          </DetailMetricCard>,
-                        );
-                      } else {
-                        if (uname) {
-                          nodes.push(
-                            <DetailMetricCard key="u" label={tUser("username")}>
-                              {uname}
-                            </DetailMetricCard>,
-                          );
-                        }
-                        if (em && uname !== em) {
-                          nodes.push(
-                            <DetailMetricCard key="e" label={tUser("email")}>
-                              <a
-                                href={`mailto:${em}`}
-                                className="break-all font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                              >
-                                {em}
-                              </a>
-                            </DetailMetricCard>,
-                          );
-                        }
-                      }
-                      if (!uname && !em) {
-                        nodes.push(
-                          <DetailMetricCard key="id" label={tUser("username")}>
-                            #{createdByUser.id}
-                          </DetailMetricCard>,
-                        );
-                      }
-                      return nodes;
-                    })()}
-                  </div>
-                </DetailPanelCard>
-              ) : null}
-            </div>
-          </div>
-
-          {showSiteMapColumn && siteLocationSplit?.map ? (
-            <div className="flex min-h-0 w-full min-w-0 flex-col lg:h-full">
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                <h2 className="sr-only">{t("detail.sectionMap")}</h2>
-                <div className="flex min-h-0 min-w-0 flex-1 flex-col">{siteLocationSplit.map}</div>
-              </div>
-            </div>
-          ) : null}
-        </div>
+            <DetailSystemMetadataSection
+              createdAt={detail.created_at}
+              modifiedAt={modifiedAt}
+              dateFmt={dateFmt}
+              createdBy={detail.created_by}
+              modifiedBy={detail.modified_by}
+              labels={{
+                sectionTitle: tMeta("systemMetadata"),
+                createdAt: t("fields.createdAt"),
+                updatedAt: t("fields.updatedAt"),
+                createdBy: t("fields.createdBy"),
+                modifiedBy: tMeta("modifiedBy"),
+                notModifiedYet: tMeta("notModifiedYet"),
+              }}
+            />
+        </DetailPageMapLayout>
       </div>
 
       <div

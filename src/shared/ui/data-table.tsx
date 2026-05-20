@@ -20,7 +20,7 @@ export function DataTableHead({ className, ...props }: ComponentPropsWithoutRef<
   return (
     <thead
       className={cn(
-        "border-b border-slate-200 bg-slate-100/90 text-xs font-bold uppercase tracking-wide text-slate-400",
+        "border-b border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500",
         "dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-500",
         className,
       )}
@@ -77,7 +77,7 @@ export function DataTableTh({
   return (
     <th
       className={cn(
-        narrow ? "w-12 px-2 py-4 align-middle" : "px-5 py-4 align-middle",
+        narrow ? "w-11 px-2 py-2 align-middle" : "px-4 py-2.5 align-middle",
         className,
       )}
       {...props}
@@ -97,7 +97,7 @@ export function DataTableTd({
   return (
     <td
       className={cn(
-        narrow ? "w-12 px-2 py-4 align-middle" : "px-5 py-4 align-middle text-slate-600 dark:text-slate-400",
+        narrow ? "w-11 px-2 py-2 align-middle" : "px-4 py-2.5 align-middle text-slate-600 dark:text-slate-400",
         className,
       )}
       {...props}
@@ -116,7 +116,7 @@ export function DataTableEmptyRow({
   return (
     <tr>
       <td colSpan={colSpan}>
-        <p className="p-10 text-center text-sm text-slate-500 dark:text-slate-400">{message}</p>
+        <p className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">{message}</p>
       </td>
     </tr>
   );

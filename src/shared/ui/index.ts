@@ -32,6 +32,7 @@ export {
   fieldRequiredMarkClassName,
   surfaceInputClassName,
   surfaceSelectClassName,
+  surfaceTextareaClassName,
 } from "./field-primitives";
 export { CascadingLocationFields } from "./cascading-location-fields";
 export type { CascadingLocationFieldsProps } from "./cascading-location-fields";
@@ -44,6 +45,16 @@ export type { CheckmarkSelectOption } from "./checkmark-select";
 export { MultiCheckSelect } from "./multi-check-select";
 export { AppButton } from "./app-button";
 export type { AppButtonProps, AppButtonSize, AppButtonVariant } from "./app-button";
+export {
+  AddButton,
+  CancelButton,
+  DeleteButton,
+  EditButton,
+  ExportButton,
+  FormDialogFooter,
+  SaveButton,
+  useDashboardActions,
+} from "./dashboard-action-buttons";
 export { AuthCard } from "./auth-card";
 export {
   authCardClassName,
@@ -64,7 +75,7 @@ export { ListPageCard, ListPageCardGrid, ListPageCardSkeleton } from "./list-pag
 export { DataTableRowActionsMenu } from "./data-table-row-actions-menu";
 export type { DataTableRowMenuItem } from "./data-table-row-actions-menu";
 export { TableIconActionButton, TableRowActions } from "./table-icon-actions";
-export { DashboardEmptyState } from "./dashboard-empty-state";
+export { DashboardEmptyState, type DashboardEmptyStateIconName } from "./dashboard-empty-state";
 export { DashboardUnderDevelopmentState } from "./dashboard-under-development-state";
 export {
   TextField,

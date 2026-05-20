@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Mail, Pencil, Phone, User } from "lucide-react";
+import { Mail, Phone, User } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -14,10 +14,11 @@ import {
   DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
+  detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
-import { AppButton, SurfaceShell } from "@/shared/ui";
+import { EditButton, SurfaceShell } from "@/shared/ui";
 
 function userRoleLabel(row: UserProfile | null): string {
   if (!row?.role_detail) return "—";
@@ -116,20 +117,13 @@ export function UserDetailScreen({ userId }: { userId: number }) {
         }
         actions={
           !loading && !error && detail ? (
-            <AppButton
-              type="button"
-              variant="primary"
-              size="sm"
-              className="gap-2"
+            <EditButton
               onClick={() =>
                 router.push(
                   `${pathname}/edit?back=${encodeURIComponent(safeBack ?? routes.dashboard.settingsUsers)}`,
                 )
               }
-            >
-              <Pencil className="size-4" strokeWidth={2} aria-hidden />
-              {t("detail.editWithIcon")}
-            </AppButton>
+            />
           ) : null
         }
       />
@@ -154,6 +148,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
           </div>
         ) : detail ? (
           <DetailPagePadding>
+            <div className={detailPageStackClassName}>
             <DetailPanelCard title={t("detail.sectionOverview")}>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <DetailMetricCard label={t("fields.firstName")}>
@@ -191,6 +186,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                 </DetailMetricCard>
               </div>
             </DetailPanelCard>
+            </div>
           </DetailPagePadding>
         ) : null}
       </SurfaceShell>

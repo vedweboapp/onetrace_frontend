@@ -2,31 +2,26 @@
 
 import * as React from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { z } from "zod";
 import { cn } from "@/core/utils/http.util";
 import { createTag, deleteTag, fetchTagsPage, updateTag } from "@/features/tags/api/tag.api";
 import type { Tag } from "@/features/tags/types/tag.types";
 import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
+import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { toastSuccess } from "@/shared/feedback/app-toast";
+import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import {
-  AppButton,
+  AddButton, AppButton,
   AppModal,
   ConfirmDialog,
   DashboardEmptyState,
-  DataTable,
-  DataTableBody,
-  DataTableHead,
   DataTablePaginationBar,
-  DataTableRow,
   DataTableRowActionsMenu,
-  DataTableScroll,
-  DataTableTd,
-  DataTableTh,
   DetailPanel,
   FieldGroup,
   ListPageCard,
@@ -90,7 +85,7 @@ function TagChip({ row, className }: { row: Tag; className?: string }) {
 export function TagSettingsPanel() {
   const t = useTranslations("Dashboard.tags");
   const tList = useTranslations("Dashboard.list");
-  const locale = useLocale();
+  const dateFmt = useDashboardDateFormat();
   const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } = useListUrlState();
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
@@ -222,13 +217,60 @@ export function TagSettingsPanel() {
     }
   }
 
-  const dateFmt = React.useMemo(() => new Intl.DateTimeFormat(locale === "es" ? "es" : "en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }), [locale]);
   const hasActiveFilters = hasListActiveFilters({ search });
   const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
   const pageRange = getListPageRange(pagination);
+
+  const tableColumns = React.useMemo(() => {
+    const c = entityCol<Tag>();
+    return [
+      c.custom("tag", t("table.tag"), (row) => <TagChip row={row} />),
+      c.custom(
+        "created",
+        t("table.created"),
+        (row) => (
+          <>
+            <span className="block text-slate-500 dark:text-slate-400">{dateFmt.format(new Date(row.created_at))}</span>
+            {tagUserLabel(row.created_by) !== "—" ? (
+              <span className="mt-0.5 block text-xs text-slate-400 dark:text-slate-500">{tagUserLabel(row.created_by)}</span>
+            ) : null}
+          </>
+        ),
+        { responsive: "sm" },
+      ),
+      c.custom(
+        "updated",
+        t("table.updated"),
+        (row) => (
+          <>
+            <span className="block text-slate-500 dark:text-slate-400">{dateFmt.format(new Date(row.modified_at))}</span>
+            {tagUserLabel(row.modified_by) !== "—" ? (
+              <span className="mt-0.5 block text-xs text-slate-400 dark:text-slate-500">{tagUserLabel(row.modified_by)}</span>
+            ) : null}
+          </>
+        ),
+        { responsive: "md" },
+      ),
+      c.actions("actions", t("table.actions"), (row) => (
+        <DataTableRowActionsMenu
+          menuAriaLabel={tList("openRowActions")}
+          items={[
+            { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) },
+            {
+              id: "delete",
+              label: t("delete"),
+              icon: Trash2,
+              tone: "danger",
+              onSelect: () => {
+                setDetailRow(null);
+                setDeleteTarget(row);
+              },
+            },
+          ]}
+        />
+      )),
+    ];
+  }, [t, tList, dateFmt, openEdit]);
 
   return (
     <div className="space-y-6">
@@ -240,10 +282,7 @@ export function TagSettingsPanel() {
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
           action={
-            <AppButton type="button" variant="primary" size="sm" onClick={openCreate} className="gap-2">
-              <Plus className="size-4" strokeWidth={2} aria-hidden />
-              {t("add")}
-            </AppButton>
+            <AddButton type="button" onClick={openCreate} />
           }
           controls={
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -266,13 +305,13 @@ export function TagSettingsPanel() {
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6"><ListPageCardGrid>{Array.from({ length: 6 }, (_, i) => <ListPageCardSkeleton key={i} />)}</ListPageCardGrid></div>
           ) : (
-            <div className="space-y-2 p-6"><div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /></div>
+            <div className="space-y-2 p-6"><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /></div>
           )
         ) : items.length === 0 ? (
           hasActiveFilters ? (
-            <DashboardEmptyState iconName="noResults" title={tList("noResultsTitle")} description={tList("noResultsDescription")} action={<AppButton type="button" variant="secondary" size="md" onClick={() => setUrl({ search: null, page: null }, { replace: true })}>{tList("clearFilters")}</AppButton>} />
+            <DashboardEmptyState iconName="noResults" title={tList("noResultsTitle")} description={tList("noResultsDescription")} action={<AppButton type="button" variant="secondary" size="sm" onClick={() => setUrl({ search: null, page: null }, { replace: true })}>{tList("clearFilters")}</AppButton>} />
           ) : (
-            <DashboardEmptyState iconName="pinStatus" title={t("emptyTitle")} description={t("emptyDescription")} action={<AppButton type="button" variant="primary" size="md" onClick={openCreate} className="gap-2"><Plus className="size-4" strokeWidth={2} aria-hidden />{t("add")}</AppButton>} />
+            <DashboardEmptyState iconName="pinStatus" title={t("emptyTitle")} description={t("emptyDescription")} action={<AddButton type="button" onClick={openCreate} />} />
           )
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
@@ -290,23 +329,7 @@ export function TagSettingsPanel() {
             </ListPageCardGrid>
           </div>
         ) : (
-          <DataTableScroll>
-            <DataTable>
-              <DataTableHead><tr><DataTableTh>{t("table.tag")}</DataTableTh><DataTableTh className="hidden sm:table-cell">{t("table.created")}</DataTableTh><DataTableTh className="hidden md:table-cell">{t("table.updated")}</DataTableTh><DataTableTh narrow><span className="sr-only">{t("table.actions")}</span></DataTableTh></tr></DataTableHead>
-              <DataTableBody>
-                {items.map((row) => (
-                  <DataTableRow key={row.id} clickable onClick={() => setDetailRow(row)}>
-                    <DataTableTd><TagChip row={row} /></DataTableTd>
-                    <DataTableTd className="hidden text-slate-500 dark:text-slate-400 sm:table-cell"><span className="block">{dateFmt.format(new Date(row.created_at))}</span>{tagUserLabel(row.created_by) !== "—" ? <span className="mt-0.5 block text-xs text-slate-400 dark:text-slate-500">{tagUserLabel(row.created_by)}</span> : null}</DataTableTd>
-                    <DataTableTd className="hidden text-slate-500 dark:text-slate-400 md:table-cell"><span className="block">{dateFmt.format(new Date(row.modified_at))}</span>{tagUserLabel(row.modified_by) !== "—" ? <span className="mt-0.5 block text-xs text-slate-400 dark:text-slate-500">{tagUserLabel(row.modified_by)}</span> : null}</DataTableTd>
-                    <DataTableTd narrow onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                      <DataTableRowActionsMenu menuAriaLabel={tList("openRowActions")} items={[{ id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) }, { id: "delete", label: t("delete"), icon: Trash2, tone: "danger", onSelect: () => { setDetailRow(null); setDeleteTarget(row); } }]} />
-                    </DataTableTd>
-                  </DataTableRow>
-                ))}
-              </DataTableBody>
-            </DataTable>
-          </DataTableScroll>
+          <EntityDataTable columns={tableColumns} rows={items} onRowClick={(row) => setDetailRow(row)} />
         )}
 
         {!loading && !loadError && items.length > 0 ? (
@@ -328,7 +351,7 @@ export function TagSettingsPanel() {
         onClose={() => setDetailRow(null)}
         title={detailRow ? <TagChip row={detailRow} className="text-base font-semibold" /> : null}
         subtitle={detailRow ? <span className="text-sm text-slate-500 dark:text-slate-400">{detailRow.uuid ? `${t("detail.idLabel", { id: detailRow.id })} · ${detailRow.uuid}` : t("detail.idLabel", { id: detailRow.id })}</span> : undefined}
-        footer={detailRow ? <><AppButton type="button" variant="secondary" size="md" onClick={() => setDetailRow(null)}>{t("modal.cancel")}</AppButton><AppButton type="button" variant="secondary" size="md" onClick={() => { const row = detailRow; setDetailRow(null); openEdit(row); }}>{t("edit")}</AppButton><AppButton type="button" variant="danger" size="md" onClick={() => { const row = detailRow; setDetailRow(null); setDeleteTarget(row); }}>{t("delete")}</AppButton></> : undefined}
+        footer={detailRow ? <><AppButton type="button" variant="secondary" size="sm" onClick={() => setDetailRow(null)}>{t("modal.cancel")}</AppButton><AppButton type="button" variant="secondary" size="sm" onClick={() => { const row = detailRow; setDetailRow(null); openEdit(row); }}>{t("edit")}</AppButton><AppButton type="button" variant="danger" size="sm" onClick={() => { const row = detailRow; setDetailRow(null); setDeleteTarget(row); }}>{t("delete")}</AppButton></> : undefined}
       >
         {detailRow ? (
           <div className="space-y-5">
@@ -355,7 +378,7 @@ export function TagSettingsPanel() {
         titleId="tag-form-title"
         closeOnBackdrop={!saving}
         isBusy={saving}
-        footer={<><AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => setFormOpen(false)}>{t("modal.cancel")}</AppButton><AppButton type="button" variant="primary" size="md" loading={saving} onClick={() => void submitForm()}>{t("modal.save")}</AppButton></>}
+        footer={<><AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => setFormOpen(false)}>{t("modal.cancel")}</AppButton><AppButton type="button" variant="primary" size="sm" loading={saving} onClick={() => void submitForm()}>{t("modal.save")}</AppButton></>}
       >
         <div className="space-y-4">
           <FieldGroup label={<span>{t("modal.tagName")} <span className="text-red-500">*</span></span>} htmlFor="tag-name">

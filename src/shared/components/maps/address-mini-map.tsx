@@ -6,7 +6,7 @@ import { ExternalLink } from "lucide-react";
 import { useTranslations } from "next-intl";
 import "leaflet/dist/leaflet.css";
 import type { DetailAddressParts } from "@/shared/components/layout/detail-formatted-address";
-import { buildAddressGeocodeQuery, extractPostalDigits, hasGeocodeableAddress } from "@/shared/utils/address-geocode-query";
+import { buildGeocodeRequestSearchParams, hasGeocodeableAddress } from "@/shared/utils/address-geocode-query";
 import { cn } from "@/core/utils/http.util";
 
 const OSM_ATTRIB =
@@ -38,29 +38,16 @@ type NormalizedParts = {
   country: string;
 };
 
-function buildGeocodeRequestSearchParams(norm: NormalizedParts): URLSearchParams {
-  const sp = new URLSearchParams();
-  const street = [norm.line1, norm.line2].filter(Boolean).join(", ");
-  if (street) sp.set("street", street.slice(0, 200));
-  if (norm.city) sp.set("city", norm.city);
-  if (norm.state) sp.set("state", norm.state);
-  const pd = extractPostalDigits(norm.pincode);
-  if (pd) sp.set("postalcode", pd);
-  else if (norm.pincode && /\d/.test(norm.pincode)) sp.set("postalcode", norm.pincode.slice(0, 32));
-  if (norm.country) sp.set("country", norm.country);
-  const q = buildAddressGeocodeQuery(norm as DetailAddressParts);
-  if (q) sp.set("q", q);
-  return sp;
-}
-
 type Props = {
   /** Structured fields — sent to `/api/geocode` for Nominatim structured + fallback search */
   addressParts: DetailAddressParts | null | undefined;
+  /** Saved coordinates take priority over geocoding the address. */
+  coordinates?: { lat: number; lon: number } | null;
   className?: string;
   mapClassName?: string;
 };
 
-export function AddressMiniMap({ addressParts, className, mapClassName }: Props) {
+export function AddressMiniMap({ addressParts, coordinates, className, mapClassName }: Props) {
   const t = useTranslations("Dashboard.common.map");
   ensureLeafletDefaultIcons();
 
@@ -102,8 +89,19 @@ export function AddressMiniMap({ addressParts, className, mapClassName }: Props)
     }
   }, []);
 
+  const fixedLat = coordinates?.lat;
+  const fixedLon = coordinates?.lon;
+  const hasFixedCoords =
+    fixedLat != null && fixedLon != null && Number.isFinite(fixedLat) && Number.isFinite(fixedLon);
+
   React.useEffect(() => {
     let cancelled = false;
+
+    if (hasFixedCoords) {
+      setLatLon({ lat: fixedLat!, lon: fixedLon! });
+      setStatus("ready");
+      return;
+    }
 
     if (!canGeocode) {
       destroyMap();
@@ -116,7 +114,7 @@ export function AddressMiniMap({ addressParts, className, mapClassName }: Props)
     setLatLon(null);
     destroyMap();
 
-    const qs = buildGeocodeRequestSearchParams(norm).toString();
+    const qs = buildGeocodeRequestSearchParams(norm as DetailAddressParts).toString();
     const tid = window.setTimeout(async () => {
       try {
         const res = await fetch(`/api/geocode?${qs}`);
@@ -141,7 +139,7 @@ export function AddressMiniMap({ addressParts, className, mapClassName }: Props)
       cancelled = true;
       window.clearTimeout(tid);
     };
-  }, [requestKey, canGeocode, destroyMap]);
+  }, [requestKey, canGeocode, destroyMap, hasFixedCoords, fixedLat, fixedLon]);
 
   React.useEffect(() => {
     if (status !== "ready" || !latLon || !containerRef.current) return;
