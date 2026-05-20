@@ -304,9 +304,7 @@ export function AddressPlaceAutocomplete({
         </ul>
       ) : null}
 
-      {useGooglePlaces ? (
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("poweredByGoogle")}</p>
-      ) : null}
+    
     </div>
   );
 }

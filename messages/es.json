@@ -760,8 +760,8 @@
       },
       "location": {
         "searchPlaceholder": "Empieza a escribir la dirección…",
-        "googleSearchPlaceholder": "Buscar dirección en Google…",
-        "poweredByGoogle": "Sugerencias de Google Places",
+        "googleSearchPlaceholder": "Buscar dirección…",
+      
         "searchPlaceholderLine2": "Piso, puerta, edificio (opcional)…",
         "searching": "Buscando lugares…",
         "resolvingPlace": "Cargando detalles de la dirección…",

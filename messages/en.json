@@ -760,8 +760,8 @@
       },
       "location": {
         "searchPlaceholder": "Start typing street address…",
-        "googleSearchPlaceholder": "Search address on Google…",
-        "poweredByGoogle": "Suggestions from Google Places",
+        "googleSearchPlaceholder": "Search address...",
+      
         "searchPlaceholderLine2": "Apartment, suite, building (optional)…",
         "searching": "Searching places…",
         "resolvingPlace": "Loading address details…",
