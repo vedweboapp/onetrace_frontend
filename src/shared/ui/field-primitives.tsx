@@ -15,6 +15,12 @@ export const surfaceInputClassName = cn(
   "dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500",
 );
 
+/** Multiline fields: no fixed height; caret and text start at the top. */
+export const surfaceTextareaClassName = cn(
+  surfaceInputClassName,
+  "h-auto min-h-[5rem] resize-y py-2 leading-relaxed [field-sizing:content]",
+);
+
 
 export const surfaceSelectClassName = cn(
   surfaceInputClassName,

@@ -38,6 +38,7 @@ function buildSiteSnapshot(site: Site, siteContact: number | null): QuotationSit
     state: site.state ?? null,
     country: site.country ?? null,
     pincode: site.pincode ?? null,
+    what3words: site.what3words?.trim() || null,
     site_contact: siteContact,
   };
 }

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Pencil, Plus, Power, PowerOff, Trash2 } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
@@ -10,26 +10,21 @@ import { deleteProject, fetchProjectsPage, patchProject } from "@/features/proje
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
   ActiveStatusBadge,
-  AppButton,
-  CheckmarkSelect,
+  AddButton, AppButton,
   ConfirmDialog,
   DashboardEmptyState,
-  DataTable,
-  DataTableBody,
-  DataTableHead,
   DataTablePaginationBar,
-  DataTableRow,
   DataTableRowActionsMenu,
-  DataTableScroll,
-  DataTableTd,
-  DataTableTh,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
+  ListPageActiveFilter,
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
@@ -48,7 +43,8 @@ function projectRowClientLabel(row: Project, labels: Record<number, string>): st
 export function ProjectsPanel() {
   const t = useTranslations("Dashboard.projects");
   const tList = useTranslations("Dashboard.list");
-  const locale = useLocale();
+  const dateFmt = useDashboardDateFormat();
+  const dateOnlyFmt = useDashboardDateFormat({ dateOnly: true });
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -103,14 +99,6 @@ export function ProjectsPanel() {
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
-
-  const stateFilterOptions = React.useMemo(
-    () => [
-      { value: "true", label: t("status.active") },
-      { value: "false", label: t("status.inactive") },
-    ],
-    [t],
-  );
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -211,24 +199,68 @@ export function ProjectsPanel() {
     }
   }
 
-  const dateFmt = React.useMemo(
-    () =>
-      new Intl.DateTimeFormat(locale === "es" ? "es" : "en", {
-        dateStyle: "medium",
-      }),
-    [locale],
-  );
-
   function formatDay(iso: string | undefined) {
     if (!iso) return "—";
     const d = iso.slice(0, 10);
     if (!d) return "—";
     try {
-      return dateFmt.format(new Date(`${d}T12:00:00`));
+      return dateOnlyFmt.format(new Date(`${d}T12:00:00`));
     } catch {
       return "—";
     }
   }
+
+  const tableColumns = React.useMemo(() => {
+    const c = entityCol<Project>();
+    return [
+      c.primary("name", t("table.name"), (r) => r.name),
+      c.text("client", t("table.client"), (r) => projectRowClientLabel(r, clientLabelById)),
+      c.text("start", t("table.start"), (r) => formatDay(r.start_date)),
+      c.text("end", t("table.end"), (r) => formatDay(r.end_date)),
+      c.custom(
+        "description",
+        t("table.description"),
+        (r) => (r.description?.trim() ? r.description : "—"),
+        { headerClassName: "min-w-[12rem]", cellClassName: "max-w-[14rem] lg:max-w-xs xl:max-w-md" },
+      ),
+      c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive"), {
+        responsive: "lg",
+      }),
+      c.actions("actions", t("table.actions"), (row) => (
+        <DataTableRowActionsMenu
+          menuAriaLabel={tList("openRowActions")}
+          items={[
+            { id: "edit", label: t("detail.edit"), icon: Pencil, onSelect: () => openEdit(row) },
+            {
+              id: "delete",
+              label: t("delete"),
+              icon: Trash2,
+              tone: "danger",
+              onSelect: () => {
+                setDeletingProject(row);
+                setDeleteOpen(true);
+              },
+            },
+            row.is_active
+              ? {
+                  id: "deactivate",
+                  label: t("deactivate"),
+                  icon: PowerOff,
+                  onSelect: () => void handleToggleActive(row, false),
+                  disabled: togglingId === row.id,
+                }
+              : {
+                  id: "activate",
+                  label: t("activate"),
+                  icon: Power,
+                  onSelect: () => void handleToggleActive(row, true),
+                  disabled: togglingId === row.id,
+                },
+          ]}
+        />
+      )),
+    ];
+  }, [t, tList, clientLabelById, togglingId]);
 
   const hasActiveFilters = hasListActiveFilters({ search, isActiveParam });
   const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
@@ -244,10 +276,7 @@ export function ProjectsPanel() {
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
           action={
-            <AppButton type="button" variant="primary" size="sm" onClick={openCreate} className="gap-2">
-              <Plus className="size-4" strokeWidth={2} aria-hidden />
-              {t("add")}
-            </AppButton>
+            <AddButton type="button" onClick={openCreate} />
           }
           controls={
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -258,16 +287,14 @@ export function ProjectsPanel() {
                 ariaLabel={tList("searchAria")}
                 className="sm:max-w-sm"
               />
-              <CheckmarkSelect
-                listLabel={t("filterState")}
-                buttonAriaLabel={t("filterState")}
-                options={stateFilterOptions}
-                value={isActiveParam === "false" ? "false" : "true"}
-                emptyLabel={t("status.active")}
-                portaled
-                className="w-full min-w-0 sm:w-44"
-                onChange={(v) =>
-                  setUrl({ is_active: v === "false" ? "false" : null, page: null }, { replace: true })
+              <ListPageActiveFilter
+                activeLabel={t("status.active")}
+                inactiveLabel={t("status.inactive")}
+                filterLabel={t("filterState")}
+                filterAriaLabel={t("filterState")}
+                isActiveParam={isActiveParam}
+                onChange={(isActive) =>
+                  setUrl({ is_active: isActive ? null : "false", page: null }, { replace: true })
                 }
               />
             </div>
@@ -289,9 +316,9 @@ export function ProjectsPanel() {
             </div>
           ) : (
             <div className="space-y-2 p-6">
-              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
             </div>
           )
         ) : items.length === 0 ? (
@@ -304,7 +331,7 @@ export function ProjectsPanel() {
                 <AppButton
                   type="button"
                   variant="secondary"
-                  size="md"
+                  size="sm"
                   onClick={() => setUrl({ search: null, is_active: null, page: null }, { replace: true })}
                 >
                   {tList("clearFilters")}
@@ -317,10 +344,7 @@ export function ProjectsPanel() {
               title={t("emptyTitle")}
               description={t("emptyDescription")}
               action={
-                <AppButton type="button" variant="primary" size="md" onClick={openCreate} className="gap-2">
-                  <Plus className="size-4" strokeWidth={2} aria-hidden />
-                  {t("add")}
-                </AppButton>
+                <AddButton type="button" size="sm" onClick={openCreate} />
               }
             />
           )
@@ -391,92 +415,12 @@ export function ProjectsPanel() {
             </ListPageCardGrid>
           </div>
         ) : (
-          <DataTableScroll>
-            <DataTable>
-              <DataTableHead>
-                <tr>
-                  <DataTableTh>{t("table.name")}</DataTableTh>
-                  <DataTableTh>{t("table.client")}</DataTableTh>
-                  <DataTableTh>{t("table.start")}</DataTableTh>
-                  <DataTableTh>{t("table.end")}</DataTableTh>
-                  <DataTableTh className="min-w-[12rem]">{t("table.description")}</DataTableTh>
-                  <DataTableTh className="hidden lg:table-cell">{t("table.status")}</DataTableTh>
-                  <DataTableTh narrow>
-                    <span className="sr-only">{t("table.actions")}</span>
-                  </DataTableTh>
-                </tr>
-              </DataTableHead>
-              <DataTableBody>
-                {items.map((row) => (
-                    <DataTableRow
-                      key={row.id}
-                      data-list-row-id={row.id}
-                      className={cn(highlightClassName(row.id))}
-                      clickable
-                      onClick={() => openProjectDetail(row.id)}
-                    >
-                      <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{row.name}</DataTableTd>
-                      <DataTableTd>{projectRowClientLabel(row, clientLabelById)}</DataTableTd>
-                      <DataTableTd>{formatDay(row.start_date)}</DataTableTd>
-                      <DataTableTd>{formatDay(row.end_date)}</DataTableTd>
-                      <DataTableTd className="max-w-[14rem] lg:max-w-xs xl:max-w-md">
-                        <span className="block truncate" title={row.description?.trim() || undefined}>
-                          {row.description?.trim() ? row.description : "—"}
-                        </span>
-                      </DataTableTd>
-                      <DataTableTd className="hidden lg:table-cell">
-                        <ActiveStatusBadge
-                          active={row.is_active}
-                          label={row.is_active ? t("status.active") : t("status.inactive")}
-                        />
-                      </DataTableTd>
-                      <DataTableTd
-                        narrow
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => e.stopPropagation()}
-                      >
-                        <DataTableRowActionsMenu
-                          menuAriaLabel={tList("openRowActions")}
-                          items={[
-                            {
-                              id: "edit",
-                              label: t("detail.edit"),
-                              icon: Pencil,
-                              onSelect: () => openEdit(row),
-                            },
-                            {
-                              id: "delete",
-                              label: t("delete"),
-                              icon: Trash2,
-                              tone: "danger",
-                              onSelect: () => {
-                                setDeletingProject(row);
-                                setDeleteOpen(true);
-                              },
-                            },
-                            row.is_active
-                              ? {
-                                  id: "deactivate",
-                                  label: t("deactivate"),
-                                  icon: PowerOff,
-                                  onSelect: () => void handleToggleActive(row, false),
-                                  disabled: togglingId === row.id,
-                                }
-                              : {
-                                  id: "activate",
-                                  label: t("activate"),
-                                  icon: Power,
-                                  onSelect: () => void handleToggleActive(row, true),
-                                  disabled: togglingId === row.id,
-                                },
-                          ]}
-                        />
-                      </DataTableTd>
-                    </DataTableRow>
-                  ))}
-              </DataTableBody>
-            </DataTable>
-          </DataTableScroll>
+          <EntityDataTable
+            columns={tableColumns}
+            rows={items}
+            onRowClick={(row) => openProjectDetail(row.id)}
+            getRowClassName={(row) => highlightClassName(row.id)}
+          />
         )}
 
         {!loading && !loadError && items.length > 0 ? (

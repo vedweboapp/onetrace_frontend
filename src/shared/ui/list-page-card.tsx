@@ -17,22 +17,18 @@ export function ListPageCardGrid({ className, children }: { className?: string; 
 }
 
 type ListPageCardProps = {
-  /** Renders before the title (e.g. row checkbox). */
   leading?: ReactNode;
   title: ReactNode;
   subtitle?: ReactNode;
   meta?: ReactNode;
   description?: string;
-  /** Bottom row (e.g. phone + status badge left, created date right). Uses mt-auto so it sits at the bottom in a grid. */
   footer?: ReactNode;
   onCardClick?: () => void;
   menu: ReactNode;
   className?: string;
-  /** When set, adds `data-list-row-id` for return-from-detail highlight + scroll. */
   dataListRowId?: number;
 };
 
-/** Card row for list (grid) view — title, kebab, secondary lines, optional body, optional footer. */
 export function ListPageCard({
   leading,
   title,

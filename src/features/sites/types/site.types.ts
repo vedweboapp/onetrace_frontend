@@ -22,6 +22,9 @@ export type SiteUpsertPayload = {
   state: string;
   country: string;
   pincode: string;
+  what3words?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 export type SiteCreatePayload = SiteUpsertPayload;
@@ -43,6 +46,9 @@ export type Site = {
   state?: string | null;
   country?: string | null;
   pincode?: string | null;
+  what3words?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   is_active: boolean;
   deleted_by: unknown;
   organization: number;

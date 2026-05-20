@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import {
@@ -10,22 +10,16 @@ import {
   fetchCompositeItemsPage,
 } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
+import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { toastSuccess } from "@/shared/feedback/app-toast";
+import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
-  AppButton,
+  AddButton, AppButton,
   ConfirmDialog,
-  DataTable,
-  DataTableBody,
-  DataTableEmptyRow,
-  DataTableHead,
   DataTablePaginationBar,
-  DataTableRow,
   DataTableRowActionsMenu,
-  DataTableScroll,
-  DataTableTd,
-  DataTableTh,
   DashboardEmptyState,
   ListPageCard,
   ListPageCardGrid,
@@ -39,10 +33,15 @@ import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.u
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 
+function moneyDisplay(v: unknown): string {
+  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : Number.NaN;
+  return Number.isFinite(n) ? n.toFixed(2) : "—";
+}
+
 export function CompositeItemsPanel() {
   const t = useTranslations("Dashboard.compositeItems");
   const tList = useTranslations("Dashboard.list");
-  const locale = useLocale();
+  const dateFmt = useDashboardDateFormat();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -128,15 +127,6 @@ export function CompositeItemsPanel() {
     };
   }, [page, pageSize, search, refreshNonce, t]);
 
-  const dateFmt = React.useMemo(
-    () =>
-      new Intl.DateTimeFormat(locale === "es" ? "es" : "en", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }),
-    [locale],
-  );
-
   function openCreate() {
     router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
   }
@@ -168,12 +158,53 @@ export function CompositeItemsPanel() {
   const hasActiveFilters = hasListActiveFilters({ search });
   const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
   const pageRange = getListPageRange(pagination);
-  const tableColSpan = 7;
 
-  function moneyDisplay(v: unknown): string {
-    const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : Number.NaN;
-    return Number.isFinite(n) ? n.toFixed(2) : "—";
-  }
+  const tableColumns = React.useMemo(() => {
+    const c = entityCol<CompositeItem>();
+    return [
+      c.primary("name", t("table.name"), (r) => r.name),
+      c.mono("sku", t("modal.sku"), (r) => r.sku || "—", { cellClassName: "text-slate-600 dark:text-slate-400" }),
+      c.tabular("qty", t("modal.quantity"), (r) => r.quantity ?? "—", {
+        cellClassName: "text-slate-600 dark:text-slate-400",
+      }),
+      c.tabular("cost", t("modal.costPrice"), (r) => moneyDisplay(r.cost_price), {
+        cellClassName: "text-slate-600 dark:text-slate-400",
+      }),
+      c.tabular("sell", t("modal.sellingPrice"), (r) => moneyDisplay(r.selling_price), {
+        cellClassName: "text-slate-600 dark:text-slate-400",
+      }),
+      c.tabular("components", t("table.componentCount"), (r) => r.components?.length ?? 0, {
+        cellClassName: "text-slate-600 dark:text-slate-400",
+      }),
+      c.date("created", t("table.created"), (r) => r.created_at, dateFmt, {
+        responsive: "lg",
+        cellClassName: "text-slate-600 dark:text-slate-400",
+      }),
+      c.actions("actions", t("table.actions"), (row) => (
+        <DataTableRowActionsMenu
+          menuAriaLabel={tList("openRowActions")}
+          items={[
+            {
+              id: "edit",
+              label: t("edit"),
+              icon: Pencil,
+              onSelect: () => openEdit(row),
+            },
+            {
+              id: "delete",
+              label: t("delete"),
+              icon: Trash2,
+              tone: "danger",
+              onSelect: () => {
+                setDeletingItem(row);
+                setDeleteOpen(true);
+              },
+            },
+          ]}
+        />
+      )),
+    ];
+  }, [t, tList, dateFmt]);
 
   return (
     <div className="space-y-6">
@@ -185,10 +216,7 @@ export function CompositeItemsPanel() {
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
           action={
-            <AppButton type="button" variant="primary" size="sm" onClick={openCreate} className="gap-2">
-              <Plus className="size-4" strokeWidth={2} aria-hidden />
-              {t("add")}
-            </AppButton>
+            <AddButton type="button" onClick={openCreate} />
           }
           controls={
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -218,9 +246,9 @@ export function CompositeItemsPanel() {
             </div>
           ) : (
             <div className="space-y-2 p-6">
-              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
             </div>
           )
         ) : items.length === 0 ? (
@@ -233,7 +261,7 @@ export function CompositeItemsPanel() {
                 <AppButton
                   type="button"
                   variant="secondary"
-                  size="md"
+                  size="sm"
                   onClick={() => setUrl({ search: null, page: null }, { replace: true })}
                 >
                   {tList("clearFilters")}
@@ -246,10 +274,7 @@ export function CompositeItemsPanel() {
               title={t("emptyTitle")}
               description={t("emptyDescription")}
               action={
-                <AppButton type="button" variant="primary" size="md" className="gap-2" onClick={openCreate}>
-                  <Plus className="size-4" strokeWidth={2} aria-hidden />
-                  {t("add")}
-                </AppButton>
+                <AddButton type="button" size="sm" onClick={openCreate} />
               }
             />
           )
@@ -300,74 +325,12 @@ export function CompositeItemsPanel() {
             </ListPageCardGrid>
           </div>
         ) : (
-          <DataTableScroll>
-            <DataTable>
-              <DataTableHead>
-                <tr>
-                  <DataTableTh>{t("table.name")}</DataTableTh>
-                  <DataTableTh className="hidden sm:table-cell">{t("modal.sku")}</DataTableTh>
-                  <DataTableTh className="hidden md:table-cell">{t("modal.quantity")}</DataTableTh>
-                  <DataTableTh className="hidden lg:table-cell">{t("modal.costPrice")}</DataTableTh>
-                  <DataTableTh className="hidden lg:table-cell">{t("modal.sellingPrice")}</DataTableTh>
-                  <DataTableTh className="hidden xl:table-cell">{t("table.created")}</DataTableTh>
-                  <DataTableTh narrow>
-                    <span className="sr-only">{t("table.actions")}</span>
-                  </DataTableTh>
-                </tr>
-              </DataTableHead>
-              <DataTableBody>
-                {items.length === 0 ? (
-                  <DataTableEmptyRow message={t("empty")} colSpan={tableColSpan} />
-                ) : (
-                  items.map((row) => (
-                    <DataTableRow
-                      key={row.id}
-                      data-list-row-id={row.id}
-                      className={cn(highlightClassName(row.id))}
-                      clickable
-                      onClick={() => openCompositeDetail(row.id)}
-                    >
-                      <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{row.name}</DataTableTd>
-                      <DataTableTd className="hidden font-mono text-xs sm:table-cell">{row.sku || "—"}</DataTableTd>
-                      <DataTableTd className="hidden tabular-nums text-slate-600 dark:text-slate-400 md:table-cell">{row.quantity ?? "—"}</DataTableTd>
-                      <DataTableTd className="hidden tabular-nums text-slate-600 dark:text-slate-400 lg:table-cell">{moneyDisplay(row.cost_price)}</DataTableTd>
-                      <DataTableTd className="hidden tabular-nums text-slate-600 dark:text-slate-400 lg:table-cell">{moneyDisplay(row.selling_price)}</DataTableTd>
-                      <DataTableTd className="hidden text-slate-600 dark:text-slate-400 xl:table-cell">
-                        {dateFmt.format(new Date(row.created_at))}
-                      </DataTableTd>
-                      <DataTableTd
-                        narrow
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => e.stopPropagation()}
-                      >
-                        <DataTableRowActionsMenu
-                          menuAriaLabel={tList("openRowActions")}
-                          items={[
-                            {
-                              id: "edit",
-                              label: t("edit"),
-                              icon: Pencil,
-                              onSelect: () => openEdit(row),
-                            },
-                            {
-                              id: "delete",
-                              label: t("delete"),
-                              icon: Trash2,
-                              tone: "danger",
-                              onSelect: () => {
-                                setDeletingItem(row);
-                                setDeleteOpen(true);
-                              },
-                            },
-                          ]}
-                        />
-                      </DataTableTd>
-                    </DataTableRow>
-                  ))
-                )}
-              </DataTableBody>
-            </DataTable>
-          </DataTableScroll>
+          <EntityDataTable
+            columns={tableColumns}
+            rows={items}
+            onRowClick={(row) => openCompositeDetail(row.id)}
+            getRowClassName={(row) => highlightClassName(row.id)}
+          />
         )}
 
         {!loading && !loadError && items.length > 0 ? (

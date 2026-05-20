@@ -35,6 +35,8 @@ export function hasListActiveFilters(args: {
   siteParam?: string | null;
   projectParam?: string | null;
   statusParam?: string | null;
+  jobStatusParam?: string | null;
+  assignedWorkerParam?: string | null;
 }): boolean {
   if (args.search.trim() !== "") return true;
   /** Default list is active-only; only “inactive” is treated as an applied filter. */
@@ -45,6 +47,8 @@ export function hasListActiveFilters(args: {
   if (args.siteParam != null && args.siteParam.trim() !== "") return true;
   if (args.projectParam != null && args.projectParam.trim() !== "") return true;
   if (args.statusParam != null && args.statusParam.trim() !== "") return true;
+  if (args.jobStatusParam != null && args.jobStatusParam.trim() !== "") return true;
+  if (args.assignedWorkerParam != null && args.assignedWorkerParam.trim() !== "") return true;
   return false;
 }
 

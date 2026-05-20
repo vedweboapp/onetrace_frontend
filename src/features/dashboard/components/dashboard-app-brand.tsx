@@ -24,7 +24,7 @@ export function DashboardAppBrand({ className, collapsed }: Props) {
         className
       )}
     >
-      {/* Logo */}
+  
       <span
         className={cn(
           "flex shrink-0 items-center justify-center",
@@ -41,13 +41,12 @@ export function DashboardAppBrand({ className, collapsed }: Props) {
         />
       </span>
 
-      {/* Text */}
       {!collapsed && (
         <span
           className={cn(
             "flex items-center min-w-0 truncate",
             "font-extrabold tracking-tight text-slate-900 dark:text-slate-50",
-            "text-lg leading-none" // tighter baseline
+            "text-lg leading-none"
           )}
         >
           Red5

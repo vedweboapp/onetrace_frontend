@@ -32,6 +32,9 @@ export function createSiteFormSchema(messages: SiteFormMessages) {
       state_iso: z.string(),
       city: z.string(),
       pincode: zTrimmedNonEmpty(messages.pincode),
+      what3words: z.string(),
+      latitude: z.string(),
+      longitude: z.string(),
     })
     .superRefine((data, ctx) => {
       const subdivisions = State.getStatesOfCountry(data.country_iso);

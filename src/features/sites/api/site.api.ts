@@ -21,6 +21,7 @@ export type SiteListFilters = {
   search?: string;
   is_active?: boolean;
   client?: number;
+  project?: number;
 };
 
 export async function fetchSitesPage(
@@ -34,6 +35,9 @@ export async function fetchSitesPage(
   if (typeof filters?.is_active === "boolean") params.is_active = String(filters.is_active);
   if (typeof filters?.client === "number" && Number.isFinite(filters.client) && filters.client > 0) {
     params.client = filters.client;
+  }
+  if (typeof filters?.project === "number" && Number.isFinite(filters.project) && filters.project > 0) {
+    params.project = filters.project;
   }
   const { data } = await api.get<SiteListResponse>(SITE_PATHS.list, { params });
   assertEnvelopeSuccess(data);

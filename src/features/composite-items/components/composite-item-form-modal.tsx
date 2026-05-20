@@ -7,7 +7,8 @@ import {
   updateCompositeItem,
 } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
-import { toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
 import { cn } from "@/core/utils/http.util";
 import type { ItemComponentRef } from "@/features/items/types/item.types";
 import { fetchItemsPage } from "@/features/items/api/item.api";
@@ -85,6 +86,16 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
     [itemLabelById, itemOptions],
   );
 
+  const itemOptionsForRow = React.useCallback(
+    (rowId: string) =>
+      checkmarkOptionsExcludingUsed(
+        itemSelectOptions,
+        rows.filter((r) => r.id !== rowId).map((r) => r.child_item),
+        rows.find((r) => r.id === rowId)?.child_item ?? "",
+      ),
+    [itemSelectOptions, rows],
+  );
+
   React.useEffect(() => {
     if (!open) return;
     if (mode === "edit" && item) {
@@ -135,14 +146,17 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
 
   function buildComponents(): ItemComponentRef[] | null {
     const out: ItemComponentRef[] = [];
+    const seen = new Set<number>();
     for (const r of rows) {
       const cid = toNumberOrNull(r.child_item);
       const q = toNumberOrNull(r.quantity);
-      if (cid == null) return null;
-      if (q == null || q <= 0) return null;
+      if (r.child_item.trim() === "") continue;
+      if (cid == null || q == null || q <= 0) return null;
+      if (seen.has(cid)) return null;
+      seen.add(cid);
       out.push({ child_item: cid, quantity: q });
     }
-    return out;
+    return out.length > 0 ? out : null;
   }
 
   async function submit(e: React.FormEvent) {
@@ -160,7 +174,10 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
     if (!hasAtLeastOneComponentItem) return;
 
     const comps = buildComponents();
-    if (!comps) return;
+    if (!comps) {
+      toastError(t("duplicateComponentError"));
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -211,14 +228,14 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
       isBusy={submitting}
       footer={
         <>
-          <AppButton type="button" variant="secondary" size="md" disabled={submitting} onClick={handleCloseAttempt}>
+          <AppButton type="button" variant="secondary" size="sm" disabled={submitting} onClick={handleCloseAttempt}>
             {t("cancel")}
           </AppButton>
           <AppButton
             type="submit"
             form="composite-item-form"
             variant="primary"
-            size="md"
+            size="sm"
             loading={submitting}
             disabled={noItems}
           >
@@ -336,7 +353,7 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
                     onChange={(v) => {
                       setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, child_item: v } : x)));
                     }}
-                    options={itemSelectOptions}
+                    options={itemOptionsForRow(r.id)}
                     emptyLabel={t("childItemPlaceholder")}
                     disabled={submitting || noItems}
                     portaled

@@ -38,7 +38,6 @@ export type Client = {
   state?: string | null;
   country?: string | null;
   pincode?: string | null;
-  /** Legacy combined address (some responses may omit structured fields). */
   address?: string | null;
   is_active: boolean;
   deleted_by: unknown;

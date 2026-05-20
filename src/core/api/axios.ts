@@ -164,7 +164,6 @@ function shouldSuppressApiErrorToast(
 }
 
 api.interceptors.request.use((config) => {
-  /** Default JSON Content-Type would serialize FormData as JSON (`File` → `{}`). Drop it so the boundary is set. */
   if (typeof FormData !== "undefined" && config.data instanceof FormData) {
     const headers = config.headers;
     if (headers instanceof AxiosHeaders) {

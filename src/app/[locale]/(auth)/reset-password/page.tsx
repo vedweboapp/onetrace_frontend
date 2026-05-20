@@ -14,7 +14,6 @@ export default async function ResetPasswordPage({
 }: {
   searchParams: SearchParams;
 }) {
-  // Support multiple common token parameter names from the backend reset email link.
   const rawToken =
     searchParams.token ??
     searchParams.reset_token ??

@@ -6,8 +6,9 @@ import { createGroup, updateGroup } from "@/features/groups/api/group.api";
 import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
-import { toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
 import {
   AppButton,
   AppModal,
@@ -57,6 +58,16 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
   const compositeSelectOptions = React.useMemo<CheckmarkSelectOption[]>(
     () => compositeOptions.map((opt) => ({ value: String(opt.id), label: opt.name })),
     [compositeOptions],
+  );
+
+  const compositeOptionsForRow = React.useCallback(
+    (rowId: string) =>
+      checkmarkOptionsExcludingUsed(
+        compositeSelectOptions,
+        rows.filter((r) => r.id !== rowId).map((r) => r.item),
+        rows.find((r) => r.id === rowId)?.item ?? "",
+      ),
+    [compositeSelectOptions, rows],
   );
 
   React.useEffect(() => {
@@ -123,7 +134,10 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
     if (!name.trim()) return;
     if (!hasAtLeastOneItem) return;
     const compositeItems = buildCompositeItemsPayload();
-    if (compositeItems == null) return;
+    if (compositeItems == null) {
+      toastError(t("duplicateCompositeItemError"));
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -158,10 +172,10 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
       isBusy={submitting}
       footer={
         <>
-          <AppButton type="button" variant="secondary" size="md" disabled={submitting} onClick={handleCloseAttempt}>
+          <AppButton type="button" variant="secondary" size="sm" disabled={submitting} onClick={handleCloseAttempt}>
             {t("cancel")}
           </AppButton>
-          <AppButton type="submit" form="group-form" variant="primary" size="md" loading={submitting}>
+          <AppButton type="submit" form="group-form" variant="primary" size="sm" loading={submitting}>
             {mode === "edit" ? t("saveChanges") : t("save")}
           </AppButton>
         </>
@@ -206,7 +220,7 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
                     onChange={(value) => {
                       setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, item: value } : x)));
                     }}
-                    options={compositeSelectOptions}
+                    options={compositeOptionsForRow(row.id)}
                     emptyLabel={t("compositeItemPlaceholder")}
                     disabled={submitting}
                     portaled

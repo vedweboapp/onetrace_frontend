@@ -109,10 +109,10 @@ export function ContactFormModal({ open, onClose, clientOptions, onSaved }: Prop
       size="3xl"
       footer={
         <>
-          <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => (!saving ? onClose() : undefined)}>
+          <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => (!saving ? onClose() : undefined)}>
             {t("modal.cancel")}
           </AppButton>
-          <AppButton type="submit" form={FORM_DOM_ID} variant="primary" size="md" loading={saving} disabled={noClients}>
+          <AppButton type="submit" form={FORM_DOM_ID} variant="primary" size="sm" loading={saving} disabled={noClients}>
             {t("modal.save")}
           </AppButton>
         </>
@@ -148,6 +148,7 @@ export function ContactFormModal({ open, onClose, clientOptions, onSaved }: Prop
                 <CheckmarkSelect
                   id="contact-client"
                   portaled
+                  searchable
                   listLabel={t("fields.client")}
                   options={clientOptions}
                   value={field.value}

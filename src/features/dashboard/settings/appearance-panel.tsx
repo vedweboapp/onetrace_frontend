@@ -89,7 +89,6 @@ export function AppearancePanel() {
   const [hexDraft, setHexDraft] = React.useState(customAccentHex);
 
   React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync draft from store
     setHexDraft(customAccentHex);
   }, [customAccentHex]);
 

@@ -14,6 +14,7 @@ function pinsFromProjectPlot(plot: NonNullable<ProjectLevelForQuotation["plots"]
     name: a.displayName,
     quantity: a.totalQty,
     selling_price: a.unitPrice,
+    pin_count: a.pinCount,
   }));
 }
 
@@ -55,6 +56,7 @@ function mapQuoteApiPinsToDraft(pins: QuotationQuoteSectionPin[]): QuotationDraf
       name: p.name,
       quantity: p.quantity,
       selling_price: p.selling_price,
+      pin_count: 1,
     }));
 }
 

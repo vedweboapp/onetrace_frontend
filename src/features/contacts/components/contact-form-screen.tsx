@@ -147,10 +147,10 @@ export function ContactFormScreen({ mode, contactId }: Props) {
         subtitle={isEdit ? t("page.editSubtitle") : t("page.createSubtitle")}
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.contacts)}>
+            <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.contacts)}>
               {t("modal.cancel")}
             </AppButton>
-            <AppButton type="submit" form="contact-upsert-screen-form" variant="primary" size="md" loading={saving} disabled={noClients}>
+            <AppButton type="submit" form="contact-upsert-screen-form" variant="primary" size="sm" loading={saving} disabled={noClients}>
               {isEdit ? t("modal.saveChanges") : t("modal.save")}
             </AppButton>
           </div>
@@ -197,6 +197,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
                     <CheckmarkSelect
                       id="contact-client"
                       portaled
+                      searchable
                       listLabel={t("fields.client")}
                       options={clientOptions}
                       value={field.value}

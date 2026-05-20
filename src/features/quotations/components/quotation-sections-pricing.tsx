@@ -79,7 +79,7 @@ export function QuotationSectionsPricing({
           <AppButton
             type="button"
             variant="secondary"
-            size="md"
+            size="sm"
             disabled={saving || creatingLevel || !canShowLevels || newLevelName.trim().length === 0}
             loading={creatingLevel}
             onClick={() => void onCreateLevel()}

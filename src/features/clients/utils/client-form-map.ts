@@ -11,11 +11,9 @@ function normalizePhoneForPhoneInput(raw: string | null | undefined): string {
   const digits = value.replace(/\D/g, "");
   if (!digits) return "";
 
-  // Legacy records may store national numbers without +country code.
   if (digits.length === 10) return `+91${digits}`;
   if (digits.length === 11 && digits.startsWith("0")) return `+91${digits.slice(1)}`;
 
-  // Fallback: prefix plus so react-phone-number-input accepts it as E.164-like.
   return `+${digits}`;
 }
 
