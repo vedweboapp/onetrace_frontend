@@ -51,7 +51,7 @@ export interface FieldConfig {
   currency?: string;
   decimalPlaces?: number;
   defaultChecked?: boolean;
-  lookup_module?: string;
+  // lookup_module?: string;
   userType?: "single" | "multiple";
   maxFileSize?: number;
   allowedTypes?: string;
@@ -288,32 +288,32 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
-  auto_number: {
-    label: "Auto-Number",
-    icon: ArrowUpDown,
-    defaultConfig: () => ({
-      type: "auto_number",
-      label: "Auto Number",
-      name: "",
-      prefix: "",
-      startingNumber: 1,
-      suffix: "",
-      required: false,
-      unique: true,
-      markAsPublic: false,
-      show_tooltip: false,
-      tool_tip: "",
-    }),
-    configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
-      { type: "text", label: "Prefix", key: "prefix" },
-      { type: "number", label: "Starting Number", key: "startingNumber" },
-      { type: "text", label: "suffix", key: "suffix" },
-      { type: "checkbox", label: "Is Unique", key: "unique", required: true },
-      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
-    ],
-  },
+  // auto_number: {
+  //   label: "Auto-Number",
+  //   icon: ArrowUpDown,
+  //   defaultConfig: () => ({
+  //     type: "auto_number",
+  //     label: "Auto Number",
+  //     name: "",
+  //     prefix: "",
+  //     startingNumber: 1,
+  //     suffix: "",
+  //     required: false,
+  //     unique: true,
+  //     markAsPublic: false,
+  //     show_tooltip: false,
+  //     tool_tip: "",
+  //   }),
+  //   configFields: [
+  //     { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
+  //     { type: "text", label: "Prefix", key: "prefix" },
+  //     { type: "number", label: "Starting Number", key: "startingNumber" },
+  //     { type: "text", label: "suffix", key: "suffix" },
+  //     { type: "checkbox", label: "Is Unique", key: "unique", required: true },
+  //     // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+  //     // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+  //   ],
+  // },
   currency: {
     label: "Currency",
     icon: DollarSign,
@@ -509,40 +509,40 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
-  lookup: {
-    label: "Lookup",
-    icon: Search,
-    defaultConfig: () => ({
-      type: "lookup",
-      label: "Related Record",
-      name: "",
-      lookup_module: "lead",
-      required: false,
-      markAsPublic: false,
-      show_tooltip: false,
-      tool_tip: "",
-    }),
-    configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
-      {
-        type: "drop-down",
-        label: "Lookup Module",
-        key: "lookup_module",
-        required: true,
-        options: [
-          { value: "deal", label: "Deals" },
-          { value: "lead", label: "Leads" },
-          { value: "contact", label: "Contacts" },
-          { value: "account", label: "Accounts" },
-          { value: "pipeline", label: "Pipelines" },
-          { value: "stage", label: "Stages" },
-        ],
-      },
-      { type: "checkbox", label: "Required", key: "required" },
-      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
-      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
-    ],
-  },
+  // lookup: {
+  //   label: "Lookup",
+  //   icon: Search,
+  //   defaultConfig: () => ({
+  //     type: "lookup",
+  //     label: "Related Record",
+  //     name: "",
+  //     lookup_module: "lead",
+  //     required: false,
+  //     markAsPublic: false,
+  //     show_tooltip: false,
+  //     tool_tip: "",
+  //   }),
+  //   configFields: [
+  //     { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
+  //     {
+  //       type: "drop-down",
+  //       label: "Lookup Module",
+  //       key: "lookup_module",
+  //       required: true,
+  //       options: [
+  //         { value: "deal", label: "Deals" },
+  //         { value: "lead", label: "Leads" },
+  //         { value: "contact", label: "Contacts" },
+  //         { value: "account", label: "Accounts" },
+  //         { value: "pipeline", label: "Pipelines" },
+  //         { value: "stage", label: "Stages" },
+  //       ],
+  //     },
+  //     { type: "checkbox", label: "Required", key: "required" },
+  //     // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+  //     // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+  //   ],
+  // },
   // user: {
   //   label: "User",
   //   icon: User,

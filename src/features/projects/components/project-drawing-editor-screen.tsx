@@ -327,7 +327,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [selectedPlotId, setSelectedPlotId] = React.useState<string>("");
   const [activeTool, setActiveTool] = React.useState<Tool>("select");
   const [dirty, setDirty] = React.useState(false);
-  const [zoom, setZoom] = React.useState(0.4);
+  const [zoom, setZoom] = React.useState(1);
   const [showVariations, setShowVariations] = React.useState(false);
 
   const [groups, setGroups] = React.useState<Group[]>([]);

@@ -87,12 +87,12 @@ export const FormFieldsConfig: FieldConfigItem[] = [
     label: "Number",
     icon: Hash
   },
-  {
-    key: "autoNumber",
-    type: "auto_number",
-    label: "Auto-Number",
-    icon: ArrowUpDown
-  },
+  // {
+  //   key: "autoNumber",
+  //   type: "auto_number",
+  //   label: "Auto-Number",
+  //   icon: ArrowUpDown
+  // },
   {
     key: "currency",
     type: "currency",
@@ -129,12 +129,12 @@ export const FormFieldsConfig: FieldConfigItem[] = [
     label: "URL",
     icon: Link
   },
-  {
-    key: "lookup",
-    type: "lookup",
-    label: "Lookup",
-    icon: Search
-  },
+  // {
+  //   key: "lookup",
+  //   type: "lookup",
+  //   label: "Lookup",
+  //   icon: Search
+  // },
   // {
   //   key: "user",
   //   type: "user",
@@ -153,24 +153,24 @@ export const FormFieldsConfig: FieldConfigItem[] = [
     label: "Image Upload",
     icon: Image
   },
-  {
-    key: "country",
-    type: "country",
-    label: "Country",
-    icon: Globe
-  },
-  {
-    key: "multiSelectLookup",
-    type: "multi_select_lookup",
-    label: "Multi-Select Lookup",
-    icon: ListChecks
-  },
-  {
-    key: "receiver-lookup",
-    type: "receiver_lookup",
-    label: "Receiver Lookup",
-    icon: Home,
-  },
+  // {
+  //   key: "country",
+  //   type: "country",
+  //   label: "Country",
+  //   icon: Globe
+  // },
+  // {
+  //   key: "multiSelectLookup",
+  //   type: "multi_select_lookup",
+  //   label: "Multi-Select Lookup",
+  //   icon: ListChecks
+  // },
+  // {
+  //   key: "receiver-lookup",
+  //   type: "receiver_lookup",
+  //   label: "Receiver Lookup",
+  //   icon: Home,
+  // },
   {
     key: "address",
     type: "address",
