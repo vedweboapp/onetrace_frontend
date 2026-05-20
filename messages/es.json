@@ -756,8 +756,11 @@
       },
       "location": {
         "searchPlaceholder": "Empieza a escribir la dirección…",
+        "googleSearchPlaceholder": "Buscar dirección en Google…",
+        "poweredByGoogle": "Sugerencias de Google Places",
         "searchPlaceholderLine2": "Piso, puerta, edificio (opcional)…",
         "searching": "Buscando lugares…",
+        "resolvingPlace": "Cargando detalles de la dirección…",
         "noResults": "Sin coincidencias — puedes escribir la dirección manualmente.",
         "mapTitle": "Ubicación en el mapa",
         "dragPinHint": "Arrastra el pin o haz clic en el mapa para marcar el punto exacto.",

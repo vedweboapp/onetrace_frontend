@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { City, Country, State } from "country-state-city";
+import { useTranslations } from "next-intl";
 import type { Control, FieldPath, FieldValues, PathValue, UseFormSetValue } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
 import { cn } from "@/core/utils/http.util";
@@ -56,6 +57,7 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
   errors,
   rowClassName,
 }: CascadingLocationFieldsProps<TFieldValues>) {
+  const tList = useTranslations("Dashboard.list");
   const countryIsoRaw = useWatch({ control, name: countryIsoName });
   const stateIsoRaw = useWatch({ control, name: stateIsoName });
   const countryIso = typeof countryIsoRaw === "string" ? countryIsoRaw : "";
@@ -122,6 +124,8 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
               <CheckmarkSelect
                 id={`${String(countryIsoName)}-select`}
                 portaled
+                searchable
+                searchPlaceholder={tList("searchPlaceholder")}
                 listLabel={String(labels.country)}
                 options={countryOpts}
                 emptyLabel={placeholders.country}
@@ -156,6 +160,8 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
                 <CheckmarkSelect
                   id={`${String(stateIsoName)}-select`}
                   portaled
+                  searchable
+                  searchPlaceholder={tList("searchPlaceholder")}
                   listLabel={String(labels.state)}
                   options={stateOpts}
                   emptyLabel={placeholders.state}
@@ -195,6 +201,8 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
                   <CheckmarkSelect
                     id={`${String(cityName)}-select`}
                     portaled
+                    searchable
+                    searchPlaceholder={tList("searchPlaceholder")}
                     listLabel={String(labels.city)}
                     options={cityOpts}
                     emptyLabel={placeholders.city}

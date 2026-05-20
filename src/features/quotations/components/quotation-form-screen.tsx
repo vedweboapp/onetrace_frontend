@@ -568,11 +568,11 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
           </div>
         ) : (
           <form id="quotation-form-screen" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(onSubmit)}>
-            {noProjects ? (
+            {/* {noProjects ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
                 {t("noClientsHint")}
               </p>
-            ) : null}
+            ) : null} */}
             <AppTabs
               tabs={[
                 { id: "project", label: t("formTabs.project") },

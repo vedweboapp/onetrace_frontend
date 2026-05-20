@@ -756,8 +756,11 @@
       },
       "location": {
         "searchPlaceholder": "Start typing street address…",
+        "googleSearchPlaceholder": "Search address on Google…",
+        "poweredByGoogle": "Suggestions from Google Places",
         "searchPlaceholderLine2": "Apartment, suite, building (optional)…",
         "searching": "Searching places…",
+        "resolvingPlace": "Loading address details…",
         "noResults": "No matches — you can still enter the address manually.",
         "mapTitle": "Pin location on map",
         "dragPinHint": "Drag the pin or click the map to set the exact location.",

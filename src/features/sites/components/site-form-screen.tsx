@@ -194,6 +194,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
                     <CheckmarkSelect
                       id="site-client"
                       portaled
+                      searchable
                       listLabel={t("fields.client")}
                       options={clientOptions}
                       value={field.value}

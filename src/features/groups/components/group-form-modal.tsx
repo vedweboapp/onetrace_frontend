@@ -224,6 +224,7 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
                     emptyLabel={t("compositeItemPlaceholder")}
                     disabled={submitting}
                     portaled
+                    searchable
                     className="w-full"
                   />
                 </div>

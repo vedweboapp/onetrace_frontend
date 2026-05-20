@@ -247,6 +247,7 @@ export function GroupFormScreen({ mode, groupId }: Props) {
                         emptyLabel={tModal("compositeItemPlaceholder")}
                         disabled={submitting}
                         portaled
+                        searchable
                         className="w-full"
                       />
                     </div>

@@ -1,8 +1,15 @@
 "use client";
 
 import * as React from "react";
+import { MapPin } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { PlaceSuggestion } from "@/shared/types/place-suggestion.types";
+import { isGoogleMapsEnabled } from "@/shared/utils/google-maps-loader.util";
+import {
+  fetchGooglePlaceDetails,
+  fetchGooglePlacePredictions,
+  type GooglePlacePrediction,
+} from "@/shared/utils/google-places-autocomplete.util";
 import { cn } from "@/core/utils/http.util";
 import { surfaceInputClassName } from "@/shared/ui/field-primitives";
 
@@ -14,7 +21,6 @@ type Props = {
   onBlur?: () => void;
   onSelectPlace: (place: PlaceSuggestion) => void;
   countryIso?: string;
-  /** Biases search toward selected locality (city, state, country name). */
   contextCity?: string;
   contextState?: string;
   contextCountry?: string;
@@ -24,7 +30,6 @@ type Props = {
   invalid?: boolean;
   required?: boolean;
   error?: string;
-  /** Secondary line — same suggestions, fills line 2 on select */
   variant?: "primary" | "secondary";
 };
 
@@ -49,10 +54,15 @@ export function AddressPlaceAutocomplete({
 }: Props) {
   const t = useTranslations("Dashboard.sites.location");
   const listId = `${id}-suggestions`;
+  const useGooglePlaces = variant === "primary" && isGoogleMapsEnabled();
+
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
-  const [items, setItems] = React.useState<PlaceSuggestion[]>([]);
+  const [nominatimItems, setNominatimItems] = React.useState<PlaceSuggestion[]>([]);
+  const [googlePredictions, setGooglePredictions] = React.useState<GooglePlacePrediction[]>([]);
   const [activeIndex, setActiveIndex] = React.useState(-1);
+  const [resolvingPlace, setResolvingPlace] = React.useState(false);
+
   const wrapRef = React.useRef<HTMLDivElement>(null);
   const skipSearchRef = React.useRef(false);
 
@@ -61,48 +71,61 @@ export function AddressPlaceAutocomplete({
       skipSearchRef.current = false;
       return;
     }
+
     const q = value.trim();
     if (q.length < 2) {
-      setItems([]);
+      setNominatimItems([]);
+      setGooglePredictions([]);
       setLoading(false);
       return;
     }
 
     let cancelled = false;
     setLoading(true);
+
     const tid = window.setTimeout(async () => {
       try {
+        if (useGooglePlaces) {
+          const predictions = await fetchGooglePlacePredictions(q, { countryIso });
+          if (cancelled) return;
+          setGooglePredictions(predictions);
+          setNominatimItems([]);
+          setActiveIndex(-1);
+          return;
+        }
+
         const params = new URLSearchParams({ q });
         if (countryIso?.trim()) params.set("country", countryIso.trim().toLowerCase());
-        const city = contextCity?.trim();
-        const state = contextState?.trim();
-        const country = contextCountry?.trim();
-        if (city) params.set("city", city);
-        if (state) params.set("state", state);
-        if (country) params.set("countryName", country);
-        const pin = contextPincode?.trim();
-        if (pin) params.set("pincode", pin);
+        if (contextCity?.trim()) params.set("city", contextCity.trim());
+        if (contextState?.trim()) params.set("state", contextState.trim());
+        if (contextCountry?.trim()) params.set("countryName", contextCountry.trim());
+        if (contextPincode?.trim()) params.set("pincode", contextPincode.trim());
+
         const res = await fetch(`/api/places?${params}`);
         if (cancelled) return;
         if (!res.ok) {
-          setItems([]);
+          setNominatimItems([]);
           return;
         }
         const json = (await res.json()) as { results?: PlaceSuggestion[] };
-        setItems(json.results ?? []);
+        setNominatimItems(json.results ?? []);
+        setGooglePredictions([]);
         setActiveIndex(-1);
       } catch {
-        if (!cancelled) setItems([]);
+        if (!cancelled) {
+          setNominatimItems([]);
+          setGooglePredictions([]);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }, 280);
+    }, 220);
 
     return () => {
       cancelled = true;
       window.clearTimeout(tid);
     };
-  }, [value, countryIso, contextCity, contextState, contextCountry, contextPincode]);
+  }, [value, countryIso, contextCity, contextState, contextCountry, contextPincode, useGooglePlaces]);
 
   React.useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -112,31 +135,62 @@ export function AddressPlaceAutocomplete({
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
-  function pick(place: PlaceSuggestion) {
+  async function pickNominatim(place: PlaceSuggestion) {
     skipSearchRef.current = true;
     onSelectPlace(place);
     setOpen(false);
-    setItems([]);
+    setNominatimItems([]);
+    setGooglePredictions([]);
   }
 
+  async function pickGoogle(prediction: GooglePlacePrediction) {
+    if (!prediction.place_id || resolvingPlace) return;
+    setResolvingPlace(true);
+    try {
+      const main = prediction.structured_formatting?.main_text?.trim();
+      const place = await fetchGooglePlaceDetails(prediction.place_id);
+      if (!place) return;
+      skipSearchRef.current = true;
+      onChange(main || place.line1);
+      onSelectPlace({
+        ...place,
+        line1: main || place.line1,
+        label: prediction.description?.trim() || place.label,
+      });
+      setOpen(false);
+      setGooglePredictions([]);
+      setNominatimItems([]);
+    } finally {
+      setResolvingPlace(false);
+    }
+  }
+
+  const googleCount = googlePredictions.length;
+  const nominatimCount = nominatimItems.length;
+  const totalCount = useGooglePlaces ? googleCount : nominatimCount;
+  const showList = open && value.trim().length >= 2 && (loading || resolvingPlace || totalCount > 0);
+
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (!open || items.length === 0) return;
+    if (!showList || totalCount === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActiveIndex((i) => (i + 1) % items.length);
+      setActiveIndex((i) => (i + 1) % totalCount);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActiveIndex((i) => (i <= 0 ? items.length - 1 : i - 1));
+      setActiveIndex((i) => (i <= 0 ? totalCount - 1 : i - 1));
     } else if (e.key === "Enter" && activeIndex >= 0) {
       e.preventDefault();
-      const row = items[activeIndex];
-      if (row) pick(row);
+      if (useGooglePlaces) {
+        const row = googlePredictions[activeIndex];
+        if (row) void pickGoogle(row);
+      } else {
+        const row = nominatimItems[activeIndex];
+        if (row) void pickNominatim(row);
+      }
     } else if (e.key === "Escape") {
       setOpen(false);
     }
   }
-
-  const showList = open && value.trim().length >= 2 && (loading || items.length > 0);
 
   return (
     <div ref={wrapRef} className="relative">
@@ -152,8 +206,15 @@ export function AddressPlaceAutocomplete({
         aria-controls={showList ? listId : undefined}
         aria-autocomplete="list"
         autoComplete="off"
-        disabled={disabled}
-        placeholder={placeholder ?? (variant === "primary" ? t("searchPlaceholder") : t("searchPlaceholderLine2"))}
+        disabled={disabled || resolvingPlace}
+        placeholder={
+          placeholder ??
+          (variant === "primary"
+            ? useGooglePlaces
+              ? t("googleSearchPlaceholder")
+              : t("searchPlaceholder")
+            : t("searchPlaceholderLine2"))
+        }
         value={value}
         onChange={(e) => {
           onChange(e.target.value);
@@ -164,35 +225,75 @@ export function AddressPlaceAutocomplete({
           window.setTimeout(() => {
             setOpen(false);
             onBlur?.();
-          }, 150);
+          }, 200);
         }}
         onKeyDown={onKeyDown}
         className={cn(surfaceInputClassName, invalid && "border-red-500 dark:border-red-500")}
       />
       {error ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p> : null}
+
       {showList ? (
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-[200] mt-1 max-h-60 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+          className="absolute z-[500] mt-1 max-h-72 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
         >
-          {loading ? (
-            <li className="px-3 py-2 text-sm text-slate-500">{t("searching")}</li>
-          ) : items.length === 0 ? (
-            <li className="px-3 py-2 text-sm text-slate-500">{t("noResults")}</li>
+          {loading || resolvingPlace ? (
+            <li className="px-3 py-2.5 text-sm text-slate-500">
+              {resolvingPlace ? t("resolvingPlace") : t("searching")}
+            </li>
+          ) : useGooglePlaces ? (
+            googleCount === 0 ? (
+              <li className="px-3 py-2.5 text-sm text-slate-500">{t("noResults")}</li>
+            ) : (
+              googlePredictions.map((prediction, idx) => {
+                const main = prediction.structured_formatting?.main_text ?? prediction.description;
+                const secondary = prediction.structured_formatting?.secondary_text ?? "";
+                return (
+                  <li key={prediction.place_id} role="option" aria-selected={idx === activeIndex}>
+                    <button
+                      type="button"
+                      className={cn(
+                        "flex w-full gap-2.5 px-3 py-2.5 text-left text-sm transition-colors",
+                        idx === activeIndex
+                          ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100"
+                          : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/60",
+                      )}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => void pickGoogle(prediction)}
+                    >
+                      <MapPin
+                        className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500"
+                        aria-hidden
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-medium text-slate-900 dark:text-slate-100">{main}</span>
+                        {secondary ? (
+                          <span className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">
+                            {secondary}
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })
+            )
+          ) : nominatimCount === 0 ? (
+            <li className="px-3 py-2.5 text-sm text-slate-500">{t("noResults")}</li>
           ) : (
-            items.map((place, idx) => (
+            nominatimItems.map((place, idx) => (
               <li key={place.id} role="option" aria-selected={idx === activeIndex}>
                 <button
                   type="button"
                   className={cn(
-                    "w-full px-3 py-2 text-left text-sm transition-colors",
+                    "w-full px-3 py-2.5 text-left text-sm transition-colors",
                     idx === activeIndex
                       ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100"
                       : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/60",
                   )}
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => pick(place)}
+                  onClick={() => void pickNominatim(place)}
                 >
                   <span className="block font-medium">{place.line1}</span>
                   <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{place.label}</span>
@@ -201,6 +302,10 @@ export function AddressPlaceAutocomplete({
             ))
           )}
         </ul>
+      ) : null}
+
+      {useGooglePlaces ? (
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("poweredByGoogle")}</p>
       ) : null}
     </div>
   );

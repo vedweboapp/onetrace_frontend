@@ -20,7 +20,7 @@ import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.ut
 import {
   AppButton,
   AppModal,
-  CascadingLocationFields,
+  AddressFormFields,
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
@@ -195,77 +195,35 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved }: Props)
           <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             {t("form.section.address")}
           </h3>
-          <FormFieldRow cols="1" className="mt-3">
-            <FieldGroup label={t("fields.addressLine1")} htmlFor="client-line1" required>
-              <input
-                id="client-line1"
-                autoComplete="address-line1"
-                aria-invalid={errors.address_line_1 ? true : undefined}
-                aria-describedby={errors.address_line_1 ? "client-line1-err" : undefined}
-                className={cn(
-                  surfaceInputClassName,
-                  errors.address_line_1 && "border-red-500 dark:border-red-500",
-                )}
-                {...register("address_line_1")}
-              />
-              <FieldErrorText id="client-line1-err">{errors.address_line_1?.message}</FieldErrorText>
-            </FieldGroup>
-            <FieldGroup label={t("fields.addressLine2")} htmlFor="client-line2">
-              <input
-                id="client-line2"
-                autoComplete="address-line2"
-                aria-invalid={errors.address_line_2 ? true : undefined}
-                className={cn(
-                  surfaceInputClassName,
-                  errors.address_line_2 && "border-red-500 dark:border-red-500",
-                )}
-                {...register("address_line_2")}
-              />
-              <FieldErrorText>{errors.address_line_2?.message}</FieldErrorText>
-            </FieldGroup>
-          </FormFieldRow>
-
-          <div className="mt-4">
-            <CascadingLocationFields<ClientFormValues>
-              control={control}
-              setValue={setValue}
-              countryIsoName="country_iso"
-              stateIsoName="state_iso"
-              cityName="city"
-              labels={{
-                country: t("fields.country"),
-                state: t("fields.stateProvince"),
-                city: t("fields.city"),
-              }}
-              placeholders={{
-                country: t("placeholders.country"),
-                state: t("placeholders.state"),
-                city: t("placeholders.city"),
-              }}
-              disabled={saving}
-              errors={{
-                country: errors.country_iso?.message,
-                state: errors.state_iso?.message,
-                city: errors.city?.message,
-              }}
-              trailingSlot={
-                <FieldGroup label={t("fields.pincode")} htmlFor="client-pincode" required>
-                  <input
-                    id="client-pincode"
-                    autoComplete="postal-code"
-                    aria-invalid={errors.pincode ? true : undefined}
-                    aria-describedby={errors.pincode ? "client-pincode-err" : undefined}
-                    className={cn(
-                      surfaceInputClassName,
-                      errors.pincode && "border-red-500 dark:border-red-500",
-                    )}
-                    {...register("pincode")}
-                  />
-                  <FieldErrorText id="client-pincode-err">{errors.pincode?.message}</FieldErrorText>
-                </FieldGroup>
-              }
-            />
-          </div>
+          <AddressFormFields
+            idPrefix="client"
+            control={control}
+            register={register}
+            setValue={setValue}
+            className="mt-3"
+            disabled={saving}
+            labels={{
+              addressLine1: t("fields.addressLine1"),
+              addressLine2: t("fields.addressLine2"),
+              country: t("fields.country"),
+              state: t("fields.stateProvince"),
+              city: t("fields.city"),
+              pincode: t("fields.pincode"),
+            }}
+            placeholders={{
+              country: t("placeholders.country"),
+              state: t("placeholders.state"),
+              city: t("placeholders.city"),
+            }}
+            errors={{
+              address_line_1: errors.address_line_1?.message,
+              address_line_2: errors.address_line_2?.message,
+              country_iso: errors.country_iso?.message,
+              state_iso: errors.state_iso?.message,
+              city: errors.city?.message,
+              pincode: errors.pincode?.message,
+            }}
+          />
         </div>
       </form>
     </AppModal>
