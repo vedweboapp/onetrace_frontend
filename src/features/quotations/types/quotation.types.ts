@@ -23,6 +23,7 @@ export type QuotationSiteNested = {
   state?: string | null;
   country?: string | null;
   pincode?: string | null;
+  what3words?: string | null;
 };
 
 /** Contact row when the quotation API expands contact fields. */
@@ -128,6 +129,7 @@ export type QuotationSiteSnapshot = {
   state?: string | null;
   country?: string | null;
   pincode?: string | null;
+  what3words?: string | null;
   /** Site contact id at submission time (same source as form `site_contact`). */
   site_contact?: number | null;
 };

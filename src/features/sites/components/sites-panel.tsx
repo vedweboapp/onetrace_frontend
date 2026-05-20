@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Pencil, Plus, Power, PowerOff, Trash2 } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
@@ -10,23 +10,19 @@ import { deleteSite, fetchSitesPage, patchSite } from "@/features/sites/api/site
 import type { Site } from "@/features/sites/types/site.types";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
   ActiveStatusBadge,
-  AppButton,
+  AddButton, AppButton,
   CheckmarkSelect,
   ConfirmDialog,
   DashboardEmptyState,
-  DataTable,
-  DataTableBody,
-  DataTableHead,
   DataTablePaginationBar,
-  DataTableRow,
   DataTableRowActionsMenu,
-  DataTableScroll,
-  DataTableTd,
-  DataTableTh,
+  ListPageActiveFilter,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
@@ -56,7 +52,7 @@ function siteClientName(row: Site, clientNameById: Record<number, string>): stri
 export function SitesPanel() {
   const t = useTranslations("Dashboard.sites");
   const tList = useTranslations("Dashboard.list");
-  const locale = useLocale();
+  const dateFmt = useDashboardDateFormat();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -101,14 +97,6 @@ export function SitesPanel() {
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
-  const stateFilterOptions = React.useMemo(
-    () => [
-      { value: "true", label: t("status.active") },
-      { value: "false", label: t("status.inactive") },
-    ],
-    [t],
-  );
-
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -162,15 +150,6 @@ export function SitesPanel() {
     return m;
   }, [clientOptions]);
 
-  const dateFmt = React.useMemo(
-    () =>
-      new Intl.DateTimeFormat(locale === "es" ? "es" : "en", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }),
-    [locale],
-  );
-
   const hasActiveFilters = hasListActiveFilters({ search, isActiveParam, clientParam });
   const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
   const pageRange = getListPageRange(pagination);
@@ -188,6 +167,56 @@ export function SitesPanel() {
     }
   }
 
+  const tableColumns = React.useMemo(() => {
+    const c = entityCol<Site>();
+    return [
+      c.primary("name", t("table.name"), (r) => r.site_name),
+      c.text("client", t("table.client"), (r) => siteClientName(r, clientLabelById)),
+      c.truncate("address", t("table.address"), (r) => r.address_line_1?.trim() || "—", { maxWidth: "md" }),
+      c.truncate("what3words", t("table.what3words"), (r) => r.what3words?.trim() || "—", { maxWidth: "sm", responsive: "md" }),
+      c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive")),
+      c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
+      c.actions("actions", t("table.actions"), (row) => (
+        <DataTableRowActionsMenu
+          menuAriaLabel={tList("openRowActions")}
+          items={[
+            {
+              id: "edit",
+              label: t("edit"),
+              icon: Pencil,
+              onSelect: () => router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`),
+            },
+            {
+              id: "delete",
+              label: t("delete"),
+              icon: Trash2,
+              tone: "danger",
+              onSelect: () => {
+                setDeletingSite(row);
+                setDeleteOpen(true);
+              },
+            },
+            row.is_active
+              ? {
+                  id: "deactivate",
+                  label: t("deactivate"),
+                  icon: PowerOff,
+                  onSelect: () => void handleToggleActive(row, false),
+                  disabled: togglingId === row.id,
+                }
+              : {
+                  id: "activate",
+                  label: t("activate"),
+                  icon: Power,
+                  onSelect: () => void handleToggleActive(row, true),
+                  disabled: togglingId === row.id,
+                },
+          ]}
+        />
+      )),
+    ];
+  }, [t, tList, dateFmt, clientLabelById, togglingId, listHref, pathname, router]);
+
   return (
     <div className="space-y-4">
       {!hideListChrome ? (
@@ -198,8 +227,7 @@ export function SitesPanel() {
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
           action={
-            <AppButton type="button" variant="primary" size="sm" onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)} className="gap-2">
-              <Plus className="size-4" strokeWidth={2} aria-hidden />
+            <AppButton type="button" variant="primary" size="sm" onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)}>
               {t("add")}
             </AppButton>
           }
@@ -219,20 +247,21 @@ export function SitesPanel() {
                 value={clientParam ?? ""}
                 emptyLabel={t("filterAllClients")}
                 portaled
+                searchable
                 clearable
                 clearAriaLabel={tList("clearFilter")}
                 className="w-full min-w-0 sm:w-56"
                 onChange={(v) => setUrl({ client: v || null, page: null }, { replace: true })}
               />
-              <CheckmarkSelect
-                listLabel={t("filterState")}
-                buttonAriaLabel={t("filterState")}
-                options={stateFilterOptions}
-                value={isActiveParam === "false" ? "false" : "true"}
-                emptyLabel={t("status.active")}
-                portaled
-                className="w-full min-w-0 sm:w-44"
-                onChange={(v) => setUrl({ is_active: v === "false" ? "false" : null, page: null }, { replace: true })}
+              <ListPageActiveFilter
+                activeLabel={t("status.active")}
+                inactiveLabel={t("status.inactive")}
+                filterLabel={t("filterState")}
+                filterAriaLabel={t("filterState")}
+                isActiveParam={isActiveParam}
+                onChange={(isActive) =>
+                  setUrl({ is_active: isActive ? null : "false", page: null }, { replace: true })
+                }
               />
             </div>
           }
@@ -246,7 +275,7 @@ export function SitesPanel() {
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6"><ListPageCardGrid>{Array.from({ length: 6 }, (_, i) => <ListPageCardSkeleton key={i} />)}</ListPageCardGrid></div>
           ) : (
-            <div className="space-y-2 p-6"><div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /></div>
+            <div className="space-y-2 p-6"><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /></div>
           )
         ) : items.length === 0 ? (
           hasActiveFilters ? (
@@ -254,14 +283,14 @@ export function SitesPanel() {
               iconName="noResults"
               title={tList("noResultsTitle")}
               description={tList("noResultsDescription")}
-              action={<AppButton type="button" variant="secondary" size="md" onClick={() => setUrl({ search: null, is_active: null, client: null, page: null }, { replace: true })}>{tList("clearFilters")}</AppButton>}
+              action={<AppButton type="button" variant="secondary" size="sm" onClick={() => setUrl({ search: null, is_active: null, client: null, page: null }, { replace: true })}>{tList("clearFilters")}</AppButton>}
             />
           ) : (
             <DashboardEmptyState
               iconName="projects"
               title={t("emptyTitle")}
               description={t("emptyDescription")}
-              action={<AppButton type="button" variant="primary" size="md" onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)} className="gap-2"><Plus className="size-4" strokeWidth={2} aria-hidden />{t("add")}</AppButton>}
+              action={<AddButton type="button" onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)} />}
             />
           )
         ) : listViewMode === "list" ? (
@@ -306,55 +335,12 @@ export function SitesPanel() {
             </ListPageCardGrid>
           </div>
         ) : (
-          <DataTableScroll>
-            <DataTable>
-              <DataTableHead>
-                <tr>
-                  <DataTableTh>{t("table.name")}</DataTableTh>
-                  <DataTableTh>{t("table.client")}</DataTableTh>
-                  <DataTableTh>{t("table.address")}</DataTableTh>
-                  <DataTableTh>{t("table.status")}</DataTableTh>
-                  <DataTableTh>{t("table.created")}</DataTableTh>
-                  <DataTableTh narrow><span className="sr-only">{t("table.actions")}</span></DataTableTh>
-                </tr>
-              </DataTableHead>
-              <DataTableBody>
-                {items.map((row) => (
-                  <DataTableRow key={row.id} data-list-row-id={row.id} className={cn(highlightClassName(row.id))} clickable onClick={() => openSiteDetail(row.id)}>
-                    <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{row.site_name}</DataTableTd>
-                    <DataTableTd>{siteClientName(row, clientLabelById)}</DataTableTd>
-                    <DataTableTd className="max-w-[16rem] truncate">{row.address_line_1?.trim() || "—"}</DataTableTd>
-                    <DataTableTd><ActiveStatusBadge active={row.is_active} label={row.is_active ? t("status.active") : t("status.inactive")} /></DataTableTd>
-                    <DataTableTd>{dateFmt.format(new Date(row.created_at))}</DataTableTd>
-                    <DataTableTd narrow onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                      <DataTableRowActionsMenu
-                        menuAriaLabel={tList("openRowActions")}
-                        items={[
-                          { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`) },
-                          { id: "delete", label: t("delete"), icon: Trash2, tone: "danger", onSelect: () => { setDeletingSite(row); setDeleteOpen(true); } },
-                          row.is_active
-                            ? {
-                                id: "deactivate",
-                                label: t("deactivate"),
-                                icon: PowerOff,
-                                onSelect: () => void handleToggleActive(row, false),
-                                disabled: togglingId === row.id,
-                              }
-                            : {
-                                id: "activate",
-                                label: t("activate"),
-                                icon: Power,
-                                onSelect: () => void handleToggleActive(row, true),
-                                disabled: togglingId === row.id,
-                              },
-                        ]}
-                      />
-                    </DataTableTd>
-                  </DataTableRow>
-                ))}
-              </DataTableBody>
-            </DataTable>
-          </DataTableScroll>
+          <EntityDataTable
+            columns={tableColumns}
+            rows={items}
+            onRowClick={(row) => openSiteDetail(row.id)}
+            getRowClassName={(row) => highlightClassName(row.id)}
+          />
         )}
 
         {!loading && !loadError && items.length > 0 ? (

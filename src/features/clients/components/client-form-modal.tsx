@@ -120,7 +120,7 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved }: Props)
           <AppButton
             type="button"
             variant="secondary"
-            size="md"
+            size="sm"
             disabled={saving}
             onClick={() => handleCloseAttempt()}
           >
@@ -130,7 +130,7 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved }: Props)
             type="submit"
             form={FORM_DOM_ID}
             variant="primary"
-            size="md"
+            size="sm"
             loading={saving}
           >
             {mode === "edit" ? t("modal.saveChanges") : t("modal.save")}

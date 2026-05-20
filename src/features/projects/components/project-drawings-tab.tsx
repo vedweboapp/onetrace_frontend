@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowUpRight, LayoutGrid, List, Layers, MapPinned, Plus, User } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, List, Layers, MapPinned, User } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -10,18 +10,12 @@ import { DrawingFilePreview, DrawingFilePreviewFill } from "@/features/projects/
 import { DrawingUploadModal } from "@/features/projects/components/drawing-upload-modal";
 import type { Drawing } from "@/features/projects/types/drawing.types";
 import type { ListPageViewMode } from "@/shared/hooks/use-list-url-state";
+import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { cn } from "@/core/utils/http.util";
 import {
+  AddButton,
   AppButton,
-  DataTable,
-  DataTableBody,
-  DataTableEmptyRow,
-  DataTableHead,
   DataTablePaginationBar,
-  DataTableRow,
-  DataTableScroll,
-  DataTableTd,
-  DataTableTh,
   ListPageSearchField,
 } from "@/shared/ui";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
@@ -279,8 +273,51 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     setPage(1);
   }
 
-  const compactLocale = locale === "es" ? "es" : "en";
   const pageRange = getListPageRange(pagination);
+
+  const tableColumns = React.useMemo(() => {
+    const c = entityCol<Drawing>();
+    return [
+      c.custom("drawing", t("table.drawing"), (row) => (
+        <span className="flex min-w-0 items-center gap-3">
+          <DrawingFilePreview
+            key={`${row.id}-${row.drawing_file}`}
+            drawingFile={row.drawing_file}
+            fileType={row.drawing_file_type}
+            alt=""
+            widthPx={76}
+            className="h-12 w-[4.75rem] shrink-0 border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900"
+          />
+          <span className="min-w-0 truncate font-semibold text-slate-900 dark:text-slate-100">{row.name}</span>
+        </span>
+      )),
+      c.custom(
+        "file",
+        t("table.file"),
+        (row) => (
+          <>
+            <span className="tabular-nums">{formatBytes(row.drawing_file_size)}</span>
+            <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-500">
+              {row.drawing_file_type?.replace(/^application\//, "") || "—"}
+            </span>
+          </>
+        ),
+        { responsive: "lg", cellClassName: "text-slate-600 dark:text-slate-400" },
+      ),
+      c.text(
+        "created",
+        t("table.created"),
+        (row) => row.created_by?.username || row.created_by?.email || "—",
+        { responsive: "md", cellClassName: "text-slate-600 dark:text-slate-400" },
+      ),
+      c.text(
+        "updated",
+        t("table.updated"),
+        (row) => formatRelativeUpdated(row.modified_at || row.created_at, locale),
+        { responsive: "md", cellClassName: "text-slate-600 dark:text-slate-400" },
+      ),
+    ];
+  }, [t, locale]);
 
   const viewToggle = (
     <div className="inline-flex shrink-0 items-center rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
@@ -317,8 +354,6 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     </div>
   );
 
-  const tableColSpan = 4;
-
   return (
     <div className="divide-y divide-slate-100 dark:divide-slate-800">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
@@ -326,19 +361,14 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
           <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{t("title")}</h2>
           <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
         </div>
-        <AppButton
+        <AddButton
           type="button"
-          variant="primary"
-          size="md"
-          className="shrink-0 gap-2"
+          className="shrink-0"
           onClick={() => {
             setUploadSession((s) => s + 1);
             setUploadOpen(true);
           }}
-        >
-          <Plus className="size-4" strokeWidth={2} aria-hidden />
-          {t("createDrawing")}
-        </AppButton>
+        />
       </div>
 
       <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
@@ -394,56 +424,12 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
           )}
         </>
       ) : (
-        <DataTableScroll>
-          <DataTable>
-            <DataTableHead>
-              <tr>
-                <DataTableTh>{t("table.drawing")}</DataTableTh>
-                <DataTableTh className="hidden lg:table-cell">{t("table.file")}</DataTableTh>
-                  <DataTableTh className="hidden md:table-cell">{t("table.created")}</DataTableTh>
-                <DataTableTh className="hidden md:table-cell">{t("table.updated")}</DataTableTh>
-              </tr>
-            </DataTableHead>
-            <DataTableBody>
-              {items.length === 0 ? (
-                <DataTableEmptyRow message={t("empty")} colSpan={tableColSpan} />
-              ) : (
-                items.map((row) => {
-                  const createdBy = row.created_by?.username || row.created_by?.email || "—";
-                  return (
-                    <DataTableRow key={row.id} clickable onClick={() => openDrawing(row)}>
-                      <DataTableTd className="font-medium text-slate-900 dark:text-slate-100">
-                        <span className="flex min-w-0 items-center gap-3">
-                          <DrawingFilePreview
-                            key={`${row.id}-${row.drawing_file}`}
-                            drawingFile={row.drawing_file}
-                            fileType={row.drawing_file_type}
-                            alt=""
-                            widthPx={76}
-                            className="h-12 w-[4.75rem] shrink-0 border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900"
-                          />
-                          <span className="min-w-0 truncate">{row.name}</span>
-                        </span>
-                      </DataTableTd>
-                      <DataTableTd className="hidden text-slate-600 dark:text-slate-400 lg:table-cell">
-                        <span className="tabular-nums">{formatBytes(row.drawing_file_size)}</span>
-                        <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-500">
-                          {row.drawing_file_type?.replace(/^application\//, "") || "—"}
-                        </span>
-                      </DataTableTd>
-                      <DataTableTd className="hidden text-slate-600 dark:text-slate-400 md:table-cell">
-                        {createdBy}
-                      </DataTableTd>
-                      <DataTableTd className="hidden text-slate-600 dark:text-slate-400 md:table-cell">
-                        {formatRelativeUpdated(row.modified_at || row.created_at, locale)}
-                      </DataTableTd>
-                    </DataTableRow>
-                  );
-                })
-              )}
-            </DataTableBody>
-          </DataTable>
-        </DataTableScroll>
+        <EntityDataTable
+          columns={tableColumns}
+          rows={items}
+          onRowClick={(row) => openDrawing(row)}
+          emptyMessage={t("empty")}
+        />
       )}
 
       {!loading && !loadError && items.length > 0 ? (

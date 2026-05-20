@@ -14,13 +14,20 @@ export type QuotationEditDraftSeed = {
  * Seeds quotation draft from project levels (create) or from persisted `quote_sections` (edit).
  * Edit with non-empty `quote_sections` wins over level rows and is not overwritten when levels load.
  */
+type UseQuotationDraftStateOptions = {
+  /** When true, skip all auto-seed (e.g. workspace restored after block detail). */
+  preventAutoSeedRef?: React.MutableRefObject<boolean>;
+  initialDraft?: QuotationDraft | null;
+};
+
 export function useQuotationDraftState(
   enabled: boolean,
   projectId: number | undefined,
   sortedLevelRows: ProjectLevelForQuotation[],
   editSeed: QuotationEditDraftSeed | null = null,
+  options?: UseQuotationDraftStateOptions,
 ): [QuotationDraft | null, React.Dispatch<React.SetStateAction<QuotationDraft | null>>] {
-  const [draft, setDraft] = React.useState<QuotationDraft | null>(null);
+  const [draft, setDraft] = React.useState<QuotationDraft | null>(options?.initialDraft ?? null);
   const seededProjectRef = React.useRef<number | null>(null);
   const hadRowsRef = React.useRef(false);
   const editSeededForQuotationRef = React.useRef<number | null>(null);
@@ -29,6 +36,10 @@ export function useQuotationDraftState(
     const queueDraft = (next: QuotationDraft | null) => {
       queueMicrotask(() => setDraft(next));
     };
+
+    if (options?.preventAutoSeedRef?.current) {
+      return;
+    }
 
     if (!enabled) {
       seededProjectRef.current = null;

@@ -14,6 +14,7 @@ import {
   PanelLeft,
   PanelLeftClose,
   Settings,
+  ListTodo,
   Tags,
   Tag,
   UserRound,
@@ -71,12 +72,14 @@ export function DashboardHeader() {
   const contactsHref = routes.dashboard.contacts;
   const sitesHref = routes.dashboard.sites;
   const quotationsHref = routes.dashboard.quotations;
+  const jobsHref = routes.dashboard.jobs;
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
   const compositeHref = routes.dashboard.compositeItems;
   const appearanceHref = routes.dashboard.settingsAppearance;
   const pinStatusHref = routes.dashboard.settingsPinStatus;
+  const jobStatusHref = routes.dashboard.settingsJobStatus;
   const tagHref = routes.dashboard.settingsTags;
   const usersHref = routes.dashboard.settingsUsers;
   const homeActive = pathname === homeHref;
@@ -87,6 +90,7 @@ export function DashboardHeader() {
   const sitesActive = pathname === sitesHref || pathname.startsWith(`${sitesHref}/`);
   const quotationsActive =
     pathname === quotationsHref || pathname.startsWith(`${quotationsHref}/`);
+  const jobsActive = pathname === jobsHref || pathname.startsWith(`${jobsHref}/`);
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
   const groupsActive = pathname === groupsHref || pathname.startsWith(`${groupsHref}/`);
@@ -96,6 +100,8 @@ export function DashboardHeader() {
     pathname === appearanceHref || pathname.startsWith(`${appearanceHref}/`);
   const pinStatusActive =
     pathname === pinStatusHref || pathname.startsWith(`${pinStatusHref}/`);
+  const jobStatusActive =
+    pathname === jobStatusHref || pathname.startsWith(`${jobStatusHref}/`);
   const tagActive = pathname === tagHref || pathname.startsWith(`${tagHref}/`);
   const usersActive = pathname === usersHref || pathname.startsWith(`${usersHref}/`);
 
@@ -107,7 +113,9 @@ export function DashboardHeader() {
         ? tNav("projects")
         : quotationsActive
           ? tNav("quotations")
-          : sitesActive
+          : jobsActive
+            ? tNav("jobs")
+            : sitesActive
             ? tNav("sites")
             : contactsActive
               ? tNav("contacts")
@@ -120,7 +128,7 @@ export function DashboardHeader() {
                     : tNav("home");
 
   return (
-    <header className="z-20 flex h-auto shrink-0 flex-col border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+    <header className="flex h-auto shrink-0 flex-col bg-white dark:bg-slate-950">
       <div className="flex h-14 items-center justify-between gap-2 px-4 lg:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
           <button
@@ -234,6 +242,17 @@ export function DashboardHeader() {
               {tSettingsNav("pinStatus")}
             </Link>
             <Link
+              href={jobStatusHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                jobStatusActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={jobStatusActive ? resolved.navActiveStyle : undefined}
+            >
+              <ListTodo className="size-3.5" strokeWidth={1.75} />
+              {tSettingsNav("jobStatus")}
+            </Link>
+            <Link
               href={tagHref}
               className={cn(
                 "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
@@ -312,6 +331,17 @@ export function DashboardHeader() {
             >
               <FileText className="size-3.5" strokeWidth={1.75} />
               {tNav("quotations")}
+            </Link>
+            <Link
+              href={jobsHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                jobsActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={jobsActive ? resolved.navActiveStyle : undefined}
+            >
+              <ListTodo className="size-3.5" strokeWidth={1.75} />
+              {tNav("jobs")}
             </Link>
             <Link
               href={projectsHref}

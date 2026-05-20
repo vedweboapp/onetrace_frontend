@@ -1,5 +1,6 @@
 import { DashboardAppearanceScope } from "@/features/dashboard/components/dashboard-appearance-scope";
 import { DashboardAuthGuard } from "@/features/dashboard/components/dashboard-auth-guard";
+import { DashboardChromeSlot } from "@/features/dashboard/components/dashboard-chrome-slot";
 import { DashboardHeader } from "@/features/dashboard/components/dashboard-header";
 import { DashboardSidebar } from "@/features/dashboard/components/dashboard-sidebar";
 import {
@@ -19,10 +20,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       >
         <DashboardSidebar />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <DashboardHeader />
+          <div className="sticky top-0 z-20 shrink-0 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+            <DashboardHeader />
+            <DashboardChromeSlot />
+          </div>
           <main
             className={cn(
-              "min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-slate-50 py-5 sm:py-6 dark:bg-slate-950 lg:py-8",
+              "min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-slate-50 py-5 sm:py-6 dark:bg-slate-950",
               dashboardMainGutterClassName,
             )}
           >

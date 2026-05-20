@@ -127,14 +127,14 @@ export function DrawingUploadModal({
       isBusy={submitting}
       footer={
         <>
-          <AppButton type="button" variant="secondary" size="md" disabled={submitting} onClick={handleCloseAttempt}>
+          <AppButton type="button" variant="secondary" size="sm" disabled={submitting} onClick={handleCloseAttempt}>
             {t("cancel")}
           </AppButton>
           <AppButton
             type="submit"
             form="drawing-upload-form"
             variant="primary"
-            size="md"
+            size="sm"
             loading={submitting}
           >
             {t("submit")}

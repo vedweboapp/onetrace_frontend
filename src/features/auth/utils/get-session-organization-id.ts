@@ -23,7 +23,6 @@ function asMembership(row: unknown): AuthOrganizationMembership | null {
   return null;
 }
 
-/** Uses the first membership row from login (`organizations[].organization_id`). */
 export function getSessionOrganizationId(organizations: unknown[]): number | null {
   if (!Array.isArray(organizations) || organizations.length === 0) return null;
   const m = asMembership(organizations[0]);

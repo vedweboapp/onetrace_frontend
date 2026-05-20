@@ -18,9 +18,9 @@ import { DetailPageHeader } from "@/shared/components/layout/detail-page-header"
 import { routes } from "@/shared/config/routes";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { SiteLocationFields } from "@/features/sites/components/site-location-fields";
 import {
   AppButton,
-  CascadingLocationFields,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
@@ -136,7 +136,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
   const noClients = clientOptions.length === 0;
 
   return (
-    <div className="pb-12">
+    <div className="space-y-4 pb-12">
       <DetailPageHeader
         title={isEdit ? t("page.editTitle") : t("page.createTitle")}
         backHref={safeBack}
@@ -144,10 +144,10 @@ export function SiteFormScreen({ mode, siteId }: Props) {
         subtitle={isEdit ? t("page.editSubtitle") : t("page.createSubtitle")}
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.sites)}>
+            <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.sites)}>
               {t("modal.cancel")}
             </AppButton>
-            <AppButton type="submit" form="site-upsert-screen-form" variant="primary" size="md" loading={saving} disabled={noClients}>
+            <AppButton type="submit" form="site-upsert-screen-form" variant="primary" size="sm" loading={saving} disabled={noClients}>
               {isEdit ? t("modal.saveChanges") : t("modal.save")}
             </AppButton>
           </div>
@@ -207,55 +207,20 @@ export function SiteFormScreen({ mode, siteId }: Props) {
                 />
                 <FieldErrorText>{errors.client?.message}</FieldErrorText>
               </FieldGroup>
-              <FieldGroup label={t("fields.addressLine1")} htmlFor="site-line1" required>
+            </FormFieldRow>
+            <SiteLocationFields control={control} register={register} setValue={setValue} errors={errors} disabled={saving} />
+            <FormFieldRow cols="1">
+              <FieldGroup label={t("fields.what3words")} htmlFor="site-what3words">
                 <input
-                  id="site-line1"
-                  aria-invalid={errors.address_line_1 ? true : undefined}
-                  aria-describedby={errors.address_line_1 ? "site-line1-err" : undefined}
-                  className={cn(surfaceInputClassName, errors.address_line_1 && "border-red-500 dark:border-red-500")}
-                  {...register("address_line_1")}
+                  id="site-what3words"
+                  className={surfaceInputClassName}
+                  placeholder={t("placeholders.what3words")}
+                  autoComplete="off"
+                  spellCheck={false}
+                  {...register("what3words")}
                 />
-                <FieldErrorText id="site-line1-err">{errors.address_line_1?.message}</FieldErrorText>
-              </FieldGroup>
-              <FieldGroup label={t("fields.addressLine2")} htmlFor="site-line2">
-                <input id="site-line2" className={surfaceInputClassName} {...register("address_line_2")} />
               </FieldGroup>
             </FormFieldRow>
-            <CascadingLocationFields<SiteFormValues>
-              control={control}
-              setValue={setValue}
-              countryIsoName="country_iso"
-              stateIsoName="state_iso"
-              cityName="city"
-              labels={{
-                country: t("fields.country"),
-                state: t("fields.stateProvince"),
-                city: t("fields.city"),
-              }}
-              placeholders={{
-                country: t("placeholders.country"),
-                state: t("placeholders.state"),
-                city: t("placeholders.city"),
-              }}
-              disabled={saving}
-              errors={{
-                country: errors.country_iso?.message,
-                state: errors.state_iso?.message,
-                city: errors.city?.message,
-              }}
-              trailingSlot={
-                <FieldGroup label={t("fields.pincode")} htmlFor="site-pincode" required>
-                  <input
-                    id="site-pincode"
-                    aria-invalid={errors.pincode ? true : undefined}
-                    aria-describedby={errors.pincode ? "site-pincode-err" : undefined}
-                    className={cn(surfaceInputClassName, errors.pincode && "border-red-500 dark:border-red-500")}
-                    {...register("pincode")}
-                  />
-                  <FieldErrorText id="site-pincode-err">{errors.pincode?.message}</FieldErrorText>
-                </FieldGroup>
-              }
-            />
           </form>
         )}
       </SurfaceShell>

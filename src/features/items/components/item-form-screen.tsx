@@ -129,10 +129,10 @@ export function ItemFormScreen({ mode, itemId }: Props) {
         subtitle={isEdit ? t("page.editSubtitle") : t("page.createSubtitle")}
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="md" disabled={submitting} onClick={() => router.push(safeBack ?? routes.dashboard.items)}>
+            <AppButton type="button" variant="secondary" size="sm" disabled={submitting} onClick={() => router.push(safeBack ?? routes.dashboard.items)}>
               {tModal("cancel")}
             </AppButton>
-            <AppButton type="submit" form="item-form-screen" variant="primary" size="md" loading={submitting}>
+            <AppButton type="submit" form="item-form-screen" variant="primary" size="sm" loading={submitting}>
               {isEdit ? tModal("saveChanges") : tModal("save")}
             </AppButton>
           </div>

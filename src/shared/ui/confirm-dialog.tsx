@@ -43,13 +43,13 @@ export function ConfirmDialog({
       isBusy={isBusy}
       footer={
         <>
-          <AppButton type="button" variant="secondary" size="md" disabled={isBusy} onClick={onClose}>
+          <AppButton type="button" variant="secondary" size="sm" disabled={isBusy} onClick={onClose}>
             {cancelLabel}
           </AppButton>
           <AppButton
             type="button"
             variant={confirmVariant === "danger" ? "danger" : "primary"}
-            size="md"
+            size="sm"
             loading={isBusy}
             onClick={() => void onConfirm()}
           >

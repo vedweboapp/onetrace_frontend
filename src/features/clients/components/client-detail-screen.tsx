@@ -1,18 +1,21 @@
 "use client";
 
 import * as React from "react";
-import { Mail, Pencil, Phone } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
-import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
 import { fetchClient } from "@/features/clients/api/client.api";
+import { ClientContactsTab } from "@/features/clients/components/client-contacts-tab";
 import { ClientDetailBody } from "@/features/clients/components/client-detail-body";
-import type { Client } from "@/features/clients/types/client.types";
-import { detailRecordSurfaceShellClassName } from "@/shared/components/layout/detail-metric-card";
-import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+import { ClientSitesTab } from "@/features/clients/components/client-sites-tab";
+import {
+  EntityDetailEditButton,
+  EntityDetailErrorState,
+  EntityDetailLoadingSkeleton,
+  EntityDetailScreen,
+} from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
-import { AppButton, SurfaceShell } from "@/shared/ui";
+import { AppTabs, type AppTabItem } from "@/shared/ui";
 
 type Props = {
   clientId: number;
@@ -20,121 +23,92 @@ type Props = {
 
 export function ClientDetailScreen({ clientId }: Props) {
   const t = useTranslations("Dashboard.clients");
-  const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "clients");
-  const clientsListHref = React.useMemo(() => {
-    const needle = routes.dashboard.clients;
-    const i = pathname.indexOf(needle);
-    return i >= 0 ? pathname.slice(0, i + needle.length) : needle;
-  }, [pathname]);
-  const listBack = safeBack ?? clientsListHref;
+  const [activeTab, setActiveTab] = React.useState("details");
 
-  const [detail, setDetail] = React.useState<Client | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [refreshNonce, setRefreshNonce] = React.useState(0);
-
-  const dateFmt = React.useMemo(
-    () =>
-      new Intl.DateTimeFormat(locale === "es" ? "es" : "en", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }),
-    [locale],
+  const detailTabs = React.useMemo<AppTabItem[]>(
+    () => [
+      { id: "details", label: t("detail.tabs.details") },
+      { id: "contacts", label: t("detail.tabs.contacts") },
+      { id: "sites", label: t("detail.tabs.sites") },
+    ],
+    [t],
   );
+
+  const allowedDetailTabIds = React.useMemo(() => new Set(detailTabs.map((x) => x.id)), [detailTabs]);
 
   React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      setDetail(null);
-      try {
-        const row = await fetchClient(clientId);
-        if (!cancelled) setDetail(row);
-      } catch {
-        if (!cancelled) setError(t("detailLoadError"));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [clientId, refreshNonce, t]);
-
-  const phoneRaw = detail?.phone?.trim() ?? "";
+    const tab = searchParams.get("tab");
+    if (!tab || !allowedDetailTabIds.has(tab)) return;
+    setActiveTab(tab);
+    const p = new URLSearchParams(searchParams.toString());
+    p.delete("tab");
+    const qs = p.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
+  }, [searchParams, pathname, router, allowedDetailTabIds]);
 
   return (
-    <div className="pb-8 sm:pb-10">
-      <DetailPageHeader
-        title={detail?.name ?? (loading ? t("detail.loadingTitle") : t("detailMetaTitle"))}
-        backHref={listBack}
-        backAriaLabel={t("detail.backAria")}
-        // subtitle={
-        //   detail ? (
-        //     <>
-        //       <span className="inline-flex items-center gap-1.5">
-        //         <Mail className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
-        //         <a
-        //           href={`mailto:${detail.email}`}
-        //           className="text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-        //         >
-        //           {detail.email}
-        //         </a>
-        //       </span>
-        //       {phoneRaw ? (
-        //         <span className="inline-flex items-center gap-1.5">
-        //           <Phone className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
-        //           <a
-        //             href={`tel:${phoneRaw.replace(/\s/g, "")}`}
-        //             className="text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-        //           >
-        //             {phoneRaw}
-        //           </a>
-        //         </span>
-        //       ) : null}
-        //     </>
-        //   ) : undefined
-        // }
-        actions={
-          !loading && !error && detail ? (
-            <AppButton
-              type="button"
-              variant="primary"
-              size="sm"
-              className="gap-2"
-              onClick={() => router.push(`${pathname}/edit?back=${encodeURIComponent(listBack)}`)}
-            >
-              <Pencil className="size-4" strokeWidth={2} aria-hidden />
-              {t("detail.editWithIcon")}
-            </AppButton>
-          ) : null
-        }
-      />
+    <EntityDetailScreen
+      entityId={clientId}
+      listSection="clients"
+      listRoute={routes.dashboard.clients}
+      loadError={t("detailLoadError")}
+      fetch={fetchClient}
+      getTitle={(detail) => detail.name}
+      labels={{
+        loadingTitle: t("detail.loadingTitle"),
+        metaTitle: t("detailMetaTitle"),
+        backAria: t("detail.backAria"),
+        retry: t("detail.retry"),
+      }}
 
-      <SurfaceShell className={detailRecordSurfaceShellClassName}>
-        {loading ? (
-          <div className="space-y-3 p-4 sm:p-6">
-            <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-            <div className="h-4 w-full animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-            <div className="h-4 w-5/6 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-          </div>
-        ) : error ? (
-          <div className="space-y-4 p-4 sm:p-6">
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            <AppButton type="button" variant="secondary" size="sm" onClick={() => setRefreshNonce((k) => k + 1)}>
-              {t("detail.retry")}
-            </AppButton>
-          </div>
-        ) : detail ? (
-          <ClientDetailBody detail={detail} dateFmt={dateFmt} />
-        ) : null}
-      </SurfaceShell>
+      headerExtension={
+        <AppTabs
+          tabs={detailTabs}
+          value={activeTab}
+          onValueChange={setActiveTab}
+          ariaLabel={t("detail.tabsAria")}
+          panelIdPrefix="client-detail-tab"
+          className="-mx-1 px-1 sm:-mx-0 sm:px-0"
+        />
+      }
+      actions={({ listBack }) => (
+        <EntityDetailEditButton
+          label={t("detail.editWithIcon")}
+          listBack={listBack}
+          fallbackRoute={routes.dashboard.clients}
+        />
+      )}
 
-    </div>
+
+      renderSurface={({ detail, loading, error, retry, dateFmt }) => (
+        <div
+          role="tabpanel"
+          id={`client-detail-tab-${activeTab}`}
+          aria-labelledby={`client-detail-tab-trigger-${activeTab}`}
+        >
+          {loading && activeTab === "details" ? (
+            <EntityDetailLoadingSkeleton />
+          ) : error && activeTab === "details" ? (
+            <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
+          ) : detail && activeTab === "details" ? (
+            <ClientDetailBody detail={detail} dateFmt={dateFmt} />
+          ) : loading ? (
+            <EntityDetailLoadingSkeleton />
+          ) : error ? (
+            <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
+          ) : detail && activeTab === "contacts" ? (
+            <ClientContactsTab clientId={detail.id} />
+          ) : detail && activeTab === "sites" ? (
+            <ClientSitesTab clientId={detail.id} />
+          ) : null}
+        </div>
+      )}
+    />
   );
 }
+
+
+

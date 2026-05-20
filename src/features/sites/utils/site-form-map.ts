@@ -1,4 +1,5 @@
 import { City, Country, State } from "country-state-city";
+import { normalizeWhat3WordsInput } from "@/shared/utils/what3words-display.util";
 import type { Site } from "@/features/sites/types/site.types";
 import type { SiteFormValues } from "@/features/sites/schemas/site-form-schema";
 import type { SiteUpsertPayload } from "@/features/sites/types/site.types";
@@ -32,7 +33,22 @@ export function mapSiteFormToPayload(values: SiteFormValues, organizationId: num
     state: statePayload,
     country: country?.name ?? values.country_iso,
     pincode: values.pincode.trim(),
+    what3words: normalizeWhat3WordsInput(values.what3words),
+    ...parseLatLngPayload(values.latitude, values.longitude),
   };
+}
+
+function parseLatLngPayload(
+  latitude: string,
+  longitude: string,
+): { latitude?: number | null; longitude?: number | null } {
+  const latRaw = latitude.trim();
+  const lonRaw = longitude.trim();
+  if (!latRaw && !lonRaw) return { latitude: null, longitude: null };
+  const lat = latRaw ? Number.parseFloat(latRaw) : NaN;
+  const lon = lonRaw ? Number.parseFloat(lonRaw) : NaN;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return { latitude: null, longitude: null };
+  return { latitude: lat, longitude: lon };
 }
 
 export function emptySiteFormDefaults(): SiteFormValues {
@@ -45,6 +61,9 @@ export function emptySiteFormDefaults(): SiteFormValues {
     state_iso: "",
     city: "",
     pincode: "",
+    what3words: "",
+    latitude: "",
+    longitude: "",
   };
 }
 
@@ -72,5 +91,8 @@ export function siteToFormDefaults(site: Site): SiteFormValues {
     state_iso: stateIso,
     city: site.city?.trim() ?? "",
     pincode: site.pincode?.trim() ?? "",
+    what3words: site.what3words?.trim() ?? "",
+    latitude: site.latitude != null && Number.isFinite(site.latitude) ? String(site.latitude) : "",
+    longitude: site.longitude != null && Number.isFinite(site.longitude) ? String(site.longitude) : "",
   };
 }

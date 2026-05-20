@@ -3,6 +3,9 @@ import type { ProjectLevelForQuotation, QuotationPlotPin } from "@/features/quot
 export type AggregatedCompositeLine = {
   key: string;
   displayName: string;
+  /** Number of drawing pins placed for this composite on the plot. */
+  pinCount: number;
+  /** Sum of per-pin quantities (used for line pricing only). */
   totalQty: number;
   unitPrice: number;
   lineTotal: number;
@@ -54,7 +57,7 @@ function pinQty(pin: QuotationPlotPin): number {
   return 1;
 }
 
-/** One row per composite name: summed quantities and line totals. */
+/** One row per composite item: pinCount = drawing pins placed; totalQty sums pin quantities for pricing. */
 export function aggregateCompositeLinesForPlot(plot: { pins?: QuotationPlotPin[] }): AggregatedCompositeLine[] {
   const pins = Array.isArray(plot.pins) ? plot.pins : [];
   const map = new Map<string, AggregatedCompositeLine>();
@@ -69,6 +72,7 @@ export function aggregateCompositeLinesForPlot(plot: { pins?: QuotationPlotPin[]
       typeof itemIdRaw === "number" && Number.isFinite(itemIdRaw) && itemIdRaw > 0 ? itemIdRaw : null;
     const prev = map.get(key);
     if (prev) {
+      prev.pinCount += 1;
       prev.totalQty += qty;
       prev.lineTotal += line;
       prev.unitPrice = prev.totalQty > 0 ? prev.lineTotal / prev.totalQty : prev.unitPrice;
@@ -77,6 +81,7 @@ export function aggregateCompositeLinesForPlot(plot: { pins?: QuotationPlotPin[]
       map.set(key, {
         key,
         displayName,
+        pinCount: 1,
         totalQty: qty,
         unitPrice: unit,
         lineTotal: line,

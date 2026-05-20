@@ -50,8 +50,8 @@ type Props = {
   showCheckmarks?: boolean;
   /** e.g. "Rows per page" when the visible label is omitted */
   buttonAriaLabel?: string;
-  /** Opening direction. Defaults to "bottom". */
-  side?: "top" | "bottom";
+  /** Opening direction; `"auto"` flips based on viewport space. */
+  side?: "top" | "bottom" | "auto";
   /** Enables option search input inside dropdown. */
   searchable?: boolean;
   searchPlaceholder?: string;
@@ -64,18 +64,77 @@ type Props = {
   clearAriaLabel?: string;
 };
 
-function usePopoverRect(open: boolean, anchorRef: React.RefObject<HTMLElement | null>, side: "top" | "bottom" = "bottom") {
-  const [rect, setRect] = React.useState({ top: 0, left: 0, width: 0, transform: "none" });
+const DROPDOWN_GAP = 4;
+const DROPDOWN_MIN_SPACE = 120;
+const DROPDOWN_PREFERRED_MAX = 240;
+
+type DropdownPlacement = {
+  top: number;
+  left: number;
+  width: number;
+  transform: string;
+  maxHeight: number;
+  openUp: boolean;
+};
+
+function measureDropdownPlacement(
+  anchor: HTMLElement,
+  side: "top" | "bottom" | "auto",
+): DropdownPlacement {
+  const r = anchor.getBoundingClientRect();
+  const vh = window.innerHeight;
+  const spaceBelow = vh - r.bottom - DROPDOWN_GAP;
+  const spaceAbove = r.top - DROPDOWN_GAP;
+
+  let openUp = false;
+  if (side === "top") openUp = true;
+  else if (side === "bottom") openUp = false;
+  else openUp = spaceBelow < DROPDOWN_MIN_SPACE && spaceAbove > spaceBelow;
+
+  const maxHeight = Math.max(
+    DROPDOWN_MIN_SPACE,
+    Math.min(DROPDOWN_PREFERRED_MAX, (openUp ? spaceAbove : spaceBelow) - 8),
+  );
+
+  if (openUp) {
+    return {
+      top: r.top - DROPDOWN_GAP,
+      left: r.left,
+      width: r.width,
+      transform: "translateY(-100%)",
+      maxHeight,
+      openUp: true,
+    };
+  }
+
+  return {
+    top: r.bottom + DROPDOWN_GAP,
+    left: r.left,
+    width: r.width,
+    transform: "none",
+    maxHeight,
+    openUp: false,
+  };
+}
+
+function useDropdownPlacement(
+  open: boolean,
+  anchorRef: React.RefObject<HTMLElement | null>,
+  side: "top" | "bottom" | "auto" = "auto",
+) {
+  const [placement, setPlacement] = React.useState<DropdownPlacement>({
+    top: 0,
+    left: 0,
+    width: 0,
+    transform: "none",
+    maxHeight: DROPDOWN_PREFERRED_MAX,
+    openUp: false,
+  });
 
   const update = React.useCallback(() => {
     const el = anchorRef.current;
     if (!el || !open) return;
-    const r = el.getBoundingClientRect();
-    if (side === "top") {
-      setRect({ top: r.top - 4, left: r.left, width: r.width, transform: "translateY(-100%)" });
-    } else {
-      setRect({ top: r.bottom + 4, left: r.left, width: r.width, transform: "none" });
-    }
+    setPlacement(measureDropdownPlacement(el, side));
   }, [open, anchorRef, side]);
 
   React.useLayoutEffect(() => {
@@ -89,7 +148,7 @@ function usePopoverRect(open: boolean, anchorRef: React.RefObject<HTMLElement | 
     };
   }, [open, update]);
 
-  return rect;
+  return placement;
 }
 
 export function CheckmarkSelect({
@@ -110,8 +169,8 @@ export function CheckmarkSelect({
   size = "md",
   showCheckmarks = true,
   buttonAriaLabel,
-  side = "bottom",
-  searchable = true,
+  side = "auto",
+  searchable = false,
   searchPlaceholder = "Search...",
   clearable = false,
   clearAriaLabel,
@@ -124,7 +183,7 @@ export function CheckmarkSelect({
   const listRef = React.useRef<HTMLDivElement>(null);
   const selected = options.find((o) => o.value === value);
   const canClear = Boolean(clearable && !disabled && value.trim() !== "");
-  const popoverRect = usePopoverRect(open && portaled, anchorRef, side);
+  const dropdownPlacement = useDropdownPlacement(open, anchorRef, side);
   const [portalAccent, setPortalAccent] = React.useState("#111111");
   const [portalOnAccent, setPortalOnAccent] = React.useState("#ffffff");
 
@@ -153,7 +212,7 @@ export function CheckmarkSelect({
   const displayLabel = value && selected ? selected.label : emptyLabel;
 
   const listClasses = cn(
-    "max-h-60 overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
+    "flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
   );
 
   const optionTextSize = size === "sm" ? "text-xs" : "text-sm";
@@ -165,12 +224,13 @@ export function CheckmarkSelect({
   }, [options, search]);
 
   function renderOptionList(extraStyle: CSSProperties, extraClass?: string) {
+    const listMaxHeight = open ? dropdownPlacement.maxHeight : DROPDOWN_PREFERRED_MAX;
     return (
       <div
         ref={listRef}
         data-ot-checkmark-portal=""
         className={cn(listClasses, extraClass)}
-        style={extraStyle}
+        style={{ maxHeight: listMaxHeight, ...extraStyle }}
       >
         {canClear ? (
           <div className="flex items-center justify-end border-b border-slate-200 px-2 py-1 dark:border-slate-600">
@@ -205,7 +265,7 @@ export function CheckmarkSelect({
             />
           </div>
         ) : null}
-        <ul role="listbox" aria-label={listLabel} className="max-h-52 overflow-auto py-1">
+        <ul role="listbox" aria-label={listLabel} className="min-h-0 flex-1 overflow-auto py-1">
           {filteredOptions.map((opt) => {
             const isSelected = opt.value === value;
             return (
@@ -399,17 +459,23 @@ export function CheckmarkSelect({
         </div>
       )}
       {open && !disabled && !portaled
-        ? renderOptionList({}, "absolute left-0 right-0 z-50 mt-1 min-w-0")
+        ? renderOptionList(
+            {},
+            cn(
+              "absolute left-0 right-0 z-50 min-w-0",
+              dropdownPlacement.openUp ? "bottom-full mb-1" : "top-full mt-1",
+            ),
+          )
         : null}
       {open && !disabled && portaled && typeof document !== "undefined"
         ? createPortal(
             renderOptionList(
               {
                 position: "fixed",
-                top: popoverRect.top,
-                left: popoverRect.left,
-                width: Math.max(popoverRect.width, size === "sm" ? 120 : 200),
-                transform: popoverRect.transform,
+                top: dropdownPlacement.top,
+                left: dropdownPlacement.left,
+                width: Math.max(dropdownPlacement.width, size === "sm" ? 120 : 200),
+                transform: dropdownPlacement.transform,
                 zIndex: 200,
                 ["--dash-accent" as string]: portalAccent,
                 ["--dash-on-accent" as string]: portalOnAccent,
