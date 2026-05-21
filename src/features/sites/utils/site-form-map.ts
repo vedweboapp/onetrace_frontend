@@ -4,7 +4,7 @@ import type { Site } from "@/features/sites/types/site.types";
 import type { SiteFormValues } from "@/features/sites/schemas/site-form-schema";
 import type { SiteUpsertPayload } from "@/features/sites/types/site.types";
 
-export function mapSiteFormToPayload(values: SiteFormValues, organizationId: number): SiteUpsertPayload {
+export function mapSiteFormToPayload(values: SiteFormValues): SiteUpsertPayload {
   const country = Country.getCountryByCode(values.country_iso);
   const subdivisions = State.getStatesOfCountry(values.country_iso);
   const stateTrimmed = values.state_iso.trim();
@@ -24,7 +24,6 @@ export function mapSiteFormToPayload(values: SiteFormValues, organizationId: num
   }
 
   return {
-    organization: organizationId,
     site_name: values.site_name.trim(),
     client: Number.isFinite(clientId) ? clientId : 0,
     address_line_1: values.address_line_1.trim(),

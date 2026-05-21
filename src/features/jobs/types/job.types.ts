@@ -23,6 +23,11 @@ export type JobCreatePayload = {
   is_active: boolean;
 };
 
+/** Backend creates a job from a quotation (minimal body). */
+export type JobCreateFromQuotationPayload = {
+  quotation_id: number;
+};
+
 export type JobUpdatePayload = Partial<JobCreatePayload> & {
   job_status?: number;
 };

@@ -3,7 +3,13 @@ import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { JOB_PATHS } from "./job.paths";
-import type { Job, JobCreatePayload, JobListResponse, JobUpdatePayload } from "../types/job.types";
+import type {
+  Job,
+  JobCreateFromQuotationPayload,
+  JobCreatePayload,
+  JobListResponse,
+  JobUpdatePayload,
+} from "../types/job.types";
 
 function assertEnvelopeSuccess(envelope: { success: boolean; message?: string }) {
   if (!envelope.success) {
@@ -56,14 +62,25 @@ export async function fetchJob(id: number, options?: JobRequestOptions): Promise
   return data.data;
 }
 
-export async function createJob(body: JobCreatePayload): Promise<Job> {
-  const { data } = await api.post<ApiEnvelope<Job> | JobListResponse>(JOB_PATHS.list, body);
+function parseJobCreateResponse(data: ApiEnvelope<Job> | JobListResponse): Job {
   if ("pagination" in data && Array.isArray(data.data) && data.data[0]) {
     assertEnvelopeSuccess(data);
     return data.data[0];
   }
   assertApiSuccess(data as ApiEnvelope<Job>);
   return (data as ApiEnvelope<Job>).data;
+}
+
+export async function createJob(body: JobCreatePayload): Promise<Job> {
+  const { data } = await api.post<ApiEnvelope<Job> | JobListResponse>(JOB_PATHS.list, body);
+  return parseJobCreateResponse(data);
+}
+
+/** Backend creates a job from a quotation. */
+export async function createJobFromQuotation(quotationId: number): Promise<Job> {
+  const body: JobCreateFromQuotationPayload = { quotation_id: quotationId };
+  const { data } = await api.post<ApiEnvelope<Job> | JobListResponse>(JOB_PATHS.list, body);
+  return parseJobCreateResponse(data);
 }
 
 export async function updateJob(id: number, body: JobUpdatePayload): Promise<Job> {

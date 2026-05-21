@@ -4,8 +4,6 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
-import { useAuthStore } from "@/features/auth/store/auth.store";
-import { getSessionOrganizationId } from "@/features/auth/utils/get-session-organization-id";
 import { createClient, updateClient } from "@/features/clients/api/client.api";
 import { createClientFormSchema, type ClientFormValues } from "@/features/clients/schemas/client-form-schema";
 import type { Client } from "@/features/clients/types/client.types";
@@ -15,7 +13,7 @@ import {
   mapClientFormToPayload,
 } from "@/features/clients/utils/client-form-map";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess } from "@/shared/feedback/app-toast";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
@@ -41,7 +39,6 @@ type Props = {
 
 export function ClientFormModal({ open, onClose, mode, client, onSaved }: Props) {
   const t = useTranslations("Dashboard.clients");
-  const organizations = useAuthStore((s) => s.organizations);
   const [saving, setSaving] = React.useState(false);
 
   const schema = React.useMemo(
@@ -78,14 +75,7 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved }: Props)
   }, [open, mode, client, reset]);
 
   async function submit(values: ClientFormValues) {
-    const organizationId =
-      getSessionOrganizationId(organizations) ??
-      (mode === "edit" && client ? client.organization : null);
-    if (organizationId == null) {
-      toastError(t("missingOrganization"));
-      return;
-    }
-    const payload = mapClientFormToPayload(values, organizationId);
+    const payload = mapClientFormToPayload(values);
     setSaving(true);
     try {
       if (mode === "edit" && client) {

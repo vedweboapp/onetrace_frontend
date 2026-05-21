@@ -2,13 +2,12 @@ import type { ProjectFormValues } from "@/features/projects/schemas/project-form
 import type { Project, ProjectUpsertPayload } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 
-export function mapProjectFormToPayload(values: ProjectFormValues, organizationId: number): ProjectUpsertPayload {
+export function mapProjectFormToPayload(values: ProjectFormValues): ProjectUpsertPayload {
   const clientId = Number.parseInt(values.client, 10);
   const sites = (values.sites ?? [])
     .map((raw) => Number.parseInt(raw, 10))
     .filter((id) => Number.isFinite(id) && id > 0);
   return {
-    organization: organizationId,
     name: values.name.trim(),
     client: Number.isFinite(clientId) ? clientId : 0,
     description: values.description.trim(),

@@ -4,8 +4,6 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { Controller, useForm } from "react-hook-form";
-import { useAuthStore } from "@/features/auth/store/auth.store";
-import { getSessionOrganizationId } from "@/features/auth/utils/get-session-organization-id";
 import { createSite, updateSite } from "@/features/sites/api/site.api";
 import { createSiteFormSchema, type SiteFormValues } from "@/features/sites/schemas/site-form-schema";
 import type { Site } from "@/features/sites/types/site.types";
@@ -42,7 +40,6 @@ type Props = {
 
 export function SiteFormModal({ open, onClose, mode, site, clientOptions, onSaved }: Props) {
   const t = useTranslations("Dashboard.sites");
-  const organizations = useAuthStore((s) => s.organizations);
   const [saving, setSaving] = React.useState(false);
 
   const schema = React.useMemo(
@@ -78,12 +75,7 @@ export function SiteFormModal({ open, onClose, mode, site, clientOptions, onSave
   }, [open, mode, site, reset]);
 
   async function submit(values: SiteFormValues) {
-    const organizationId = getSessionOrganizationId(organizations) ?? (mode === "edit" && site ? site.organization : null);
-    if (organizationId == null) {
-      toastError(t("missingOrganization"));
-      return;
-    }
-    const payload = mapSiteFormToPayload(values, organizationId);
+    const payload = mapSiteFormToPayload(values);
     if (!Number.isFinite(payload.client) || payload.client <= 0) {
       toastError(t("validation.client"));
       return;

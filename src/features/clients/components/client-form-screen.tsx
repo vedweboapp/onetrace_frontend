@@ -6,8 +6,6 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { useAuthStore } from "@/features/auth/store/auth.store";
-import { getSessionOrganizationId } from "@/features/auth/utils/get-session-organization-id";
 import { createClient, fetchClient, updateClient } from "@/features/clients/api/client.api";
 import { createClientFormSchema, type ClientFormValues } from "@/features/clients/schemas/client-form-schema";
 import {
@@ -16,7 +14,7 @@ import {
   mapClientFormToPayload,
 } from "@/features/clients/utils/client-form-map";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
@@ -50,13 +48,11 @@ export function ClientFormScreen({ mode, clientId }: Props) {
     return i >= 0 ? pathname.slice(0, i + needle.length) : needle;
   }, [pathname]);
   const listBack = safeBack ?? clientsListHref;
-  const organizations = useAuthStore((s) => s.organizations);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
-  const [organizationIdForEdit, setOrganizationIdForEdit] = React.useState<number | null>(null);
 
   const schema = React.useMemo(
     () =>
@@ -93,10 +89,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
       setScreenError(null);
       try {
         const row = await fetchClient(clientId);
-        if (!cancelled) {
-          reset(clientToFormDefaults(row));
-          setOrganizationIdForEdit(row.organization ?? null);
-        }
+        if (!cancelled) reset(clientToFormDefaults(row));
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
       } finally {
@@ -109,12 +102,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
   }, [clientId, isEdit, reset, t]);
 
   async function submit(values: ClientFormValues) {
-    const organizationId = getSessionOrganizationId(organizations) ?? (isEdit ? organizationIdForEdit : null);
-    if (organizationId == null) {
-      toastError(t("missingOrganization"));
-      return;
-    }
-    const payload = mapClientFormToPayload(values, organizationId);
+    const payload = mapClientFormToPayload(values);
     setSaving(true);
     try {
       const saved = isEdit && clientId ? await updateClient(clientId, payload) : await createClient(payload);
