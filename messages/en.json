@@ -141,6 +141,7 @@
       "sites": "Sites",
       "quotations": "Quotations",
       "jobs": "Jobs",
+      "qrCodes": "QR codes",
       "projects": "Projects",
       "groups": "Groups",
       "products": "Products",
@@ -156,12 +157,36 @@
       "pinStatus": "Pin statuses",
       "jobStatus": "Job statuses",
       "tags": "Tags",
+      "projectTypes": "Project types",
       "users": "Users",
       "personalProfile": "Personal Profile",
       "companySettings": "Company Settings",
       "formBuilder": "Form Builder",
       "modules": "Modules",
-      "hint": "Customize theme and accent for this workspace."
+      "hint": "Customize theme and accent for this workspace.",
+      "customization": {
+        "label": "Customization",
+        "hubTitle": "Customization",
+        "hubDescription": "Choose what to configure — project types, pin statuses, job statuses, and tags.",
+        "items": {
+          "projectTypes": {
+            "title": "Project types",
+            "description": "Categories for projects with colored labels."
+          },
+          "pinStatus": {
+            "title": "Pin statuses",
+            "description": "Status colors for pins on drawings."
+          },
+          "jobStatus": {
+            "title": "Job statuses",
+            "description": "Workflow statuses for jobs."
+          },
+          "tags": {
+            "title": "Tags",
+            "description": "Tags for organizing pins and records."
+          }
+        }
+      }
     },
     "appearance": {
       "metaTitle": "Appearance",
@@ -358,6 +383,62 @@
       "deleted": "Tag deleted",
       "hexPlaceholder": "#000000",
       "validationName": "Enter a tag name.",
+      "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
+    },
+    "projectTypes": {
+      "metaTitle": "Project types",
+      "title": "Project types",
+      "subtitle": "Define project categories with colored labels for use across projects.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "filterState": "Active state",
+      "table": {
+        "type": "Project type",
+        "status": "Record status",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "emptyTitle": "No project types yet",
+      "emptyDescription": "Create your first project type to classify projects.",
+      "loadError": "Could not load project types. Try again.",
+      "modal": {
+        "createTitle": "New project type",
+        "editTitle": "Edit project type",
+        "typeName": "Name",
+        "bgColour": "Background color",
+        "textColour": "Text color",
+        "activeLabel": "Active",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this project type?",
+      "deleteConfirmBody": "Projects using this type may need to be updated. This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} project types",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Project type updated",
+      "created": "Project type created",
+      "deleted": "Project type deleted",
+      "activatedToast": "Project type activated",
+      "deactivatedToast": "Project type deactivated",
+      "toggleActiveError": "Could not update project type status. Try again.",
+      "hexPlaceholder": "#000000",
+      "validationName": "Enter a project type name.",
       "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
     },
     "users": {
@@ -561,6 +642,66 @@
         "state": "Select a state or region.",
         "city": "Enter or select a city.",
         "pincode": "Enter a postal or ZIP code."
+      }
+    },
+    "qrCodes": {
+      "metaTitle": "QR codes",
+      "detailMetaTitle": "QR code details",
+      "loadError": "Could not load QR codes. Try again.",
+      "detailLoadError": "Could not load QR code details. Try again.",
+      "emptyTitle": "No QR codes yet",
+      "emptyDescription": "Generate QR codes to assign them to jobs and track scans.",
+      "searchPlaceholder": "Search by QR code ID…",
+      "filterStatus": "Status",
+      "filterAllStatuses": "All statuses",
+      "pageLabel": "Showing {start}-{end} of {total} QR codes",
+      "prev": "Previous",
+      "next": "Next",
+      "delete": "Delete",
+      "deleteConfirmTitle": "Delete this QR code?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete QR code",
+      "deletedToast": "QR code deleted",
+      "cardAssignedJob": "Assigned to job #{id}",
+      "cardNotAssigned": "Not assigned to a job",
+      "cardScans": "{count, plural, one {# scan} other {# scans}}",
+      "status": {
+        "assigned": "Assigned",
+        "notAssigned": "Not assigned"
+      },
+      "table": {
+        "qrCodeId": "QR code",
+        "status": "Status",
+        "assignedJob": "Assigned job",
+        "scanCount": "Scans",
+        "lastScanned": "Last scanned",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "generate": {
+        "button": "Generate QR codes",
+        "title": "Generate QR codes",
+        "countLabel": "Number of QR codes",
+        "countHint": "Enter a value between {min} and {max}.",
+        "submit": "Generate",
+        "cancel": "Cancel",
+        "successToast": "QR codes generated successfully",
+        "validationCount": "Enter a valid number of QR codes."
+      },
+      "detail": {
+        "loadingTitle": "Loading…",
+        "retry": "Retry",
+        "backAria": "Back to QR codes list",
+        "sectionQr": "QR code",
+        "assignedJob": "Assigned job",
+        "notAssigned": "Not assigned",
+        "viewJob": "View job #{id}",
+        "recordId": "Record ID"
+      },
+      "fields": {
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "createdBy": "Created by"
       }
     },
     "contacts": {
@@ -1172,6 +1313,7 @@
       "deletedToast": "Project deleted",
       "deleteError": "Could not delete this project. Try again.",
       "noClientsHint": "Add at least one client before you can create a project.",
+      "noProjectTypesHint": "Add at least one project type in Settings → Customization → Project types before creating a project.",
       "filterState": "Active state",
       "filterAll": "All",
       "activate": "Activate",
@@ -1189,6 +1331,7 @@
       "table": {
         "name": "Project",
         "client": "Client",
+        "projectType": "Project type",
         "start": "Start date",
         "end": "End date",
         "description": "Description",
@@ -1337,11 +1480,13 @@
       "detailLoadError": "Could not load project details. Try again.",
       "placeholders": {
         "client": "Select client",
-        "site": "Select site"
+        "site": "Select site",
+        "projectType": "Select project type"
       },
       "fields": {
         "name": "Project name",
         "client": "Client",
+        "projectType": "Project type",
         "sites": "Sites",
         "description": "Description",
         "startDate": "Start date",
@@ -1369,6 +1514,7 @@
       "validation": {
         "name": "Enter a project name.",
         "client": "Select a client.",
+        "projectType": "Select a project type.",
         "description": "Enter a description.",
         "startDate": "Choose a start date.",
         "endDate": "Choose an end date.",

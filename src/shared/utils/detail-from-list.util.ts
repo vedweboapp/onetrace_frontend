@@ -18,6 +18,7 @@ export type DashboardListSection =
   | "sites"
   | "quotations"
   | "jobs"
+  | "qr-codes"
   | "projects"
   | "groups"
   | "items"

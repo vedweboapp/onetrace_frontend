@@ -141,6 +141,7 @@
       "sites": "Sitios",
       "quotations": "Cotizaciones",
       "jobs": "Trabajos",
+      "qrCodes": "Códigos QR",
       "projects": "Proyectos",
       "groups": "Grupos",
       "products": "Productos",
@@ -156,12 +157,36 @@
       "pinStatus": "Estados de pin",
       "jobStatus": "Estados de trabajo",
       "tags": "Etiquetas",
+      "projectTypes": "Tipos de proyecto",
       "users": "Usuarios",
       "personalProfile": "Perfil personal",
       "companySettings": "Ajustes de la empresa",
       "formBuilder": "Creador de formularios",
       "modules": "Módulos",
-      "hint": "Personaliza el tema y el color de acento de este espacio."
+      "hint": "Personaliza el tema y el color de acento de este espacio.",
+      "customization": {
+        "label": "Personalización",
+        "hubTitle": "Personalización",
+        "hubDescription": "Elige qué configurar: tipos de proyecto, estados de pin, estados de trabajo y etiquetas.",
+        "items": {
+          "projectTypes": {
+            "title": "Tipos de proyecto",
+            "description": "Categorías de proyecto con etiquetas de color."
+          },
+          "pinStatus": {
+            "title": "Estados de pin",
+            "description": "Colores de estado para pins en planos."
+          },
+          "jobStatus": {
+            "title": "Estados de trabajo",
+            "description": "Estados de flujo para trabajos."
+          },
+          "tags": {
+            "title": "Etiquetas",
+            "description": "Etiquetas para organizar pins y registros."
+          }
+        }
+      }
     },
     "appearance": {
       "metaTitle": "Apariencia",
@@ -358,6 +383,62 @@
       "deleted": "Etiqueta eliminada",
       "hexPlaceholder": "#000000",
       "validationName": "Introduce un nombre de etiqueta.",
+      "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #DBEAFE)."
+    },
+    "projectTypes": {
+      "metaTitle": "Tipos de proyecto",
+      "title": "Tipos de proyecto",
+      "subtitle": "Define categorías de proyecto con etiquetas de color para usar en proyectos.",
+      "add": "Añadir",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "filterState": "Estado activo",
+      "table": {
+        "type": "Tipo de proyecto",
+        "status": "Estado del registro",
+        "created": "Creado",
+        "updated": "Última actualización",
+        "actions": "Acciones"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "byUser": "Por {user}"
+      },
+      "emptyTitle": "Aún no hay tipos de proyecto",
+      "emptyDescription": "Crea tu primer tipo de proyecto para clasificar proyectos.",
+      "loadError": "No se pudieron cargar los tipos de proyecto. Inténtalo de nuevo.",
+      "modal": {
+        "createTitle": "Nuevo tipo de proyecto",
+        "editTitle": "Editar tipo de proyecto",
+        "typeName": "Nombre",
+        "bgColour": "Color de fondo",
+        "textColour": "Color del texto",
+        "activeLabel": "Activo",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "deleteConfirmTitle": "¿Eliminar este tipo de proyecto?",
+      "deleteConfirmBody": "Los proyectos que usen este tipo pueden verse afectados. Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar",
+      "pageLabel": "Mostrando {start}-{end} de {total} tipos de proyecto",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "saved": "Tipo de proyecto actualizado",
+      "created": "Tipo de proyecto creado",
+      "deleted": "Tipo de proyecto eliminado",
+      "activatedToast": "Tipo de proyecto activado",
+      "deactivatedToast": "Tipo de proyecto desactivado",
+      "toggleActiveError": "No se pudo actualizar el estado. Inténtalo de nuevo.",
+      "hexPlaceholder": "#000000",
+      "validationName": "Introduce un nombre de tipo de proyecto.",
       "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #DBEAFE)."
     },
     "users": {
@@ -561,6 +642,66 @@
         "state": "Selecciona un estado o provincia.",
         "city": "Selecciona o escribe una ciudad.",
         "pincode": "Introduce un código postal."
+      }
+    },
+    "qrCodes": {
+      "metaTitle": "Códigos QR",
+      "detailMetaTitle": "Detalle del código QR",
+      "loadError": "No se pudieron cargar los códigos QR. Inténtalo de nuevo.",
+      "detailLoadError": "No se pudieron cargar los detalles del código QR. Inténtalo de nuevo.",
+      "emptyTitle": "Aún no hay códigos QR",
+      "emptyDescription": "Genera códigos QR para asignarlos a trabajos y registrar escaneos.",
+      "searchPlaceholder": "Buscar por ID de código QR…",
+      "filterStatus": "Estado",
+      "filterAllStatuses": "Todos los estados",
+      "pageLabel": "Mostrando {start}-{end} de {total} códigos QR",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "delete": "Eliminar",
+      "deleteConfirmTitle": "¿Eliminar este código QR?",
+      "deleteConfirmBody": "Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar código QR",
+      "deletedToast": "Código QR eliminado",
+      "cardAssignedJob": "Asignado al trabajo #{id}",
+      "cardNotAssigned": "Sin asignar a un trabajo",
+      "cardScans": "{count, plural, one {# escaneo} other {# escaneos}}",
+      "status": {
+        "assigned": "Asignado",
+        "notAssigned": "No asignado"
+      },
+      "table": {
+        "qrCodeId": "Código QR",
+        "status": "Estado",
+        "assignedJob": "Trabajo asignado",
+        "scanCount": "Escaneos",
+        "lastScanned": "Último escaneo",
+        "created": "Creado",
+        "actions": "Acciones"
+      },
+      "generate": {
+        "button": "Generar códigos QR",
+        "title": "Generar códigos QR",
+        "countLabel": "Cantidad de códigos QR",
+        "countHint": "Introduce un valor entre {min} y {max}.",
+        "submit": "Generar",
+        "cancel": "Cancelar",
+        "successToast": "Códigos QR generados correctamente",
+        "validationCount": "Introduce una cantidad válida de códigos QR."
+      },
+      "detail": {
+        "loadingTitle": "Cargando…",
+        "retry": "Reintentar",
+        "backAria": "Volver a la lista de códigos QR",
+        "sectionQr": "Código QR",
+        "assignedJob": "Trabajo asignado",
+        "notAssigned": "Sin asignar",
+        "viewJob": "Ver trabajo #{id}",
+        "recordId": "ID de registro"
+      },
+      "fields": {
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "createdBy": "Creado por"
       }
     },
     "contacts": {
@@ -1172,6 +1313,7 @@
       "deletedToast": "Proyecto eliminado",
       "deleteError": "No se pudo eliminar el proyecto. Inténtalo de nuevo.",
       "noClientsHint": "Añade al menos un cliente antes de poder crear un proyecto.",
+      "noProjectTypesHint": "Añade al menos un tipo de proyecto en Ajustes → Personalización → Tipos de proyecto antes de crear un proyecto.",
       "filterState": "Estado activo",
       "filterAll": "Todos",
       "activate": "Activar",
@@ -1189,6 +1331,7 @@
       "table": {
         "name": "Proyecto",
         "client": "Cliente",
+        "projectType": "Tipo de proyecto",
         "start": "Fecha de inicio",
         "end": "Fecha de fin",
         "description": "Descripción",
@@ -1336,11 +1479,13 @@
       "detailLoadError": "No se pudieron cargar los datos del proyecto. Inténtalo de nuevo.",
       "placeholders": {
         "client": "Seleccionar cliente",
-        "site": "Seleccionar sitio"
+        "site": "Seleccionar sitio",
+        "projectType": "Seleccionar tipo de proyecto"
       },
       "fields": {
         "name": "Nombre del proyecto",
         "client": "Cliente",
+        "projectType": "Tipo de proyecto",
         "sites": "Sitios",
         "description": "Descripción",
         "startDate": "Fecha de inicio",
@@ -1368,6 +1513,7 @@
       "validation": {
         "name": "Introduce el nombre del proyecto.",
         "client": "Selecciona un cliente.",
+        "projectType": "Selecciona un tipo de proyecto.",
         "description": "Introduce una descripción.",
         "startDate": "Elige la fecha de inicio.",
         "endDate": "Elige la fecha de fin.",
