@@ -2,9 +2,16 @@
 
 import React, { useState, useEffect } from "react";
 import { CheckSquare, Square, Clock, ChevronDown } from "lucide-react";
-import { getOrganizationDetails, updateOrganizationDetails } from "../api/company-settings.api";
-import { toast } from "sonner";
+import { updateOrganizationDetails } from "../api/company-settings.api";
+import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
+import { useTranslations } from "next-intl";
+import { parseApiFailurePayload, resolveApiErrorUserText } from "@/core/errors/api-error-text";
 import { OrganizationDetails } from "../types/types";
+import {
+  buildDirtyOrganizationPatch,
+  hasDirtyFields,
+  SCHEDULE_TAB_FIELDS,
+} from "../utils/company-settings-diff.util";
 
 const DAYS_OF_WEEK = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const BREAK_OPTIONS = ["15 minutes", "30 minutes", "45 minutes", "1 hour"];
@@ -15,6 +22,7 @@ interface CompanySettingScheduleProps {
 }
 
 const CompanySettingSchedule = ({ initialData, onSaveSuccess }: CompanySettingScheduleProps) => {
+  const t = useTranslations("Dashboard.settingsCompany");
   const [isMounted, setIsMounted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -40,19 +48,30 @@ const CompanySettingSchedule = ({ initialData, onSaveSuccess }: CompanySettingSc
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const payload = {
+      const current: OrganizationDetails = {
         ...initialData,
         workingDays,
         startTime,
         endTime,
         breakDuration,
       };
-      await updateOrganizationDetails(1, payload);
-      toast.success("Schedule settings saved successfully");
-      onSaveSuccess?.(payload as any);
+      const patch = buildDirtyOrganizationPatch(
+        initialData,
+        current,
+        SCHEDULE_TAB_FIELDS,
+      );
+
+      if (!hasDirtyFields(patch)) {
+        toastSuccess(t("noChangesToast"));
+        return;
+      }
+
+      const updated = await updateOrganizationDetails(1, patch);
+      toastSuccess(t("scheduleUpdatedToast"));
+      onSaveSuccess?.(updated);
     } catch (error) {
       console.error("Failed to save schedule:", error);
-      toast.error("Failed to save schedule settings");
+      toastError(resolveApiErrorUserText(parseApiFailurePayload(error)));
     } finally {
       setIsSaving(false);
     }

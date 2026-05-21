@@ -16,6 +16,7 @@ import CurrencySelect from "../components/CurrencySelect";
 import FileUploader from "../components/file-uploader";
 import MultiSelect from "../components/multi-select";
 import RadioGroup from "../components/radio-group";
+import FormCheckbox from "../components/form-checkbox";
 import SignaturePad from "../components/signature-pad";
 import UsersSelect from "../components/users-select";
 import ProfilePictureUploader from "../../components/profile-picture-uploader";
@@ -23,6 +24,7 @@ import { Country } from "country-state-city";
 import CountrySelect from "../components/CountrySelect";
 import StateSelect from "../components/StateSelect";
 import CitySelect from "../components/CitySelect";
+import RichTextEditor from "../components/rich-text-editor";
 
 interface Field {
   api_name: string;
@@ -43,6 +45,7 @@ interface Section {
   column_count?: number;
   is_subform?: boolean;
   subform_field_name?: string;
+  sequence?: number;
   fields: Field[];
 }
 
@@ -56,7 +59,7 @@ interface FormRendererProps {
 export interface FormRendererRef {
   getFormData: () => any;
   getChangedData: () => any;
-  reset: (values: any) => void;
+  reset: (values?: any) => void;
   submit: (onSuccess: (data: any) => void, onError?: (errors: any) => void) => void;
   watch: any;
   setValue: (name: string, value: any) => void;
@@ -68,11 +71,12 @@ const FIELD_COMPONENTS: Record<string, any> = {
   url: (props: any) => <Input type="url" {...props} />,
   email: (props: any) => <Input type="email" {...props} />,
   date: (props: any) => <Input type="date" {...props} />,
-  date_time: (props: any) => <Input type="datetime-local" {...props} />,
+  datetime: (props: any) => <Input type="datetime-local" {...props} />,
   multi_line: TextBox,
   picklist: Select,
   select: Select,
   radio: RadioGroup,
+  checkbox: FormCheckbox,
   phone: FormPhoneInput,
   currency: CurrencySelect,
   file_upload: FileUploader,
@@ -111,8 +115,15 @@ const deepEqual = (a: any, b: any): boolean => {
   return false;
 };
 
+const FIELD_TYPE_ALIASES: Record<string, string> = {
+  radio_button: "radio",
+  radio_group: "radio",
+  "radio-group": "radio",
+};
+
 const getNormalizedType = (type: string) => {
-  return type || "single_line";
+  const t = type || "single_line";
+  return FIELD_TYPE_ALIASES[t] || t;
 };
 
 const getCountryISO = (name: string) => {
@@ -122,6 +133,71 @@ const getCountryISO = (name: string) => {
     (c) => c.name.toLowerCase().trim() === name.toLowerCase().trim(),
   );
   return match ? match.isoCode : name;
+};
+
+const getRichTextPlainText = (html: string | undefined | null): string => {
+  if (!html || typeof html !== "string") return "";
+  if (typeof document === "undefined") {
+    return html
+      .replace(/<[^>]*>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+  const el = document.createElement("div");
+  el.innerHTML = html;
+  return (el.textContent || el.innerText || "").replace(/\s+/g, " ").trim();
+};
+
+const isRichTextEmpty = (html: string | undefined | null) =>
+  getRichTextPlainText(html).length === 0;
+
+const getEditorType = (field: Field) =>
+  field.editor_type ??
+  (field as { editorType?: string }).editorType ??
+  field.properties?.validation_rules?.editor_type;
+
+const buildRichTextValidations = (validations: Record<string, any>, field: Field) => {
+  const rules = { ...validations };
+  let requiredMessage: string | null = null;
+
+  if (rules.required) {
+    requiredMessage =
+      typeof rules.required === "string"
+        ? rules.required
+        : `${field.field_label || "This field"} is required`;
+    delete rules.required;
+  }
+
+  const maxRule = rules.maxLength;
+  const minRule = rules.minLength;
+  if (maxRule) delete rules.maxLength;
+  if (minRule) delete rules.minLength;
+
+  const prevValidate = rules.validate;
+
+  rules.validate = (value: string) => {
+    if (requiredMessage && isRichTextEmpty(value)) {
+      return requiredMessage;
+    }
+
+    const plainLen = getRichTextPlainText(value).length;
+    if (minRule && plainLen < minRule.value) {
+      return minRule.message;
+    }
+    if (maxRule && plainLen > maxRule.value) {
+      return maxRule.message;
+    }
+
+    if (typeof prevValidate === "function") {
+      const result = prevValidate(value);
+      if (result !== true) return result;
+    }
+
+    return true;
+  };
+
+  return rules;
 };
 
 const FormField: React.FC<{
@@ -173,12 +249,50 @@ const FormField: React.FC<{
       validations.required = `${field.field_label || "This field"} is required`;
     }
   }
+  if (field.maxLength !== undefined && field.maxLength !== null && field.maxLength !== "") {
+    const maxVal = Number(field.maxLength);
+    if (!isNaN(maxVal) && maxVal > 0) {
+      validations.maxLength = {
+        value: maxVal,
+        message: `${field.field_label || "This field"} cannot exceed ${maxVal} characters`,
+      };
+    }
+  }
+  if (field.minLength !== undefined && field.minLength !== null && field.minLength !== "") {
+    const minVal = Number(field.minLength);
+    if (!isNaN(minVal) && minVal > 0) {
+      validations.minLength = {
+        value: minVal,
+        message: `${field.field_label || "This field"} must be at least ${minVal} characters`,
+      };
+    }
+  }
+  if (normType === "number") {
+    const maxDigitsRaw = field.max;
+    if (maxDigitsRaw !== undefined && maxDigitsRaw !== null && maxDigitsRaw !== "") {
+      const maxDigits = Number(maxDigitsRaw);
+      if (!isNaN(maxDigits) && maxDigits > 0) {
+        const digitMessage = `${field.field_label || "This field"} cannot exceed ${maxDigits} digit${maxDigits === 1 ? "" : "s"}`;
+        const prevValidate = validations.validate;
+        validations.validate = (value: string | number) => {
+          if (value === undefined || value === null || value === "") return true;
+          const digitCount = String(value).replace(/\D/g, "").length;
+          if (digitCount > maxDigits) return digitMessage;
+          if (typeof prevValidate === "function") {
+            const result = prevValidate(value);
+            if (result !== true) return result;
+          }
+          return true;
+        };
+      }
+    }
+  }
 
   const isRequired = !!validations.required;
 
   const label = (
     <div className="flex items-center gap-1 mb-1">
-      <span className="text-[13px] font-bold text-gray-600 uppercase tracking-wide">
+      <span className="text-[13px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
         {field.field_label}
       </span>
       {isRequired && (
@@ -211,6 +325,71 @@ const FormField: React.FC<{
     );
   }
 
+  if (normType === "checkbox") {
+    const checkboxValidations = { ...validations };
+    if (checkboxValidations.required) {
+      const requiredMessage =
+        typeof checkboxValidations.required === "string"
+          ? checkboxValidations.required
+          : `${field.field_label || "This field"} is required`;
+      checkboxValidations.validate = (value: boolean) =>
+        value === true || requiredMessage;
+      delete checkboxValidations.required;
+    }
+
+    const defaultChecked =
+      field.defaultChecked === true || field.defaultChecked === "true";
+
+    return (
+      <div className={colSpanClass}>
+        <Controller
+          name={field.api_name}
+          control={control}
+          rules={checkboxValidations}
+          defaultValue={defaultChecked}
+          render={({ field: { onChange, onBlur, value, ref } }) => (
+            <FormCheckbox
+              label={label}
+              name={field.api_name}
+              checked={!!value}
+              onChange={onChange}
+              onBlur={onBlur}
+              inputRef={ref}
+              errors={getError(field.api_name)}
+              readOnly={field.readOnly}
+            />
+          )}
+        />
+      </div>
+    );
+  }
+
+  if (normType === "multi_line" && getEditorType(field) === "rich") {
+    const richTextValidations = buildRichTextValidations(validations, field);
+
+    return (
+      <div className={colSpanClass}>
+        <Controller
+          name={field.api_name}
+          control={control}
+          rules={richTextValidations}
+          render={({ field: { onChange, onBlur, value } }) => (
+            <RichTextEditor
+              label={label}
+              name={field.api_name}
+              value={value || ""}
+              onChange={onChange}
+              onBlur={onBlur}
+              errors={getError(field.api_name)}
+              readOnly={field.readOnly}
+              placeholder={field.placeholder}
+            />
+          )}
+        />
+      </div>
+    );
+  }
+
   // Use Controller for complex components
   if (["file_upload", "image_upload", "multi_select", "signature", "user"].includes(normType)) {
     return (
@@ -231,6 +410,16 @@ const FormField: React.FC<{
               options={field.options || []}
               placeholder={field.placeholder}
               properties={field.properties}
+              allowedTypes={
+                field.allowedTypes ??
+                field.properties?.validation_rules?.allowedTypes ??
+                field.properties?.validation_rules?.allowed_types
+              }
+              maxFileSize={
+                field.maxFileSize ??
+                field.properties?.validation_rules?.maxFileSize ??
+                field.properties?.validation_rules?.max_file_size
+              }
             />
           )}
         />
@@ -329,20 +518,29 @@ const mapDataToFormFields = (data: any, schema: Section[], defaultValues = {}) =
     } else {
       s?.fields?.forEach((f) => {
         if (!f.api_name) return;
+        const normType = getNormalizedType(f.field_type);
         const val = data[f.api_name];
         if (val !== undefined && val !== null) {
-          const normType = getNormalizedType(f.field_type);
           if (typeof val === "object" && val?.id !== undefined) {
             formData[f.api_name] = val.id;
           } else if (Array.isArray(val)) {
             formData[f.api_name] = val.map((item) =>
               item?.id !== undefined ? item.id : item,
             );
+          } else if (normType === "checkbox") {
+            formData[f.api_name] =
+              val === true ||
+              val === "true" ||
+              val === 1 ||
+              val === "1";
           } else {
             formData[f.api_name] = normType === "country" ? getCountryISO(val) : val;
           }
         } else if ((defaultValues as any)[f.api_name] !== undefined) {
           formData[f.api_name] = (defaultValues as any)[f.api_name];
+        } else if (normType === "checkbox") {
+          formData[f.api_name] =
+            f.defaultChecked === true || f.defaultChecked === "true";
         } else {
           formData[f.api_name] = "";
         }
@@ -429,14 +627,27 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
 
     if (!Array.isArray(schema) || schema.length === 0)
       return (
-        <div className="p-10 text-center text-gray-400 font-medium">
+        <div className="p-10 text-center text-gray-400 dark:text-gray-500 font-medium">
           Layout initialization...
         </div>
       );
 
     return (
       <div className="form-renderer animate-in fade-in slide-in-from-bottom-2 duration-700">
-        {schema.map((section, sIdx) => {
+        {[...schema]
+          .map((section, index) => ({ section, index }))
+          .sort((a, b) => {
+            const aSeq = a.section.sequence;
+            const bSeq = b.section.sequence;
+            if (aSeq != null && bSeq != null && aSeq !== bSeq) {
+              return aSeq - bSeq;
+            }
+            if (aSeq != null && bSeq == null) return -1;
+            if (aSeq == null && bSeq != null) return 1;
+            return a.index - b.index;
+          })
+          .map(({ section }) => section)
+          .map((section, sIdx) => {
           if (section.is_subform) {
             const sfKey =
               section.subform_field_name ||
@@ -446,10 +657,10 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
               <div key={sIdx} className="form-section my-6 first:mt-0">
                 {section.name && (
                   <div className="flex items-center gap-4 mb-4">
-                    <h3 className="text-[14px] font-bold text-gray-800 uppercase tracking-widest">
+                    <h3 className="text-[14px] font-bold text-gray-800 dark:text-gray-100 uppercase tracking-widest">
                       {section.name}
                     </h3>
-                    <div className="h-px bg-gradient-to-r from-gray-100 to-transparent flex-1"></div>
+                    <div className="h-px bg-gradient-to-r from-gray-100 dark:from-slate-700 to-transparent flex-1"></div>
                   </div>
                 )}
                 <Controller
@@ -475,14 +686,14 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
           return (
             <div
               key={sIdx}
-              className="form-section my-6 first:mt-0 bg-white/40 p-1 rounded-2xl"
+              className="form-section my-6 first:mt-0 bg-white/40 dark:bg-slate-900/40 p-1 rounded-2xl"
             >
               {section.name && (
                 <div className="flex items-center gap-4 mb-4">
-                  <h3 className="text-[14px] font-bold text-gray-800 uppercase tracking-widest">
+                  <h3 className="text-[14px] font-bold text-gray-800 dark:text-gray-100 uppercase tracking-widest">
                     {section.name}
                   </h3>
-                  <div className="h-px bg-gradient-to-r from-gray-100 to-transparent flex-1"></div>
+                  <div className="h-px bg-gradient-to-r from-gray-100 dark:from-slate-700 to-transparent flex-1"></div>
                 </div>
               )}
               <div
@@ -493,7 +704,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
                   .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
                   .map((f, fIdx) => (
                     <FormField
-                      key={f?.api_name || fIdx}
+                      key={`${f?.api_name}-${fIdx}`}
                       field={f}
                       control={control}
                       register={register}

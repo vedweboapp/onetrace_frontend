@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { toast } from "sonner";
 import { 
   getFormsList, 
   createFormLayout, 
@@ -43,23 +42,11 @@ export const useFormStore = create<FormBuilderState>((set, get) => ({
   },
 
   createForm: async (module, payload, purpose) => {
-    try {
-      await createFormLayout(module, payload, purpose);
-      toast.success("Layout created successfully");
-    } catch (error: any) {
-      toast.error(error?.message || "Something went wrong");
-      throw error;
-    }
+    await createFormLayout(module, payload, purpose);
   },
 
   createModule: async (payload) => {
-    try {
-      await createModuleLayout(payload);
-      toast.success("Module created successfully");
-    } catch (error: any) {
-      toast.error(error?.message || "Something went wrong");
-      throw error;
-    }
+    await createModuleLayout(payload);
   },
 
   getFormSchemaById: async (id, moduleId) => {
@@ -98,14 +85,7 @@ export const useFormStore = create<FormBuilderState>((set, get) => ({
   },
 
   editForm: async (id, data, moduleId, purpose) => {
-    try {
-      const response = await editFormSchema(id, data, moduleId, purpose);
-      toast.success("Layout updated successfully");
-      return response;
-    } catch (error: any) {
-      toast.error(error?.message || "Something went wrong");
-      throw error;
-    }
+    return editFormSchema(id, data, moduleId, purpose);
   },
 
   clearSchema: () => {

@@ -37,7 +37,7 @@ const getNormalizedType = (type: string) => {
     multi_line: "textarea",
     picklist: "pick-list",
     multi_select: "multi-select",
-    date_time: "date-time",
+    datetime: "date-time",
     auto_number: "single_line",
     rollup_summary: "single_line",
     long_integer: "number",
@@ -59,7 +59,7 @@ const buildEmptyRow = (fields: SubformField[] = []) =>
   }, {});
 
 const CELL_CLASS =
-  "w-full h-9 px-2 text-sm text-gray-700 bg-transparent outline-none border-none focus:ring-0";
+  "w-full h-9 px-2 text-sm text-gray-700 dark:text-gray-200 bg-transparent outline-none border-none focus:ring-0";
 
 const CellInput: React.FC<{
   field: SubformField;
@@ -203,7 +203,7 @@ const CellInput: React.FC<{
   const inputTypeMap: Record<string, string> = {
     date: "date",
     "date-time": "datetime-local",
-    date_time: "datetime-local",
+    datetime: "datetime-local",
     time: "time",
     number: "number",
     long_integer: "number",
@@ -268,21 +268,21 @@ const SubForm: React.FC<SubFormProps> = ({
     <div className="w-full">
       {label && (
         <div className="flex items-center gap-1.5 mb-3">
-          <span className="text-[13px] font-bold text-gray-600 uppercase tracking-wide">
+          <span className="text-[13px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
             {label}
           </span>
           {required && <span className="text-red-500 font-bold">*</span>}
         </div>
       )}
 
-      <div className="w-full overflow-x-auto rounded-xl border border-gray-200 shadow-sm bg-white">
+      <div className="w-full overflow-x-auto rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm bg-white dark:bg-slate-900">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="bg-gray-50/80">
+            <tr className="bg-gray-50/80 dark:bg-slate-800/80">
               {activeFields.map((f) => (
                 <th
                   key={f.api_name}
-                  className="px-4 py-3 text-left text-[12px] font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-200 whitespace-nowrap"
+                  className="px-4 py-3 text-left text-[12px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-slate-700 whitespace-nowrap"
                 >
                   <span>{f.field_label}</span>
                   {(f.required === true || f.required === "true") && (
@@ -291,7 +291,7 @@ const SubForm: React.FC<SubFormProps> = ({
                 </th>
               ))}
               {!readOnly && rows.length > 1 && (
-                <th className="w-10 border-b border-gray-200 bg-gray-50/80" />
+                <th className="w-10 border-b border-gray-200 dark:border-slate-700 bg-gray-50/80 dark:bg-slate-800/80" />
               )}
             </tr>
           </thead>
@@ -300,12 +300,12 @@ const SubForm: React.FC<SubFormProps> = ({
             {rows.map((rowData, rowIdx) => (
               <tr
                 key={rowIdx}
-                className="group border-b border-gray-100 last:border-none hover:bg-blue-50/30 transition-colors"
+                className="group border-b border-gray-100 dark:border-slate-800 last:border-none hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-colors"
               >
                 {activeFields.map((f) => (
                   <td
                     key={f.api_name}
-                    className="border-r border-gray-100 last:border-none align-middle"
+                    className="border-r border-gray-100 dark:border-slate-800 last:border-none align-middle"
                   >
                     <CellInput
                       field={f}
