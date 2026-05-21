@@ -2,9 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import { CheckSquare, Square, Clock, ChevronDown } from "lucide-react";
-import { getOrganizationDetails, updateOrganizationDetails } from "../api/company-settings.api";
+import { updateOrganizationDetails } from "../api/company-settings.api";
 import { toast } from "sonner";
 import { OrganizationDetails } from "../types/types";
+import {
+  buildDirtyOrganizationPatch,
+  hasDirtyFields,
+  SCHEDULE_TAB_FIELDS,
+} from "../utils/company-settings-diff.util";
 
 const DAYS_OF_WEEK = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const BREAK_OPTIONS = ["15 minutes", "30 minutes", "45 minutes", "1 hour"];
@@ -40,16 +45,27 @@ const CompanySettingSchedule = ({ initialData, onSaveSuccess }: CompanySettingSc
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const payload = {
+      const current: OrganizationDetails = {
         ...initialData,
         workingDays,
         startTime,
         endTime,
         breakDuration,
       };
-      await updateOrganizationDetails(1, payload);
+      const patch = buildDirtyOrganizationPatch(
+        initialData,
+        current,
+        SCHEDULE_TAB_FIELDS,
+      );
+
+      if (!hasDirtyFields(patch)) {
+        toast.info("No changes to save");
+        return;
+      }
+
+      const updated = await updateOrganizationDetails(1, patch);
       toast.success("Schedule settings saved successfully");
-      onSaveSuccess?.(payload as any);
+      onSaveSuccess?.(updated);
     } catch (error) {
       console.error("Failed to save schedule:", error);
       toast.error("Failed to save schedule settings");

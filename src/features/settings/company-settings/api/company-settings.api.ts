@@ -2,106 +2,122 @@ import api from "@/core/api/axios";
 import { COMPANY_SETTING_PATH } from "./company-setting.path";
 import { OrganizationDetails, UpdateOrganizationRequest } from "../types/types";
 
-export const getOrganizationDetails = async (id: number): Promise<OrganizationDetails> => {
-    const { data } = await api.get(COMPANY_SETTING_PATH.getOrganizationDetails(id));
-    const responseData = data.data || data;
+const mapResponseToOrganization = (responseData: Record<string, unknown>): OrganizationDetails => ({
+  id: Number(responseData.id),
+  logo: (responseData.company_logo as string | null) ?? null,
+  name: (responseData.company_name as string) || "",
+  size: (responseData.company_size as string) || "",
+  description: (responseData.description as string) || "",
+  website: (responseData.website_link as string) || "",
+  timezone: (responseData.timezone as string) || "",
+  street: (responseData.street_address as string) || "",
+  city: (responseData.city as string) || "",
+  state: (responseData.state as string) || "",
+  zip: (responseData.pincode as string) || "",
+  country: (responseData.country as string) || "",
+  currencyCode: (responseData.currency as string) || (responseData.currency_code as string) || "INR",
+  currencyName: (responseData.currency_name as string) || "Indian Rupee",
+  formatType: (responseData.format as string) || (responseData.format_type as string) || "symbol",
+  symbol: (responseData.symbol as string) || "₹",
+  symbolPosition: (responseData.symbol_position as string) || "before",
+  digitSeparator: (responseData.digit_separator as string) || "1,234,567.89",
+  decimalPlaces:
+    responseData.decimal_places !== undefined ? Number(responseData.decimal_places) : 2,
+  startTime: (responseData.start_time as string) || "09:00",
+  endTime: (responseData.end_time as string) || "17:00",
+  workingDays:
+    (responseData.working_days as string[]) || [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+    ],
+  breakDuration: (responseData.break_duration as string) || "30 minutes",
+});
 
-    return {
-        id: responseData.id,
-        logo: responseData.company_logo,
-        name: responseData.company_name || "",
-        size: responseData.company_size || "",
-        description: responseData.description || "",
-        website: responseData.website_link || "",
-        timezone: responseData.timezone || "",
-        street: responseData.street_address || "",
-        city: responseData.city || "",
-        state: responseData.state || "",
-        zip: responseData.pincode || "",
-        country: responseData.country || "",
-        currencyCode: responseData.currency || responseData.currency_code || "INR",
-        currencyName: responseData.currency_name || "Indian Rupee",
-        formatType: responseData.format || responseData.format_type || "symbol",
-        symbol: responseData.symbol || "₹",
-        symbolPosition: responseData.symbol_position || "before",
-        digitSeparator: responseData.digit_separator || "1,234,567.89",
-        decimalPlaces: responseData.decimal_places !== undefined ? Number(responseData.decimal_places) : 2,
-        startTime: responseData.start_time || "09:00",
-        endTime: responseData.end_time || "17:00",
-        workingDays: responseData.working_days || ["monday", "tuesday", "wednesday", "thursday", "friday"],
-        breakDuration: responseData.break_duration || "30 minutes",
-    };
+/** Maps changed app fields to API payload keys (only include keys present in patch). */
+const mapPatchToApiPayload = (patch: Partial<UpdateOrganizationRequest>): Record<string, unknown> => {
+  const payload: Record<string, unknown> = {};
+
+  const set = (apiKey: string, value: unknown) => {
+    if (value !== undefined) payload[apiKey] = value;
+  };
+
+  if ("name" in patch) set("company_name", patch.name);
+  if ("size" in patch) set("company_size", patch.size);
+  if ("description" in patch) set("description", patch.description);
+  if ("website" in patch) set("website_link", patch.website);
+  if ("timezone" in patch) set("timezone", patch.timezone);
+  if ("street" in patch) set("street_address", patch.street);
+  if ("city" in patch) set("city", patch.city);
+  if ("state" in patch) set("state", patch.state);
+  if ("zip" in patch) set("pincode", patch.zip);
+  if ("country" in patch) set("country", patch.country);
+
+  if ("currencyCode" in patch) {
+    set("currency", patch.currencyCode);
+    set("currency_code", patch.currencyCode);
+  }
+  if ("currencyName" in patch) set("currency_name", patch.currencyName);
+  if ("formatType" in patch) {
+    set("format", patch.formatType);
+    set("format_type", patch.formatType);
+  }
+  if ("symbol" in patch) set("symbol", patch.symbol);
+  if ("symbolPosition" in patch) set("symbol_position", patch.symbolPosition);
+  if ("digitSeparator" in patch) set("digit_separator", patch.digitSeparator);
+  if ("decimalPlaces" in patch) set("decimal_places", patch.decimalPlaces);
+
+  if ("startTime" in patch) set("start_time", patch.startTime);
+  if ("endTime" in patch) set("end_time", patch.endTime);
+  if ("workingDays" in patch) set("working_days", patch.workingDays);
+  if ("breakDuration" in patch) set("break_duration", patch.breakDuration);
+
+  if ("logo" in patch) {
+    if (patch.logo instanceof File) {
+      // handled below via FormData
+    } else if (patch.logo === null) {
+      set("company_logo", null);
+    }
+  }
+
+  return payload;
 };
 
-export const updateOrganizationDetails = async (id: number, body: UpdateOrganizationRequest): Promise<OrganizationDetails> => {
-    const payload: any = {
-        company_name: body.name,
-        company_size: body.size,
-        description: body.description,
-        website_link: body.website,
-        timezone: body.timezone,
-        street_address: body.street,
-        city: body.city,
-        state: body.state,
-        pincode: body.zip,
-        country: body.country,
-        currency: body.currencyCode,
-        currency_code: body.currencyCode,
-        currency_name: body.currencyName,
-        format: body.formatType,
-        format_type: body.formatType,
-        symbol: body.symbol,
-        symbol_position: body.symbolPosition,
-        digit_separator: body.digitSeparator,
-        decimal_places: body.decimalPlaces,
-        start_time: body.startTime,
-        end_time: body.endTime,
-        working_days: body.workingDays,
-        break_duration: body.breakDuration,
-    };
+export const getOrganizationDetails = async (id: number): Promise<OrganizationDetails> => {
+  const { data } = await api.get(COMPANY_SETTING_PATH.getOrganizationDetails(id));
+  const responseData = (data.data || data) as Record<string, unknown>;
+  return mapResponseToOrganization(responseData);
+};
 
-    let submitData: any = payload;
-    let headers: any = undefined;
+export const updateOrganizationDetails = async (
+  id: number,
+  patch: Partial<UpdateOrganizationRequest>,
+): Promise<OrganizationDetails> => {
+  const apiFields = mapPatchToApiPayload(patch);
+  const logoFile = patch.logo instanceof File ? patch.logo : null;
 
-    if (body.logo instanceof File) {
-        submitData = new FormData();
-        Object.keys(payload).forEach(key => {
-            if (payload[key] !== null && payload[key] !== undefined) {
-                submitData.append(key, payload[key]);
-            }
-        });
-        submitData.append('company_logo', body.logo);
-        headers = { 'Content-Type': 'multipart/form-data' };
-    } else if (body.logo === null) {
-        payload.company_logo = null;
-    }
+  let submitData: Record<string, unknown> | FormData = apiFields;
+  let headers: Record<string, string> | undefined;
 
-    const { data } = await api.put(COMPANY_SETTING_PATH.updateOrganizationDetails(id), submitData, { headers });
-    const responseData = data.data || data;
+  if (logoFile) {
+    const formData = new FormData();
+    Object.entries(apiFields).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        formData.append(key, String(value));
+      }
+    });
+    formData.append("company_logo", logoFile);
+    submitData = formData;
+    headers = { "Content-Type": "multipart/form-data" };
+  }
 
-    return {
-        id: responseData.id,
-        logo: responseData.company_logo,
-        name: responseData.company_name || "",
-        size: responseData.company_size || "",
-        description: responseData.description || "",
-        website: responseData.website_link || "",
-        timezone: responseData.timezone || "",
-        street: responseData.street_address || "",
-        city: responseData.city || "",
-        state: responseData.state || "",
-        zip: responseData.pincode || "",
-        country: responseData.country || "",
-        currencyCode: responseData.currency || responseData.currency_code || "INR",
-        currencyName: responseData.currency_name || "Indian Rupee",
-        formatType: responseData.format || responseData.format_type || "symbol",
-        symbol: responseData.symbol || "₹",
-        symbolPosition: responseData.symbol_position || "before",
-        digitSeparator: responseData.digit_separator || "1,234,567.89",
-        decimalPlaces: responseData.decimal_places !== undefined ? Number(responseData.decimal_places) : 2,
-        startTime: responseData.start_time || "09:00",
-        endTime: responseData.end_time || "17:00",
-        workingDays: responseData.working_days || ["monday", "tuesday", "wednesday", "thursday", "friday"],
-        breakDuration: responseData.break_duration || "30 minutes",
-    };
+  const { data } = await api.put(
+    COMPANY_SETTING_PATH.updateOrganizationDetails(id),
+    submitData,
+    { headers },
+  );
+  const responseData = (data.data || data) as Record<string, unknown>;
+  return mapResponseToOrganization(responseData);
 };

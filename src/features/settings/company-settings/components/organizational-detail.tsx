@@ -8,8 +8,13 @@ import Select from "@/shared/form/components/select";
 import TextBox from "@/shared/form/components/text-box";
 import ProfilePictureUploader from "@/shared/components/profile-picture-uploader";
 import { LocationSelectorGroup } from "@/shared/form/components/location-selectors";
-import { getOrganizationDetails, updateOrganizationDetails } from "../api/company-settings.api";
+import { updateOrganizationDetails } from "../api/company-settings.api";
 import { OrganizationDetails } from "../types/types";
+import {
+  buildDirtyOrganizationPatch,
+  hasDirtyFields,
+  ORGANIZATION_TAB_FIELDS,
+} from "../utils/company-settings-diff.util";
 import { toast } from "sonner";
 import { timeZones } from "@/shared/constants/timezones";
 
@@ -51,10 +56,21 @@ const OrganizationalDetail = React.forwardRef<OrganizationalDetailRef, Organizat
 
     const onSubmit = async (data: any) => {
         try {
-            const payload = { ...initialData, ...data };
-            await updateOrganizationDetails(1, payload);
+            const current = { ...initialData, ...data } as OrganizationDetails;
+            const patch = buildDirtyOrganizationPatch(
+                initialData,
+                current,
+                ORGANIZATION_TAB_FIELDS,
+            );
+
+            if (!hasDirtyFields(patch)) {
+                toast.info("No changes to save");
+                return;
+            }
+
+            const updated = await updateOrganizationDetails(1, patch);
             toast.success("Organization details updated successfully");
-            onSaveSuccess?.(payload);
+            onSaveSuccess?.(updated);
         } catch (error) {
             console.error("Failed to update organization details:", error);
             toast.error("Failed to save changes");
