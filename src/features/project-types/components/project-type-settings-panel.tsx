@@ -49,11 +49,11 @@ const DEFAULT_BG = "#DBEAFE";
 const DEFAULT_TEXT = "#1E40AF";
 
 function bgHex(row: ProjectType): string {
-  return normalizeProjectTypeHex(row.bg_colour, DEFAULT_BG);
+  return normalizeProjectTypeHex(row.bg_color, DEFAULT_BG);
 }
 
 function textHex(row: ProjectType): string {
-  return normalizeProjectTypeHex(row.text_colour, DEFAULT_TEXT);
+  return normalizeProjectTypeHex(row.text_color, DEFAULT_TEXT);
 }
 
 function projectTypeUserLabel(user: ProjectType["created_by"]): string {
@@ -104,7 +104,7 @@ export function ProjectTypeSettingsPanel() {
   const [textColour, setTextColour] = React.useState(DEFAULT_TEXT);
   const [isActive, setIsActive] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
-  const [errors, setErrors] = React.useState<{ project_type?: string; bg_colour?: string; text_colour?: string }>({});
+  const [errors, setErrors] = React.useState<{ project_type?: string; bg_color?: string; text_color?: string }>({});
 
   const [deleteTarget, setDeleteTarget] = React.useState<ProjectType | null>(null);
   const [deleting, setDeleting] = React.useState(false);
@@ -195,31 +195,31 @@ export function ProjectTypeSettingsPanel() {
   async function submitForm() {
     const formSchema = z.object({
       project_type: zTrimmedNonEmpty(t("validationName")),
-      bg_colour: zHexColour6(t("validationHex")),
-      text_colour: zHexColour6(t("validationHex")),
+      bg_color: zHexColour6(t("validationHex")),
+      text_color: zHexColour6(t("validationHex")),
     });
-    const parsed = formSchema.safeParse({ project_type: typeName, bg_colour: bgColour, text_colour: textColour });
+    const parsed = formSchema.safeParse({ project_type: typeName, bg_color: bgColour, text_color: textColour });
     if (!parsed.success) {
-      const nextErrors: { project_type?: string; bg_colour?: string; text_colour?: string } = {};
+      const nextErrors: { project_type?: string; bg_color?: string; text_color?: string } = {};
       for (const issue of parsed.error.issues) {
         const field = String(issue.path[0] ?? "");
         if (field === "project_type") nextErrors.project_type = String(issue.message);
-        if (field === "bg_colour") nextErrors.bg_colour = String(issue.message);
-        if (field === "text_colour") nextErrors.text_colour = String(issue.message);
+        if (field === "bg_color") nextErrors.bg_color = String(issue.message);
+        if (field === "text_color") nextErrors.text_color = String(issue.message);
       }
       setErrors(nextErrors);
       return;
     }
 
     setErrors({});
-    const { project_type, bg_colour: bg, text_colour: fg } = parsed.data;
+    const { project_type, bg_color: bg, text_color: fg } = parsed.data;
     setSaving(true);
     try {
       if (editing) {
-        await updateProjectType(editing.id, { project_type, bg_colour: bg, text_colour: fg, is_active: isActive });
+        await updateProjectType(editing.id, { project_type, bg_color: bg, text_color: fg, is_active: isActive });
         toastSuccess(t("saved"));
       } else {
-        await createProjectType({ project_type, bg_colour: bg, text_colour: fg });
+        await createProjectType({ project_type, bg_color: bg, text_color: fg });
         toastSuccess(t("created"));
       }
       setFormOpen(false);
@@ -626,18 +626,18 @@ export function ProjectTypeSettingsPanel() {
                 value={bgColour}
                 onChange={(e) => {
                   setBgColour(e.target.value);
-                  if (errors.bg_colour) setErrors((prev) => ({ ...prev, bg_colour: undefined }));
+                  if (errors.bg_color) setErrors((prev) => ({ ...prev, bg_color: undefined }));
                 }}
                 className={cn(
                   surfaceInputClassName,
                   "px-3 font-mono",
-                  errors.bg_colour && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
+                  errors.bg_color && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
                 )}
                 placeholder={t("hexPlaceholder")}
                 spellCheck={false}
               />
             </div>
-            {errors.bg_colour ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.bg_colour}</p> : null}
+            {errors.bg_color ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.bg_color}</p> : null}
           </div>
           <div>
             <span className={fieldLabelClassName}>
@@ -655,19 +655,19 @@ export function ProjectTypeSettingsPanel() {
                 value={textColour}
                 onChange={(e) => {
                   setTextColour(e.target.value);
-                  if (errors.text_colour) setErrors((prev) => ({ ...prev, text_colour: undefined }));
+                  if (errors.text_color) setErrors((prev) => ({ ...prev, text_color: undefined }));
                 }}
                 className={cn(
                   surfaceInputClassName,
                   "px-3 font-mono",
-                  errors.text_colour && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
+                  errors.text_color && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
                 )}
                 placeholder={t("hexPlaceholder")}
                 spellCheck={false}
               />
             </div>
-            {errors.text_colour ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.text_colour}</p>
+            {errors.text_color ? (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.text_color}</p>
             ) : null}
           </div>
           {editing ? (

@@ -12,7 +12,7 @@ export function ProjectTypeChip({
   row,
   className,
 }: {
-  row: Pick<ProjectType, "id" | "project_type" | "bg_colour" | "text_colour">;
+  row: Pick<ProjectType, "id" | "project_type" | "bg_color" | "text_color">;
   className?: string;
 }) {
   return (
