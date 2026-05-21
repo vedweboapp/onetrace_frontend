@@ -704,7 +704,8 @@
         "notAssigned": "No asignado"
       },
       "table": {
-        "qrCodeId": "Código QR",
+        "qrImage": "Código QR",
+        "qrCodeId": "ID QR",
         "status": "Estado",
         "assignedJob": "Trabajo asignado",
         "scanCount": "Escaneos",
