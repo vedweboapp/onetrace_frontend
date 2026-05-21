@@ -8,8 +8,10 @@ import type { PersonalProfileResponse } from "../types/types";
 import PersonalProfileHeader from "./personal-profile-header";
 import PersonalProfileForm from "./personal-profile-form";
 import { AppearancePanel } from "./appearance-panel";
+import { useTranslations } from "next-intl";
 
 const PersonalProfileDetails = () => {
+  const t = useTranslations("Dashboard.settingsPersonalProfile");
   const userId = useAuthStore((s) => s.user?.id);
   const [params] = useUrlParams({ tab: "profile" });
   const activeTab = (params.tab as string) || "profile";
@@ -22,7 +24,7 @@ const PersonalProfileDetails = () => {
   const loadProfile = useCallback(async () => {
     if (!userId) {
       setIsLoading(false);
-      setError("You must be signed in to view your profile.");
+      setError(t("mustSignIn"));
       return;
     }
 
@@ -37,11 +39,11 @@ const PersonalProfileDetails = () => {
       setProfile(resolved);
     } catch (err) {
       console.error("Failed to load personal profile", err);
-      setError("Failed to load profile. Please try again.");
+      setError(t("loadError"));
     } finally {
       setIsLoading(false);
     }
-  }, [userId]);
+  }, [userId, t]);
 
   useEffect(() => {
     loadProfile();

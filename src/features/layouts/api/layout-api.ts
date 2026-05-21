@@ -12,11 +12,15 @@ export async function updateLayoutStatus(
   isActive: boolean
 ): Promise<any> {
   const url = `/modules/${moduleId}/sections/bulk/`;
-  const { data } = await api.post(url, { 
-    layout: { 
-      id: layoutId,
-      is_active: isActive 
-    } 
-  });
+  const { data } = await api.post(
+    url,
+    {
+      layout: {
+        id: layoutId,
+        is_active: isActive,
+      },
+    },
+    { skipErrorToast: true },
+  );
   return data.data || data;
 }

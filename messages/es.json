@@ -146,6 +146,40 @@
       "modules": "Módulos",
       "hint": "Personaliza el tema y el color de acento de este espacio."
     },
+    "settingsPersonalProfile": {
+      "updatedToast": "Perfil actualizado correctamente",
+      "loadError": "No se pudo cargar el perfil. Inténtalo de nuevo.",
+      "mustSignIn": "Debes iniciar sesión para ver tu perfil.",
+      "BasicInfo": "Información básica",
+      "FirstName": "Nombre",
+      "LastName": "Apellido",
+      "ContactDetails": "Detalles de contacto",
+      "DateOfBirth": "Fecha de nacimiento",
+      "Gender": "Género",
+      "Role": "Rol",
+      "JoiningDate": "Fecha de incorporación",
+      "Emails": "Correos electrónicos",
+      "Phones": "Teléfonos",
+      "AddPhone": "Añadir teléfono",
+      "AddEmail": "Añadir correo electrónico",
+      "AddAddress": "Añadir dirección",
+      "Addresses": "Direcciones"
+    },
+    "settingsCompany": {
+      "organizationUpdatedToast": "Datos de la organización actualizados correctamente",
+      "currencyUpdatedToast": "Ajustes de moneda guardados correctamente",
+      "scheduleUpdatedToast": "Horario guardado correctamente",
+      "noChangesToast": "No hay cambios que guardar"
+    },
+    "settingsFormBuilder": {
+      "layoutSavedToast": "Diseño guardado correctamente",
+      "layoutCreatedToast": "Diseño creado correctamente",
+      "layoutUpdatedToast": "Diseño actualizado correctamente",
+      "moduleCreatedToast": "Módulo creado correctamente"
+    },
+    "settingsLayouts": {
+      "statusUpdatedToast": "Estado del diseño actualizado correctamente"
+    },
     "appearance": {
       "metaTitle": "Apariencia",
       "pageKicker": "Ajustes",

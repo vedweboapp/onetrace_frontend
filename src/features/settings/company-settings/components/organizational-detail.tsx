@@ -15,7 +15,9 @@ import {
   hasDirtyFields,
   ORGANIZATION_TAB_FIELDS,
 } from "../utils/company-settings-diff.util";
-import { toast } from "sonner";
+import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
+import { useTranslations } from "next-intl";
+import { parseApiFailurePayload, resolveApiErrorUserText } from "@/core/errors/api-error-text";
 import { timeZones } from "@/shared/constants/timezones";
 
 interface OrganizationalDetailProps {
@@ -29,6 +31,7 @@ export interface OrganizationalDetailRef {
 }
 
 const OrganizationalDetail = React.forwardRef<OrganizationalDetailRef, OrganizationalDetailProps>(({ isEditing, initialData, onSaveSuccess }, ref) => {
+    const t = useTranslations("Dashboard.settingsCompany");
     const { register, control, watch, handleSubmit, reset, formState: { errors } } = useForm<any>({
         defaultValues: {
             logo: null,
@@ -64,16 +67,16 @@ const OrganizationalDetail = React.forwardRef<OrganizationalDetailRef, Organizat
             );
 
             if (!hasDirtyFields(patch)) {
-                toast.info("No changes to save");
+                toastSuccess(t("noChangesToast"));
                 return;
             }
 
             const updated = await updateOrganizationDetails(1, patch);
-            toast.success("Organization details updated successfully");
+            toastSuccess(t("organizationUpdatedToast"));
             onSaveSuccess?.(updated);
         } catch (error) {
             console.error("Failed to update organization details:", error);
-            toast.error("Failed to save changes");
+            toastError(resolveApiErrorUserText(parseApiFailurePayload(error)));
         }
     };
 

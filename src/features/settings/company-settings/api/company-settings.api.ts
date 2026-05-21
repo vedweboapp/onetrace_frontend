@@ -116,7 +116,7 @@ export const updateOrganizationDetails = async (
   const { data } = await api.put(
     COMPANY_SETTING_PATH.updateOrganizationDetails(id),
     submitData,
-    { headers },
+    { headers, skipErrorToast: true },
   );
   const responseData = (data.data || data) as Record<string, unknown>;
   return mapResponseToOrganization(responseData);

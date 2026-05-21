@@ -14,6 +14,8 @@ import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-s
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { AppTabs } from "@/shared/ui/app-tabs";
 import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
+import { useTranslations } from "next-intl";
+import { parseApiFailurePayload, resolveApiErrorUserText } from "@/core/errors/api-error-text";
 import FormRenderer, { FormRendererRef } from "./FormRenderer";
 
 interface Field {
@@ -297,6 +299,7 @@ interface FormBuilderLayoutProps {
 }
 
 export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilderLayoutProps) {
+  const t = useTranslations("Dashboard.settingsFormBuilder");
   const {
     formSchema,
     createForm,
@@ -745,8 +748,18 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
 
       setDirty(false);
 
+      let successMessage = t("layoutSavedToast");
+      if (purpose === "create_module") {
+        successMessage = t("moduleCreatedToast");
+      } else if (purpose === "create_layout" || isNew) {
+        successMessage = t("layoutCreatedToast");
+      } else if (purpose === "edit_layout") {
+        successMessage = t("layoutUpdatedToast");
+      }
+
+      toastSuccess(successMessage);
+
       if (isClose) {
-        toastSuccess("Layout saved successfully!");
         if (purpose === "create_module") {
           router.push("/dashboard/settings/modules");
         } else if (purpose === "create_layout" || purpose === "edit_layout") {
@@ -754,12 +767,10 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
         } else {
           router.back();
         }
-      } else {
-        toastSuccess("Layout saved successfully!");
       }
     } catch (err) {
       console.error("Save failed", err);
-      toastError("Failed to save layout. Please try again.");
+      toastError(resolveApiErrorUserText(parseApiFailurePayload(err)));
     } finally {
       setSaving(false);
     }

@@ -18,9 +18,12 @@ import {
     ListPageSearchField
 } from "@/shared/ui";
 import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
+import { useTranslations } from "next-intl";
+import { parseApiFailurePayload, resolveApiErrorUserText } from "@/core/errors/api-error-text";
 import { ArrowLeft } from "lucide-react";
 
 const LayoutDetails = () => {
+    const t = useTranslations("Dashboard.settingsLayouts");
     const [searchQuery, setSearchQuery] = useState("");
     const [layouts, setLayouts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -70,10 +73,10 @@ const LayoutDetails = () => {
                     layout.id === layoutId ? { ...layout, is_active: !currentStatus } : layout
                 )
             );
-            toastSuccess("Layout status updated successfully!");
+            toastSuccess(t("statusUpdatedToast"));
         } catch (err) {
             console.error("Failed to update layout status", err);
-            toastError("Failed to update layout status. Please try again.");
+            toastError(resolveApiErrorUserText(parseApiFailurePayload(err)));
         }
     }
     if (loading) {

@@ -3,7 +3,9 @@
 import React, { useState, useEffect } from "react";
 import { CheckSquare, Square, Clock, ChevronDown } from "lucide-react";
 import { updateOrganizationDetails } from "../api/company-settings.api";
-import { toast } from "sonner";
+import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
+import { useTranslations } from "next-intl";
+import { parseApiFailurePayload, resolveApiErrorUserText } from "@/core/errors/api-error-text";
 import { OrganizationDetails } from "../types/types";
 import {
   buildDirtyOrganizationPatch,
@@ -20,6 +22,7 @@ interface CompanySettingScheduleProps {
 }
 
 const CompanySettingSchedule = ({ initialData, onSaveSuccess }: CompanySettingScheduleProps) => {
+  const t = useTranslations("Dashboard.settingsCompany");
   const [isMounted, setIsMounted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -59,16 +62,16 @@ const CompanySettingSchedule = ({ initialData, onSaveSuccess }: CompanySettingSc
       );
 
       if (!hasDirtyFields(patch)) {
-        toast.info("No changes to save");
+        toastSuccess(t("noChangesToast"));
         return;
       }
 
       const updated = await updateOrganizationDetails(1, patch);
-      toast.success("Schedule settings saved successfully");
+      toastSuccess(t("scheduleUpdatedToast"));
       onSaveSuccess?.(updated);
     } catch (error) {
       console.error("Failed to save schedule:", error);
-      toast.error("Failed to save schedule settings");
+      toastError(resolveApiErrorUserText(parseApiFailurePayload(error)));
     } finally {
       setIsSaving(false);
     }

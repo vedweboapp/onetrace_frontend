@@ -4,7 +4,9 @@ import React, { useState } from "react";
 import { Eye, X } from "lucide-react";
 import { currencyList } from "@/shared/form/components/currency-list";
 import { updateOrganizationDetails } from "../api/company-settings.api";
-import { toast } from "sonner";
+import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
+import { useTranslations } from "next-intl";
+import { parseApiFailurePayload, resolveApiErrorUserText } from "@/core/errors/api-error-text";
 import { OrganizationDetails } from "../types/types";
 import {
   buildDirtyOrganizationPatch,
@@ -28,6 +30,7 @@ interface CompanySettingsCurrencyProps {
 }
 
 const CompanySettingsCurrency = ({ initialData, onSaveSuccess }: CompanySettingsCurrencyProps) => {
+  const t = useTranslations("Dashboard.settingsCompany");
   const [isMounted, setIsMounted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -146,7 +149,7 @@ const CompanySettingsCurrency = ({ initialData, onSaveSuccess }: CompanySettings
       );
 
       if (!hasDirtyFields(patch)) {
-        toast.info("No changes to save");
+        toastSuccess(t("noChangesToast"));
         setIsModalOpen(false);
         return;
       }
@@ -154,11 +157,11 @@ const CompanySettingsCurrency = ({ initialData, onSaveSuccess }: CompanySettings
       const updated = await updateOrganizationDetails(1, patch);
       setSettings({ ...tempSettings });
       setIsModalOpen(false);
-      toast.success("Currency settings saved successfully");
+      toastSuccess(t("currencyUpdatedToast"));
       onSaveSuccess?.(updated);
     } catch (error) {
       console.error("Failed to save organization currency:", error);
-      toast.error("Failed to save currency settings");
+      toastError(resolveApiErrorUserText(parseApiFailurePayload(error)));
     } finally {
       setIsSaving(false);
     }

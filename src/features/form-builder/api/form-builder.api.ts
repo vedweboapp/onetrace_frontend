@@ -12,13 +12,13 @@ export async function createFormLayout(module: string, payload: any, purpose?: s
   const url = purpose === "create_layout"
     ? `/modules/${module}/layouts/`
     : FORM_BUILDER_API_PATHS.saveLayout(module);
-  const { data } = await api.post(url, payload);
+  const { data } = await api.post(url, payload, { skipErrorToast: true });
   assertApiSuccess(data);
   return data.data;
 }
 
 export async function createModuleLayout(payload: any): Promise<any> {
-  const { data } = await api.post(FORM_BUILDER_API_PATHS.pageLayout, payload);
+  const { data } = await api.post(FORM_BUILDER_API_PATHS.pageLayout, payload, { skipErrorToast: true });
   assertApiSuccess(data);
   return data.data;
 }
@@ -45,7 +45,7 @@ export async function editFormSchema(
 ): Promise<any> {
   if (purpose === "edit_layout" && moduleId) {
     const url = `/modules/${moduleId}/sections/bulk/`;
-    const { data } = await api.post(url, payload);
+    const { data } = await api.post(url, payload, { skipErrorToast: true });
     assertApiSuccess(data);
     return data.data;
   }
@@ -53,7 +53,7 @@ export async function editFormSchema(
   const url = moduleId
     ? `/modules/${moduleId}/layouts/${id}/`
     : FORM_BUILDER_API_PATHS.formById(id);
-  const { data } = await api.put(url, payload);
+  const { data } = await api.put(url, payload, { skipErrorToast: true });
   assertApiSuccess(data);
   return data.data;
 }
