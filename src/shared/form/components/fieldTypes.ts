@@ -57,6 +57,7 @@ export interface FieldConfig {
   allowedTypes?: string;
   summaryType?: string;
   relatedObject?: string;
+  editor_type?: string;
 }
 
 export interface FieldTypeDefinition {
@@ -107,9 +108,19 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       markAsPublic: false,
       show_tooltip: false,
       tool_tip: "",
+      editor_type: "text",
     }),
     configFields: [
       { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
+      {
+        type: "radio-group",
+        label: "Type",
+        key: "editor_type",
+        options: [
+          { label: "Plain Text", value: "text" },
+          { label: "Rich Text", value: "rich" },
+        ],
+      },
       { type: "textarea", label: "Placeholder", key: "placeholder" },
       { type: "number", label: "Character limit", key: "maxLength" },
       { type: "checkbox", label: "Required", key: "required" },
@@ -185,7 +196,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
         key: "options",
         required: true,
       },
-      { type: "text", label: "Default Value", key: "defaultValue" },
+      { type: "option-default", label: "Default Value", key: "defaultValue" },
       { type: "checkbox", label: "Required", key: "required" },
       // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
       // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
@@ -199,6 +210,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       label: "Categories",
       name: "",
       options: ["Option 1", "Option 2", "Option 3"],
+      defaultValue: [],
       required: false,
       markAsPublic: false,
       show_tooltip: false,
@@ -212,6 +224,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
         key: "options",
         required: true,
       },
+      { type: "option-default-multi", label: "Default Values", key: "defaultValue" },
       { type: "checkbox", label: "Required", key: "required" },
       // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
       // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
@@ -482,6 +495,34 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
       { type: "checkbox", label: "Required", key: "required" },
       { type: "checkbox", label: "Checked by Default", key: "defaultChecked" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+    ],
+  },
+  radio: {
+    label: "Radio Button",
+    icon: Circle,
+    defaultConfig: () => ({
+      type: "radio",
+      label: "Choice",
+      name: "",
+      options: ["Option 1", "Option 2", "Option 3"],
+      defaultValue: "",
+      required: false,
+      markAsPublic: false,
+      show_tooltip: false,
+      tool_tip: "",
+    }),
+    configFields: [
+      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
+      {
+        type: "options",
+        label: "Options (one per line)",
+        key: "options",
+        required: true,
+      },
+      { type: "option-default", label: "Default Value", key: "defaultValue" },
+      { type: "checkbox", label: "Required", key: "required" },
       // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
       // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],

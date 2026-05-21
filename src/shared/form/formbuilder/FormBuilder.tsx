@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useFormHandler } from "../hook/useFormHandler";
 import FieldConfigModal from "../components/FieldConfigModal";
 import { useDrop } from "react-dnd";
 import DynamicFieldPreview from "../components/DynamicFieldPreview";
@@ -13,7 +14,7 @@ import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-s
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { AppTabs } from "@/shared/ui/app-tabs";
 import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
-import FormRenderer from "./FormRenderer";
+import FormRenderer, { FormRendererRef } from "./FormRenderer";
 
 interface Field {
   _uid: string;
@@ -33,11 +34,21 @@ interface Section {
   id?: string | number;
   name: string;
   column_count: number;
+  sequence?: number;
   is_subform?: boolean;
   is_deleted?: boolean;
   is_active?: boolean;
   fields: Field[];
 }
+
+/** Keep section.sequence aligned with builder order (active sections only). */
+const reindexSectionSequences = (sections: Section[]): Section[] => {
+  let seq = 1;
+  return sections.map((section) => {
+    if (section.is_deleted) return section;
+    return { ...section, sequence: seq++ };
+  });
+};
 
 interface TopDropZoneProps {
   onDrop: (isSubform: boolean) => void;
@@ -56,11 +67,11 @@ const TopDropZone: React.FC<TopDropZoneProps> = ({ onDrop }) => {
     <div
       ref={drop as any}
       className={`h-16 rounded-md p-2 transition-all ${isOver
-        ? "border-blue-400 bg-blue-50 shadow-md"
+        ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40 shadow-md"
         : "border-dashed border-transparent"
         }`}
     >
-      <div className="text-center h-full text-sm text-gray-500 mt-6">
+      <div className="text-center h-full text-sm text-gray-500 dark:text-gray-400 mt-6">
         Drop "Add New Section" here to insert at the top
       </div>
     </div>
@@ -123,7 +134,7 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
             fields: addressFields,
           };
           copy.splice(index + 1, 0, newSection);
-          return copy;
+          return reindexSectionSequences(copy);
         });
         setDirty(true);
         return;
@@ -146,11 +157,9 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
   return (
     <>
       <div
-        className={`border rounded-[4px] border-gray-200 w-full overflow-hidden`}
+        className="border rounded-[4px] border-gray-200 dark:border-slate-700 w-full overflow-hidden"
       >
-        <div
-          className={`bg-gray-100 px-6 py-4 flex items-center justify-between`}
-        >
+        <div className="bg-gray-100 dark:bg-slate-800 px-6 py-4 flex items-center justify-between">
           {isEditing ? (
             <input
               autoFocus
@@ -160,7 +169,7 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
               onBlur={saveSectionName}
               onKeyDown={(e) => e.key === "Enter" && saveSectionName()}
               onKeyUp={(e) => e.key === "Escape" && setEditingSectionId(null)}
-              className="text-xl font-semibold text-gray-900 bg-white border border-blue-400 rounded px-3 py-1 outline-none focus:border-blue-600"
+              className="text-xl font-semibold text-gray-900 dark:text-gray-100 bg-white dark:bg-slate-900 border border-blue-400 dark:border-blue-500 rounded px-3 py-1 outline-none focus:border-blue-600 dark:focus:border-blue-400"
               placeholder="Section name..."
             />
           ) : (
@@ -169,7 +178,7 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
                 setEditingSectionId(section._uid);
                 setTempName(section.name);
               }}
-              className={`text-xl font-semibold cursor-pointer text-gray-600 hover:text-gray-700`}
+              className="text-xl font-semibold cursor-pointer text-gray-600 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100"
             >
               {section.name || "Untitled Section"}
             </h3>
@@ -209,18 +218,18 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
 
         <div
           ref={drop as any}
-          className={`min-h-[150px] bg-white rounded-[8px] p-6 transition-all ${section.fields.length === 0
-            ? "flex items-center justify-center border-dotted border-2 border-gray-300"
+          className={`min-h-[150px] bg-white dark:bg-slate-900 rounded-[8px] p-6 transition-all ${section.fields.length === 0
+            ? "flex items-center justify-center border-dotted border-2 border-gray-300 dark:border-slate-600"
             : ""
-            } ${isOver ? "border-blue-500 bg-blue-50 shadow-sm" : ""}`}
+            } ${isOver ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30 shadow-sm" : ""}`}
         >
           {section.fields.length === 0 ? (
             <div className="flex items-center justify-center w-full">
-              <p className="text-center text-gray-400">Drop fields here</p>
+              <p className="text-center text-gray-400 dark:text-gray-500">Drop fields here</p>
             </div>
           ) : section.is_subform ? (
             <div className="w-0 min-w-full overflow-hidden">
-              <div className="flex border border-gray-200 rounded-lg overflow-x-auto bg-gray-50/30 max-w-full custom-scrollbar">
+              <div className="flex border border-gray-200 dark:border-slate-700 rounded-lg overflow-x-auto bg-gray-50/30 dark:bg-slate-800/50 max-w-full custom-scrollbar">
                 {section.fields
                   .filter((f) => !f.is_deleted)
                   .map((field, idx) => (
@@ -270,11 +279,11 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
       <div
         ref={addDrop as any}
         className={`h-16 rounded-md p-2 transition-all ${isOverAdd
-          ? "border-blue-400 bg-blue-50 shadow-md"
+          ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40 shadow-md"
           : "border-dashed border-transparent"
           }`}
       >
-        <div className="text-center h-full text-sm text-gray-500 mt-6 border-dotted">
+        <div className="text-center h-full text-sm text-gray-500 dark:text-gray-400 mt-6 border-dotted">
           Drop "Add New Section" here to insert below
         </div>
       </div>
@@ -311,7 +320,13 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
   );
 
   const [sections, setSections] = useState<Section[]>([
-    { _uid: "basic", name: "Basic Information", column_count: 2, fields: [] },
+    {
+      _uid: "basic",
+      name: "Basic Information",
+      column_count: 2,
+      fields: [],
+      sequence: 1,
+    },
   ]);
 
   const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
@@ -356,6 +371,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
         ...sec,
         _uid: sec.id?.toString() || `section-${sIdx}-${Date.now()}`,
         name: sec.name || sec.sectionHeader || "",
+        sequence: sec.sequence ?? sIdx + 1,
         column_count: sec.column_count || sec.columns || 2,
         fields: (sec.fields || sec.fields || [])
           .sort((a: any, b: any) => (a.sequence ?? a.order ?? 0) - (b.sequence ?? b.order ?? 0))
@@ -367,6 +383,11 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
                 validationRules[camelKey] = f.properties.validation_rules[key];
               });
             }
+
+            const editorType =
+              f.editor_type ??
+              validationRules.editorType ??
+              f.properties?.validation_rules?.editor_type;
 
             return {
               ...f,
@@ -381,6 +402,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
               is_filterable: f.is_filterable !== undefined ? f.is_filterable : (f.properties?.is_filterable || false),
               is_sortable: f.is_sortable !== undefined ? f.is_sortable : (f.properties?.is_sortable || false),
               is_public: f.is_public !== undefined ? f.is_public : (f.properties?.is_public || false),
+              ...(editorType ? { editor_type: editorType } : {}),
               ...validationRules,
             };
           }),
@@ -393,6 +415,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
           name: "Basic Information",
           column_count: 2,
           fields: [],
+          sequence: 1,
         },
       ]);
     }
@@ -454,12 +477,16 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
       fields: [],
     };
     setSections((prev) => {
-      if (afterUid === "__TOP__") return [newSection, ...prev];
-      if (!afterUid) return [...prev, newSection];
-      const index = prev.findIndex((s) => s._uid === afterUid);
-      const copy = [...prev];
-      copy.splice(index + 1, 0, newSection);
-      return copy;
+      let next: Section[];
+      if (afterUid === "__TOP__") next = [newSection, ...prev];
+      else if (!afterUid) next = [...prev, newSection];
+      else {
+        const index = prev.findIndex((s) => s._uid === afterUid);
+        const copy = [...prev];
+        copy.splice(index + 1, 0, newSection);
+        next = copy;
+      }
+      return reindexSectionSequences(next);
     });
     setDirty(true);
     setTimeout(() => {
@@ -482,19 +509,21 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
 
   const deleteSection = (sectionUid: string) => {
     setSections((prev) =>
-      prev.map((s) =>
-        s._uid === sectionUid
-          ? {
-            ...s,
-            is_active: false,
-            is_deleted: true,
-            fields: (s.fields || []).map((f) => ({
-              ...f,
+      reindexSectionSequences(
+        prev.map((s) =>
+          s._uid === sectionUid
+            ? {
+              ...s,
               is_active: false,
               is_deleted: true,
-            })),
-          }
-          : s,
+              fields: (s.fields || []).map((f) => ({
+                ...f,
+                is_active: false,
+                is_deleted: true,
+              })),
+            }
+            : s,
+        ),
       ),
     );
     setDirty(true);
@@ -785,6 +814,12 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
   const sidebarW = sidebarOpen ? 200 : 42;
   const canvasMarginLeft = 288;
 
+  const { formRef, isLoading: isSubmitting, handleSubmit: handleFormSubmit } = useFormHandler<any, FormRendererRef>(
+    async (data) => {
+      console.log("📋 Form Payload:", data);
+    }
+  );
+
   return (
     <div className="relative flex flex-col h-full">
       {/* Responsive Sub-header (Single Row) */}
@@ -872,8 +907,23 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
                 ))}
             </div>
           ) : (
-            <div className="w-full bg-white p-8 border border-gray-200 rounded-xl shadow-sm">
-              <FormRenderer schema={sections.filter((s) => !s.is_deleted)} />
+            <div className="w-full">
+              <div className="bg-white dark:bg-slate-900 p-8 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm">
+                <FormRenderer
+                  ref={formRef}
+                  schema={reindexSectionSequences(
+                    sections.filter((s) => !s.is_deleted),
+                  )}
+                />
+              </div>
+              <div className="flex justify-end mt-4">
+                <Button
+                  onClick={handleFormSubmit}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Submitting..." : "Submit Form"}
+                </Button>
+              </div>
             </div>
           )}
         </div>

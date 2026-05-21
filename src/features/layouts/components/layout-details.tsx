@@ -111,7 +111,7 @@ const LayoutDetails = () => {
                 <span className="ml-2 text-lg font-semibold text-slate-800 dark:text-slate-100">Layout Details</span>
             </div>
          
-            <div className="flex items-center justify-between p-4 bg-white border border-slate-200/80 rounded-[8px] shadow-sm">
+            <div className="flex items-center justify-between p-4 bg-white border border-slate-200/80 rounded-lg shadow-sm">
                 <ListPageSearchField
                     value={searchQuery}
                     onCommit={setSearchQuery}

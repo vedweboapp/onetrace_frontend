@@ -46,6 +46,7 @@ const icons: Record<string, LucideIcon> = {
   decimal: Circle,
   percent: Percent,
   checkbox: CheckSquare,
+  radio: Circle,
   url: Link,
   lookup: Search,
   formula: Calculator,
@@ -125,13 +126,13 @@ export default function DynamicFieldPreview({
       <div
         ref={ref}
         style={{ opacity: isDragging ? 0.5 : 1 }}
-        className={`group border m-2 relative flex flex-col p-4 bg-gray-50/50 hover:bg-gray-100/80 transition-all border-r border-gray-200 min-h-fit border-b `}
+        className="group border m-2 relative flex flex-col p-4 bg-gray-50/50 dark:bg-slate-800/50 hover:bg-gray-100/80 dark:hover:bg-slate-800 transition-all border-r border-gray-200 dark:border-slate-700 min-h-fit border-b"
       >
         <div className="flex items-center justify-between mb-2">
-          <span className="font-medium text-gray-800 flex items-center gap-1.5">
+          <span className="font-medium text-gray-800 dark:text-gray-100 flex items-center gap-1.5">
             {field.field_label || "Untitled Field"}
             {field.api_name && (
-              <span className="text-xs font-normal text-gray-400">
+              <span className="text-xs font-normal text-gray-400 dark:text-gray-500">
                 ({field.api_name})
               </span>
             )}
@@ -159,7 +160,7 @@ export default function DynamicFieldPreview({
             ]}
           />
         </div>
-        <span className="font-medium text-gray-500 text-md">
+        <span className="font-medium text-gray-500 dark:text-gray-400 text-md">
           {field.field_type || "text"}
         </span>
       </div>
@@ -174,19 +175,19 @@ export default function DynamicFieldPreview({
         field.required
           ? "border-l-2 border-l-red-500"
           : "border-dotted border-2"
-      } flex items-center justify-between bg-gray-50 rounded-[4px] border-gray-300  px-5 py-3 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer`}
+      } flex items-center justify-between bg-gray-50 dark:bg-slate-800 rounded-[4px] border-gray-300 dark:border-slate-600 px-5 py-3 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-md transition-all cursor-pointer`}
     >
       <div className="flex items-center gap-3">
-        <div className="font-medium text-gray-800 flex flex-col">
+        <div className="font-medium text-gray-800 dark:text-gray-100 flex flex-col">
           <span className="flex items-center gap-2">
             {field.field_label || "Untitled Field"}
             {field.api_name && (
-              <span className="text-[11px] font-normal text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+              <span className="text-[11px] font-normal text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-slate-700 px-1.5 py-0.5 rounded border border-gray-200 dark:border-slate-600">
                 {field.api_name}
               </span>
             )}
           </span>
-          <span className="text-sm text-gray-500">{field.field_type || "text"}</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">{field.field_type || "text"}</span>
         </div>
       </div>
       <DataTableRowActionsMenu

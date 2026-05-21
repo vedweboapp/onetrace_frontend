@@ -7,7 +7,7 @@ import {
     FieldValues,
     RegisterOptions,
 } from "react-hook-form";
-import { X, File, Image as ImageIcon, ChevronDown } from "lucide-react";
+import { X, File, ChevronDown } from "lucide-react";
 
 interface FileUploaderProps {
     control: Control<FieldValues>;
@@ -16,7 +16,10 @@ interface FileUploaderProps {
     rules?: RegisterOptions;
     className?: string;
     accept?: string;
+    allowedTypes?: string;
+    maxFileSize?: number;
     maxSize?: number;
+    properties?: Record<string, any>;
     onFileSelect?: (file: {
         name: string;
         type: string;
@@ -25,16 +28,69 @@ interface FileUploaderProps {
     }) => void;
 }
 
-const FileUploader: React.FC<FileUploaderProps> = ({
-    control,
-    name,
-    label,
-    rules = {},
-    className = "",
-    accept = "image/jpeg,image/png,image/webp,.pdf,.doc,.docx",
-    maxSize = 1073741824, // 1GB
-    onFileSelect,
-}) => {
+const resolveAcceptTypes = (props: FileUploaderProps): string => {
+    const allowed =
+        props.allowedTypes ??
+        props.properties?.allowedTypes ??
+        props.properties?.validation_rules?.allowedTypes ??
+        props.properties?.validation_rules?.allowed_types;
+
+    if (!allowed || allowed === "*") return "*";
+    return String(allowed);
+};
+
+const resolveMaxSizeBytes = (props: FileUploaderProps): number => {
+    if (props.maxSize != null) return props.maxSize;
+
+    const mbRaw =
+        props.maxFileSize ??
+        props.properties?.maxFileSize ??
+        props.properties?.validation_rules?.maxFileSize ??
+        props.properties?.validation_rules?.max_file_size;
+
+    if (mbRaw == null || mbRaw === "") return 1073741824;
+    const mb = Number(mbRaw);
+    return isNaN(mb) || mb <= 0 ? 1073741824 : mb * 1024 * 1024;
+};
+
+const fileMatchesAccept = (file: File, accept: string): boolean => {
+    if (!accept || accept === "*") return true;
+
+    const patterns = accept.split(",").map((p) => p.trim()).filter(Boolean);
+
+    return patterns.some((pattern) => {
+        if (pattern === "*") return true;
+        if (pattern.endsWith("/*")) {
+            const prefix = pattern.slice(0, -1);
+            return file.type.startsWith(prefix);
+        }
+        if (pattern.startsWith(".")) {
+            return file.name.toLowerCase().endsWith(pattern.toLowerCase());
+        }
+        return file.type === pattern;
+    });
+};
+
+const formatAcceptLabel = (accept: string): string => {
+    if (accept === "*") return "all file types";
+    if (accept === "image/*") return "images";
+    if (accept.includes("pdf")) return "PDF files";
+    return "the allowed file types";
+};
+
+const FileUploader: React.FC<FileUploaderProps> = (props) => {
+    const {
+        control,
+        name,
+        label,
+        rules = {},
+        className = "",
+        accept: acceptProp,
+        onFileSelect,
+    } = props;
+
+    const accept = acceptProp ?? resolveAcceptTypes(props);
+    const maxSize = resolveMaxSizeBytes(props);
     const [preview, setPreview] = useState<string | null>(null);
     const [fileName, setFileName] = useState<string | null>(null);
     const [fileType, setFileType] = useState<string | null>(null);
@@ -70,6 +126,16 @@ const FileUploader: React.FC<FileUploaderProps> = ({
             return;
         }
 
+        if (!fileMatchesAccept(file, accept)) {
+            setError(`Please select ${formatAcceptLabel(accept)} only`);
+
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+
+            return;
+        }
+
         setFileName(file.name);
         setFileType(file.type);
         setFileSize(file.size);
@@ -88,7 +154,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         reader.onloadend = () => {
             const base64String = reader.result as string;
 
-            setPreview(base64String);
+            setPreview(isImageFile(file.type) ? base64String : null);
 
             onChange(base64String);
         };
@@ -123,23 +189,22 @@ const FileUploader: React.FC<FileUploaderProps> = ({
             }) => {
                 useEffect(() => {
                     if (value && typeof value === "string") {
-                        if (!preview) {
-                            setPreview(value);
-
+                        if (!fileName) {
                             if (value.startsWith("data:")) {
-                                setFileName(fileName || "Attached File");
-
                                 const type = value
                                     .split(";")[0]
                                     .split(":")[1];
 
                                 setFileType(type);
+                                setFileName("Attached File");
+                                setPreview(isImageFile(type) ? value : null);
                             } else {
                                 const nameFromUrl = value.split("/").pop();
 
                                 setFileName(
                                     nameFromUrl || "Uploaded File"
                                 );
+                                setPreview(null);
                             }
                         }
                     } else if (!value) {
@@ -168,18 +233,45 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                             </label>
                         )}
 
-                        <div className="w-full relative">
-                            <div
-                                role="button"
-                                tabIndex={0}
-                                onClick={handleContainerClick}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter" || e.key === " ") {
-                                        e.preventDefault();
-                                        handleContainerClick();
-                                    }
-                                }}
-                                className={`
+                        <div className="w-full relative space-y-2">
+                            {isImageFile(fileType) && preview ? (
+                                <div className="relative rounded-[8px] border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50 overflow-hidden">
+                                    <img
+                                        src={preview}
+                                        alt={fileName || "Preview"}
+                                        className="w-full max-h-40 object-contain"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemove(onChange)}
+                                        className="absolute top-2 right-2 p-1.5 bg-white/90 dark:bg-slate-900/90 text-gray-500 hover:text-red-500 rounded-full shadow-sm border border-gray-200 dark:border-slate-600 transition-colors"
+                                        title="Remove file"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                    {fileName && (
+                                        <div className="px-3 py-2 border-t border-gray-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-200 truncate">
+                                            {fileName}
+                                            {fileSize != null && (
+                                                <span className="text-xs text-gray-400 dark:text-slate-500 ml-1.5">
+                                                    ({(fileSize / 1024).toFixed(1)} KB)
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={handleContainerClick}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                            e.preventDefault();
+                                            handleContainerClick();
+                                        }
+                                    }}
+                                    className={`
                                     flex items-center justify-between w-full h-[42px] px-3 
                                     bg-white dark:bg-slate-900 border rounded-[8px] 
                                     text-left cursor-pointer transition-all duration-200 outline-none
@@ -190,67 +282,70 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                                         : "border-gray-300 dark:border-slate-700"
                                     }
                                 `}
-                            >
-                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                    {fileName ? (
-                                        <>
-                                            {isImageFile(fileType) && preview ? (
-                                                <div className="w-6 h-6 rounded border border-gray-200 dark:border-slate-700 overflow-hidden bg-gray-50 flex-shrink-0">
-                                                    <img src={preview} alt="" className="w-full h-full object-cover" />
-                                                </div>
-                                            ) : isImageFile(fileType) ? (
-                                                <ImageIcon size={16} className="text-blue-500 flex-shrink-0" />
-                                            ) : (
-                                                <File size={16} className="text-red-500 flex-shrink-0" />
-                                            )}
-                                            <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate flex-1">
-                                                {fileName}
-                                                {fileSize && (
-                                                    <span className="text-xs text-gray-400 dark:text-slate-500 font-normal ml-1.5">
-                                                        ({(fileSize / 1024).toFixed(1)} KB)
-                                                    </span>
-                                                )}
-                                            </span>
-                                        </>
-                                    ) : (
-                                        <span className="text-sm text-gray-400 dark:text-slate-500">
-                                            Choose file
-                                        </span>
-                                    )}
-                                </div>
-
-                                <div 
-                                    className="flex items-center gap-1.5 flex-shrink-0 ml-2" 
-                                    onClick={(e) => e.stopPropagation()}
                                 >
-                                    {fileName ? (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleRemove(onChange);
-                                            }}
-                                            className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors cursor-pointer"
-                                            title="Remove file"
-                                        >
-                                            <X size={16} />
-                                        </button>
-                                    ) : (
-                                        <ChevronDown size={16} className="text-gray-400 dark:text-slate-500" />
-                                    )}
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        {fileName ? (
+                                            <>
+                                                <File size={16} className="text-red-500 flex-shrink-0" />
+                                                <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate flex-1">
+                                                    {fileName}
+                                                    {fileSize != null && (
+                                                        <span className="text-xs text-gray-400 dark:text-slate-500 font-normal ml-1.5">
+                                                            ({(fileSize / 1024).toFixed(1)} KB)
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <span className="text-sm text-gray-400 dark:text-slate-500">
+                                                Choose file
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <div
+                                        className="flex items-center gap-1.5 flex-shrink-0 ml-2"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        {fileName ? (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleRemove(onChange);
+                                                }}
+                                                className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors cursor-pointer"
+                                                title="Remove file"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        ) : (
+                                            <ChevronDown size={16} className="text-gray-400 dark:text-slate-500" />
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             <input
                                 id={name}
                                 ref={fileInputRef}
                                 type="file"
                                 className="hidden"
-                                accept={accept}
+                                accept={accept === "*" ? undefined : accept}
                                 onChange={(e) =>
                                     handleFileChange(e, onChange)
                                 }
                             />
+
+                            {isImageFile(fileType) && preview && (
+                                <button
+                                    type="button"
+                                    onClick={handleContainerClick}
+                                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                    Replace image
+                                </button>
+                            )}
                         </div>
 
                         {error && (

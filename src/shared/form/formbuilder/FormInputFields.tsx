@@ -17,10 +17,10 @@ interface FieldButtonProps {
 export const FieldButton: React.FC<FieldButtonProps> = ({ icon: Icon, label, onClick }) => (
   <button
     onClick={onClick}
-    className="flex items-center px-1 gap-1 py-3 border border-gray-300 bg-gray-100 rounded-[4px] hover:bg-gray-50 hover:border-gray-400 transition-all text-left w-full"
+    className="flex items-center px-1 gap-1 py-3 border border-gray-300 dark:border-slate-600 bg-gray-100 dark:bg-slate-800 rounded-[4px] hover:bg-gray-50 dark:hover:bg-slate-700 hover:border-gray-400 dark:hover:border-slate-500 transition-all text-left w-full"
   >
-    <Icon size={18} className="text-gray-600" />
-    <span className="text-gray-700 font-medium truncate text-[12px]">{label}</span>
+    <Icon size={18} className="text-gray-600 dark:text-gray-400" />
+    <span className="text-gray-700 dark:text-gray-200 font-medium truncate text-[12px]">{label}</span>
   </button>
 );
 
@@ -122,6 +122,12 @@ export const FormFieldsConfig: FieldConfigItem[] = [
     type: "checkbox",
     label: "Checkbox",
     icon: CheckSquare
+  },
+  {
+    key: "radio",
+    type: "radio",
+    label: "Radio Button",
+    icon: Circle
   },
   {
     key: "url",
@@ -244,6 +250,10 @@ export const LongIntegerButton: React.FC<{ onClick?: () => void }> = ({ onClick 
 
 export const CheckboxButton: React.FC<{ onClick?: () => void }> = ({ onClick }) => (
   <FieldButton icon={CheckSquare} label="Checkbox" onClick={onClick} />
+);
+
+export const RadioButton: React.FC<{ onClick?: () => void }> = ({ onClick }) => (
+  <FieldButton icon={Circle} label="Radio Button" onClick={onClick} />
 );
 
 export const URLButton: React.FC<{ onClick?: () => void }> = ({ onClick }) => (

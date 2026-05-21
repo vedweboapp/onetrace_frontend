@@ -83,19 +83,23 @@ const Select = ({
           py-2
           outline-none
           w-full
+          text-slate-900
+          dark:text-white
           ${readOnly
                         ? `
                 border-none
                 bg-gray-100
+                dark:bg-slate-800/50
                 cursor-not-allowed
                 select-none
               `
                         : `
                 bg-white
+                dark:bg-slate-900
                 border
                 ${errors
                             ? "border-red-500"
-                            : "border-gray-300"
+                            : "border-gray-300 dark:border-slate-700"
                         }
                 focus:ring-2
                 focus:ring-blue-500
