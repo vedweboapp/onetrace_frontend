@@ -17,6 +17,7 @@ import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-opt
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
@@ -304,7 +305,26 @@ export function JobsPanel() {
     jobStatusParam,
     assignedWorkerParam,
   });
-  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const countInactive = React.useCallback(async () => {
+    const { pagination: p } = await fetchJobsPage(1, 1, {
+      search: search || undefined,
+      is_active: false,
+      job_status: jobStatusFilter,
+      assigned_worker: assignedWorkerFilter,
+    });
+    return p.total_records;
+  }, [search, jobStatusFilter, assignedWorkerFilter]);
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive, switchToInactive } =
+    useListActiveInactiveEmptyState({
+      loading,
+      loadError,
+      itemsLength: items.length,
+      isActiveParam,
+      isActiveFilter,
+      hasActiveFilters,
+      setUrl,
+      countInactive,
+    });
   const pageRange = getListPageRange(pagination);
 
   function clearFilters() {
@@ -318,7 +338,7 @@ export function JobsPanel() {
     <div className="space-y-4">
       {!hideListChrome ? (
         <ListPageHeader
-          filtersActive={hasActiveFilters}
+          filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
@@ -375,7 +395,7 @@ export function JobsPanel() {
       <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        ) : loading ? (
+        ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
               <ListPageCardGrid>
@@ -391,7 +411,25 @@ export function JobsPanel() {
             </div>
           )
         ) : items.length === 0 ? (
-          hasActiveFilters ? (
+          emptyStateKind === "onboarding" ? (
+            <DashboardEmptyState
+              iconName="jobStatus"
+              title={t("emptyTitle")}
+              description={t("emptyDescription")}
+              action={<AddButton type="button" onClick={openCreate} />}
+            />
+          ) : emptyStateKind === "activeOnly" ? (
+            <DashboardEmptyState
+              iconName="noResults"
+              title={tList("noActiveResultsTitle")}
+              description={tList("noActiveResultsDescription")}
+              action={
+                <AppButton type="button" variant="secondary" size="sm" onClick={switchToInactive}>
+                  {tList("viewInactive")}
+                </AppButton>
+              }
+            />
+          ) : (
             <DashboardEmptyState
               iconName="noResults"
               title={tList("noResultsTitle")}
@@ -401,13 +439,6 @@ export function JobsPanel() {
                   {tList("clearFilters")}
                 </AppButton>
               }
-            />
-          ) : (
-            <DashboardEmptyState
-              iconName="jobStatus"
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
-              action={<AddButton type="button" onClick={openCreate} />}
             />
           )
         ) : listViewMode === "list" ? (
@@ -482,7 +513,7 @@ export function JobsPanel() {
           />
         )}
 
-        {!loading && !loadError && items.length > 0 ? (
+        {!listLoading && !loadError && items.length > 0 ? (
           <DataTablePaginationBar
             pagination={pagination}
             summary={t("pageLabel", {
