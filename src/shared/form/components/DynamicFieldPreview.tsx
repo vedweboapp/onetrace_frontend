@@ -39,7 +39,7 @@ const icons: Record<string, LucideIcon> = {
   picklist: List,
   multi_select: ListChecks,
   date: Calendar,
-  date_time: Clock,
+  datetime: Clock,
   number: Hash,
   auto_number: ArrowUpDown,
   currency: DollarSign,

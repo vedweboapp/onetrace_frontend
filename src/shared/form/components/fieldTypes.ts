@@ -236,11 +236,11 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
   },
-  date_time: {
+  datetime: {
     label: "Date/Time",
     icon: Clock,
     defaultConfig: () => ({
-      type: "date_time",
+      type: "datetime",
       label: "Date & Time",
       name: "",
       required: false,

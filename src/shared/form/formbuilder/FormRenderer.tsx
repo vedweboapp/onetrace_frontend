@@ -43,6 +43,7 @@ interface Section {
   column_count?: number;
   is_subform?: boolean;
   subform_field_name?: string;
+  sequence?: number;
   fields: Field[];
 }
 
@@ -68,7 +69,7 @@ const FIELD_COMPONENTS: Record<string, any> = {
   url: (props: any) => <Input type="url" {...props} />,
   email: (props: any) => <Input type="email" {...props} />,
   date: (props: any) => <Input type="date" {...props} />,
-  date_time: (props: any) => <Input type="datetime-local" {...props} />,
+  datetime: (props: any) => <Input type="datetime-local" {...props} />,
   multi_line: TextBox,
   picklist: Select,
   select: Select,
@@ -436,7 +437,9 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
 
     return (
       <div className="form-renderer animate-in fade-in slide-in-from-bottom-2 duration-700">
-        {schema.map((section, sIdx) => {
+        {[...schema]
+          .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
+          .map((section, sIdx) => {
           if (section.is_subform) {
             const sfKey =
               section.subform_field_name ||
@@ -493,7 +496,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
                   .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
                   .map((f, fIdx) => (
                     <FormField
-                      key={f?.api_name || fIdx}
+                      key={`${f?.api_name}-${fIdx}`}
                       field={f}
                       control={control}
                       register={register}

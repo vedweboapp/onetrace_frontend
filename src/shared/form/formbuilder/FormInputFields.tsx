@@ -77,7 +77,7 @@ export const FormFieldsConfig: FieldConfigItem[] = [
   },
   {
     key: "dateTime",
-    type: "date_time",
+    type: "datetime",
     label: "Date/Time",
     icon: Clock
   },

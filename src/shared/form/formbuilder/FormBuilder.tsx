@@ -12,6 +12,7 @@ import { useFormStore } from "@/features/form-builder/store/form-builder.store";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { AppTabs } from "@/shared/ui/app-tabs";
+import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
 import FormRenderer from "./FormRenderer";
 
 interface Field {
@@ -350,7 +351,8 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
 
   useEffect(() => {
     if (formSchema && formSchema.length > 0) {
-      const initializedSections: Section[] = formSchema.map((sec: any, sIdx: number) => ({
+      const sortedSchema = [...formSchema].sort((a: any, b: any) => (a.sequence ?? 0) - (b.sequence ?? 0));
+      const initializedSections: Section[] = sortedSchema.map((sec: any, sIdx: number) => ({
         ...sec,
         _uid: sec.id?.toString() || `section-${sIdx}-${Date.now()}`,
         name: sec.name || sec.sectionHeader || "",
@@ -560,22 +562,27 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
 
       if (purpose === "edit_layout") {
         // Build differential update structure as requested by the API
-        const createdSections = sections
-          .filter((sec) => !sec.is_deleted && (!sec.id || String(sec.id).startsWith("section-")))
-          .map((sec, secIdx) => {
+        // Get all non-deleted sections sorted by their current position
+        const allNonDeletedSections = sections.filter((sec) => !sec.is_deleted);
+
+        const createdSections = allNonDeletedSections
+          .filter((sec) => !sec.id || String(sec.id).startsWith("section-"))
+          .map((sec) => {
             const activeFields = (sec.fields || []).filter((f) => !f.is_deleted);
+            // Get the correct sequence position for this created section
+            const sequencePosition = allNonDeletedSections.indexOf(sec) + 1;
             return {
               name: sec.name,
-              sequence: secIdx + 1,
+              sequence: sequencePosition,
               column_count: sec.column_count,
               is_subform: !!sec.is_subform,
               fields: activeFields.map((f, fIdx) => formatFieldPayload(f, fIdx)),
             };
           });
 
-        const updatedSections = sections
-          .filter((sec) => !sec.is_deleted && sec.id && !String(sec.id).startsWith("section-"))
-          .map((sec, secIdx) => {
+        const updatedSections = allNonDeletedSections
+          .filter((sec) => sec.id && !String(sec.id).startsWith("section-"))
+          .map((sec) => {
             const activeFields = (sec.fields || [])
               .filter((f) => !f.is_deleted)
               .map((f, fIdx) => {
@@ -586,10 +593,12 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
                 return payload;
               });
 
+            // Get the correct sequence position for this updated section
+            const sequencePosition = allNonDeletedSections.indexOf(sec) + 1;
             return {
               id: Number(sec.id) || sec.id,
               name: sec.name,
-              sequence: secIdx + 1,
+              sequence: sequencePosition,
               column_count: sec.column_count,
               is_subform: !!sec.is_subform,
               fields: activeFields,
@@ -708,6 +717,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
       setDirty(false);
 
       if (isClose) {
+        toastSuccess("Layout saved successfully!");
         if (purpose === "create_module") {
           router.push("/dashboard/settings/modules");
         } else if (purpose === "create_layout" || purpose === "edit_layout") {
@@ -715,9 +725,12 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
         } else {
           router.back();
         }
+      } else {
+        toastSuccess("Layout saved successfully!");
       }
     } catch (err) {
       console.error("Save failed", err);
+      toastError("Failed to save layout. Please try again.");
     } finally {
       setSaving(false);
     }

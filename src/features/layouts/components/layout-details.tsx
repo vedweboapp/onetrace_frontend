@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
-import { getLayoutMetadata } from "../api/layout-api";
+import { getLayoutMetadata, updateLayoutStatus } from "../api/layout-api";
 import {
     DataTable,
     DataTableBody,
@@ -17,6 +17,7 @@ import {
     AppButton,
     ListPageSearchField
 } from "@/shared/ui";
+import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
 
 const LayoutDetails = () => {
     const [searchQuery, setSearchQuery] = useState("");
@@ -60,7 +61,20 @@ const LayoutDetails = () => {
         const layoutName = layout.name || layout.displayName || layout.layoutName || "Standard";
         return layoutName.toLowerCase().includes(searchQuery.toLowerCase());
     });
-
+    const switchActiveStatus = async (layoutId: string | number, currentStatus: boolean) => {
+        try {
+            await updateLayoutStatus(moduleId as string, layoutId, !currentStatus);
+            setLayouts((prev) =>
+                prev.map((layout) =>
+                    layout.id === layoutId ? { ...layout, is_active: !currentStatus } : layout
+                )
+            );
+            toastSuccess("Layout status updated successfully!");
+        } catch (err) {
+            console.error("Failed to update layout status", err);
+            toastError("Failed to update layout status. Please try again.");
+        }
+    }
     if (loading) {
         return (
             <div className="flex flex-col gap-6 w-full animate-in fade-in duration-500">
@@ -145,6 +159,10 @@ const LayoutDetails = () => {
                                                     <button
                                                         type="button"
                                                         role="switch"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            switchActiveStatus(row.id, activeStatus);
+                                                        }}
                                                         aria-checked={activeStatus}
                                                         className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${activeStatus ? 'bg-[#21C588]' : 'bg-slate-200'
                                                             }`}

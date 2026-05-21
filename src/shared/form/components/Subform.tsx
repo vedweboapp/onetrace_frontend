@@ -37,7 +37,7 @@ const getNormalizedType = (type: string) => {
     multi_line: "textarea",
     picklist: "pick-list",
     multi_select: "multi-select",
-    date_time: "date-time",
+    datetime: "date-time",
     auto_number: "single_line",
     rollup_summary: "single_line",
     long_integer: "number",
@@ -203,7 +203,7 @@ const CellInput: React.FC<{
   const inputTypeMap: Record<string, string> = {
     date: "date",
     "date-time": "datetime-local",
-    date_time: "datetime-local",
+    datetime: "datetime-local",
     time: "time",
     number: "number",
     long_integer: "number",
