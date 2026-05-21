@@ -9,7 +9,9 @@ export async function fetchPersonalProfile(id: string) {
 }
 
 export async function updatePersonalProfile(id: string, body: any) {
-    const { data } = await api.patch<ApiEnvelope<any>>(PersonalProfilePaths.updateProfile(id), body);
+    const { data } = await api.patch<ApiEnvelope<any>>(PersonalProfilePaths.updateProfile(id), body, {
+        skipErrorToast: true,
+    });
     assertApiSuccess(data);
     return data.data;
 }

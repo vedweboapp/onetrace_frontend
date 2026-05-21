@@ -61,8 +61,8 @@ export const useUrlParams = (
     }, [searchParams, defaults]);
 
     const updateParams = useCallback((newParams: URLSearchParams) => {
-        router.push(`${pathname}?${newParams.toString()}`);
-    }, [router, pathname]);
+    router.replace(`${pathname}?${newParams.toString()}`, { scroll: false });
+}, [router, pathname]);
 
     const setParam = useCallback((
         key: string,

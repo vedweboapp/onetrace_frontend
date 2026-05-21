@@ -64,7 +64,7 @@ const RadioGroup: React.FC<RadioGroupProps> = ({
                 />
                 <div className="absolute w-2 h-2 bg-white rounded-full scale-0 peer-checked:scale-100 transition-transform" />
               </div>
-              <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
+              <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
                 {optLabel}
               </span>
             </label>

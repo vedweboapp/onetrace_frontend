@@ -7,16 +7,16 @@ export interface UseFormHandlerOptions {
 export interface FormRefMethods {
   getChangedData: () => any;
   getFormData: () => any;
-  submit: (onValid: (data?: any) => void, onInvalid?: (errors: any) => void) => () => void;
+  submit: (onValid: (data?: any) => void, onInvalid?: (errors: any) => void) => void | (() => void);
   reset: (values?: any) => void;
 }
 
-export const useFormHandler = <T = any>(
+export const useFormHandler = <T = any, R extends FormRefMethods = FormRefMethods>(
   onSubmit: (data: T) => Promise<void> | void,
   options: UseFormHandlerOptions = {}
 ) => {
   const { changesOnly = false } = options;
-  const formRef = useRef<FormRefMethods>(null);
+  const formRef = useRef<R>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +36,7 @@ export const useFormHandler = <T = any>(
       // Choose method based on option
       const submitMethod = changesOnly ? formRef.current.getChangedData : formRef.current.getFormData;
 
-      formRef.current.submit(
+      const result = formRef.current.submit(
         async (_) => {
           const dataToSubmit = submitMethod();
           console.log('Form is valid. Submitting data:', dataToSubmit);
@@ -50,7 +50,11 @@ export const useFormHandler = <T = any>(
           console.log('Form validation errors:', validationErrors);
           setError('Validation failed');
         }
-      )();
+      );
+
+      if (typeof result === 'function') {
+        result();
+      }
 
     } catch (err: any) {
       console.error('Form submission error:', err);

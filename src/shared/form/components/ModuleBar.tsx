@@ -51,7 +51,7 @@ const ModuleBar: React.FC = () => {
 
   return (
     <div
-      className="fixed top-28 z-10 flex flex-col bg-white shadow-sm overflow-hidden"
+      className="fixed top-28 z-10 flex flex-col bg-white dark:bg-slate-900 shadow-sm dark:shadow-slate-900/50 border-r border-gray-200 dark:border-slate-700 overflow-hidden"
       style={{
         left: "var(--modulebar-left, 200px)",
         width: 288,
@@ -73,7 +73,7 @@ const ModuleBar: React.FC = () => {
       </div>
 
       {/* Fixed bottom action buttons */}
-      <div className="p-4 space-y-3 bg-white shrink-0">
+      <div className="p-4 space-y-3 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700 shrink-0">
         <DraggableAddButton type="ADD_SECTION" label="Add New Section" variant="secondary" />
         <DraggableAddButton type="ADD_SUBFORM" label="Add New Subform" variant="primary" />
       </div>
