@@ -15,12 +15,12 @@ import {
   PanelLeftClose,
   Settings,
   ListTodo,
-  Tags,
-  Tag,
+  QrCode,
   UserRound,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
+import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
@@ -73,6 +73,7 @@ export function DashboardHeader() {
   const sitesHref = routes.dashboard.sites;
   const quotationsHref = routes.dashboard.quotations;
   const jobsHref = routes.dashboard.jobs;
+  const qrCodesHref = routes.dashboard.qrCodes;
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
@@ -80,9 +81,11 @@ export function DashboardHeader() {
   const personalProfileHref = routes.dashboard.settingsPersonalProfile;
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
   const modulesHref = routes.dashboard.settingsModules;
+  const customizationHref = routes.dashboard.settingsCustomization;
   const pinStatusHref = routes.dashboard.settingsPinStatus;
   const jobStatusHref = routes.dashboard.settingsJobStatus;
   const tagHref = routes.dashboard.settingsTags;
+  const projectTypeHref = routes.dashboard.settingsProjectTypes;
   const usersHref = routes.dashboard.settingsUsers;
   const homeActive = pathname === homeHref;
   const clientsActive =
@@ -93,6 +96,7 @@ export function DashboardHeader() {
   const quotationsActive =
     pathname === quotationsHref || pathname.startsWith(`${quotationsHref}/`);
   const jobsActive = pathname === jobsHref || pathname.startsWith(`${jobsHref}/`);
+  const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
   const groupsActive = pathname === groupsHref || pathname.startsWith(`${groupsHref}/`);
@@ -109,6 +113,11 @@ export function DashboardHeader() {
   const jobStatusActive =
     pathname === jobStatusHref || pathname.startsWith(`${jobStatusHref}/`);
   const tagActive = pathname === tagHref || pathname.startsWith(`${tagHref}/`);
+  const projectTypeActive =
+    pathname === projectTypeHref || pathname.startsWith(`${projectTypeHref}/`);
+  const customizationHubActive =
+    pathname === customizationHref || pathname.startsWith(`${customizationHref}/`);
+  const customizationActive = isCustomizationSettingsPath(pathname);
   const usersActive = pathname === usersHref || pathname.startsWith(`${usersHref}/`);
 
   const sectionTitle = homeActive
@@ -117,31 +126,39 @@ export function DashboardHeader() {
       ? tNav("projects")
       : quotationsActive
         ? tNav("quotations")
-          : jobsActive
-            ? tNav("jobs")
-          : sitesActive
-          ? tNav("sites")
-          : contactsActive
-            ? tNav("contacts")
-            : clientsActive
-              ? tNav("clients")
-              : groupsActive
-                ? tNav("groups")
-                : compositeActive
-                  ? tNav("compositeItems")
-                  : personalProfileActive
-                    ? tSettingsNav("personalProfile")
-                    : companySettingsActive
-                      ? tSettingsNav("companySettings")
-                      : modulesActive
-                        ? tSettingsNav("modules")
-                        : pinStatusActive
-                          ? tSettingsNav("pinStatus")
-                          : tagActive
-                            ? tSettingsNav("tags")
-                            : usersActive
-                              ? tSettingsNav("users")
-                              : tNav("home");
+        : jobsActive
+          ? tNav("jobs")
+          : qrCodesActive
+            ? tNav("qrCodes")
+            : sitesActive
+              ? tNav("sites")
+              : contactsActive
+                ? tNav("contacts")
+                : clientsActive
+                  ? tNav("clients")
+                  : groupsActive
+                    ? tNav("groups")
+                    : compositeActive
+                      ? tNav("compositeItems")
+                      : personalProfileActive
+                        ? tSettingsNav("personalProfile")
+                        : companySettingsActive
+                          ? tSettingsNav("companySettings")
+                          : modulesActive
+                            ? tSettingsNav("modules")
+                            : customizationHubActive
+                              ? tSettingsNav("customization.label")
+                              : pinStatusActive
+                                ? tSettingsNav("pinStatus")
+                                : jobStatusActive
+                                  ? tSettingsNav("jobStatus")
+                                  : tagActive
+                                    ? tSettingsNav("tags")
+                                    : projectTypeActive
+                                      ? tSettingsNav("projectTypes")
+                                      : usersActive
+                                        ? tSettingsNav("users")
+                                        : tNav("home");
 
   return (
     <header className="flex h-auto shrink-0 flex-col bg-white dark:bg-slate-950">
@@ -269,37 +286,15 @@ export function DashboardHeader() {
               {tSettingsNav("modules")}
             </Link>
             <Link
-              href={pinStatusHref}
+              href={customizationHref}
               className={cn(
                 "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
-                pinStatusActive ? resolved.navActiveClassName : mobileInactive(),
+                customizationActive ? resolved.navActiveClassName : mobileInactive(),
               )}
-              style={pinStatusActive ? resolved.navActiveStyle : undefined}
+              style={customizationActive ? resolved.navActiveStyle : undefined}
             >
-              <Tags className="size-3.5" strokeWidth={1.75} />
-              {tSettingsNav("pinStatus")}
-            </Link>
-            <Link
-              href={jobStatusHref}
-              className={cn(
-                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
-                jobStatusActive ? resolved.navActiveClassName : mobileInactive(),
-              )}
-              style={jobStatusActive ? resolved.navActiveStyle : undefined}
-            >
-              <ListTodo className="size-3.5" strokeWidth={1.75} />
-              {tSettingsNav("jobStatus")}
-            </Link>
-            <Link
-              href={tagHref}
-              className={cn(
-                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
-                tagActive ? resolved.navActiveClassName : mobileInactive(),
-              )}
-              style={tagActive ? resolved.navActiveStyle : undefined}
-            >
-              <Tag className="size-3.5" strokeWidth={1.75} />
-              {tSettingsNav("tags")}
+              <Palette className="size-3.5" strokeWidth={1.75} />
+              {tSettingsNav("customization.label")}
             </Link>
             <Link
               href={usersHref}
@@ -380,6 +375,17 @@ export function DashboardHeader() {
             >
               <ListTodo className="size-3.5" strokeWidth={1.75} />
               {tNav("jobs")}
+            </Link>
+            <Link
+              href={qrCodesHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                qrCodesActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={qrCodesActive ? resolved.navActiveStyle : undefined}
+            >
+              <QrCode className="size-3.5" strokeWidth={1.75} />
+              {tNav("qrCodes")}
             </Link>
             <Link
               href={projectsHref}

@@ -6,9 +6,13 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
+import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
+import { ProjectTypeChip } from "@/features/project-types/components/project-type-chip";
+import type { ProjectType } from "@/features/project-types/types/project-type.types";
 import { deleteProject, fetchProjectsPage, patchProject } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
+import { projectTypesById, resolveProjectTypeChipData } from "@/features/projects/utils/project-type-id.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -92,6 +96,7 @@ export function ProjectsPanel() {
   const [refreshNonce, setRefreshNonce] = React.useState(0);
 
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [projectTypeById, setProjectTypeById] = React.useState<Record<number, ProjectType>>({});
 
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deletingProject, setDeletingProject] = React.useState<Project | null>(null);
@@ -119,6 +124,21 @@ export function ProjectsPanel() {
         }
       } catch {
         if (!cancelled) setClientOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchProjectTypesPage(1, 500, { is_active: true });
+        if (!cancelled) setProjectTypeById(projectTypesById(items));
+      } catch {
+        if (!cancelled) setProjectTypeById({});
       }
     })();
     return () => {
@@ -216,6 +236,10 @@ export function ProjectsPanel() {
     return [
       c.primary("name", t("table.name"), (r) => r.name),
       c.text("client", t("table.client"), (r) => projectRowClientLabel(r, clientLabelById)),
+      c.custom("projectType", t("table.projectType"), (r) => {
+        const chip = resolveProjectTypeChipData(r, projectTypeById);
+        return chip ? <ProjectTypeChip row={chip} /> : "—";
+      }),
       c.text("start", t("table.start"), (r) => formatDay(r.start_date)),
       c.text("end", t("table.end"), (r) => formatDay(r.end_date)),
       c.custom(
@@ -261,7 +285,7 @@ export function ProjectsPanel() {
         />
       )),
     ];
-  }, [t, tList, clientLabelById, togglingId]);
+  }, [t, tList, clientLabelById, projectTypeById, togglingId]);
 
   const hasActiveFilters = hasListActiveFilters({ search, isActiveParam });
   const countInactive = React.useCallback(async () => {
@@ -378,7 +402,9 @@ export function ProjectsPanel() {
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>
-              {items.map((row) => (
+              {items.map((row) => {
+                const typeChip = resolveProjectTypeChipData(row, projectTypeById);
+                return (
                 <ListPageCard
                   key={row.id}
                   dataListRowId={row.id}
@@ -389,10 +415,13 @@ export function ProjectsPanel() {
                   description={row.description?.trim() || undefined}
                   footer={
                     <div className="flex w-full flex-wrap items-center justify-between gap-3">
-                      <ActiveStatusBadge
-                        active={row.is_active}
-                        label={row.is_active ? t("status.active") : t("status.inactive")}
-                      />
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        {typeChip ? <ProjectTypeChip row={typeChip} /> : null}
+                        <ActiveStatusBadge
+                          active={row.is_active}
+                          label={row.is_active ? t("status.active") : t("status.inactive")}
+                        />
+                      </div>
                       <span className="text-xs text-slate-500 dark:text-slate-400">
                         {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}
                       </span>
@@ -438,7 +467,8 @@ export function ProjectsPanel() {
                     />
                   }
                 />
-              ))}
+              );
+              })}
             </ListPageCardGrid>
           </div>
         ) : (

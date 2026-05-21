@@ -2,8 +2,11 @@
 
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { ProjectTypeChip } from "@/features/project-types/components/project-type-chip";
+import type { ProjectType } from "@/features/project-types/types/project-type.types";
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
+import { resolveProjectTypeChipData } from "@/features/projects/utils/project-type-id.util";
 import { routes } from "@/shared/config/routes";
 import { DetailFormattedAddress, hasDetailAddress } from "@/shared/components/layout/detail-formatted-address";
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
@@ -41,15 +44,18 @@ export function ProjectDetailBody({
   dateFmt,
   dateOnlyFmt,
   clientName,
+  projectTypeById = {},
 }: {
   detail: Project;
   dateFmt: Intl.DateTimeFormat;
   dateOnlyFmt: Intl.DateTimeFormat;
   clientName: string | null;
+  projectTypeById?: Record<number, ProjectType>;
 }) {
   const t = useTranslations("Dashboard.projects");
   const tMeta = useTranslations("Dashboard.common.detail");
   const clientId = getProjectClientId(detail);
+  const projectTypeChip = resolveProjectTypeChipData(detail, projectTypeById);
 
   const start = detail.start_date?.slice(0, 10) ?? "";
   const end = detail.end_date?.slice(0, 10) ?? "";
@@ -91,6 +97,9 @@ export function ProjectDetailBody({
                 <span className="break-words text-slate-700 dark:text-slate-200">{clientName ?? "—"}</span>
               )}
             </DetailMetricCard>
+            <DetailMetricCard label={t("fields.projectType")}>
+              {projectTypeChip ? <ProjectTypeChip row={projectTypeChip} /> : <span>—</span>}
+            </DetailMetricCard>
             <DetailMetricCard label={t("fields.startDate")}>
               {start ? dateOnlyFmt.format(new Date(`${start}T12:00:00`)) : "—"}
             </DetailMetricCard>
@@ -120,21 +129,7 @@ export function ProjectDetailBody({
           )}
         </DetailPanelCard>
 
-        <DetailPanelCard title={t("detail.sectionAddress")}>
-          {showAddress ? (
-            <DetailFormattedAddress
-              line1={addressParts.line1}
-              line2={addressParts.line2}
-              city={addressParts.city}
-              state={addressParts.state}
-              pincode={addressParts.pincode}
-              country={addressParts.country}
-              emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">—</p>}
-            />
-          ) : (
-            <p className="text-sm font-normal text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>
-          )}
-        </DetailPanelCard>
+      
 
         <DetailPanelCard title={t("detail.panelSites")}>
           {siteRows.length === 0 ? (

@@ -5,12 +5,15 @@ import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import { fetchClient } from "@/features/clients/api/client.api";
+import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
+import type { ProjectType } from "@/features/project-types/types/project-type.types";
 import { createQuotationFromProject } from "@/features/quotations/api/quotation.api";
 import { deleteProject, fetchProject } from "@/features/projects/api/project.api";
 import { ProjectDetailBody } from "@/features/projects/components/project-detail-body";
 import { ProjectDrawingsTab } from "@/features/projects/components/project-drawings-tab";
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
+import { projectTypesById } from "@/features/projects/utils/project-type-id.util";
 import {
   EntityDetailDeleteEditActions,
   EntityDetailErrorState,
@@ -43,6 +46,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
   const dateOnlyFmt = useDashboardDateFormat({ dateOnly: true });
 
   const [clientName, setClientName] = React.useState<string | null>(null);
+  const [projectTypeById, setProjectTypeById] = React.useState<Record<number, ProjectType>>({});
   const [detailForClient, setDetailForClient] = React.useState<Project | null>(null);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
@@ -97,6 +101,21 @@ export function ProjectDetailScreen({ projectId }: Props) {
       cancelled = true;
     };
   }, [detailForClient]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchProjectTypesPage(1, 500);
+        if (!cancelled) setProjectTypeById(projectTypesById(items));
+      } catch {
+        if (!cancelled) setProjectTypeById({});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function confirmDelete(detail: Project) {
     setDeleting(true);
@@ -196,7 +215,13 @@ export function ProjectDetailScreen({ projectId }: Props) {
           ) : error && activeTab === "details" ? (
             <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
           ) : detail && activeTab === "details" ? (
-            <ProjectDetailBody detail={detail} dateFmt={dateFmt} dateOnlyFmt={dateOnlyFmt} clientName={clientName} />
+            <ProjectDetailBody
+              detail={detail}
+              dateFmt={dateFmt}
+              dateOnlyFmt={dateOnlyFmt}
+              clientName={clientName}
+              projectTypeById={projectTypeById}
+            />
           ) : loading ? (
             <EntityDetailLoadingSkeleton />
           ) : error ? (

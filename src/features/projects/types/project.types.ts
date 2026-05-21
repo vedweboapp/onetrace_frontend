@@ -8,6 +8,7 @@ export type ProjectUpsertPayload = {
   organization?: number;
   name: string;
   client: number;
+  project_type: number;
   description: string;
   sites?: number[];
 
@@ -23,6 +24,13 @@ export type ProjectUpdatePayload = ProjectUpsertPayload;
 export type ProjectClientRef = {
   id: number;
   name?: string | null;
+};
+
+export type ProjectTypeRef = {
+  id: number;
+  project_type?: string | null;
+  bg_colour?: string | null;
+  text_colour?: string | null;
 };
 
 /** Site row embedded on project detail from the API. */
@@ -43,6 +51,7 @@ export type Project = {
   name: string;
   description: string;
   client: number | ProjectClientRef;
+  project_type?: number | ProjectTypeRef | null;
   sites?: Array<number | ProjectSiteRef> | null;
   address_line_1?: string | null;
   address_line_2?: string | null;
