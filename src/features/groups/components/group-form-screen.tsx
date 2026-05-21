@@ -12,6 +12,7 @@ import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
@@ -66,6 +67,16 @@ export function GroupFormScreen({ mode, groupId }: Props) {
   const compositeSelectOptions = React.useMemo<CheckmarkSelectOption[]>(
     () => compositeOptions.map((opt) => ({ value: String(opt.id), label: opt.name })),
     [compositeOptions],
+  );
+
+  const compositeOptionsForRow = React.useCallback(
+    (rowId: string) =>
+      checkmarkOptionsExcludingUsed(
+        compositeSelectOptions,
+        rows.filter((r) => r.id !== rowId).map((r) => r.item),
+        rows.find((r) => r.id === rowId)?.item ?? "",
+      ),
+    [compositeSelectOptions, rows],
   );
 
   React.useEffect(() => {
@@ -144,7 +155,10 @@ export function GroupFormScreen({ mode, groupId }: Props) {
     if (!name.trim()) return;
     if (!hasAtLeastOneItem) return;
     const compositeItems = buildCompositeItemsPayload();
-    if (compositeItems == null) return;
+    if (compositeItems == null) {
+      toastError(tModal("duplicateCompositeItemError"));
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -170,10 +184,10 @@ export function GroupFormScreen({ mode, groupId }: Props) {
         subtitle={isEdit ? t("page.editSubtitle") : t("page.createSubtitle")}
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="md" disabled={submitting} onClick={() => router.push(safeBack ?? routes.dashboard.groups)}>
+            <AppButton type="button" variant="secondary" size="sm" disabled={submitting} onClick={() => router.push(safeBack ?? routes.dashboard.groups)}>
               {tModal("cancel")}
             </AppButton>
-            <AppButton type="submit" form="group-form-screen" variant="primary" size="md" loading={submitting}>
+            <AppButton type="submit" form="group-form-screen" variant="primary" size="sm" loading={submitting}>
               {isEdit ? tModal("saveChanges") : tModal("save")}
             </AppButton>
           </div>
@@ -229,10 +243,11 @@ export function GroupFormScreen({ mode, groupId }: Props) {
                         onChange={(value) => {
                           setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, item: value } : x)));
                         }}
-                        options={compositeSelectOptions}
+                        options={compositeOptionsForRow(row.id)}
                         emptyLabel={tModal("compositeItemPlaceholder")}
                         disabled={submitting}
                         portaled
+                        searchable
                         className="w-full"
                       />
                     </div>

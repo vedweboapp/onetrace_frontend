@@ -8,6 +8,8 @@ export type QuotationDraftLine = {
   name: string;
   quantity: number;
   selling_price: number;
+  /** How many drawing pins this line represents (not catalog/item stock quantity). */
+  pin_count?: number;
 };
 
 export type QuotationDraftPlot = {

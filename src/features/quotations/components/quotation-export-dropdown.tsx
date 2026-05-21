@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Download, FileSpreadsheet, FileStack, FileText } from "lucide-react";
+import { FileSpreadsheet, FileStack, FileText, type LucideIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { exportQuotation, type QuotationExportType } from "@/features/quotations/api/quotation.api";
 import { toastError } from "@/shared/feedback/app-toast";
@@ -92,11 +92,10 @@ export function QuotationExportDropdown({ quotationId, quoteName }: Props) {
     }
   }
 
-  const items: { id: QuotationExportType; label: string; icon: typeof Download }[] = [
+  const items: { id: QuotationExportType; label: string; icon: LucideIcon }[] = [
     { id: "pdf", label: t("pdf"), icon: FileText },
     { id: "excel", label: t("excel"), icon: FileSpreadsheet },
     { id: "csv", label: t("csv"), icon: FileStack },
-    { id: "all", label: t("all"), icon: Download },
   ];
 
   const menu = open ? (
@@ -144,17 +143,14 @@ export function QuotationExportDropdown({ quotationId, quoteName }: Props) {
         <AppButton
           type="button"
           variant="secondary"
-          size="md"
-          className="gap-1.5 pr-2"
+          size="sm"
           disabled={exporting}
           aria-expanded={open}
           aria-haspopup="menu"
           aria-label={t("buttonAria")}
           onClick={() => setOpen((v) => !v)}
         >
-          <Download className="size-4 shrink-0" strokeWidth={2} aria-hidden />
           {exporting ? t("exporting") : t("button")}
-          <ChevronDown className={cn("size-4 shrink-0 transition-transform", open && "rotate-180")} aria-hidden />
         </AppButton>
       </div>
       {menu && typeof document !== "undefined" ? createPortal(menu, document.body) : null}

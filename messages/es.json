@@ -82,6 +82,16 @@
     "common": {
       "back": "Atrás",
       "breadcrumbNav": "Migas de pan",
+      "actions": {
+        "add": "Añadir",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "export": "Exportar",
+        "edit": "Editar",
+        "delete": "Eliminar",
+        "confirm": "Confirmar",
+        "retry": "Reintentar"
+      },
       "map": {
         "loading": "Buscando ubicación…",
         "noAddress": "Añade la dirección completa para ver el mapa.",
@@ -103,6 +113,11 @@
       "user": {
         "username": "Usuario",
         "email": "Correo"
+      },
+      "detail": {
+        "systemMetadata": "Metadatos del sistema",
+        "modifiedBy": "Modificado por",
+        "notModifiedYet": "Sin modificar"
       }
     },
     "brand": {
@@ -125,6 +140,8 @@
       "contacts": "Contactos",
       "sites": "Sitios",
       "quotations": "Cotizaciones",
+      "jobs": "Trabajos",
+      "qrCodes": "Códigos QR",
       "projects": "Proyectos",
       "groups": "Grupos",
       "products": "Productos",
@@ -138,13 +155,38 @@
       "backToApp": "Proyectos",
       "appearance": "Apariencia",
       "pinStatus": "Estados de pin",
+      "jobStatus": "Estados de trabajo",
       "tags": "Etiquetas",
+      "projectTypes": "Tipos de proyecto",
       "users": "Usuarios",
       "personalProfile": "Perfil personal",
       "companySettings": "Ajustes de la empresa",
       "formBuilder": "Creador de formularios",
       "modules": "Módulos",
-      "hint": "Personaliza el tema y el color de acento de este espacio."
+      "hint": "Personaliza el tema y el color de acento de este espacio.",
+      "customization": {
+        "label": "Personalización",
+        "hubTitle": "Personalización",
+        "hubDescription": "Elige qué configurar: tipos de proyecto, estados de pin, estados de trabajo y etiquetas.",
+        "items": {
+          "projectTypes": {
+            "title": "Tipos de proyecto",
+            "description": "Categorías de proyecto con etiquetas de color."
+          },
+          "pinStatus": {
+            "title": "Estados de pin",
+            "description": "Colores de estado para pins en planos."
+          },
+          "jobStatus": {
+            "title": "Estados de trabajo",
+            "description": "Estados de flujo para trabajos."
+          },
+          "tags": {
+            "title": "Etiquetas",
+            "description": "Etiquetas para organizar pins y registros."
+          }
+        }
+      }
     },
     "settingsPersonalProfile": {
       "updatedToast": "Perfil actualizado correctamente",
@@ -231,7 +273,14 @@
       "edit": "Editar",
       "delete": "Eliminar",
       "table": {
+        "type": "Tipo",
+        "kindPin": "Pin",
+        "kindJob": "Trabajo",
+        "name": "Nombre",
+        "tag": "Etiqueta",
         "status": "Estado",
+        "createdBy": "Creado por",
+        "createdAt": "Creado el",
         "created": "Creado",
         "updated": "Última actualización",
         "actions": "Acciones"
@@ -248,7 +297,7 @@
       "loadError": "No se pudieron cargar los estados. Inténtalo de nuevo.",
       "modal": {
         "createTitle": "Nuevo estado de pin",
-        "editTitle": "Editar estado de pin",
+        "editTitle": "Editar",
         "statusName": "Nombre del estado",
         "bgColour": "Color de fondo",
         "textColour": "Color del texto",
@@ -257,6 +306,58 @@
       },
       "deleteConfirmTitle": "¿Eliminar este estado?",
       "deleteConfirmBody": "Los pins que usen este estado pueden verse afectados. Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar",
+      "pageLabel": "Mostrando {start}-{end} de {total} estados",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "saved": "Estado actualizado",
+      "created": "Estado creado",
+      "deleted": "Estado eliminado",
+      "hexPlaceholder": "#000000",
+      "validationName": "Introduce un nombre de estado.",
+      "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #E5E7EB)."
+    },
+    "jobStatus": {
+      "metaTitle": "Estados de trabajo",
+      "title": "Estados de trabajo",
+      "subtitle": "Crea y gestiona etiquetas de flujo para trabajos. Los colores se usan en las pastillas de estado en toda la app.",
+      "add": "Añadir",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "table": {
+        "type": "Tipo",
+        "kindPin": "Pin",
+        "kindJob": "Trabajo",
+        "name": "Nombre",
+        "tag": "Etiqueta",
+        "status": "Estado",
+        "createdBy": "Creado por",
+        "createdAt": "Creado el",
+        "created": "Creado",
+        "updated": "Última actualización",
+        "actions": "Acciones"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "byUser": "Por {user}"
+      },
+      "empty": "Aún no hay estados de trabajo. Añade uno para empezar.",
+      "emptyTitle": "Aún no hay estados de trabajo",
+      "emptyDescription": "Crea etiquetas de flujo para trabajos usados en tus proyectos.",
+      "loadError": "No se pudieron cargar los estados de trabajo. Inténtalo de nuevo.",
+      "modal": {
+        "createTitle": "Nuevo estado de trabajo",
+        "editTitle": "Editar",
+        "statusName": "Nombre del estado",
+        "bgColour": "Color de fondo",
+        "textColour": "Color del texto",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "deleteConfirmTitle": "¿Eliminar este estado?",
+      "deleteConfirmBody": "Los trabajos que usen este estado pueden verse afectados. Esta acción no se puede deshacer.",
       "confirmDelete": "Eliminar",
       "pageLabel": "Mostrando {start}-{end} de {total} estados",
       "prev": "Anterior",
@@ -298,7 +399,7 @@
       "loadError": "No se pudieron cargar las etiquetas. Inténtalo de nuevo.",
       "modal": {
         "createTitle": "Nueva etiqueta",
-        "editTitle": "Editar etiqueta",
+        "editTitle": "Editar",
         "tagName": "Nombre de la etiqueta",
         "bgColour": "Color de fondo",
         "textColour": "Color del texto",
@@ -316,6 +417,62 @@
       "deleted": "Etiqueta eliminada",
       "hexPlaceholder": "#000000",
       "validationName": "Introduce un nombre de etiqueta.",
+      "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #DBEAFE)."
+    },
+    "projectTypes": {
+      "metaTitle": "Tipos de proyecto",
+      "title": "Tipos de proyecto",
+      "subtitle": "Define categorías de proyecto con etiquetas de color para usar en proyectos.",
+      "add": "Añadir",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "filterState": "Estado activo",
+      "table": {
+        "type": "Tipo de proyecto",
+        "status": "Estado del registro",
+        "created": "Creado",
+        "updated": "Última actualización",
+        "actions": "Acciones"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "byUser": "Por {user}"
+      },
+      "emptyTitle": "Aún no hay tipos de proyecto",
+      "emptyDescription": "Crea tu primer tipo de proyecto para clasificar proyectos.",
+      "loadError": "No se pudieron cargar los tipos de proyecto. Inténtalo de nuevo.",
+      "modal": {
+        "createTitle": "Nuevo tipo de proyecto",
+        "editTitle": "Editar tipo de proyecto",
+        "typeName": "Nombre",
+        "bgColour": "Color de fondo",
+        "textColour": "Color del texto",
+        "activeLabel": "Activo",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "deleteConfirmTitle": "¿Eliminar este tipo de proyecto?",
+      "deleteConfirmBody": "Los proyectos que usen este tipo pueden verse afectados. Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar",
+      "pageLabel": "Mostrando {start}-{end} de {total} tipos de proyecto",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "saved": "Tipo de proyecto actualizado",
+      "created": "Tipo de proyecto creado",
+      "deleted": "Tipo de proyecto eliminado",
+      "activatedToast": "Tipo de proyecto activado",
+      "deactivatedToast": "Tipo de proyecto desactivado",
+      "toggleActiveError": "No se pudo actualizar el estado. Inténtalo de nuevo.",
+      "hexPlaceholder": "#000000",
+      "validationName": "Introduce un nombre de tipo de proyecto.",
       "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #DBEAFE)."
     },
     "users": {
@@ -392,13 +549,13 @@
       "detail": {
         "retry": "Reintentar",
         "backAria": "Volver a la lista de usuarios",
-        "editWithIcon": "Editar usuario",
+        "editWithIcon": "Editar",
         "sectionOverview": "Resumen"
       },
       "page": {
         "createTitle": "Invitar usuario",
         "createSubtitle": "Completa los datos del usuario y envía la invitación.",
-        "editTitle": "Editar usuario",
+        "editTitle": "Editar",
         "editSubtitle": "Actualiza los datos del usuario y guarda los cambios."
       }
     },
@@ -448,7 +605,7 @@
         "retry": "Reintentar",
         "close": "Cerrar panel",
         "edit": "Editar",
-        "editWithIcon": "Editar cliente",
+        "editWithIcon": "Editar",
         "backAria": "Volver a la lista de clientes",
         "addressUnavailable": "Aún no hay dirección guardada para este cliente.",
         "sectionContact": "Contacto",
@@ -459,7 +616,17 @@
         "notProvided": "—",
         "metaStatus": "Estado",
         "metaClientId": "ID de cliente",
-        "addressLine2Empty": "No hay segunda línea de dirección"
+        "addressLine2Empty": "No hay segunda línea de dirección",
+        "tabsAria": "Secciones del cliente",
+        "tabs": {
+          "details": "Resumen",
+          "contacts": "Contactos",
+          "sites": "Sitios"
+        },
+        "contactsEmptyTitle": "No hay contactos para este cliente",
+        "contactsEmptyDescription": "Los contactos vinculados a este cliente aparecerán aquí.",
+        "sitesEmptyTitle": "No hay sitios para este cliente",
+        "sitesEmptyDescription": "Los sitios vinculados a este cliente aparecerán aquí."
       },
       "detailLoadError": "No se pudieron cargar los datos del cliente. Inténtalo de nuevo.",
       "form": {
@@ -488,7 +655,7 @@
       },
       "modal": {
         "createTitle": "Nuevo cliente",
-        "editTitle": "Editar cliente",
+        "editTitle": "Editar",
         "cancel": "Cancelar",
         "save": "Crear cliente",
         "saveChanges": "Guardar cambios"
@@ -496,7 +663,7 @@
       "page": {
         "createTitle": "Crear cliente",
         "createSubtitle": "Completa los datos del cliente y guarda.",
-        "editTitle": "Editar cliente",
+        "editTitle": "Editar",
         "editSubtitle": "Actualiza los datos del cliente y guarda los cambios."
       },
       "validation": {
@@ -509,6 +676,66 @@
         "state": "Selecciona un estado o provincia.",
         "city": "Selecciona o escribe una ciudad.",
         "pincode": "Introduce un código postal."
+      }
+    },
+    "qrCodes": {
+      "metaTitle": "Códigos QR",
+      "detailMetaTitle": "Detalle del código QR",
+      "loadError": "No se pudieron cargar los códigos QR. Inténtalo de nuevo.",
+      "detailLoadError": "No se pudieron cargar los detalles del código QR. Inténtalo de nuevo.",
+      "emptyTitle": "Aún no hay códigos QR",
+      "emptyDescription": "Genera códigos QR para asignarlos a trabajos y registrar escaneos.",
+      "searchPlaceholder": "Buscar por ID de código QR…",
+      "filterStatus": "Estado",
+      "filterAllStatuses": "Todos los estados",
+      "pageLabel": "Mostrando {start}-{end} de {total} códigos QR",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "delete": "Eliminar",
+      "deleteConfirmTitle": "¿Eliminar este código QR?",
+      "deleteConfirmBody": "Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar código QR",
+      "deletedToast": "Código QR eliminado",
+      "cardAssignedJob": "Asignado al trabajo #{id}",
+      "cardNotAssigned": "Sin asignar a un trabajo",
+      "cardScans": "{count, plural, one {# escaneo} other {# escaneos}}",
+      "status": {
+        "assigned": "Asignado",
+        "notAssigned": "No asignado"
+      },
+      "table": {
+        "qrCodeId": "Código QR",
+        "status": "Estado",
+        "assignedJob": "Trabajo asignado",
+        "scanCount": "Escaneos",
+        "lastScanned": "Último escaneo",
+        "created": "Creado",
+        "actions": "Acciones"
+      },
+      "generate": {
+        "button": "Generar códigos QR",
+        "title": "Generar códigos QR",
+        "countLabel": "Cantidad de códigos QR",
+        "countHint": "Introduce un valor entre {min} y {max}.",
+        "submit": "Generar",
+        "cancel": "Cancelar",
+        "successToast": "Códigos QR generados correctamente",
+        "validationCount": "Introduce una cantidad válida de códigos QR."
+      },
+      "detail": {
+        "loadingTitle": "Cargando…",
+        "retry": "Reintentar",
+        "backAria": "Volver a la lista de códigos QR",
+        "sectionQr": "Código QR",
+        "assignedJob": "Trabajo asignado",
+        "notAssigned": "Sin asignar",
+        "viewJob": "Ver trabajo #{id}",
+        "recordId": "ID de registro"
+      },
+      "fields": {
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "createdBy": "Creado por"
       }
     },
     "contacts": {
@@ -585,7 +812,7 @@
       "page": {
         "createTitle": "Crear contacto",
         "createSubtitle": "Completa los datos del contacto y guarda.",
-        "editTitle": "Editar contacto",
+        "editTitle": "Editar",
         "editSubtitle": "Actualiza los datos del contacto y guarda los cambios."
       },
       "placeholders": {
@@ -641,6 +868,7 @@
         "name": "Sitio",
         "client": "Cliente",
         "address": "Dirección",
+        "what3words": "what3words",
         "status": "Estado",
         "created": "Creado",
         "actions": "Acciones"
@@ -652,7 +880,7 @@
       "detail": {
         "loadingTitle": "Cargando…",
         "retry": "Reintentar",
-        "editWithIcon": "Editar sitio",
+        "editWithIcon": "Editar",
         "backAria": "Volver a la lista de sitios",
         "sectionOverview": "Resumen",
         "sectionAddress": "Dirección",
@@ -665,7 +893,8 @@
         "client": "Seleccionar cliente",
         "country": "Seleccionar país",
         "state": "Seleccionar estado / provincia",
-        "city": "Seleccionar o escribir ciudad"
+        "city": "Seleccionar o escribir ciudad",
+        "what3words": "p. ej. filled.count.soap"
       },
       "fields": {
         "siteName": "Nombre del sitio",
@@ -676,13 +905,15 @@
         "stateProvince": "Estado / provincia",
         "city": "Ciudad",
         "pincode": "Código postal",
+        "what3words": "what3words",
         "status": "Estado",
         "createdAt": "Creado",
-        "updatedAt": "Última actualización"
+        "updatedAt": "Última actualización",
+        "createdBy": "Creado por"
       },
       "modal": {
         "createTitle": "Nuevo sitio",
-        "editTitle": "Editar sitio",
+        "editTitle": "Editar",
         "cancel": "Cancelar",
         "save": "Crear sitio",
         "saveChanges": "Guardar cambios"
@@ -690,7 +921,7 @@
       "page": {
         "createTitle": "Crear sitio",
         "createSubtitle": "Completa los datos del sitio y guarda.",
-        "editTitle": "Editar sitio",
+        "editTitle": "Editar",
         "editSubtitle": "Actualiza los datos del sitio y guarda los cambios."
       },
       "validation": {
@@ -701,6 +932,21 @@
         "state": "Selecciona un estado o provincia.",
         "city": "Selecciona o escribe una ciudad.",
         "pincode": "Introduce un código postal."
+      },
+      "location": {
+        "searchPlaceholder": "Empieza a escribir la dirección…",
+        "googleSearchPlaceholder": "Buscar dirección…",
+      
+        "searchPlaceholderLine2": "Piso, puerta, edificio (opcional)…",
+        "searching": "Buscando lugares…",
+        "resolvingPlace": "Cargando detalles de la dirección…",
+        "noResults": "Sin coincidencias — puedes escribir la dirección manualmente.",
+        "mapTitle": "Ubicación en el mapa",
+        "dragPinHint": "Arrastra el pin o haz clic en el mapa para marcar el punto exacto.",
+        "mapPickHint": "Añade la dirección o búscala arriba, luego coloca el pin en el mapa.",
+        "mapNotFoundHint": "No se pudo ubicar esta dirección — indica ciudad, provincia y código postal, o haz clic en el mapa para colocar el pin.",
+        "addressFromPin": "Dirección actualizada según la posición del pin.",
+        "coordsLabel": "Coordenadas: {lat}, {lon}"
       }
     },
     "quotations": {
@@ -767,6 +1013,10 @@
         "loadingTitle": "Cargando…",
         "retry": "Reintentar",
         "backAria": "Volver al listado de cotizaciones",
+        "createJob": "Crear trabajo",
+        "createJobAria": "Crear un trabajo desde esta cotización",
+        "createJobToast": "Trabajo creado desde la cotización",
+        "createJobError": "No se pudo crear un trabajo desde esta cotización. Inténtalo de nuevo.",
         "sectionOverview": "Resumen",
         "sectionPeople": "Personas y roles",
         "sectionProject": "Proyecto y niveles",
@@ -866,12 +1116,49 @@
         "deleteSection": "Eliminar",
         "cancel": "Cancelar",
         "toggleRowExpand": "Expandir o contraer",
-        "editRowName": "Editar nombre"
+        "editRowName": "Editar nombre",
+        "editComposite": "Ver detalles"
+      },
+      "blockScope": {
+        "metaTitle": "Artículos del bloque",
+        "loadingTitle": "Cargando…",
+        "missingTitle": "Bloque no disponible",
+        "missingBody": "Abra esta página desde Alcance y precios haciendo clic en una fila compuesta.",
+        "backAria": "Volver al alcance de la cotización",
+        "blockLabel": "Nombre del bloque",
+        "colProduct": "Nombre del producto",
+        "colQty": "Cant.",
+        "colListPrice": "Precio de lista",
+        "colAmount": "Importe",
+        "colDiscount": "Descuento",
+        "colTax": "Impuesto",
+        "colTotal": "Total",
+        "plotSubtotal": "Subtotal del lote",
+        "emptyBlock": "No hay artículos compuestos en este bloque."
+      },
+      "compositeScope": {
+        "metaTitle": "Detalles del artículo compuesto",
+        "loadingTitle": "Cargando…",
+        "loadError": "No se pudo cargar este artículo compuesto.",
+        "backAria": "Volver al alcance de la cotización",
+        "repeatBadge": "Incluido ×{count}",
+        "sectionQuoteLine": "En esta cotización",
+        "includedTimes": "Veces en la cotización",
+        "packagePrice": "Precio del paquete",
+        "scopeLineTotal": "Total de línea en la cotización",
+        "openCatalogItem": "Abrir en catálogo de compuestos",
+        "sectionComponents": "Contenido del paquete",
+        "colQtyPerPackage": "Cant. / paquete",
+        "colQtyInScope": "Cant. en cotización",
+        "colUnitPrice": "Precio unitario",
+        "colLineTotal": "Total de línea",
+        "noComponents": "No hay artículos componentes definidos para este paquete."
       },
       "fields": {
         "quoteName": "Nombre de la cotización",
         "customer": "Cliente",
         "site": "Sitio",
+        "what3words": "what3words",
         "project": "Proyecto",
         "primaryContact": "Contacto principal",
         "additionalContact": "Contacto adicional",
@@ -898,7 +1185,7 @@
       "page": {
         "createTitle": "Crear cotización",
         "createSubtitle": "Completa los datos de la cotización y guarda.",
-        "editTitle": "Editar cotización",
+        "editTitle": "Editar",
         "saveEdit": "Guardar cambios",
         "lastUpdated": "Última actualización {date}",
         "editQuoteScopeTitle": "Alcance cotizado",
@@ -917,6 +1204,111 @@
         "project": "Selecciona un proyecto."
       }
     },
+    "jobs": {
+      "metaTitle": "Trabajos",
+      "detailMetaTitle": "Detalles del trabajo",
+      "title": "Trabajos",
+      "subtitle": "Programa y supervisa el trabajo de campo. Asigna técnicos y actualiza el estado del trabajo.",
+      "add": "Añadir",
+      "edit": "Editar",
+      "emptyTitle": "Aún no hay trabajos",
+      "emptyDescription": "Crea tu primer trabajo para asignar técnicos y hacer seguimiento del estado.",
+      "loadError": "No se pudieron cargar los trabajos. Inténtalo de nuevo.",
+      "detailLoadError": "No se pudieron cargar los detalles del trabajo. Inténtalo de nuevo.",
+      "createdToast": "Trabajo creado correctamente",
+      "updatedToast": "Trabajo actualizado correctamente",
+      "createError": "No se pudo crear el trabajo. Inténtalo de nuevo.",
+      "updateError": "No se pudo actualizar el trabajo. Inténtalo de nuevo.",
+      "deleteError": "No se pudo eliminar el trabajo. Inténtalo de nuevo.",
+      "deletedToast": "Trabajo eliminado",
+      "statusUpdatedToast": "Estado del trabajo actualizado",
+      "statusUpdateError": "No se pudo actualizar el estado. Inténtalo de nuevo.",
+      "filterState": "Estado activo",
+      "filterJobStatus": "Estado del trabajo",
+      "filterAllStatuses": "Todos los estados",
+      "filterAssignedWorker": "Técnico asignado",
+      "filterAllWorkers": "Todos los técnicos",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "activatedToast": "Trabajo activado",
+      "deactivatedToast": "Trabajo desactivado",
+      "toggleActiveError": "No se pudo actualizar el estado. Inténtalo de nuevo.",
+      "pageLabel": "Mostrando {start}-{end} de {total} trabajos",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "delete": "Eliminar",
+      "deleteConfirmTitle": "¿Eliminar este trabajo?",
+      "deleteConfirmBody": "Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar trabajo",
+      "table": {
+        "title": "Trabajo",
+        "jobStatus": "Estado",
+        "assignedWorker": "Técnico asignado",
+        "start": "Inicio",
+        "end": "Fin",
+        "recordStatus": "Registro",
+        "actions": "Acciones"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "detail": {
+        "loadingTitle": "Cargando…",
+        "retry": "Reintentar",
+        "backAria": "Volver a la lista de trabajos",
+        "editWithIcon": "Editar",
+        "sectionSchedule": "Programación",
+        "sectionDescription": "Descripción",
+        "statusUnknown": "Sin definir",
+        "notCompleted": "Sin completar"
+      },
+      "updateStatus": {
+        "action": "Actualizar estado",
+        "title": "Actualizar estado del trabajo",
+        "body": "Elige un nuevo estado para «{title}».",
+        "confirm": "Actualizar estado",
+        "placeholder": "Seleccionar estado",
+        "loading": "Cargando estados…"
+      },
+      "page": {
+        "createTitle": "Nuevo trabajo",
+        "createSubtitle": "Define el trabajo, la programación y el técnico asignado.",
+        "editTitle": "Editar trabajo",
+        "editSubtitle": "Actualiza los datos del trabajo y guarda."
+      },
+      "placeholders": {
+        "assignedWorker": "Seleccionar técnico"
+      },
+      "fields": {
+        "title": "Título",
+        "description": "Descripción",
+        "assignedWorker": "Técnico asignado",
+        "startDate": "Fecha y hora de inicio",
+        "endDate": "Fecha y hora de fin",
+        "jobStatus": "Estado del trabajo",
+        "recordStatus": "Estado del registro",
+        "isActive": "Activo",
+        "jobId": "ID del trabajo",
+        "pinStatus": "Estado del pin",
+        "completedAt": "Completado",
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "createdBy": "Creado por"
+      },
+      "modal": {
+        "cancel": "Cancelar",
+        "save": "Guardar",
+        "saveChanges": "Guardar cambios"
+      },
+      "validation": {
+        "title": "Introduce un título.",
+        "assignedWorker": "Selecciona un técnico asignado.",
+        "startDate": "Introduce fecha y hora de inicio.",
+        "endDate": "Introduce fecha y hora de fin.",
+        "endBeforeStart": "La fecha de fin debe ser igual o posterior al inicio."
+      }
+    },
     "home": {
       "title": "Trabajando en esta página",
       "body": "Esta sección está en desarrollo. Vuelve pronto para ver novedades."
@@ -930,6 +1322,9 @@
       "openRowActions": "Abrir acciones de la fila",
       "noResultsTitle": "No hay resultados",
       "noResultsDescription": "Nada coincide con tu búsqueda o filtros. Ajústalos o borra los filtros para ver más elementos.",
+      "noActiveResultsTitle": "No hay registros activos",
+      "noActiveResultsDescription": "Todo está inactivo. Cambia a Inactivo para ver esos registros o crea uno nuevo.",
+      "viewInactive": "Ver inactivos",
       "clearFilters": "Borrar filtros",
       "clearFilter": "Quitar este filtro",
       "filterMenu": "Filtros",
@@ -952,6 +1347,7 @@
       "deletedToast": "Proyecto eliminado",
       "deleteError": "No se pudo eliminar el proyecto. Inténtalo de nuevo.",
       "noClientsHint": "Añade al menos un cliente antes de poder crear un proyecto.",
+      "noProjectTypesHint": "Añade al menos un tipo de proyecto en Ajustes → Personalización → Tipos de proyecto antes de crear un proyecto.",
       "filterState": "Estado activo",
       "filterAll": "Todos",
       "activate": "Activar",
@@ -969,6 +1365,7 @@
       "table": {
         "name": "Proyecto",
         "client": "Cliente",
+        "projectType": "Tipo de proyecto",
         "start": "Fecha de inicio",
         "end": "Fecha de fin",
         "description": "Descripción",
@@ -985,7 +1382,7 @@
         "loadingTitle": "Cargando…",
         "retry": "Reintentar",
         "edit": "Editar",
-        "editWithIcon": "Editar proyecto",
+        "editWithIcon": "Editar",
         "quoteToProject": "Cotizar proyecto",
         "quoteToProjectAria": "Crear una cotización desde este proyecto con todos los niveles seleccionados",
         "quoteFromProjectToast": "Cotización creada desde el proyecto",
@@ -1116,11 +1513,13 @@
       "detailLoadError": "No se pudieron cargar los datos del proyecto. Inténtalo de nuevo.",
       "placeholders": {
         "client": "Seleccionar cliente",
-        "site": "Seleccionar sitio"
+        "site": "Seleccionar sitio",
+        "projectType": "Seleccionar tipo de proyecto"
       },
       "fields": {
         "name": "Nombre del proyecto",
         "client": "Cliente",
+        "projectType": "Tipo de proyecto",
         "sites": "Sitios",
         "description": "Descripción",
         "startDate": "Fecha de inicio",
@@ -1134,7 +1533,7 @@
       },
       "modal": {
         "createTitle": "Nuevo proyecto",
-        "editTitle": "Editar proyecto",
+        "editTitle": "Editar",
         "cancel": "Cancelar",
         "save": "Crear proyecto",
         "saveChanges": "Guardar cambios"
@@ -1142,12 +1541,13 @@
       "page": {
         "createTitle": "Crear proyecto",
         "createSubtitle": "Completa los datos del proyecto y guarda.",
-        "editTitle": "Editar proyecto",
+        "editTitle": "Editar",
         "editSubtitle": "Actualiza los datos del proyecto y guarda los cambios."
       },
       "validation": {
         "name": "Introduce el nombre del proyecto.",
         "client": "Selecciona un cliente.",
+        "projectType": "Selecciona un tipo de proyecto.",
         "description": "Introduce una descripción.",
         "startDate": "Elige la fecha de inicio.",
         "endDate": "Elige la fecha de fin.",
@@ -1178,7 +1578,9 @@
       "deletedToast": "Grupo eliminado",
       "table": {
         "name": "Nombre",
+        "itemCount": "Ítems vinculados",
         "compositeItems": "Ítems compuestos",
+        "moreCompositeItems": "+{count} más",
         "created": "Creado",
         "status": "Estado",
         "actions": "Acciones"
@@ -1196,7 +1598,7 @@
       "confirmDelete": "Eliminar grupo",
       "modal": {
         "createTitle": "Nuevo grupo",
-        "editTitle": "Editar grupo",
+        "editTitle": "Editar",
         "cancel": "Cancelar",
         "save": "Crear grupo",
         "saveChanges": "Guardar cambios",
@@ -1213,13 +1615,14 @@
         "addCompositeItem": "Añadir fila",
         "removeCompositeItem": "Quitar",
         "atLeastOneCompositeItemError": "Selecciona al menos un ítem compuesto.",
+        "duplicateCompositeItemError": "Cada ítem compuesto solo puede añadirse una vez.",
         "createdToast": "Grupo creado",
         "updatedToast": "Grupo actualizado"
       },
       "page": {
         "createTitle": "Crear grupo",
         "createSubtitle": "Completa los datos del grupo y guarda.",
-        "editTitle": "Editar grupo",
+        "editTitle": "Editar",
         "editSubtitle": "Actualiza los datos del grupo y guarda los cambios."
       },
       "detail": {
@@ -1229,6 +1632,12 @@
         "sectionOverview": "Resumen",
         "metaGroupId": "ID del grupo",
         "sectionItems": "Ítems vinculados",
+        "colNo": "#",
+        "colItem": "Ítem compuesto",
+        "colComponentCount": "Componentes",
+        "colQuantity": "Cant.",
+        "colCost": "Costo",
+        "colSell": "Venta",
         "items": "Ítems con abreviatura",
         "noItems": "No hay ítems vinculados a este grupo.",
         "sectionRecord": "Registro",
@@ -1287,7 +1696,7 @@
       "confirmDelete": "Eliminar",
       "modal": {
         "createTitle": "Nuevo ítem compuesto",
-        "editTitle": "Editar ítem compuesto",
+        "editTitle": "Editar",
         "cancel": "Cancelar",
         "save": "Crear ítem",
         "saveChanges": "Guardar cambios",
@@ -1319,7 +1728,7 @@
       "page": {
         "createTitle": "Crear ítem compuesto",
         "createSubtitle": "Completa los datos del ítem compuesto y guarda.",
-        "editTitle": "Editar ítem compuesto",
+        "editTitle": "Editar",
         "editSubtitle": "Actualiza los datos del ítem compuesto y guarda los cambios."
       }
     },
@@ -1385,7 +1794,7 @@
       },
       "modal": {
         "createTitle": "Nuevo ítem",
-        "editTitle": "Editar ítem",
+        "editTitle": "Editar",
         "cancel": "Cancelar",
         "save": "Crear ítem",
         "saveChanges": "Guardar cambios",
@@ -1404,7 +1813,7 @@
       "page": {
         "createTitle": "Crear ítem",
         "createSubtitle": "Completa los datos del ítem y guarda.",
-        "editTitle": "Editar ítem",
+        "editTitle": "Editar",
         "editSubtitle": "Actualiza los datos del ítem y guarda los cambios."
       }
     },

@@ -7,11 +7,7 @@ const backendOrigin =
   process.env.BACKEND_API_ORIGIN?.replace(/\/$/, "") ??
   "http://110.225.254.51:5050";
 
-/**
- * In development, default to same-origin `/api/v1` so requests use Next rewrites.
- * That way opening the app as http://192.168.x.x:3000 (LAN) still hits your machine,
- * not `localhost` on the client device. Set NEXT_PUBLIC_API_URL to override.
- */
+
 const explicitPublicApi = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "");
 const nextPublicApiUrl =
   explicitPublicApi ||
@@ -19,9 +15,12 @@ const nextPublicApiUrl =
     ? "/api/v1"
     : `${backendOrigin}/api/v1`);
 
+const googleMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
+
 const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: nextPublicApiUrl,
+    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: googleMapsKey,
   },
   async rewrites() {
     return [

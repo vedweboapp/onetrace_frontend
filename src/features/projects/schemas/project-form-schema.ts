@@ -3,6 +3,7 @@ import { z } from "zod";
 export type ProjectFormMessages = {
   name: string;
   client: string;
+  projectType: string;
   description: string;
   startDate: string;
   endDate: string;
@@ -18,6 +19,11 @@ export function createProjectFormSchema(messages: ProjectFormMessages) {
         .trim()
         .regex(/^\d+$/, messages.client)
         .refine((s) => Number.parseInt(s, 10) > 0, { message: messages.client }),
+      project_type: z
+        .string()
+        .trim()
+        .regex(/^\d+$/, messages.projectType)
+        .refine((s) => Number.parseInt(s, 10) > 0, { message: messages.projectType }),
       description: z.string().trim().min(1, messages.description),
       sites: z.array(z.string()),
       start_date: z.string().trim().min(1, messages.startDate),

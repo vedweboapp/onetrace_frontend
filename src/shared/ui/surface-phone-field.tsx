@@ -20,7 +20,6 @@ export type SurfacePhoneFieldProps<TFieldValues extends FieldValues> = {
   defaultCountry?: Country;
   placeholder?: string;
   className?: string;
-  /** When true (default), users cannot type more national digits than allowed for the selected country. */
   limitMaxLength?: boolean;
   rules?: any;
 };

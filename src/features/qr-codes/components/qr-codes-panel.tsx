@@ -1,0 +1,395 @@
+"use client";
+
+import * as React from "react";
+import { QrCode, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
+import { deleteQrCode, fetchQrCodesPage } from "@/features/qr-codes/api/qr-code.api";
+import { QrCodeGenerateModal } from "@/features/qr-codes/components/qr-code-generate-modal";
+import type { QrCode as QrCodeRecord, QrCodeStatus } from "@/features/qr-codes/types/qr-code.types";
+import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
+import {
+  ActiveStatusBadge,
+  AddButton,
+  AppButton,
+  CheckmarkSelect,
+  ConfirmDialog,
+  DashboardEmptyState,
+  DataTablePaginationBar,
+  DataTableRowActionsMenu,
+  ListPageCard,
+  ListPageCardGrid,
+  ListPageCardSkeleton,
+  ListPageHeader,
+  ListPageSearchField,
+  SurfaceShell,
+} from "@/shared/ui";
+import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
+import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { toastSuccess } from "@/shared/feedback/app-toast";
+
+function isQrAssigned(row: QrCodeRecord): boolean {
+  return row.status === "assigned" || row.is_assigned;
+}
+
+const QR_STATUS_VALUES: QrCodeStatus[] = ["assigned", "not_assigned"];
+
+export function QrCodesPanel() {
+  const t = useTranslations("Dashboard.qrCodes");
+  const tList = useTranslations("Dashboard.list");
+  const dateFmt = useDashboardDateFormat();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { highlightClassName } = useListRowHighlight();
+
+  const statusParam = searchParams.get("status");
+  const statusFilter =
+    statusParam && QR_STATUS_VALUES.includes(statusParam as QrCodeStatus)
+      ? (statusParam as QrCodeStatus)
+      : undefined;
+
+  const listHref = React.useMemo(() => {
+    const p = new URLSearchParams(searchParams.toString());
+    p.delete("highlight");
+    const qs = p.toString();
+    return `${pathname}${qs ? `?${qs}` : ""}`;
+  }, [pathname, searchParams]);
+
+  const openDetail = React.useCallback(
+    (id: number) => {
+      router.push(buildDetailHrefWithListReturn(`${pathname}/${id}`, listHref, id));
+    },
+    [listHref, pathname, router],
+  );
+
+  const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } = useListUrlState();
+
+  const [items, setItems] = React.useState<QrCodeRecord[]>([]);
+  const [pagination, setPagination] = React.useState({
+    total_records: 0,
+    total_pages: 1,
+    current_page: 1,
+    page_size: 20,
+    next: null as string | null,
+    previous: null as string | null,
+  });
+  const [loading, setLoading] = React.useState(true);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [refreshNonce, setRefreshNonce] = React.useState(0);
+  const [generateOpen, setGenerateOpen] = React.useState(false);
+
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
+  const [deletingRow, setDeletingRow] = React.useState<QrCodeRecord | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
+
+  const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
+
+  const statusFilterOptions = React.useMemo(
+    () => [
+      { value: "assigned", label: t("status.assigned") },
+      { value: "not_assigned", label: t("status.notAssigned") },
+    ],
+    [t],
+  );
+
+  const commitSearch = React.useCallback(
+    (q: string) => {
+      const trimmed = q.trim();
+      setUrl({ search: trimmed || null, page: null }, { replace: true });
+    },
+    [setUrl],
+  );
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const { items: nextItems, pagination: p } = await fetchQrCodesPage(page, pageSize, {
+          search: search || undefined,
+          status: statusFilter,
+        });
+        if (!cancelled) {
+          setItems(nextItems);
+          setPagination(p);
+        }
+      } catch {
+        if (!cancelled) {
+          setLoadError(t("loadError"));
+          setItems([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [page, pageSize, search, statusFilter, refreshNonce, t]);
+
+  async function confirmDelete() {
+    if (!deletingRow) return;
+    setDeleting(true);
+    try {
+      await deleteQrCode(deletingRow.id);
+      toastSuccess(t("deletedToast"));
+      setDeleteOpen(false);
+      setDeletingRow(null);
+      setRefreshNonce((n) => n + 1);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const tableColumns = React.useMemo(() => {
+    const c = entityCol<QrCodeRecord>();
+    return [
+      c.primary("qr_code_id", t("table.qrCodeId"), (r) => r.qr_code_id),
+      c.truncate("status", t("table.status"), (r) =>
+        isQrAssigned(r) ? t("status.assigned") : t("status.notAssigned"),
+      ),
+      c.truncate("assigned", t("table.assignedJob"), (r) =>
+        r.assigned_to_id != null && r.assigned_to_id > 0 ? `#${r.assigned_to_id}` : "—",
+      ),
+      c.truncate("scan_count", t("table.scanCount"), (r) => String(r.scan_count)),
+      c.truncate("last_scanned", t("table.lastScanned"), (r) => {
+        if (!r.last_scanned_at) return "—";
+        const d = new Date(r.last_scanned_at);
+        return Number.isNaN(d.getTime()) ? r.last_scanned_at : dateFmt.format(d);
+      }),
+      c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
+      c.actions("actions", t("table.actions"), (row) => (
+        <DataTableRowActionsMenu
+          menuAriaLabel={tList("openRowActions")}
+          items={[
+            {
+              id: "delete",
+              label: t("delete"),
+              icon: Trash2,
+              tone: "danger",
+              onSelect: () => {
+                setDeletingRow(row);
+                setDeleteOpen(true);
+              },
+            },
+          ]}
+        />
+      )),
+    ];
+  }, [t, tList, dateFmt]);
+
+  const hasActiveFilters = hasListActiveFilters({ search, statusParam });
+  const pageRange = getListPageRange(pagination);
+
+  return (
+    <div className="space-y-4">
+      <ListPageHeader
+        filtersActive={hasActiveFilters}
+        viewMode={listViewMode}
+        onViewModeChange={setListViewMode}
+        tableViewLabel={tList("tableView")}
+        listViewLabel={tList("listView")}
+        action={
+          <AddButton type="button" onClick={() => setGenerateOpen(true)}>
+            {t("generate.button")}
+          </AddButton>
+        }
+        controls={
+          <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <ListPageSearchField
+              value={search}
+              onCommit={commitSearch}
+              placeholder={t("searchPlaceholder")}
+              ariaLabel={tList("searchAria")}
+              className="sm:max-w-sm"
+            />
+            <CheckmarkSelect
+              listLabel={t("filterStatus")}
+              buttonAriaLabel={t("filterStatus")}
+              options={statusFilterOptions}
+              value={statusParam ?? ""}
+              emptyLabel={t("filterAllStatuses")}
+              portaled
+              clearable
+              clearAriaLabel={tList("clearFilter")}
+              className="w-full min-w-0 sm:w-44"
+              onChange={(v) => setUrl({ status: v || null, page: null }, { replace: true })}
+            />
+          </div>
+        }
+      />
+
+      <SurfaceShell className="rounded-none">
+        {loadError ? (
+          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+        ) : loading ? (
+          listViewMode === "list" ? (
+            <div className="p-4 sm:p-6">
+              <ListPageCardGrid>
+                {Array.from({ length: 6 }, (_, i) => (
+                  <ListPageCardSkeleton key={i} />
+                ))}
+              </ListPageCardGrid>
+            </div>
+          ) : (
+            <div className="space-y-2 p-6">
+              <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+            </div>
+          )
+        ) : items.length === 0 ? (
+          hasActiveFilters ? (
+            <DashboardEmptyState
+              iconName="noResults"
+              title={tList("noResultsTitle")}
+              description={tList("noResultsDescription")}
+              action={
+                <AppButton
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setUrl({ search: null, status: null, page: null }, { replace: true })}
+                >
+                  {tList("clearFilters")}
+                </AppButton>
+              }
+            />
+          ) : (
+            <DashboardEmptyState
+              icon={QrCode}
+              title={t("emptyTitle")}
+              description={t("emptyDescription")}
+              action={
+                <AddButton type="button" onClick={() => setGenerateOpen(true)}>
+                  {t("generate.button")}
+                </AddButton>
+              }
+            />
+          )
+        ) : listViewMode === "list" ? (
+          <div className="p-4 sm:p-6">
+            <ListPageCardGrid>
+              {items.map((row) => {
+                const assigned = isQrAssigned(row);
+                return (
+                  <ListPageCard
+                    key={row.id}
+                    dataListRowId={row.id}
+                    className={highlightClassName(row.id)}
+                    title={row.qr_code_id}
+                    subtitle={
+                      row.assigned_to_id != null && row.assigned_to_id > 0
+                        ? t("cardAssignedJob", { id: row.assigned_to_id })
+                        : t("cardNotAssigned")
+                    }
+                    footer={
+                      <div className="flex w-full flex-wrap items-center justify-between gap-3">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <ActiveStatusBadge
+                            active={assigned}
+                            label={assigned ? t("status.assigned") : t("status.notAssigned")}
+                          />
+                          <span className="text-xs text-slate-500 dark:text-slate-400">
+                            {t("cardScans", { count: row.scan_count })}
+                          </span>
+                        </div>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                          {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}
+                        </span>
+                      </div>
+                    }
+                    onCardClick={() => openDetail(row.id)}
+                    leading={
+                      row.qr_image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={row.qr_image}
+                          alt=""
+                          className="size-16 shrink-0 rounded-md border border-slate-200 bg-white object-contain p-1 dark:border-slate-700"
+                        />
+                      ) : undefined
+                    }
+                    menu={
+                      <DataTableRowActionsMenu
+                        menuAriaLabel={tList("openRowActions")}
+                        items={[
+                          {
+                            id: "delete",
+                            label: t("delete"),
+                            icon: Trash2,
+                            tone: "danger",
+                            onSelect: () => {
+                              setDeletingRow(row);
+                              setDeleteOpen(true);
+                            },
+                          },
+                        ]}
+                      />
+                    }
+                  />
+                );
+              })}
+            </ListPageCardGrid>
+          </div>
+        ) : (
+          <EntityDataTable
+            columns={tableColumns}
+            rows={items}
+            onRowClick={(row) => openDetail(row.id)}
+            getRowClassName={(row) => highlightClassName(row.id)}
+          />
+        )}
+
+        {!loading && !loadError && items.length > 0 ? (
+          <DataTablePaginationBar
+            pagination={pagination}
+            summary={t("pageLabel", {
+              start: pageRange.start,
+              end: pageRange.end,
+              total: pagination.total_records,
+            })}
+            prevLabel={t("prev")}
+            nextLabel={t("next")}
+            onPrev={() => setPage(Math.max(1, pagination.current_page - 1))}
+            onNext={() => setPage(pagination.current_page + 1)}
+            onPageSelect={(p) => setPage(p)}
+            pageSizeControl={{
+              label: tList("rowsPerPage"),
+              listLabel: tList("rowsPerPage"),
+              value: pageSize,
+              options: pageSizeOptions,
+              onChange: setPageSize,
+              disabled: loading,
+            }}
+          />
+        ) : null}
+      </SurfaceShell>
+
+      <QrCodeGenerateModal
+        open={generateOpen}
+        onClose={() => setGenerateOpen(false)}
+        onGenerated={() => setRefreshNonce((n) => n + 1)}
+      />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onClose={() => (!deleting ? setDeleteOpen(false) : undefined)}
+        onConfirm={() => void confirmDelete()}
+        title={t("deleteConfirmTitle")}
+        body={t("deleteConfirmBody")}
+        highlight={deletingRow?.qr_code_id}
+        confirmLabel={t("confirmDelete")}
+        cancelLabel={t("generate.cancel")}
+        isBusy={deleting}
+      />
+    </div>
+  );
+}

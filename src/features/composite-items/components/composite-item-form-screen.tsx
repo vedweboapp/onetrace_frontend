@@ -17,6 +17,7 @@ import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
@@ -84,6 +85,16 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     [itemOptions],
   );
 
+  const itemOptionsForRow = React.useCallback(
+    (rowId: string) =>
+      checkmarkOptionsExcludingUsed(
+        itemSelectOptions,
+        rows.filter((r) => r.id !== rowId).map((r) => r.child_item),
+        rows.find((r) => r.id === rowId)?.child_item ?? "",
+      ),
+    [itemSelectOptions, rows],
+  );
+
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -142,14 +153,17 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
 
   function buildComponents(): ItemComponentRef[] | null {
     const out: ItemComponentRef[] = [];
+    const seen = new Set<number>();
     for (const r of rows) {
       const cid = toNumberOrNull(r.child_item);
       const q = toNumberOrNull(r.quantity);
-      if (cid == null) return null;
-      if (q == null || q <= 0) return null;
+      if (r.child_item.trim() === "") continue;
+      if (cid == null || q == null || q <= 0) return null;
+      if (seen.has(cid)) return null;
+      seen.add(cid);
       out.push({ child_item: cid, quantity: q });
     }
-    return out;
+    return out.length > 0 ? out : null;
   }
 
   async function submit(e: React.FormEvent) {
@@ -167,7 +181,10 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     if (!hasAtLeastOneComponentItem) return;
 
     const comps = buildComponents();
-    if (!comps) return;
+    if (!comps) {
+      toastError(tModal("duplicateComponentError"));
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -209,10 +226,10 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
         subtitle={isEdit ? t("page.editSubtitle") : t("page.createSubtitle")}
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="md" disabled={submitting} onClick={() => router.push(safeBack ?? routes.dashboard.compositeItems)}>
+            <AppButton type="button" variant="secondary" size="sm" disabled={submitting} onClick={() => router.push(safeBack ?? routes.dashboard.compositeItems)}>
               {tModal("cancel")}
             </AppButton>
-            <AppButton type="submit" form="composite-item-form-screen" variant="primary" size="md" loading={submitting} disabled={noItems}>
+            <AppButton type="submit" form="composite-item-form-screen" variant="primary" size="sm" loading={submitting} disabled={noItems}>
               {isEdit ? tModal("saveChanges") : tModal("save")}
             </AppButton>
           </div>
@@ -265,7 +282,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   <div key={r.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_140px_auto] sm:items-end">
                     <div>
                       <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">{tModal("childItem")}<span className="ml-1 text-red-500">*</span></span>
-                      <CheckmarkSelect listLabel={tModal("childItem")} buttonAriaLabel={tModal("childItem")} value={r.child_item} onChange={(v) => setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, child_item: v } : x)))} options={itemSelectOptions} emptyLabel={tModal("childItemPlaceholder")} disabled={submitting || noItems} portaled className="w-full" />
+                      <CheckmarkSelect listLabel={tModal("childItem")} buttonAriaLabel={tModal("childItem")} value={r.child_item} onChange={(v) => setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, child_item: v } : x)))} options={itemOptionsForRow(r.id)} emptyLabel={tModal("childItemPlaceholder")} disabled={submitting || noItems} portaled searchable className="w-full" />
                     </div>
                     <div>
                       <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">{tModal("componentQuantity")}</span>

@@ -6,8 +6,6 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
-import { useAuthStore } from "@/features/auth/store/auth.store";
-import { getSessionOrganizationId } from "@/features/auth/utils/get-session-organization-id";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { createContact, fetchContact, updateContact } from "@/features/contacts/api/contact.api";
 import { createContactFormSchema, type ContactFormValues } from "@/features/contacts/schemas/contact-form-schema";
@@ -20,7 +18,8 @@ import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
-  CascadingLocationFields,
+  AddressLineAutocompleteFields,
+  AddressLocationFields,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
@@ -40,14 +39,12 @@ export function ContactFormScreen({ mode, contactId }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const safeBack = sanitizeInternalListBack(searchParams.get("back"), "contacts");
-  const organizations = useAuthStore((s) => s.organizations);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [organizationIdForEdit, setOrganizationIdForEdit] = React.useState<number | null>(null);
 
   const schema = React.useMemo(
     () =>
@@ -100,10 +97,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
       setScreenError(null);
       try {
         const row = await fetchContact(contactId);
-        if (!cancelled) {
-          reset(contactToFormDefaults(row));
-          setOrganizationIdForEdit(row.organization);
-        }
+        if (!cancelled) reset(contactToFormDefaults(row));
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
       } finally {
@@ -116,12 +110,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
   }, [isEdit, contactId, reset, t]);
 
   async function submit(values: ContactFormValues) {
-    const organizationId = getSessionOrganizationId(organizations) ?? (isEdit ? organizationIdForEdit : null);
-    if (organizationId == null) {
-      toastError(t("missingOrganization"));
-      return;
-    }
-    const payload = mapContactFormToPayload(values, organizationId);
+    const payload = mapContactFormToPayload(values);
     if (!Number.isFinite(payload.client) || payload.client <= 0) {
       toastError(t("validation.client"));
       return;
@@ -147,10 +136,10 @@ export function ContactFormScreen({ mode, contactId }: Props) {
         subtitle={isEdit ? t("page.editSubtitle") : t("page.createSubtitle")}
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.contacts)}>
+            <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.contacts)}>
               {t("modal.cancel")}
             </AppButton>
-            <AppButton type="submit" form="contact-upsert-screen-form" variant="primary" size="md" loading={saving} disabled={noClients}>
+            <AppButton type="submit" form="contact-upsert-screen-form" variant="primary" size="sm" loading={saving} disabled={noClients}>
               {isEdit ? t("modal.saveChanges") : t("modal.save")}
             </AppButton>
           </div>
@@ -197,6 +186,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
                     <CheckmarkSelect
                       id="contact-client"
                       portaled
+                      searchable
                       listLabel={t("fields.client")}
                       options={clientOptions}
                       value={field.value}
@@ -230,54 +220,45 @@ export function ContactFormScreen({ mode, contactId }: Props) {
                 error={errors.phone?.message}
                 disabled={saving}
               />
-              <FieldGroup label={t("fields.addressLine1")} htmlFor="contact-line1" required>
-                <input
-                  id="contact-line1"
-                  aria-invalid={errors.address_line_1 ? true : undefined}
-                  aria-describedby={errors.address_line_1 ? "contact-line1-err" : undefined}
-                  className={cn(surfaceInputClassName, errors.address_line_1 && "border-red-500 dark:border-red-500")}
-                  {...register("address_line_1")}
-                />
-                <FieldErrorText id="contact-line1-err">{errors.address_line_1?.message}</FieldErrorText>
-              </FieldGroup>
-              <FieldGroup label={t("fields.addressLine2")} htmlFor="contact-line2">
-                <input id="contact-line2" className={surfaceInputClassName} {...register("address_line_2")} />
-              </FieldGroup>
+              <AddressLineAutocompleteFields
+                idPrefix="contact"
+                control={control}
+                setValue={setValue}
+                wrapInRow={false}
+                disabled={saving}
+                labels={{
+                  addressLine1: t("fields.addressLine1"),
+                  addressLine2: t("fields.addressLine2"),
+                }}
+                errors={{
+                  address_line_1: errors.address_line_1?.message,
+                  address_line_2: errors.address_line_2?.message,
+                }}
+              />
             </FormFieldRow>
-            <CascadingLocationFields<ContactFormValues>
+            <AddressLocationFields
+              idPrefix="contact"
               control={control}
+              register={register}
               setValue={setValue}
-              countryIsoName="country_iso"
-              stateIsoName="state_iso"
-              cityName="city"
+              disabled={saving}
               labels={{
                 country: t("fields.country"),
                 state: t("fields.stateProvince"),
                 city: t("fields.city"),
+                pincode: t("fields.pincode"),
               }}
               placeholders={{
                 country: t("placeholders.country"),
                 state: t("placeholders.state"),
                 city: t("placeholders.city"),
               }}
-              disabled={saving}
               errors={{
-                country: errors.country_iso?.message,
-                state: errors.state_iso?.message,
+                country_iso: errors.country_iso?.message,
+                state_iso: errors.state_iso?.message,
                 city: errors.city?.message,
+                pincode: errors.pincode?.message,
               }}
-              trailingSlot={
-                <FieldGroup label={t("fields.pincode")} htmlFor="contact-pincode" required>
-                  <input
-                    id="contact-pincode"
-                    aria-invalid={errors.pincode ? true : undefined}
-                    aria-describedby={errors.pincode ? "contact-pincode-err" : undefined}
-                    className={cn(surfaceInputClassName, errors.pincode && "border-red-500 dark:border-red-500")}
-                    {...register("pincode")}
-                  />
-                  <FieldErrorText id="contact-pincode-err">{errors.pincode?.message}</FieldErrorText>
-                </FieldGroup>
-              }
             />
           </form>
         )}

@@ -6,8 +6,6 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
-import { useAuthStore } from "@/features/auth/store/auth.store";
-import { getSessionOrganizationId } from "@/features/auth/utils/get-session-organization-id";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { createSite, fetchSite, updateSite } from "@/features/sites/api/site.api";
 import { createSiteFormSchema, type SiteFormValues } from "@/features/sites/schemas/site-form-schema";
@@ -18,9 +16,9 @@ import { DetailPageHeader } from "@/shared/components/layout/detail-page-header"
 import { routes } from "@/shared/config/routes";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { SiteLocationFields } from "@/features/sites/components/site-location-fields";
 import {
   AppButton,
-  CascadingLocationFields,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
@@ -39,14 +37,12 @@ export function SiteFormScreen({ mode, siteId }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const safeBack = sanitizeInternalListBack(searchParams.get("back"), "sites");
-  const organizations = useAuthStore((s) => s.organizations);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [organizationIdForEdit, setOrganizationIdForEdit] = React.useState<number | null>(null);
 
   const schema = React.useMemo(
     () =>
@@ -97,10 +93,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
       setScreenError(null);
       try {
         const row = await fetchSite(siteId);
-        if (!cancelled) {
-          reset(siteToFormDefaults(row));
-          setOrganizationIdForEdit(row.organization);
-        }
+        if (!cancelled) reset(siteToFormDefaults(row));
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
       } finally {
@@ -113,12 +106,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
   }, [isEdit, siteId, reset, t]);
 
   async function submit(values: SiteFormValues) {
-    const organizationId = getSessionOrganizationId(organizations) ?? (isEdit ? organizationIdForEdit : null);
-    if (organizationId == null) {
-      toastError(t("missingOrganization"));
-      return;
-    }
-    const payload = mapSiteFormToPayload(values, organizationId);
+    const payload = mapSiteFormToPayload(values);
     if (!Number.isFinite(payload.client) || payload.client <= 0) {
       toastError(t("validation.client"));
       return;
@@ -136,7 +124,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
   const noClients = clientOptions.length === 0;
 
   return (
-    <div className="pb-12">
+    <div className="space-y-4 pb-12">
       <DetailPageHeader
         title={isEdit ? t("page.editTitle") : t("page.createTitle")}
         backHref={safeBack}
@@ -144,10 +132,10 @@ export function SiteFormScreen({ mode, siteId }: Props) {
         subtitle={isEdit ? t("page.editSubtitle") : t("page.createSubtitle")}
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.sites)}>
+            <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.sites)}>
               {t("modal.cancel")}
             </AppButton>
-            <AppButton type="submit" form="site-upsert-screen-form" variant="primary" size="md" loading={saving} disabled={noClients}>
+            <AppButton type="submit" form="site-upsert-screen-form" variant="primary" size="sm" loading={saving} disabled={noClients}>
               {isEdit ? t("modal.saveChanges") : t("modal.save")}
             </AppButton>
           </div>
@@ -194,6 +182,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
                     <CheckmarkSelect
                       id="site-client"
                       portaled
+                      searchable
                       listLabel={t("fields.client")}
                       options={clientOptions}
                       value={field.value}
@@ -207,55 +196,20 @@ export function SiteFormScreen({ mode, siteId }: Props) {
                 />
                 <FieldErrorText>{errors.client?.message}</FieldErrorText>
               </FieldGroup>
-              <FieldGroup label={t("fields.addressLine1")} htmlFor="site-line1" required>
+            </FormFieldRow>
+            <SiteLocationFields control={control} register={register} setValue={setValue} errors={errors} disabled={saving} />
+            <FormFieldRow cols="1">
+              <FieldGroup label={t("fields.what3words")} htmlFor="site-what3words">
                 <input
-                  id="site-line1"
-                  aria-invalid={errors.address_line_1 ? true : undefined}
-                  aria-describedby={errors.address_line_1 ? "site-line1-err" : undefined}
-                  className={cn(surfaceInputClassName, errors.address_line_1 && "border-red-500 dark:border-red-500")}
-                  {...register("address_line_1")}
+                  id="site-what3words"
+                  className={surfaceInputClassName}
+                  placeholder={t("placeholders.what3words")}
+                  autoComplete="off"
+                  spellCheck={false}
+                  {...register("what3words")}
                 />
-                <FieldErrorText id="site-line1-err">{errors.address_line_1?.message}</FieldErrorText>
-              </FieldGroup>
-              <FieldGroup label={t("fields.addressLine2")} htmlFor="site-line2">
-                <input id="site-line2" className={surfaceInputClassName} {...register("address_line_2")} />
               </FieldGroup>
             </FormFieldRow>
-            <CascadingLocationFields<SiteFormValues>
-              control={control}
-              setValue={setValue}
-              countryIsoName="country_iso"
-              stateIsoName="state_iso"
-              cityName="city"
-              labels={{
-                country: t("fields.country"),
-                state: t("fields.stateProvince"),
-                city: t("fields.city"),
-              }}
-              placeholders={{
-                country: t("placeholders.country"),
-                state: t("placeholders.state"),
-                city: t("placeholders.city"),
-              }}
-              disabled={saving}
-              errors={{
-                country: errors.country_iso?.message,
-                state: errors.state_iso?.message,
-                city: errors.city?.message,
-              }}
-              trailingSlot={
-                <FieldGroup label={t("fields.pincode")} htmlFor="site-pincode" required>
-                  <input
-                    id="site-pincode"
-                    aria-invalid={errors.pincode ? true : undefined}
-                    aria-describedby={errors.pincode ? "site-pincode-err" : undefined}
-                    className={cn(surfaceInputClassName, errors.pincode && "border-red-500 dark:border-red-500")}
-                    {...register("pincode")}
-                  />
-                  <FieldErrorText id="site-pincode-err">{errors.pincode?.message}</FieldErrorText>
-                </FieldGroup>
-              }
-            />
           </form>
         )}
       </SurfaceShell>

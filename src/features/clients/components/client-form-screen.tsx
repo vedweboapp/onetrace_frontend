@@ -6,8 +6,6 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { useAuthStore } from "@/features/auth/store/auth.store";
-import { getSessionOrganizationId } from "@/features/auth/utils/get-session-organization-id";
 import { createClient, fetchClient, updateClient } from "@/features/clients/api/client.api";
 import { createClientFormSchema, type ClientFormValues } from "@/features/clients/schemas/client-form-schema";
 import {
@@ -16,14 +14,14 @@ import {
   mapClientFormToPayload,
 } from "@/features/clients/utils/client-form-map";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
-  CascadingLocationFields,
+  AddressFormFields,
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
@@ -50,13 +48,11 @@ export function ClientFormScreen({ mode, clientId }: Props) {
     return i >= 0 ? pathname.slice(0, i + needle.length) : needle;
   }, [pathname]);
   const listBack = safeBack ?? clientsListHref;
-  const organizations = useAuthStore((s) => s.organizations);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
-  const [organizationIdForEdit, setOrganizationIdForEdit] = React.useState<number | null>(null);
 
   const schema = React.useMemo(
     () =>
@@ -93,10 +89,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
       setScreenError(null);
       try {
         const row = await fetchClient(clientId);
-        if (!cancelled) {
-          reset(clientToFormDefaults(row));
-          setOrganizationIdForEdit(row.organization ?? null);
-        }
+        if (!cancelled) reset(clientToFormDefaults(row));
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
       } finally {
@@ -109,12 +102,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
   }, [clientId, isEdit, reset, t]);
 
   async function submit(values: ClientFormValues) {
-    const organizationId = getSessionOrganizationId(organizations) ?? (isEdit ? organizationIdForEdit : null);
-    if (organizationId == null) {
-      toastError(t("missingOrganization"));
-      return;
-    }
-    const payload = mapClientFormToPayload(values, organizationId);
+    const payload = mapClientFormToPayload(values);
     setSaving(true);
     try {
       const saved = isEdit && clientId ? await updateClient(clientId, payload) : await createClient(payload);
@@ -134,10 +122,10 @@ export function ClientFormScreen({ mode, clientId }: Props) {
         subtitle={isEdit ? t("page.editSubtitle") : t("page.createSubtitle")}
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => router.push(listBack)}>
+            <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => router.push(listBack)}>
               {t("modal.cancel")}
             </AppButton>
-            <AppButton type="submit" form="client-upsert-screen-form" variant="primary" size="md" loading={saving}>
+            <AppButton type="submit" form="client-upsert-screen-form" variant="primary" size="sm" loading={saving}>
               {isEdit ? t("modal.saveChanges") : t("modal.save")}
             </AppButton>
           </div>
@@ -212,68 +200,35 @@ export function ClientFormScreen({ mode, clientId }: Props) {
               <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {t("form.section.address")}
               </h3>
-              <FormFieldRow cols="1" className="mt-3">
-                <FieldGroup label={t("fields.addressLine1")} htmlFor="client-line1" required>
-                  <input
-                    id="client-line1"
-                    autoComplete="address-line1"
-                    aria-invalid={errors.address_line_1 ? true : undefined}
-                    aria-describedby={errors.address_line_1 ? "client-line1-err" : undefined}
-                    className={cn(surfaceInputClassName, errors.address_line_1 && "border-red-500 dark:border-red-500")}
-                    {...register("address_line_1")}
-                  />
-                  <FieldErrorText id="client-line1-err">{errors.address_line_1?.message}</FieldErrorText>
-                </FieldGroup>
-                <FieldGroup label={t("fields.addressLine2")} htmlFor="client-line2">
-                  <input
-                    id="client-line2"
-                    autoComplete="address-line2"
-                    aria-invalid={errors.address_line_2 ? true : undefined}
-                    className={cn(surfaceInputClassName, errors.address_line_2 && "border-red-500 dark:border-red-500")}
-                    {...register("address_line_2")}
-                  />
-                  <FieldErrorText>{errors.address_line_2?.message}</FieldErrorText>
-                </FieldGroup>
-              </FormFieldRow>
-
-              <div className="mt-4">
-                <CascadingLocationFields<ClientFormValues>
-                  control={control}
-                  setValue={setValue}
-                  countryIsoName="country_iso"
-                  stateIsoName="state_iso"
-                  cityName="city"
-                  labels={{
-                    country: t("fields.country"),
-                    state: t("fields.stateProvince"),
-                    city: t("fields.city"),
-                  }}
-                  placeholders={{
-                    country: t("placeholders.country"),
-                    state: t("placeholders.state"),
-                    city: t("placeholders.city"),
-                  }}
-                  disabled={saving}
-                  errors={{
-                    country: errors.country_iso?.message,
-                    state: errors.state_iso?.message,
-                    city: errors.city?.message,
-                  }}
-                  trailingSlot={
-                    <FieldGroup label={t("fields.pincode")} htmlFor="client-pincode" required>
-                      <input
-                        id="client-pincode"
-                        autoComplete="postal-code"
-                        aria-invalid={errors.pincode ? true : undefined}
-                        aria-describedby={errors.pincode ? "client-pincode-err" : undefined}
-                        className={cn(surfaceInputClassName, errors.pincode && "border-red-500 dark:border-red-500")}
-                        {...register("pincode")}
-                      />
-                      <FieldErrorText id="client-pincode-err">{errors.pincode?.message}</FieldErrorText>
-                    </FieldGroup>
-                  }
-                />
-              </div>
+              <AddressFormFields
+                idPrefix="client"
+                control={control}
+                register={register}
+                setValue={setValue}
+                className="mt-3"
+                disabled={saving}
+                labels={{
+                  addressLine1: t("fields.addressLine1"),
+                  addressLine2: t("fields.addressLine2"),
+                  country: t("fields.country"),
+                  state: t("fields.stateProvince"),
+                  city: t("fields.city"),
+                  pincode: t("fields.pincode"),
+                }}
+                placeholders={{
+                  country: t("placeholders.country"),
+                  state: t("placeholders.state"),
+                  city: t("placeholders.city"),
+                }}
+                errors={{
+                  address_line_1: errors.address_line_1?.message,
+                  address_line_2: errors.address_line_2?.message,
+                  country_iso: errors.country_iso?.message,
+                  state_iso: errors.state_iso?.message,
+                  city: errors.city?.message,
+                  pincode: errors.pincode?.message,
+                }}
+              />
             </div>
           </form>
         )}

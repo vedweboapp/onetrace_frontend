@@ -479,9 +479,6 @@ const SLIDES = [
   },
 ];
 
-// ─────────────────────────────────────────────
-// Main Component
-// ─────────────────────────────────────────────
 export function AuthMarketingCarousel() {
   const t = useTranslations("Auth");
   const [active, setActive] = React.useState(0);

@@ -22,7 +22,6 @@ import {
 } from "@/features/quotations/utils/quotation-form-map";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
-import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
 import { cn } from "@/core/utils/http.util";
@@ -38,6 +37,7 @@ import {
   FormFieldRow,
   MultiCheckSelect,
   surfaceInputClassName,
+  surfaceTextareaClassName,
 } from "@/shared/ui";
 
 const FORM_DOM_ID = "quotation-create-form";
@@ -76,7 +76,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     [t],
   );
 
-  const { control, register, reset, setValue, handleSubmit, formState: { errors } } =
+  const { control, register, reset, setValue, getValues, handleSubmit, formState: { errors } } =
     useForm<QuotationFormValues>({
       resolver: zodResolver(schema),
       defaultValues: emptyQuotationFormDefaults(),
@@ -115,12 +115,23 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     };
   }, [open]);
 
+  const customerId =
+    customerIdStr && /^\d+$/.test(customerIdStr.trim())
+      ? Number.parseInt(customerIdStr.trim(), 10)
+      : undefined;
+  const projectId =
+    projectIdStr && /^\d+$/.test(projectIdStr.trim())
+      ? Number.parseInt(projectIdStr.trim(), 10)
+      : undefined;
+
   React.useEffect(() => {
     let cancelled = false;
     if (!open) return;
     (async () => {
       try {
-        const { items: projects } = await fetchProjectsPage(1, 500, { is_active: true });
+        const filters: { is_active: true; client?: number } = { is_active: true };
+        if (customerId && customerId > 0) filters.client = customerId;
+        const { items: projects } = await fetchProjectsPage(1, 500, filters);
         if (!cancelled) setProjectRows(projects);
       } catch {
         if (!cancelled) setProjectRows([]);
@@ -129,7 +140,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, customerId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -154,20 +165,15 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     };
   }, [open]);
 
-  const customerId =
-    customerIdStr && /^\d+$/.test(customerIdStr.trim())
-      ? Number.parseInt(customerIdStr.trim(), 10)
-      : undefined;
-
   React.useEffect(() => {
     let cancelled = false;
-    if (!open || !customerId || customerId <= 0) {
+    if (!open || !projectId || projectId <= 0) {
       setSiteRows([]);
       return;
     }
     (async () => {
       try {
-        const { items } = await fetchSitesPage(1, 500, { client: customerId, is_active: true });
+        const { items } = await fetchSitesPage(1, 500, { project: projectId, is_active: true });
         if (!cancelled) setSiteRows(items);
       } catch {
         if (!cancelled) setSiteRows([]);
@@ -176,7 +182,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, customerId]);
+  }, [open, projectId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -198,11 +204,6 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
       cancelled = true;
     };
   }, [open, customerId]);
-
-  const projectId =
-    projectIdStr && /^\d+$/.test(projectIdStr.trim())
-      ? Number.parseInt(projectIdStr.trim(), 10)
-      : undefined;
 
   React.useEffect(() => {
     let cancelled = false;
@@ -226,12 +227,39 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     [siteRows],
   );
 
-  const projectOptions = React.useMemo<Option[]>(() => {
-    if (!customerId || customerId <= 0) return [];
-    return projectRows
-      .filter((p) => getProjectClientId(p) === customerId)
-      .map((p) => ({ value: String(p.id), label: p.name }));
-  }, [projectRows, customerId]);
+  const projectOptions = React.useMemo<Option[]>(
+    () => projectRows.map((p) => ({ value: String(p.id), label: p.name })),
+    [projectRows],
+  );
+
+  React.useEffect(() => {
+    if (!open) return;
+    const selectedProject = getValues("project")?.trim();
+    if (!selectedProject || !customerId) return;
+    const stillExists = projectRows.some((p) => String(p.id) === selectedProject);
+    if (!stillExists) {
+      setValue("project", "", { shouldDirty: true, shouldValidate: true });
+      setValue("site", "", { shouldDirty: true, shouldValidate: true });
+    }
+  }, [open, projectRows, customerId, getValues, setValue]);
+
+  React.useEffect(() => {
+    if (!open || !projectId || projectId <= 0) return;
+    const selectedSite = getValues("site")?.trim();
+    if (selectedSite) return;
+    if (siteOptions.length !== 1) return;
+    setValue("site", siteOptions[0].value, { shouldValidate: true, shouldDirty: true });
+  }, [open, projectId, siteOptions, getValues, setValue]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const selectedSite = getValues("site");
+    if (!selectedSite) return;
+    const stillExists = siteOptions.some((s) => s.value === selectedSite);
+    if (!stillExists) {
+      setValue("site", "", { shouldDirty: true, shouldValidate: true });
+    }
+  }, [open, siteOptions, getValues, setValue]);
 
   async function submit(values: QuotationFormValues) {
     setSaving(true);
@@ -283,24 +311,24 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
           <AppButton
             type="button"
             variant="secondary"
-            size="md"
+            size="sm"
             disabled={saving}
             onClick={() => (!saving ? onClose() : undefined)}
           >
             {t("modal.cancel")}
           </AppButton>
-          <AppButton type="submit" form={FORM_DOM_ID} variant="primary" size="md" loading={saving} disabled={noClients}>
+          <AppButton type="submit" form={FORM_DOM_ID} variant="primary" size="sm" loading={saving} disabled={noClients}>
             {t("modal.save")}
           </AppButton>
         </>
       }
     >
       <form id={FORM_DOM_ID} className="max-h-[min(70vh,680px)] space-y-6 overflow-y-auto pr-1" noValidate onSubmit={handleSubmit(submit)}>
-        {noClients ? (
+        {/* {noClients ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
             {t("noClientsHint")}
           </p>
-        ) : null}
+        ) : null} */}
 
         <AppTabs
           tabs={[
@@ -361,27 +389,6 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
             />
             <FieldErrorText>{errors.customer?.message}</FieldErrorText>
           </FieldGroup>
-          <FieldGroup label={t("fields.site")} htmlFor="quotation-site" required>
-            <Controller
-              control={control}
-              name="site"
-              render={({ field }) => (
-                <CheckmarkSelect
-                  id="quotation-site"
-                  portaled
-                  listLabel={t("fields.site")}
-                  options={siteOptions}
-                  value={field.value}
-                  emptyLabel={t("placeholders.site")}
-                  disabled={saving || !customerId || siteOptions.length === 0}
-                  invalid={!!errors.site}
-                  onBlur={field.onBlur}
-                  onChange={field.onChange}
-                />
-              )}
-            />
-            <FieldErrorText>{errors.site?.message}</FieldErrorText>
-          </FieldGroup>
           <FieldGroup label={t("fields.project")} htmlFor="quotation-project" required>
             <Controller
               control={control}
@@ -390,6 +397,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                 <CheckmarkSelect
                   id="quotation-project"
                   portaled
+                  searchable
                   listLabel={t("fields.project")}
                   options={projectOptions}
                   value={field.value}
@@ -399,11 +407,35 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   onBlur={field.onBlur}
                   onChange={(v) => {
                     field.onChange(v);
+                    setValue("site", "");
+                    setValue("site_contact", "");
                   }}
                 />
               )}
             />
             <FieldErrorText>{errors.project?.message}</FieldErrorText>
+          </FieldGroup>
+          <FieldGroup label={t("fields.site")} htmlFor="quotation-site" required>
+            <Controller
+              control={control}
+              name="site"
+              render={({ field }) => (
+                <CheckmarkSelect
+                  id="quotation-site"
+                  portaled
+                  searchable
+                  listLabel={t("fields.site")}
+                  options={siteOptions}
+                  value={field.value}
+                  emptyLabel={t("placeholders.site")}
+                  disabled={saving || !projectId || siteOptions.length === 0}
+                  invalid={!!errors.site}
+                  onBlur={field.onBlur}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+            <FieldErrorText>{errors.site?.message}</FieldErrorText>
           </FieldGroup>
         </FormFieldRow>
 
@@ -553,7 +585,12 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
         </FormFieldRow>
 
         <FieldGroup label={t("fields.description")} htmlFor="quotation-desc">
-          <textarea id="quotation-desc" rows={3} className={cn(surfaceInputClassName, "min-h-[5rem]")} {...register("description")} />
+          <textarea
+            id="quotation-desc"
+            rows={4}
+            className={surfaceTextareaClassName}
+            {...register("description")}
+          />
         </FieldGroup>
         </div>
         <div

@@ -1,5 +1,3 @@
-/** Build list/detail URLs so returning from a detail view restores list query state and highlights the row. */
-
 export function mergeUrlQueryParam(pathWithOptionalQuery: string, key: string, value: string): string {
   const qIdx = pathWithOptionalQuery.indexOf("?");
   const pathOnly = qIdx >= 0 ? pathWithOptionalQuery.slice(0, qIdx) : pathWithOptionalQuery;
@@ -9,7 +7,6 @@ export function mergeUrlQueryParam(pathWithOptionalQuery: string, key: string, v
   return s ? `${pathOnly}?${s}` : pathOnly;
 }
 
-/** `detailPath` e.g. `/en/dashboard/clients/12`; `currentListHref` full list URL incl. query. */
 export function buildDetailHrefWithListReturn(detailPath: string, currentListHref: string, entityId: number): string {
   const backTarget = mergeUrlQueryParam(currentListHref, "highlight", String(entityId));
   return `${detailPath}?back=${encodeURIComponent(backTarget)}`;
@@ -20,6 +17,8 @@ export type DashboardListSection =
   | "contacts"
   | "sites"
   | "quotations"
+  | "jobs"
+  | "qr-codes"
   | "projects"
   | "groups"
   | "items"

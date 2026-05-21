@@ -16,6 +16,10 @@ import {
   draftSectionTotal,
 } from "@/features/quotations/utils/quotation-draft-compute.util";
 import { reorderArray } from "@/features/quotations/utils/quotation-draft-ops.util";
+import {
+  QuotationDraftCompositeLines,
+  type CompositeLineLabels,
+} from "@/features/quotations/components/quotation-draft-composite-lines";
 import { formatMoneyDisplay, parseMoneyValue } from "@/features/quotations/utils/quotation-level-pricing.util";
 import { cn } from "@/core/utils/http.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
@@ -118,168 +122,6 @@ function draftSummaryKeyToggle(
   setOpen(!isOpen);
 }
 
-type CompositeLineLabels = {
-  qty: string;
-  unitPrice: string;
-  duplicateLine: string;
-  removeLine: string;
-  rowActions: string;
-};
-
-type CompositeDraftLinesDrag = {
-  onDragLineStart: (li: number, ev: React.DragEvent) => void;
-  onDragLineOver: (e: React.DragEvent) => void;
-  onDropLine: (e: React.DragEvent, li: number) => void;
-};
-
-function CompositeDraftLinesBody({
-  pins,
-  saving,
-  locale,
-  emptyHint,
-  hideWhenEmpty,
-  labels,
-  onDuplicateLine,
-  onRemoveLine,
-  onPatchLine,
-  drag,
-  readOnly = false,
-}: {
-  pins: QuotationDraftLine[];
-  saving: boolean;
-  locale: string;
-  /** Shown when there are no pins and hideWhenEmpty is false. */
-  emptyHint?: string;
-  /** When true, render nothing if there are no pins (no empty placeholder). */
-  hideWhenEmpty?: boolean;
-  labels: CompositeLineLabels;
-  onDuplicateLine: (li: number) => void;
-  onRemoveLine: (li: number) => void;
-  onPatchLine: (li: number, patch: Partial<QuotationDraftLine>) => void;
-  drag?: CompositeDraftLinesDrag;
-  readOnly?: boolean;
-}) {
-  const draggable = Boolean(drag) && !saving && !readOnly;
-
-  if (pins.length === 0) {
-    if (hideWhenEmpty) return null;
-    return (
-      <div className="rounded-md border border-dashed border-slate-300 bg-slate-50/60 px-3 py-3 dark:border-slate-600 dark:bg-slate-950/40">
-        {emptyHint ? <p className="text-xs text-slate-500 dark:text-slate-400">{emptyHint}</p> : null}
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-md border border-dashed border-slate-300 bg-slate-50/70 p-2 dark:border-slate-600 dark:bg-slate-950/45">
-      <ul className="space-y-1.5">
-        {pins.map((line, li) => (
-          <li
-            key={line.id}
-            draggable={draggable}
-            onDragStart={
-              drag && !readOnly
-                ? (e) => {
-                    const target = e.target as HTMLElement;
-                    if (target.closest("input, textarea, button, [role='menu'], [role='menuitem']")) {
-                      e.preventDefault();
-                      return;
-                    }
-                    drag.onDragLineStart(li, e);
-                  }
-                : undefined
-            }
-            onDragOver={!readOnly ? drag?.onDragLineOver : undefined}
-            onDrop={drag && !readOnly ? (e) => drag.onDropLine(e, li) : undefined}
-            className={cn(
-              "flex flex-col gap-3 rounded-lg border border-slate-200/90 bg-white px-3 py-2.5 shadow-sm dark:border-slate-700 dark:bg-slate-900/80 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-8 sm:gap-y-2 sm:py-2",
-              draggable && "cursor-grab active:cursor-grabbing",
-            )}
-          >
-            <div className="min-w-0 w-full flex-1 basis-full sm:pr-1">
-              <p className="text-sm font-medium leading-relaxed text-slate-800 dark:text-slate-100">{line.name}</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-x-8 gap-y-2 sm:shrink-0">
-              <label className="inline-flex shrink-0 items-center gap-2.5">
-                <span className="w-8 shrink-0 text-right text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                  {labels.qty}
-                </span>
-                {readOnly ? (
-                  <span className="inline-block min-w-[2.5rem] text-right text-xs font-medium tabular-nums text-slate-800 dark:text-slate-200 sm:min-w-[3rem]">
-                    {line.quantity}
-                  </span>
-                ) : (
-                  <input
-                    type="number"
-                    min={1}
-                    step={1}
-                    value={line.quantity}
-                    onChange={(e) => {
-                      const n = Number.parseInt(e.target.value, 10);
-                      onPatchLine(li, { quantity: Number.isFinite(n) && n > 0 ? n : 1 });
-                    }}
-                    disabled={saving}
-                    className={cn(inlineEditClassName, "w-12 cursor-text text-right text-xs tabular-nums sm:w-14")}
-                  />
-                )}
-              </label>
-              <label className="inline-flex shrink-0 items-center gap-2.5">
-                <span className="min-w-[4.75rem] shrink-0 text-right text-[11px] font-medium text-slate-500 dark:text-slate-400 sm:min-w-[5.25rem]">
-                  {labels.unitPrice}
-                </span>
-                {readOnly ? (
-                  <span className="inline-block min-w-[4.5rem] text-right text-xs font-medium tabular-nums text-slate-800 dark:text-slate-200 sm:min-w-[5rem]">
-                    {formatMoneyDisplay(line.selling_price, locale)}
-                  </span>
-                ) : (
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={Number.isFinite(line.selling_price) ? line.selling_price : 0}
-                    onChange={(e) => {
-                      const n = Number.parseFloat(e.target.value);
-                      onPatchLine(li, { selling_price: Number.isFinite(n) && n >= 0 ? n : 0 });
-                    }}
-                    disabled={saving}
-                    className={cn(inlineEditClassName, "w-[4.75rem] cursor-text text-right text-xs tabular-nums sm:w-[5.25rem]")}
-                  />
-                )}
-              </label>
-            </div>
-            <div className="flex items-center justify-end gap-3 sm:ml-auto sm:w-auto sm:shrink-0">
-              <span className="min-w-[5.5rem] shrink-0 text-right text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100 sm:min-w-[6rem]">
-                {formatMoneyDisplay(draftPinTotal(line), locale)}
-              </span>
-              {!readOnly ? (
-                <DataTableRowActionsMenu
-                  className="shrink-0"
-                  menuAriaLabel={labels.rowActions}
-                  items={[
-                    {
-                      id: "dup-line",
-                      label: labels.duplicateLine,
-                      icon: Copy,
-                      onSelect: () => onDuplicateLine(li),
-                    },
-                    {
-                      id: "del-line",
-                      label: labels.removeLine,
-                      icon: Trash2,
-                      tone: "danger",
-                      onSelect: () => onRemoveLine(li),
-                    },
-                  ]}
-                />
-              ) : null}
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 function DraftCompositeAddRow({
   idPrefix,
   saving,
@@ -316,6 +158,7 @@ function DraftCompositeAddRow({
           <CheckmarkSelect
             id={`${idPrefix}-group`}
             portaled
+            searchable
             listLabel={`${tDraw("chooseGroup")} *`}
             options={groupOptions}
             value={groupId}
@@ -329,6 +172,7 @@ function DraftCompositeAddRow({
           <CheckmarkSelect
             id={`${idPrefix}-composite`}
             portaled
+            searchable
             listLabel={`${tDraw("chooseComposite")} *`}
             options={compositeOptions}
             value={compositeId}
@@ -338,7 +182,7 @@ function DraftCompositeAddRow({
             className="w-full"
           />
         </div>
-        <AppButton type="button" variant="secondary" size="md" disabled={saveDisabled || saving} onClick={onSave}>
+        <AppButton type="button" variant="secondary" size="sm" disabled={saveDisabled || saving} onClick={onSave}>
           {saveLabel}
         </AppButton>
       </div>
@@ -360,11 +204,17 @@ type Props = {
   onDraftChange: React.Dispatch<React.SetStateAction<QuotationDraft | null>>;
   saving: boolean;
   canShow: boolean;
-  /** When true, scope is view-only (detail page): no edits, adds, deletes, or drag-reorder. */
+  /** When true, scope is view-only: no edits, adds, deletes, or drag-reorder. */
   readOnly?: boolean;
 };
 
-export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, readOnly = false }: Props) {
+export function QuotationDraftComposer({
+  draft,
+  onDraftChange,
+  saving,
+  canShow,
+  readOnly = false,
+}: Props) {
   const t = useTranslations("Dashboard.quotations.draft");
   const tDraw = useTranslations("Dashboard.projects.drawings.editor");
   const locale = useLocale();
@@ -383,6 +233,15 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
   const [duplicateCountInput, setDuplicateCountInput] = React.useState("1");
   const [duplicateCountError, setDuplicateCountError] = React.useState<string | null>(null);
   const duplicateCountFieldId = React.useId();
+
+  const compositeLineLabels = React.useMemo<CompositeLineLabels>(
+    () => ({
+      duplicateLine: t("duplicateLine"),
+      removeLine: t("removeLine"),
+      rowActions: t("rowActions"),
+    }),
+    [t],
+  );
 
   const groupOptions = React.useMemo(
     () => [{ value: "", label: tDraw("allGroups") }, ...groups.map((g) => ({ value: String(g.id), label: g.name }))],
@@ -477,11 +336,10 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
       if (!source) return d;
       const clones: QuotationDraftSection[] = [];
       for (let i = 0; i < n; i++) {
-        const nameSuffix = n === 1 ? " (Copy)" : ` (Copy ${i + 1})`;
         clones.push({
           ...source,
           id: newQuotationDraftId("sec"),
-          name: `${source.name}${nameSuffix}`,
+          name: source.name,
           section_pins: (source.section_pins ?? []).map((ln) => ({ ...ln, id: newQuotationDraftId("line") })),
           plots: source.plots.map((p) => ({
             ...p,
@@ -508,11 +366,10 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
       if (!sec || !plot) return d;
       const clones: QuotationDraftPlot[] = [];
       for (let i = 0; i < n; i++) {
-        const nameSuffix = n === 1 ? " (Copy)" : ` (Copy ${i + 1})`;
         clones.push({
           ...plot,
           id: newQuotationDraftId("plot"),
-          name: `${plot.name}${nameSuffix}`,
+          name: plot.name,
           pins: plot.pins.map((ln) => ({ ...ln, id: newQuotationDraftId("line") })),
         });
       }
@@ -534,7 +391,12 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
     patchDraft((d) => {
       const line = d.sections[si]?.plots[pi]?.pins[li];
       if (!line) return d;
-      const clones = Array.from({ length: n }, () => ({ ...line, id: newQuotationDraftId("line") }));
+      const clones = Array.from({ length: n }, () => ({
+        ...line,
+        id: newQuotationDraftId("line"),
+        pin_count: 1,
+        quantity: 1,
+      }));
       const plotPins = [...d.sections[si].plots[pi].pins];
       plotPins.splice(li + 1, 0, ...clones);
       return {
@@ -573,7 +435,12 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
       const prevPins = sec.section_pins ?? [];
       const line = prevPins[li];
       if (!line) return d;
-      const clones = Array.from({ length: n }, () => ({ ...line, id: newQuotationDraftId("line") }));
+      const clones = Array.from({ length: n }, () => ({
+        ...line,
+        id: newQuotationDraftId("line"),
+        pin_count: 1,
+        quantity: 1,
+      }));
       const section_pins = [...prevPins];
       section_pins.splice(li + 1, 0, ...clones);
       return {
@@ -630,6 +497,32 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
         i === si ? { ...s, section_pins: (s.section_pins ?? []).filter((_, k) => k !== li) } : s,
       ),
     }));
+  }
+
+  function removeSectionCompositeLines(si: number, indices: number[]) {
+    const sorted = [...indices].sort((a, b) => b - a);
+    patchDraft((d) => {
+      const pins = [...(d.sections[si]?.section_pins ?? [])];
+      for (const li of sorted) pins.splice(li, 1);
+      return {
+        sections: d.sections.map((s, i) => (i === si ? { ...s, section_pins: pins } : s)),
+      };
+    });
+  }
+
+  function removePlotCompositeLines(si: number, pi: number, indices: number[]) {
+    const sorted = [...indices].sort((a, b) => b - a);
+    patchDraft((d) => {
+      const plot = d.sections[si]?.plots[pi];
+      if (!plot) return d;
+      const pins = [...plot.pins];
+      for (const li of sorted) pins.splice(li, 1);
+      return {
+        sections: d.sections.map((s, i) =>
+          i === si ? { ...s, plots: s.plots.map((p, j) => (j === pi ? { ...p, pins } : p)) } : s,
+        ),
+      };
+    });
   }
 
   function updateSectionLine(si: number, li: number, patch: Partial<QuotationDraftLine>) {
@@ -798,6 +691,7 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
       name: label,
       quantity: 1,
       selling_price: unit,
+      pin_count: 1,
     };
     if (pi === null) {
       patchDraft((d) => ({
@@ -885,7 +779,7 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
               className={cn(surfaceInputClassName, "min-w-0 flex-1")}
               disabled={saving}
             />
-            <AppButton type="button" variant="secondary" size="md" disabled={saving || newSectionName.trim().length === 0} onClick={addSection}>
+            <AppButton type="button" variant="secondary" size="sm" disabled={saving || newSectionName.trim().length === 0} onClick={addSection}>
               {t("addSection")}
             </AppButton>
           </div>
@@ -1120,44 +1014,15 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
                       saveLabel={t("saveComposite")}
                     />
                   ) : null}
-                  <CompositeDraftLinesBody
+                  <QuotationDraftCompositeLines
                     hideWhenEmpty
                     pins={section.section_pins ?? []}
                     saving={saving}
                     locale={loc}
-                    labels={{
-                      qty: t("qty"),
-                      unitPrice: t("unitPrice"),
-                      duplicateLine: t("duplicateLine"),
-                      removeLine: t("removeLine"),
-                      rowActions: t("rowActions"),
-                    }}
+                    labels={compositeLineLabels}
                     onDuplicateLine={(li) => openDuplicatePrompt({ kind: "section-line", si, li })}
-                    onRemoveLine={(li) => removeSectionLine(si, li)}
-                    onPatchLine={(li, patch) => updateSectionLine(si, li, patch)}
+                    onRemoveLines={(indices) => removeSectionCompositeLines(si, indices)}
                     readOnly={readOnly}
-                    drag={
-                      readOnly
-                        ? undefined
-                        : {
-                            onDragLineStart: (li, ev) => {
-                              ev.dataTransfer.effectAllowed = "move";
-                              ev.dataTransfer.setData(
-                                DND_TYPE,
-                                JSON.stringify({
-                                  scope: "section-line",
-                                  sectionIndex: si,
-                                  fromIndex: li,
-                                } satisfies DndPayload),
-                              );
-                            },
-                            onDragLineOver: (e) => {
-                              e.preventDefault();
-                              e.dataTransfer.dropEffect = "move";
-                            },
-                            onDropLine: (e, li) => onDropSectionLine(e, si, li),
-                          }
-                    }
                   />
 
                   {(section.section_pins ?? []).length === 0 && section.plots.length === 0 ? (
@@ -1220,26 +1085,9 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
                           onDrop={(e) => onDropPlot(e, si, pi)}
                           onDuplicatePlot={() => openDuplicatePrompt({ kind: "plot", si, pi })}
                           onRemovePlot={() => removePlot(si, pi)}
+                          compositeLineLabels={compositeLineLabels}
                           onDuplicateLine={(li) => openDuplicatePrompt({ kind: "line", si, pi, li })}
-                          onRemoveLine={(li) => removeLine(si, pi, li)}
-                          onDragLineStart={(li, ev) => {
-                            ev.dataTransfer.effectAllowed = "move";
-                            ev.dataTransfer.setData(
-                              DND_TYPE,
-                              JSON.stringify({
-                                scope: "line",
-                                sectionIndex: si,
-                                plotIndex: pi,
-                                fromIndex: li,
-                              } satisfies DndPayload),
-                            );
-                          }}
-                          onDragLineOver={(e) => {
-                            e.preventDefault();
-                            e.dataTransfer.dropEffect = "move";
-                          }}
-                          onDropLine={(e, li) => onDropLine(e, si, pi, li)}
-                          onPatchLine={(li, patch) => updateLine(si, pi, li, patch)}
+                          onRemoveLines={(indices) => removePlotCompositeLines(si, pi, indices)}
                           onSummaryClick={(e) => onPlotSummaryClick(e, plot.id, openPlotIds.has(plot.id))}
                           readOnly={readOnly}
                         />
@@ -1271,10 +1119,10 @@ export function QuotationDraftComposer({ draft, onDraftChange, saving, canShow, 
         isBusy={saving}
         footer={
           <>
-            <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={closeDuplicatePrompt}>
+            <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={closeDuplicatePrompt}>
               {t("cancel")}
             </AppButton>
-            <AppButton type="button" variant="primary" size="md" disabled={saving} onClick={confirmDuplicatePrompt}>
+            <AppButton type="button" variant="primary" size="sm" disabled={saving} onClick={confirmDuplicatePrompt}>
               {t("duplicateCountConfirm")}
             </AppButton>
           </>
@@ -1332,12 +1180,9 @@ type PlotBlockProps = {
   onDrop: (e: React.DragEvent) => void;
   onDuplicatePlot: () => void;
   onRemovePlot: () => void;
+  compositeLineLabels: CompositeLineLabels;
   onDuplicateLine: (li: number) => void;
-  onRemoveLine: (li: number) => void;
-  onDragLineStart: (li: number, ev: React.DragEvent) => void;
-  onDragLineOver: (e: React.DragEvent) => void;
-  onDropLine: (e: React.DragEvent, toIndex: number) => void;
-  onPatchLine: (li: number, patch: Partial<QuotationDraftLine>) => void;
+  onRemoveLines: (lineIndices: number[]) => void;
   onSummaryClick: (e: React.MouseEvent<HTMLElement>) => void;
   readOnly?: boolean;
 };
@@ -1355,12 +1200,9 @@ function PlotBlock({
   onDrop,
   onDuplicatePlot,
   onRemovePlot,
+  compositeLineLabels,
   onDuplicateLine,
-  onRemoveLine,
-  onDragLineStart,
-  onDragLineOver,
-  onDropLine,
-  onPatchLine,
+  onRemoveLines,
   onSummaryClick,
   readOnly = false,
 }: PlotBlockProps) {
@@ -1534,31 +1376,15 @@ function PlotBlock({
           {!readOnly && addCompositeToolbar ? (
             <div className="flex w-full min-w-0 flex-wrap items-center justify-start gap-2">{addCompositeToolbar}</div>
           ) : null}
-          <CompositeDraftLinesBody
+          <QuotationDraftCompositeLines
             pins={plot.pins}
             saving={saving}
             locale={locale}
             emptyHint={t("emptyLines")}
-            labels={{
-              qty: t("qty"),
-              unitPrice: t("unitPrice"),
-              duplicateLine: t("duplicateLine"),
-              removeLine: t("removeLine"),
-              rowActions: t("rowActions"),
-            }}
+            labels={compositeLineLabels}
             onDuplicateLine={onDuplicateLine}
-            onRemoveLine={onRemoveLine}
-            onPatchLine={onPatchLine}
+            onRemoveLines={onRemoveLines}
             readOnly={readOnly}
-            drag={
-              readOnly
-                ? undefined
-                : {
-                    onDragLineStart,
-                    onDragLineOver,
-                    onDropLine,
-                  }
-            }
           />
         </div>
       </details>

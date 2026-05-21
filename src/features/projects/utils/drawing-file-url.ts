@@ -1,7 +1,3 @@
-/**
- * Turns API file paths (e.g. `/media/drawings/x.pdf`) into a browser-openable URL.
- * Absolute `http(s)` values are returned unchanged.
- */
 export function resolveDrawingFileUrl(pathOrUrl: string): string {
   if (!pathOrUrl) return "";
   if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;

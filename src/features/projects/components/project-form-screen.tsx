@@ -6,9 +6,9 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
-import { useAuthStore } from "@/features/auth/store/auth.store";
-import { getSessionOrganizationId } from "@/features/auth/utils/get-session-organization-id";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
+import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
+import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
 import { createProject, fetchProject, updateProject } from "@/features/projects/api/project.api";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import { createProjectFormSchema, type ProjectFormValues } from "@/features/projects/schemas/project-form-schema";
@@ -35,21 +35,21 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const safeBack = sanitizeInternalListBack(searchParams.get("back"), "projects");
-  const organizations = useAuthStore((s) => s.organizations);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [projectTypeOptions, setProjectTypeOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [siteOptions, setSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [organizationIdForEdit, setOrganizationIdForEdit] = React.useState<number | null>(null);
 
   const schema = React.useMemo(
     () =>
       createProjectFormSchema({
         name: t("validation.name"),
         client: t("validation.client"),
+        projectType: t("validation.projectType"),
         description: t("validation.description"),
         startDate: t("validation.startDate"),
         endDate: t("validation.endDate"),
@@ -90,6 +90,23 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   }, []);
 
   React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchProjectTypesPage(1, 500, { is_active: true });
+        if (!cancelled) {
+          setProjectTypeOptions(items.map((pt) => ({ value: String(pt.id), label: formatProjectTypeLabel(pt) })));
+        }
+      } catch {
+        if (!cancelled) setProjectTypeOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  React.useEffect(() => {
     if (!selectedClient || !/^\d+$/.test(selectedClient)) {
       setSiteOptions([]);
       setValue("sites", []);
@@ -122,10 +139,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       setScreenError(null);
       try {
         const row = await fetchProject(projectId);
-        if (!cancelled) {
-          reset(projectToFormDefaults(row));
-          setOrganizationIdForEdit(row.organization);
-        }
+        if (!cancelled) reset(projectToFormDefaults(row));
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
       } finally {
@@ -138,14 +152,13 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   }, [isEdit, projectId, reset, t]);
 
   async function submit(values: ProjectFormValues) {
-    const organizationId = getSessionOrganizationId(organizations) ?? (isEdit ? organizationIdForEdit : null);
-    if (organizationId == null) {
-      toastError(t("missingOrganization"));
-      return;
-    }
-    const payload = mapProjectFormToPayload(values, organizationId);
+    const payload = mapProjectFormToPayload(values);
     if (!Number.isFinite(payload.client) || payload.client <= 0) {
       toastError(t("validation.client"));
+      return;
+    }
+    if (!Number.isFinite(payload.project_type) || payload.project_type <= 0) {
+      toastError(t("validation.projectType"));
       return;
     }
     setSaving(true);
@@ -159,6 +172,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   }
 
   const noClients = clientOptions.length === 0;
+  const noProjectTypes = projectTypeOptions.length === 0;
 
   return (
     <div className="pb-12">
@@ -169,10 +183,17 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
         subtitle={isEdit ? t("page.editSubtitle") : t("page.createSubtitle")}
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.projects)}>
+            <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.projects)}>
               {t("modal.cancel")}
             </AppButton>
-            <AppButton type="submit" form="project-upsert-screen-form" variant="primary" size="md" loading={saving} disabled={noClients}>
+            <AppButton
+              type="submit"
+              form="project-upsert-screen-form"
+              variant="primary"
+              size="sm"
+              loading={saving}
+              disabled={noClients || noProjectTypes}
+            >
               {isEdit ? t("modal.saveChanges") : t("modal.save")}
             </AppButton>
           </div>
@@ -194,6 +215,11 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
             {noClients ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
                 {t("noClientsHint")}
+              </p>
+            ) : null}
+            {noProjectTypes ? (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+                {t("noProjectTypesHint")}
               </p>
             ) : null}
             <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
@@ -219,6 +245,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                     <CheckmarkSelect
                       id="project-client"
                       portaled
+                      searchable
                       listLabel={t("fields.client")}
                       options={clientOptions}
                       value={field.value}
@@ -234,6 +261,28 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                   )}
                 />
                 <FieldErrorText>{errors.client?.message}</FieldErrorText>
+              </FieldGroup>
+              <FieldGroup label={t("fields.projectType")} htmlFor="project-type" required>
+                <Controller
+                  control={control}
+                  name="project_type"
+                  render={({ field }) => (
+                    <CheckmarkSelect
+                      id="project-type"
+                      portaled
+                      searchable
+                      listLabel={t("fields.projectType")}
+                      options={projectTypeOptions}
+                      value={field.value}
+                      emptyLabel={t("placeholders.projectType")}
+                      disabled={saving || noProjectTypes}
+                      invalid={!!errors.project_type}
+                      onBlur={field.onBlur}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+                <FieldErrorText>{errors.project_type?.message}</FieldErrorText>
               </FieldGroup>
             </FormFieldRow>
             <FieldGroup label={t("fields.sites")} htmlFor="project-sites">

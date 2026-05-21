@@ -14,12 +14,13 @@ import {
   PanelLeft,
   PanelLeftClose,
   Settings,
-  Tags,
-  Tag,
+  ListTodo,
+  QrCode,
   UserRound,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
+import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
@@ -71,6 +72,8 @@ export function DashboardHeader() {
   const contactsHref = routes.dashboard.contacts;
   const sitesHref = routes.dashboard.sites;
   const quotationsHref = routes.dashboard.quotations;
+  const jobsHref = routes.dashboard.jobs;
+  const qrCodesHref = routes.dashboard.qrCodes;
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
@@ -78,8 +81,11 @@ export function DashboardHeader() {
   const personalProfileHref = routes.dashboard.settingsPersonalProfile;
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
   const modulesHref = routes.dashboard.settingsModules;
+  const customizationHref = routes.dashboard.settingsCustomization;
   const pinStatusHref = routes.dashboard.settingsPinStatus;
+  const jobStatusHref = routes.dashboard.settingsJobStatus;
   const tagHref = routes.dashboard.settingsTags;
+  const projectTypeHref = routes.dashboard.settingsProjectTypes;
   const usersHref = routes.dashboard.settingsUsers;
   const homeActive = pathname === homeHref;
   const clientsActive =
@@ -89,6 +95,8 @@ export function DashboardHeader() {
   const sitesActive = pathname === sitesHref || pathname.startsWith(`${sitesHref}/`);
   const quotationsActive =
     pathname === quotationsHref || pathname.startsWith(`${quotationsHref}/`);
+  const jobsActive = pathname === jobsHref || pathname.startsWith(`${jobsHref}/`);
+  const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
   const groupsActive = pathname === groupsHref || pathname.startsWith(`${groupsHref}/`);
@@ -102,7 +110,14 @@ export function DashboardHeader() {
     pathname === modulesHref || pathname.startsWith(`${modulesHref}/`);
   const pinStatusActive =
     pathname === pinStatusHref || pathname.startsWith(`${pinStatusHref}/`);
+  const jobStatusActive =
+    pathname === jobStatusHref || pathname.startsWith(`${jobStatusHref}/`);
   const tagActive = pathname === tagHref || pathname.startsWith(`${tagHref}/`);
+  const projectTypeActive =
+    pathname === projectTypeHref || pathname.startsWith(`${projectTypeHref}/`);
+  const customizationHubActive =
+    pathname === customizationHref || pathname.startsWith(`${customizationHref}/`);
+  const customizationActive = isCustomizationSettingsPath(pathname);
   const usersActive = pathname === usersHref || pathname.startsWith(`${usersHref}/`);
 
   const sectionTitle = homeActive
@@ -111,32 +126,42 @@ export function DashboardHeader() {
       ? tNav("projects")
       : quotationsActive
         ? tNav("quotations")
-        : sitesActive
-          ? tNav("sites")
-          : contactsActive
-            ? tNav("contacts")
-            : clientsActive
-              ? tNav("clients")
-              : groupsActive
-                ? tNav("groups")
-                : compositeActive
-                  ? tNav("compositeItems")
-                  : personalProfileActive
-                    ? tSettingsNav("personalProfile")
-                    : companySettingsActive
-                      ? tSettingsNav("companySettings")
-                      : modulesActive
-                        ? tSettingsNav("modules")
-                        : pinStatusActive
-                          ? tSettingsNav("pinStatus")
-                          : tagActive
-                            ? tSettingsNav("tags")
-                            : usersActive
-                              ? tSettingsNav("users")
-                              : tNav("home");
+        : jobsActive
+          ? tNav("jobs")
+          : qrCodesActive
+            ? tNav("qrCodes")
+            : sitesActive
+              ? tNav("sites")
+              : contactsActive
+                ? tNav("contacts")
+                : clientsActive
+                  ? tNav("clients")
+                  : groupsActive
+                    ? tNav("groups")
+                    : compositeActive
+                      ? tNav("compositeItems")
+                      : personalProfileActive
+                        ? tSettingsNav("personalProfile")
+                        : companySettingsActive
+                          ? tSettingsNav("companySettings")
+                          : modulesActive
+                            ? tSettingsNav("modules")
+                            : customizationHubActive
+                              ? tSettingsNav("customization.label")
+                              : pinStatusActive
+                                ? tSettingsNav("pinStatus")
+                                : jobStatusActive
+                                  ? tSettingsNav("jobStatus")
+                                  : tagActive
+                                    ? tSettingsNav("tags")
+                                    : projectTypeActive
+                                      ? tSettingsNav("projectTypes")
+                                      : usersActive
+                                        ? tSettingsNav("users")
+                                        : tNav("home");
 
   return (
-    <header className="z-20 flex h-auto shrink-0 flex-col border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+    <header className="flex h-auto shrink-0 flex-col bg-white dark:bg-slate-950">
       <div className="flex h-14 items-center justify-between gap-2 px-4 lg:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
           <button
@@ -261,26 +286,15 @@ export function DashboardHeader() {
               {tSettingsNav("modules")}
             </Link>
             <Link
-              href={pinStatusHref}
+              href={customizationHref}
               className={cn(
                 "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
-                pinStatusActive ? resolved.navActiveClassName : mobileInactive(),
+                customizationActive ? resolved.navActiveClassName : mobileInactive(),
               )}
-              style={pinStatusActive ? resolved.navActiveStyle : undefined}
+              style={customizationActive ? resolved.navActiveStyle : undefined}
             >
-              <Tags className="size-3.5" strokeWidth={1.75} />
-              {tSettingsNav("pinStatus")}
-            </Link>
-            <Link
-              href={tagHref}
-              className={cn(
-                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
-                tagActive ? resolved.navActiveClassName : mobileInactive(),
-              )}
-              style={tagActive ? resolved.navActiveStyle : undefined}
-            >
-              <Tag className="size-3.5" strokeWidth={1.75} />
-              {tSettingsNav("tags")}
+              <Palette className="size-3.5" strokeWidth={1.75} />
+              {tSettingsNav("customization.label")}
             </Link>
             <Link
               href={usersHref}
@@ -350,6 +364,28 @@ export function DashboardHeader() {
             >
               <FileText className="size-3.5" strokeWidth={1.75} />
               {tNav("quotations")}
+            </Link>
+            <Link
+              href={jobsHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                jobsActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={jobsActive ? resolved.navActiveStyle : undefined}
+            >
+              <ListTodo className="size-3.5" strokeWidth={1.75} />
+              {tNav("jobs")}
+            </Link>
+            <Link
+              href={qrCodesHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                qrCodesActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={qrCodesActive ? resolved.navActiveStyle : undefined}
+            >
+              <QrCode className="size-3.5" strokeWidth={1.75} />
+              {tNav("qrCodes")}
             </Link>
             <Link
               href={projectsHref}

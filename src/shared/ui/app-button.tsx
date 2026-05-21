@@ -6,14 +6,12 @@ import { Loader2 } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 
 const variants = {
-  /** Solid fill uses `--dash-accent`; label uses `--dash-on-accent` (black/white flip in dark). */
   primary: cn(
     "bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)] shadow-sm",
     "hover:brightness-110 active:brightness-[0.93]",
     "focus-visible:ring-[color:color-mix(in_srgb,var(--dash-accent,#111111)_42%,transparent)]",
     "dark:hover:brightness-110 dark:active:brightness-95",
   ),
-
   primaryLight: cn(
     "bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)] shadow-sm",
     "hover:brightness-110 active:brightness-[0.93]",
@@ -40,10 +38,11 @@ const variants = {
   ),
 } as const;
 
+/** Compact dashboard actions — text only, no icons. */
 const sizes = {
-  sm: "h-9 gap-1.5 rounded-lg px-3 text-xs",
-  md: "h-11 gap-2 rounded-xl px-4 text-sm",
-  lg: "h-12 gap-2 rounded-xl px-5 text-base",
+  sm: "h-8 min-h-8 rounded-md px-3 text-xs font-medium",
+  md: "h-9 min-h-9 rounded-md px-3.5 text-xs font-medium",
+  lg: "h-10 min-h-10 rounded-lg px-4 text-sm font-medium",
 } as const;
 
 export type AppButtonVariant = keyof typeof variants;
@@ -61,7 +60,7 @@ export type AppButtonProps = Omit<
 };
 
 const base = cn(
-  "inline-flex cursor-pointer items-center justify-center font-medium transition outline-none",
+  "inline-flex cursor-pointer items-center justify-center transition outline-none",
   "focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950",
   "data-[disabled]:cursor-not-allowed data-[disabled]:pointer-events-none data-[disabled]:opacity-55",
 );
@@ -69,7 +68,7 @@ const base = cn(
 export function AppButton({
   className,
   variant = "primary",
-  size = "md",
+  size = "sm",
   loading,
   disabled,
   type = "button",
@@ -83,7 +82,7 @@ export function AppButton({
       disabled={disabled || loading}
       {...props}
     >
-      {loading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : children}
+      {loading ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : children}
     </Button>
   );
 }

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Calendar, Pencil, Plus } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
@@ -21,21 +21,16 @@ import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
+import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
   ActiveStatusBadge,
-  AppButton,
+  AddButton, AppButton,
   CheckmarkSelect,
   DashboardEmptyState,
-  DataTable,
-  DataTableBody,
-  DataTableHead,
   DataTablePaginationBar,
-  DataTableRow,
-  DataTableScroll,
-  DataTableTd,
-  DataTableTh,
   DataTableRowActionsMenu,
   ListPageCard,
   ListPageCardGrid,
@@ -44,16 +39,17 @@ import {
   ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
+import { cn } from "@/core/utils/http.util";
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
-import { cn } from "@/core/utils/http.util";
 
 export function QuotationsPanel() {
   const t = useTranslations("Dashboard.quotations");
   const tList = useTranslations("Dashboard.list");
-  const locale = useLocale();
+  const dateFmt = useDashboardDateFormat();
+  const dueFmt = useDashboardDateFormat({ dateOnly: true });
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -277,23 +273,6 @@ export function QuotationsPanel() {
     [siteRows],
   );
 
-  const dateFmt = React.useMemo(
-    () =>
-      new Intl.DateTimeFormat(locale === "es" ? "es" : "en", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }),
-    [locale],
-  );
-
-  const dueFmt = React.useMemo(
-    () =>
-      new Intl.DateTimeFormat(locale === "es" ? "es" : "en", {
-        dateStyle: "medium",
-      }),
-    [locale],
-  );
-
   const hasActiveFilters = hasListActiveFilters({
     search,
     customerParam,
@@ -304,16 +283,58 @@ export function QuotationsPanel() {
   const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
   const pageRange = getListPageRange(pagination);
 
-  function quoteStatusLabel(code: string | null | undefined) {
+  const quoteStatusLabel = React.useCallback((code: string | null | undefined) => {
     const raw = code == null ? "" : String(code).trim();
     if (!raw) return "—";
-    const c = raw.toLowerCase();
-    if (c === "draft") return t("quoteStatus.draft");
-    if (c === "sent") return t("quoteStatus.sent");
-    if (c === "accepted") return t("quoteStatus.accepted");
-    if (c === "rejected") return t("quoteStatus.rejected");
+    const norm = raw.toLowerCase();
+    if (norm === "draft") return t("quoteStatus.draft");
+    if (norm === "sent") return t("quoteStatus.sent");
+    if (norm === "accepted") return t("quoteStatus.accepted");
+    if (norm === "rejected") return t("quoteStatus.rejected");
     return raw;
-  }
+  }, [t]);
+
+  const tableColumns = React.useMemo(() => {
+    const c = entityCol<QuotationListItem>();
+    const customerDisplay = (row: QuotationListItem) => {
+      const customerId = getQuotationCustomerId(row.customer);
+      return quotationCustomerLabel(row.customer, customerId != null ? clientLabelById[customerId] : undefined);
+    };
+    const siteDisplay = (row: QuotationListItem) => {
+      const siteId = getQuotationSiteId(row.site);
+      return quotationSiteLabel(row.site, siteId != null ? siteLabelById[siteId] : undefined);
+    };
+    const tagsDisplay = (row: QuotationListItem) => quotationTagsLabels(row.tags, tagLabelById);
+
+    return [
+      c.primary("quote", t("table.quote"), (r) => r.quote_name),
+      c.truncate("customer", t("table.customer"), (r) => customerDisplay(r), {
+        title: (r) => customerDisplay(r),
+      }),
+      c.truncate("site", t("table.site"), (r) => siteDisplay(r), {
+        title: (r) => siteDisplay(r),
+      }),
+      c.truncate("tags", t("table.tags"), (r) => tagsDisplay(r), {
+        title: (r) => tagsDisplay(r),
+      }),
+      c.text("status", t("table.status"), (r) => quoteStatusLabel(r.status)),
+      c.tabular("due", t("table.due"), (r) => formatFlexibleApiDate(r.due_date, dueFmt)),
+      c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
+      c.actions("actions", tList("openRowActions"), (row) => (
+        <DataTableRowActionsMenu
+          menuAriaLabel={tList("openRowActions")}
+          items={[
+            {
+              id: "edit",
+              label: t("edit"),
+              icon: Pencil,
+              onSelect: () => openEdit(row.id),
+            },
+          ]}
+        />
+      )),
+    ];
+  }, [t, tList, dateFmt, dueFmt, clientLabelById, siteLabelById, tagLabelById, quoteStatusLabel]);
 
   return (
     <div className="space-y-4">
@@ -325,10 +346,7 @@ export function QuotationsPanel() {
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
           action={
-            <AppButton type="button" variant="primary" size="sm" onClick={openCreate} className="gap-2">
-              <Plus className="size-4" strokeWidth={2} aria-hidden />
-              {t("add")}
-            </AppButton>
+            <AddButton type="button" onClick={openCreate} />
           }
           controls={
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -346,6 +364,7 @@ export function QuotationsPanel() {
                 value={customerParam ?? ""}
                 emptyLabel={t("filterAllCustomers")}
                 portaled
+                searchable
                 clearable
                 clearAriaLabel={tList("clearFilter")}
                 className="w-full min-w-0 sm:w-56"
@@ -360,6 +379,7 @@ export function QuotationsPanel() {
                 value={siteParam ?? ""}
                 emptyLabel={t("filterAllSites")}
                 portaled
+                searchable
                 clearable
                 clearAriaLabel={tList("clearFilter")}
                 className="w-full min-w-0 sm:w-56"
@@ -372,6 +392,7 @@ export function QuotationsPanel() {
                 value={projectParam ?? ""}
                 emptyLabel={t("filterAllProjects")}
                 portaled
+                searchable
                 clearable
                 clearAriaLabel={tList("clearFilter")}
                 className="w-full min-w-0 sm:w-56"
@@ -406,9 +427,9 @@ export function QuotationsPanel() {
             </div>
           ) : (
             <div className="space-y-2 p-6">
-              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
             </div>
           )
         ) : items.length === 0 ? (
@@ -421,7 +442,7 @@ export function QuotationsPanel() {
                 <AppButton
                   type="button"
                   variant="secondary"
-                  size="md"
+                  size="sm"
                   onClick={() =>
                     setUrl(
                       { search: null, is_active: null, customer: null, site: null, project: null, status: null, page: null },
@@ -439,10 +460,7 @@ export function QuotationsPanel() {
               title={t("emptyTitle")}
               description={t("emptyDescription")}
               action={
-                <AppButton type="button" variant="primary" size="md" onClick={openCreate} className="gap-2">
-                  <Plus className="size-4" strokeWidth={2} aria-hidden />
-                  {t("add")}
-                </AppButton>
+                <AddButton type="button" onClick={openCreate} />
               }
             />
           )
@@ -518,73 +536,12 @@ export function QuotationsPanel() {
             </ListPageCardGrid>
           </div>
         ) : (
-          <DataTableScroll>
-            <DataTable>
-              <DataTableHead>
-                <tr>
-                  <DataTableTh>{t("table.quote")}</DataTableTh>
-                  <DataTableTh>{t("table.customer")}</DataTableTh>
-                  <DataTableTh>{t("table.site")}</DataTableTh>
-                  <DataTableTh>{t("table.tags")}</DataTableTh>
-                  <DataTableTh>{t("table.status")}</DataTableTh>
-                  <DataTableTh>{t("table.due")}</DataTableTh>
-                  <DataTableTh>{t("table.created")}</DataTableTh>
-                  <DataTableTh narrow>
-                    <span className="sr-only">{tList("openRowActions")}</span>
-                  </DataTableTh>
-                </tr>
-              </DataTableHead>
-              <DataTableBody>
-                {items.map((row) => {
-                  const dueLabel = formatFlexibleApiDate(row.due_date, dueFmt);
-                  const customerId = getQuotationCustomerId(row.customer);
-                  const customerDisplay = quotationCustomerLabel(
-                    row.customer,
-                    customerId != null ? clientLabelById[customerId] : undefined,
-                  );
-                  const siteId = getQuotationSiteId(row.site);
-                  const siteDisplay = quotationSiteLabel(row.site, siteId != null ? siteLabelById[siteId] : undefined);
-                  const tagsLine = quotationTagsLabels(row.tags, tagLabelById);
-                  return (
-                    <DataTableRow
-                      key={row.id}
-                      data-list-row-id={row.id}
-                      className={cn(highlightClassName(row.id))}
-                      clickable
-                      onClick={() => openDetail(row.id)}
-                    >
-                      <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{row.quote_name}</DataTableTd>
-                      <DataTableTd className="max-w-[11rem] truncate" title={customerDisplay}>
-                        {customerDisplay}
-                      </DataTableTd>
-                      <DataTableTd className="max-w-[11rem] truncate" title={siteDisplay}>
-                        {siteDisplay}
-                      </DataTableTd>
-                      <DataTableTd className="max-w-[14rem] truncate" title={tagsLine}>
-                        {tagsLine}
-                      </DataTableTd>
-                      <DataTableTd>{quoteStatusLabel(row.status)}</DataTableTd>
-                      <DataTableTd className="tabular-nums">{dueLabel}</DataTableTd>
-                      <DataTableTd>{dateFmt.format(new Date(row.created_at))}</DataTableTd>
-                      <DataTableTd narrow onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                        <DataTableRowActionsMenu
-                          menuAriaLabel={tList("openRowActions")}
-                          items={[
-                            {
-                              id: "edit",
-                              label: t("edit"),
-                              icon: Pencil,
-                              onSelect: () => openEdit(row.id),
-                            },
-                          ]}
-                        />
-                      </DataTableTd>
-                    </DataTableRow>
-                  );
-                })}
-              </DataTableBody>
-            </DataTable>
-          </DataTableScroll>
+          <EntityDataTable
+            columns={tableColumns}
+            rows={items}
+            onRowClick={(row) => openDetail(row.id)}
+            getRowClassName={(row) => highlightClassName(row.id)}
+          />
         )}
 
         {!loading && !loadError && items.length > 0 ? (

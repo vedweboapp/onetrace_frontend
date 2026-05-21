@@ -4,13 +4,22 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import type { Item } from "@/features/items/types/item.types";
+import { fetchItemsPage } from "@/features/items/api/item.api";
 import { routes } from "@/shared/config/routes";
-import { cn } from "@/core/utils/http.util";
+import { DetailSystemMetadataSection } from "@/shared/components/entity";
+import {
+  DetailLinkedTable,
+  DetailLinkedTableRow,
+  DetailLinkedTableTd,
+  detailLinkedTableCellClassName,
+} from "@/shared/components/layout/detail-linked-table";
 import {
   DetailMetricCard,
   DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
+  DetailStatusMetric,
+  detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 
 function moneyDisplay(v: unknown): string {
@@ -26,16 +35,46 @@ export function ItemDetailBody({
   dateFmt: Intl.DateTimeFormat;
 }) {
   const t = useTranslations("Dashboard.items");
-  const tUser = useTranslations("Dashboard.common.user");
+  const tMeta = useTranslations("Dashboard.common.detail");
+  const tStatus = useTranslations("Dashboard.clients.status");
+  const [childItemsById, setChildItemsById] = React.useState<Map<number, Item>>(new Map());
 
   const groupId = typeof detail.group === "number" && Number.isFinite(detail.group) && detail.group > 0 ? detail.group : null;
+  const components = detail.components ?? [];
+
+  React.useEffect(() => {
+    if (!detail.is_composite || components.length === 0) {
+      setChildItemsById(new Map());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchItemsPage(1, 500, { isComposite: false });
+        if (cancelled) return;
+        setChildItemsById(new Map(items.map((it) => [it.id, it])));
+      } catch {
+        if (!cancelled) setChildItemsById(new Map());
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [detail.id, detail.is_composite, components.length]);
 
   return (
     <DetailPagePadding>
-      <div className="space-y-3.5">
+      <div className={detailPageStackClassName}>
         <DetailPanelCard title={t("detail.sectionOverview")}>
-        
-          <DetailMetricsGrid className="mt-4 lg:grid-cols-2">
+          <DetailMetricsGrid className="lg:grid-cols-2">
+            {typeof detail.is_active === "boolean" ? (
+              <DetailStatusMetric
+                label="Status"
+                isActive={detail.is_active}
+                activeLabel={tStatus("active")}
+                inactiveLabel={tStatus("inactive")}
+              />
+            ) : null}
             <DetailMetricCard label={t("detail.sku")}>
               <span className="font-mono">{detail.sku?.trim() ? detail.sku : "—"}</span>
             </DetailMetricCard>
@@ -66,146 +105,82 @@ export function ItemDetailBody({
 
         {detail.is_composite ? (
           <DetailPanelCard title={t("detail.sectionComponents")}>
-            <p className="text-xs font-medium leading-snug text-slate-500 dark:text-slate-400">{t("detail.components")}</p>
-            {detail.components && detail.components.length > 0 ? (
-              <ul className="mt-3 grid grid-cols-1 gap-3">
-                {detail.components.map((component, index) => (
-                  <li
-                    key={`${component.child_item}-${index}`}
-                    className="flex items-center gap-3 rounded-md border border-slate-100 bg-slate-50/50 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900/35"
-                  >
-                    <Link
-                      href={`${routes.dashboard.items}/${component.child_item}`}
-                      className="min-w-0 flex-1 truncate text-sm font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                    >
-                      {t("detail.componentItem")} #{component.child_item}
-                    </Link>
-                    <span className="shrink-0 rounded-md bg-slate-200/90 px-2 py-1 text-xs font-semibold tabular-nums text-slate-800 dark:bg-slate-700 dark:text-slate-100">
-                      {t("detail.componentQty")} {component.quantity}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+            {components.length > 0 ? (
+              <DetailLinkedTable
+                rowNumberHeader={t("detail.colNo")}
+                columns={[
+                  { id: "item", header: t("detail.componentItem"), widthClass: "w-[34%]" },
+                  { id: "sku", header: t("detail.sku"), narrow: true, widthClass: "w-[16%]" },
+                  { id: "qty", header: t("detail.componentQty"), narrow: true, align: "right", widthClass: "w-[12%]" },
+                  { id: "cost", header: t("detail.cost"), narrow: true, align: "right", widthClass: "w-[19%]" },
+                  { id: "sell", header: t("detail.sell"), narrow: true, align: "right", widthClass: "w-[19%]" },
+                ]}
+              >
+                {components.map((component, index) => {
+                  const child = childItemsById.get(component.child_item);
+                  return (
+                    <DetailLinkedTableRow key={`${component.child_item}-${index}`} index={index}>
+                      <DetailLinkedTableTd
+                        className={detailLinkedTableCellClassName({
+                          cellClassName: "font-medium text-slate-900 dark:text-slate-100",
+                        })}
+                      >
+                        <Link
+                          href={`${routes.dashboard.items}/${component.child_item}`}
+                          className="block truncate text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                        >
+                          {child?.name ?? `${t("detail.componentItem")} #${component.child_item}`}
+                        </Link>
+                      </DetailLinkedTableTd>
+                      <DetailLinkedTableTd
+                        narrow
+                        className={detailLinkedTableCellClassName({ narrow: true, cellClassName: "font-mono text-xs" })}
+                      >
+                        {child?.sku?.trim() ? child.sku : "—"}
+                      </DetailLinkedTableTd>
+                      <DetailLinkedTableTd
+                        narrow
+                        className={detailLinkedTableCellClassName({ align: "right", narrow: true, cellClassName: "tabular-nums" })}
+                      >
+                        {component.quantity}
+                      </DetailLinkedTableTd>
+                      <DetailLinkedTableTd
+                        narrow
+                        className={detailLinkedTableCellClassName({ align: "right", narrow: true, cellClassName: "tabular-nums" })}
+                      >
+                        {moneyDisplay(child?.cost_price)}
+                      </DetailLinkedTableTd>
+                      <DetailLinkedTableTd
+                        narrow
+                        className={detailLinkedTableCellClassName({ align: "right", narrow: true, cellClassName: "tabular-nums" })}
+                      >
+                        {moneyDisplay(child?.selling_price)}
+                      </DetailLinkedTableTd>
+                    </DetailLinkedTableRow>
+                  );
+                })}
+              </DetailLinkedTable>
             ) : (
-              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t("detail.noComponents")}</p>
+              <p className="text-sm font-normal text-slate-500 dark:text-slate-400">{t("detail.noComponents")}</p>
             )}
           </DetailPanelCard>
         ) : null}
 
-        <DetailPanelCard title={t("detail.sectionRecord")}>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <DetailMetricCard label={t("detail.createdAt")}>
-              <span className="break-words tabular-nums">{dateFmt.format(new Date(detail.created_at))}</span>
-            </DetailMetricCard>
-            <DetailMetricCard label={t("detail.updatedAt")}>
-              <span className="break-words tabular-nums">{dateFmt.format(new Date(detail.modified_at))}</span>
-            </DetailMetricCard>
-          </div>
-        </DetailPanelCard>
-
-        {detail.created_by ? (
-          <DetailPanelCard title={t("detail.sectionCreatedBy")}>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {(() => {
-                const uname = detail.created_by!.username?.trim() ?? "";
-                const em = detail.created_by!.email?.trim() ?? "";
-                const nodes: React.ReactNode[] = [];
-                if (em && (!uname || uname === em)) {
-                  nodes.push(
-                    <DetailMetricCard key="e" label={tUser("email")}>
-                      <a
-                        href={`mailto:${em}`}
-                        className="break-all font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                      >
-                        {em}
-                      </a>
-                    </DetailMetricCard>,
-                  );
-                } else {
-                  if (uname) {
-                    nodes.push(
-                      <DetailMetricCard key="u" label={tUser("username")}>
-                        {uname}
-                      </DetailMetricCard>,
-                    );
-                  }
-                  if (em && uname !== em) {
-                    nodes.push(
-                      <DetailMetricCard key="e" label={tUser("email")}>
-                        <a
-                          href={`mailto:${em}`}
-                          className="break-all font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                        >
-                          {em}
-                        </a>
-                      </DetailMetricCard>,
-                    );
-                  }
-                }
-                if (!uname && !em) {
-                  nodes.push(
-                    <DetailMetricCard key="id" label={tUser("username")}>
-                      #{detail.created_by!.id}
-                    </DetailMetricCard>,
-                  );
-                }
-                return nodes;
-              })()}
-            </div>
-          </DetailPanelCard>
-        ) : null}
-
-        {detail.modified_by ? (
-          <DetailPanelCard title={t("detail.sectionModifiedBy")}>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {(() => {
-                const uname = detail.modified_by!.username?.trim() ?? "";
-                const em = detail.modified_by!.email?.trim() ?? "";
-                const nodes: React.ReactNode[] = [];
-                if (em && (!uname || uname === em)) {
-                  nodes.push(
-                    <DetailMetricCard key="e" label={tUser("email")}>
-                      <a
-                        href={`mailto:${em}`}
-                        className="break-all font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                      >
-                        {em}
-                      </a>
-                    </DetailMetricCard>,
-                  );
-                } else {
-                  if (uname) {
-                    nodes.push(
-                      <DetailMetricCard key="u" label={tUser("username")}>
-                        {uname}
-                      </DetailMetricCard>,
-                    );
-                  }
-                  if (em && uname !== em) {
-                    nodes.push(
-                      <DetailMetricCard key="e" label={tUser("email")}>
-                        <a
-                          href={`mailto:${em}`}
-                          className="break-all font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                        >
-                          {em}
-                        </a>
-                      </DetailMetricCard>,
-                    );
-                  }
-                }
-                if (!uname && !em) {
-                  nodes.push(
-                    <DetailMetricCard key="id" label={tUser("username")}>
-                      #{detail.modified_by!.id}
-                    </DetailMetricCard>,
-                  );
-                }
-                return nodes;
-              })()}
-            </div>
-          </DetailPanelCard>
-        ) : null}
+        <DetailSystemMetadataSection
+          createdAt={detail.created_at}
+          modifiedAt={detail.modified_at}
+          dateFmt={dateFmt}
+          createdBy={detail.created_by}
+          modifiedBy={detail.modified_by}
+          labels={{
+            sectionTitle: tMeta("systemMetadata"),
+            createdAt: t("detail.createdAt"),
+            updatedAt: t("detail.updatedAt"),
+            createdBy: t("detail.createdBy"),
+            modifiedBy: tMeta("modifiedBy"),
+            notModifiedYet: tMeta("notModifiedYet"),
+          }}
+        />
       </div>
     </DetailPagePadding>
   );

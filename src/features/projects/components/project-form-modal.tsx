@@ -4,8 +4,8 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { Controller, useForm } from "react-hook-form";
-import { useAuthStore } from "@/features/auth/store/auth.store";
-import { getSessionOrganizationId } from "@/features/auth/utils/get-session-organization-id";
+import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
+import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
 import { createProject, updateProject } from "@/features/projects/api/project.api";
 import { createProjectFormSchema, type ProjectFormValues } from "@/features/projects/schemas/project-form-schema";
 import type { Project } from "@/features/projects/types/project.types";
@@ -42,14 +42,15 @@ type Props = {
 
 export function ProjectFormModal({ open, onClose, mode, project, clientOptions, onSaved }: Props) {
   const t = useTranslations("Dashboard.projects");
-  const organizations = useAuthStore((s) => s.organizations);
   const [saving, setSaving] = React.useState(false);
+  const [projectTypeOptions, setProjectTypeOptions] = React.useState<ProjectClientOption[]>([]);
 
   const schema = React.useMemo(
     () =>
       createProjectFormSchema({
         name: t("validation.name"),
         client: t("validation.client"),
+        projectType: t("validation.projectType"),
         description: t("validation.description"),
         startDate: t("validation.startDate"),
         endDate: t("validation.endDate"),
@@ -75,17 +76,32 @@ export function ProjectFormModal({ open, onClose, mode, project, clientOptions, 
     else reset(emptyProjectFormDefaults());
   }, [open, mode, project, reset]);
 
+  React.useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchProjectTypesPage(1, 500, { is_active: true });
+        if (!cancelled) {
+          setProjectTypeOptions(items.map((pt) => ({ value: String(pt.id), label: formatProjectTypeLabel(pt) })));
+        }
+      } catch {
+        if (!cancelled) setProjectTypeOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
   async function submit(values: ProjectFormValues) {
-    const organizationId =
-      getSessionOrganizationId(organizations) ??
-      (mode === "edit" && project ? project.organization : null);
-    if (organizationId == null) {
-      toastError(t("missingOrganization"));
-      return;
-    }
-    const payload = mapProjectFormToPayload(values, organizationId);
+    const payload = mapProjectFormToPayload(values);
     if (!Number.isFinite(payload.client) || payload.client <= 0) {
       toastError(t("validation.client"));
+      return;
+    }
+    if (!Number.isFinite(payload.project_type) || payload.project_type <= 0) {
+      toastError(t("validation.projectType"));
       return;
     }
     setSaving(true);
@@ -109,6 +125,7 @@ export function ProjectFormModal({ open, onClose, mode, project, clientOptions, 
   }
 
   const noClients = clientOptions.length === 0;
+  const noProjectTypes = projectTypeOptions.length === 0;
 
   return (
     <AppModal
@@ -121,16 +138,16 @@ export function ProjectFormModal({ open, onClose, mode, project, clientOptions, 
       size="2xl"
       footer={
         <>
-          <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => handleCloseAttempt()}>
+          <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => handleCloseAttempt()}>
             {t("modal.cancel")}
           </AppButton>
           <AppButton
             type="submit"
             form={FORM_DOM_ID}
             variant="primary"
-            size="md"
+            size="sm"
             loading={saving}
-            disabled={noClients}
+            disabled={noClients || noProjectTypes}
           >
             {mode === "edit" ? t("modal.saveChanges") : t("modal.save")}
           </AppButton>
@@ -141,6 +158,11 @@ export function ProjectFormModal({ open, onClose, mode, project, clientOptions, 
         {noClients ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
             {t("noClientsHint")}
+          </p>
+        ) : null}
+        {noProjectTypes ? (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+            {t("noProjectTypesHint")}
           </p>
         ) : null}
 
@@ -168,6 +190,7 @@ export function ProjectFormModal({ open, onClose, mode, project, clientOptions, 
                 <CheckmarkSelect
                   id="project-client"
                   portaled
+                  searchable
                   listLabel={t("fields.client")}
                   options={clientOptions}
                   value={field.value}
@@ -180,6 +203,29 @@ export function ProjectFormModal({ open, onClose, mode, project, clientOptions, 
               )}
             />
             <FieldErrorText>{errors.client?.message}</FieldErrorText>
+          </FieldGroup>
+
+          <FieldGroup label={t("fields.projectType")} htmlFor="project-type" required>
+            <Controller
+              control={control}
+              name="project_type"
+              render={({ field }) => (
+                <CheckmarkSelect
+                  id="project-type"
+                  portaled
+                  searchable
+                  listLabel={t("fields.projectType")}
+                  options={projectTypeOptions}
+                  value={field.value}
+                  emptyLabel={t("placeholders.projectType")}
+                  disabled={saving || noProjectTypes}
+                  invalid={!!errors.project_type}
+                  onBlur={field.onBlur}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+            <FieldErrorText>{errors.project_type?.message}</FieldErrorText>
           </FieldGroup>
         </FormFieldRow>
 

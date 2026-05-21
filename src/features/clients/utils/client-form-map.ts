@@ -11,15 +11,13 @@ function normalizePhoneForPhoneInput(raw: string | null | undefined): string {
   const digits = value.replace(/\D/g, "");
   if (!digits) return "";
 
-  // Legacy records may store national numbers without +country code.
   if (digits.length === 10) return `+91${digits}`;
   if (digits.length === 11 && digits.startsWith("0")) return `+91${digits.slice(1)}`;
 
-  // Fallback: prefix plus so react-phone-number-input accepts it as E.164-like.
   return `+${digits}`;
 }
 
-export function mapClientFormToPayload(values: ClientFormValues, organizationId: number): ClientUpsertPayload {
+export function mapClientFormToPayload(values: ClientFormValues): ClientUpsertPayload {
   const country = Country.getCountryByCode(values.country_iso);
   const subdivisions = State.getStatesOfCountry(values.country_iso);
   const stateTrimmed = values.state_iso.trim();
@@ -41,7 +39,6 @@ export function mapClientFormToPayload(values: ClientFormValues, organizationId:
   const line2 = values.address_line_2.trim();
 
   return {
-    organization: organizationId,
     name: values.name.trim(),
     email: values.email.trim(),
     phone: values.phone,

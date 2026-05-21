@@ -1,16 +1,18 @@
 import type { ProjectFormValues } from "@/features/projects/schemas/project-form-schema";
 import type { Project, ProjectUpsertPayload } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
+import { getProjectTypeId } from "@/features/projects/utils/project-type-id.util";
 
-export function mapProjectFormToPayload(values: ProjectFormValues, organizationId: number): ProjectUpsertPayload {
+export function mapProjectFormToPayload(values: ProjectFormValues): ProjectUpsertPayload {
   const clientId = Number.parseInt(values.client, 10);
+  const projectTypeId = Number.parseInt(values.project_type, 10);
   const sites = (values.sites ?? [])
     .map((raw) => Number.parseInt(raw, 10))
     .filter((id) => Number.isFinite(id) && id > 0);
   return {
-    organization: organizationId,
     name: values.name.trim(),
     client: Number.isFinite(clientId) ? clientId : 0,
+    project_type: Number.isFinite(projectTypeId) ? projectTypeId : 0,
     description: values.description.trim(),
     sites,
     start_date: values.start_date.trim(),
@@ -22,6 +24,7 @@ export function emptyProjectFormDefaults(): ProjectFormValues {
   return {
     name: "",
     client: "",
+    project_type: "",
     description: "",
     sites: [],
     start_date: "",
@@ -39,9 +42,11 @@ export function projectToFormDefaults(project: Project): ProjectFormValues {
         .map(String)
     : [];
   const clientId = getProjectClientId(project);
+  const projectTypeId = getProjectTypeId(project);
   return {
     name: project.name ?? "",
     client: clientId ? String(clientId) : "",
+    project_type: projectTypeId ? String(projectTypeId) : "",
     description: (project.description ?? "").trim(),
     sites: siteIds,
     start_date: start,

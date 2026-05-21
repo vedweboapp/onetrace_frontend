@@ -118,10 +118,10 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
       isBusy={submitting}
       footer={
         <>
-          <AppButton type="button" variant="secondary" size="md" disabled={submitting} onClick={onClose}>
+          <AppButton type="button" variant="secondary" size="sm" disabled={submitting} onClick={onClose}>
             {t("cancel")}
           </AppButton>
-          <AppButton type="submit" form="item-form" variant="primary" size="md" loading={submitting}>
+          <AppButton type="submit" form="item-form" variant="primary" size="sm" loading={submitting}>
             {mode === "edit" ? t("saveChanges") : t("save")}
           </AppButton>
         </>

@@ -32,6 +32,7 @@ import {
 import {
   getQuotationCustomerId,
   getQuotationNestedSite,
+  getQuotationProjectId,
   getQuotationSiteId,
   quotationNestedSiteToSite,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
@@ -41,6 +42,7 @@ import { getProjectClientId } from "@/features/projects/utils/project-client-id.
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
 import { DetailFormattedAddress, hasDetailAddress } from "@/shared/components/layout/detail-formatted-address";
+import { What3WordsInline } from "@/shared/components/layout/what3words-inline";
 import { fetchTagsPage } from "@/features/tags/api/tag.api";
 import type { Tag } from "@/features/tags/types/tag.types";
 import { fetchRoles, fetchUsersPage } from "@/features/users/api/user.api";
@@ -61,6 +63,7 @@ import {
   MultiCheckSelect,
   SurfaceShell,
   surfaceInputClassName,
+  surfaceTextareaClassName,
 } from "@/shared/ui";
 
 const AddressMiniMap = dynamic(
@@ -116,11 +119,13 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const [technicianOptions, setTechnicianOptions] = React.useState<Option[]>([]);
   const [levelRows, setLevelRows] = React.useState<ProjectLevelForQuotation[]>([]);
   const [screenError, setScreenError] = React.useState<string | null>(null);
-  const [formTab, setFormTab] = React.useState<"project" | "pricing">("project");
+  const [formTab, setFormTab] = React.useState<"project" | "pricing">(() =>
+    searchParams.get("tab") === "pricing" ? "pricing" : "project",
+  );
 
   React.useEffect(() => {
-    setFormTab("project");
-  }, [mode, quotationId]);
+    setFormTab(searchParams.get("tab") === "pricing" ? "pricing" : "project");
+  }, [mode, quotationId, searchParams]);
 
   const schema = React.useMemo(
     () =>
@@ -172,6 +177,14 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const customerIdStr = useWatch({ control, name: "customer" });
   const projectIdStr = useWatch({ control, name: "project" });
   const siteStr = useWatch({ control, name: "site" });
+  const customerId =
+    customerIdStr && /^\d+$/.test(customerIdStr.trim())
+      ? Number.parseInt(customerIdStr.trim(), 10)
+      : undefined;
+  const projectId =
+    projectIdStr && /^\d+$/.test(projectIdStr.trim())
+      ? Number.parseInt(projectIdStr.trim(), 10)
+      : undefined;
   const appliedFromProjectIdRef = React.useRef<number | null>(null);
   React.useEffect(() => {
     if (!createFromProjectId) {
@@ -187,6 +200,10 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     if (!row) {
       appliedFromProjectIdRef.current = createFromProjectId;
       return;
+    }
+    const clientId = getProjectClientId(row);
+    if (clientId) {
+      setValue("customer", String(clientId), { shouldValidate: true, shouldDirty: true });
     }
     setValue("project", String(createFromProjectId), { shouldValidate: true, shouldDirty: true });
     setValue("select_all_levels", false, { shouldValidate: true, shouldDirty: true });
@@ -231,7 +248,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items: projects } = await fetchProjectsPage(1, 500, { is_active: true });
+        const filters: { is_active: true; client?: number } = { is_active: true };
+        if (customerId && customerId > 0) filters.client = customerId;
+        const { items: projects } = await fetchProjectsPage(1, 500, filters);
         if (!cancelled) setProjectRows(projects);
       } catch {
         if (!cancelled) setProjectRows([]);
@@ -240,7 +259,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [customerId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -293,40 +312,15 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     };
   }, []);
 
-  const customerId =
-    customerIdStr && /^\d+$/.test(customerIdStr.trim())
-      ? Number.parseInt(customerIdStr.trim(), 10)
-      : undefined;
-  const projectId =
-    projectIdStr && /^\d+$/.test(projectIdStr.trim())
-      ? Number.parseInt(projectIdStr.trim(), 10)
-      : undefined;
-  const selectedProject = React.useMemo(
-    () => (projectId ? projectRows.find((p) => p.id === projectId) : undefined),
-    [projectId, projectRows],
-  );
-  const selectedProjectClientId = selectedProject ? getProjectClientId(selectedProject) ?? undefined : undefined;
-  const effectiveClientId = selectedProjectClientId ?? customerId;
-
-  React.useEffect(() => {
-    if (!selectedProjectClientId) return;
-    const next = String(selectedProjectClientId);
-    if (getValues("customer") !== next) {
-      setValue("customer", next, { shouldDirty: true, shouldValidate: true });
-      setValue("primary_customer_contact", "", { shouldDirty: true, shouldValidate: true });
-      setValue("additional_customer_contact", "", { shouldDirty: true, shouldValidate: true });
-    }
-  }, [selectedProjectClientId, getValues, setValue]);
-
   React.useEffect(() => {
     let cancelled = false;
-    if (!effectiveClientId || effectiveClientId <= 0) {
+    if (!projectId || projectId <= 0) {
       setSiteRows([]);
       return;
     }
     (async () => {
       try {
-        const { items } = await fetchSitesPage(1, 500, { client: effectiveClientId, is_active: true });
+        const { items } = await fetchSitesPage(1, 500, { project: projectId, is_active: true });
         if (!cancelled) setSiteRows(items);
       } catch {
         if (!cancelled) setSiteRows([]);
@@ -335,17 +329,17 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [effectiveClientId]);
+  }, [projectId]);
 
   React.useEffect(() => {
     let cancelled = false;
-    if (!effectiveClientId || effectiveClientId <= 0) {
+    if (!customerId || customerId <= 0) {
       setContactOptions([]);
       return;
     }
     (async () => {
       try {
-        const { items } = await fetchContactsPage(1, 500, { client: effectiveClientId, is_active: true });
+        const { items } = await fetchContactsPage(1, 500, { client: customerId, is_active: true });
         if (!cancelled) {
           setContactOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
         }
@@ -356,7 +350,21 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [effectiveClientId]);
+  }, [customerId]);
+
+  React.useEffect(() => {
+    const selectedProject = getValues("project")?.trim();
+    if (!selectedProject || !customerId) return;
+    const stillExists = projectRows.some((p) => String(p.id) === selectedProject);
+    if (!stillExists) {
+      if (isEdit && existingDetail) {
+        const pid = getQuotationProjectId(existingDetail.project);
+        if (pid != null && String(pid) === selectedProject) return;
+      }
+      setValue("project", "", { shouldDirty: true, shouldValidate: true });
+      setValue("site", "", { shouldDirty: true, shouldValidate: true });
+    }
+  }, [projectRows, customerId, getValues, setValue, isEdit, existingDetail]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -392,16 +400,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   }, [isEdit, projectId, setValue, getValues]);
 
   const siteOptions = React.useMemo<Option[]>(() => {
-    let rows = siteRows;
-    if (selectedProject && Array.isArray(selectedProject.sites) && selectedProject.sites.length > 0) {
-      const allowed = new Set(
-        selectedProject.sites
-          .map((s) => (typeof s === "number" ? s : s?.id))
-          .filter((id): id is number => Number.isFinite(id) && id > 0),
-      );
-      rows = siteRows.filter((s) => allowed.has(s.id));
-    }
-    const base = rows.map((s) => ({ value: String(s.id), label: s.site_name }));
+    const base = siteRows.map((s) => ({ value: String(s.id), label: s.site_name }));
     const sid = existingDetail ? getQuotationSiteId(existingDetail.site) : null;
     const nested = existingDetail ? getQuotationNestedSite(existingDetail.site) : null;
     if (isEdit && sid != null) {
@@ -412,7 +411,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       }
     }
     return base;
-  }, [siteRows, selectedProject, isEdit, existingDetail]);
+  }, [siteRows, isEdit, existingDetail]);
 
   const selectedSiteForMap = React.useMemo(() => {
     const raw = siteStr?.trim();
@@ -421,8 +420,8 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     const fromRows = siteRows.find((s) => s.id === id) ?? null;
     if (fromRows) return fromRows;
     const clientIdForSnapshot =
-      effectiveClientId != null && effectiveClientId > 0
-        ? effectiveClientId
+      customerId != null && customerId > 0
+        ? customerId
         : existingDetail
           ? getQuotationCustomerId(existingDetail.customer) ?? 0
           : 0;
@@ -431,15 +430,14 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       if (nested) return quotationNestedSiteToSite(nested, clientIdForSnapshot);
     }
     return null;
-  }, [siteStr, siteRows, isEdit, existingDetail, effectiveClientId]);
+  }, [siteStr, siteRows, isEdit, existingDetail, customerId]);
 
   React.useEffect(() => {
-    if (!createFromProjectId || isEdit) return;
-    if (projectIdStr !== String(createFromProjectId)) return;
+    if (!projectId || projectId <= 0) return;
     if (siteStr?.trim()) return;
-    if (siteOptions.length === 0) return;
+    if (siteOptions.length !== 1) return;
     setValue("site", siteOptions[0].value, { shouldValidate: true, shouldDirty: true });
-  }, [createFromProjectId, isEdit, projectIdStr, siteStr, siteOptions, setValue]);
+  }, [projectId, siteStr, siteOptions, setValue]);
 
   React.useEffect(() => {
     const selectedSite = getValues("site");
@@ -450,10 +448,22 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     }
   }, [siteOptions, getValues, setValue]);
 
-  const projectOptions = React.useMemo<Option[]>(
-    () => projectRows.map((p) => ({ value: String(p.id), label: p.name })),
-    [projectRows],
-  );
+  const projectOptions = React.useMemo<Option[]>(() => {
+    const base = projectRows.map((p) => ({ value: String(p.id), label: p.name }));
+    const pid = existingDetail ? getQuotationProjectId(existingDetail.project) : null;
+    const nested =
+      existingDetail?.project && typeof existingDetail.project === "object"
+        ? existingDetail.project
+        : null;
+    if (isEdit && pid != null) {
+      const exists = base.some((o) => o.value === String(pid));
+      if (!exists) {
+        const label = nested?.name?.trim() || `Project #${pid}`;
+        return [{ value: String(pid), label }, ...base];
+      }
+    }
+    return base;
+  }, [projectRows, isEdit, existingDetail]);
 
   const sortedLevelRows = React.useMemo(() => {
     const rows = Array.isArray(levelRows) ? levelRows : [];
@@ -476,7 +486,8 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const draftEnabled = !isEdit || !!existingDetail;
   const [quoteDraft, setQuoteDraft] = useQuotationDraftState(draftEnabled, projectId, sortedLevelRows, editDraftSeed);
 
-  const noProjects = projectOptions.length === 0;
+  const noClients = clientOptions.length === 0;
+  const noProjects = !customerId || projectOptions.length === 0;
   const canShowLevels = !!projectId && projectId > 0;
 
   const dateFmt = React.useMemo(
@@ -535,10 +546,10 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         }
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.quotations)}>
+            <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.quotations)}>
               {t("modal.cancel")}
             </AppButton>
-            <AppButton type="submit" form="quotation-form-screen" variant="primary" size="md" loading={saving} disabled={noProjects}>
+            <AppButton type="submit" form="quotation-form-screen" variant="primary" size="sm" loading={saving} disabled={noProjects}>
               {isEdit ? t("page.saveEdit") : t("modal.save")}
             </AppButton>
           </div>
@@ -557,11 +568,11 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
           </div>
         ) : (
           <form id="quotation-form-screen" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(onSubmit)}>
-            {noProjects ? (
+            {/* {noProjects ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
                 {t("noClientsHint")}
               </p>
-            ) : null}
+            ) : null} */}
             <AppTabs
               tabs={[
                 { id: "project", label: t("formTabs.project") },
@@ -600,32 +611,6 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                 />
                 <FieldErrorText>{errors.quote_name?.message}</FieldErrorText>
               </FieldGroup>
-              <FieldGroup label={t("fields.project")} htmlFor="quotation-project" required>
-                <Controller
-                  control={control}
-                  name="project"
-                  render={({ field }) => (
-                    <CheckmarkSelect
-                      id="quotation-project"
-                      portaled
-                      listLabel={t("fields.project")}
-                      options={projectOptions}
-                      value={field.value}
-                      emptyLabel={t("placeholders.project")}
-                      disabled={saving || noProjects}
-                      invalid={!!errors.project}
-                      onBlur={field.onBlur}
-                      onChange={(v) => {
-                        field.onChange(v);
-                        setValue("site", "");
-                        setValue("primary_customer_contact", "");
-                        setValue("additional_customer_contact", "");
-                      }}
-                    />
-                  )}
-                />
-                <FieldErrorText>{errors.project?.message}</FieldErrorText>
-              </FieldGroup>
               <FieldGroup label={t("fields.customer")} htmlFor="quotation-customer" required>
                 <Controller
                   control={control}
@@ -634,18 +619,52 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                     <CheckmarkSelect
                       id="quotation-customer"
                       portaled
+                      searchable
                       listLabel={t("fields.customer")}
                       options={clientOptions}
                       value={field.value}
                       emptyLabel={t("placeholders.customer")}
-                      disabled
+                      disabled={saving || noClients}
                       invalid={!!errors.customer}
                       onBlur={field.onBlur}
-                      onChange={field.onChange}
+                      onChange={(v) => {
+                        field.onChange(v);
+                        setValue("project", "");
+                        setValue("site", "");
+                        setValue("primary_customer_contact", "");
+                        setValue("additional_customer_contact", "");
+                        setValue("site_contact", "");
+                      }}
                     />
                   )}
                 />
                 <FieldErrorText>{errors.customer?.message}</FieldErrorText>
+              </FieldGroup>
+              <FieldGroup label={t("fields.project")} htmlFor="quotation-project" required>
+                <Controller
+                  control={control}
+                  name="project"
+                  render={({ field }) => (
+                    <CheckmarkSelect
+                      id="quotation-project"
+                      portaled
+                      searchable
+                      listLabel={t("fields.project")}
+                      options={projectOptions}
+                      value={field.value}
+                      emptyLabel={t("placeholders.project")}
+                      disabled={saving || !customerId || noProjects}
+                      invalid={!!errors.project}
+                      onBlur={field.onBlur}
+                      onChange={(v) => {
+                        field.onChange(v);
+                        setValue("site", "");
+                        setValue("site_contact", "");
+                      }}
+                    />
+                  )}
+                />
+                <FieldErrorText>{errors.project?.message}</FieldErrorText>
               </FieldGroup>
               <FieldGroup label={t("fields.site")} htmlFor="quotation-site" required>
                 <Controller
@@ -655,11 +674,12 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                     <CheckmarkSelect
                       id="quotation-site"
                       portaled
+                      searchable
                       listLabel={t("fields.site")}
                       options={siteOptions}
                       value={field.value}
                       emptyLabel={t("placeholders.site")}
-                      disabled={saving || !effectiveClientId || siteOptions.length === 0}
+                      disabled={saving || !projectId || siteOptions.length === 0}
                       invalid={!!errors.site}
                       onBlur={field.onBlur}
                       onChange={field.onChange}
@@ -678,11 +698,12 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                     <CheckmarkSelect
                       id="quotation-primary-contact"
                       portaled
+                      searchable
                       listLabel={t("fields.primaryContact")}
                       options={contactOptions}
                       value={field.value}
                       emptyLabel={t("placeholders.contactOptional")}
-                      disabled={saving || !effectiveClientId}
+                      disabled={saving || !customerId}
                       onBlur={field.onBlur}
                       onChange={field.onChange}
                     />
@@ -697,11 +718,12 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                     <CheckmarkSelect
                       id="quotation-additional-contact"
                       portaled
+                      searchable
                       listLabel={t("fields.additionalContact")}
                       options={contactOptions}
                       value={field.value}
                       emptyLabel={t("placeholders.contactOptional")}
-                      disabled={saving || !effectiveClientId}
+                      disabled={saving || !customerId}
                       onBlur={field.onBlur}
                       onChange={field.onChange}
                     />
@@ -724,6 +746,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                     <CheckmarkSelect
                       id="quotation-sales"
                       portaled
+                      searchable
                       listLabel={t("fields.salesperson")}
                       options={salesOptions}
                       value={field.value}
@@ -743,6 +766,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                     <CheckmarkSelect
                       id="quotation-pm"
                       portaled
+                      searchable
                       listLabel={t("fields.projectManager")}
                       options={managerOptions}
                       value={field.value}
@@ -806,7 +830,12 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
               </FieldGroup>
             </FormFieldRow>
             <FieldGroup label={t("fields.description")} htmlFor="quotation-desc">
-              <textarea id="quotation-desc" rows={3} className={cn(surfaceInputClassName, "min-h-[5rem]")} {...register("description")} />
+              <textarea
+                id="quotation-desc"
+                rows={4}
+                className={surfaceTextareaClassName}
+                {...register("description")}
+              />
             </FieldGroup>
             </div>
             {selectedSiteForMap ? (
@@ -833,6 +862,11 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                   ) : (
                     <p className="text-sm text-slate-500 dark:text-slate-400">{t("mapNoStructuredAddress")}</p>
                   )}
+                  <What3WordsInline
+                    value={selectedSiteForMap.what3words}
+                    label={t("fields.what3words")}
+                    className="mt-3"
+                  />
                 </div>
                 <AddressMiniMap
                   addressParts={{

@@ -7,19 +7,24 @@ import type { Site } from "@/features/sites/types/site.types";
 import { routes } from "@/shared/config/routes";
 import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
+  DetailPageMapLayout,
+  detailMapFillClassName,
+} from "@/shared/components/layout/detail-page-map-layout";
+import { DetailSystemMetadataSection } from "@/shared/components/entity";
+import {
   DetailMetricCard,
+  DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
+  DetailStatusMetric,
 } from "@/shared/components/layout/detail-metric-card";
-import { ActiveStatusBadge } from "@/shared/ui";
+import { What3WordsInline } from "@/shared/components/layout/what3words-inline";
 
 const AddressMiniMap = dynamic(
   () => import("@/shared/components/maps/address-mini-map").then((m) => m.AddressMiniMap),
   {
     ssr: false,
-    loading: () => (
-      <div className="min-h-[240px] animate-pulse rounded-none bg-slate-100 dark:bg-slate-800" />
-    ),
+    loading: () => <div className="h-full w-full animate-pulse bg-slate-100 dark:bg-slate-800" />,
   },
 );
 
@@ -33,6 +38,7 @@ export function SiteDetailBody({
   clientName: string | null;
 }) {
   const t = useTranslations("Dashboard.sites");
+  const tMeta = useTranslations("Dashboard.common.detail");
   const clientId =
     typeof detail.client === "number"
       ? detail.client
@@ -48,11 +54,33 @@ export function SiteDetailBody({
     country: detail.country,
   };
 
+  const mapNode = (
+    <AddressMiniMap
+      addressParts={addressParts}
+      coordinates={
+        detail.latitude != null &&
+        detail.longitude != null &&
+        Number.isFinite(detail.latitude) &&
+        Number.isFinite(detail.longitude)
+          ? { lat: detail.latitude, lon: detail.longitude }
+          : null
+      }
+      className={detailMapFillClassName}
+      mapClassName="h-full min-h-0 flex-1"
+    />
+  );
+
   return (
     <DetailPagePadding>
-      <div className="space-y-3.5">
-        <DetailPanelCard title={t("detail.sectionOverview")}>
-          <div className="grid grid-cols-1 gap-4 sm:max-w-xl">
+      <DetailPageMapLayout map={mapNode} mapTitle={t("detail.sectionMap")} showMap>
+        <DetailPanelCard>
+          <DetailMetricsGrid>
+            <DetailStatusMetric
+              label={t("fields.status")}
+              isActive={detail.is_active}
+              activeLabel={t("status.active")}
+              inactiveLabel={t("status.inactive")}
+            />
             <DetailMetricCard label={t("fields.client")}>
               {clientId ? (
                 <Link
@@ -65,7 +93,7 @@ export function SiteDetailBody({
                 <span>{clientName ?? "—"}</span>
               )}
             </DetailMetricCard>
-          </div>
+          </DetailMetricsGrid>
         </DetailPanelCard>
 
         <DetailPanelCard title={t("detail.sectionAddress")}>
@@ -76,35 +104,33 @@ export function SiteDetailBody({
             state={addressParts.state}
             pincode={addressParts.pincode}
             country={addressParts.country}
-            emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>}
+            emptyMessage={
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>
+            }
+          />
+          <What3WordsInline
+            value={detail.what3words}
+            label={t("fields.what3words")}
+            className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800"
           />
         </DetailPanelCard>
 
-        <DetailPanelCard title={t("detail.sectionMap")} bodyClassName="p-0">
-          <AddressMiniMap
-            addressParts={addressParts}
-            className="flex min-h-[280px] w-full flex-col lg:min-h-[360px]"
-            mapClassName="min-h-[240px] flex-1 rounded-none lg:min-h-[320px]"
-          />
-        </DetailPanelCard>
-
-        <DetailPanelCard title={t("detail.sectionRecord")}>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <DetailMetricCard label={t("fields.status")}>
-              <ActiveStatusBadge
-                active={detail.is_active}
-                label={detail.is_active ? t("status.active") : t("status.inactive")}
-              />
-            </DetailMetricCard>
-            <DetailMetricCard label={t("fields.createdAt")}>
-              <span className="font-medium tabular-nums">{dateFmt.format(new Date(detail.created_at))}</span>
-            </DetailMetricCard>
-            <DetailMetricCard label={t("fields.updatedAt")}>
-              <span className="font-medium tabular-nums">{dateFmt.format(new Date(detail.modified_at))}</span>
-            </DetailMetricCard>
-          </div>
-        </DetailPanelCard>
-      </div>
+        <DetailSystemMetadataSection
+          createdAt={detail.created_at}
+          modifiedAt={detail.modified_at}
+          dateFmt={dateFmt}
+          createdBy={detail.created_by}
+          modifiedBy={detail.modified_by}
+          labels={{
+            sectionTitle: tMeta("systemMetadata"),
+            createdAt: t("fields.createdAt"),
+            updatedAt: t("fields.updatedAt"),
+            createdBy: t("fields.createdBy"),
+            modifiedBy: tMeta("modifiedBy"),
+            notModifiedYet: tMeta("notModifiedYet"),
+          }}
+        />
+      </DetailPageMapLayout>
     </DetailPagePadding>
   );
 }

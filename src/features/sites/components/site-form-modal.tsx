@@ -4,8 +4,6 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { Controller, useForm } from "react-hook-form";
-import { useAuthStore } from "@/features/auth/store/auth.store";
-import { getSessionOrganizationId } from "@/features/auth/utils/get-session-organization-id";
 import { createSite, updateSite } from "@/features/sites/api/site.api";
 import { createSiteFormSchema, type SiteFormValues } from "@/features/sites/schemas/site-form-schema";
 import type { Site } from "@/features/sites/types/site.types";
@@ -17,10 +15,10 @@ import {
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { SiteLocationFields } from "@/features/sites/components/site-location-fields";
 import {
   AppButton,
   AppModal,
-  CascadingLocationFields,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
@@ -42,7 +40,6 @@ type Props = {
 
 export function SiteFormModal({ open, onClose, mode, site, clientOptions, onSaved }: Props) {
   const t = useTranslations("Dashboard.sites");
-  const organizations = useAuthStore((s) => s.organizations);
   const [saving, setSaving] = React.useState(false);
 
   const schema = React.useMemo(
@@ -78,12 +75,7 @@ export function SiteFormModal({ open, onClose, mode, site, clientOptions, onSave
   }, [open, mode, site, reset]);
 
   async function submit(values: SiteFormValues) {
-    const organizationId = getSessionOrganizationId(organizations) ?? (mode === "edit" && site ? site.organization : null);
-    if (organizationId == null) {
-      toastError(t("missingOrganization"));
-      return;
-    }
-    const payload = mapSiteFormToPayload(values, organizationId);
+    const payload = mapSiteFormToPayload(values);
     if (!Number.isFinite(payload.client) || payload.client <= 0) {
       toastError(t("validation.client"));
       return;
@@ -117,10 +109,10 @@ export function SiteFormModal({ open, onClose, mode, site, clientOptions, onSave
       size="3xl"
       footer={
         <>
-          <AppButton type="button" variant="secondary" size="md" disabled={saving} onClick={() => (!saving ? onClose() : undefined)}>
+          <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => (!saving ? onClose() : undefined)}>
             {t("modal.cancel")}
           </AppButton>
-          <AppButton type="submit" form={FORM_DOM_ID} variant="primary" size="md" loading={saving} disabled={noClients}>
+          <AppButton type="submit" form={FORM_DOM_ID} variant="primary" size="sm" loading={saving} disabled={noClients}>
             {mode === "edit" ? t("modal.saveChanges") : t("modal.save")}
           </AppButton>
         </>
@@ -156,6 +148,7 @@ export function SiteFormModal({ open, onClose, mode, site, clientOptions, onSave
                 <CheckmarkSelect
                   id="site-client"
                   portaled
+                  searchable
                   listLabel={t("fields.client")}
                   options={clientOptions}
                   value={field.value}
@@ -169,56 +162,22 @@ export function SiteFormModal({ open, onClose, mode, site, clientOptions, onSave
             />
             <FieldErrorText>{errors.client?.message}</FieldErrorText>
           </FieldGroup>
-          <FieldGroup label={t("fields.addressLine1")} htmlFor="site-line1" required>
-            <input
-              id="site-line1"
-              aria-invalid={errors.address_line_1 ? true : undefined}
-              aria-describedby={errors.address_line_1 ? "site-line1-err" : undefined}
-              className={cn(surfaceInputClassName, errors.address_line_1 && "border-red-500 dark:border-red-500")}
-              {...register("address_line_1")}
-            />
-            <FieldErrorText id="site-line1-err">{errors.address_line_1?.message}</FieldErrorText>
-          </FieldGroup>
-          <FieldGroup label={t("fields.addressLine2")} htmlFor="site-line2">
-            <input id="site-line2" className={surfaceInputClassName} {...register("address_line_2")} />
-          </FieldGroup>
         </FormFieldRow>
 
-        <CascadingLocationFields<SiteFormValues>
-          control={control}
-          setValue={setValue}
-          countryIsoName="country_iso"
-          stateIsoName="state_iso"
-          cityName="city"
-          labels={{
-            country: t("fields.country"),
-            state: t("fields.stateProvince"),
-            city: t("fields.city"),
-          }}
-          placeholders={{
-            country: t("placeholders.country"),
-            state: t("placeholders.state"),
-            city: t("placeholders.city"),
-          }}
-          disabled={saving}
-          errors={{
-            country: errors.country_iso?.message,
-            state: errors.state_iso?.message,
-            city: errors.city?.message,
-          }}
-          trailingSlot={
-            <FieldGroup label={t("fields.pincode")} htmlFor="site-pincode" required>
-              <input
-                id="site-pincode"
-                aria-invalid={errors.pincode ? true : undefined}
-                aria-describedby={errors.pincode ? "site-pincode-err" : undefined}
-                className={cn(surfaceInputClassName, errors.pincode && "border-red-500 dark:border-red-500")}
-                {...register("pincode")}
-              />
-              <FieldErrorText id="site-pincode-err">{errors.pincode?.message}</FieldErrorText>
-            </FieldGroup>
-          }
-        />
+        <SiteLocationFields control={control} register={register} setValue={setValue} errors={errors} disabled={saving} />
+
+        <FormFieldRow cols="1">
+          <FieldGroup label={t("fields.what3words")} htmlFor="site-modal-what3words">
+            <input
+              id="site-modal-what3words"
+              className={surfaceInputClassName}
+              placeholder={t("placeholders.what3words")}
+              autoComplete="off"
+              spellCheck={false}
+              {...register("what3words")}
+            />
+          </FieldGroup>
+        </FormFieldRow>
       </form>
     </AppModal>
   );

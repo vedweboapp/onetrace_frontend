@@ -14,6 +14,11 @@ import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
 import type { PinStatus } from "@/features/pin-status/types/pin-status.types";
 import type { DrawingPin, DrawingPlot, DrawingPlotUpsert } from "@/features/projects/types/drawing.types";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
+import {
+  defaultQuantityForNewPin,
+  resolvePinDisplayQuantity,
+  resolvePinMarkerAbbreviation,
+} from "@/features/projects/utils/drawing-pin-display.util";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
@@ -181,7 +186,7 @@ const PinTooltip = ({ pin, productName, quantity = 1 }: { pin: DrawingPin; produ
   <div className="pointer-events-none absolute z-50" style={{ bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: "10px" }}>
     <div className="whitespace-nowrap rounded-lg bg-slate-900 px-3 py-2 text-[11px] font-semibold text-white shadow-xl">
       <span>{productName}</span>
-      <span className="ml-1.5 opacity-80 text-slate-400">| {quantity} Unit</span>
+      <span className="ml-1.5 opacity-80 text-slate-400">| {quantity} {quantity === 1 ? "Unit" : "Units"}</span>
     </div>
     <div className="absolute left-1/2 top-full h-2.5 w-2.5 -translate-x-1/2 -mt-1.5 rotate-45 bg-slate-900" />
   </div>
@@ -332,6 +337,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [selectedCompositeId, setSelectedCompositeId] = React.useState<string>("");
   const [selectedStatusId, setSelectedStatusId] = React.useState<string>("");
   const [selectedGroupItems, setSelectedGroupItems] = React.useState<GroupItemRef[] | null>(null);
+  const [groupItemAbbrevByKey, setGroupItemAbbrevByKey] = React.useState<Record<string, string>>({});
+  const fetchedGroupAbbrevRef = React.useRef<Set<number>>(new Set());
 
   const [tempPoints, setTempPoints] = React.useState<number[][]>([]);
   const [selectionStart, setSelectionStart] = React.useState<number[] | null>(null);
@@ -497,6 +504,72 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       cancelled = true;
     };
   }, [selectedGroupId]);
+
+  const groupIdsNeedingAbbrev = React.useMemo(() => {
+    const ids = new Set<number>();
+    for (const plot of plots) {
+      for (const pin of plot.pins) {
+        if (pin.group != null && pin.item != null) ids.add(pin.group);
+      }
+    }
+    if (selectedGroupId) {
+      const gid = Number.parseInt(selectedGroupId, 10);
+      if (Number.isFinite(gid)) ids.add(gid);
+    }
+    return Array.from(ids);
+  }, [plots, selectedGroupId]);
+
+  React.useEffect(() => {
+    if (!selectedGroupId || !selectedGroupItems?.length) return;
+    const gid = Number.parseInt(selectedGroupId, 10);
+    if (!Number.isFinite(gid)) return;
+    setGroupItemAbbrevByKey((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const entry of selectedGroupItems) {
+        const abbr = entry.abbreviation?.trim();
+        if (!abbr) continue;
+        const key = `${gid}:${entry.item}`;
+        const val = abbr.toUpperCase();
+        if (next[key] !== val) {
+          next[key] = val;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [selectedGroupId, selectedGroupItems]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const toFetch = groupIdsNeedingAbbrev.filter((gid) => !fetchedGroupAbbrevRef.current.has(gid));
+    if (!toFetch.length) return;
+    for (const gid of toFetch) fetchedGroupAbbrevRef.current.add(gid);
+
+    (async () => {
+      const updates: Record<string, string> = {};
+      await Promise.all(
+        toFetch.map(async (gid) => {
+          try {
+            const detail = await fetchGroup(gid);
+            for (const entry of detail.items ?? []) {
+              const abbr = entry.abbreviation?.trim();
+              if (abbr) updates[`${gid}:${entry.item}`] = abbr.toUpperCase();
+            }
+          } catch {
+            fetchedGroupAbbrevRef.current.delete(gid);
+          }
+        }),
+      );
+      if (!cancelled && Object.keys(updates).length > 0) {
+        setGroupItemAbbrevByKey((prev) => ({ ...prev, ...updates }));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [groupIdsNeedingAbbrev]);
 
   React.useEffect(() => {
     if (!selectedCompositeId) return;
@@ -1029,6 +1102,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       y_coordinate: Number(((point[1] / pageSize.height) * 100).toFixed(6)),
       status: selectedStatus.id,
       variation: showVariations,
+      quantity: defaultQuantityForNewPin(selectedItem?.quantity),
       group: selectedGroupId ? Number.parseInt(selectedGroupId, 10) : undefined,
       item: selectedCompositeId ? Number.parseInt(selectedCompositeId, 10) : undefined,
       status_detail: {
@@ -1634,13 +1708,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                         const statusObj = statuses.find(s => s.id === pin.status);
                         const color = pin.status_detail?.bg_colour || statusObj?.bg_colour || "#10b981";
                         const productName = pin.item_detail?.name || compositeLabelById[pin.item ?? 0] || "PIN";
-                        const abbreviation = productName
-                          .split(/[\s()]+/)
-                          .filter(Boolean)
-                          .map((word) => word[0])
-                          .join("")
-                          .slice(0, 3)
-                          .toUpperCase();
+                        const abbreviation = resolvePinMarkerAbbreviation(pin, groupItemAbbrevByKey, productName);
+                        const pinQuantity = resolvePinDisplayQuantity(pin);
                         const isHovered = hoveredPinId === pin.id;
 
                         return (
@@ -1685,7 +1754,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               setIsPinEditing(false);
                             }}
                           >
-                            {isHovered && <PinTooltip pin={pin} productName={productName} />}
+                            {isHovered && <PinTooltip pin={pin} productName={productName} quantity={pinQuantity} />}
                             <div className={cn("duration-200 origin-bottom", draggingPinId === pin.id ? "scale-125" : isHovered ? "scale-110" : "", "cursor-grab")}>
                               <PinMarker label={pinLabels.get(pin.id) || (index + 1)} abbreviation={abbreviation} color={color} />
                             </div>
@@ -1793,9 +1862,9 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                   <DetailRow
                     icon={QuantityIcon}
                     label="Quantity"
-                    value={pinEditData.quantity || 1}
+                    value={isPinEditing ? (pinEditData.quantity ?? 1) : (detailPin.quantity ?? 1)}
                     isEditing={isPinEditing}
-                    onChange={(val: string) => setPinEditData(prev => ({ ...prev, quantity: parseInt(val) || 1 }))}
+                    onChange={(val: string) => setPinEditData(prev => ({ ...prev, quantity: parseInt(val, 10) || 1 }))}
                   />
                   <DetailRow
                     icon={StatusIcon}

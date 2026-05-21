@@ -13,7 +13,7 @@ export type ContactClientRef = {
 };
 
 export type ContactUpsertPayload = {
-  organization: number;
+  organization?: number;
   name: string;
   email: string;
   phone: string;

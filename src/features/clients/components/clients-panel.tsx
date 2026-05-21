@@ -1,32 +1,29 @@
 "use client";
 
 import * as React from "react";
-import { Pencil, Phone, Plus, Power, PowerOff, Trash2 } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { Pencil, Phone, Power, PowerOff, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { deleteClient, fetchClientsPage, updateClient } from "@/features/clients/api/client.api";
 import type { Client } from "@/features/clients/types/client.types";
+import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
   ActiveStatusBadge,
+  AddButton,
   AppButton,
-  CheckmarkSelect,
   ConfirmDialog,
   DashboardEmptyState,
-  DataTable,
-  DataTableBody,
-  DataTableHead,
   DataTablePaginationBar,
-  DataTableRow,
   DataTableRowActionsMenu,
-  DataTableScroll,
-  DataTableTd,
-  DataTableTh,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
+  ListPageActiveFilter,
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
@@ -41,7 +38,7 @@ import { toastError } from "@/shared/feedback/app-toast";
 export function ClientsPanel() {
   const t = useTranslations("Dashboard.clients");
   const tList = useTranslations("Dashboard.list");
-  const locale = useLocale();
+  const dateFmt = useDashboardDateFormat();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -93,14 +90,6 @@ export function ClientsPanel() {
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
-
-  const stateFilterOptions = React.useMemo(
-    () => [
-      { value: "true", label: t("status.active") },
-      { value: "false", label: t("status.inactive") },
-    ],
-    [t],
-  );
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -173,34 +162,81 @@ export function ClientsPanel() {
     }
   }
 
-  const dateFmt = React.useMemo(
-    () =>
-      new Intl.DateTimeFormat(locale === "es" ? "es" : "en", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }),
-    [locale],
-  );
+  const tableColumns = React.useMemo(() => {
+    const c = entityCol<Client>();
+    return [
+      c.primary("name", t("table.name"), (r) => r.name),
+      c.truncate("email", t("table.email"), (r) => r.email),
+      c.phone("phone", t("table.phone"), (r) => r.phone),
+      c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive")),
+      c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
+      c.actions("actions", t("table.actions"), (row) => (
+        <DataTableRowActionsMenu
+          menuAriaLabel={tList("openRowActions")}
+          items={[
+            { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) },
+            {
+              id: "delete",
+              label: t("delete"),
+              icon: Trash2,
+              tone: "danger",
+              onSelect: () => {
+                setDeletingClient(row);
+                setDeleteOpen(true);
+              },
+            },
+            row.is_active
+              ? {
+                  id: "deactivate",
+                  label: t("deactivate"),
+                  icon: PowerOff,
+                  onSelect: () => void handleToggleActive(row, false),
+                  disabled: togglingId === row.id,
+                }
+              : {
+                  id: "activate",
+                  label: t("activate"),
+                  icon: Power,
+                  onSelect: () => void handleToggleActive(row, true),
+                  disabled: togglingId === row.id,
+                },
+          ]}
+        />
+      )),
+    ];
+  }, [t, tList, dateFmt, togglingId]);
 
   const hasActiveFilters = hasListActiveFilters({ search, isActiveParam });
-  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const countInactive = React.useCallback(async () => {
+    const { pagination: p } = await fetchClientsPage(1, 1, {
+      search: search || undefined,
+      is_active: false,
+    });
+    return p.total_records;
+  }, [search]);
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive, switchToInactive } =
+    useListActiveInactiveEmptyState({
+      loading,
+      loadError,
+      itemsLength: items.length,
+      isActiveParam,
+      isActiveFilter,
+      hasActiveFilters,
+      setUrl,
+      countInactive,
+    });
   const pageRange = getListPageRange(pagination);
 
   return (
     <div className="space-y-4">
       {!hideListChrome ? (
         <ListPageHeader
-          filtersActive={hasActiveFilters}
+          filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
-          action={
-            <AppButton type="button" variant="primary" size="sm" onClick={openCreate} className="gap-2">
-              <Plus className="size-4" strokeWidth={2} aria-hidden />
-              {t("add")}
-            </AppButton>
-          }
+          action={<AddButton type="button" onClick={openCreate} />}
           controls={
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <ListPageSearchField
@@ -210,16 +246,14 @@ export function ClientsPanel() {
                 ariaLabel={tList("searchAria")}
                 className="sm:max-w-sm"
               />
-              <CheckmarkSelect
-                listLabel={t("filterState")}
-                buttonAriaLabel={t("filterState")}
-                options={stateFilterOptions}
-                value={isActiveParam === "false" ? "false" : "true"}
-                emptyLabel={t("status.active")}
-                portaled
-                className="w-full min-w-0 sm:w-44"
-                onChange={(v) =>
-                  setUrl({ is_active: v === "false" ? "false" : null, page: null }, { replace: true })
+              <ListPageActiveFilter
+                activeLabel={t("status.active")}
+                inactiveLabel={t("status.inactive")}
+                filterLabel={t("filterState")}
+                filterAriaLabel={t("filterState")}
+                isActiveParam={isActiveParam}
+                onChange={(isActive) =>
+                  setUrl({ is_active: isActive ? null : "false", page: null }, { replace: true })
                 }
               />
             </div>
@@ -230,7 +264,7 @@ export function ClientsPanel() {
       <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        ) : loading ? (
+        ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
               <ListPageCardGrid>
@@ -241,13 +275,31 @@ export function ClientsPanel() {
             </div>
           ) : (
             <div className="space-y-2 p-6">
-              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-              <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
             </div>
           )
         ) : items.length === 0 ? (
-          hasActiveFilters ? (
+          emptyStateKind === "onboarding" ? (
+            <DashboardEmptyState
+              iconName="clients"
+              title={t("emptyTitle")}
+              description={t("emptyDescription")}
+              action={<AddButton type="button" onClick={openCreate} />}
+            />
+          ) : emptyStateKind === "activeOnly" ? (
+            <DashboardEmptyState
+              iconName="noResults"
+              title={tList("noActiveResultsTitle")}
+              description={tList("noActiveResultsDescription")}
+              action={
+                <AppButton type="button" variant="secondary" size="sm" onClick={switchToInactive}>
+                  {tList("viewInactive")}
+                </AppButton>
+              }
+            />
+          ) : (
             <DashboardEmptyState
               iconName="noResults"
               title={tList("noResultsTitle")}
@@ -256,22 +308,10 @@ export function ClientsPanel() {
                 <AppButton
                   type="button"
                   variant="secondary"
-                  size="md"
+                  size="sm"
                   onClick={() => setUrl({ search: null, is_active: null, page: null }, { replace: true })}
                 >
                   {tList("clearFilters")}
-                </AppButton>
-              }
-            />
-          ) : (
-            <DashboardEmptyState
-              iconName="clients"
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
-              action={
-                <AppButton type="button" variant="primary" size="md" onClick={openCreate} className="gap-2">
-                  <Plus className="size-4" strokeWidth={2} aria-hidden />
-                  {t("add")}
                 </AppButton>
               }
             />
@@ -349,89 +389,15 @@ export function ClientsPanel() {
             </ListPageCardGrid>
           </div>
         ) : (
-          <DataTableScroll>
-            <DataTable>
-              <DataTableHead>
-                <tr>
-                  <DataTableTh>{t("table.name")}</DataTableTh>
-                  <DataTableTh>{t("table.email")}</DataTableTh>
-                  <DataTableTh>{t("table.phone")}</DataTableTh>
-                  <DataTableTh>{t("table.status")}</DataTableTh>
-                  <DataTableTh>{t("table.created")}</DataTableTh>
-                  <DataTableTh narrow>
-                    <span className="sr-only">{t("table.actions")}</span>
-                  </DataTableTh>
-                </tr>
-              </DataTableHead>
-              <DataTableBody>
-                {items.map((row) => (
-                    <DataTableRow
-                      key={row.id}
-                      data-list-row-id={row.id}
-                      className={cn(highlightClassName(row.id))}
-                      clickable
-                      onClick={() => openClientDetail(row.id)}
-                    >
-                      <DataTableTd className="font-semibold text-slate-900 dark:text-slate-100">{row.name}</DataTableTd>
-                      <DataTableTd className="max-w-[14rem] truncate">{row.email}</DataTableTd>
-                      <DataTableTd>{row.phone?.trim() ? row.phone : "—"}</DataTableTd>
-                      <DataTableTd>
-                        <ActiveStatusBadge
-                          active={row.is_active}
-                          label={row.is_active ? t("status.active") : t("status.inactive")}
-                        />
-                      </DataTableTd>
-                      <DataTableTd>{dateFmt.format(new Date(row.created_at))}</DataTableTd>
-                      <DataTableTd
-                        narrow
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => e.stopPropagation()}
-                      >
-                        <DataTableRowActionsMenu
-                          menuAriaLabel={tList("openRowActions")}
-                          items={[
-                            {
-                              id: "edit",
-                              label: t("edit"),
-                              icon: Pencil,
-                              onSelect: () => openEdit(row),
-                            },
-                            {
-                              id: "delete",
-                              label: t("delete"),
-                              icon: Trash2,
-                              tone: "danger",
-                              onSelect: () => {
-                                setDeletingClient(row);
-                                setDeleteOpen(true);
-                              },
-                            },
-                            row.is_active
-                              ? {
-                                  id: "deactivate",
-                                  label: t("deactivate"),
-                                  icon: PowerOff,
-                                  onSelect: () => void handleToggleActive(row, false),
-                                  disabled: togglingId === row.id,
-                                }
-                              : {
-                                  id: "activate",
-                                  label: t("activate"),
-                                  icon: Power,
-                                  onSelect: () => void handleToggleActive(row, true),
-                                  disabled: togglingId === row.id,
-                                },
-                          ]}
-                        />
-                      </DataTableTd>
-                    </DataTableRow>
-                  ))}
-              </DataTableBody>
-            </DataTable>
-          </DataTableScroll>
+          <EntityDataTable
+            columns={tableColumns}
+            rows={items}
+            onRowClick={(row) => openClientDetail(row.id)}
+            getRowClassName={(row) => highlightClassName(row.id)}
+          />
         )}
 
-        {!loading && !loadError && items.length > 0 ? (
+        {!listLoading && !loadError && items.length > 0 ? (
           <DataTablePaginationBar
             pagination={pagination}
             summary={t("pageLabel", {

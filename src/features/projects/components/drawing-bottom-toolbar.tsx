@@ -60,6 +60,7 @@ const DrawingBottomToolbar = ({
                         onChange={setSelectedPlotId}
                         emptyLabel={t("choosePlot")}
                         side="top"
+                        searchable
                     />
 
                     <CheckmarkSelect
@@ -72,6 +73,7 @@ const DrawingBottomToolbar = ({
                         }}
                         emptyLabel={t("allGroups")}
                         side="top"
+                        searchable
                     />
                     <CheckmarkSelect
                         listLabel={`${t("chooseComposite")} *`}
@@ -80,6 +82,7 @@ const DrawingBottomToolbar = ({
                         onChange={setSelectedCompositeId}
                         emptyLabel={t("selectComposite")}
                         side="top"
+                        searchable
                     />
                 </div>
 

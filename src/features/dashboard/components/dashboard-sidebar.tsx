@@ -2,7 +2,9 @@
 
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
-import { BookUser, Building2, FileText, FolderKanban, Home, Layers, MapPinHouse, Package, Palette, Settings, Tag, Tags, UserRound } from "lucide-react";
+import { BookUser, Building2, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Tag, UserRound } from "lucide-react";
+import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
+
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
@@ -150,6 +152,8 @@ function DashboardMainSidebar({
   const contactsHref = routes.dashboard.contacts;
   const sitesHref = routes.dashboard.sites;
   const quotationsHref = routes.dashboard.quotations;
+  const jobsHref = routes.dashboard.jobs;
+  const qrCodesHref = routes.dashboard.qrCodes;
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
@@ -163,6 +167,8 @@ function DashboardMainSidebar({
   const sitesActive = pathname === sitesHref || pathname.startsWith(`${sitesHref}/`);
   const quotationsActive =
     pathname === quotationsHref || pathname.startsWith(`${quotationsHref}/`);
+  const jobsActive = pathname === jobsHref || pathname.startsWith(`${jobsHref}/`);
+  const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
   const groupsActive = pathname === groupsHref || pathname.startsWith(`${groupsHref}/`);
@@ -222,6 +228,22 @@ function DashboardMainSidebar({
           active={quotationsActive}
           label={t("quotations")}
           icon={FileText}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={jobsHref}
+          active={jobsActive}
+          label={t("jobs")}
+          icon={ListTodo}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={qrCodesHref}
+          active={qrCodesActive}
+          label={t("qrCodes")}
+          icon={QrCode}
           expanded={expanded}
           resolved={resolved}
         />
@@ -316,17 +338,14 @@ function DashboardSettingsSidebar({
 }) {
   const t = useTranslations("Dashboard.settingsNav");
   const pathname = usePathname();
-  const pinStatusHref = routes.dashboard.settingsPinStatus;
-  const tagHref = routes.dashboard.settingsTags;
+  const customizationHref = routes.dashboard.settingsCustomization;
   const usersHref = routes.dashboard.settingsUsers;
   const personalProfileHref = routes.dashboard.settingsPersonalProfile;
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
   const modulesHref = routes.dashboard.settingsModules;
 
-  const pinStatusActive =
-    pathname === pinStatusHref || pathname.startsWith(`${pinStatusHref}/`);
-  const tagActive =
-    pathname === tagHref || pathname.startsWith(`${tagHref}/`);
+  const customizationActive = isCustomizationSettingsPath(pathname);
+
   const usersActive =
     pathname === usersHref || pathname.startsWith(`${usersHref}/`);
   const personalProfileActive =
@@ -371,18 +390,10 @@ function DashboardSettingsSidebar({
           resolved={resolved}
         />
         <SidebarNavLink
-          href={pinStatusHref}
-          active={pinStatusActive}
-          label={t("pinStatus")}
-          icon={Tags}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={tagHref}
-          active={tagActive}
-          label={t("tags")}
-          icon={Tag}
+          href={customizationHref}
+          active={customizationActive}
+          label={t("customization.label")}
+          icon={Palette}
           expanded={expanded}
           resolved={resolved}
         />

@@ -12,6 +12,9 @@ export const dashboardMainGutterClassName = cn(dashboardContentHorizontalGutterC
 /**
  * Max-width column pinned to the **start** of `<main>` (not centered), so headings share the header’s inset.
  */
-export const dashboardPageContainerClassName = cn(
-  "w-full min-w-0",
+export const dashboardPageContainerClassName = cn("w-full min-w-0");
+
+/** List table shell flush under the page subheader (full-bleed with header). */
+export const dashboardListTableShellClassName = cn(
+  "-mx-4 rounded-none border-x-0 border-t-0 shadow-none ring-0 lg:-mx-6",
 );

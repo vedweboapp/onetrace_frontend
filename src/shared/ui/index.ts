@@ -32,9 +32,20 @@ export {
   fieldRequiredMarkClassName,
   surfaceInputClassName,
   surfaceSelectClassName,
+  surfaceTextareaClassName,
 } from "./field-primitives";
 export { CascadingLocationFields } from "./cascading-location-fields";
 export type { CascadingLocationFieldsProps } from "./cascading-location-fields";
+export {
+  AddressFormFields,
+  AddressLineAutocompleteFields,
+  AddressLocationFields,
+} from "./address-form-fields";
+export type {
+  AddressFormFieldsProps,
+  AddressLineAutocompleteFieldsProps,
+  AddressLocationFieldsProps,
+} from "./address-form-fields";
 export { FormFieldRow, FormFieldSpanFull } from "./form-field-grid";
 export { SurfacePhoneField } from "./surface-phone-field";
 export type { SurfacePhoneFieldProps } from "./surface-phone-field";
@@ -44,6 +55,16 @@ export type { CheckmarkSelectOption } from "./checkmark-select";
 export { MultiCheckSelect } from "./multi-check-select";
 export { AppButton } from "./app-button";
 export type { AppButtonProps, AppButtonSize, AppButtonVariant } from "./app-button";
+export {
+  AddButton,
+  CancelButton,
+  DeleteButton,
+  EditButton,
+  ExportButton,
+  FormDialogFooter,
+  SaveButton,
+  useDashboardActions,
+} from "./dashboard-action-buttons";
 export { AuthCard } from "./auth-card";
 export {
   authCardClassName,
@@ -57,13 +78,14 @@ export { SubmitButton } from "./submit-button";
 export type { SubmitButtonProps } from "./submit-button";
 export { ListPageSearchField } from "./list-page-search-field";
 export { ListPageHeader } from "./list-page-header";
+export { ListPageActiveFilter } from "./list-page-active-filter";
 export { ActiveStatusBadge } from "./active-status-badge";
 export type { ActiveStatusBadgeProps } from "./active-status-badge";
 export { ListPageCard, ListPageCardGrid, ListPageCardSkeleton } from "./list-page-card";
 export { DataTableRowActionsMenu } from "./data-table-row-actions-menu";
 export type { DataTableRowMenuItem } from "./data-table-row-actions-menu";
 export { TableIconActionButton, TableRowActions } from "./table-icon-actions";
-export { DashboardEmptyState } from "./dashboard-empty-state";
+export { DashboardEmptyState, type DashboardEmptyStateIconName } from "./dashboard-empty-state";
 export { DashboardUnderDevelopmentState } from "./dashboard-under-development-state";
 export {
   TextField,
