@@ -6,7 +6,7 @@ export type ClientUserRef = {
 
 
 export type ClientUpsertPayload = {
-  organization: number;
+  organization?: number;
   name: string;
   email: string;
   phone: string;

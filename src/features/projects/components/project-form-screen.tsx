@@ -6,8 +6,6 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
-import { useAuthStore } from "@/features/auth/store/auth.store";
-import { getSessionOrganizationId } from "@/features/auth/utils/get-session-organization-id";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { createProject, fetchProject, updateProject } from "@/features/projects/api/project.api";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
@@ -35,7 +33,6 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const safeBack = sanitizeInternalListBack(searchParams.get("back"), "projects");
-  const organizations = useAuthStore((s) => s.organizations);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);
@@ -43,7 +40,6 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   const [screenError, setScreenError] = React.useState<string | null>(null);
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [siteOptions, setSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [organizationIdForEdit, setOrganizationIdForEdit] = React.useState<number | null>(null);
 
   const schema = React.useMemo(
     () =>
@@ -122,10 +118,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       setScreenError(null);
       try {
         const row = await fetchProject(projectId);
-        if (!cancelled) {
-          reset(projectToFormDefaults(row));
-          setOrganizationIdForEdit(row.organization);
-        }
+        if (!cancelled) reset(projectToFormDefaults(row));
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
       } finally {
@@ -138,12 +131,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   }, [isEdit, projectId, reset, t]);
 
   async function submit(values: ProjectFormValues) {
-    const organizationId = getSessionOrganizationId(organizations) ?? (isEdit ? organizationIdForEdit : null);
-    if (organizationId == null) {
-      toastError(t("missingOrganization"));
-      return;
-    }
-    const payload = mapProjectFormToPayload(values, organizationId);
+    const payload = mapProjectFormToPayload(values);
     if (!Number.isFinite(payload.client) || payload.client <= 0) {
       toastError(t("validation.client"));
       return;

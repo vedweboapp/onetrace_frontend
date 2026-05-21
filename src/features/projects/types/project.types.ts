@@ -5,7 +5,7 @@ export type ProjectUserRef = {
 };
 
 export type ProjectUpsertPayload = {
-  organization: number;
+  organization?: number;
   name: string;
   client: number;
   description: string;

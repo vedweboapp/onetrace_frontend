@@ -13,7 +13,7 @@ export type SiteClientRef = {
 };
 
 export type SiteUpsertPayload = {
-  organization: number;
+  organization?: number;
   site_name: string;
   client: number;
   address_line_1: string;

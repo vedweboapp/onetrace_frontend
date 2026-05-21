@@ -4,8 +4,6 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { Controller, useForm } from "react-hook-form";
-import { useAuthStore } from "@/features/auth/store/auth.store";
-import { getSessionOrganizationId } from "@/features/auth/utils/get-session-organization-id";
 import { createProject, updateProject } from "@/features/projects/api/project.api";
 import { createProjectFormSchema, type ProjectFormValues } from "@/features/projects/schemas/project-form-schema";
 import type { Project } from "@/features/projects/types/project.types";
@@ -42,7 +40,6 @@ type Props = {
 
 export function ProjectFormModal({ open, onClose, mode, project, clientOptions, onSaved }: Props) {
   const t = useTranslations("Dashboard.projects");
-  const organizations = useAuthStore((s) => s.organizations);
   const [saving, setSaving] = React.useState(false);
 
   const schema = React.useMemo(
@@ -76,14 +73,7 @@ export function ProjectFormModal({ open, onClose, mode, project, clientOptions, 
   }, [open, mode, project, reset]);
 
   async function submit(values: ProjectFormValues) {
-    const organizationId =
-      getSessionOrganizationId(organizations) ??
-      (mode === "edit" && project ? project.organization : null);
-    if (organizationId == null) {
-      toastError(t("missingOrganization"));
-      return;
-    }
-    const payload = mapProjectFormToPayload(values, organizationId);
+    const payload = mapProjectFormToPayload(values);
     if (!Number.isFinite(payload.client) || payload.client <= 0) {
       toastError(t("validation.client"));
       return;

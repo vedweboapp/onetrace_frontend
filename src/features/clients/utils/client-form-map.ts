@@ -17,7 +17,7 @@ function normalizePhoneForPhoneInput(raw: string | null | undefined): string {
   return `+${digits}`;
 }
 
-export function mapClientFormToPayload(values: ClientFormValues, organizationId: number): ClientUpsertPayload {
+export function mapClientFormToPayload(values: ClientFormValues): ClientUpsertPayload {
   const country = Country.getCountryByCode(values.country_iso);
   const subdivisions = State.getStatesOfCountry(values.country_iso);
   const stateTrimmed = values.state_iso.trim();
@@ -39,7 +39,6 @@ export function mapClientFormToPayload(values: ClientFormValues, organizationId:
   const line2 = values.address_line_2.trim();
 
   return {
-    organization: organizationId,
     name: values.name.trim(),
     email: values.email.trim(),
     phone: values.phone,

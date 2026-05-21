@@ -6,8 +6,6 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
-import { useAuthStore } from "@/features/auth/store/auth.store";
-import { getSessionOrganizationId } from "@/features/auth/utils/get-session-organization-id";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { createSite, fetchSite, updateSite } from "@/features/sites/api/site.api";
 import { createSiteFormSchema, type SiteFormValues } from "@/features/sites/schemas/site-form-schema";
@@ -39,14 +37,12 @@ export function SiteFormScreen({ mode, siteId }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const safeBack = sanitizeInternalListBack(searchParams.get("back"), "sites");
-  const organizations = useAuthStore((s) => s.organizations);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [organizationIdForEdit, setOrganizationIdForEdit] = React.useState<number | null>(null);
 
   const schema = React.useMemo(
     () =>
@@ -97,10 +93,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
       setScreenError(null);
       try {
         const row = await fetchSite(siteId);
-        if (!cancelled) {
-          reset(siteToFormDefaults(row));
-          setOrganizationIdForEdit(row.organization);
-        }
+        if (!cancelled) reset(siteToFormDefaults(row));
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
       } finally {
@@ -113,12 +106,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
   }, [isEdit, siteId, reset, t]);
 
   async function submit(values: SiteFormValues) {
-    const organizationId = getSessionOrganizationId(organizations) ?? (isEdit ? organizationIdForEdit : null);
-    if (organizationId == null) {
-      toastError(t("missingOrganization"));
-      return;
-    }
-    const payload = mapSiteFormToPayload(values, organizationId);
+    const payload = mapSiteFormToPayload(values);
     if (!Number.isFinite(payload.client) || payload.client <= 0) {
       toastError(t("validation.client"));
       return;

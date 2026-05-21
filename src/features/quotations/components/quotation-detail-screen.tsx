@@ -2,7 +2,9 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
+import { createJobFromQuotation } from "@/features/jobs/api/job.api";
 import { fetchQuotation } from "@/features/quotations/api/quotation.api";
 import { QuotationDetailBody } from "@/features/quotations/components/quotation-detail-body";
 import { QuotationExportDropdown } from "@/features/quotations/components/quotation-export-dropdown";
@@ -18,7 +20,10 @@ import type { Site } from "@/features/sites/types/site.types";
 import { hasDetailAddress } from "@/shared/components/layout/detail-formatted-address";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
+import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
+import { AppButton } from "@/shared/ui";
 
 type Props = {
   quotationId: number;
@@ -27,7 +32,9 @@ type Props = {
 export function QuotationDetailScreen({ quotationId }: Props) {
   const t = useTranslations("Dashboard.quotations");
   const dueFmt = useDashboardDateFormat({ dateOnly: true });
+  const router = useRouter();
 
+  const [creatingJob, setCreatingJob] = React.useState(false);
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
   const [siteNames, setSiteNames] = React.useState<Record<number, string>>({});
   const [tagNames, setTagNames] = React.useState<Record<number, string>>({});
@@ -159,6 +166,19 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     };
   }, [detailForSite]);
 
+  async function handleCreateJob() {
+    setCreatingJob(true);
+    try {
+      const job = await createJobFromQuotation(quotationId);
+      toastSuccess(t("detail.createJobToast"));
+      router.push(mergeUrlQueryParam(routes.dashboard.jobs, "highlight", String(job.id)));
+    } catch {
+      toastError(t("detail.createJobError"));
+    } finally {
+      setCreatingJob(false);
+    }
+  }
+
   return (
     <EntityDetailScreen
       entityId={quotationId}
@@ -175,14 +195,25 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         retry: t("detail.retry"),
       }}
       actions={({ detail, listBack }) => (
-        <>
+        <div className="flex flex-wrap gap-2">
+          <AppButton
+            type="button"
+            variant="secondary"
+            size="sm"
+            loading={creatingJob}
+            disabled={creatingJob}
+            aria-label={t("detail.createJobAria")}
+            onClick={() => void handleCreateJob()}
+          >
+            {t("detail.createJob")}
+          </AppButton>
           <QuotationExportDropdown quotationId={quotationId} quoteName={detail.quote_name} />
           <EntityDetailEditButton
             label={t("edit")}
             listBack={listBack}
             fallbackRoute={routes.dashboard.quotations}
           />
-        </>
+        </div>
       )}
     >
       {({ detail, dateFmt }) => {

@@ -4,8 +4,6 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { Controller, useForm } from "react-hook-form";
-import { useAuthStore } from "@/features/auth/store/auth.store";
-import { getSessionOrganizationId } from "@/features/auth/utils/get-session-organization-id";
 import { createContact } from "@/features/contacts/api/contact.api";
 import { createContactFormSchema, type ContactFormValues } from "@/features/contacts/schemas/contact-form-schema";
 import {
@@ -39,7 +37,6 @@ type Props = {
 
 export function ContactFormModal({ open, onClose, clientOptions, onSaved }: Props) {
   const t = useTranslations("Dashboard.contacts");
-  const organizations = useAuthStore((s) => s.organizations);
   const [saving, setSaving] = React.useState(false);
 
   const schema = React.useMemo(
@@ -76,12 +73,7 @@ export function ContactFormModal({ open, onClose, clientOptions, onSaved }: Prop
   }, [open, reset]);
 
   async function submit(values: ContactFormValues) {
-    const organizationId = getSessionOrganizationId(organizations);
-    if (organizationId == null) {
-      toastError(t("missingOrganization"));
-      return;
-    }
-    const payload = mapContactFormToPayload(values, organizationId);
+    const payload = mapContactFormToPayload(values);
     if (!Number.isFinite(payload.client) || payload.client <= 0) {
       toastError(t("validation.client"));
       return;

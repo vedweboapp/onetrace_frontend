@@ -3,7 +3,7 @@ import type { Contact } from "@/features/contacts/types/contact.types";
 import type { ContactCreatePayload } from "@/features/contacts/types/contact.types";
 import type { ContactFormValues } from "@/features/contacts/schemas/contact-form-schema";
 
-export function mapContactFormToPayload(values: ContactFormValues, organizationId: number): ContactCreatePayload {
+export function mapContactFormToPayload(values: ContactFormValues): ContactCreatePayload {
   const country = Country.getCountryByCode(values.country_iso);
   const subdivisions = State.getStatesOfCountry(values.country_iso);
   const stateTrimmed = values.state_iso.trim();
@@ -20,7 +20,6 @@ export function mapContactFormToPayload(values: ContactFormValues, organizationI
   if (cities.length > 0) cityPayload = values.city.trim();
 
   return {
-    organization: organizationId,
     name: values.name.trim(),
     email: values.email.trim(),
     phone: values.phone.trim(),

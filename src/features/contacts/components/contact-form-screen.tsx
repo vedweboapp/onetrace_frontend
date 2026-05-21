@@ -6,8 +6,6 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
-import { useAuthStore } from "@/features/auth/store/auth.store";
-import { getSessionOrganizationId } from "@/features/auth/utils/get-session-organization-id";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { createContact, fetchContact, updateContact } from "@/features/contacts/api/contact.api";
 import { createContactFormSchema, type ContactFormValues } from "@/features/contacts/schemas/contact-form-schema";
@@ -41,14 +39,12 @@ export function ContactFormScreen({ mode, contactId }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const safeBack = sanitizeInternalListBack(searchParams.get("back"), "contacts");
-  const organizations = useAuthStore((s) => s.organizations);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [organizationIdForEdit, setOrganizationIdForEdit] = React.useState<number | null>(null);
 
   const schema = React.useMemo(
     () =>
@@ -101,10 +97,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
       setScreenError(null);
       try {
         const row = await fetchContact(contactId);
-        if (!cancelled) {
-          reset(contactToFormDefaults(row));
-          setOrganizationIdForEdit(row.organization);
-        }
+        if (!cancelled) reset(contactToFormDefaults(row));
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
       } finally {
@@ -117,12 +110,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
   }, [isEdit, contactId, reset, t]);
 
   async function submit(values: ContactFormValues) {
-    const organizationId = getSessionOrganizationId(organizations) ?? (isEdit ? organizationIdForEdit : null);
-    if (organizationId == null) {
-      toastError(t("missingOrganization"));
-      return;
-    }
-    const payload = mapContactFormToPayload(values, organizationId);
+    const payload = mapContactFormToPayload(values);
     if (!Number.isFinite(payload.client) || payload.client <= 0) {
       toastError(t("validation.client"));
       return;
