@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
-import { getLayoutMetadata } from "../api/layout-api";
+import { getLayoutMetadata, updateLayoutStatus } from "../api/layout-api";
 import {
     DataTable,
     DataTableBody,
@@ -17,8 +17,13 @@ import {
     AppButton,
     ListPageSearchField
 } from "@/shared/ui";
+import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
+import { useTranslations } from "next-intl";
+import { parseApiFailurePayload, resolveApiErrorUserText } from "@/core/errors/api-error-text";
+import { ArrowLeft } from "lucide-react";
 
 const LayoutDetails = () => {
+    const t = useTranslations("Dashboard.settingsLayouts");
     const [searchQuery, setSearchQuery] = useState("");
     const [layouts, setLayouts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -60,11 +65,25 @@ const LayoutDetails = () => {
         const layoutName = layout.name || layout.displayName || layout.layoutName || "Standard";
         return layoutName.toLowerCase().includes(searchQuery.toLowerCase());
     });
-
+    const switchActiveStatus = async (layoutId: string | number, currentStatus: boolean) => {
+        try {
+            await updateLayoutStatus(moduleId as string, layoutId, !currentStatus);
+            setLayouts((prev) =>
+                prev.map((layout) =>
+                    layout.id === layoutId ? { ...layout, is_active: !currentStatus } : layout
+                )
+            );
+            toastSuccess(t("statusUpdatedToast"));
+        } catch (err) {
+            console.error("Failed to update layout status", err);
+            toastError(resolveApiErrorUserText(parseApiFailurePayload(err)));
+        }
+    }
     if (loading) {
         return (
             <div className="flex flex-col gap-6 w-full animate-in fade-in duration-500">
                 {/* Top Bar Skeleton */}
+                
                 <div className="flex items-center justify-between p-4 bg-white border border-slate-200/80 rounded-[8px] shadow-sm">
                     <div className="h-9 w-[400px] bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
                     <div className="h-9 w-32 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
@@ -88,7 +107,14 @@ const LayoutDetails = () => {
     return (
         <div className="flex flex-col gap-6 w-full animate-in fade-in duration-500">
             {/* Top Bar */}
-            <div className="flex items-center justify-between p-4 bg-white border border-slate-200/80 rounded-[8px] shadow-sm">
+            <div className="flex items-center gap-3">
+                <button type="button" onClick={() => route.back()} className="inline-flex items-center gap-1 cursor-pointer text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
+                    <ArrowLeft className="size-5 text-gray-600 dark:text-gray-400" />
+                </button>
+                <span className="ml-2 text-lg font-semibold text-slate-800 dark:text-slate-100">Layout Details</span>
+            </div>
+         
+            <div className="flex items-center justify-between p-4 bg-white border border-slate-200/80 rounded-lg shadow-sm">
                 <ListPageSearchField
                     value={searchQuery}
                     onCommit={setSearchQuery}
@@ -145,6 +171,10 @@ const LayoutDetails = () => {
                                                     <button
                                                         type="button"
                                                         role="switch"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            switchActiveStatus(row.id, activeStatus);
+                                                        }}
                                                         aria-checked={activeStatus}
                                                         className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${activeStatus ? 'bg-[#21C588]' : 'bg-slate-200'
                                                             }`}

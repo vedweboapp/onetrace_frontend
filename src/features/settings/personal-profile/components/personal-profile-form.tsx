@@ -11,6 +11,8 @@ import { useFieldArray, useForm } from 'react-hook-form';
 import { Inputs } from '../types/types';
 import { updatePersonalProfile } from '../api/personal-profile.api';
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { useTranslations } from "next-intl";
+import { parseApiFailurePayload, resolveApiErrorUserText } from "@/core/errors/api-error-text";
 
 const PersonalProfileForm = ({ 
     isEditing, 
@@ -23,6 +25,7 @@ const PersonalProfileForm = ({
     isLoading?: boolean,
     onSuccess?: () => void
 }) => {
+    const t = useTranslations("Dashboard.settingsPersonalProfile");
     const [image, setImage] = useState<File | string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
@@ -115,11 +118,11 @@ const PersonalProfileForm = ({
 
             await updatePersonalProfile(String(initialData.id), formData);
             
-            toastSuccess("Profile updated successfully!");
+            toastSuccess(t("updatedToast"));
             if (onSuccess) onSuccess();
         } catch (error) {
             console.error("Failed to update profile:", error);
-            toastError("Failed to update profile. Please try again.");
+            toastError(resolveApiErrorUserText(parseApiFailurePayload(error)));
         } finally {
             setIsSaving(false);
         }
@@ -168,13 +171,13 @@ const PersonalProfileForm = ({
             </div>
 
             {/* Basic Information */}
-            <FormSectionCard title='Basic Information' icon={<Calendar size={20} />} >
+            <FormSectionCard title={t("BasicInfo")} icon={<Calendar size={20} />} >
                 <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pt-2'>
-                    <Input label="First Name" register={register("firstName")} errors={errors.firstName} readOnly={!isEditing} />
-                    <Input label="Last Name" register={register("lastName")} errors={errors.lastName} readOnly={!isEditing} />
-                    <Input label="Date of Birth" type='date' register={register("dob")} errors={errors.dob} readOnly={!isEditing} />
+                    <Input label={t("FirstName")} register={register("firstName")} errors={errors.firstName} readOnly={!isEditing} />
+                    <Input label={t("LastName")} register={register("lastName")} errors={errors.lastName} readOnly={!isEditing} />
+                    <Input label={t("DateOfBirth")} type='date' register={register("dob")} errors={errors.dob} readOnly={!isEditing} />
                     <Select
-                        label="Gender"
+                        label={t("Gender")}
                         register={register("gender")}
                         readOnly={!isEditing}
                         options={[
@@ -183,20 +186,20 @@ const PersonalProfileForm = ({
                             { label: "Other", value: "other" },
                         ]}
                     />
-                    <Input label="Role/Job Title" register={register("role")} errors={errors.role} readOnly={!isEditing} />
-                    <Input label="Date of Joining" type='date' register={register("joiningDate")} errors={errors.joiningDate} readOnly={!isEditing} />
+                    <Input label={t("Role")} register={register("role")} errors={errors.role} readOnly={!isEditing} />
+                    <Input label={t("JoiningDate")} type='date' register={register("joiningDate")} errors={errors.joiningDate} readOnly={!isEditing} />
                 </div>
             </FormSectionCard>
 
             {/* Contact Details */}
-            <FormSectionCard title="Contact Details" icon={<BookUser size={20} />} >
+            <FormSectionCard title={t("ContactDetails")} icon={<BookUser size={20} />} >
                 <div className='flex flex-col gap-8 pt-2'>
 
                     {/* Emails Section */}
                     <div className='space-y-4'>
                         <div className='flex items-center justify-between'>
                             <h3 className='text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2'>
-                                <Mail size={14} /> Email Addresses
+                                <Mail size={14} /> {t("Emails")}
                             </h3>
                             {isEditing && (
                                 <AppButton
@@ -206,7 +209,7 @@ const PersonalProfileForm = ({
                                     onClick={() => appendEmail({ email: "" })}
                                     className="gap-2"
                                 >
-                                    <Plus size={14} /> Add Email
+                                    <Plus size={14} /> {t("AddEmail")}
                                 </AppButton>
                             )}
                         </div>
@@ -240,7 +243,7 @@ const PersonalProfileForm = ({
                     <div className='space-y-4'>
                         <div className='flex items-center justify-between'>
                             <h3 className='text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2'>
-                                <Phone size={14} /> Phone Numbers
+                                <Phone size={14} /> {t("Phones")}
                             </h3>
                             {isEditing && (
                                 <AppButton
@@ -250,7 +253,7 @@ const PersonalProfileForm = ({
                                     onClick={() => appendPhone({ phone: "" })}
                                     className="gap-2"
                                 >
-                                    <Plus size={14} /> Add Phone
+                                    <Plus size={14} /> {t("AddPhone")}
                                 </AppButton>
                             )}
                         </div>
@@ -286,7 +289,7 @@ const PersonalProfileForm = ({
                     <div className='space-y-4'>
                         <div className='flex items-center justify-between'>
                             <h3 className='text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2'>
-                                <Home size={14} /> Addresses
+                                <Home size={14} /> {t("Addresses")}
                             </h3>
                             {isEditing && (
                                 <AppButton
@@ -296,7 +299,7 @@ const PersonalProfileForm = ({
                                     onClick={() => appendAddress({ address: "", isPrimary: false })}
                                     className="gap-2"
                                 >
-                                    <Plus size={14} /> Add Address
+                                    <Plus size={14} /> {t("AddAddress")}
                                 </AppButton>
                             )}
                         </div>

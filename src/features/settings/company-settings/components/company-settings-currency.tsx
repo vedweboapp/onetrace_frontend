@@ -3,9 +3,16 @@
 import React, { useState } from "react";
 import { Eye, X } from "lucide-react";
 import { currencyList } from "@/shared/form/components/currency-list";
-import { getOrganizationDetails, updateOrganizationDetails } from "../api/company-settings.api";
-import { toast } from "sonner";
+import { updateOrganizationDetails } from "../api/company-settings.api";
+import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
+import { useTranslations } from "next-intl";
+import { parseApiFailurePayload, resolveApiErrorUserText } from "@/core/errors/api-error-text";
 import { OrganizationDetails } from "../types/types";
+import {
+  buildDirtyOrganizationPatch,
+  CURRENCY_TAB_FIELDS,
+  hasDirtyFields,
+} from "../utils/company-settings-diff.util";
 
 interface CurrencySettings {
   currencyCode: string;
@@ -23,6 +30,7 @@ interface CompanySettingsCurrencyProps {
 }
 
 const CompanySettingsCurrency = ({ initialData, onSaveSuccess }: CompanySettingsCurrencyProps) => {
+  const t = useTranslations("Dashboard.settingsCompany");
   const [isMounted, setIsMounted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -130,19 +138,30 @@ const CompanySettingsCurrency = ({ initialData, onSaveSuccess }: CompanySettings
   const handleConfirm = async () => {
     setIsSaving(true);
     try {
-      const payload = {
+      const current: OrganizationDetails = {
         ...initialData,
-        ...tempSettings
+        ...tempSettings,
       };
-      
-      await updateOrganizationDetails(1, payload);
+      const patch = buildDirtyOrganizationPatch(
+        initialData,
+        current,
+        CURRENCY_TAB_FIELDS,
+      );
+
+      if (!hasDirtyFields(patch)) {
+        toastSuccess(t("noChangesToast"));
+        setIsModalOpen(false);
+        return;
+      }
+
+      const updated = await updateOrganizationDetails(1, patch);
       setSettings({ ...tempSettings });
       setIsModalOpen(false);
-      toast.success("Currency settings saved successfully");
-      onSaveSuccess?.(payload as any);
+      toastSuccess(t("currencyUpdatedToast"));
+      onSaveSuccess?.(updated);
     } catch (error) {
       console.error("Failed to save organization currency:", error);
-      toast.error("Failed to save currency settings");
+      toastError(resolveApiErrorUserText(parseApiFailurePayload(error)));
     } finally {
       setIsSaving(false);
     }

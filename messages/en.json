@@ -188,6 +188,41 @@
         }
       }
     },
+    "settingsPersonalProfile": {
+      "updatedToast": "Profile updated successfully",
+      "loadError": "Failed to load profile. Please try again.",
+      "mustSignIn": "You must be signed in to view your profile.",
+      "BasicInfo": "Basic Info",
+      "ContactDetails": "Contact Details",
+      "FirstName": "First Name",
+      "LastName": "Last Name",
+      "DateOfBirth": "Date of Birth",
+      "Gender": "Gender",
+      "Role": "Role",
+      "JoiningDate": "Joining Date",
+      "Emails": "Emails",
+      "Phones": "Phones",
+      "AddPhone": "Add Phone",
+      "AddEmail": "Add Email",
+      "AddAddress": "Add Address",
+      "Addresses": "Addresses"
+
+    },
+    "settingsCompany": {
+      "organizationUpdatedToast": "Organization details updated successfully",
+      "currencyUpdatedToast": "Currency settings saved successfully",
+      "scheduleUpdatedToast": "Schedule settings saved successfully",
+      "noChangesToast": "No changes to save"
+    },
+    "settingsFormBuilder": {
+      "layoutSavedToast": "Layout saved successfully",
+      "layoutCreatedToast": "Layout created successfully",
+      "layoutUpdatedToast": "Layout updated successfully",
+      "moduleCreatedToast": "Module created successfully"
+    },
+    "settingsLayouts": {
+      "statusUpdatedToast": "Layout status updated successfully"
+    },
     "appearance": {
       "metaTitle": "Appearance",
       "pageKicker": "Settings",

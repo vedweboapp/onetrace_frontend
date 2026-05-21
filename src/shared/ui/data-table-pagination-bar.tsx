@@ -106,6 +106,7 @@ export function DataTablePaginationBar({
               value={String(pageSizeControl.value)}
               disabled={pageSizeControl.disabled}
               portaled
+
               size="sm"
               showCheckmarks={false}
               className="w-auto shrink-0"

@@ -69,26 +69,49 @@ export default function FieldConfigModal({
     });
   };
 
+  const parseOptionsLines = (text: string) =>
+    text
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line !== "");
+
+  const getOptionsList = (): string[] => {
+    const fromText = parseOptionsLines(optionsText);
+    if (fromText.length > 0) return fromText;
+    return (config.options || []).map((o: any) =>
+      typeof o === "string" ? o : String(o.label ?? o.value ?? ""),
+    );
+  };
+
+  const applyOptionsUpdate = (lines: string[]) => {
+    setConfig((prev: any) => {
+      const next = { ...prev, options: lines };
+      const currentDefault = prev.defaultValue;
+
+      if (typeof currentDefault === "string" && currentDefault !== "") {
+        if (!lines.includes(currentDefault)) {
+          next.defaultValue = "";
+        }
+      } else if (Array.isArray(currentDefault)) {
+        next.defaultValue = currentDefault.filter((v: string) => lines.includes(v));
+      }
+
+      return next;
+    });
+  };
+
   const handleOptionsTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setOptionsText(e.target.value);
     if (debounceTimer) clearTimeout(debounceTimer);
     const timer = setTimeout(() => {
-      const lines = e.target.value
-        .split("\n")
-        .map((line) => line.trim())
-        .filter((line) => line !== "");
-      handleChange("options", lines);
+      applyOptionsUpdate(parseOptionsLines(e.target.value));
     }, 800);
     setDebounceTimer(timer);
   };
 
   const handleOptionsBlur = () => {
     if (debounceTimer) clearTimeout(debounceTimer);
-    const lines = optionsText
-      .split("\n")
-      .map((line: string) => line.trim())
-      .filter((line: string) => line !== "");
-    handleChange("options", lines);
+    applyOptionsUpdate(parseOptionsLines(optionsText));
   };
 
   const handleSave = () => {
@@ -96,7 +119,11 @@ export default function FieldConfigModal({
       .split("\n")
       .map((line: string) => line.trim())
       .filter((line: string) => line !== "");
-    const finalConfig = { ...config, options: lines };
+    const finalConfig = {
+      ...config,
+      options: lines,
+      field_type: config.field_type || fieldType,
+    };
 
     const newErrors: Record<string, string> = {};
     (typeConfig.configFields || []).forEach((f: any) => {
@@ -146,7 +173,7 @@ export default function FieldConfigModal({
       case "text":
         return (
           <div key={field.key}>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {field.label}
               <span className="text-red-500">{field.required ? "*" : ""}</span>
             </label>
@@ -156,7 +183,7 @@ export default function FieldConfigModal({
               onChange={(e) => handleChange(field.key, e.target.value)}
               aria-required={field.required}
               maxLength={field.maxLength || undefined}
-              className={`w-full px-4 py-2 border border-gray-300 rounded-[8px] focus:ring-2 focus:ring-blue-500 outline-none ${errors[field.key] ? "border-red-500" : ""}`}
+              className={`w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-[8px] bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none ${errors[field.key] ? "border-red-500" : ""}`}
             />
             {field.maxLength && (
               <p className="text-xs text-gray-400 mt-1 text-right">
@@ -172,14 +199,14 @@ export default function FieldConfigModal({
       case "textarea":
         return (
           <div key={field.key}>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {field.label}
             </label>
             <textarea
               value={config[mappedKey] || ""}
               onChange={(e) => handleChange(field.key, e.target.value)}
               rows={3}
-              className={`w-full px-4 py-2 border border-gray-300 rounded-[8px] focus:ring-2 focus:ring-blue-500 outline-none ${errors[field.key] ? "border-red-500" : ""}`}
+              className={`w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-[8px] bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none ${errors[field.key] ? "border-red-500" : ""}`}
             />
             {errors[field.key] && (
               <p className="text-red-600 text-sm mt-1">{errors[field.key]}</p>
@@ -190,7 +217,7 @@ export default function FieldConfigModal({
       case "number":
         return (
           <div key={field.key}>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {field.label}
             </label>
             <input
@@ -199,7 +226,7 @@ export default function FieldConfigModal({
               onChange={(e) =>
                 handleChange(field.key, parseInt(e.target.value) || 0)
               }
-              className={`w-full px-4 py-2 border border-gray-300 rounded-[8px] focus:ring-2 focus:ring-blue-500 outline-none ${errors[field.key] ? "border-red-500" : ""}`}
+              className={`w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-[8px] bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none ${errors[field.key] ? "border-red-500" : ""}`}
             />
             {errors[field.key] && (
               <p className="text-red-600 text-sm mt-1">{errors[field.key]}</p>
@@ -251,7 +278,7 @@ export default function FieldConfigModal({
       case "radio-group":
         return (
           <div key={field.key}>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {field.label}
             </label>
             <div className="flex items-center gap-6">
@@ -278,7 +305,7 @@ export default function FieldConfigModal({
       case "drop-down":
         return (
           <div key={field.key}>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {field.label}
             </label>
             <select
@@ -289,7 +316,7 @@ export default function FieldConfigModal({
                   : Number(e.target.value);
                 handleChange(field.key, val);
               }}
-              className="border border-gray-300 rounded-lg p-2 w-full bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+              className="border border-gray-300 dark:border-slate-600 rounded-lg p-2 w-full bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none"
             >
               {field.options?.map((option: any, index: number) => (
                 <option value={option.value} key={index}>
@@ -300,10 +327,87 @@ export default function FieldConfigModal({
           </div>
         );
 
+      case "option-default": {
+        const options = getOptionsList();
+        const current = config[mappedKey] ?? "";
+        const validValue =
+          typeof current === "string" && options.includes(current) ? current : "";
+
+        return (
+          <div key={field.key}>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {field.label}
+            </label>
+            <select
+              value={validValue}
+              onChange={(e) => handleChange(field.key, e.target.value)}
+              disabled={options.length === 0}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-[8px] focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 disabled:bg-gray-50 dark:disabled:bg-slate-800 disabled:text-gray-400"
+            >
+              <option value="">— None —</option>
+              {options.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+            {options.length === 0 ? (
+              <p className="text-xs text-gray-500 mt-1">
+                Add options above to choose a default
+              </p>
+            ) : null}
+          </div>
+        );
+      }
+
+      case "option-default-multi": {
+        const options = getOptionsList();
+        const selected: string[] = Array.isArray(config[mappedKey])
+          ? config[mappedKey].filter((v: string) => options.includes(v))
+          : config[mappedKey]
+            ? options.includes(String(config[mappedKey]))
+              ? [String(config[mappedKey])]
+              : []
+            : [];
+
+        return (
+          <div key={field.key}>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {field.label}
+            </label>
+            {options.length === 0 ? (
+              <p className="text-sm text-gray-500">Add options above to choose defaults</p>
+            ) : (
+              <div className="flex flex-col gap-2 p-3 border border-gray-200 dark:border-slate-600 rounded-[8px] bg-gray-50 dark:bg-slate-800 max-h-40 overflow-y-auto">
+                {options.map((opt) => (
+                  <label
+                    key={opt}
+                    className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(opt)}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? [...selected, opt]
+                          : selected.filter((v) => v !== opt);
+                        handleChange(field.key, next);
+                      }}
+                      className="w-4 h-4"
+                    />
+                    {opt}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      }
+
       case "options":
         return (
           <div key={field.key} className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {field.label}
               <span className="text-red-500">{field.required ? "*" : ""}</span>
             </label>
@@ -313,15 +417,15 @@ export default function FieldConfigModal({
               onBlur={handleOptionsBlur}
               placeholder="One option per line"
               rows={6}
-              className={`w-full px-4 py-2 border border-gray-300 rounded-[8px] focus:ring-2 focus:ring-blue-500 font-mono text-sm resize-none outline-none ${errors[field.key] ? "border-red-500" : ""}`}
+              className={`w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-[8px] bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 font-mono text-sm resize-none outline-none ${errors[field.key] ? "border-red-500" : ""}`}
             />
             {errors[field.key] && (
               <p className="text-red-600 text-sm mt-1">{errors[field.key]}</p>
             )}
             {config.options && config.options.length > 0 && (
-              <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-md border border-blue-200">
+              <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 rounded-md border border-blue-200 dark:border-blue-800">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-semibold text-gray-700">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                     Options Preview
                   </p>
                   <span className="px-2.5 py-0.5 bg-blue-600 text-white text-xs font-medium rounded-full">
@@ -332,7 +436,7 @@ export default function FieldConfigModal({
                   {config.options.map((opt: string, idx: number) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center px-3 py-1.5 bg-white border border-blue-300 rounded-md text-sm text-gray-700 font-medium shadow-sm hover:shadow transition-shadow"
+                      className="inline-flex items-center px-3 py-1.5 bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-700 rounded-md text-sm text-gray-700 dark:text-gray-200 font-medium shadow-sm hover:shadow transition-shadow"
                     >
                       {opt}
                     </span>
@@ -384,16 +488,18 @@ export default function FieldConfigModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-screen overflow-y-auto">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold">Configure {typeConfig?.label || "Field Properties"}</h2>
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-2xl max-h-screen overflow-y-auto">
+        <div className="p-6 border-b border-gray-200 dark:border-slate-700">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Configure {typeConfig?.label || "Field Properties"}
+          </h2>
         </div>
 
         <div className="p-6 space-y-6">
           {(typeConfig?.configFields || []).map((field: any) => renderField(field))}
         </div>
 
-        <div className="p-6 border-t border-gray-200 flex justify-end gap-4">
+        <div className="p-6 border-t border-gray-200 dark:border-slate-700 flex justify-end gap-4">
           <Button onClick={onClose} variant="secondary">
             Cancel
           </Button>

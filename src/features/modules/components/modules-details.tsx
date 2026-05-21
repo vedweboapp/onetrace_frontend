@@ -28,12 +28,14 @@ interface ModuleItem {
 }
 
 const ModulesDetails = () => {
-    const [urlParams, setParam, setPageSize] = useUrlParams({
+    const [params, setParam, setPageSize] = useUrlParams({
         page_size: 10,
     });
-    const page = urlParams.page;
-    const pageSize = urlParams.page_size;
-    const search = urlParams.search;
+    const page = params.page;
+    const pageSize = params.page_size;
+
+    // Local search state - NOT in URL
+    const [search, setSearch] = useState("");
 
     const [items, setItems] = useState<any[]>([]);
     const [pagination, setPagination] = useState<{
@@ -72,7 +74,7 @@ const ModulesDetails = () => {
             }
         };
         fetchModules();
-    }, [search, page, pageSize]);
+    }, [search, page, pageSize]); //Triggers on search change
 
     const totalRecords = pagination.total_records;
     const totalPages = pagination.total_pages;
@@ -107,8 +109,8 @@ const ModulesDetails = () => {
                 <ListPageSearchField
                     value={search}
                     onCommit={(val) => {
-                        setParam("search", val || null);
-                        setParam("page", 1);
+                        setSearch(val || "");
+                        setParam("page", 1); // Reset to page 1
                     }}
                     placeholder="Search module..."
                     ariaLabel="Search module"
@@ -147,6 +149,7 @@ const ModulesDetails = () => {
                                     <tr>
                                         <DataTableTh>Displayed in tabs as</DataTableTh>
                                         <DataTableTh>Module Name</DataTableTh>
+                                        <DataTableTh>Created By</DataTableTh>
                                         <DataTableTh className="hidden sm:table-cell">Last Modified</DataTableTh>
                                     </tr>
                                 </DataTableHead>
@@ -155,6 +158,7 @@ const ModulesDetails = () => {
                                         const id = row.id;
                                         const displayName = row.singular_label || row.name || row.displayName || row.api_name || "Untitled";
                                         const moduleName = row.api_name || row.moduleName || "";
+                                        const createdBy = row.created_by?.username || "Unknown";
                                         const lastModified = row.updated_at || row.updatedAt || row.created_at || row.lastModified || "";
 
                                         return (
@@ -164,6 +168,9 @@ const ModulesDetails = () => {
                                                 </DataTableTd>
                                                 <DataTableTd className="font-mono text-xs text-slate-500 dark:text-slate-400">
                                                     {moduleName}
+                                                </DataTableTd>
+                                                <DataTableTd className="text-slate-500 dark:text-slate-400">
+                                                    {createdBy}
                                                 </DataTableTd>
                                                 <DataTableTd className="hidden text-slate-500 dark:text-slate-400 sm:table-cell">
                                                     {formatDate(lastModified)}
