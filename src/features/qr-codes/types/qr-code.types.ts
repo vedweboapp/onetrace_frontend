@@ -16,7 +16,7 @@ export type QrCode = {
   last_scanned_at: string | null;
   scan_count: number;
   created_at: string;
-  modified_at: string;
+  modified_at: string | null;
   created_by?: QrCodeUserRef | null;
   modified_by?: QrCodeUserRef | null;
 };

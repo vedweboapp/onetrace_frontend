@@ -13,8 +13,8 @@ export type ProjectType = {
   deleted_at: string | null;
   is_deleted: boolean;
   project_type: string;
-  bg_colour: string;
-  text_colour: string;
+  bg_color: string;
+  text_color: string;
   is_active: boolean;
   deleted_by: unknown;
   organization?: number;
@@ -38,8 +38,8 @@ export type ProjectTypeListResponse = {
 
 export type ProjectTypeCreatePayload = {
   project_type: string;
-  bg_colour: string;
-  text_colour: string;
+  bg_color: string;
+  text_color: string;
 };
 
 export type ProjectTypeUpdatePayload = Partial<ProjectTypeCreatePayload> & {

@@ -20,15 +20,15 @@ export function getProjectTypeId(project: Pick<Project, "project_type">): number
 export function resolveProjectTypeChipData(
   project: Pick<Project, "project_type">,
   byId: Record<number, ProjectType>,
-): Pick<ProjectType, "id" | "project_type" | "bg_colour" | "text_colour"> | null {
+): Pick<ProjectType, "id" | "project_type" | "bg_color" | "text_color"> | null {
   const pt = project.project_type;
   if (pt && typeof pt === "object") {
     const ref = pt as ProjectTypeRef;
     return {
       id: ref.id,
       project_type: projectTypeNameFromRow(ref) || `Type #${ref.id}`,
-      bg_colour: ref.bg_colour ?? "#DBEAFE",
-      text_colour: ref.text_colour ?? "#1E40AF",
+      bg_color: ref.bg_color ?? ref.bg_colour ?? "#DBEAFE",
+      text_color: ref.text_color ?? ref.text_colour ?? "#1E40AF",
     };
   }
   const id = getProjectTypeId(project);
@@ -38,7 +38,7 @@ export function resolveProjectTypeChipData(
   return {
     id,
     project_type: `Type #${id}`,
-    bg_colour: "#DBEAFE",
-    text_colour: "#1E40AF",
+    bg_color: "#DBEAFE",
+    text_color: "#1E40AF",
   };
 }

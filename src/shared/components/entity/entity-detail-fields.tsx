@@ -146,7 +146,7 @@ export type DetailSystemMetadataLabels = {
 
 export type DetailSystemMetadataSectionProps = {
   createdAt: string;
-  modifiedAt: string;
+  modifiedAt?: string | null;
   dateFmt: Intl.DateTimeFormat;
   createdBy?: unknown;
   modifiedBy?: unknown;
@@ -193,10 +193,14 @@ export function DetailSystemMetadataSection({
           />
         </DetailMetricCard>
         <DetailMetricCard label={labels.updatedAt}>
-          <DetailTimestampValue
-            icon={RefreshCw}
-            value={dateFmt.format(new Date(modifiedAt))}
-          />
+          {modifiedAt?.trim() ? (
+            <DetailTimestampValue
+              icon={RefreshCw}
+              value={dateFmt.format(new Date(modifiedAt))}
+            />
+          ) : (
+            <span className="text-sm text-slate-600 dark:text-slate-400">—</span>
+          )}
         </DetailMetricCard>
         {extra}
         <DetailMetricCard label={labels.createdBy} className="sm:col-span-1">

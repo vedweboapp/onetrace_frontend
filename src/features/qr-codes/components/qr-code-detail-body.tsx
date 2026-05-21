@@ -81,7 +81,7 @@ export function QrCodeDetailBody({ detail, dateFmt }: Props) {
 
         <DetailSystemMetadataSection
           createdAt={detail.created_at}
-          modifiedAt={detail.modified_at}
+          modifiedAt={detail.modified_at ?? null}
           dateFmt={dateFmt}
           createdBy={detail.created_by ?? null}
           modifiedBy={detail.modified_by ?? null}

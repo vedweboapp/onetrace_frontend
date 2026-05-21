@@ -21,10 +21,14 @@ export function formatProjectTypeLabel(row: Pick<ProjectType, "id" | "project_ty
   return label || `Type #${row.id}`;
 }
 
-export function projectTypeBgHex(row: Pick<ProjectType, "bg_colour">): string {
-  return normalizeProjectTypeHex(row.bg_colour, DEFAULT_BG);
+export function projectTypeBgHex(
+  row: Pick<ProjectType, "bg_color"> & { bg_colour?: string | null },
+): string {
+  return normalizeProjectTypeHex(row.bg_color ?? row.bg_colour, DEFAULT_BG);
 }
 
-export function projectTypeTextHex(row: Pick<ProjectType, "text_colour">): string {
-  return normalizeProjectTypeHex(row.text_colour, DEFAULT_TEXT);
+export function projectTypeTextHex(
+  row: Pick<ProjectType, "text_color"> & { text_colour?: string | null },
+): string {
+  return normalizeProjectTypeHex(row.text_color ?? row.text_colour, DEFAULT_TEXT);
 }

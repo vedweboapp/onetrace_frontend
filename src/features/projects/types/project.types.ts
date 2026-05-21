@@ -29,6 +29,9 @@ export type ProjectClientRef = {
 export type ProjectTypeRef = {
   id: number;
   project_type?: string | null;
+  bg_color?: string | null;
+  text_color?: string | null;
+  /** Legacy API spelling */
   bg_colour?: string | null;
   text_colour?: string | null;
 };
