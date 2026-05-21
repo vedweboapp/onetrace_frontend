@@ -705,7 +705,8 @@
         "notAssigned": "Not assigned"
       },
       "table": {
-        "qrCodeId": "QR code",
+        "qrImage": "QR code",
+        "qrCodeId": "QR ID",
         "status": "Status",
         "assignedJob": "Assigned job",
         "scanCount": "Scans",

@@ -151,7 +151,30 @@ export function QrCodesPanel() {
   const tableColumns = React.useMemo(() => {
     const c = entityCol<QrCodeRecord>();
     return [
-      c.primary("qr_code_id", t("table.qrCodeId"), (r) => r.qr_code_id),
+      c.custom(
+        "qr_image",
+        t("table.qrImage"),
+        (row) =>
+          row.qr_image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={row.qr_image}
+              alt={row.qr_code_id}
+              className="size-12 shrink-0 rounded-md border border-slate-200 bg-white object-contain p-1 dark:border-slate-700 dark:bg-slate-950"
+            />
+          ) : (
+            <span
+              className="inline-flex size-12 shrink-0 items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50 text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-900"
+              aria-hidden
+            >
+              —
+            </span>
+          ),
+        { narrow: true, headerClassName: "w-[4.5rem]" },
+      ),
+      c.primary("qr_code_id", t("table.qrCodeId"), (r) => (
+        <span className="font-mono text-sm">{r.qr_code_id}</span>
+      )),
       c.truncate("status", t("table.status"), (r) =>
         isQrAssigned(r) ? t("status.assigned") : t("status.notAssigned"),
       ),
@@ -312,7 +335,7 @@ export function QrCodesPanel() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={row.qr_image}
-                          alt=""
+                          alt={row.qr_code_id}
                           className="size-16 shrink-0 rounded-md border border-slate-200 bg-white object-contain p-1 dark:border-slate-700"
                         />
                       ) : undefined
