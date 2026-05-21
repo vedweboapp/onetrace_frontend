@@ -18,6 +18,7 @@ import {
     ListPageSearchField
 } from "@/shared/ui";
 import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
+import { ArrowLeft } from "lucide-react";
 
 const LayoutDetails = () => {
     const [searchQuery, setSearchQuery] = useState("");
@@ -79,6 +80,7 @@ const LayoutDetails = () => {
         return (
             <div className="flex flex-col gap-6 w-full animate-in fade-in duration-500">
                 {/* Top Bar Skeleton */}
+                
                 <div className="flex items-center justify-between p-4 bg-white border border-slate-200/80 rounded-[8px] shadow-sm">
                     <div className="h-9 w-[400px] bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
                     <div className="h-9 w-32 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
@@ -102,6 +104,13 @@ const LayoutDetails = () => {
     return (
         <div className="flex flex-col gap-6 w-full animate-in fade-in duration-500">
             {/* Top Bar */}
+            <div className="flex items-center gap-3">
+                <button type="button" onClick={() => route.back()} className="inline-flex items-center gap-1 cursor-pointer text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
+                    <ArrowLeft className="size-5 text-gray-600 dark:text-gray-400" />
+                </button>
+                <span className="ml-2 text-lg font-semibold text-slate-800 dark:text-slate-100">Layout Details</span>
+            </div>
+         
             <div className="flex items-center justify-between p-4 bg-white border border-slate-200/80 rounded-[8px] shadow-sm">
                 <ListPageSearchField
                     value={searchQuery}
