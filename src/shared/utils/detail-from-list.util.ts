@@ -24,7 +24,6 @@ export type DashboardListSection =
   | "composite-items"
   | "settings/users";
 
-
 export function sanitizeInternalListBack(
   raw: string | null | undefined,
   section: DashboardListSection,

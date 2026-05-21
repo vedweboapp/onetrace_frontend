@@ -12,6 +12,7 @@ import { getProjectClientId } from "@/features/projects/utils/project-client-id.
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
@@ -263,14 +264,31 @@ export function ProjectsPanel() {
   }, [t, tList, clientLabelById, togglingId]);
 
   const hasActiveFilters = hasListActiveFilters({ search, isActiveParam });
-  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const countInactive = React.useCallback(async () => {
+    const { pagination: p } = await fetchProjectsPage(1, 1, {
+      search: search || undefined,
+      is_active: false,
+    });
+    return p.total_records;
+  }, [search]);
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive, switchToInactive } =
+    useListActiveInactiveEmptyState({
+      loading,
+      loadError,
+      itemsLength: items.length,
+      isActiveParam,
+      isActiveFilter,
+      hasActiveFilters,
+      setUrl,
+      countInactive,
+    });
   const pageRange = getListPageRange(pagination);
 
   return (
     <div className="space-y-4">
       {!hideListChrome ? (
         <ListPageHeader
-          filtersActive={hasActiveFilters}
+          filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
@@ -305,7 +323,7 @@ export function ProjectsPanel() {
       <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        ) : loading ? (
+        ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
               <ListPageCardGrid>
@@ -322,7 +340,25 @@ export function ProjectsPanel() {
             </div>
           )
         ) : items.length === 0 ? (
-          hasActiveFilters ? (
+          emptyStateKind === "onboarding" ? (
+            <DashboardEmptyState
+              iconName="projects"
+              title={t("emptyTitle")}
+              description={t("emptyDescription")}
+              action={<AddButton type="button" onClick={openCreate} />}
+            />
+          ) : emptyStateKind === "activeOnly" ? (
+            <DashboardEmptyState
+              iconName="noResults"
+              title={tList("noActiveResultsTitle")}
+              description={tList("noActiveResultsDescription")}
+              action={
+                <AppButton type="button" variant="secondary" size="sm" onClick={switchToInactive}>
+                  {tList("viewInactive")}
+                </AppButton>
+              }
+            />
+          ) : (
             <DashboardEmptyState
               iconName="noResults"
               title={tList("noResultsTitle")}
@@ -336,15 +372,6 @@ export function ProjectsPanel() {
                 >
                   {tList("clearFilters")}
                 </AppButton>
-              }
-            />
-          ) : (
-            <DashboardEmptyState
-              iconName="projects"
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
-              action={
-                <AddButton type="button" onClick={openCreate} />
               }
             />
           )
@@ -423,7 +450,7 @@ export function ProjectsPanel() {
           />
         )}
 
-        {!loading && !loadError && items.length > 0 ? (
+        {!listLoading && !loadError && items.length > 0 ? (
           <DataTablePaginationBar
             pagination={pagination}
             summary={t("pageLabel", {

@@ -156,6 +156,7 @@ export function SiteFormModal({ open, onClose, mode, site, clientOptions, onSave
                 <CheckmarkSelect
                   id="site-client"
                   portaled
+                  searchable
                   listLabel={t("fields.client")}
                   options={clientOptions}
                   value={field.value}

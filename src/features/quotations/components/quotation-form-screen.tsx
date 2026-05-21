@@ -32,6 +32,7 @@ import {
 import {
   getQuotationCustomerId,
   getQuotationNestedSite,
+  getQuotationProjectId,
   getQuotationSiteId,
   quotationNestedSiteToSite,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
@@ -356,10 +357,14 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     if (!selectedProject || !customerId) return;
     const stillExists = projectRows.some((p) => String(p.id) === selectedProject);
     if (!stillExists) {
+      if (isEdit && existingDetail) {
+        const pid = getQuotationProjectId(existingDetail.project);
+        if (pid != null && String(pid) === selectedProject) return;
+      }
       setValue("project", "", { shouldDirty: true, shouldValidate: true });
       setValue("site", "", { shouldDirty: true, shouldValidate: true });
     }
-  }, [projectRows, customerId, getValues, setValue]);
+  }, [projectRows, customerId, getValues, setValue, isEdit, existingDetail]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -443,10 +448,22 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     }
   }, [siteOptions, getValues, setValue]);
 
-  const projectOptions = React.useMemo<Option[]>(
-    () => projectRows.map((p) => ({ value: String(p.id), label: p.name })),
-    [projectRows],
-  );
+  const projectOptions = React.useMemo<Option[]>(() => {
+    const base = projectRows.map((p) => ({ value: String(p.id), label: p.name }));
+    const pid = existingDetail ? getQuotationProjectId(existingDetail.project) : null;
+    const nested =
+      existingDetail?.project && typeof existingDetail.project === "object"
+        ? existingDetail.project
+        : null;
+    if (isEdit && pid != null) {
+      const exists = base.some((o) => o.value === String(pid));
+      if (!exists) {
+        const label = nested?.name?.trim() || `Project #${pid}`;
+        return [{ value: String(pid), label }, ...base];
+      }
+    }
+    return base;
+  }, [projectRows, isEdit, existingDetail]);
 
   const sortedLevelRows = React.useMemo(() => {
     const rows = Array.isArray(levelRows) ? levelRows : [];
@@ -551,11 +568,11 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
           </div>
         ) : (
           <form id="quotation-form-screen" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(onSubmit)}>
-            {noProjects ? (
+            {/* {noProjects ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
                 {t("noClientsHint")}
               </p>
-            ) : null}
+            ) : null} */}
             <AppTabs
               tabs={[
                 { id: "project", label: t("formTabs.project") },

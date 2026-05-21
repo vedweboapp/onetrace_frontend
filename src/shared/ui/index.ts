@@ -36,6 +36,16 @@ export {
 } from "./field-primitives";
 export { CascadingLocationFields } from "./cascading-location-fields";
 export type { CascadingLocationFieldsProps } from "./cascading-location-fields";
+export {
+  AddressFormFields,
+  AddressLineAutocompleteFields,
+  AddressLocationFields,
+} from "./address-form-fields";
+export type {
+  AddressFormFieldsProps,
+  AddressLineAutocompleteFieldsProps,
+  AddressLocationFieldsProps,
+} from "./address-form-fields";
 export { FormFieldRow, FormFieldSpanFull } from "./form-field-grid";
 export { SurfacePhoneField } from "./surface-phone-field";
 export type { SurfacePhoneFieldProps } from "./surface-phone-field";

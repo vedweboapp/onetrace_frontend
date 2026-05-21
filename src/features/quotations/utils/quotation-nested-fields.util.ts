@@ -1,6 +1,7 @@
 import type {
   QuotationContactNested,
   QuotationListItem,
+  QuotationProjectRef,
   QuotationSiteNested,
   QuotationTagNested,
   QuotationUserRef,
@@ -50,6 +51,38 @@ export function quotationSiteLabel(site: QuotationListItem["site"] | undefined |
   if (id == null) return "—";
   const fromLookup = lookupName?.trim();
   return fromLookup || `#${id}`;
+}
+
+export function getQuotationProjectId(project: QuotationListItem["project"] | undefined | null): number | null {
+  if (project == null) return null;
+  if (typeof project === "number" && Number.isFinite(project) && project > 0) return project;
+  if (isRecord(project) && typeof project.id === "number" && project.id > 0) return project.id;
+  return null;
+}
+
+export function quotationProjectLabel(
+  project: QuotationListItem["project"] | undefined | null,
+  lookupName?: string | null,
+): string {
+  if (project == null) return "—";
+  if (isRecord(project) && typeof project.name === "string") {
+    const n = project.name.trim();
+    if (n) return n;
+  }
+  const id = getQuotationProjectId(project);
+  if (id == null) return "—";
+  const fromLookup = lookupName?.trim();
+  return fromLookup || `#${id}`;
+}
+
+/** Nested project row from quotation detail when API expands `project`. */
+export function getQuotationNestedProject(
+  project: QuotationListItem["project"] | undefined | null,
+): QuotationProjectRef | null {
+  if (project == null) return null;
+  if (!isRecord(project) || typeof project.id !== "number") return null;
+  if (typeof project.name !== "string") return null;
+  return project as QuotationProjectRef;
 }
 
 /** Nested site row from quotation detail/list when API expands `site`. */

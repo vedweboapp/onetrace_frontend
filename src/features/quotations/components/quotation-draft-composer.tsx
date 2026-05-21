@@ -158,6 +158,7 @@ function DraftCompositeAddRow({
           <CheckmarkSelect
             id={`${idPrefix}-group`}
             portaled
+            searchable
             listLabel={`${tDraw("chooseGroup")} *`}
             options={groupOptions}
             value={groupId}
@@ -171,6 +172,7 @@ function DraftCompositeAddRow({
           <CheckmarkSelect
             id={`${idPrefix}-composite`}
             portaled
+            searchable
             listLabel={`${tDraw("chooseComposite")} *`}
             options={compositeOptions}
             value={compositeId}

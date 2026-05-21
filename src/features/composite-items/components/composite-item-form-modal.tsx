@@ -357,6 +357,7 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
                     emptyLabel={t("childItemPlaceholder")}
                     disabled={submitting || noItems}
                     portaled
+                    searchable
                     className="w-full"
                   />
                 </div>

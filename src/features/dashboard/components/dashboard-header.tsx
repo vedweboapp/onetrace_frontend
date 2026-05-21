@@ -22,7 +22,7 @@ import {
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useAuthStore } from "@/features/auth/store/auth.store";
-import { useDashboardAppearanceStore } from "@/features/dashboard/store/dashboard-appearance.store";
+import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import { resolveDashboardAccent } from "@/features/dashboard/utils/accent-resolve.util";
 import { dashboardContentHorizontalGutterClassName } from "@/shared/config/dashboard-shell";
@@ -77,7 +77,9 @@ export function DashboardHeader() {
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
   const compositeHref = routes.dashboard.compositeItems;
-  const appearanceHref = routes.dashboard.settingsAppearance;
+  const personalProfileHref = routes.dashboard.settingsPersonalProfile;
+  const companySettingsHref = routes.dashboard.settingsCompanySettings;
+  const modulesHref = routes.dashboard.settingsModules;
   const pinStatusHref = routes.dashboard.settingsPinStatus;
   const jobStatusHref = routes.dashboard.settingsJobStatus;
   const tagHref = routes.dashboard.settingsTags;
@@ -96,8 +98,12 @@ export function DashboardHeader() {
   const groupsActive = pathname === groupsHref || pathname.startsWith(`${groupsHref}/`);
   const compositeActive =
     pathname === compositeHref || pathname.startsWith(`${compositeHref}/`);
-  const appearanceActive =
-    pathname === appearanceHref || pathname.startsWith(`${appearanceHref}/`);
+  const personalProfileActive =
+    pathname === personalProfileHref || pathname.startsWith(`${personalProfileHref}/`);
+  const companySettingsActive =
+    pathname === companySettingsHref || pathname.startsWith(`${companySettingsHref}/`);
+  const modulesActive =
+    pathname === modulesHref || pathname.startsWith(`${modulesHref}/`);
   const pinStatusActive =
     pathname === pinStatusHref || pathname.startsWith(`${pinStatusHref}/`);
   const jobStatusActive =
@@ -105,27 +111,37 @@ export function DashboardHeader() {
   const tagActive = pathname === tagHref || pathname.startsWith(`${tagHref}/`);
   const usersActive = pathname === usersHref || pathname.startsWith(`${usersHref}/`);
 
-  const sectionTitle = settingsMode
-    ? t("eyebrowSettings")
-    : homeActive
-      ? tNav("home")
-      : projectsActive
-        ? tNav("projects")
-        : quotationsActive
-          ? tNav("quotations")
+  const sectionTitle = homeActive
+    ? tNav("home")
+    : projectsActive
+      ? tNav("projects")
+      : quotationsActive
+        ? tNav("quotations")
           : jobsActive
             ? tNav("jobs")
-            : sitesActive
-            ? tNav("sites")
-            : contactsActive
-              ? tNav("contacts")
-              : clientsActive
-                ? tNav("clients")
-                : groupsActive
-                  ? tNav("groups")
-                  : compositeActive
-                    ? tNav("compositeItems")
-                    : tNav("home");
+          : sitesActive
+          ? tNav("sites")
+          : contactsActive
+            ? tNav("contacts")
+            : clientsActive
+              ? tNav("clients")
+              : groupsActive
+                ? tNav("groups")
+                : compositeActive
+                  ? tNav("compositeItems")
+                  : personalProfileActive
+                    ? tSettingsNav("personalProfile")
+                    : companySettingsActive
+                      ? tSettingsNav("companySettings")
+                      : modulesActive
+                        ? tSettingsNav("modules")
+                        : pinStatusActive
+                          ? tSettingsNav("pinStatus")
+                          : tagActive
+                            ? tSettingsNav("tags")
+                            : usersActive
+                              ? tSettingsNav("users")
+                              : tNav("home");
 
   return (
     <header className="flex h-auto shrink-0 flex-col bg-white dark:bg-slate-950">
@@ -152,13 +168,13 @@ export function DashboardHeader() {
             )}
           </button>
 
-        
+
 
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{sectionTitle}</p>
           </div>
 
-            {settingsMode ? (
+          {settingsMode ? (
             <Link
               href={homeHref}
               className={cn(
@@ -193,7 +209,7 @@ export function DashboardHeader() {
             <Bell className="size-4" strokeWidth={1.75} />
           </button> */}
           <Link
-            href={appearanceHref}
+            href={personalProfileHref}
             title={t("openSettings")}
             aria-label={t("openSettings")}
             className={cn(
@@ -201,7 +217,7 @@ export function DashboardHeader() {
               "hover:border-[color:var(--dash-accent)] hover:bg-slate-50 hover:text-[color:var(--dash-accent)]",
               "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-100",
               settingsMode &&
-                "border-transparent bg-[color:var(--dash-accent)] text-[color:var(--dash-on-accent,#ffffff)] shadow-md hover:opacity-90 dark:hover:opacity-90",
+              "border-transparent bg-[color:var(--dash-accent)] text-[color:var(--dash-on-accent,#ffffff)] shadow-md hover:opacity-90 dark:hover:opacity-90",
             )}
             aria-current={settingsMode ? "page" : undefined}
           >
@@ -220,15 +236,37 @@ export function DashboardHeader() {
         {settingsMode ? (
           <>
             <Link
-              href={appearanceHref}
+              href={personalProfileHref}
               className={cn(
                 "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
-                appearanceActive ? resolved.navActiveClassName : mobileInactive(),
+                personalProfileActive ? resolved.navActiveClassName : mobileInactive(),
               )}
-              style={appearanceActive ? resolved.navActiveStyle : undefined}
+              style={personalProfileActive ? resolved.navActiveStyle : undefined}
             >
               <Palette className="size-3.5" strokeWidth={1.75} />
               {tSettingsNav("appearance")}
+            </Link>
+            <Link
+              href={companySettingsHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                companySettingsActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={companySettingsActive ? resolved.navActiveStyle : undefined}
+            >
+              <Building2 className="size-3.5" strokeWidth={1.75} />
+              {tSettingsNav("companySettings")}
+            </Link>
+            <Link
+              href={modulesHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                modulesActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={modulesActive ? resolved.navActiveStyle : undefined}
+            >
+              <Settings className="size-3.5" strokeWidth={1.75} />
+              {tSettingsNav("modules")}
             </Link>
             <Link
               href={pinStatusHref}

@@ -20,7 +20,8 @@ import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
-  CascadingLocationFields,
+  AddressLineAutocompleteFields,
+  AddressLocationFields,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
@@ -231,54 +232,45 @@ export function ContactFormScreen({ mode, contactId }: Props) {
                 error={errors.phone?.message}
                 disabled={saving}
               />
-              <FieldGroup label={t("fields.addressLine1")} htmlFor="contact-line1" required>
-                <input
-                  id="contact-line1"
-                  aria-invalid={errors.address_line_1 ? true : undefined}
-                  aria-describedby={errors.address_line_1 ? "contact-line1-err" : undefined}
-                  className={cn(surfaceInputClassName, errors.address_line_1 && "border-red-500 dark:border-red-500")}
-                  {...register("address_line_1")}
-                />
-                <FieldErrorText id="contact-line1-err">{errors.address_line_1?.message}</FieldErrorText>
-              </FieldGroup>
-              <FieldGroup label={t("fields.addressLine2")} htmlFor="contact-line2">
-                <input id="contact-line2" className={surfaceInputClassName} {...register("address_line_2")} />
-              </FieldGroup>
+              <AddressLineAutocompleteFields
+                idPrefix="contact"
+                control={control}
+                setValue={setValue}
+                wrapInRow={false}
+                disabled={saving}
+                labels={{
+                  addressLine1: t("fields.addressLine1"),
+                  addressLine2: t("fields.addressLine2"),
+                }}
+                errors={{
+                  address_line_1: errors.address_line_1?.message,
+                  address_line_2: errors.address_line_2?.message,
+                }}
+              />
             </FormFieldRow>
-            <CascadingLocationFields<ContactFormValues>
+            <AddressLocationFields
+              idPrefix="contact"
               control={control}
+              register={register}
               setValue={setValue}
-              countryIsoName="country_iso"
-              stateIsoName="state_iso"
-              cityName="city"
+              disabled={saving}
               labels={{
                 country: t("fields.country"),
                 state: t("fields.stateProvince"),
                 city: t("fields.city"),
+                pincode: t("fields.pincode"),
               }}
               placeholders={{
                 country: t("placeholders.country"),
                 state: t("placeholders.state"),
                 city: t("placeholders.city"),
               }}
-              disabled={saving}
               errors={{
-                country: errors.country_iso?.message,
-                state: errors.state_iso?.message,
+                country_iso: errors.country_iso?.message,
+                state_iso: errors.state_iso?.message,
                 city: errors.city?.message,
+                pincode: errors.pincode?.message,
               }}
-              trailingSlot={
-                <FieldGroup label={t("fields.pincode")} htmlFor="contact-pincode" required>
-                  <input
-                    id="contact-pincode"
-                    aria-invalid={errors.pincode ? true : undefined}
-                    aria-describedby={errors.pincode ? "contact-pincode-err" : undefined}
-                    className={cn(surfaceInputClassName, errors.pincode && "border-red-500 dark:border-red-500")}
-                    {...register("pincode")}
-                  />
-                  <FieldErrorText id="contact-pincode-err">{errors.pincode?.message}</FieldErrorText>
-                </FieldGroup>
-              }
             />
           </form>
         )}

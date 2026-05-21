@@ -282,7 +282,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   <div key={r.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_140px_auto] sm:items-end">
                     <div>
                       <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">{tModal("childItem")}<span className="ml-1 text-red-500">*</span></span>
-                      <CheckmarkSelect listLabel={tModal("childItem")} buttonAriaLabel={tModal("childItem")} value={r.child_item} onChange={(v) => setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, child_item: v } : x)))} options={itemOptionsForRow(r.id)} emptyLabel={tModal("childItemPlaceholder")} disabled={submitting || noItems} portaled className="w-full" />
+                      <CheckmarkSelect listLabel={tModal("childItem")} buttonAriaLabel={tModal("childItem")} value={r.child_item} onChange={(v) => setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, child_item: v } : x)))} options={itemOptionsForRow(r.id)} emptyLabel={tModal("childItemPlaceholder")} disabled={submitting || noItems} portaled searchable className="w-full" />
                     </div>
                     <div>
                       <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">{tModal("componentQuantity")}</span>

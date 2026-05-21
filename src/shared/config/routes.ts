@@ -1,3 +1,5 @@
+import { rootCertificates } from "tls";
+
 export const routes = {
   home: "/",
   auth: {
@@ -17,10 +19,13 @@ export const routes = {
     items: "/dashboard/items",
     compositeItems: "/dashboard/composite-items",
     settings: "/dashboard/settings",
-    settingsAppearance: "/dashboard/settings/appearance",
     settingsPinStatus: "/dashboard/settings/pin-status",
     settingsJobStatus: "/dashboard/settings/job-status",
     settingsTags: "/dashboard/settings/tag",
     settingsUsers: "/dashboard/settings/users",
+    settingsPersonalProfile: "/dashboard/settings/personal-profile",
+    settingsCompanySettings: "/dashboard/settings/company-settings",
+    settingsModules: "/dashboard/settings/modules",
   },
+
 } as const;

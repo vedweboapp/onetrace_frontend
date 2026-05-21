@@ -157,6 +157,10 @@
       "jobStatus": "Job statuses",
       "tags": "Tags",
       "users": "Users",
+      "personalProfile": "Personal Profile",
+      "companySettings": "Company Settings",
+      "formBuilder": "Form Builder",
+      "modules": "Modules",
       "hint": "Customize theme and accent for this workspace."
     },
     "appearance": {
@@ -756,8 +760,11 @@
       },
       "location": {
         "searchPlaceholder": "Start typing street address…",
+        "googleSearchPlaceholder": "Search address...",
+      
         "searchPlaceholderLine2": "Apartment, suite, building (optional)…",
         "searching": "Searching places…",
+        "resolvingPlace": "Loading address details…",
         "noResults": "No matches — you can still enter the address manually.",
         "mapTitle": "Pin location on map",
         "dragPinHint": "Drag the pin or click the map to set the exact location.",
@@ -1136,6 +1143,9 @@
       "openRowActions": "Open row actions",
       "noResultsTitle": "No results found",
       "noResultsDescription": "Nothing matches your current search or filters. Adjust them or clear filters to see more items.",
+      "noActiveResultsTitle": "No active records",
+      "noActiveResultsDescription": "Everything here is inactive. Switch to Inactive to view those records, or create a new one.",
+      "viewInactive": "View inactive",
       "clearFilters": "Clear filters",
       "clearFilter": "Remove this filter",
       "filterMenu": "Filters",

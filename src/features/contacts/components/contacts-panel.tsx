@@ -10,6 +10,7 @@ import { fetchContactsPage, updateContact } from "@/features/contacts/api/contac
 import type { Contact } from "@/features/contacts/types/contact.types";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
@@ -170,7 +171,25 @@ export function ContactsPanel() {
   }, [clientOptions]);
 
   const hasActiveFilters = hasListActiveFilters({ search, isActiveParam, clientParam });
-  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const countInactive = React.useCallback(async () => {
+    const { pagination: p } = await fetchContactsPage(1, 1, {
+      search: search || undefined,
+      is_active: false,
+      client: clientFilter,
+    });
+    return p.total_records;
+  }, [search, clientFilter]);
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive, switchToInactive } =
+    useListActiveInactiveEmptyState({
+      loading,
+      loadError,
+      itemsLength: items.length,
+      isActiveParam,
+      isActiveFilter,
+      hasActiveFilters,
+      setUrl,
+      countInactive,
+    });
   const pageRange = getListPageRange(pagination);
 
   async function handleToggleActive(row: Contact, next: boolean) {
@@ -225,7 +244,7 @@ export function ContactsPanel() {
     <div className="space-y-4">
       {!hideListChrome ? (
         <ListPageHeader
-          filtersActive={hasActiveFilters}
+          filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
@@ -273,7 +292,7 @@ export function ContactsPanel() {
       <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        ) : loading ? (
+        ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
               <ListPageCardGrid>
@@ -290,7 +309,25 @@ export function ContactsPanel() {
             </div>
           )
         ) : items.length === 0 ? (
-          hasActiveFilters ? (
+          emptyStateKind === "onboarding" ? (
+            <DashboardEmptyState
+              iconName="clients"
+              title={t("emptyTitle")}
+              description={t("emptyDescription")}
+              action={<AddButton type="button" onClick={openCreate} />}
+            />
+          ) : emptyStateKind === "activeOnly" ? (
+            <DashboardEmptyState
+              iconName="noResults"
+              title={tList("noActiveResultsTitle")}
+              description={tList("noActiveResultsDescription")}
+              action={
+                <AppButton type="button" variant="secondary" size="sm" onClick={switchToInactive}>
+                  {tList("viewInactive")}
+                </AppButton>
+              }
+            />
+          ) : (
             <DashboardEmptyState
               iconName="noResults"
               title={tList("noResultsTitle")}
@@ -304,15 +341,6 @@ export function ContactsPanel() {
                 >
                   {tList("clearFilters")}
                 </AppButton>
-              }
-            />
-          ) : (
-            <DashboardEmptyState
-              iconName="clients"
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
-              action={
-                <AddButton type="button" onClick={openCreate} />
               }
             />
           )
@@ -388,7 +416,7 @@ export function ContactsPanel() {
           />
         )}
 
-        {!loading && !loadError && items.length > 0 ? (
+        {!listLoading && !loadError && items.length > 0 ? (
           <DataTablePaginationBar
             pagination={pagination}
             summary={t("pageLabel", {

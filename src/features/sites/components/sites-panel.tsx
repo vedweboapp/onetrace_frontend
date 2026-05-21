@@ -12,6 +12,7 @@ import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
@@ -151,7 +152,25 @@ export function SitesPanel() {
   }, [clientOptions]);
 
   const hasActiveFilters = hasListActiveFilters({ search, isActiveParam, clientParam });
-  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const countInactive = React.useCallback(async () => {
+    const { pagination: p } = await fetchSitesPage(1, 1, {
+      search: search || undefined,
+      is_active: false,
+      client: clientFilter,
+    });
+    return p.total_records;
+  }, [search, clientFilter]);
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive, switchToInactive } =
+    useListActiveInactiveEmptyState({
+      loading,
+      loadError,
+      itemsLength: items.length,
+      isActiveParam,
+      isActiveFilter,
+      hasActiveFilters,
+      setUrl,
+      countInactive,
+    });
   const pageRange = getListPageRange(pagination);
 
   async function handleToggleActive(row: Site, next: boolean) {
@@ -221,7 +240,7 @@ export function SitesPanel() {
     <div className="space-y-4">
       {!hideListChrome ? (
         <ListPageHeader
-          filtersActive={hasActiveFilters}
+          filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
@@ -271,26 +290,51 @@ export function SitesPanel() {
       <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        ) : loading ? (
+        ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6"><ListPageCardGrid>{Array.from({ length: 6 }, (_, i) => <ListPageCardSkeleton key={i} />)}</ListPageCardGrid></div>
           ) : (
             <div className="space-y-2 p-6"><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /></div>
           )
         ) : items.length === 0 ? (
-          hasActiveFilters ? (
-            <DashboardEmptyState
-              iconName="noResults"
-              title={tList("noResultsTitle")}
-              description={tList("noResultsDescription")}
-              action={<AppButton type="button" variant="secondary" size="sm" onClick={() => setUrl({ search: null, is_active: null, client: null, page: null }, { replace: true })}>{tList("clearFilters")}</AppButton>}
-            />
-          ) : (
+          emptyStateKind === "onboarding" ? (
             <DashboardEmptyState
               iconName="projects"
               title={t("emptyTitle")}
               description={t("emptyDescription")}
-              action={<AddButton type="button" onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)} />}
+              action={
+                <AddButton
+                  type="button"
+                  onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)}
+                />
+              }
+            />
+          ) : emptyStateKind === "activeOnly" ? (
+            <DashboardEmptyState
+              iconName="noResults"
+              title={tList("noActiveResultsTitle")}
+              description={tList("noActiveResultsDescription")}
+              action={
+                <AppButton type="button" variant="secondary" size="sm" onClick={switchToInactive}>
+                  {tList("viewInactive")}
+                </AppButton>
+              }
+            />
+          ) : (
+            <DashboardEmptyState
+              iconName="noResults"
+              title={tList("noResultsTitle")}
+              description={tList("noResultsDescription")}
+              action={
+                <AppButton
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setUrl({ search: null, is_active: null, client: null, page: null }, { replace: true })}
+                >
+                  {tList("clearFilters")}
+                </AppButton>
+              }
             />
           )
         ) : listViewMode === "list" ? (
@@ -343,7 +387,7 @@ export function SitesPanel() {
           />
         )}
 
-        {!loading && !loadError && items.length > 0 ? (
+        {!listLoading && !loadError && items.length > 0 ? (
           <DataTablePaginationBar
             pagination={pagination}
             summary={t("pageLabel", { start: pageRange.start, end: pageRange.end, total: pagination.total_records })}
