@@ -127,7 +127,7 @@ export function AppearancePanel() {
           <div>
             <p className="mb-4 text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Interface Theme</p>
             <div className="flex w-full max-w-sm items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-900">
-              {(["light", "dark", "system"] as const).map((mode) => {
+              {(["light", "dark"] as const).map((mode) => {
                 const active = theme === mode;
                 return (
                   <button
@@ -143,7 +143,7 @@ export function AppearancePanel() {
                   >
                     {mode === "light" && <Sun size={16} />}
                     {mode === "dark" && <Moon size={16} />}
-                    {mode === "system" && <Monitor size={16} />}
+                    {/* {mode === "system" && <Monitor size={16} />} */}
                     <span className="capitalize">{mode}</span>
                   </button>
                 );
