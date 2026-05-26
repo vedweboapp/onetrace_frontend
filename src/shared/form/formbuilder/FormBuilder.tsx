@@ -386,7 +386,7 @@ export default function FormBuilderLayout({
   const [rules, setRules] = useState<FormRule[]>([]);
   const [editingRule, setEditingRule] = useState<FormRule | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
+  const [activeTab, setActiveTab] = useState<"form" | "preview" | "rules">("form");
 
   const tabs = [
     { id: "form", label: "Form" },
@@ -412,7 +412,20 @@ export default function FormBuilderLayout({
           setModuleName(layoutObj.layout.name);
         }
         if (layoutObj?.rules) {
-          setRules(layoutObj.rules);
+          const loadedRules = (layoutObj.rules || []).map((r: any) => {
+            if (r.logic) {
+              return {
+                _uid: r.uuid || r._uid || `rule-${Date.now()}-${Math.random()}`,
+                name: r.name,
+                ...r.logic,
+              };
+            }
+            return {
+              ...r,
+              _uid: r.uuid || r._uid || `rule-${Date.now()}-${Math.random()}`,
+            };
+          });
+          setRules(loadedRules);
         }
       } else if (
         purpose !== "create_module" &&
@@ -426,7 +439,20 @@ export default function FormBuilderLayout({
           setModuleName(layoutObj.name);
         }
         if (layoutObj?.rules) {
-          setRules(layoutObj.rules);
+          const loadedRules = (layoutObj.rules || []).map((r: any) => {
+            if (r.logic) {
+              return {
+                _uid: r.uuid || r._uid || `rule-${Date.now()}-${Math.random()}`,
+                name: r.name,
+                ...r.logic,
+              };
+            }
+            return {
+              ...r,
+              _uid: r.uuid || r._uid || `rule-${Date.now()}-${Math.random()}`,
+            };
+          });
+          setRules(loadedRules);
         }
       }
     };
@@ -718,6 +744,22 @@ export default function FormBuilderLayout({
         return fieldPayload;
       };
 
+      const formatRulesPayload = (rulesList: FormRule[]) => {
+        return rulesList.map((r, i) => ({
+          name: r.name,
+          uuid: r._uid || (r as any).uuid || "",
+          logic: {
+            id: r.id,
+            sequence: i + 1,
+            field_api_name: r.field_api_name,
+            field_id: r.field_id,
+            condition: r.condition,
+            value: r.value,
+            output_fields: r.output_fields,
+          },
+        }));
+      };
+
       let finalPayload: any;
 
       if (purpose === "edit_layout") {
@@ -813,7 +855,7 @@ export default function FormBuilderLayout({
           create: createdSections,
           update: updatedSections,
           delete: finalDeletePayload,
-          rules: rules.map((r, i) => ({ ...r, sequence: i + 1 })),
+          rules: formatRulesPayload(rules),
         };
       } else {
         // Fallback/standard flat payload for fresh create_module / create_layout
@@ -858,7 +900,7 @@ export default function FormBuilderLayout({
               is_active: true,
             },
             sections: sectionsPayload,
-            rules: rules.map((r, i) => ({ ...r, sequence: i + 1 })),
+            rules: formatRulesPayload(rules),
           };
         } else {
           finalPayload = {
@@ -869,7 +911,7 @@ export default function FormBuilderLayout({
               is_active: false,
             },
             sections: sectionsPayload,
-            rules: rules.map((r, i) => ({ ...r, sequence: i + 1 })),
+            rules: formatRulesPayload(rules),
           };
         }
       }
@@ -1053,7 +1095,7 @@ export default function FormBuilderLayout({
           <AppTabs
             tabs={tabs}
             value={activeTab}
-            onValueChange={(val) => setActiveTab(val as "form" | "preview")}
+            onValueChange={(val) => setActiveTab(val as "form" | "preview" | "rules")}
           />
         </div>
 

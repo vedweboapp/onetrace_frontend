@@ -333,7 +333,6 @@ const FormField: React.FC<{
           errors={errors}
           rules={validations}
           readOnly={isReadOnly}
-          disabled={isDisabled}
           placeholder={field.placeholder}
         />
       </div>
@@ -353,7 +352,10 @@ const FormField: React.FC<{
     }
 
     const defaultChecked =
-      field.defaultChecked === true || field.defaultChecked === "true";
+      field.defaultChecked === true ||
+      field.defaultChecked === "true" ||
+      field.defaultValue === true ||
+      field.defaultValue === "true";
 
     return (
       <div className={colSpanClass}>
@@ -366,13 +368,12 @@ const FormField: React.FC<{
             <FormCheckbox
               label={label}
               name={field.api_name}
-              checked={!!value}
+              checked={value !== undefined ? !!value : defaultChecked}
               onChange={onChange}
               onBlur={onBlur}
               inputRef={ref}
               errors={getError(field.api_name)}
               readOnly={isReadOnly}
-              disabled={isDisabled}
             />
           )}
         />
@@ -398,7 +399,6 @@ const FormField: React.FC<{
               onBlur={onBlur}
               errors={getError(field.api_name)}
               readOnly={isReadOnly}
-              disabled={isDisabled}
               placeholder={field.placeholder}
             />
           )}
@@ -449,6 +449,7 @@ const FormField: React.FC<{
     label: label,
     name: field.api_name,
     register: register(field.api_name, validations),
+    defaultValue: field.defaultValue !== undefined ? field.defaultValue : "",
     errors: getError(field.api_name),
     readOnly: isReadOnly,
     disabled: isDisabled,
@@ -533,14 +534,27 @@ const buildDefaultValuesFromSchema = (
       if (!f.api_name || formData[f.api_name] !== undefined) return;
       const normType = getNormalizedType(f.field_type);
       if (normType === "checkbox") {
+        // Use defaultChecked or defaultValue set in field config modal
         formData[f.api_name] =
-          f.defaultChecked === true || f.defaultChecked === "true";
+          f.defaultChecked === true ||
+          f.defaultChecked === "true" ||
+          f.defaultValue === true ||
+          f.defaultValue === "true";
       } else if (
         ["multi_select", "file_upload", "image_upload", "user"].includes(normType)
       ) {
-        formData[f.api_name] = [];
+        // Use defaultValue array if set, otherwise empty array
+        formData[f.api_name] = Array.isArray(f.defaultValue)
+          ? f.defaultValue
+          : [];
       } else {
-        formData[f.api_name] = "";
+        // Use defaultValue (picklist, select, radio, single_line, etc.) if set
+        formData[f.api_name] =
+          f.defaultValue !== undefined &&
+          f.defaultValue !== null &&
+          f.defaultValue !== ""
+            ? f.defaultValue
+            : "";
       }
     });
   });
@@ -593,7 +607,17 @@ const mapDataToFormFields = (data: any, schema: Section[], defaultValues = {}) =
           formData[f.api_name] = (defaultValues as any)[f.api_name];
         } else if (normType === "checkbox") {
           formData[f.api_name] =
-            f.defaultChecked === true || f.defaultChecked === "true";
+            f.defaultChecked === true ||
+            f.defaultChecked === "true" ||
+            f.defaultValue === true ||
+            f.defaultValue === "true";
+        } else if (
+          f.defaultValue !== undefined &&
+          f.defaultValue !== null &&
+          f.defaultValue !== ""
+        ) {
+          // Honour the default value configured in the field builder
+          formData[f.api_name] = f.defaultValue;
         } else {
           formData[f.api_name] = "";
         }
