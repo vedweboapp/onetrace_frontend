@@ -103,14 +103,26 @@ export function DataTablePaginationBar({
               listLabel={pageSizeControl.listLabel}
               buttonAriaLabel={pageSizeControl.buttonAriaLabel ?? pageSizeControl.listLabel}
               options={pageSizeControl.options}
-              value={String(pageSizeControl.value)}
+              value={
+                Number.isFinite(pageSizeControl.value)
+                  ? String(pageSizeControl.value)
+                  : ""
+              }
               disabled={pageSizeControl.disabled}
               portaled
 
               size="sm"
               showCheckmarks={false}
               className="w-auto shrink-0"
-              onChange={(v) => pageSizeControl.onChange(normalizeListPageSize(Number.parseInt(v, 10)))}
+              onChange={(v) => {
+                const parsed = Number.parseInt(v, 10);
+                const allowed = new Set(
+                  pageSizeControl.options.map((o) => Number.parseInt(o.value, 10)),
+                );
+                pageSizeControl.onChange(
+                  allowed.has(parsed) ? parsed : normalizeListPageSize(parsed),
+                );
+              }}
             />
           ) : null}
           {showNumberButtons ? (

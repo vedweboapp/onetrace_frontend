@@ -162,6 +162,7 @@
       "personalProfile": "Personal Profile",
       "companySettings": "Company Settings",
       "formBuilder": "Form Builder",
+      "projectForms": "Project forms",
       "modules": "Modules",
       "hint": "Customize theme and accent for this workspace.",
       "customization": {

@@ -1,0 +1,314 @@
+"use client";
+
+import React, { useState } from "react";
+import { X, Plus, Trash2 } from "lucide-react";
+import { AppButton } from "@/shared/ui/app-button";
+import { FormRule, RuleCondition, FormRuleOutput, RuleAction } from "./form-rules.types";
+
+/** Full-height drawer below the form builder sub-header (top-14 + h-14 = 7rem). */
+const FORM_BUILDER_SUBHEADER_OFFSET = "top-28";
+const FORM_BUILDER_DRAWER_HEIGHT = "h-[calc(100dvh-7rem)]";
+
+type FormRuleModalProps = {
+  onClose: () => void;
+  onSave: (rule: FormRule) => void;
+  fields: { value: string; label: string }[];
+  initialRule?: FormRule | null;
+  existingRules?: FormRule[];
+};
+
+interface CONDITION_TYPES {
+  label: string;
+  value: RuleCondition;
+}
+
+const conditionTypes: CONDITION_TYPES[] = [
+  { label: "Is", value: "is" },
+  { label: "Is Not", value: "is_not" },
+  { label: "Is Empty", value: "is_empty" },
+  { label: "Is Not Empty", value: "is_not_empty" },
+  { label: "Ends With", value: "ends_with" },
+  { label: "Is Any One Of", value: "is_any_one_of" },
+  { label: "Is None Of", value: "is_none_of" },
+];
+
+const actionTypes: { label: string; value: RuleAction }[] = [
+  { label: "Show", value: "show" },
+  { label: "Hide", value: "hide" },
+  { label: "Require", value: "require" },
+  { label: "Disable", value: "disable" },
+];
+
+const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [] }: FormRuleModalProps) => {
+  const [name, setName] = useState(initialRule?.name || "");
+  const [triggerField, setTriggerField] = useState(initialRule?.field_api_name || "");
+  const [condition, setCondition] = useState<RuleCondition | "">(initialRule?.condition || "");
+  const [ruleValue, setRuleValue] = useState(
+    Array.isArray(initialRule?.value) ? initialRule.value.join(", ") : (initialRule?.value || "")
+  );
+
+  const [outputs, setOutputs] = useState<FormRuleOutput[]>(
+    initialRule?.output_fields?.length 
+      ? initialRule.output_fields 
+      : [{ field_api_name: "", action: "show" }]
+  );
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const claimedByOtherRules = React.useMemo(() => {
+    const claimed = new Set<string>();
+    existingRules.forEach(r => {
+      if (r._uid !== initialRule?._uid) {
+        r.output_fields.forEach(o => claimed.add(o.field_api_name));
+      }
+    });
+    return claimed;
+  }, [existingRules, initialRule]);
+
+  const handleAddOutput = () => {
+    setOutputs([...outputs, { field_api_name: "", action: "show" }]);
+  };
+
+  const handleRemoveOutput = (index: number) => {
+    if (outputs.length > 1) {
+      setOutputs(outputs.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleOutputChange = (index: number, field: keyof FormRuleOutput, value: any) => {
+    const newOutputs = [...outputs];
+    newOutputs[index] = { ...newOutputs[index], [field]: value };
+    setOutputs(newOutputs);
+  };
+
+  const handleSave = () => {
+    const newErrors: Record<string, string> = {};
+    if (!name.trim()) newErrors.name = "Rule name is required";
+    if (name.length > 20) newErrors.name = "Maximum 20 characters";
+    if (!triggerField) newErrors.triggerField = "Trigger field is required";
+    if (!condition) newErrors.condition = "Condition is required";
+    
+    if (condition !== "is_empty" && condition !== "is_not_empty" && !ruleValue) {
+      newErrors.ruleValue = "Value is required";
+    }
+
+    const validOutputs = outputs.filter(o => o.field_api_name && o.action);
+    if (validOutputs.length === 0) {
+      newErrors.outputs = "At least one target field is required";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    let formattedValue: string | string[] | null = ruleValue;
+    if (condition === "is_any_one_of" || condition === "is_none_of") {
+      formattedValue = String(ruleValue).split(",").map(s => s.trim()).filter(Boolean);
+    } else if (condition === "is_empty" || condition === "is_not_empty") {
+      formattedValue = null;
+    }
+
+    const rule: FormRule = {
+      _uid: initialRule?._uid || `rule-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      id: initialRule?.id,
+      name,
+      sequence: initialRule?.sequence || 0,
+      field_api_name: triggerField,
+      condition: condition as RuleCondition,
+      value: formattedValue,
+      output_fields: validOutputs,
+    };
+
+    onSave(rule);
+  };
+
+  const isValueDisabled = condition === "is_empty" || condition === "is_not_empty";
+
+  return (
+    <>
+      <button
+        type="button"
+        className={`fixed inset-0 z-[25] bg-slate-950/30 ${FORM_BUILDER_SUBHEADER_OFFSET}`}
+        aria-label="Close rule panel"
+        onClick={onClose}
+      />
+      <aside
+        className={`fixed right-0 z-[30] flex w-full max-w-5xl flex-col overflow-hidden border-l border-gray-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 sm:w-[45%] ${FORM_BUILDER_SUBHEADER_OFFSET} ${FORM_BUILDER_DRAWER_HEIGHT}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Form rule"
+      >
+        <header className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-slate-700">
+          <span className="font-bold text-slate-900 dark:text-slate-100">
+            {initialRule ? "Edit rule" : "Add rule"}
+          </span>
+          <AppButton
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="size-9 p-0"
+            aria-label="Close"
+            onClick={onClose}
+          >
+            <X className="size-4" strokeWidth={2} aria-hidden />
+          </AppButton>
+        </header>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          <div className="flex flex-col gap-2 border-b border-gray-200 dark:border-slate-700 pb-4 border-dotted">
+            <label htmlFor="rule-name" className="text-sm font-medium text-slate-900 dark:text-slate-100">Rule Name</label>
+            <input 
+              type="text" 
+              id="rule-name" 
+              className={`w-full p-2 border ${errors.name ? 'border-red-500' : 'border-gray-200'} rounded-md dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700`} 
+              placeholder="Enter Rule name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={20}
+            />
+            <div className="flex justify-between items-center">
+              {errors.name ? (
+                <span className="text-red-500 text-sm">{errors.name}</span>
+              ) : (
+                <span className="text-slate-500 text-sm">(Maximum 20 characters)</span>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex gap-4 py-6">
+            {/* Left Labels */}
+            <div className="flex flex-col items-center">
+              <div className="bg-slate-600 text-white text-sm px-6 py-2 rounded">
+                If
+              </div>
+              <div className="w-px h-20 bg-gray-300 dark:bg-slate-700" />
+              <div className="bg-slate-600 text-white text-sm px-4 py-2 rounded">
+                Then
+              </div>
+            </div>
+
+            {/* Right Content */}
+            <div className="flex flex-col gap-6 w-full py-2">
+
+              {/* IF SECTION */}
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-3 items-center">
+                  <select 
+                    className={`w-64 p-2.5 border ${errors.triggerField ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+                    value={triggerField}
+                    onChange={(e) => setTriggerField(e.target.value)}
+                  >
+                    <option value="">Select Field</option>
+                    {fields.map((field) => (
+                      <option key={field.value} value={field.value}>
+                        {field.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select 
+                    className={`w-52 p-2.5 border ${errors.condition ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`} 
+                    value={condition}
+                    onChange={(e)=>setCondition(e.target.value as RuleCondition)}
+                  >
+                    <option value="">Select Condition</option>
+                    {conditionTypes.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                  
+                  <input
+                    type="text"
+                    placeholder={condition === "is_any_one_of" || condition === "is_none_of" ? "comma, separated, values" : "Enter value"}
+                    className={`${isValueDisabled ? "bg-gray-100 dark:bg-slate-800 cursor-not-allowed text-transparent": "dark:bg-slate-900 dark:text-slate-100"} w-full p-2.5 border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} dark:border-slate-700 rounded-md outline-none`}
+                    disabled={isValueDisabled}
+                    value={ruleValue}
+                    onChange={(e) => setRuleValue(e.target.value)}
+                  />
+                </div>
+                {(errors.triggerField || errors.condition || errors.ruleValue) && (
+                  <span className="text-red-500 text-sm">Please complete the "If" condition fields</span>
+                )}
+              </div>
+
+              {/* THEN SECTION */}
+              <div className="flex flex-col gap-4 mt-2">
+                <span className="text-gray-700 text-sm font-medium dark:text-slate-200">
+                  Perform the following actions
+                </span>
+
+                <div className="flex flex-col gap-3">
+                  {outputs.map((output, idx) => {
+                    const claimedByCurrentRuleOtherRows = new Set<string>();
+                    outputs.forEach((o, i) => {
+                      if (i !== idx && o.field_api_name) {
+                        claimedByCurrentRuleOtherRows.add(o.field_api_name);
+                      }
+                    });
+
+                    const availableFields = fields.filter(f => 
+                      !claimedByOtherRules.has(f.value) && !claimedByCurrentRuleOtherRows.has(f.value)
+                    );
+
+                    return (
+                      <div key={idx} className="flex gap-3 items-center">
+                        <select 
+                          className="w-52 p-2.5 border border-gray-300 rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100"
+                          value={output.action}
+                          onChange={(e) => handleOutputChange(idx, "action", e.target.value)}
+                        >
+                          {actionTypes.map(action => (
+                            <option key={action.value} value={action.value}>{action.label}</option>
+                          ))}
+                        </select>
+
+                        <select 
+                          className={`w-full p-2.5 border ${!output.field_api_name && errors.outputs ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+                          value={output.field_api_name}
+                          onChange={(e) => handleOutputChange(idx, "field_api_name", e.target.value)}
+                        >
+                          <option value="">Select Target Field</option>
+                          {availableFields.map(f => (
+                            <option key={f.value} value={f.value}>{f.label}</option>
+                          ))}
+                        </select>
+                      
+                      <AppButton 
+                        type="button" 
+                        variant="ghost" 
+                        className={`text-red-500 p-2 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 ${outputs.length === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        onClick={() => handleRemoveOutput(idx)}
+                        disabled={outputs.length === 1}
+                        aria-label="Remove action"
+                      >
+                        <Trash2 className="size-4" />
+                      </AppButton>
+                    </div>
+                  )})}
+                  
+                  <button 
+                    type="button" 
+                    className="text-blue-600 dark:text-blue-400 text-sm font-medium flex items-center gap-1 w-max mt-1 hover:underline"
+                    onClick={handleAddOutput}
+                  >
+                    <Plus className="size-4" /> Add action
+                  </button>
+                  {errors.outputs && <span className="text-red-500 text-sm">{errors.outputs}</span>}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-4 p-4 border-t border-slate-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
+          <AppButton variant="secondary" size="md" onClick={onClose}>Cancel</AppButton>
+          <AppButton size="md" onClick={handleSave}>Save</AppButton>
+        </div>
+      </aside>
+    </>
+  );
+};
+
+export default FormRuleModal;

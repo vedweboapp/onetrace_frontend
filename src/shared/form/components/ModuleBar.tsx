@@ -5,6 +5,7 @@ import FormFieldsSchema from "../formbuilder/FormFieldsSchema";
 import { useDrag } from "react-dnd";
 import { AppButton } from "@/shared/ui/app-button";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
+import { PlusCircle } from "lucide-react";
 
 // Must match dashboard-sidebar.tsx: md:w-50 = 200px, md:w-[42px] = 42px
 const SIDEBAR_EXPANDED_W = 200;
@@ -61,6 +62,7 @@ const ModuleBar: React.FC = () => {
         transition: "left 300ms ease, top 300ms ease",
       }}
     >
+    
       {/* Scrollable field list */}
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
         <div className="grid grid-cols-2 gap-2">
@@ -74,6 +76,7 @@ const ModuleBar: React.FC = () => {
 
       {/* Fixed bottom action buttons */}
       <div className="p-4 space-y-3 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700 shrink-0">
+    
         <DraggableAddButton type="ADD_SECTION" label="Add New Section" variant="secondary" />
         <DraggableAddButton type="ADD_SUBFORM" label="Add New Subform" variant="primary" />
       </div>

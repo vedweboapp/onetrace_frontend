@@ -5,18 +5,22 @@ import { useDrop } from "react-dnd";
 import DynamicFieldPreview from "../components/DynamicFieldPreview";
 import ModuleBar from "../components/ModuleBar";
 import { GoGear } from "react-icons/go";
-import {
-  DataTableRowActionsMenu,
-} from "@/shared/ui/data-table-row-actions-menu";
-import { AppButton as Button } from "@/shared/ui/app-button";
+import { DataTableRowActionsMenu } from "@/shared/ui/data-table-row-actions-menu";
+import { AppButton, AppButton as Button } from "@/shared/ui/app-button";
 import { useFormStore } from "@/features/form-builder/store/form-builder.store";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { AppTabs } from "@/shared/ui/app-tabs";
 import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
 import { useTranslations } from "next-intl";
-import { parseApiFailurePayload, resolveApiErrorUserText } from "@/core/errors/api-error-text";
+import {
+  parseApiFailurePayload,
+  resolveApiErrorUserText,
+} from "@/core/errors/api-error-text";
 import FormRenderer, { FormRendererRef } from "./FormRenderer";
+import FormRuleModal from "./form-rule-modal";
+import { FormRule } from "./form-rules.types";
+import { Edit2, Trash2 } from "lucide-react";
 
 interface Field {
   _uid: string;
@@ -43,6 +47,11 @@ interface Section {
   fields: Field[];
 }
 
+type RuleFieldOption = {
+  value: string;
+  label: string;
+};
+
 /** Keep section.sequence aligned with builder order (active sections only). */
 const reindexSectionSequences = (sections: Section[]): Section[] => {
   let seq = 1;
@@ -68,10 +77,11 @@ const TopDropZone: React.FC<TopDropZoneProps> = ({ onDrop }) => {
   return (
     <div
       ref={drop as any}
-      className={`h-16 rounded-md p-2 transition-all ${isOver
-        ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40 shadow-md"
-        : "border-dashed border-transparent"
-        }`}
+      className={`h-16 rounded-md p-2 transition-all ${
+        isOver
+          ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40 shadow-md"
+          : "border-dashed border-transparent"
+      }`}
     >
       <div className="text-center h-full text-sm text-gray-500 dark:text-gray-400 mt-6">
         Drop "Add New Section" here to insert at the top
@@ -94,7 +104,11 @@ interface SectionDropZoneProps {
   deleteSection: (sectionUid: string) => void;
   handleColumnChange: (sectionUid: string, columns: number) => void;
   deleteField: (sectionUid: string, fieldUid: string) => void;
-  moveField: (sectionUid: string, fromUid: string, toFilteredIndex: number) => void;
+  moveField: (
+    sectionUid: string,
+    fromUid: string,
+    toFilteredIndex: number,
+  ) => void;
 }
 
 const SectionDropZone: React.FC<SectionDropZoneProps> = ({
@@ -120,10 +134,34 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
       if (item.type === "address" || item.type === "ADDRESS") {
         const newSectionUid = `section-${Date.now()}`;
         const addressFields = [
-          { _uid: `${Date.now()}-country`, field_type: "country", field_label: "Country", api_name: "country", order: 0 },
-          { _uid: `${Date.now()}-state`, field_type: "state", field_label: "State", api_name: "state", order: 1 },
-          { _uid: `${Date.now()}-city`, field_type: "city", field_label: "City", api_name: "city", order: 2 },
-          { _uid: `${Date.now()}-zip`, field_type: "zip", field_label: "Zip Code", api_name: "zip_code", order: 3 },
+          {
+            _uid: `${Date.now()}-country`,
+            field_type: "country",
+            field_label: "Country",
+            api_name: "country",
+            order: 0,
+          },
+          {
+            _uid: `${Date.now()}-state`,
+            field_type: "state",
+            field_label: "State",
+            api_name: "state",
+            order: 1,
+          },
+          {
+            _uid: `${Date.now()}-city`,
+            field_type: "city",
+            field_label: "City",
+            api_name: "city",
+            order: 2,
+          },
+          {
+            _uid: `${Date.now()}-zip`,
+            field_type: "zip",
+            field_label: "Zip Code",
+            api_name: "zip_code",
+            order: 3,
+          },
         ];
         setSections((prev) => {
           const copy = [...prev];
@@ -158,9 +196,7 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
 
   return (
     <>
-      <div
-        className="border rounded-[4px] border-gray-200 dark:border-slate-700 w-full overflow-hidden"
-      >
+      <div className="border rounded-[4px] border-gray-200 dark:border-slate-700 w-full overflow-hidden">
         <div className="bg-gray-100 dark:bg-slate-800 px-6 py-4 flex items-center justify-between">
           {isEditing ? (
             <input
@@ -220,14 +256,17 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
 
         <div
           ref={drop as any}
-          className={`min-h-[150px] bg-white dark:bg-slate-900 rounded-[8px] p-6 transition-all ${section.fields.length === 0
-            ? "flex items-center justify-center border-dotted border-2 border-gray-300 dark:border-slate-600"
-            : ""
-            } ${isOver ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30 shadow-sm" : ""}`}
+          className={`min-h-[150px] bg-white dark:bg-slate-900 rounded-[8px] p-6 transition-all ${
+            section.fields.length === 0
+              ? "flex items-center justify-center border-dotted border-2 border-gray-300 dark:border-slate-600"
+              : ""
+          } ${isOver ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30 shadow-sm" : ""}`}
         >
           {section.fields.length === 0 ? (
             <div className="flex items-center justify-center w-full">
-              <p className="text-center text-gray-400 dark:text-gray-500">Drop fields here</p>
+              <p className="text-center text-gray-400 dark:text-gray-500">
+                Drop fields here
+              </p>
             </div>
           ) : section.is_subform ? (
             <div className="w-0 min-w-full overflow-hidden">
@@ -280,10 +319,11 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
 
       <div
         ref={addDrop as any}
-        className={`h-16 rounded-md p-2 transition-all ${isOverAdd
-          ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40 shadow-md"
-          : "border-dashed border-transparent"
-          }`}
+        className={`h-16 rounded-md p-2 transition-all ${
+          isOverAdd
+            ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40 shadow-md"
+            : "border-dashed border-transparent"
+        }`}
       >
         <div className="text-center h-full text-sm text-gray-500 dark:text-gray-400 mt-6 border-dotted">
           Drop "Add New Section" here to insert below
@@ -298,7 +338,10 @@ interface FormBuilderLayoutProps {
   layoutId?: string | number;
 }
 
-export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilderLayoutProps) {
+export default function FormBuilderLayout({
+  activeModule,
+  layoutId,
+}: FormBuilderLayoutProps) {
   const t = useTranslations("Dashboard.settingsFormBuilder");
   const {
     formSchema,
@@ -316,10 +359,18 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
   const params = useParams();
   const routeModuleId = params?.id as string;
   const targetModule = routeModuleId || activeModule || "untitled module";
-  const resolvedLayoutId = layoutId || searchParams.get("layout_id") || searchParams.get("layoutId") || undefined;
+  const resolvedLayoutId =
+    layoutId ||
+    searchParams.get("layout_id") ||
+    searchParams.get("layoutId") ||
+    undefined;
 
   const [moduleName, setModuleName] = useState(
-    purpose === "create_layout" ? "New Layout" : (purpose === "edit_layout" ? "Loading Layout..." : (targetModule || "Untitled"))
+    purpose === "create_layout" || purpose === "create_project_from"
+      ? "New Layout"
+      : purpose === "edit_layout"
+        ? "Loading Layout..."
+        : targetModule || "Untitled",
   );
 
   const [sections, setSections] = useState<Section[]>([
@@ -332,10 +383,14 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
     },
   ]);
 
+  const [rules, setRules] = useState<FormRule[]>([]);
+  const [editingRule, setEditingRule] = useState<FormRule | null>(null);
+
   const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
 
   const tabs = [
     { id: "form", label: "Form" },
+    { id: "rules", label: "Rules" },
     { id: "preview", label: "Preview" },
   ] as const;
 
@@ -356,11 +411,22 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
         } else if (layoutObj?.layout?.name) {
           setModuleName(layoutObj.layout.name);
         }
-      } else if (purpose !== "create_module" && purpose !== "create_layout" && purpose !== "edit_layout") {
+        if (layoutObj?.rules) {
+          setRules(layoutObj.rules);
+        }
+      } else if (
+        purpose !== "create_module" &&
+        purpose !== "create_layout" &&
+        purpose !== "edit_layout" &&
+        purpose !== "create_project_from"
+      ) {
         const data = await getFormSchema(targetModule);
         const layoutObj = data?.data || data;
         if (layoutObj?.name) {
           setModuleName(layoutObj.name);
+        }
+        if (layoutObj?.rules) {
+          setRules(layoutObj.rules);
         }
       }
     };
@@ -369,49 +435,74 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
 
   useEffect(() => {
     if (formSchema && formSchema.length > 0) {
-      const sortedSchema = [...formSchema].sort((a: any, b: any) => (a.sequence ?? 0) - (b.sequence ?? 0));
-      const initializedSections: Section[] = sortedSchema.map((sec: any, sIdx: number) => ({
-        ...sec,
-        _uid: sec.id?.toString() || `section-${sIdx}-${Date.now()}`,
-        name: sec.name || sec.sectionHeader || "",
-        sequence: sec.sequence ?? sIdx + 1,
-        column_count: sec.column_count || sec.columns || 2,
-        fields: (sec.fields || sec.fields || [])
-          .sort((a: any, b: any) => (a.sequence ?? a.order ?? 0) - (b.sequence ?? b.order ?? 0))
-          .map((f: any, fIdx: number) => {
-            const validationRules: any = {};
-            if (f.properties?.validation_rules) {
-              Object.keys(f.properties.validation_rules).forEach((key) => {
-                const camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
-                validationRules[camelKey] = f.properties.validation_rules[key];
-              });
-            }
+      const sortedSchema = [...formSchema].sort(
+        (a: any, b: any) => (a.sequence ?? 0) - (b.sequence ?? 0),
+      );
+      const initializedSections: Section[] = sortedSchema.map(
+        (sec: any, sIdx: number) => ({
+          ...sec,
+          _uid: sec.id?.toString() || `section-${sIdx}-${Date.now()}`,
+          name: sec.name || sec.sectionHeader || "",
+          sequence: sec.sequence ?? sIdx + 1,
+          column_count: sec.column_count || sec.columns || 2,
+          fields: (sec.fields || sec.fields || [])
+            .sort(
+              (a: any, b: any) =>
+                (a.sequence ?? a.order ?? 0) - (b.sequence ?? b.order ?? 0),
+            )
+            .map((f: any, fIdx: number) => {
+              const validationRules: any = {};
+              if (f.properties?.validation_rules) {
+                Object.keys(f.properties.validation_rules).forEach((key) => {
+                  const camelKey = key.replace(/_([a-z])/g, (g) =>
+                    g[1].toUpperCase(),
+                  );
+                  validationRules[camelKey] =
+                    f.properties.validation_rules[key];
+                });
+              }
 
-            const editorType =
-              f.editor_type ??
-              validationRules.editorType ??
-              f.properties?.validation_rules?.editor_type;
+              const editorType =
+                f.editor_type ??
+                validationRules.editorType ??
+                f.properties?.validation_rules?.editor_type;
 
-            return {
-              ...f,
-              _uid: f.id?.toString() || `field-${fIdx}-${Date.now()}`,
-              order: f.order ?? f.sequence ?? fIdx,
-              original_name: f.api_name || f.name,
-              field_label: f.field_label || f.label || "",
-              api_name: f.api_name || f.name || "",
-              field_type: f.field_type || f.type || "",
-              required: f.required !== undefined ? f.required : (f.properties?.is_required || false),
-              is_searchable: f.is_searchable !== undefined ? f.is_searchable : (f.properties?.is_searchable || false),
-              is_filterable: f.is_filterable !== undefined ? f.is_filterable : (f.properties?.is_filterable || false),
-              is_sortable: f.is_sortable !== undefined ? f.is_sortable : (f.properties?.is_sortable || false),
-              is_public: f.is_public !== undefined ? f.is_public : (f.properties?.is_public || false),
-              ...(editorType ? { editor_type: editorType } : {}),
-              ...validationRules,
-            };
-          }),
-      }));
+              return {
+                ...f,
+                _uid: f.id?.toString() || `field-${fIdx}-${Date.now()}`,
+                order: f.order ?? f.sequence ?? fIdx,
+                original_name: f.api_name || f.name,
+                field_label: f.field_label || f.label || "",
+                api_name: f.api_name || f.name || "",
+                field_type: f.field_type || f.type || "",
+                required:
+                  f.required !== undefined
+                    ? f.required
+                    : f.properties?.is_required || false,
+                is_searchable:
+                  f.is_searchable !== undefined
+                    ? f.is_searchable
+                    : f.properties?.is_searchable || false,
+                is_filterable:
+                  f.is_filterable !== undefined
+                    ? f.is_filterable
+                    : f.properties?.is_filterable || false,
+                is_sortable:
+                  f.is_sortable !== undefined
+                    ? f.is_sortable
+                    : f.properties?.is_sortable || false,
+                is_public:
+                  f.is_public !== undefined
+                    ? f.is_public
+                    : f.properties?.is_public || false,
+                ...(editorType ? { editor_type: editorType } : {}),
+                ...validationRules,
+              };
+            }),
+        }),
+      );
       setSections(initializedSections);
-    } else if (purpose === "create_module" || purpose === "create_layout") {
+    } else if (purpose === "create_module" || purpose === "create_layout" || purpose === "create_project_from") {
       setSections([
         {
           _uid: "basic",
@@ -425,10 +516,22 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
   }, [formSchema, targetModule, purpose]);
 
   const [showModal, setShowModal] = useState<any>(null);
+  const [showRuleModal, setShowRuleModal] = useState<boolean>(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [tempName, setTempName] = useState("");
+
+  const ruleFieldOptions: RuleFieldOption[] = sections
+    .filter((section) => !section.is_deleted)
+    .flatMap((section) =>
+      (section.fields || [])
+        .filter((field) => !field.is_deleted && field.api_name)
+        .map((field) => ({
+          value: field.api_name,
+          label: `${field.field_label || field.api_name || "Untitled Field"} (${section.name || "Untitled Section"})`,
+        })),
+    );
 
   const addFieldToSection = (sectionUid: string, fieldConfig: any) => {
     if (!sectionUid) return;
@@ -436,16 +539,16 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
       prev.map((sec) =>
         sec._uid === sectionUid
           ? {
-            ...sec,
-            fields: [
-              ...sec.fields,
-              {
-                _uid: `${Date.now()}`,
-                order: sec.fields.length,
-                ...fieldConfig,
-              },
-            ],
-          }
+              ...sec,
+              fields: [
+                ...sec.fields,
+                {
+                  _uid: `${Date.now()}`,
+                  order: sec.fields.length,
+                  ...fieldConfig,
+                },
+              ],
+            }
           : sec,
       ),
     );
@@ -453,17 +556,21 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
     setDirty(true);
   };
 
-  const updateFieldInSection = (sectionUid: string, fieldUid: string, newConfig: any) => {
+  const updateFieldInSection = (
+    sectionUid: string,
+    fieldUid: string,
+    newConfig: any,
+  ) => {
     if (!sectionUid || !fieldUid) return;
     setSections((prev) =>
       prev.map((sec) =>
         sec._uid === sectionUid
           ? {
-            ...sec,
-            fields: sec.fields.map((f) =>
-              f._uid === fieldUid ? { ...f, ...newConfig } : f,
-            ),
-          }
+              ...sec,
+              fields: sec.fields.map((f) =>
+                f._uid === fieldUid ? { ...f, ...newConfig } : f,
+              ),
+            }
           : sec,
       ),
     );
@@ -471,7 +578,10 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
     setDirty(true);
   };
 
-  const addNewSectionAfter = (afterUid: string | null = null, isSubform = false) => {
+  const addNewSectionAfter = (
+    afterUid: string | null = null,
+    isSubform = false,
+  ) => {
     const newSection: Section = {
       _uid: `section-${Date.now()}`,
       name: "",
@@ -501,9 +611,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
   const saveSectionName = () => {
     const name = tempName.trim() || "Untitled Section";
     setSections((prev) =>
-      prev.map((s) =>
-        s._uid === editingSectionId ? { ...s, name } : s,
-      ),
+      prev.map((s) => (s._uid === editingSectionId ? { ...s, name } : s)),
     );
     setEditingSectionId(null);
     setTempName("");
@@ -516,15 +624,15 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
         prev.map((s) =>
           s._uid === sectionUid
             ? {
-              ...s,
-              is_active: false,
-              is_deleted: true,
-              fields: (s.fields || []).map((f) => ({
-                ...f,
+                ...s,
                 is_active: false,
                 is_deleted: true,
-              })),
-            }
+                fields: (s.fields || []).map((f) => ({
+                  ...f,
+                  is_active: false,
+                  is_deleted: true,
+                })),
+              }
             : s,
         ),
       ),
@@ -560,16 +668,36 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
 
         const validationRules: any = {};
         const excludeKeys = [
-          "id", "_uid", "field_label", "api_name", "field_type", "order", "original_name",
-          "is_deleted", "is_active", "placeholder", "helpText", "options",
-          "required", "is_searchable", "is_filterable", "is_sortable", "is_public",
-          "markAsPublic", "show_tooltip", "tool_tip", "properties"
+          "id",
+          "_uid",
+          "field_label",
+          "api_name",
+          "field_type",
+          "order",
+          "original_name",
+          "is_deleted",
+          "is_active",
+          "placeholder",
+          "helpText",
+          "options",
+          "required",
+          "is_searchable",
+          "is_filterable",
+          "is_sortable",
+          "is_public",
+          "markAsPublic",
+          "show_tooltip",
+          "tool_tip",
+          "properties",
         ];
-        
+
         Object.keys(f).forEach((key) => {
           if (!excludeKeys.includes(key)) {
             // convert camelCase to snake_case
-            const snakeKey = key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+            const snakeKey = key.replace(
+              /[A-Z]/g,
+              (letter) => `_${letter.toLowerCase()}`,
+            );
             validationRules[snakeKey] = f[key];
           }
         });
@@ -600,7 +728,9 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
         const createdSections = allNonDeletedSections
           .filter((sec) => !sec.id || String(sec.id).startsWith("section-"))
           .map((sec) => {
-            const activeFields = (sec.fields || []).filter((f) => !f.is_deleted);
+            const activeFields = (sec.fields || []).filter(
+              (f) => !f.is_deleted,
+            );
             // Get the correct sequence position for this created section
             const sequencePosition = allNonDeletedSections.indexOf(sec) + 1;
             return {
@@ -608,7 +738,9 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
               sequence: sequencePosition,
               column_count: sec.column_count,
               is_subform: !!sec.is_subform,
-              fields: activeFields.map((f, fIdx) => formatFieldPayload(f, fIdx)),
+              fields: activeFields.map((f, fIdx) =>
+                formatFieldPayload(f, fIdx),
+              ),
             };
           });
 
@@ -638,7 +770,12 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
           });
 
         const deletedSections = sections
-          .filter((sec) => sec.is_deleted && sec.id && !String(sec.id).startsWith("section-"))
+          .filter(
+            (sec) =>
+              sec.is_deleted &&
+              sec.id &&
+              !String(sec.id).startsWith("section-"),
+          )
           .map((sec) => {
             return {
               id: Number(sec.id) || sec.id,
@@ -676,6 +813,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
           create: createdSections,
           update: updatedSections,
           delete: finalDeletePayload,
+          rules: rules.map((r, i) => ({ ...r, sequence: i + 1 })),
         };
       } else {
         // Fallback/standard flat payload for fresh create_module / create_layout
@@ -693,7 +831,9 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
               secPayload.id = Number(sec.id) || sec.id;
             }
 
-            const activeFields = (sec.fields || []).filter((f: any) => !f.is_deleted);
+            const activeFields = (sec.fields || []).filter(
+              (f: any) => !f.is_deleted,
+            );
             secPayload.fields = activeFields.map((f: any, fIdx: number) => {
               const payload = formatFieldPayload(f, fIdx);
               if (f.id && !String(f.id).startsWith("field-")) {
@@ -718,6 +858,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
               is_active: true,
             },
             sections: sectionsPayload,
+            rules: rules.map((r, i) => ({ ...r, sequence: i + 1 })),
           };
         } else {
           finalPayload = {
@@ -728,6 +869,7 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
               is_active: false,
             },
             sections: sectionsPayload,
+            rules: rules.map((r, i) => ({ ...r, sequence: i + 1 })),
           };
         }
       }
@@ -738,11 +880,21 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
         await createForm(targetModule, finalPayload, purpose);
       } else {
         if (purpose === "edit_layout" && resolvedLayoutId) {
-          await editForm(resolvedLayoutId, finalPayload, routeModuleId, purpose);
+          await editForm(
+            resolvedLayoutId,
+            finalPayload,
+            routeModuleId,
+            purpose,
+          );
         } else if (isNew) {
           await createForm(targetModule, finalPayload, purpose);
         } else if (resolvedLayoutId) {
-          await editForm(resolvedLayoutId, finalPayload, routeModuleId, purpose);
+          await editForm(
+            resolvedLayoutId,
+            finalPayload,
+            routeModuleId,
+            purpose,
+          );
         }
       }
 
@@ -781,20 +933,24 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
       prev.map((sec) =>
         sec._uid === sectionUid
           ? {
-            ...sec,
-            fields: sec.fields.map((f) =>
-              f._uid === fieldUid
-                ? { ...f, is_active: false, is_deleted: true }
-                : f,
-            ),
-          }
+              ...sec,
+              fields: sec.fields.map((f) =>
+                f._uid === fieldUid
+                  ? { ...f, is_active: false, is_deleted: true }
+                  : f,
+              ),
+            }
           : sec,
       ),
     );
     setDirty(true);
   };
 
-  const moveField = (sectionUid: string, fromUid: string, toFilteredIndex: number) => {
+  const moveField = (
+    sectionUid: string,
+    fromUid: string,
+    toFilteredIndex: number,
+  ) => {
     setSections((prev) =>
       prev.map((sec) => {
         if (sec._uid !== sectionUid) return sec;
@@ -825,14 +981,49 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
   const sidebarW = sidebarOpen ? 200 : 42;
   const canvasMarginLeft = 288;
 
-  const { formRef, isLoading: isSubmitting, handleSubmit: handleFormSubmit } = useFormHandler<any, FormRendererRef>(
-    async (data) => {
-      console.log("📋 Form Payload:", data);
-    }
-  );
+  const {
+    formRef,
+    isLoading: isSubmitting,
+    handleSubmit: handleFormSubmit,
+  } = useFormHandler<any, FormRendererRef>(async (data) => {
+    console.log("📋 Form Payload:", data);
+  });
+
+  const handleSaveRule = (rule: FormRule) => {
+    setRules((prev) => {
+      const exists = prev.find((r) => r._uid === rule._uid);
+      if (exists) {
+        return prev.map((r) => (r._uid === rule._uid ? rule : r));
+      }
+      return [...prev, rule];
+    });
+    setShowRuleModal(false);
+    setEditingRule(null);
+    setDirty(true);
+  };
+
+  const handleDeleteRule = (uid: string) => {
+    setRules((prev) => prev.filter((r) => r._uid !== uid));
+    setDirty(true);
+  };
 
   return (
+    
     <div className="relative flex flex-col h-full">
+       {
+          showRuleModal && (
+            <FormRuleModal
+              initialRule={editingRule}
+              onSave={handleSaveRule}
+              onClose={() => {
+                setShowRuleModal(false);
+                setEditingRule(null);
+              }}
+              fields={ruleFieldOptions}
+              existingRules={rules}
+            />
+          )
+        }
       {/* Responsive Sub-header (Single Row) */}
       <div
         className="fixed top-14 z-20 flex border-t border-gray-200 dark:border-gray-700 items-center justify-between h-14 px-6 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-gray-700 transition-all duration-300"
@@ -867,13 +1058,14 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
         </div>
 
         <div className="flex items-center gap-3">
-          <Button
-            variant="secondary"
-            onClick={() => router.back()}
-          >
+          <Button variant="secondary" onClick={() => router.back()}>
             Close
           </Button>
-          <Button variant="secondary" onClick={() => handleSave(true)} disabled={!dirty || saving}>
+          <Button
+            variant="secondary"
+            onClick={() => handleSave(true)}
+            disabled={!dirty || saving}
+          >
             Save and Close
           </Button>
           <Button onClick={() => handleSave(false)} disabled={!dirty || saving}>
@@ -889,8 +1081,9 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
         className="p-6 transition-all duration-300 pt-10"
         style={{ marginLeft: canvasMarginLeft }}
       >
+       
         <div className="mx-auto">
-          {activeTab === "form" ? (
+          {activeTab === "form" && (
             <div className="space-y-4">
               <TopDropZone
                 onDrop={(isSubform) => addNewSectionAfter("__TOP__", isSubform)}
@@ -917,7 +1110,9 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
                   />
                 ))}
             </div>
-          ) : (
+          )}
+
+          {activeTab === "preview" && (
             <div className="w-full">
               <div className="bg-white dark:bg-slate-900 p-8 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm">
                 <FormRenderer
@@ -925,15 +1120,71 @@ export default function FormBuilderLayout({ activeModule, layoutId }: FormBuilde
                   schema={reindexSectionSequences(
                     sections.filter((s) => !s.is_deleted),
                   )}
+                  rules={rules}
                 />
               </div>
               <div className="flex justify-end mt-4">
-                <Button
-                  onClick={handleFormSubmit}
-                  disabled={isSubmitting}
-                >
+                <Button onClick={handleFormSubmit} disabled={isSubmitting}>
                   {isSubmitting ? "Submitting..." : "Submit Form"}
                 </Button>
+              </div>
+            </div>
+          )}
+          {activeTab === "rules" && (
+            <div className="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-sm">
+              <div className="border-b border-gray-300 dark:border-slate-600 p-3 flex items-center justify-between">
+                <span className="font-medium text-slate-900 dark:text-slate-300">Field Rules</span>
+                <AppButton
+                  onClick={() => {
+                    setEditingRule(null);
+                    setShowRuleModal(true);
+                  }}
+                >
+                  Add Rule
+                </AppButton>
+              </div>
+              <div className="p-4">
+                {rules.length === 0 ? (
+                  <div className="text-gray-500 dark:text-gray-400 text-center py-8">
+                    No rules defined yet. Click "Add Rule" to create one.
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {rules.map((rule, idx) => (
+                      <div key={rule._uid} className="flex items-center justify-between p-4 border border-gray-200 dark:border-slate-700 rounded-md hover:shadow-sm transition-shadow">
+                        <div>
+                          <h4 className="font-semibold text-slate-900 dark:text-slate-100">{rule.name}</h4>
+                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                            <strong>If</strong> {ruleFieldOptions.find(f => f.value === rule.field_api_name)?.label || rule.field_api_name} {rule.condition.replace(/_/g, ' ')} {rule.value ? (Array.isArray(rule.value) ? rule.value.join(', ') : rule.value) : ''}
+                            <br/>
+                            <strong>Then</strong> {rule.output_fields.length} action(s) applied.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <AppButton 
+                            variant="ghost" 
+                            size="sm" 
+                            className="p-2"
+                            onClick={() => {
+                              setEditingRule(rule);
+                              setShowRuleModal(true);
+                            }}
+                          >
+                            <Edit2 className="size-4" />
+                          </AppButton>
+                          <AppButton 
+                            variant="ghost" 
+                            size="sm" 
+                            className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                            onClick={() => handleDeleteRule(rule._uid)}
+                          >
+                            <Trash2 className="size-4" />
+                          </AppButton>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

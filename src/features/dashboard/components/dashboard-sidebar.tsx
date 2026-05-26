@@ -175,7 +175,6 @@ function DashboardMainSidebar({
   const itemsActive = pathname === itemsHref || pathname.startsWith(`${itemsHref}/`);
   const compositeActive = pathname === compositeHref || pathname.startsWith(`${compositeHref}/`);
   const itemsSectionActive = itemsActive || compositeActive;
-
   React.useEffect(() => {
     if (itemsSectionActive) setItemsOpen(true);
   }, [itemsSectionActive]);
@@ -343,6 +342,7 @@ function DashboardSettingsSidebar({
   const personalProfileHref = routes.dashboard.settingsPersonalProfile;
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
   const modulesHref = routes.dashboard.settingsModules;
+  const projectFormsHref = routes.dashboard.settingsProjectForms;
 
   const customizationActive = isCustomizationSettingsPath(pathname);
 
@@ -353,6 +353,8 @@ function DashboardSettingsSidebar({
   const companySettingsActive =
     pathname === companySettingsHref || pathname.startsWith(`${companySettingsHref}/`);
   const modulesActive = pathname === modulesHref || pathname.startsWith(`${modulesHref}/`);
+  const projectFormsActive = pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
+
   return (
     <>
       <div
@@ -386,6 +388,14 @@ function DashboardSettingsSidebar({
           active={modulesActive}
           label={t("modules")}
           icon={Settings}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={projectFormsHref}
+          active={projectFormsActive}
+          label={t("projectForms")}
+          icon={FileText}
           expanded={expanded}
           resolved={resolved}
         />
