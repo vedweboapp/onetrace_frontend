@@ -1,4 +1,4 @@
-import ProjectFormDetails from "@/features/project-forms/components/project-form-details";
+import ProjectTypeFormList from "@/features/project-forms/components/project-type-form-list";
 // import type { Metadata } from "next";
 // import { Suspense } from "react";
 // import { getTranslations } from "next-intl/server";
@@ -11,7 +11,7 @@ import ProjectFormDetails from "@/features/project-forms/components/project-form
 export default async function ProjectFormsPage() {
   return (
     <div className="pb-12">
-        <ProjectFormDetails />
+      <ProjectTypeFormList />
     </div>
   );
 }

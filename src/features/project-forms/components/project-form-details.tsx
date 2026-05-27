@@ -164,7 +164,11 @@ const ProjectFormDetails = () => {
           <EntityDataTable
             columns={tableColumns}
             rows={items}
-            onRowClick={(row) => router.push(`${routes.dashboard.settingsProjectForms}/${row.id}/form-list`)}
+            onRowClick={(row) =>
+              router.push(
+                `${routes.dashboard.settingsProjectForms}/create?purpose=edit__project_form&layout_id=${row.id}`,
+              )
+            }
           />
         )}
 

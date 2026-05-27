@@ -65,6 +65,14 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
     return claimed;
   }, [existingRules, initialRule]);
 
+  const selectedOutputFieldNames = React.useMemo(() => {
+    return new Set(outputs.map((o) => o.field_api_name).filter(Boolean));
+  }, [outputs]);
+
+  const triggerFieldOptions = React.useMemo(() => {
+    return fields.filter((field) => !selectedOutputFieldNames.has(field.value));
+  }, [fields, selectedOutputFieldNames]);
+
   const handleAddOutput = () => {
     setOutputs([...outputs, { field_api_name: "", action: "show" }]);
   };
@@ -75,7 +83,11 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
     }
   };
 
-  const handleOutputChange = (index: number, field: keyof FormRuleOutput, value: any) => {
+  const handleOutputChange = (
+    index: number,
+    field: keyof FormRuleOutput,
+    value: FormRuleOutput[keyof FormRuleOutput],
+  ) => {
     const newOutputs = [...outputs];
     newOutputs[index] = { ...newOutputs[index], [field]: value };
     setOutputs(newOutputs);
@@ -95,6 +107,9 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
     const validOutputs = outputs.filter(o => o.field_api_name && o.action);
     if (validOutputs.length === 0) {
       newErrors.outputs = "At least one target field is required";
+    }
+    if (triggerField && validOutputs.some((o) => o.field_api_name === triggerField)) {
+      newErrors.outputs = "Target field cannot be the same as trigger field";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -199,7 +214,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
                     onChange={(e) => setTriggerField(e.target.value)}
                   >
                     <option value="">Select Field</option>
-                    {fields.map((field) => (
+                    {triggerFieldOptions.map((field) => (
                       <option key={field.value} value={field.value}>
                         {field.label}
                       </option>
@@ -229,7 +244,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
                   />
                 </div>
                 {(errors.triggerField || errors.condition || errors.ruleValue) && (
-                  <span className="text-red-500 text-sm">Please complete the "If" condition fields</span>
+                  <span className="text-red-500 text-sm">Please complete the &quot;If&quot; condition fields</span>
                 )}
               </div>
 
@@ -248,8 +263,10 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
                       }
                     });
 
-                    const availableFields = fields.filter(f => 
-                      !claimedByOtherRules.has(f.value) && !claimedByCurrentRuleOtherRows.has(f.value)
+                    const availableFields = fields.filter(f =>
+                      f.value !== triggerField &&
+                      !claimedByOtherRules.has(f.value) &&
+                      !claimedByCurrentRuleOtherRows.has(f.value)
                     );
 
                     return (

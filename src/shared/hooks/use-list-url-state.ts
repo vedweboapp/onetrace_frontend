@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import {
   DEFAULT_LIST_PAGE_SIZE,
+  type ListPageSizeChoice,
   normalizeListPageSize,
   parsePageSizeParam,
 } from "@/shared/utils/list-page-size.util";
@@ -65,10 +66,15 @@ export function parseListViewParam(param: string | null): ListPageViewMode {
   return param === "list" ? "list" : "table";
 }
 
-export function useListUrlState() {
+export type UseListUrlStateOptions = {
+  defaultPageSize?: ListPageSizeChoice;
+};
+
+export function useListUrlState(options: UseListUrlStateOptions = {}) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
+  const defaultPageSize = options.defaultPageSize ?? DEFAULT_LIST_PAGE_SIZE;
 
   const page = React.useMemo(() => {
     const raw = searchParams.get("page");
@@ -80,8 +86,8 @@ export function useListUrlState() {
   const isActiveParam = searchParams.get("is_active");
   const groupParam = searchParams.get("group");
   const pageSize = React.useMemo(
-    () => parsePageSizeParam(searchParams.get("page_size")),
-    [searchParams],
+    () => parsePageSizeParam(searchParams.get("page_size"), defaultPageSize),
+    [defaultPageSize, searchParams],
   );
 
   const listViewMode = React.useMemo(
@@ -102,7 +108,7 @@ export function useListUrlState() {
       if (p.get("page") === "1") {
         p.delete("page");
       }
-      if (p.get("page_size") === String(DEFAULT_LIST_PAGE_SIZE)) {
+      if (p.get("page_size") === String(defaultPageSize)) {
         p.delete("page_size");
       }
       const view = p.get("view");
@@ -117,7 +123,7 @@ export function useListUrlState() {
         router.push(href);
       }
     },
-    [pathname, router, searchParams],
+    [defaultPageSize, pathname, router, searchParams],
   );
 
   const setPage = React.useCallback(
@@ -130,16 +136,16 @@ export function useListUrlState() {
 
   const setPageSize = React.useCallback(
     (next: number) => {
-      const size = normalizeListPageSize(next);
+      const size = normalizeListPageSize(next, defaultPageSize);
       setUrl(
         {
-          page_size: size === DEFAULT_LIST_PAGE_SIZE ? null : String(size),
+          page_size: size === defaultPageSize ? null : String(size),
           page: null,
         },
         { replace: true },
       );
     },
-    [setUrl],
+    [defaultPageSize, setUrl],
   );
 
   const setListViewMode = React.useCallback(

@@ -1,4 +1,4 @@
-import { z } from "zod";
+  import { z } from "zod";
 
 export type RuleCondition = 
   | 'is' 
@@ -19,7 +19,9 @@ export type FormRuleOutput = {
 
 export type FormRule = {
   _uid: string;              // client id for list management
-  id?: number;               // backend id when saved
+  id?: number | string;      // backend id when saved
+  rule_id?: number | string;
+  uuid?: string;
   name: string;              // max 20 chars
   sequence: number;
   field_api_name: string;    // trigger field

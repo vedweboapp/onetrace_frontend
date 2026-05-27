@@ -20,7 +20,8 @@ import {
 import FormRenderer, { FormRendererRef } from "./FormRenderer";
 import FormRuleModal from "./form-rule-modal";
 import { FormRule } from "./form-rules.types";
-import { Edit2, Trash2 } from "lucide-react";
+import { Edit2, Monitor, Smartphone, Trash2 } from "lucide-react";
+import type { FormBuilderApiHandlers } from "./form-builder.handlers";
 
 interface Field {
   _uid: string;
@@ -336,11 +337,18 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
 interface FormBuilderLayoutProps {
   activeModule: string;
   layoutId?: string | number;
+  /** Injectable API handlers — when provided for a specific purpose, the builder
+   *  delegates create/update/rules calls to these instead of the default store. */
+  apiHandlers?: FormBuilderApiHandlers;
+  /** The project-type route id; forwarded to handlers via HandlerContext. */
+  projectTypeId?: string;
 }
 
 export default function FormBuilderLayout({
   activeModule,
   layoutId,
+  apiHandlers,
+  projectTypeId,
 }: FormBuilderLayoutProps) {
   const t = useTranslations("Dashboard.settingsFormBuilder");
   const {
@@ -366,9 +374,9 @@ export default function FormBuilderLayout({
     undefined;
 
   const [moduleName, setModuleName] = useState(
-    purpose === "create_layout" || purpose === "create_project_from"
+    purpose === "create_layout" || purpose === "create_project_form"
       ? "New Layout"
-      : purpose === "edit_layout"
+      : purpose === "edit_layout" || purpose === "edit__project_form"
         ? "Loading Layout..."
         : targetModule || "Untitled",
   );
@@ -387,6 +395,7 @@ export default function FormBuilderLayout({
   const [editingRule, setEditingRule] = useState<FormRule | null>(null);
 
   const [activeTab, setActiveTab] = useState<"form" | "preview" | "rules">("form");
+  const [previewLayout, setPreviewLayout] = useState<"desktop" | "phone">("desktop");
 
   const tabs = [
     { id: "form", label: "Form" },
@@ -403,13 +412,91 @@ export default function FormBuilderLayout({
 
   useEffect(() => {
     const loadSchema = async () => {
-      if (purpose === "edit_layout" && resolvedLayoutId) {
-        const data = await getFormSchemaById(resolvedLayoutId, routeModuleId);
+      if (
+        (purpose === "edit_layout" || purpose === "edit__project_form") &&
+        resolvedLayoutId
+      ) {
+        const handlerCtx = {
+          purpose,
+          targetModule,
+          resolvedLayoutId,
+          projectTypeId,
+        };
+        const data = apiHandlers?.fetchForm
+          ? await apiHandlers.fetchForm(resolvedLayoutId, handlerCtx)
+          : await getFormSchemaById(resolvedLayoutId, routeModuleId);
         const layoutObj = data?.data || data;
         if (layoutObj?.name) {
           setModuleName(layoutObj.name);
         } else if (layoutObj?.layout?.name) {
           setModuleName(layoutObj.layout.name);
+        }
+        const schemaData = layoutObj?.sections || layoutObj?.layout?.sections || [];
+        if (apiHandlers?.fetchForm && schemaData.length > 0) {
+          const initializedSections: Section[] = [...schemaData]
+            .sort((a: any, b: any) => (a.sequence ?? 0) - (b.sequence ?? 0))
+            .map((sec: any, sIdx: number) => ({
+              ...sec,
+              _uid: sec.id?.toString() || `section-${sIdx}-${Date.now()}`,
+              name: sec.name || sec.sectionHeader || "",
+              sequence: sec.sequence ?? sIdx + 1,
+              column_count: sec.column_count || sec.columns || 2,
+              fields: (sec.fields || [])
+                .sort(
+                  (a: any, b: any) =>
+                    (a.sequence ?? a.order ?? 0) - (b.sequence ?? b.order ?? 0),
+                )
+                .map((f: any, fIdx: number) => {
+                  const validationRules: any = {};
+                  if (f.properties?.validation_rules) {
+                    Object.keys(f.properties.validation_rules).forEach((key) => {
+                      const camelKey = key.replace(/_([a-z])/g, (g) =>
+                        g[1].toUpperCase(),
+                      );
+                      validationRules[camelKey] =
+                        f.properties.validation_rules[key];
+                    });
+                  }
+
+                  const editorType =
+                    f.editor_type ??
+                    validationRules.editorType ??
+                    f.properties?.validation_rules?.editor_type;
+
+                  return {
+                    ...f,
+                    _uid: f.id?.toString() || `field-${fIdx}-${Date.now()}`,
+                    order: f.order ?? f.sequence ?? fIdx,
+                    original_name: f.api_name || f.name,
+                    field_label: f.field_label || f.label || "",
+                    api_name: f.api_name || f.name || "",
+                    field_type: f.field_type || f.type || "",
+                    required:
+                      f.required !== undefined
+                        ? f.required
+                        : f.properties?.is_required || false,
+                    is_searchable:
+                      f.is_searchable !== undefined
+                        ? f.is_searchable
+                        : f.properties?.is_searchable || false,
+                    is_filterable:
+                      f.is_filterable !== undefined
+                        ? f.is_filterable
+                        : f.properties?.is_filterable || false,
+                    is_sortable:
+                      f.is_sortable !== undefined
+                        ? f.is_sortable
+                        : f.properties?.is_sortable || false,
+                    is_public:
+                      f.is_public !== undefined
+                        ? f.is_public
+                        : f.properties?.is_public || false,
+                    ...(editorType ? { editor_type: editorType } : {}),
+                    ...validationRules,
+                  };
+                }),
+            }));
+          setSections(initializedSections);
         }
         if (layoutObj?.rules) {
           const loadedRules = (layoutObj.rules || []).map((r: any) => {
@@ -418,6 +505,7 @@ export default function FormBuilderLayout({
                 _uid: r.uuid || r._uid || `rule-${Date.now()}-${Math.random()}`,
                 name: r.name,
                 ...r.logic,
+                id: r.id ?? r.logic.id,
               };
             }
             return {
@@ -431,7 +519,8 @@ export default function FormBuilderLayout({
         purpose !== "create_module" &&
         purpose !== "create_layout" &&
         purpose !== "edit_layout" &&
-        purpose !== "create_project_from"
+        purpose !== "edit__project_form" &&
+        purpose !== "create_project_form"
       ) {
         const data = await getFormSchema(targetModule);
         const layoutObj = data?.data || data;
@@ -445,6 +534,7 @@ export default function FormBuilderLayout({
                 _uid: r.uuid || r._uid || `rule-${Date.now()}-${Math.random()}`,
                 name: r.name,
                 ...r.logic,
+                id: r.id ?? r.logic.id,
               };
             }
             return {
@@ -457,7 +547,16 @@ export default function FormBuilderLayout({
       }
     };
     loadSchema();
-  }, [resolvedLayoutId, targetModule, purpose]);
+  }, [
+    apiHandlers,
+    getFormSchema,
+    getFormSchemaById,
+    projectTypeId,
+    resolvedLayoutId,
+    routeModuleId,
+    targetModule,
+    purpose,
+  ]);
 
   useEffect(() => {
     if (formSchema && formSchema.length > 0) {
@@ -528,7 +627,7 @@ export default function FormBuilderLayout({
         }),
       );
       setSections(initializedSections);
-    } else if (purpose === "create_module" || purpose === "create_layout" || purpose === "create_project_from") {
+    } else if (purpose === "create_module" || purpose === "create_layout" || purpose === "create_project_form") {
       setSections([
         {
           _uid: "basic",
@@ -730,9 +829,6 @@ export default function FormBuilderLayout({
 
         fieldPayload.properties = {
           is_required: f.required || false,
-          is_searchable: f.is_searchable || false,
-          is_filterable: f.is_filterable || false,
-          is_sortable: f.is_sortable || false,
           is_public: f.is_public || false,
           validation_rules: validationRules,
         };
@@ -745,24 +841,26 @@ export default function FormBuilderLayout({
       };
 
       const formatRulesPayload = (rulesList: FormRule[]) => {
-        return rulesList.map((r, i) => ({
-          name: r.name,
-          uuid: r._uid || (r as any).uuid || "",
-          logic: {
-            id: r.id,
-            sequence: i + 1,
-            field_api_name: r.field_api_name,
-            field_id: r.field_id,
-            condition: r.condition,
-            value: r.value,
-            output_fields: r.output_fields,
-          },
-        }));
+        return rulesList.map((r, i) => {
+          const ruleId = r.id ?? r.rule_id;
+          return {
+            ...(ruleId != null && ruleId !== "" ? { id: ruleId } : {}),
+            name: r.name,
+            logic: {
+              sequence: i + 1,
+              field_api_name: r.field_api_name,
+              field_id: r.field_id,
+              condition: r.condition,
+              value: r.value,
+              output_fields: r.output_fields,
+            },
+          };
+        });
       };
 
       let finalPayload: any;
 
-      if (purpose === "edit_layout") {
+      if (purpose === "edit_layout" || purpose === "edit__project_form") {
         // Build differential update structure as requested by the API
         // Get all non-deleted sections sorted by their current position
         const allNonDeletedSections = sections.filter((sec) => !sec.is_deleted);
@@ -843,20 +941,35 @@ export default function FormBuilderLayout({
           });
         }
 
-        finalPayload = {
-          layout: {
-            id: Number(resolvedLayoutId) || resolvedLayoutId,
+        if (purpose === "edit__project_form") {
+          finalPayload = {
             name: moduleName,
+            api_name: moduleName.toLowerCase().replace(/[^a-z0-9]/g, "_"),
             description: "",
-            sequence: 1,
-            is_active: false,
-          },
-          name: moduleName,
-          create: createdSections,
-          update: updatedSections,
-          delete: finalDeletePayload,
-          rules: formatRulesPayload(rules),
-        };
+            is_active: true,
+            sections: {
+              create: createdSections,
+              update: updatedSections,
+              delete: finalDeletePayload,
+            },
+            rules: formatRulesPayload(rules),
+          };
+        } else {
+          finalPayload = {
+            layout: {
+              id: Number(resolvedLayoutId) || resolvedLayoutId,
+              name: moduleName,
+              description: "",
+              sequence: 1,
+              is_active: false,
+            },
+            name: moduleName,
+            create: createdSections,
+            update: updatedSections,
+            delete: finalDeletePayload,
+            rules: formatRulesPayload(rules),
+          };
+        }
       } else {
         // Fallback/standard flat payload for fresh create_module / create_layout
         const sectionsPayload = sections
@@ -902,6 +1015,15 @@ export default function FormBuilderLayout({
             sections: sectionsPayload,
             rules: formatRulesPayload(rules),
           };
+        } else if (purpose === "create_project_form") {
+          finalPayload = {
+            name: moduleName,
+            api_name: moduleName.toLowerCase().replace(/[^a-z0-9]/g, "_"),
+            description: "",
+            is_active: true,
+            sections: sectionsPayload,
+            rules: formatRulesPayload(rules),
+          };
         } else {
           finalPayload = {
             layout: {
@@ -916,7 +1038,57 @@ export default function FormBuilderLayout({
         }
       }
 
-      if (purpose === "create_module") {
+      if (
+        (purpose === "create_project_form" || purpose === "edit__project_form") &&
+        apiHandlers
+      ) {
+        // ── Project Form flow ─────────────────────────────────────────────
+        // Build handler context so injected handlers have all the metadata
+        // they need without reading from the URL themselves.
+        const handlerCtx = {
+          purpose,
+          targetModule,
+          resolvedLayoutId,
+          projectTypeId,
+        };
+
+        // Step 1: POST /api/v1/forms/ for create, PUT /api/v1/forms/{formId}/ for edit.
+        const createdForm =
+          purpose === "create_project_form"
+            ? await apiHandlers.createForm(finalPayload, handlerCtx)
+            : null;
+        const formId =
+          purpose === "edit__project_form"
+            ? resolvedLayoutId
+            : createdForm?.id ?? createdForm?.form_id;
+
+        if (
+          purpose === "edit__project_form" &&
+          formId &&
+          apiHandlers.updateForm
+        ) {
+          await apiHandlers.updateForm(formId, finalPayload, handlerCtx);
+        }
+
+        // Step 2: POST /api/v1/forms/{formId}/sections/
+        if (formId && apiHandlers.createSections) {
+          await apiHandlers.createSections(
+            formId,
+            finalPayload.sections || [],
+            handlerCtx,
+          );
+        }
+
+        // Step 3: POST /api/v1/forms/{formId}/rules/
+        if (formId && apiHandlers.createRules) {
+          await apiHandlers.createRules(
+            formId,
+            formatRulesPayload(rules),
+            handlerCtx,
+          );
+        }
+      } else if (purpose === "create_module") {
+        // ── Existing module flow (unchanged) ──────────────────────────────
         await createModule(finalPayload);
       } else if (purpose === "create_layout") {
         await createForm(targetModule, finalPayload, purpose);
@@ -945,6 +1117,10 @@ export default function FormBuilderLayout({
       let successMessage = t("layoutSavedToast");
       if (purpose === "create_module") {
         successMessage = t("moduleCreatedToast");
+      } else if (purpose === "create_project_form") {
+        successMessage = "Project form created successfully.";
+      } else if (purpose === "edit__project_form") {
+        successMessage = "Project form updated successfully.";
       } else if (purpose === "create_layout" || isNew) {
         successMessage = t("layoutCreatedToast");
       } else if (purpose === "edit_layout") {
@@ -956,6 +1132,8 @@ export default function FormBuilderLayout({
       if (isClose) {
         if (purpose === "create_module") {
           router.push("/dashboard/settings/modules");
+        } else if (purpose === "create_project_form") {
+          router.back();
         } else if (purpose === "create_layout" || purpose === "edit_layout") {
           router.push(`/dashboard/settings/modules/${targetModule}/layout`);
         } else {
@@ -1156,14 +1334,55 @@ export default function FormBuilderLayout({
 
           {activeTab === "preview" && (
             <div className="w-full">
-              <div className="bg-white dark:bg-slate-900 p-8 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm">
-                <FormRenderer
-                  ref={formRef}
-                  schema={reindexSectionSequences(
-                    sections.filter((s) => !s.is_deleted),
-                  )}
-                  rules={rules}
-                />
+              <div className="mb-3 flex items-center justify-end">
+                <div className="inline-flex rounded-md border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
+                  <button
+                    type="button"
+                    className={`flex h-9 items-center gap-2 rounded px-3 text-sm transition ${
+                      previewLayout === "desktop"
+                        ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                    }`}
+                    onClick={() => setPreviewLayout("desktop")}
+                  >
+                    <Monitor className="size-4" />
+                    Desktop
+                  </button>
+                  <button
+                    type="button"
+                    className={`flex h-9 items-center gap-2 rounded px-3 text-sm transition ${
+                      previewLayout === "phone"
+                        ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                    }`}
+                    onClick={() => setPreviewLayout("phone")}
+                  >
+                    <Smartphone className="size-4" />
+                    Phone
+                  </button>
+                </div>
+              </div>
+              <div className="flex w-full justify-center">
+                <div
+                  className={`bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm ${
+                    previewLayout === "phone" ? "rounded-[28px] p-4" : "w-full rounded-xl p-8"
+                  }`}
+                  style={
+                    previewLayout === "phone"
+                      ? { width: 390, maxWidth: "100%" }
+                      : undefined
+                  }
+                >
+                  <FormRenderer
+                    key={previewLayout}
+                    ref={formRef}
+                    schema={reindexSectionSequences(
+                      sections.filter((s) => !s.is_deleted),
+                    )}
+                    rules={rules}
+                    renderMode={previewLayout}
+                  />
+                </div>
               </div>
               <div className="flex justify-end mt-4">
                 <Button onClick={handleFormSubmit} disabled={isSubmitting}>
