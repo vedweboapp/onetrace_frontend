@@ -39,28 +39,51 @@ type DetailPageMapLayoutProps = {
   mapTitle?: ReactNode;
   showMap?: boolean;
   children: ReactNode;
+  /** Rendered below the main row; spans full width on lg+ (e.g. long site contact list). */
+  footer?: ReactNode;
   className?: string;
+  /** Override the default lg two-column template (e.g. equal halves for forms). */
+  gridClassName?: string;
 };
 
 /**
  * Two-column detail layout: main cards on the left, full map column on the right (lg+).
  * On small screens the map column is shown first (top), still fixed height.
  */
+export const detailMapFormGridClassName = cn(
+  "grid grid-cols-1 gap-4",
+  "lg:grid-cols-2 lg:items-start lg:gap-6",
+);
+
 export function DetailPageMapLayout({
   map,
   mapTitle,
   showMap = true,
   children,
+  footer,
   className,
+  gridClassName,
 }: DetailPageMapLayoutProps) {
   if (!showMap) {
-    return <div className={cn(detailPageStackClassName, className)}>{children}</div>;
+    return (
+      <div className={cn(detailPageStackClassName, className)}>
+        {children}
+        {footer}
+      </div>
+    );
   }
 
+  const grid = gridClassName ?? detailMapSideGridClassName;
+
   return (
-    <div className={cn(detailMapSideGridClassName, className)}>
+    <div className={cn(grid, className)}>
       <div className={cn("order-2 min-w-0 lg:order-1", detailPageStackClassName)}>{children}</div>
       <DetailMapSideColumn title={mapTitle} map={map ?? null} className="order-1 lg:order-2" />
+      {footer ? (
+        <div className="order-3 min-w-0 border-t border-slate-200/90 pt-6 dark:border-slate-800 lg:col-span-2">
+          {footer}
+        </div>
+      ) : null}
     </div>
   );
 }

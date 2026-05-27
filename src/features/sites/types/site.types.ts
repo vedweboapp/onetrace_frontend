@@ -12,6 +12,26 @@ export type SiteClientRef = {
   phone?: string | null;
 };
 
+export type SiteContactPersonTitle = "site_contact" | "finance" | "emergency";
+
+export type SiteContactPersonPayload = {
+  title: SiteContactPersonTitle;
+  contact: number;
+};
+
+export type SiteContactPersonContactRef = {
+  id: number;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+};
+
+export type SiteContactPerson = {
+  id?: number;
+  title: SiteContactPersonTitle;
+  contact: number | SiteContactPersonContactRef;
+};
+
 export type SiteUpsertPayload = {
   organization?: number;
   site_name: string;
@@ -25,6 +45,7 @@ export type SiteUpsertPayload = {
   what3words?: string;
   latitude?: number | null;
   longitude?: number | null;
+  contacts?: SiteContactPersonPayload[];
 };
 
 export type SiteCreatePayload = SiteUpsertPayload;
@@ -49,6 +70,10 @@ export type Site = {
   what3words?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  contacts?: SiteContactPerson[] | null;
+  /** @deprecated Legacy API keys */
+  site_contact_persons?: SiteContactPerson[] | null;
+  contact_persons?: SiteContactPerson[] | null;
   is_active: boolean;
   deleted_by: unknown;
   organization: number;

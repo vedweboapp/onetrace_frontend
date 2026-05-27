@@ -14,13 +14,41 @@ export type JobAssignedWorkerRef = {
   last_name?: string | null;
 };
 
+export type JobMetaSection = {
+  name: string;
+};
+
+export type JobMetaCompositeItem = {
+  id: number;
+  quantity: number;
+};
+
+export type JobMetaPlot = {
+  name: string;
+  group?: number;
+  plot_total?: number;
+  composite_items?: JobMetaCompositeItem[];
+};
+
+export type JobMetaPayload = {
+  section?: JobMetaSection;
+  plot: JobMetaPlot;
+};
+
 export type JobCreatePayload = {
   title: string;
   description: string;
   assigned_worker: number;
   start_date: string;
-  end_date: string;
+  end_date?: string;
   is_active: boolean;
+  forms?: number;
+  comments?: string;
+  job_status?: number;
+  client?: number;
+  project?: number;
+  site?: number;
+  job_meta?: JobMetaPayload;
 };
 
 /** Backend creates a job from a quotation (minimal body). */
@@ -51,6 +79,12 @@ export type Job = {
   is_active: boolean;
   deleted_by: unknown;
   organization?: number;
+  forms?: number | { id: number; name?: string };
+  comments?: string | null;
+  client?: number | { id: number; name?: string };
+  project?: number | { id: number; name?: string };
+  site?: number | { id: number; site_name?: string };
+  job_meta?: JobMetaPayload | null;
 };
 
 export type JobPagination = {

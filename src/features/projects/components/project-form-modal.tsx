@@ -17,6 +17,7 @@ import {
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import {
   AppButton,
   AppModal,
@@ -38,9 +39,20 @@ type Props = {
   project: Project | null;
   clientOptions: ProjectClientOption[];
   onSaved: () => void;
+  initialClientId?: string;
+  onCreated?: (project: Project) => void;
 };
 
-export function ProjectFormModal({ open, onClose, mode, project, clientOptions, onSaved }: Props) {
+export function ProjectFormModal({
+  open,
+  onClose,
+  mode,
+  project,
+  clientOptions,
+  onSaved,
+  initialClientId,
+  onCreated,
+}: Props) {
   const t = useTranslations("Dashboard.projects");
   const [saving, setSaving] = React.useState(false);
   const [projectTypeOptions, setProjectTypeOptions] = React.useState<ProjectClientOption[]>([]);
@@ -63,6 +75,7 @@ export function ProjectFormModal({ open, onClose, mode, project, clientOptions, 
     control,
     register,
     reset,
+    setValue,
     handleSubmit,
     formState: { errors },
   } = useForm<ProjectFormValues>({
@@ -73,8 +86,13 @@ export function ProjectFormModal({ open, onClose, mode, project, clientOptions, 
   React.useEffect(() => {
     if (!open) return;
     if (mode === "edit" && project) reset(projectToFormDefaults(project));
-    else reset(emptyProjectFormDefaults());
-  }, [open, mode, project, reset]);
+    else {
+      reset({
+        ...emptyProjectFormDefaults(),
+        ...(initialClientId ? { client: initialClientId } : {}),
+      });
+    }
+  }, [open, mode, project, reset, initialClientId]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -110,8 +128,9 @@ export function ProjectFormModal({ open, onClose, mode, project, clientOptions, 
         await updateProject(project.id, payload);
         toastSuccess(t("updatedToast"));
       } else {
-        await createProject(payload);
+        const created = await createProject(payload);
         toastSuccess(t("createdToast"));
+        onCreated?.(created);
       }
       onSaved();
       onClose();
@@ -124,8 +143,15 @@ export function ProjectFormModal({ open, onClose, mode, project, clientOptions, 
     if (!saving) onClose();
   }
 
-  const noClients = clientOptions.length === 0;
+  const [localClientOptions, setLocalClientOptions] = React.useState(clientOptions);
+  React.useEffect(() => {
+    setLocalClientOptions(clientOptions);
+  }, [clientOptions]);
+
+  const noClients = localClientOptions.length === 0;
   const noProjectTypes = projectTypeOptions.length === 0;
+
+  const clientQuickCreate = useQuickCreate({ kind: "client" });
 
   return (
     <AppModal
@@ -154,6 +180,7 @@ export function ProjectFormModal({ open, onClose, mode, project, clientOptions, 
         </>
       }
     >
+      <>
       <form id={FORM_DOM_ID} className="space-y-6" noValidate onSubmit={handleSubmit(submit)}>
         {noClients ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
@@ -192,13 +219,16 @@ export function ProjectFormModal({ open, onClose, mode, project, clientOptions, 
                   portaled
                   searchable
                   listLabel={t("fields.client")}
-                  options={clientOptions}
+                  options={localClientOptions}
                   value={field.value}
                   emptyLabel={t("placeholders.client")}
                   disabled={saving || noClients}
                   invalid={!!errors.client}
                   onBlur={field.onBlur}
                   onChange={field.onChange}
+                  onAdd={clientQuickCreate.onAdd}
+                  addAriaLabel={clientQuickCreate.addAriaLabel}
+                  addLabel={clientQuickCreate.addLabel}
                 />
               )}
             />
@@ -270,6 +300,7 @@ export function ProjectFormModal({ open, onClose, mode, project, clientOptions, 
           </FieldGroup>
         </FormFieldRow>
       </form>
+      </>
     </AppModal>
   );
 }

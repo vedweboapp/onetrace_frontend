@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { Controller, useForm } from "react-hook-form";
 import { createContact } from "@/features/contacts/api/contact.api";
+import type { Contact } from "@/features/contacts/types/contact.types";
 import { createContactFormSchema, type ContactFormValues } from "@/features/contacts/schemas/contact-form-schema";
 import {
   emptyContactFormDefaults,
@@ -13,6 +14,7 @@ import {
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import {
   AppButton,
   AppModal,
@@ -33,9 +35,21 @@ type Props = {
   onClose: () => void;
   clientOptions: ContactClientOption[];
   onSaved: () => void;
+  initialClientId?: string;
+  onCreated?: (contact: Contact) => void;
+  /** When true, client is fixed (e.g. opened from a client detail tab). */
+  lockClient?: boolean;
 };
 
-export function ContactFormModal({ open, onClose, clientOptions, onSaved }: Props) {
+export function ContactFormModal({
+  open,
+  onClose,
+  clientOptions,
+  onSaved,
+  initialClientId,
+  onCreated,
+  lockClient = false,
+}: Props) {
   const t = useTranslations("Dashboard.contacts");
   const [saving, setSaving] = React.useState(false);
 
@@ -69,8 +83,11 @@ export function ContactFormModal({ open, onClose, clientOptions, onSaved }: Prop
 
   React.useEffect(() => {
     if (!open) return;
-    reset(emptyContactFormDefaults());
-  }, [open, reset]);
+    reset({
+      ...emptyContactFormDefaults(),
+      ...(initialClientId ? { client: initialClientId } : {}),
+    });
+  }, [open, reset, initialClientId]);
 
   async function submit(values: ContactFormValues) {
     const payload = mapContactFormToPayload(values);
@@ -80,8 +97,9 @@ export function ContactFormModal({ open, onClose, clientOptions, onSaved }: Prop
     }
     setSaving(true);
     try {
-      await createContact(payload);
+      const created = await createContact(payload);
       toastSuccess(t("createdToast"));
+      onCreated?.(created);
       onSaved();
       onClose();
     } finally {
@@ -89,7 +107,18 @@ export function ContactFormModal({ open, onClose, clientOptions, onSaved }: Prop
     }
   }
 
-  const noClients = clientOptions.length === 0;
+  const [localClientOptions, setLocalClientOptions] = React.useState(clientOptions);
+  React.useEffect(() => {
+    setLocalClientOptions(clientOptions);
+  }, [clientOptions]);
+
+  const noClients = !lockClient && localClientOptions.length === 0;
+  const lockedClientLabel =
+    lockClient && initialClientId
+      ? localClientOptions.find((o) => o.value === initialClientId)?.label
+      : undefined;
+
+  const clientQuickCreate = useQuickCreate({ kind: "client", addDisabled: lockClient });
 
   return (
     <AppModal
@@ -111,6 +140,7 @@ export function ContactFormModal({ open, onClose, clientOptions, onSaved }: Prop
         </>
       }
     >
+      <>
       <form id={FORM_DOM_ID} className="space-y-6" noValidate onSubmit={handleSubmit(submit)}>
         {noClients ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
@@ -133,28 +163,42 @@ export function ContactFormModal({ open, onClose, clientOptions, onSaved }: Prop
             />
             <FieldErrorText id="contact-name-err">{errors.name?.message}</FieldErrorText>
           </FieldGroup>
-          <FieldGroup label={t("fields.client")} htmlFor="contact-client" required>
-            <Controller
-              control={control}
-              name="client"
-              render={({ field }) => (
-                <CheckmarkSelect
-                  id="contact-client"
-                  portaled
-                  searchable
-                  listLabel={t("fields.client")}
-                  options={clientOptions}
-                  value={field.value}
-                  emptyLabel={t("placeholders.client")}
-                  disabled={saving || noClients}
-                  invalid={!!errors.client}
-                  onBlur={field.onBlur}
-                  onChange={field.onChange}
-                />
-              )}
-            />
-            <FieldErrorText>{errors.client?.message}</FieldErrorText>
-          </FieldGroup>
+          {lockClient ? (
+            <FieldGroup label={t("fields.client")} htmlFor="contact-client-locked">
+              <input
+                id="contact-client-locked"
+                readOnly
+                value={lockedClientLabel ?? ""}
+                className={cn(surfaceInputClassName, "cursor-default bg-slate-50 dark:bg-slate-900/60")}
+              />
+            </FieldGroup>
+          ) : (
+            <FieldGroup label={t("fields.client")} htmlFor="contact-client" required>
+              <Controller
+                control={control}
+                name="client"
+                render={({ field }) => (
+                  <CheckmarkSelect
+                    id="contact-client"
+                    portaled
+                    searchable
+                    listLabel={t("fields.client")}
+                    options={localClientOptions}
+                    value={field.value}
+                    emptyLabel={t("placeholders.client")}
+                    disabled={saving || noClients}
+                    invalid={!!errors.client}
+                    onBlur={field.onBlur}
+                    onChange={field.onChange}
+                    onAdd={clientQuickCreate.onAdd}
+                    addAriaLabel={clientQuickCreate.addAriaLabel}
+                    addLabel={clientQuickCreate.addLabel}
+                  />
+                )}
+              />
+              <FieldErrorText>{errors.client?.message}</FieldErrorText>
+            </FieldGroup>
+          )}
           <FieldGroup label={t("fields.email")} htmlFor="contact-email" required>
             <input
               id="contact-email"
@@ -218,6 +262,7 @@ export function ContactFormModal({ open, onClose, clientOptions, onSaved }: Prop
           }}
         />
       </form>
+      </>
     </AppModal>
   );
 }

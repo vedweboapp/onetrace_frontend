@@ -79,6 +79,17 @@
     "home": "Back to home"
   },
   "Dashboard": {
+    "quickCreate": {
+      "add": {
+        "client": "Add new client",
+        "contact": "Add new contact",
+        "site": "Add new site",
+        "project": "Add new project",
+        "group": "Add new group",
+        "composite-item": "Add new composite item",
+        "item": "Add new item"
+      }
+    },
     "common": {
       "back": "Back",
       "breadcrumbNav": "Breadcrumb",
@@ -627,8 +638,10 @@
         },
         "contactsEmptyTitle": "No contacts for this client",
         "contactsEmptyDescription": "Contacts linked to this client will appear here.",
+        "addContact": "Add contact",
         "sitesEmptyTitle": "No sites for this client",
-        "sitesEmptyDescription": "Sites linked to this client will appear here."
+        "sitesEmptyDescription": "Sites linked to this client will appear here.",
+        "addSite": "Add site"
       },
       "detailLoadError": "Could not load client details. Try again.",
       "form": {
@@ -927,6 +940,25 @@
         "editTitle": "Edit",
         "editSubtitle": "Update site details and save changes."
       },
+      "contactPerson": {
+        "sectionTitle": "Contact persons",
+      
+        "add": "Add contact person",
+        "remove": "Remove contact person",
+        "titleLabel": "Title",
+        "titlePlaceholder": "Select title",
+        "contactLabel": "Contact person",
+        "contactPlaceholder": "Select contact",
+        "selectClientFirst": "Select a client first to add contact persons.",
+        "empty": "No contact persons added yet.",
+        "loadingContacts": "Loading contacts…",
+        "noContactsForClient": "No contacts for this client",
+        "titles": {
+          "site_contact": "Site contact",
+          "finance": "Finance",
+          "emergency": "Emergency"
+        }
+      },
       "validation": {
         "siteName": "Enter a site name.",
         "client": "Select a client.",
@@ -934,7 +966,9 @@
         "country": "Select a country.",
         "state": "Select a state or region.",
         "city": "Enter or select a city.",
-        "pincode": "Enter a postal or ZIP code."
+        "pincode": "Enter a postal or ZIP code.",
+        "contactPersonTitle": "Select a title.",
+        "contactPerson": "Select a contact person."
       },
       "location": {
         "searchPlaceholder": "Start typing street address…",
@@ -1112,9 +1146,9 @@
         "duplicateCountTitle": "Duplicate",
         "duplicateCountDescription": "Choose how many copies to add right after the original.",
         "duplicateCountLabel": "Number of copies",
-        "duplicateCountHint": "Whole number from 1 to 50.",
+      
         "duplicateCountConfirm": "Duplicate",
-        "duplicateCountInvalid": "Enter a whole number between 1 and 50.",
+        "duplicateCountInvalid": "Enter a  number between 1 and 50.",
         "copySection": "Copy section",
         "deleteSection": "Delete",
         "cancel": "Cancel",
@@ -1281,15 +1315,42 @@
         "editSubtitle": "Update job details and save."
       },
       "placeholders": {
-        "assignedWorker": "Select technician"
+        "assignedWorker": "Select technician",
+        "client": "Select client",
+        "project": "Select project",
+        "site": "Select site",
+        "form": "Select form",
+        "jobStatus": "Select job status",
+        "sectionName": "e.g. Level 0",
+        "plotName": "e.g. Room A",
+        "plotGroup": "Select group",
+        "compositeItem": "Select composite item"
+      },
+      "sections": {
+        "basic": "Details",
+        "relations": "Links",
+        "schedule": "Schedule",
+        "jobMeta": "Work scope",
+        "jobMetaHint": "Optional section, plot, group, and composite item for this job."
       },
       "fields": {
         "title": "Title",
         "description": "Description",
+        "comments": "Comments",
+        "client": "Client",
+        "project": "Project",
+        "site": "Site",
+        "form": "Form",
         "assignedWorker": "Assigned worker",
         "startDate": "Start date & time",
         "endDate": "End date & time",
         "jobStatus": "Job status",
+        "sectionName": "Section name",
+        "plotName": "Plot name",
+        "plotGroup": "Group",
+        "compositeItem": "Composite item",
+        "compositeQuantity": "Quantity",
+        "plotTotal": "Plot total",
         "recordStatus": "Record status",
         "isActive": "Active",
         "jobId": "Job ID",
@@ -1309,7 +1370,9 @@
         "assignedWorker": "Select an assigned worker.",
         "startDate": "Enter a start date and time.",
         "endDate": "Enter an end date and time.",
-        "endBeforeStart": "End must be on or after the start."
+        "endBeforeStart": "End must be on or after the start.",
+        "optionalId": "Choose a valid option.",
+        "compositeQuantity": "Enter a quantity greater than zero when a composite item is selected."
       }
     },
     "home": {

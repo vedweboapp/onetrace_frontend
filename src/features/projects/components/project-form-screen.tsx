@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useForm, useWatch } from "react-hook-form";
-import { useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
@@ -21,8 +21,15 @@ import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
+import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import {
+  buildQuickCreateReturnHref,
+  QUICK_CREATE_CLIENT_PARAM,
+  resolveFormBackUrl,
+} from "@/shared/utils/quick-create-navigation.util";
 import { AppButton, CheckmarkSelect, FieldErrorText, FieldGroup, FormFieldRow, MultiCheckSelect, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
 
 type Props = {
@@ -33,8 +40,9 @@ type Props = {
 export function ProjectFormScreen({ mode, projectId }: Props) {
   const t = useTranslations("Dashboard.projects");
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "projects");
+  const safeBack = resolveFormBackUrl(searchParams.get("back"), "projects", routes.dashboard.projects);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);
@@ -63,6 +71,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     register,
     reset,
     setValue,
+    getValues,
     handleSubmit,
     formState: { errors },
   } = useForm<ProjectFormValues>({
@@ -72,22 +81,83 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
 
   const selectedClient = useWatch({ control, name: "client" });
 
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items } = await fetchClientsPage(1, 500, { is_active: true }, { silent: true });
-        if (!cancelled) {
-          setClientOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
-        }
-      } catch {
-        if (!cancelled) setClientOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+  const reloadClients = React.useCallback(async () => {
+    try {
+      const { items } = await fetchClientsPage(1, 500, { is_active: true }, { silent: true });
+      setClientOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
+    } catch {
+      setClientOptions([]);
+    }
   }, []);
+
+  React.useEffect(() => {
+    void reloadClients();
+  }, [reloadClients]);
+
+  const draftReturnTo = React.useMemo(() => {
+    const qs = searchParams.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  }, [pathname, searchParams]);
+
+  const getFormDraft = React.useCallback(() => getValues(), [getValues]);
+  const restoreFormDraft = React.useCallback(
+    (draft: unknown) => {
+      reset(draft as ProjectFormValues, { keepDefaultValues: false });
+    },
+    [reset],
+  );
+
+  const clientQuickCreate = useQuickCreate({
+    kind: "client",
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+  });
+
+  const clientIdForQuick =
+    selectedClient && /^\d+$/.test(selectedClient) ? Number.parseInt(selectedClient, 10) : undefined;
+
+  const reloadSites = React.useCallback(async () => {
+    if (!clientIdForQuick || clientIdForQuick <= 0) {
+      setSiteOptions([]);
+      return;
+    }
+    try {
+      const { items } = await fetchSitesPage(1, 500, { client: clientIdForQuick, is_active: true });
+      setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name })));
+    } catch {
+      setSiteOptions([]);
+    }
+  }, [clientIdForQuick]);
+
+  const siteQuickCreate = useQuickCreate({
+    kind: "site",
+    clientId: clientIdForQuick,
+    addDisabled: !clientIdForQuick,
+  });
+
+  React.useEffect(() => {
+    if (isEdit) return;
+    const presetClient = searchParams.get(QUICK_CREATE_CLIENT_PARAM);
+    if (!presetClient || !/^\d+$/.test(presetClient)) return;
+    setValue("client", presetClient, { shouldDirty: true, shouldValidate: true });
+  }, [isEdit, searchParams, setValue]);
+
+  useQuickCreateReturn({
+    restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
+    onReloadOptions: async () => {
+      await reloadClients();
+      await reloadSites();
+    },
+    onApplySelect: ({ selectTarget, selectId }) => {
+      if (selectTarget === "client") {
+        setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
+        setValue("sites", [], { shouldDirty: true, shouldValidate: true });
+        return;
+      }
+      if (selectTarget === "site") {
+        setValue("sites", [selectId], { shouldDirty: true, shouldValidate: true });
+      }
+    },
+  });
 
   React.useEffect(() => {
     let cancelled = false;
@@ -112,24 +182,8 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       setValue("sites", []);
       return;
     }
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items } = await fetchSitesPage(1, 500, {
-          client: Number.parseInt(selectedClient, 10),
-          is_active: true,
-        });
-        if (!cancelled) {
-          setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name })));
-        }
-      } catch {
-        if (!cancelled) setSiteOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedClient, setValue]);
+    void reloadSites();
+  }, [selectedClient, setValue, reloadSites]);
 
   React.useEffect(() => {
     if (!isEdit || !projectId) return;
@@ -165,7 +219,8 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     try {
       const saved = isEdit && projectId ? await updateProject(projectId, payload) : await createProject(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(`${safeBack}?highlight=${saved.id}`);
+      if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
+      router.replace(buildQuickCreateReturnHref(safeBack, saved.id, "project"));
     } finally {
       setSaving(false);
     }
@@ -211,6 +266,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
             <p className="text-sm text-red-600 dark:text-red-400">{screenError}</p>
           </div>
         ) : (
+          <>
           <form id="project-upsert-screen-form" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(submit)}>
             {noClients ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
@@ -257,6 +313,9 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                         field.onChange(v);
                         setValue("sites", []);
                       }}
+                      onAdd={clientQuickCreate.onAdd}
+                      addAriaLabel={clientQuickCreate.addAriaLabel}
+                      addLabel={clientQuickCreate.addLabel}
                     />
                   )}
                 />
@@ -296,12 +355,21 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                     values={field.value ?? []}
                     onChange={field.onChange}
                     onBlur={field.onBlur}
-                    disabled={saving || !selectedClient || siteOptions.length === 0}
+                    disabled={saving || !selectedClient}
                     placeholder={t("placeholders.site")}
                     listLabel={t("fields.sites")}
                   />
                 )}
               />
+              {siteQuickCreate.onAdd ? (
+                <button
+                  type="button"
+                  className="mt-1.5 text-xs font-semibold text-[color:var(--dash-accent,#111111)] hover:underline"
+                  onClick={siteQuickCreate.onAdd}
+                >
+                  {siteQuickCreate.addLabel}
+                </button>
+              ) : null}
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("hints.sitesMultiSelect")}</p>
             </FieldGroup>
             <FieldGroup label={t("fields.description")} htmlFor="project-description" required>
@@ -344,6 +412,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
               </FieldGroup>
             </FormFieldRow>
           </form>
+          </>
         )}
       </SurfaceShell>
     </div>

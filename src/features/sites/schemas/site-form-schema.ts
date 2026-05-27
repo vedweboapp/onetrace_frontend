@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { City, State } from "country-state-city";
+import { SITE_CONTACT_PERSON_TITLES } from "@/features/sites/constants/site-contact-person.constants";
 import { zTrimmedNonEmpty } from "@/shared/form";
 
 export type SiteFormMessages = {
@@ -10,6 +11,8 @@ export type SiteFormMessages = {
   state: string;
   city: string;
   pincode: string;
+  contactPersonTitle: string;
+  contactPerson: string;
 };
 
 export function createSiteFormSchema(messages: SiteFormMessages) {
@@ -35,6 +38,16 @@ export function createSiteFormSchema(messages: SiteFormMessages) {
       what3words: z.string(),
       latitude: z.string(),
       longitude: z.string(),
+      contacts: z.array(
+        z.object({
+          title: z.enum(SITE_CONTACT_PERSON_TITLES, { message: messages.contactPersonTitle }),
+          contact: z
+            .string()
+            .trim()
+            .regex(/^\d+$/, messages.contactPerson)
+            .refine((s) => Number.parseInt(s, 10) > 0, { message: messages.contactPerson }),
+        }),
+      ),
     })
     .superRefine((data, ctx) => {
       const subdivisions = State.getStatesOfCountry(data.country_iso);

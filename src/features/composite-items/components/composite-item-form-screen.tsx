@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import {
   createCompositeItem,
   fetchCompositeItem,
@@ -16,7 +16,14 @@ import type { Item } from "@/features/items/types/item.types";
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
+import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import {
+  buildQuickCreateReturnHref,
+  resolveFormBackUrl,
+  sanitizeInternalDashboardBack,
+} from "@/shared/utils/quick-create-navigation.util";
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
@@ -51,9 +58,11 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
   const t = useTranslations("Dashboard.compositeItems");
   const tModal = useTranslations("Dashboard.compositeItems.modal");
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "composite-items");
+  const safeBack = resolveFormBackUrl(searchParams.get("back"), "composite-items", routes.dashboard.compositeItems);
   const isEdit = mode === "edit";
+  const pendingItemRowRef = React.useRef<string | null>(null);
 
   const nameId = React.useId();
   const skuId = React.useId();
@@ -84,6 +93,69 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     () => itemOptions.map((it) => ({ value: String(it.id), label: it.name })),
     [itemOptions],
   );
+
+  const draftReturnTo = React.useMemo(() => {
+    const qs = searchParams.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  }, [pathname, searchParams]);
+
+  const getFormDraft = React.useCallback(
+    () => ({ name, sku, qty, cost, sell, rows }),
+    [name, sku, qty, cost, sell, rows],
+  );
+
+  const restoreFormDraft = React.useCallback((draft: unknown) => {
+    const saved = draft as {
+      name?: string;
+      sku?: string;
+      qty?: string;
+      cost?: string;
+      sell?: string;
+      rows?: ComponentRow[];
+    };
+    if (typeof saved.name === "string") setName(saved.name);
+    if (typeof saved.sku === "string") setSku(saved.sku);
+    if (typeof saved.qty === "string") setQty(saved.qty);
+    if (typeof saved.cost === "string") setCost(saved.cost);
+    if (typeof saved.sell === "string") setSell(saved.sell);
+    if (Array.isArray(saved.rows) && saved.rows.length > 0) setRows(saved.rows);
+  }, []);
+
+  const reloadItems = React.useCallback(async () => {
+    setItemsError(null);
+    try {
+      const { items: next } = await fetchItemsPage(1, 500, { isComposite: false });
+      setItemOptions(next);
+    } catch {
+      setItemsError(tModal("itemsLoadError"));
+    }
+  }, [tModal]);
+
+  const itemQuickCreate = useQuickCreate({
+    kind: "item",
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+  });
+
+  useQuickCreateReturn({
+    restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
+    onReloadOptions: reloadItems,
+    onApplySelect: ({ selectTarget, selectId }) => {
+      if (selectTarget !== "item") return;
+      const rowId = pendingItemRowRef.current;
+      if (rowId) {
+        setRows((prev) => prev.map((x) => (x.id === rowId ? { ...x, child_item: selectId } : x)));
+      } else {
+        setRows((prev) => {
+          const emptyIdx = prev.findIndex((r) => !r.child_item.trim());
+          if (emptyIdx >= 0) {
+            return prev.map((x, i) => (i === emptyIdx ? { ...x, child_item: selectId } : x));
+          }
+          return [...prev, { id: nextRowId(), child_item: selectId, quantity: "1" }];
+        });
+      }
+      pendingItemRowRef.current = null;
+    },
+  });
 
   const itemOptionsForRow = React.useCallback(
     (rowId: string) =>
@@ -207,7 +279,13 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
               components: comps,
             });
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
-      router.replace(`${safeBack}?highlight=${saved.id}`);
+      if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
+      const crossBack = sanitizeInternalDashboardBack(searchParams.get("back"));
+      if (!isEdit && crossBack) {
+        router.replace(buildQuickCreateReturnHref(crossBack, saved.id, "composite-item"));
+      } else {
+        router.replace(`${safeBack}?highlight=${saved.id}`);
+      }
     } catch {
       toastError(t("loadError"));
     } finally {
@@ -282,7 +360,28 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   <div key={r.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_140px_auto] sm:items-end">
                     <div>
                       <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">{tModal("childItem")}<span className="ml-1 text-red-500">*</span></span>
-                      <CheckmarkSelect listLabel={tModal("childItem")} buttonAriaLabel={tModal("childItem")} value={r.child_item} onChange={(v) => setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, child_item: v } : x)))} options={itemOptionsForRow(r.id)} emptyLabel={tModal("childItemPlaceholder")} disabled={submitting || noItems} portaled searchable className="w-full" />
+                      <CheckmarkSelect
+                        listLabel={tModal("childItem")}
+                        buttonAriaLabel={tModal("childItem")}
+                        value={r.child_item}
+                        onChange={(v) => setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, child_item: v } : x)))}
+                        options={itemOptionsForRow(r.id)}
+                        emptyLabel={tModal("childItemPlaceholder")}
+                        disabled={submitting || noItems}
+                        portaled
+                        searchable
+                        className="w-full"
+                        onAdd={
+                          itemQuickCreate.onAdd
+                            ? () => {
+                                pendingItemRowRef.current = r.id;
+                                itemQuickCreate.onAdd?.();
+                              }
+                            : undefined
+                        }
+                        addAriaLabel={itemQuickCreate.addAriaLabel}
+                        addLabel={itemQuickCreate.addLabel}
+                      />
                     </div>
                     <div>
                       <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">{tModal("componentQuantity")}</span>

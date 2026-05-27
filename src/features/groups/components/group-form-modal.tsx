@@ -7,6 +7,8 @@ import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { usePathname } from "@/i18n/navigation";
+import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
 import {
@@ -42,6 +44,8 @@ function toNumberOrNull(raw: string): number | null {
 
 export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
   const t = useTranslations("Dashboard.groups.modal");
+  const pathname = usePathname();
+  const pendingCompositeRowRef = React.useRef<string | null>(null);
 
   const nameId = React.useId();
   const [name, setName] = React.useState("");
@@ -59,6 +63,12 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
     () => compositeOptions.map((opt) => ({ value: String(opt.id), label: opt.name })),
     [compositeOptions],
   );
+
+  const compositeQuickCreate = useQuickCreate({
+    kind: "composite-item",
+    returnTo: pathname,
+    getFormDraft: open && mode === "create" ? () => ({ name, rows }) : undefined,
+  });
 
   const compositeOptionsForRow = React.useCallback(
     (rowId: string) =>
@@ -226,6 +236,16 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
                     portaled
                     searchable
                     className="w-full"
+                    onAdd={
+                      compositeQuickCreate.onAdd
+                        ? () => {
+                            pendingCompositeRowRef.current = row.id;
+                            compositeQuickCreate.onAdd?.();
+                          }
+                        : undefined
+                    }
+                    addAriaLabel={compositeQuickCreate.addAriaLabel}
+                    addLabel={compositeQuickCreate.addLabel}
                   />
                 </div>
                 <div>

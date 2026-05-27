@@ -41,7 +41,7 @@ export function emptyContactFormDefaults(): ContactFormValues {
     client: "",
     address_line_1: "",
     address_line_2: "",
-    country_iso: "IN",
+    country_iso: "",
     state_iso: "",
     city: "",
     pincode: "",
@@ -51,7 +51,7 @@ export function emptyContactFormDefaults(): ContactFormValues {
 export function contactToFormDefaults(contact: Contact): ContactFormValues {
   const allCountries = Country.getAllCountries();
   const matchedCountry = allCountries.find((c) => c.name.toLowerCase() === (contact.country ?? "").trim().toLowerCase());
-  const countryIso = matchedCountry?.isoCode ?? "IN";
+  const countryIso = matchedCountry?.isoCode?.toUpperCase() ?? "";
   const states = State.getStatesOfCountry(countryIso);
   const matchedState = states.find((s) => s.name.toLowerCase() === (contact.state ?? "").trim().toLowerCase());
   const stateIso = matchedState?.isoCode ?? "";
