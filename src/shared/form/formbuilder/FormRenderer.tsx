@@ -57,6 +57,7 @@ interface FormRendererProps {
   autoPopulateData?: any;
   onFieldChange?: (name: string, value: any) => void;
   rules?: FormRule[];
+  renderMode?: "desktop" | "phone";
 }
 
 export interface FormRendererRef {
@@ -215,6 +216,7 @@ const FormField: React.FC<{
   dirtyFields: any;
   sectionFields?: Field[];
   ruleState?: FieldRuleState;
+  forceSingleColumn?: boolean;
 }> = ({
   field,
   control,
@@ -227,6 +229,7 @@ const FormField: React.FC<{
   dirtyFields,
   sectionFields = [],
   ruleState,
+  forceSingleColumn = false,
 }) => {
   if (!field || !field.api_name) return null;
 
@@ -316,8 +319,9 @@ const FormField: React.FC<{
   );
 
   const colSpan = field.colspan || 1;
-  const colSpanClass =
-    colSpan === 2
+  const colSpanClass = forceSingleColumn
+    ? ""
+    : colSpan === 2
       ? "md:col-span-2"
       : colSpan === 3
         ? "md:col-span-3"
@@ -540,8 +544,15 @@ const buildDefaultValuesFromSchema = (
           f.defaultChecked === "true" ||
           f.defaultValue === true ||
           f.defaultValue === "true";
+      } else if (normType === "image_upload") {
+        formData[f.api_name] =
+          f.defaultValue !== undefined &&
+          f.defaultValue !== null &&
+          f.defaultValue !== ""
+            ? f.defaultValue
+            : null;
       } else if (
-        ["multi_select", "file_upload", "image_upload", "user"].includes(normType)
+        ["multi_select", "file_upload", "user"].includes(normType)
       ) {
         // Use defaultValue array if set, otherwise empty array
         formData[f.api_name] = Array.isArray(f.defaultValue)
@@ -629,7 +640,8 @@ const mapDataToFormFields = (data: any, schema: Section[], defaultValues = {}) =
 };
 
 const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
-  ({ schema, defaultValues = {}, autoPopulateData = null, onFieldChange, rules = [] }, ref) => {
+  ({ schema, defaultValues = {}, autoPopulateData = null, onFieldChange, rules = [], renderMode = "desktop" }, ref) => {
+    const forceSingleColumn = renderMode === "phone";
     const initialValuesRef = useRef<Record<string, unknown>>(
       Array.isArray(schema) && schema.length > 0
         ? autoPopulateData
@@ -790,7 +802,11 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
                 </div>
               )}
               <div
-                className={`grid grid-cols-1 md:grid-cols-${section.column_count || 2} gap-x-10 gap-y-7`}
+                className={`grid gap-x-10 gap-y-7 ${
+                  forceSingleColumn || (section.column_count || 2) <= 1
+                    ? "grid-cols-1"
+                    : "grid-cols-1 md:grid-cols-2"
+                }`}
               >
                 {[...(section.fields || [])]
                   .filter((f) => !f.is_deleted)
@@ -809,6 +825,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
                       dirtyFields={dirtyFields}
                       sectionFields={section.fields}
                       ruleState={fieldRuleState.get(f.api_name)}
+                      forceSingleColumn={forceSingleColumn}
                     />
                   ))}
               </div>

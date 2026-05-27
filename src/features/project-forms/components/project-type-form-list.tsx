@@ -2,30 +2,37 @@
 
 import React from "react";
 import { useRouter } from "@/i18n/navigation";
-import { useParams } from "next/navigation";
-import { Plus, ArrowLeft } from "lucide-react";
+import { Plus } from "lucide-react";
 import {
     AppButton,
+    AppModal,
+    CheckmarkSelect,
     ListPageSearchField,
     SurfaceShell,
     DataTablePaginationBar,
+    type CheckmarkSelectOption,
 } from "@/shared/ui";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useListUrlState } from "@/shared/hooks/use-list-url-state";
-import { getFormsList } from "@/features/form-builder/api/form-builder.api";
+import { getProjectFormList } from "@/features/project-forms/api/project-forms.api";
+import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
+import type { ProjectType } from "@/features/project-types/types/project-type.types";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 
 interface FormListItem {
     id: number | string;
-    name: string;
+    name?: string;
+    api_name?: string;
+    description?: string | null;
+    project_type?: unknown;
     is_active?: boolean;
     created_at?: string;
     modified_at?: string;
     created_by?: { id: number; username?: string; email?: string } | null;
     modified_by?: { id: number; username?: string; email?: string } | null;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 function userLabel(user: FormListItem["created_by"]): string {
@@ -33,13 +40,37 @@ function userLabel(user: FormListItem["created_by"]): string {
     return user.username?.trim() || user.email?.trim() || `#${user.id}`;
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === "object" && !Array.isArray(value)
+        ? (value as Record<string, unknown>)
+        : null;
+}
+
+function textValue(value: unknown): string {
+    return typeof value === "string" ? value.trim() : "";
+}
+
+function projectTypeLabel(value: unknown): string {
+    const record = asRecord(value);
+    if (!record) return textValue(value) || "â€”";
+    return (
+        textValue(record.project_type) ||
+        textValue(record.name) ||
+        textValue(record.label) ||
+        (record.id != null ? `#${String(record.id)}` : "â€”")
+    );
+}
+
+function formApiName(row: FormListItem): string {
+    return row.api_name || textValue(row.apiName) || "â€”";
+}
+
 const ProjectTypeFormList = () => {
-    const { id } = useParams<{ id: string }>();
     const router = useRouter();
     const dateFmt = useDashboardDateFormat();
 
     const { page, pageSize, search, setUrl, setPage, setPageSize } =
-        useListUrlState();
+        useListUrlState({ defaultPageSize: 10 });
     const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
     const commitSearch = React.useCallback(
@@ -54,29 +85,32 @@ const ProjectTypeFormList = () => {
         total_records: 0,
         total_pages: 1,
         current_page: 1,
-        page_size: 20,
+        page_size: 10,
         next: null as string | null,
         previous: null as string | null,
     });
     const [loading, setLoading] = React.useState(true);
     const [loadError, setLoadError] = React.useState<string | null>(null);
+    const [projectTypeModalOpen, setProjectTypeModalOpen] = React.useState(false);
+    const [projectTypes, setProjectTypes] = React.useState<ProjectType[]>([]);
+    const [projectTypesLoading, setProjectTypesLoading] = React.useState(false);
+    const [projectTypesError, setProjectTypesError] = React.useState<string | null>(null);
+    const [selectedProjectTypeId, setSelectedProjectTypeId] = React.useState<number | null>(null);
 
     React.useEffect(() => {
-        if (!id) return;
         let cancelled = false;
         (async () => {
             setLoading(true);
             setLoadError(null);
             try {
-                const data = await getFormsList({
-                    project_type: id,
+                const data = await getProjectFormList({
                     search: search || undefined,
                     page,
                     page_size: pageSize,
                 });
                 if (!cancelled) {
                     if (Array.isArray(data)) {
-                        setItems(data);
+                        setItems(data as FormListItem[]);
                         setPagination((prev) => ({
                             ...prev,
                             total_records: data.length,
@@ -84,7 +118,7 @@ const ProjectTypeFormList = () => {
                             current_page: 1,
                         }));
                     } else if (data?.results) {
-                        setItems(data.results);
+                        setItems(data.results as FormListItem[]);
                         setPagination({
                             total_records: data.count ?? data.results.length,
                             total_pages: data.total_pages ?? 1,
@@ -92,6 +126,17 @@ const ProjectTypeFormList = () => {
                             page_size: pageSize,
                             next: data.next ?? null,
                             previous: data.previous ?? null,
+                        });
+                    } else if (Array.isArray(data?.data)) {
+                        setItems(data.data as FormListItem[]);
+                        setPagination({
+                            total_records:
+                                data.pagination?.total_records ?? data.data.length,
+                            total_pages: data.pagination?.total_pages ?? 1,
+                            current_page: data.pagination?.current_page ?? page,
+                            page_size: data.pagination?.page_size ?? pageSize,
+                            next: data.pagination?.next ?? null,
+                            previous: data.pagination?.previous ?? null,
                         });
                     } else {
                         setItems([]);
@@ -109,7 +154,54 @@ const ProjectTypeFormList = () => {
         return () => {
             cancelled = true;
         };
-    }, [id, page, pageSize, search]);
+    }, [page, pageSize, search]);
+
+    React.useEffect(() => {
+        if (!projectTypeModalOpen) return;
+        let cancelled = false;
+        (async () => {
+            setProjectTypesLoading(true);
+            setProjectTypesError(null);
+            try {
+                const { items } = await fetchProjectTypesPage(1, 50, {
+                    is_active: true,
+                });
+                if (!cancelled) setProjectTypes(items);
+            } catch {
+                if (!cancelled) {
+                    setProjectTypes([]);
+                    setProjectTypesError("Failed to load project types. Please try again.");
+                }
+            } finally {
+                if (!cancelled) setProjectTypesLoading(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [projectTypeModalOpen]);
+
+    const openProjectTypePicker = React.useCallback(() => {
+        setSelectedProjectTypeId(null);
+        setProjectTypeModalOpen(true);
+    }, []);
+
+    const continueToCreateForm = React.useCallback(() => {
+        if (!selectedProjectTypeId) return;
+        setProjectTypeModalOpen(false);
+        router.push(
+            `/dashboard/settings/project-type-forms/${selectedProjectTypeId}/create?purpose=create_project_form`,
+        );
+    }, [router, selectedProjectTypeId]);
+
+    const projectTypeOptions = React.useMemo<CheckmarkSelectOption[]>(
+        () =>
+            projectTypes.map((projectType) => ({
+                value: String(projectType.id),
+                label: projectType.project_type || `#${projectType.id}`,
+            })),
+        [projectTypes],
+    );
 
     const pageRange = getListPageRange(pagination);
 
@@ -121,6 +213,22 @@ const ProjectTypeFormList = () => {
                     {row.name || "—"}
                 </span>
             )),
+            c.mono(
+                "api_name",
+                "API Name",
+                (row) => formApiName(row),
+                { responsive: "sm" },
+            ),
+            c.custom(
+                "project_type",
+                "Project Type",
+                (row) => (
+                    <span className="text-slate-600 dark:text-slate-300">
+                        {projectTypeLabel(row.project_type)}
+                    </span>
+                ),
+                { responsive: "md" },
+            ),
             c.status(
                 "status",
                 "Status",
@@ -171,21 +279,6 @@ const ProjectTypeFormList = () => {
 
     return (
         <div className="space-y-6">
-            {/* Back button + page title */}
-            <div className="flex items-center gap-3">
-                <button
-                    onClick={() => router.back()}
-                    className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors"
-                    aria-label="Go back"
-                >
-                    <ArrowLeft className="size-5" />
-                </button>
-                <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-                    Forms
-                </h1>
-            </div>
-
-            {/* Search bar + create button */}
             <div className="flex items-center justify-between rounded-md border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
                 <ListPageSearchField
                     placeholder="Search project type forms"
@@ -193,18 +286,11 @@ const ProjectTypeFormList = () => {
                     value={search}
                     onCommit={commitSearch}
                 />
-                <AppButton
-                    onClick={() =>
-                        router.push(
-                            `/dashboard/settings/project-type-forms/${id}/form-list/create?purpose=create_project_from`,
-                        )
-                    }
-                >
+                <AppButton onClick={openProjectTypePicker}>
                     <Plus className="size-4" /> Create new form
                 </AppButton>
             </div>
 
-            {/* Table */}
             <SurfaceShell className="rounded-none">
                 {loadError ? (
                     <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">
@@ -226,7 +312,7 @@ const ProjectTypeFormList = () => {
                         rows={items}
                         onRowClick={(row) =>
                             router.push(
-                                `/dashboard/settings/project-type-forms/${id}/form-list/create?purpose=edit_layout&layout_id=${row.id}`,
+                                `/dashboard/settings/project-type-forms/create?purpose=edit__project_form&layout_id=${row.id}`,
                             )
                         }
                     />
@@ -252,6 +338,66 @@ const ProjectTypeFormList = () => {
                     />
                 ) : null}
             </SurfaceShell>
+
+            <AppModal
+                open={projectTypeModalOpen}
+                onClose={() => setProjectTypeModalOpen(false)}
+                title="Select project type"
+                description="Choose the project type this form belongs to."
+                size="lg"
+                className="overflow-visible"
+                footer={
+                    <>
+                        <AppButton
+                            type="button"
+                            variant="secondary"
+                            onClick={() => setProjectTypeModalOpen(false)}
+                        >
+                            Cancel
+                        </AppButton>
+                        <AppButton
+                            type="button"
+                            onClick={continueToCreateForm}
+                            disabled={!selectedProjectTypeId}
+                        >
+                            Next
+                        </AppButton>
+                    </>
+                }
+            >
+                <div className="space-y-4">
+                    {projectTypesError ? (
+                        <p className="text-sm text-red-600 dark:text-red-400">
+                            {projectTypesError}
+                        </p>
+                    ) : null}
+                    <CheckmarkSelect
+                        listLabel="Project types"
+                        buttonAriaLabel="Select project type"
+                        value={selectedProjectTypeId ? String(selectedProjectTypeId) : ""}
+                        onChange={(value) =>
+                            setSelectedProjectTypeId(value ? Number(value) : null)
+                        }
+                        options={projectTypeOptions}
+                        emptyLabel={
+                            projectTypesLoading
+                                ? "Loading project types..."
+                                : "Select project type"
+                        }
+                        disabled={projectTypesLoading || projectTypesError != null}
+                        searchable
+                        searchPlaceholder="Search project types"
+                        portaled={false}
+                        side="bottom"
+                        className="w-full"
+                    />
+                    {!projectTypesLoading && !projectTypesError && projectTypeOptions.length === 0 ? (
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                            No project types found.
+                        </p>
+                    ) : null}
+                </div>
+            </AppModal>
         </div>
     );
 };
