@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, X } from "lucide-react";
+import { Check, ChevronDown, Plus, X } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import type { CheckmarkSelectOption } from "./checkmark-select";
 
@@ -20,6 +20,9 @@ type Props = {
   searchable?: boolean;
   searchPlaceholder?: string;
   portaled?: boolean;
+  onAdd?: () => void;
+  addAriaLabel?: string;
+  addLabel?: string;
 };
 
 export function MultiCheckSelect({
@@ -36,6 +39,9 @@ export function MultiCheckSelect({
   searchable = true,
   searchPlaceholder = "Search...",
   portaled = true,
+  onAdd,
+  addAriaLabel,
+  addLabel,
 }: Props) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -163,6 +169,22 @@ export function MultiCheckSelect({
           <li className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">No results</li>
         ) : null}
       </ul>
+      {onAdd && !disabled ? (
+        <div className="shrink-0 border-t border-slate-200 p-2 dark:border-slate-600">
+          <button
+            type="button"
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-[color:var(--dash-accent,#111111)] transition hover:bg-slate-50 dark:hover:bg-slate-800"
+            aria-label={addAriaLabel ?? "Add new"}
+            onClick={() => {
+              setOpen(false);
+              onAdd();
+            }}
+          >
+            <Plus className="size-4" strokeWidth={2.5} aria-hidden />
+            <span>{addLabel ?? addAriaLabel ?? "Add new"}</span>
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 

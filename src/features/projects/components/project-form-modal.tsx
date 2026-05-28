@@ -4,6 +4,7 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { Controller, useForm } from "react-hook-form";
+import { useRouter } from "@/i18n/navigation";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
 import { createProject, updateProject } from "@/features/projects/api/project.api";
@@ -16,6 +17,7 @@ import {
 } from "@/features/projects/utils/project-form-map";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { routes } from "@/shared/config/routes";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import {
@@ -54,6 +56,7 @@ export function ProjectFormModal({
   onCreated,
 }: Props) {
   const t = useTranslations("Dashboard.projects");
+  const router = useRouter();
   const [saving, setSaving] = React.useState(false);
   const [projectTypeOptions, setProjectTypeOptions] = React.useState<ProjectClientOption[]>([]);
 
@@ -251,6 +254,9 @@ export function ProjectFormModal({
                   disabled={saving || noProjectTypes}
                   invalid={!!errors.project_type}
                   onBlur={field.onBlur}
+                  onAdd={() => router.push(routes.dashboard.settingsProjectTypes)}
+                  addAriaLabel="Add project type"
+                  addLabel="Add project type"
                   onChange={field.onChange}
                 />
               )}

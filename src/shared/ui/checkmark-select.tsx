@@ -193,7 +193,8 @@ export function CheckmarkSelect({
   const selected = options.find((o) => o.value === value);
   const canClear = Boolean(clearable && !disabled && value.trim() !== "");
   const showAdd = Boolean(onAdd && !disabled);
-  const useSplitTrigger = canClear || showAdd;
+  // Show add action only in dropdown footer, not on trigger.
+  const useSplitTrigger = canClear;
   const dropdownPlacement = useDropdownPlacement(open, anchorRef, side);
   const [portalAccent, setPortalAccent] = React.useState("#111111");
   const [portalOnAccent, setPortalOnAccent] = React.useState("#ffffff");
@@ -405,11 +406,6 @@ export function CheckmarkSelect({
         ),
   );
 
-  const addSplitButtonClass = cn(
-    sideActionButtonClass,
-    !disabled && "text-[color:var(--dash-accent,#111111)] hover:text-[color:var(--dash-accent,#111111)]",
-  );
-
   return (
     <div ref={rootRef} className={cn("relative", className)}>
       {label ? (
@@ -462,23 +458,6 @@ export function CheckmarkSelect({
               }}
             >
               <X className={size === "sm" ? "size-3" : "size-3.5"} strokeWidth={2} aria-hidden />
-            </button>
-          ) : null}
-          {showAdd ? (
-            <button
-              type="button"
-              aria-label={addAriaLabel ?? "Add new"}
-              disabled={disabled}
-              className={addSplitButtonClass}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (disabled) return;
-                setOpen(false);
-                onAdd?.();
-              }}
-            >
-              <Plus className={size === "sm" ? "size-3" : "size-3.5"} strokeWidth={2.5} aria-hidden />
             </button>
           ) : null}
         </div>

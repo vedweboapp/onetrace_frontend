@@ -140,6 +140,15 @@ export function JobFormScreen({ mode, jobId }: Props) {
     kind: "composite-item",
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
+  const openFormsSettings = React.useCallback(() => {
+    router.push(routes.dashboard.settingsProjectForms);
+  }, [router]);
+  const openUsersSettings = React.useCallback(() => {
+    router.push(routes.dashboard.settingsUsers);
+  }, [router]);
+  const openJobStatusSettings = React.useCallback(() => {
+    router.push(routes.dashboard.settingsJobStatus);
+  }, [router]);
 
   const reloadClients = React.useCallback(async () => {
     try {
@@ -493,6 +502,9 @@ export function JobFormScreen({ mode, jobId }: Props) {
                         listLabel={t("fields.form")}
                         portaled
                         searchable
+                        onAdd={openFormsSettings}
+                        addAriaLabel="Add form"
+                        addLabel="Add new"
                       />
                       <FieldErrorText>{errors.forms?.message}</FieldErrorText>
                     </div>
@@ -518,6 +530,9 @@ export function JobFormScreen({ mode, jobId }: Props) {
                         listLabel={t("fields.jobStatus")}
                         portaled
                         searchable
+                        onAdd={openJobStatusSettings}
+                        addAriaLabel="Add job status"
+                        addLabel="Add new"
                       />
                       <FieldErrorText>{errors.job_status?.message}</FieldErrorText>
                     </div>
@@ -540,6 +555,9 @@ export function JobFormScreen({ mode, jobId }: Props) {
                         listLabel={t("fields.assignedWorker")}
                         portaled
                         searchable
+                        onAdd={openUsersSettings}
+                        addAriaLabel="Add user"
+                        addLabel="Add new"
                       />
                       <FieldErrorText>{errors.assigned_worker?.message}</FieldErrorText>
                     </div>
@@ -589,7 +607,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
               <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {t("sections.jobMeta")}
               </h2>
-          
+              <p className="text-sm text-slate-600 dark:text-slate-400">{t("sections.jobMetaHint")}</p>
 
               <FieldGroup label={t("fields.sectionName")} htmlFor="job-meta-section">
                 <input

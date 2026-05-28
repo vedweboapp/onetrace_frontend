@@ -61,7 +61,7 @@ export function mapJobFormToPayload(
 
   if (endRaw) payload.end_date = htmlDatetimeLocalToIso(endRaw);
 
-
+  
 
   const forms = parseOptionalIdField(values.forms);
   if (forms != null) payload.forms = forms;
@@ -112,7 +112,7 @@ export function jobToFormDefaults(job: Job): JobFormValues {
   return {
     title: job.title ?? "",
     description: job.description ?? "",
-  
+    
     forms: String(nestedId(job.forms as number | { id: number } | undefined) ?? ""),
     job_status: String(
       typeof job.job_status === "number"

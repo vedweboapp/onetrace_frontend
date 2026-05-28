@@ -80,7 +80,7 @@ export type Job = {
   deleted_by: unknown;
   organization?: number;
   forms?: number | { id: number; name?: string };
-
+  
   client?: number | { id: number; name?: string };
   project?: number | { id: number; name?: string };
   site?: number | { id: number; site_name?: string };
