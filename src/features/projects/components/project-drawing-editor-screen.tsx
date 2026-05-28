@@ -693,13 +693,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   async function fileToPinAttachment(file: File): Promise<DrawingPinAttachment> {
     // Attachment draft is stored as a data URL so it can be persisted with the pin payload.
     const dataUrl = await readFileAsDataUrl(file);
-    return {
-      id: -Date.now(),
-      file_name: file.name,
-      content_type: file.type || null,
-      file_data: dataUrl,
-      data_url: dataUrl,
-    };
+    return dataUrl;
   }
 
   function stagePointFromEvent(e: React.MouseEvent): number[] | null {
@@ -1062,7 +1056,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         variation: pin.variation ?? false,
         location: pinLabels.get(pin.id),
         description: pin.description ?? undefined,
-        attachment: pin.attachment ?? (pin.attachments?.[0] ?? undefined),
+        attachment: typeof pin.attachment === "string" ? pin.attachment : undefined,
       })),
     }));
   }
@@ -2033,14 +2027,12 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
                     <div className="mt-3 space-y-2">
                       {(() => {
-                        const att = (isPinEditing ? pinEditData.attachment : detailPin.attachment) ??
-                          (detailPin.attachments?.[0] ?? null);
+                        const att = ((isPinEditing ? pinEditData.attachment : detailPin.attachment) ?? null) as string | null;
+
                         if (!att) return <p className="text-sm text-slate-500">-</p>;
-                        const url = att.url ?? att.file_url ?? att.data_url ?? att.file_data ?? null;
-                        const name = att.file_name ?? att.name ?? (att.id != null ? `Attachment #${att.id}` : "Attachment");
-                        const isImage =
-                          (att.content_type ?? "").startsWith("image/") ||
-                          (typeof url === "string" && url.startsWith("data:image/"));
+                        const url = typeof att === "string" ? att : null;
+                        const name = "Attachment";
+                        const isImage = url?.startsWith("data:image/");
                         return (
                           <div className="flex flex-wrap gap-3">
                             <div className="flex flex-col items-start gap-1 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950">

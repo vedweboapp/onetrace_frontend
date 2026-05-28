@@ -283,7 +283,7 @@ const ProjectTypeFormList = () => {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between rounded-md border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-                <ListPageSearchField
+                <ListPageSearchField 
                     placeholder={t("searchPlaceholder")}
                     ariaLabel={t("searchAria")}
                     value={search}
