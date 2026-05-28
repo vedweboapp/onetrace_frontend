@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { Plus } from "lucide-react";
 import {
@@ -20,6 +21,7 @@ import type { ProjectType } from "@/features/project-types/types/project-type.ty
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { DashboardAppBrand } from "@/features/dashboard/components/dashboard-app-brand";
 
 interface FormListItem {
     id: number | string;
@@ -66,6 +68,7 @@ function formApiName(row: FormListItem): string {
 }
 
 const ProjectTypeFormList = () => {
+    const t = useTranslations("Dashboard.settingsProjectForms");
     const router = useRouter();
     const dateFmt = useDashboardDateFormat();
 
@@ -144,7 +147,7 @@ const ProjectTypeFormList = () => {
                 }
             } catch {
                 if (!cancelled) {
-                    setLoadError("Failed to load forms. Please try again.");
+                    setLoadError(t("loadError"));
                     setItems([]);
                 }
             } finally {
@@ -154,7 +157,7 @@ const ProjectTypeFormList = () => {
         return () => {
             cancelled = true;
         };
-    }, [page, pageSize, search]);
+    }, [page, pageSize, search, t]);
 
     React.useEffect(() => {
         if (!projectTypeModalOpen) return;
@@ -170,7 +173,7 @@ const ProjectTypeFormList = () => {
             } catch {
                 if (!cancelled) {
                     setProjectTypes([]);
-                    setProjectTypesError("Failed to load project types. Please try again.");
+                    setProjectTypesError(t("projectTypesLoadError"));
                 }
             } finally {
                 if (!cancelled) setProjectTypesLoading(false);
@@ -179,7 +182,7 @@ const ProjectTypeFormList = () => {
         return () => {
             cancelled = true;
         };
-    }, [projectTypeModalOpen]);
+    }, [projectTypeModalOpen, t]);
 
     const openProjectTypePicker = React.useCallback(() => {
         setSelectedProjectTypeId(null);
@@ -208,20 +211,20 @@ const ProjectTypeFormList = () => {
     const tableColumns = React.useMemo(() => {
         const c = entityCol<FormListItem>();
         return [
-            c.custom("name", "Form Name", (row) => (
+            c.custom("name", t("table.formName"), (row) => (
                 <span className="font-medium text-slate-800 dark:text-slate-100">
                     {row.name || "—"}
                 </span>
             )),
             c.mono(
                 "api_name",
-                "API Name",
+                t("table.apiName"),
                 (row) => formApiName(row),
                 { responsive: "sm" },
             ),
             c.custom(
                 "project_type",
-                "Project Type",
+                t("table.projectType"),
                 (row) => (
                     <span className="text-slate-600 dark:text-slate-300">
                         {projectTypeLabel(row.project_type)}
@@ -231,14 +234,14 @@ const ProjectTypeFormList = () => {
             ),
             c.status(
                 "status",
-                "Status",
+                t("table.status"),
                 (r) => !!r.is_active,
-                "Active",
-                "Inactive",
+                t("status.active"),
+                t("status.inactive"),
             ),
             c.custom(
                 "created",
-                "Created",
+                t("table.created"),
                 (row) => (
                     <>
                         <span className="block text-slate-500 dark:text-slate-400">
@@ -257,7 +260,7 @@ const ProjectTypeFormList = () => {
             ),
             c.custom(
                 "updated",
-                "Updated",
+                t("table.updated"),
                 (row) => (
                     <>
                         <span className="block text-slate-500 dark:text-slate-400">
@@ -275,19 +278,19 @@ const ProjectTypeFormList = () => {
                 { responsive: "md" },
             ),
         ];
-    }, [dateFmt]);
+    }, [dateFmt, t]);
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between rounded-md border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
                 <ListPageSearchField
-                    placeholder="Search project type forms"
-                    ariaLabel="Search project type forms"
+                    placeholder={t("searchPlaceholder")}
+                    ariaLabel={t("searchAria")}
                     value={search}
                     onCommit={commitSearch}
                 />
                 <AppButton onClick={openProjectTypePicker}>
-                    <Plus className="size-4" /> Create new form
+                    <Plus className="size-4" /> {t("createNewForm")}
                 </AppButton>
             </div>
 
@@ -304,7 +307,7 @@ const ProjectTypeFormList = () => {
                     </div>
                 ) : items.length === 0 ? (
                     <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                        No forms found. Create your first form to get started.
+                        {t("empty")}
                     </div>
                 ) : (
                     <EntityDataTable
@@ -321,15 +324,15 @@ const ProjectTypeFormList = () => {
                 {!loading && !loadError && items.length > 0 ? (
                     <DataTablePaginationBar
                         pagination={pagination}
-                        summary={`${pageRange.start}–${pageRange.end} of ${pagination.total_records}`}
-                        prevLabel="Previous"
-                        nextLabel="Next"
+                        summary={t("pageLabel", { start: pageRange.start, end: pageRange.end, total: pagination.total_records })}
+                        prevLabel={t("prev")}
+                        nextLabel={t("next")}
                         onPrev={() => setPage(Math.max(1, pagination.current_page - 1))}
                         onNext={() => setPage(pagination.current_page + 1)}
                         onPageSelect={(p) => setPage(p)}
                         pageSizeControl={{
-                            label: "Rows per page",
-                            listLabel: "Rows per page",
+                            label: t("rowsPerPage"),
+                            listLabel: t("rowsPerPage"),
                             value: pageSize,
                             options: pageSizeOptions,
                             onChange: setPageSize,
@@ -342,8 +345,8 @@ const ProjectTypeFormList = () => {
             <AppModal
                 open={projectTypeModalOpen}
                 onClose={() => setProjectTypeModalOpen(false)}
-                title="Select project type"
-                description="Choose the project type this form belongs to."
+                title={t("modal.selectProjectTypeTitle")}
+                description={t("modal.selectProjectTypeDescription")}
                 size="lg"
                 className="overflow-visible"
                 footer={
@@ -353,14 +356,14 @@ const ProjectTypeFormList = () => {
                             variant="secondary"
                             onClick={() => setProjectTypeModalOpen(false)}
                         >
-                            Cancel
+                            {t("modal.cancel")}
                         </AppButton>
                         <AppButton
                             type="button"
                             onClick={continueToCreateForm}
                             disabled={!selectedProjectTypeId}
                         >
-                            Next
+                            {t("modal.next")}
                         </AppButton>
                     </>
                 }
@@ -372,8 +375,8 @@ const ProjectTypeFormList = () => {
                         </p>
                     ) : null}
                     <CheckmarkSelect
-                        listLabel="Project types"
-                        buttonAriaLabel="Select project type"
+                        listLabel={t("modal.projectTypesList")}
+                        buttonAriaLabel={t("modal.selectProjectTypeAria")}
                         value={selectedProjectTypeId ? String(selectedProjectTypeId) : ""}
                         onChange={(value) =>
                             setSelectedProjectTypeId(value ? Number(value) : null)
@@ -381,19 +384,19 @@ const ProjectTypeFormList = () => {
                         options={projectTypeOptions}
                         emptyLabel={
                             projectTypesLoading
-                                ? "Loading project types..."
-                                : "Select project type"
+                                ? t("modal.loadingProjectTypes")
+                                : t("modal.selectProjectType")
                         }
                         disabled={projectTypesLoading || projectTypesError != null}
                         searchable
-                        searchPlaceholder="Search project types"
+                        searchPlaceholder={t("modal.searchProjectTypes")}
                         portaled={false}
                         side="bottom"
                         className="w-full"
                     />
                     {!projectTypesLoading && !projectTypesError && projectTypeOptions.length === 0 ? (
                         <p className="text-sm text-slate-500 dark:text-slate-400">
-                            No project types found.
+                            {t("modal.noProjectTypes")}
                         </p>
                     ) : null}
                 </div>

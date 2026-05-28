@@ -220,6 +220,45 @@
       "layoutUpdatedToast": "Diseño actualizado correctamente",
       "moduleCreatedToast": "Módulo creado correctamente"
     },
+    "settingsProjectForms":{
+      "createNewForm": "Crear nuevo formulario",
+      "headerLabel": "Formularios de proyecto",
+      "headerDescription":"Crea y gestiona formularios de proyectos aquí.",
+      "searchPlaceholder": "Buscar formularios de tipo de proyecto",
+      "searchAria": "Buscar formularios de tipo de proyecto",
+      "loadError": "No se pudieron cargar los formularios. Inténtalo de nuevo.",
+      "projectTypesLoadError": "No se pudieron cargar los tipos de proyecto. Inténtalo de nuevo.",
+      "empty": "No se encontraron formularios. Crea tu primer formulario para empezar.",
+      "pageLabel": "{start}-{end} de {total}",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "rowsPerPage": "Filas por página",
+      "table": {
+        "formName": "Nombre del formulario",
+        "apiName": "Nombre API",
+        "projectType": "Tipo de proyecto",
+        "status": "Estado",
+        "created": "Creado",
+        "updated": "Actualizado"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "modal": {
+        "selectProjectTypeTitle": "Seleccionar tipo de proyecto",
+        "selectProjectTypeDescription": "Elige el tipo de proyecto al que pertenece este formulario.",
+        "cancel": "Cancelar",
+        "next": "Siguiente",
+        "projectTypesList": "Tipos de proyecto",
+        "selectProjectTypeAria": "Seleccionar tipo de proyecto",
+        "loadingProjectTypes": "Cargando tipos de proyecto...",
+        "selectProjectType": "Seleccionar tipo de proyecto",
+        "searchProjectTypes": "Buscar tipos de proyecto",
+        "noProjectTypes": "No se encontraron tipos de proyecto."
+      }
+
+    },
     "settingsLayouts": {
       "statusUpdatedToast": "Estado del diseño actualizado correctamente"
     },

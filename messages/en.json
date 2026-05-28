@@ -221,6 +221,45 @@
       "layoutUpdatedToast": "Layout updated successfully",
       "moduleCreatedToast": "Module created successfully"
     },
+    "settingsProjectForms":{
+      "createNewForm": "Create new form",
+      "headerLabel": "Project Forms",
+      "headerDescription":"Create and manage project in here.",
+      "searchPlaceholder": "Search project type forms",
+      "searchAria": "Search project type forms",
+      "loadError": "Failed to load forms. Please try again.",
+      "projectTypesLoadError": "Failed to load project types. Please try again.",
+      "empty": "No forms found. Create your first form to get started.",
+      "pageLabel": "{start}-{end} of {total}",
+      "prev": "Previous",
+      "next": "Next",
+      "rowsPerPage": "Rows per page",
+      "table": {
+        "formName": "Form Name",
+        "apiName": "API Name",
+        "projectType": "Project Type",
+        "status": "Status",
+        "created": "Created",
+        "updated": "Updated"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "modal": {
+        "selectProjectTypeTitle": "Select project type",
+        "selectProjectTypeDescription": "Choose the project type this form belongs to.",
+        "cancel": "Cancel",
+        "next": "Next",
+        "projectTypesList": "Project types",
+        "selectProjectTypeAria": "Select project type",
+        "loadingProjectTypes": "Loading project types...",
+        "selectProjectType": "Select project type",
+        "searchProjectTypes": "Search project types",
+        "noProjectTypes": "No project types found."
+      }
+
+    },
     "settingsLayouts": {
       "statusUpdatedToast": "Layout status updated successfully"
     },

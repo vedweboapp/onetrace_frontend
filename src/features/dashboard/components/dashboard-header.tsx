@@ -86,6 +86,7 @@ export function DashboardHeader() {
   const jobStatusHref = routes.dashboard.settingsJobStatus;
   const tagHref = routes.dashboard.settingsTags;
   const projectTypeHref = routes.dashboard.settingsProjectTypes;
+  const projectFormsHref = routes.dashboard.settingsProjectForms;
   const usersHref = routes.dashboard.settingsUsers;
   const homeActive = pathname === homeHref;
   const clientsActive =
@@ -115,6 +116,8 @@ export function DashboardHeader() {
   const tagActive = pathname === tagHref || pathname.startsWith(`${tagHref}/`);
   const projectTypeActive =
     pathname === projectTypeHref || pathname.startsWith(`${projectTypeHref}/`);
+  const projectFormsActive =
+    pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
   const customizationHubActive =
     pathname === customizationHref || pathname.startsWith(`${customizationHref}/`);
   const customizationActive = isCustomizationSettingsPath(pathname);
@@ -156,9 +159,11 @@ export function DashboardHeader() {
                                     ? tSettingsNav("tags")
                                     : projectTypeActive
                                       ? tSettingsNav("projectTypes")
-                                      : usersActive
-                                        ? tSettingsNav("users")
-                                        : tNav("home");
+                                      : projectFormsActive
+                                        ? tSettingsNav("projectForms")
+                                        : usersActive
+                                          ? tSettingsNav("users")
+                                          : tNav("home");
 
   return (
     <header className="flex h-auto shrink-0 flex-col bg-white dark:bg-slate-950">

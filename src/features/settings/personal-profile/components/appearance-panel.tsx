@@ -118,7 +118,7 @@ export function AppearancePanel() {
 
   return (
     <div className={`w-full space-y-8 pb-10 transition-opacity duration-500 ${isMounted ? "animate-in fade-in duration-500 opacity-100" : "opacity-0"}`}>
-      <ListPageHeader variant="page" title={t("title")} description={t("subtitle")} showViewToggle={false} />
+      {/* <ListPageHeader variant="page" title={t("title")} description={t("subtitle")} showViewToggle={false} /> */}
 
       {/* Workspace Preferences */}
       <SectionShell title="Workspace Preferences">

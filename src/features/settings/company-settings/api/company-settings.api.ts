@@ -1,40 +1,46 @@
 import api from "@/core/api/axios";
 import { COMPANY_SETTING_PATH } from "./company-setting.path";
 import { OrganizationDetails, UpdateOrganizationRequest } from "../types/types";
+import { currencyList } from "@/shared/form/components/currency-list";
 
-const mapResponseToOrganization = (responseData: Record<string, unknown>): OrganizationDetails => ({
-  id: Number(responseData.id),
-  logo: (responseData.company_logo as string | null) ?? null,
-  name: (responseData.company_name as string) || "",
-  size: (responseData.company_size as string) || "",
-  description: (responseData.description as string) || "",
-  website: (responseData.website_link as string) || "",
-  timezone: (responseData.timezone as string) || "",
-  street: (responseData.street_address as string) || "",
-  city: (responseData.city as string) || "",
-  state: (responseData.state as string) || "",
-  zip: (responseData.pincode as string) || "",
-  country: (responseData.country as string) || "",
-  currencyCode: (responseData.currency as string) || (responseData.currency_code as string) || "INR",
-  currencyName: (responseData.currency_name as string) || "Indian Rupee",
-  formatType: (responseData.format as string) || (responseData.format_type as string) || "symbol",
-  symbol: (responseData.symbol as string) || "₹",
-  symbolPosition: (responseData.symbol_position as string) || "before",
-  digitSeparator: (responseData.digit_separator as string) || "1,234,567.89",
-  decimalPlaces:
-    responseData.decimal_places !== undefined ? Number(responseData.decimal_places) : 2,
-  startTime: (responseData.start_time as string) || "09:00",
-  endTime: (responseData.end_time as string) || "17:00",
-  workingDays:
-    (responseData.working_days as string[]) || [
-      "monday",
-      "tuesday",
-      "wednesday",
-      "thursday",
-      "friday",
-    ],
-  breakDuration: (responseData.break_duration as string) || "30 minutes",
-});
+const mapResponseToOrganization = (responseData: Record<string, unknown>): OrganizationDetails => {
+  const currencyCode = ((responseData.currency as string) || (responseData.currency_code as string) || "INR").trim();
+  const selectedCurrency = currencyList.find((currency) => currency.value === currencyCode);
+
+  return {
+    id: Number(responseData.id),
+    logo: (responseData.company_logo as string | null) ?? null,
+    name: (responseData.company_name as string) || "",
+    size: (responseData.company_size as string) || "",
+    description: (responseData.description as string) || "",
+    website: (responseData.website_link as string) || "",
+    timezone: (responseData.timezone as string) || "",
+    street: (responseData.street_address as string) || "",
+    city: (responseData.city as string) || "",
+    state: (responseData.state as string) || "",
+    zip: (responseData.pincode as string) || "",
+    country: (responseData.country as string) || "",
+    currencyCode,
+    currencyName: selectedCurrency?.label || (responseData.currency_name as string) || "Indian Rupee",
+    formatType: (responseData.format as string) || (responseData.format_type as string) || "symbol",
+    symbol: selectedCurrency?.symbol || (responseData.symbol as string) || "₹",
+    symbolPosition: (responseData.symbol_position as string) || "before",
+    digitSeparator: (responseData.digit_separator as string) || "1,234,567.89",
+    decimalPlaces:
+      responseData.decimal_places !== undefined ? Number(responseData.decimal_places) : 2,
+    startTime: (responseData.start_time as string) || "09:00",
+    endTime: (responseData.end_time as string) || "17:00",
+    workingDays:
+      (responseData.working_days as string[]) || [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+      ],
+    breakDuration: (responseData.break_duration as string) || "30 minutes",
+  };
+};
 
 /** Maps changed app fields to API payload keys (only include keys present in patch). */
 const mapPatchToApiPayload = (patch: Partial<UpdateOrganizationRequest>): Record<string, unknown> => {
