@@ -140,6 +140,15 @@ export function JobFormScreen({ mode, jobId }: Props) {
     kind: "composite-item",
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
+  const openFormsSettings = React.useCallback(() => {
+    router.push(routes.dashboard.settingsProjectForms);
+  }, [router]);
+  const openUsersSettings = React.useCallback(() => {
+    router.push(routes.dashboard.settingsUsers);
+  }, [router]);
+  const openJobStatusSettings = React.useCallback(() => {
+    router.push(routes.dashboard.settingsJobStatus);
+  }, [router]);
 
   const reloadClients = React.useCallback(async () => {
     try {
@@ -386,15 +395,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                 />
               </FieldGroup>
 
-              <FieldGroup label={t("fields.comments")} htmlFor="job-comments">
-                <textarea
-                  id="job-comments"
-                  rows={2}
-                  className={cn(surfaceInputClassName, "resize-y min-h-[72px]")}
-                  disabled={saving}
-                  {...register("comments")}
-                />
-              </FieldGroup>
+            
             </section>
 
             <section className="space-y-6">
@@ -501,6 +502,9 @@ export function JobFormScreen({ mode, jobId }: Props) {
                         listLabel={t("fields.form")}
                         portaled
                         searchable
+                        onAdd={openFormsSettings}
+                        addAriaLabel="Add form"
+                        addLabel="Add new"
                       />
                       <FieldErrorText>{errors.forms?.message}</FieldErrorText>
                     </div>
@@ -526,6 +530,9 @@ export function JobFormScreen({ mode, jobId }: Props) {
                         listLabel={t("fields.jobStatus")}
                         portaled
                         searchable
+                        onAdd={openJobStatusSettings}
+                        addAriaLabel="Add job status"
+                        addLabel="Add new"
                       />
                       <FieldErrorText>{errors.job_status?.message}</FieldErrorText>
                     </div>
@@ -548,6 +555,9 @@ export function JobFormScreen({ mode, jobId }: Props) {
                         listLabel={t("fields.assignedWorker")}
                         portaled
                         searchable
+                        onAdd={openUsersSettings}
+                        addAriaLabel="Add user"
+                        addLabel="Add new"
                       />
                       <FieldErrorText>{errors.assigned_worker?.message}</FieldErrorText>
                     </div>

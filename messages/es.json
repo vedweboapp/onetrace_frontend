@@ -1335,7 +1335,7 @@
       "fields": {
         "title": "Título",
         "description": "Descripción",
-        "comments": "Comentarios",
+        
         "client": "Cliente",
         "project": "Proyecto",
         "site": "Sitio",

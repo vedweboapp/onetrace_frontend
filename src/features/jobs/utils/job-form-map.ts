@@ -61,8 +61,7 @@ export function mapJobFormToPayload(
 
   if (endRaw) payload.end_date = htmlDatetimeLocalToIso(endRaw);
 
-  const comments = values.comments.trim();
-  if (comments) payload.comments = comments;
+  
 
   const forms = parseOptionalIdField(values.forms);
   if (forms != null) payload.forms = forms;
@@ -88,7 +87,7 @@ export function emptyJobFormDefaults(): JobFormValues {
   return {
     title: "",
     description: "",
-    comments: "",
+  
     forms: "",
     job_status: "",
     client: "",
@@ -113,7 +112,7 @@ export function jobToFormDefaults(job: Job): JobFormValues {
   return {
     title: job.title ?? "",
     description: job.description ?? "",
-    comments: typeof job.comments === "string" ? job.comments : "",
+    
     forms: String(nestedId(job.forms as number | { id: number } | undefined) ?? ""),
     job_status: String(
       typeof job.job_status === "number"

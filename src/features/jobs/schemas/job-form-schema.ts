@@ -22,7 +22,7 @@ export function createJobFormSchema(messages: JobFormMessages) {
     .object({
       title: zTrimmedNonEmpty(messages.title),
       description: z.string(),
-      comments: z.string(),
+      
       forms: optionalPositiveId(messages.optionalId),
       job_status: optionalPositiveId(messages.optionalId),
       client: optionalPositiveId(messages.optionalId),
