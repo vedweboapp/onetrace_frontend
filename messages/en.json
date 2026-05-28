@@ -217,7 +217,8 @@
       "AddPhone": "Add Phone",
       "AddEmail": "Add Email",
       "AddAddress": "Add Address",
-      "Addresses": "Addresses"
+      "Addresses": "Addresses",
+      "Primary": "Primary"
 
     },
     "settingsCompany": {
@@ -268,7 +269,9 @@
         "selectProjectType": "Select project type",
         "searchProjectTypes": "Search project types",
         "noProjectTypes": "No project types found."
-      }
+      },
+      "statusUpdatedToast": "Form status updated successfully",
+      "statusUpdateErrorToast": "Failed to update form status. Please try again."
 
     },
     "settingsLayouts": {

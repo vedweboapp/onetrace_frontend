@@ -2,8 +2,8 @@ export type PersonalProfileHeaderTabKey = {
     id: string;
     label: string;
 };
-export type ContactEmail = { email: string };
-export type ContactPhone = { phone: string; label?: string };
+export type ContactEmail = { email: string; is_primary?: boolean };
+export type ContactPhone = { phone: string; label?: string; is_primary?: boolean };
 export type ContactAddress = {
     address: string;
     isPrimary?: boolean;

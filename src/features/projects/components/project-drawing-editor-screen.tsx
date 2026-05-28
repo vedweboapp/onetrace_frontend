@@ -690,10 +690,24 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     });
   }
 
-  async function fileToPinAttachment(file: File): Promise<DrawingPinAttachment> {
-    // Attachment draft is stored as a data URL so it can be persisted with the pin payload.
-    const dataUrl = await readFileAsDataUrl(file);
-    return dataUrl;
+  async function filesToPinAttachments(files: File[]): Promise<DrawingPinAttachment[]> {
+    if (!files.length) return [];
+    const now = Date.now();
+    const out: DrawingPinAttachment[] = [];
+    let i = 0;
+    for (const file of files) {
+      // Attachments draft is stored as data URLs so it can be persisted with the pin payload.
+      const dataUrl = await readFileAsDataUrl(file);
+      out.push({
+        id: -(now + i),
+        file_name: file.name,
+        content_type: file.type || null,
+        file_data: dataUrl,
+        data_url: dataUrl,
+      });
+      i++;
+    }
+    return out;
   }
 
   function stagePointFromEvent(e: React.MouseEvent): number[] | null {
@@ -1056,7 +1070,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         variation: pin.variation ?? false,
         location: pinLabels.get(pin.id),
         description: pin.description ?? undefined,
-        attachment: typeof pin.attachment === "string" ? pin.attachment : undefined,
+        attachments: pin.attachments ?? undefined,
       })),
     }));
   }
@@ -1154,7 +1168,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       group: selectedGroupId ? Number.parseInt(selectedGroupId, 10) : undefined,
       item: selectedCompositeId ? Number.parseInt(selectedCompositeId, 10) : undefined,
       description: "",
-      attachment: null,
+      attachments: [],
       status_detail: {
         id: selectedStatus.id,
         status_name: selectedStatus.status_name,
@@ -2005,16 +2019,20 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                         <div className="w-1/2">
                           <input
                             type="file"
+                            multiple
                             className="block w-full text-sm text-slate-700 dark:text-slate-200"
                             disabled={false}
                             onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
+                              const files = Array.from(e.target.files ?? []);
+                              if (!files.length) return;
                               void (async () => {
-                                const draftAttachment = await fileToPinAttachment(file);
+                                const draftAttachments = await filesToPinAttachments(files);
                                 setPinEditData((prev) => ({
                                   ...prev,
-                                  attachment: draftAttachment,
+                                  attachments: [
+                                    ...(prev.attachments ?? detailPin.attachments ?? []),
+                                    ...draftAttachments,
+                                  ],
                                 }));
                               })();
                               // Allow picking the same file again
@@ -2027,43 +2045,55 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
                     <div className="mt-3 space-y-2">
                       {(() => {
-                        const att = ((isPinEditing ? pinEditData.attachment : detailPin.attachment) ?? null) as string | null;
-
-                        if (!att) return <p className="text-sm text-slate-500">-</p>;
-                        const url = typeof att === "string" ? att : null;
-                        const name = "Attachment";
-                        const isImage = url?.startsWith("data:image/");
+                        const attachments = (isPinEditing ? pinEditData.attachments : detailPin.attachments) ?? [];
+                        if (!attachments.length) return <p className="text-sm text-slate-500">-</p>;
                         return (
                           <div className="flex flex-wrap gap-3">
-                            <div className="flex flex-col items-start gap-1 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950">
-                              {url && isImage ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={url} alt={name} className="h-16 w-16 rounded-md border border-slate-200 object-cover dark:border-slate-700" />
-                              ) : null}
-                              {url ? (
-                                <a
-                                  href={url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="max-w-[160px] truncate text-xs font-semibold text-blue-600 hover:underline"
-                                >
-                                  {name}
-                                </a>
-                              ) : (
-                                <p className="max-w-[160px] truncate text-xs font-semibold text-slate-700 dark:text-slate-200">
-                                  {name}
-                                </p>
-                              )}
-                              {isPinEditing ? (
-                                <button
-                                  type="button"
-                                  className="text-[10px] font-bold text-red-600 hover:text-red-700"
-                                  onClick={() => setPinEditData((prev) => ({ ...prev, attachment: null }))}
-                                >
-                                  Remove
-                                </button>
-                              ) : null}
-                            </div>
+                            {attachments.map((att, idx) => {
+                              const url = att.url ?? att.file_url ?? att.data_url ?? att.file_data ?? null;
+                              const name =
+                                att.file_name ?? att.name ?? att.id != null ? `Attachment #${att.id}` : `Attachment ${idx + 1}`;
+                              const isImage =
+                                (att.content_type ?? "").startsWith("image/") ||
+                                (typeof url === "string" && url.startsWith("data:image/"));
+                              return (
+                                <div key={idx} className="flex flex-col items-start gap-1 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950">
+                                  {url && isImage ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={url} alt={name} className="h-16 w-16 rounded-md border border-slate-200 object-cover dark:border-slate-700" />
+                                  ) : null}
+                                  {url ? (
+                                    <a
+                                      href={url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="max-w-[160px] truncate text-xs font-semibold text-blue-600 hover:underline"
+                                    >
+                                      {name}
+                                    </a>
+                                  ) : (
+                                    <p className="max-w-[160px] truncate text-xs font-semibold text-slate-700 dark:text-slate-200">
+                                      {name}
+                                    </p>
+                                  )}
+                                  {isPinEditing ? (
+                                    <button
+                                      type="button"
+                                      className="text-[10px] font-bold text-red-600 hover:text-red-700"
+                                      onClick={() => {
+                                        setPinEditData((prev) => {
+                                          const curr = (prev.attachments ?? detailPin.attachments ?? []) as DrawingPinAttachment[];
+                                          const next = curr.filter((_, i) => i !== idx);
+                                          return { ...prev, attachments: next };
+                                        });
+                                      }}
+                                    >
+                                      Remove
+                                    </button>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
                           </div>
                         );
                       })()}

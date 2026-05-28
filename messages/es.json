@@ -217,7 +217,8 @@
       "AddPhone": "Añadir teléfono",
       "AddEmail": "Añadir correo electrónico",
       "AddAddress": "Añadir dirección",
-      "Addresses": "Direcciones"
+      "Addresses": "Direcciones",
+      "Primary": "Principal"
     },
     "settingsCompany": {
       "organizationUpdatedToast": "Datos de la organización actualizados correctamente",
@@ -267,7 +268,9 @@
         "selectProjectType": "Seleccionar tipo de proyecto",
         "searchProjectTypes": "Buscar tipos de proyecto",
         "noProjectTypes": "No se encontraron tipos de proyecto."
-      }
+      },
+      "statusUpdatedToast": "Estado del formulario actualizado correctamente",
+      "statusUpdateErrorToast": "No se pudo actualizar el estado del formulario. Inténtalo de nuevo."
 
     },
     "settingsLayouts": {
