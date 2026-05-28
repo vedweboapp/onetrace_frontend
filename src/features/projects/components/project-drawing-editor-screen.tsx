@@ -64,6 +64,19 @@ function inside(point: number[], vs: number[][]): boolean {
   return isInside;
 }
 
+const PIN_OUTSIDE_PLOT_MESSAGE = "Cannot edit boundary: Pin would be outside the plot. Move the pin first or remove it.";
+
+function pointOnSegment(point: number[], a: number[], b: number[], tolerance = 0.75): boolean {
+  return distanceToSegment(point, a, b) <= tolerance;
+}
+
+function insideOrOnBoundary(point: number[], polygon: number[][]): boolean {
+  if (inside(point, polygon)) return true;
+  return polygon.some((vertex, index) =>
+    pointOnSegment(point, vertex, polygon[(index + 1) % polygon.length]!),
+  );
+}
+
 const PLOT_PALETTE = [
   { border: "#059669", bg: "#0596690D" },  // Green
   { border: "#2563EB", bg: "#2563EB0D" },  // Blue
@@ -132,6 +145,19 @@ function pixelToPercent(pt: number[], pageSize: { width: number; height: number 
     Number(((pt[0] / pageSize.width) * 100).toFixed(6)),
     Number(((pt[1] / pageSize.height) * 100).toFixed(6)),
   ];
+}
+
+function plotContainsAllPins(
+  plot: LocalPlot,
+  coordinates: number[][],
+  pageSize: { width: number; height: number },
+): boolean {
+  if (coordinates.length < 3) return plot.pins.length === 0;
+  const polygon = coordinates.map((coordinate) => percentToPixel(coordinate, pageSize));
+  return plot.pins.every((pin) => {
+    const pinPoint = percentToPixel([pin.x_coordinate, pin.y_coordinate], pageSize);
+    return insideOrOnBoundary(pinPoint, polygon);
+  });
 }
 
 function getCentroid(points: number[][]): number[] {
@@ -715,27 +741,32 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
       if (editingPlotId) {
         const pct = pixelToPercent(pt, pageSize);
+        const targetPlot = plots.find((p) => p.id === editingPlotId);
+        if (!targetPlot) return;
+
+        const coords = targetPlot.coordinates.map(c => percentToPixel(c, pageSize));
+        let bestIdx = coords.length;
+        let minDist = Infinity;
+
+        for (let i = 0; i < coords.length; i++) {
+          const d = distanceToSegment(pt, coords[i]!, coords[(i + 1) % coords.length]!);
+          if (d < minDist) {
+            minDist = d;
+            bestIdx = i + 1;
+          }
+        }
+
+        const nextCoords = [...targetPlot.coordinates];
+        nextCoords.splice(bestIdx, 0, pct);
+        if (!plotContainsAllPins(targetPlot, nextCoords, pageSize)) {
+          toastError(PIN_OUTSIDE_PLOT_MESSAGE);
+          return;
+        }
+
         setPlots((prev) =>
-          prev.map((p) => {
-            if (p.id !== editingPlotId) return p;
-
-        
-            const coords = p.coordinates.map(c => percentToPixel(c, pageSize));
-            let bestIdx = coords.length;
-            let minDist = Infinity;
-
-            for (let i = 0; i < coords.length; i++) {
-              const d = distanceToSegment(pt, coords[i]!, coords[(i + 1) % coords.length]!);
-              if (d < minDist) {
-                minDist = d;
-                bestIdx = i + 1;
-              }
-            }
-
-            const nextCoords = [...p.coordinates];
-            nextCoords.splice(bestIdx, 0, pct);
-            return { ...p, coordinates: nextCoords };
-          })
+          prev.map((p) =>
+            p.id === editingPlotId ? { ...p, coordinates: nextCoords } : p,
+          )
         );
         setDirty(true);
         return;
@@ -886,10 +917,10 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
           for (const pin of targetPlot.pins) {
             const pinPt = percentToPixel([pin.x_coordinate, pin.y_coordinate], ps);
-            if (!inside(pinPt, nextPolyPixels)) {
+            if (!insideOrOnBoundary(pinPt, nextPolyPixels)) {
               const now = Date.now();
               if (now - lastPinConstraintToastRef.current > 2000) {
-                toastError("Cannot move boundary: Pin would be outside the plot. Move the pin first or remove it.");
+                toastError(PIN_OUTSIDE_PLOT_MESSAGE);
                 lastPinConstraintToastRef.current = now;
               }
               return; // Block movement if any pin would be outside
@@ -1199,6 +1230,11 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   }
 
   async function saveAllChanges() {
+    if (plots.some((plot) => !plotContainsAllPins(plot, plot.coordinates, pageSize))) {
+      toastError(PIN_OUTSIDE_PLOT_MESSAGE);
+      return;
+    }
+
     setSavingAll(true);
     try {
       await persistPlots(plots);
@@ -1638,10 +1674,14 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                                   toastError("Polygon must have at least 3 points");
                                   return;
                                 }
+                                const nextCoords = [...plot.coordinates];
+                                nextCoords.splice(idx, 1);
+                                if (!plotContainsAllPins(plot, nextCoords, pageSize)) {
+                                  toastError(PIN_OUTSIDE_PLOT_MESSAGE);
+                                  return;
+                                }
                                 setPlots(prev => prev.map(p => {
                                   if (p.id !== plot.id) return p;
-                                  const nextCoords = [...p.coordinates];
-                                  nextCoords.splice(idx, 1);
                                   return { ...p, coordinates: nextCoords };
                                 }));
                                 setDirty(true);
