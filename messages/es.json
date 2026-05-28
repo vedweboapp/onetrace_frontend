@@ -1368,13 +1368,13 @@
         "basic": "Detalles",
         "relations": "Vínculos",
         "schedule": "Programación",
-        "jobMeta": "Alcance del trabajo",
-        "jobMetaHint": "Sección, parcela, grupo e ítem compuesto opcionales para este trabajo."
+        "jobMeta": "Alcance del trabajo"
+    
       },
       "fields": {
         "title": "Título",
         "description": "Descripción",
-        "comments": "Comentarios",
+        
         "client": "Cliente",
         "project": "Proyecto",
         "site": "Sitio",

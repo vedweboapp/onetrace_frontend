@@ -43,7 +43,7 @@ export type JobCreatePayload = {
   end_date?: string;
   is_active: boolean;
   forms?: number;
-  comments?: string;
+
   job_status?: number;
   client?: number;
   project?: number;
@@ -80,7 +80,7 @@ export type Job = {
   deleted_by: unknown;
   organization?: number;
   forms?: number | { id: number; name?: string };
-  comments?: string | null;
+
   client?: number | { id: number; name?: string };
   project?: number | { id: number; name?: string };
   site?: number | { id: number; site_name?: string };

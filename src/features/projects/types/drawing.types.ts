@@ -46,7 +46,9 @@ export type DrawingPin = {
   /** Optional description shown in the pin details panel. */
   description?: string | null;
 
-  /** Optional attachments (may be returned as URLs by the backend or as data URLs from the editor draft). */
+  /** Optional single attachment for a pin. */
+  attachment?: DrawingPinAttachment | null;
+  /** Legacy/read fallback when API still returns list format. */
   attachments?: DrawingPinAttachment[] | null;
 
   item_detail?: {
@@ -111,7 +113,7 @@ export type DrawingPlotUpsert = {
     location?: number | string;
 
     description?: string | null;
-    attachments?: DrawingPinAttachment[] | null;
+    attachment?: DrawingPinAttachment | null;
   }>;
 };
 

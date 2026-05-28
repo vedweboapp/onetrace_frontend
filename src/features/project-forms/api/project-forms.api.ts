@@ -22,12 +22,14 @@ export async function updateProjectForm(
   return data?.data ?? data;
 }
 
-/** POST /api/v1/forms/{formId}/rules/ */
+/** POST/PUT /api/v1/forms/{formId}/rules/ */
 export async function createProjectFormRules(
   formId: string | number,
   rulesPayload: any[],
+  purpose?: string | null,
 ): Promise<any> {
-  const { data } = await api.put(
+  const method = purpose === "create_project_form" ? "post" : "put";
+  const { data } = await api[method](
     `forms/${formId}/rules/`,
     rulesPayload,
     { skipErrorToast: true },

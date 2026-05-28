@@ -64,14 +64,14 @@ export const projectFormHandlers: FormBuilderApiHandlers = {
   },
 
   /**
-   * Step 3 — POST /api/v1/forms/{formId}/rules/
+   * Step 3 — POST /api/v1/forms/{formId}/rules/ for create, PUT for edit
    * Called automatically by FormBuilder after a successful `createForm`.
    */
   createRules: async (
     formId: string | number,
     rules: any[],
-    _ctx: HandlerContext,
+    ctx: HandlerContext,
   ): Promise<any> => {
-    return createProjectFormRules(formId, rules);
+    return createProjectFormRules(formId, rules, ctx.purpose);
   },
 };
