@@ -26,8 +26,6 @@ export function ClientDetailScreen({ clientId }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = React.useState("details");
-
   const detailTabs = React.useMemo<AppTabItem[]>(
     () => [
       { id: "details", label: t("detail.tabs.details") },
@@ -39,6 +37,11 @@ export function ClientDetailScreen({ clientId }: Props) {
 
   const allowedDetailTabIds = React.useMemo(() => new Set(detailTabs.map((x) => x.id)), [detailTabs]);
 
+  const tabFromUrl = searchParams.get("tab");
+  const [activeTab, setActiveTab] = React.useState(() =>
+    tabFromUrl && ["details", "contacts", "sites"].includes(tabFromUrl) ? tabFromUrl : "details",
+  );
+
   React.useEffect(() => {
     const tab = searchParams.get("tab");
     if (!tab || !allowedDetailTabIds.has(tab)) return;
@@ -46,7 +49,7 @@ export function ClientDetailScreen({ clientId }: Props) {
     const p = new URLSearchParams(searchParams.toString());
     p.delete("tab");
     const qs = p.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname);
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [searchParams, pathname, router, allowedDetailTabIds]);
 
   return (
@@ -68,7 +71,14 @@ export function ClientDetailScreen({ clientId }: Props) {
         <AppTabs
           tabs={detailTabs}
           value={activeTab}
-          onValueChange={setActiveTab}
+          onValueChange={(tab) => {
+            setActiveTab(tab);
+            const p = new URLSearchParams(searchParams.toString());
+            if (tab === "details") p.delete("tab");
+            else p.set("tab", tab);
+            const qs = p.toString();
+            router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+          }}
           ariaLabel={t("detail.tabsAria")}
           panelIdPrefix="client-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"

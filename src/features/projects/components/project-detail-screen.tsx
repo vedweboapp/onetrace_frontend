@@ -11,6 +11,7 @@ import { createQuotationFromProject } from "@/features/quotations/api/quotation.
 import { deleteProject, fetchProject } from "@/features/projects/api/project.api";
 import { ProjectDetailBody } from "@/features/projects/components/project-detail-body";
 import { ProjectDrawingsTab } from "@/features/projects/components/project-drawings-tab";
+import { ProjectFormsTab } from "@/features/projects/components/project-forms-tab";
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { projectTypesById } from "@/features/projects/utils/project-type-id.util";
@@ -228,6 +229,8 @@ export function ProjectDetailScreen({ projectId }: Props) {
             <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
           ) : detail && activeTab === "drawings" ? (
             <ProjectDrawingsTab projectId={detail.id} />
+          ) : detail && activeTab === "forms" ? (
+            <ProjectFormsTab />
           ) : activeTab !== "details" ? (
             <DashboardUnderDevelopmentState
               className="min-h-[calc(100vh-280px)] rounded-none px-4 sm:min-h-[420px] sm:px-6"

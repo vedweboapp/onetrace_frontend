@@ -43,6 +43,12 @@ export type DrawingPin = {
   variation?: boolean;
   location?: number | string;
 
+  /** Optional description shown in the pin details panel. */
+  description?: string | null;
+
+  /** Optional attachments (may be returned as URLs by the backend or as data URLs from the editor draft). */
+  attachments?: DrawingPinAttachment[] | null;
+
   item_detail?: {
     id: number;
     name: string;
@@ -56,6 +62,22 @@ export type DrawingPin = {
     bg_colour: string;
     text_colour: string;
   } | null;
+};
+
+export type DrawingPinAttachment = {
+  id?: number;
+  file_name?: string | null;
+  name?: string | null;
+  url?: string | null;
+  file_url?: string | null;
+  content_type?: string | null;
+  /**
+   * Editor draft format: base64/data-url content so it can be sent back with the pin payload.
+   * Backend may ignore or transform it.
+   */
+  file_data?: string | null;
+  data_url?: string | null;
+  [key: string]: unknown;
 };
 
 export type DrawingPlot = {
@@ -87,6 +109,9 @@ export type DrawingPlotUpsert = {
     item?: number | null;
     quantity?: number;
     location?: number | string;
+
+    description?: string | null;
+    attachments?: DrawingPinAttachment[] | null;
   }>;
 };
 

@@ -17,7 +17,7 @@ import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { resolveFormBackUrl, buildQuickCreateReturnHref } from "@/shared/utils/quick-create-navigation.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
@@ -41,13 +41,12 @@ export function ClientFormScreen({ mode, clientId }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "clients");
   const clientsListHref = React.useMemo(() => {
     const needle = routes.dashboard.clients;
     const i = pathname.indexOf(needle);
     return i >= 0 ? pathname.slice(0, i + needle.length) : needle;
   }, [pathname]);
-  const listBack = safeBack ?? clientsListHref;
+  const safeBack = resolveFormBackUrl(searchParams.get("back"), "clients", clientsListHref);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);
@@ -107,7 +106,11 @@ export function ClientFormScreen({ mode, clientId }: Props) {
     try {
       const saved = isEdit && clientId ? await updateClient(clientId, payload) : await createClient(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(`${listBack}?highlight=${saved.id}`);
+      if (isEdit) {
+        router.replace(`${safeBack}?highlight=${saved.id}`);
+      } else {
+        router.replace(buildQuickCreateReturnHref(safeBack, saved.id, "client"));
+      }
     } finally {
       setSaving(false);
     }
@@ -117,12 +120,12 @@ export function ClientFormScreen({ mode, clientId }: Props) {
     <div className="pb-12">
       <DetailPageHeader
         title={isEdit ? t("page.editTitle") : t("page.createTitle")}
-        backHref={listBack}
+        backHref={safeBack}
         backAriaLabel={t("detail.backAria")}
         subtitle={isEdit ? t("page.editSubtitle") : t("page.createSubtitle")}
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => router.push(listBack)}>
+            <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => router.push(safeBack)}>
               {t("modal.cancel")}
             </AppButton>
             <AppButton type="submit" form="client-upsert-screen-form" variant="primary" size="sm" loading={saving}>

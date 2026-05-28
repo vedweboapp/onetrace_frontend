@@ -1,9 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import type { Site } from "@/features/sites/types/site.types";
+import {
+  formatSiteContactPersonContactLabel,
+  getSiteContactPersonContactId,
+  normalizeSiteContactPersonsFromApi,
+} from "@/features/sites/utils/site-contact-person.util";
 import { routes } from "@/shared/config/routes";
 import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
@@ -32,10 +37,12 @@ export function SiteDetailBody({
   detail,
   dateFmt,
   clientName,
+  contactNameById = {},
 }: {
   detail: Site;
   dateFmt: Intl.DateTimeFormat;
   clientName: string | null;
+  contactNameById?: Record<number, string>;
 }) {
   const t = useTranslations("Dashboard.sites");
   const tMeta = useTranslations("Dashboard.common.detail");
@@ -45,6 +52,8 @@ export function SiteDetailBody({
       : typeof detail.client?.id === "number"
         ? detail.client.id
         : null;
+  const contactPersonRows = normalizeSiteContactPersonsFromApi(detail);
+
   const addressParts = {
     line1: detail.address_line_1,
     line2: detail.address_line_2,
@@ -94,6 +103,39 @@ export function SiteDetailBody({
               )}
             </DetailMetricCard>
           </DetailMetricsGrid>
+        </DetailPanelCard>
+
+        <DetailPanelCard title={t("contactPerson.sectionTitle")}>
+          {contactPersonRows.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t("contactPerson.empty")}</p>
+          ) : (
+            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+              {contactPersonRows.map((row, index) => {
+                const contactId = getSiteContactPersonContactId(row.contact);
+                const contactLabel = formatSiteContactPersonContactLabel(row.contact, contactNameById);
+                return (
+                  <li
+                    key={row.id ?? `${row.title}-${contactId ?? index}`}
+                    className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                  >
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      {t(`contactPerson.titles.${row.title}`)}
+                    </span>
+                    {contactId ? (
+                      <Link
+                        href={`${routes.dashboard.contacts}/${contactId}`}
+                        className="text-sm font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                      >
+                        {contactLabel}
+                      </Link>
+                    ) : (
+                      <span className="text-sm text-slate-600 dark:text-slate-400">{contactLabel}</span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </DetailPanelCard>
 
         <DetailPanelCard title={t("detail.sectionAddress")}>

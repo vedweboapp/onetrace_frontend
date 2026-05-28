@@ -15,7 +15,7 @@ export interface UsersSelectProps {
   placeholder?: string;
   readOnly?: boolean;
   className?: string;
-  // Direct prop (from flat field config in builder preview)
+
   userType?: "single" | "multiple";
   // Nested prop (from saved API response via field.properties)
   properties?: {

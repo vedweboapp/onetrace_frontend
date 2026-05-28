@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
-import { useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { createContact, fetchContact, updateContact } from "@/features/contacts/api/contact.api";
 import { createContactFormSchema, type ContactFormValues } from "@/features/contacts/schemas/contact-form-schema";
@@ -14,8 +14,15 @@ import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
+import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import {
+  buildQuickCreateReturnHref,
+  QUICK_CREATE_CLIENT_PARAM,
+  resolveFormBackUrl,
+} from "@/shared/utils/quick-create-navigation.util";
 import {
   AppButton,
   AddressLineAutocompleteFields,
@@ -37,8 +44,9 @@ type Props = {
 export function ContactFormScreen({ mode, contactId }: Props) {
   const t = useTranslations("Dashboard.contacts");
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "contacts");
+  const safeBack = resolveFormBackUrl(searchParams.get("back"), "contacts", routes.dashboard.contacts);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);
@@ -67,6 +75,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
     register,
     reset,
     setValue,
+    getValues,
     handleSubmit,
     formState: { errors },
   } = useForm<ContactFormValues>({
@@ -74,20 +83,53 @@ export function ContactFormScreen({ mode, contactId }: Props) {
     defaultValues: emptyContactFormDefaults(),
   });
 
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
-        if (!cancelled) setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
-      } catch {
-        if (!cancelled) setClientOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+  const reloadClients = React.useCallback(async () => {
+    try {
+      const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+      setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
+    } catch {
+      setClientOptions([]);
+    }
   }, []);
+
+  React.useEffect(() => {
+    void reloadClients();
+  }, [reloadClients]);
+
+  const draftReturnTo = React.useMemo(() => {
+    const qs = searchParams.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  }, [pathname, searchParams]);
+
+  const getFormDraft = React.useCallback(() => getValues(), [getValues]);
+  const restoreFormDraft = React.useCallback(
+    (draft: unknown) => {
+      reset(draft as ContactFormValues, { keepDefaultValues: false });
+    },
+    [reset],
+  );
+
+  const clientQuickCreate = useQuickCreate({
+    kind: "client",
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+  });
+
+  React.useEffect(() => {
+    if (isEdit) return;
+    const presetClient = searchParams.get(QUICK_CREATE_CLIENT_PARAM);
+    if (!presetClient || !/^\d+$/.test(presetClient)) return;
+    setValue("client", presetClient, { shouldDirty: true, shouldValidate: true });
+  }, [isEdit, searchParams, setValue]);
+
+  useQuickCreateReturn({
+    restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
+    onReloadOptions: reloadClients,
+    onApplySelect: ({ selectTarget, selectId }) => {
+      if (selectTarget === "client") {
+        setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
+      }
+    },
+  });
 
   React.useEffect(() => {
     if (!isEdit || !contactId) return;
@@ -119,7 +161,8 @@ export function ContactFormScreen({ mode, contactId }: Props) {
     try {
       const saved = isEdit && contactId ? await updateContact(contactId, payload) : await createContact(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(`${safeBack}?highlight=${saved.id}`);
+      if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
+      router.replace(buildQuickCreateReturnHref(safeBack, saved.id, "contact"));
     } finally {
       setSaving(false);
     }
@@ -157,6 +200,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
             <p className="text-sm text-red-600 dark:text-red-400">{screenError}</p>
           </div>
         ) : (
+          <>
           <form id="contact-upsert-screen-form" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(submit)}>
             {noClients ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
@@ -195,6 +239,9 @@ export function ContactFormScreen({ mode, contactId }: Props) {
                       invalid={!!errors.client}
                       onBlur={field.onBlur}
                       onChange={field.onChange}
+                      onAdd={clientQuickCreate.onAdd}
+                      addAriaLabel={clientQuickCreate.addAriaLabel}
+                      addLabel={clientQuickCreate.addLabel}
                     />
                   )}
                 />
@@ -261,6 +308,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
               }}
             />
           </form>
+          </>
         )}
       </SurfaceShell>
     </div>

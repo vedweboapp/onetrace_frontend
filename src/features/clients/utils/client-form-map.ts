@@ -58,7 +58,7 @@ export function emptyClientFormDefaults(): ClientFormValues {
     phone: "",
     address_line_1: "",
     address_line_2: "",
-    country_iso: "IN",
+    country_iso: "",
     state_iso: "",
     city: "",
     pincode: "",
@@ -71,7 +71,7 @@ export function clientToFormDefaults(client: Client): ClientFormValues {
       (c) => c.name.toLowerCase() === (client.country ?? "").trim().toLowerCase(),
     )?.isoCode ?? "";
 
-  const countryIso = (inferredIso || "IN").toUpperCase();
+  const countryIso = inferredIso ? inferredIso.toUpperCase() : "";
 
   const states = State.getStatesOfCountry(countryIso);
   const stateIso =

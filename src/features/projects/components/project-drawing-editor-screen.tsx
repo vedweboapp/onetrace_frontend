@@ -12,7 +12,7 @@ import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
 import type { PinStatus } from "@/features/pin-status/types/pin-status.types";
-import type { DrawingPin, DrawingPlot, DrawingPlotUpsert } from "@/features/projects/types/drawing.types";
+import type { DrawingPin, DrawingPinAttachment, DrawingPlot, DrawingPlotUpsert } from "@/features/projects/types/drawing.types";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
 import {
   defaultQuantityForNewPin,
@@ -681,6 +681,35 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     }
   }
 
+  function readFileAsDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(new Error("File reading failed"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function filesToPinAttachments(files: File[]): Promise<DrawingPinAttachment[]> {
+    if (!files.length) return [];
+    const now = Date.now();
+    const out: DrawingPinAttachment[] = [];
+    let i = 0;
+    for (const file of files) {
+      // Attachments draft is stored as data URLs so it can be persisted with the pin payload.
+      const dataUrl = await readFileAsDataUrl(file);
+      out.push({
+        id: -(now + i),
+        file_name: file.name,
+        content_type: file.type || null,
+        file_data: dataUrl,
+        data_url: dataUrl,
+      });
+      i++;
+    }
+    return out;
+  }
+
   function stagePointFromEvent(e: React.MouseEvent): number[] | null {
     const stage = stageRef.current;
     if (!stage) return null;
@@ -1040,6 +1069,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         quantity: pin.quantity || 1,
         variation: pin.variation ?? false,
         location: pinLabels.get(pin.id),
+        description: pin.description ?? undefined,
+        attachments: pin.attachments ?? undefined,
       })),
     }));
   }
@@ -1136,6 +1167,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       quantity: defaultQuantityForNewPin(selectedItem?.quantity),
       group: selectedGroupId ? Number.parseInt(selectedGroupId, 10) : undefined,
       item: selectedCompositeId ? Number.parseInt(selectedCompositeId, 10) : undefined,
+      description: "",
+      attachments: [],
       status_detail: {
         id: selectedStatus.id,
         status_name: selectedStatus.status_name,
@@ -1941,6 +1974,132 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     value={drawingName || "N/A"}
                     isEditing={false}
                   />
+
+                  {/* Pin description */}
+                  <div className="flex items-start justify-between py-3 border-b border-slate-50 dark:border-slate-800/50 gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="text-slate-400">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M4 4h16v16H4z" />
+                          <path d="M8 8h8" />
+                          <path d="M8 12h8" />
+                          <path d="M8 16h5" />
+                        </svg>
+                      </div>
+                      <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Description</span>
+                    </div>
+                    <div className="flex-1">
+                      {isPinEditing ? (
+                        <textarea
+                          rows={3}
+                          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900"
+                          value={String(pinEditData.description ?? detailPin.description ?? "")}
+                          onChange={(e) => setPinEditData((prev) => ({ ...prev, description: e.target.value }))}
+                        />
+                      ) : (
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 whitespace-pre-wrap">
+                          {detailPin.description || "-"}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Pin attachments */}
+                  <div className="py-3 border-b border-slate-50 dark:border-slate-800/50">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="text-slate-400">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21.44 11.05 12 20.5a5 5 0 0 1-7.07-7.07l9.44-9.44a3.5 3.5 0 0 1 4.95 4.95L10.5 16a2 2 0 0 1-2.83-2.83l8.48-8.48" />
+                          </svg>
+                        </div>
+                        <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Attachments</span>
+                      </div>
+                      {isPinEditing ? (
+                        <div className="w-1/2">
+                          <input
+                            type="file"
+                            multiple
+                            className="block w-full text-sm text-slate-700 dark:text-slate-200"
+                            disabled={false}
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files ?? []);
+                              if (!files.length) return;
+                              void (async () => {
+                                const draftAttachments = await filesToPinAttachments(files);
+                                setPinEditData((prev) => ({
+                                  ...prev,
+                                  attachments: [
+                                    ...(prev.attachments ?? detailPin.attachments ?? []),
+                                    ...draftAttachments,
+                                  ],
+                                }));
+                              })();
+                              // Allow picking the same file again
+                              e.currentTarget.value = "";
+                            }}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                      {(() => {
+                        const attachments = (isPinEditing ? pinEditData.attachments : detailPin.attachments) ?? [];
+                        if (!attachments.length) return <p className="text-sm text-slate-500">-</p>;
+                        return (
+                          <div className="flex flex-wrap gap-3">
+                            {attachments.map((att, idx) => {
+                              const url = att.url ?? att.file_url ?? att.data_url ?? att.file_data ?? null;
+                              const name =
+                                att.file_name ?? att.name ?? att.id != null ? `Attachment #${att.id}` : `Attachment ${idx + 1}`;
+                              const isImage =
+                                (att.content_type ?? "").startsWith("image/") ||
+                                (typeof url === "string" && url.startsWith("data:image/"));
+                              return (
+                                <div key={idx} className="flex flex-col items-start gap-1 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950">
+                                  {url && isImage ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={url} alt={name} className="h-16 w-16 rounded-md border border-slate-200 object-cover dark:border-slate-700" />
+                                  ) : null}
+                                  {url ? (
+                                    <a
+                                      href={url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="max-w-[160px] truncate text-xs font-semibold text-blue-600 hover:underline"
+                                    >
+                                      {name}
+                                    </a>
+                                  ) : (
+                                    <p className="max-w-[160px] truncate text-xs font-semibold text-slate-700 dark:text-slate-200">
+                                      {name}
+                                    </p>
+                                  )}
+                                  {isPinEditing ? (
+                                    <button
+                                      type="button"
+                                      className="text-[10px] font-bold text-red-600 hover:text-red-700"
+                                      onClick={() => {
+                                        setPinEditData((prev) => {
+                                          const curr = (prev.attachments ?? detailPin.attachments ?? []) as DrawingPinAttachment[];
+                                          const next = curr.filter((_, i) => i !== idx);
+                                          return { ...prev, attachments: next };
+                                        });
+                                      }}
+                                    >
+                                      Remove
+                                    </button>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
                   {/* Variation toggle row */}
                   <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800/50">
                     <div className="flex items-center gap-3">

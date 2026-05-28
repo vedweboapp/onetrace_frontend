@@ -15,7 +15,9 @@ import {
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { SiteContactPersonsFields } from "@/features/sites/components/site-contact-persons-fields";
 import { SiteLocationFields } from "@/features/sites/components/site-location-fields";
+import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import {
   AppButton,
   AppModal,
@@ -36,9 +38,23 @@ type Props = {
   site: Site | null;
   clientOptions: SiteClientOption[];
   onSaved: () => void;
+  initialClientId?: string;
+  onCreated?: (site: Site) => void;
+  /** When true, client is fixed (e.g. opened from a client detail tab). */
+  lockClient?: boolean;
 };
 
-export function SiteFormModal({ open, onClose, mode, site, clientOptions, onSaved }: Props) {
+export function SiteFormModal({
+  open,
+  onClose,
+  mode,
+  site,
+  clientOptions,
+  onSaved,
+  initialClientId,
+  onCreated,
+  lockClient = false,
+}: Props) {
   const t = useTranslations("Dashboard.sites");
   const [saving, setSaving] = React.useState(false);
 
@@ -52,6 +68,8 @@ export function SiteFormModal({ open, onClose, mode, site, clientOptions, onSave
         state: t("validation.state"),
         city: t("validation.city"),
         pincode: t("validation.pincode"),
+        contactPersonTitle: t("validation.contactPersonTitle"),
+        contactPerson: t("validation.contactPerson"),
       }),
     [t],
   );
@@ -71,8 +89,13 @@ export function SiteFormModal({ open, onClose, mode, site, clientOptions, onSave
   React.useEffect(() => {
     if (!open) return;
     if (mode === "edit" && site) reset(siteToFormDefaults(site));
-    else reset(emptySiteFormDefaults());
-  }, [open, mode, site, reset]);
+    else {
+      reset({
+        ...emptySiteFormDefaults(),
+        ...(initialClientId ? { client: initialClientId } : {}),
+      });
+    }
+  }, [open, mode, site, reset, initialClientId]);
 
   async function submit(values: SiteFormValues) {
     const payload = mapSiteFormToPayload(values);
@@ -86,8 +109,9 @@ export function SiteFormModal({ open, onClose, mode, site, clientOptions, onSave
         await updateSite(site.id, payload);
         toastSuccess(t("updatedToast"));
       } else {
-        await createSite(payload);
+        const created = await createSite(payload);
         toastSuccess(t("createdToast"));
+        onCreated?.(created);
       }
       onSaved();
       onClose();
@@ -96,7 +120,19 @@ export function SiteFormModal({ open, onClose, mode, site, clientOptions, onSave
     }
   }
 
-  const noClients = clientOptions.length === 0;
+  const [localClientOptions, setLocalClientOptions] = React.useState(clientOptions);
+  React.useEffect(() => {
+    setLocalClientOptions(clientOptions);
+  }, [clientOptions]);
+
+  const noClients = !lockClient && localClientOptions.length === 0;
+  const lockedClientLabel =
+    lockClient && initialClientId
+      ? localClientOptions.find((o) => o.value === initialClientId)?.label
+      : undefined;
+
+  const clientQuickCreate = useQuickCreate({ kind: "client", addDisabled: lockClient });
+  const pendingContactRowRef = React.useRef<number | null>(null);
 
   return (
     <AppModal
@@ -125,59 +161,93 @@ export function SiteFormModal({ open, onClose, mode, site, clientOptions, onSave
           </p>
         ) : null}
 
-        <FormFieldRow cols="2">
-          <FieldGroup label={t("fields.siteName")} htmlFor="site-name" required>
-            <input
-              id="site-name"
-              aria-invalid={errors.site_name ? true : undefined}
-              aria-describedby={errors.site_name ? "site-name-err" : undefined}
-              className={cn(surfaceInputClassName, errors.site_name && "border-red-500 dark:border-red-500")}
-              {...register("site_name", {
-                onChange: (e) => {
-                  e.target.value = capitalizeFirstLetter(e.target.value);
-                },
-              })}
-            />
-            <FieldErrorText id="site-name-err">{errors.site_name?.message}</FieldErrorText>
-          </FieldGroup>
-          <FieldGroup label={t("fields.client")} htmlFor="site-client" required>
-            <Controller
-              control={control}
-              name="client"
-              render={({ field }) => (
-                <CheckmarkSelect
-                  id="site-client"
-                  portaled
-                  searchable
-                  listLabel={t("fields.client")}
-                  options={clientOptions}
-                  value={field.value}
-                  emptyLabel={t("placeholders.client")}
-                  disabled={saving || noClients}
-                  invalid={!!errors.client}
-                  onBlur={field.onBlur}
-                  onChange={field.onChange}
+        <SiteLocationFields
+          control={control}
+          register={register}
+          setValue={setValue}
+          errors={errors}
+          disabled={saving}
+          leading={
+            <FormFieldRow cols="2">
+              <FieldGroup label={t("fields.siteName")} htmlFor="site-name" required>
+                <input
+                  id="site-name"
+                  aria-invalid={errors.site_name ? true : undefined}
+                  aria-describedby={errors.site_name ? "site-name-err" : undefined}
+                  className={cn(surfaceInputClassName, errors.site_name && "border-red-500 dark:border-red-500")}
+                  {...register("site_name", {
+                    onChange: (e) => {
+                      e.target.value = capitalizeFirstLetter(e.target.value);
+                    },
+                  })}
                 />
+                <FieldErrorText id="site-name-err">{errors.site_name?.message}</FieldErrorText>
+              </FieldGroup>
+              {lockClient ? (
+                <FieldGroup label={t("fields.client")} htmlFor="site-client-locked">
+                  <input
+                    id="site-client-locked"
+                    readOnly
+                    value={lockedClientLabel ?? ""}
+                    className={cn(surfaceInputClassName, "cursor-default bg-slate-50 dark:bg-slate-900/60")}
+                  />
+                </FieldGroup>
+              ) : (
+                <FieldGroup label={t("fields.client")} htmlFor="site-client" required>
+                  <Controller
+                    control={control}
+                    name="client"
+                    render={({ field }) => (
+                      <CheckmarkSelect
+                        id="site-client"
+                        portaled
+                        searchable
+                        listLabel={t("fields.client")}
+                        options={localClientOptions}
+                        value={field.value}
+                        emptyLabel={t("placeholders.client")}
+                        disabled={saving || noClients}
+                        invalid={!!errors.client}
+                        onBlur={field.onBlur}
+                        onChange={(v) => {
+                          field.onChange(v);
+                          setValue("contacts", [], { shouldDirty: true, shouldValidate: true });
+                        }}
+                        onAdd={clientQuickCreate.onAdd}
+                        addAriaLabel={clientQuickCreate.addAriaLabel}
+                        addLabel={clientQuickCreate.addLabel}
+                      />
+                    )}
+                  />
+                  <FieldErrorText>{errors.client?.message}</FieldErrorText>
+                </FieldGroup>
               )}
+            </FormFieldRow>
+          }
+          afterAddress={
+            <FormFieldRow cols="2">
+              <FieldGroup label={t("fields.what3words")} htmlFor="site-modal-what3words">
+                <input
+                  id="site-modal-what3words"
+                  className={surfaceInputClassName}
+                  placeholder={t("placeholders.what3words")}
+                  autoComplete="off"
+                  spellCheck={false}
+                  {...register("what3words")}
+                />
+              </FieldGroup>
+            </FormFieldRow>
+          }
+          footer={
+            <SiteContactPersonsFields
+              control={control}
+              errors={errors}
+              disabled={saving}
+              clientOptions={localClientOptions}
+              pendingContactRowRef={pendingContactRowRef}
             />
-            <FieldErrorText>{errors.client?.message}</FieldErrorText>
-          </FieldGroup>
-        </FormFieldRow>
-
-        <SiteLocationFields control={control} register={register} setValue={setValue} errors={errors} disabled={saving} />
-
-        <FormFieldRow cols="1">
-          <FieldGroup label={t("fields.what3words")} htmlFor="site-modal-what3words">
-            <input
-              id="site-modal-what3words"
-              className={surfaceInputClassName}
-              placeholder={t("placeholders.what3words")}
-              autoComplete="off"
-              spellCheck={false}
-              {...register("what3words")}
-            />
-          </FieldGroup>
-        </FormFieldRow>
+          }
+        />
       </form>
     </AppModal>
   );

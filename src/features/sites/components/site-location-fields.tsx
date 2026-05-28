@@ -12,6 +12,7 @@ import { applyPlaceSuggestionToForm } from "@/shared/utils/address-place-form.ut
 import {
   DetailPageMapLayout,
   detailMapFillClassName,
+  detailMapFormGridClassName,
 } from "@/shared/components/layout/detail-page-map-layout";
 import {
   AddressLineAutocompleteFields,
@@ -32,6 +33,12 @@ type Props = {
   setValue: UseFormSetValue<SiteFormValues>;
   errors: FieldErrors<SiteFormValues>;
   disabled?: boolean;
+  /** Site name, client, etc. — left column above address. */
+  leading?: React.ReactNode;
+  /** what3words and similar — left column below address, beside the map. */
+  afterAddress?: React.ReactNode;
+  /** Contact persons — full width below the map row when present. */
+  footer?: React.ReactNode;
 };
 
 function parseCoordField(raw: string | undefined): number | null {
@@ -53,7 +60,16 @@ function placeToPinnedKey(place: PlaceSuggestion): string {
   });
 }
 
-export function SiteLocationFields({ control, register, setValue, errors, disabled }: Props) {
+export function SiteLocationFields({
+  control,
+  register,
+  setValue,
+  errors,
+  disabled,
+  leading,
+  afterAddress,
+  footer,
+}: Props) {
   const t = useTranslations("Dashboard.sites");
 
   const countryIso = useWatch({ control, name: "country_iso" }) ?? "";
@@ -167,7 +183,9 @@ export function SiteLocationFields({ control, register, setValue, errors, disabl
   return (
     <DetailPageMapLayout
       showMap
+      gridClassName={detailMapFormGridClassName}
       mapTitle={t("detail.sectionMap")}
+      footer={footer}
       map={
         <SiteLocationMapPicker
           embedded
@@ -193,7 +211,11 @@ export function SiteLocationFields({ control, register, setValue, errors, disabl
         />
       }
     >
-      {addressFields}
+      <div className="space-y-6">
+        {leading}
+        {addressFields}
+        {afterAddress}
+      </div>
     </DetailPageMapLayout>
   );
 }

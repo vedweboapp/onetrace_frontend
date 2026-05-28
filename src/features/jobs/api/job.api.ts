@@ -79,7 +79,7 @@ export async function createJob(body: JobCreatePayload): Promise<Job> {
 /** Backend creates a job from a quotation. */
 export async function createJobFromQuotation(quotationId: number): Promise<Job> {
   const body: JobCreateFromQuotationPayload = { quotation_id: quotationId };
-  const { data } = await api.post<ApiEnvelope<Job> | JobListResponse>(JOB_PATHS.list, body);
+  const { data } = await api.post<ApiEnvelope<Job> | JobListResponse>(JOB_PATHS.createFromQuotation, body);
   return parseJobCreateResponse(data);
 }
 

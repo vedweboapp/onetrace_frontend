@@ -22,6 +22,8 @@ import {
 } from "@/features/quotations/components/quotation-draft-composite-lines";
 import { formatMoneyDisplay, parseMoneyValue } from "@/features/quotations/utils/quotation-level-pricing.util";
 import { cn } from "@/core/utils/http.util";
+import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { useQuickCreateReturn, type QuickCreateSelectApplied } from "@/shared/hooks/use-quick-create-return";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { AppButton, AppModal, CheckmarkSelect, DataTableRowActionsMenu, FieldLabel, surfaceInputClassName } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui";
@@ -135,6 +137,12 @@ function DraftCompositeAddRow({
   saveDisabled,
   showNoCompositesMessage,
   saveLabel,
+  onGroupAdd,
+  addGroupAriaLabel,
+  addGroupLabel,
+  onCompositeAdd,
+  addCompositeAriaLabel,
+  addCompositeLabel,
 }: {
   idPrefix: string;
   saving: boolean;
@@ -148,6 +156,12 @@ function DraftCompositeAddRow({
   saveDisabled: boolean;
   showNoCompositesMessage: boolean;
   saveLabel: string;
+  onGroupAdd?: () => void;
+  addGroupAriaLabel?: string;
+  addGroupLabel?: string;
+  onCompositeAdd?: () => void;
+  addCompositeAriaLabel?: string;
+  addCompositeLabel?: string;
 }) {
   const tDraw = useTranslations("Dashboard.projects.drawings.editor");
   const t = useTranslations("Dashboard.quotations.draft");
@@ -165,6 +179,9 @@ function DraftCompositeAddRow({
             emptyLabel={tDraw("allGroups")}
             disabled={saving}
             onChange={onGroupChange}
+            onAdd={onGroupAdd}
+            addAriaLabel={addGroupAriaLabel}
+            addLabel={addGroupLabel}
             className="w-full"
           />
         </div>
@@ -179,6 +196,9 @@ function DraftCompositeAddRow({
             emptyLabel={tDraw("selectComposite")}
             disabled={compositeOptions.length <= 1 || saving}
             onChange={onCompositeChange}
+            onAdd={onCompositeAdd}
+            addAriaLabel={addCompositeAriaLabel}
+            addLabel={addCompositeLabel}
             className="w-full"
           />
         </div>
@@ -274,6 +294,100 @@ export function QuotationDraftComposer({
     },
     [compositeRows, groupItemsByGroupId, tDraw],
   );
+
+  const pendingRowKeyRef = React.useRef<string | null>(null);
+
+  const reloadGroupsAndComposites = React.useCallback(async () => {
+    try {
+      const [gRes, cRes] = await Promise.all([fetchGroupsPage(1, 500), fetchCompositeItemsPage(1, 500)]);
+      setGroups(gRes.items);
+      setCompositeRows(cRes.items);
+    } catch {
+      setGroups([]);
+      setCompositeRows([]);
+    }
+  }, []);
+
+  const getFormDraft = React.useCallback(
+    () => ({ draft, rowPick, newSectionName }),
+    [draft, rowPick, newSectionName],
+  );
+
+  const restoreFormDraft = React.useCallback(
+    (saved: unknown) => {
+      const data = saved as {
+        draft?: QuotationDraft | null;
+        rowPick?: Record<string, { groupId: string; compositeId: string }>;
+        newSectionName?: string;
+      };
+      if (data.draft !== undefined) onDraftChange(data.draft);
+      if (data.rowPick) setRowPick(data.rowPick);
+      if (typeof data.newSectionName === "string") setNewSectionName(data.newSectionName);
+    },
+    [onDraftChange],
+  );
+
+  const applyQuickCreateSelect = React.useCallback(({ selectTarget, selectId }: QuickCreateSelectApplied) => {
+    const key = pendingRowKeyRef.current;
+    if (!key) return;
+    if (selectTarget === "group") {
+      setRowPick((prev) => ({
+        ...prev,
+        [key]: { ...(prev[key] ?? { groupId: "", compositeId: "" }), groupId: selectId, compositeId: "" },
+      }));
+      void fetchGroup(Number.parseInt(selectId, 10))
+        .then((row) => {
+          setGroupItemsByGroupId((cur) => ({ ...cur, [selectId]: row.items ?? [] }));
+        })
+        .catch(() => {
+          setGroupItemsByGroupId((cur) => ({ ...cur, [selectId]: [] }));
+        });
+    } else if (selectTarget === "composite-item") {
+      setRowPick((prev) => {
+        const cur = prev[key] ?? { groupId: "", compositeId: "" };
+        return { ...prev, [key]: { ...cur, compositeId: selectId } };
+      });
+    }
+    pendingRowKeyRef.current = null;
+  }, []);
+
+  const groupQuickCreate = useQuickCreate({
+    kind: "group",
+    getFormDraft: readOnly ? undefined : getFormDraft,
+  });
+
+  const compositeItemQuickCreate = useQuickCreate({
+    kind: "composite-item",
+    getFormDraft: readOnly ? undefined : getFormDraft,
+  });
+
+  const bindQuickCreateToRow = React.useCallback(
+    (rowKey: string) => ({
+      onGroupAdd: groupQuickCreate.onAdd
+        ? () => {
+            pendingRowKeyRef.current = rowKey;
+            groupQuickCreate.onAdd?.();
+          }
+        : undefined,
+      addGroupAriaLabel: groupQuickCreate.addAriaLabel,
+      addGroupLabel: groupQuickCreate.addLabel,
+      onCompositeAdd: compositeItemQuickCreate.onAdd
+        ? () => {
+            pendingRowKeyRef.current = rowKey;
+            compositeItemQuickCreate.onAdd?.();
+          }
+        : undefined,
+      addCompositeAriaLabel: compositeItemQuickCreate.addAriaLabel,
+      addCompositeLabel: compositeItemQuickCreate.addLabel,
+    }),
+    [groupQuickCreate, compositeItemQuickCreate],
+  );
+
+  useQuickCreateReturn({
+    restoreFormDraft: readOnly ? undefined : restoreFormDraft,
+    onReloadOptions: readOnly ? undefined : reloadGroupsAndComposites,
+    onApplySelect: readOnly ? () => {} : applyQuickCreateSelect,
+  });
 
   React.useEffect(() => {
     if (readOnly || !canShow) return;
@@ -1067,6 +1181,7 @@ export function QuotationDraftComposer({
                               onSave={() => addCompositeLineForKey(si, pi, section.id, plot.id)}
                               saveDisabled={plotSaveDisabled}
                               showNoCompositesMessage={compositeRows.length === 0}
+                              {...bindQuickCreateToRow(plotKey)}
                               saveLabel={t("saveComposite")}
                             />
                             )
@@ -1153,7 +1268,7 @@ export function QuotationDraftComposer({
               autoFocus
               aria-invalid={duplicateCountError != null}
             />
-            <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{t("duplicateCountHint")}</p>
+        
           </div>
           {duplicateCountError ? (
             <p className="text-sm text-red-600 dark:text-red-400" role="alert">
