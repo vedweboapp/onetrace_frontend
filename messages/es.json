@@ -79,6 +79,17 @@
     "home": "Volver al inicio"
   },
   "Dashboard": {
+    "quickCreate": {
+      "add": {
+        "client": "Añadir nuevo cliente",
+        "contact": "Añadir nuevo contacto",
+        "site": "Añadir nuevo sitio",
+        "project": "Añadir nuevo proyecto",
+        "group": "Añadir nuevo grupo",
+        "composite-item": "Añadir nuevo artículo compuesto",
+        "item": "Añadir nuevo artículo"
+      }
+    },
     "common": {
       "back": "Atrás",
       "breadcrumbNav": "Migas de pan",
@@ -160,6 +171,7 @@
       "projectTypes": "Tipos de proyecto",
       "users": "Usuarios",
       "personalProfile": "Perfil personal",
+      "projectForms": "Formularios de proyecto",
       "companySettings": "Ajustes de la empresa",
       "formBuilder": "Creador de formularios",
       "modules": "Módulos",
@@ -625,8 +637,10 @@
         },
         "contactsEmptyTitle": "No hay contactos para este cliente",
         "contactsEmptyDescription": "Los contactos vinculados a este cliente aparecerán aquí.",
+        "addContact": "Añadir contacto",
         "sitesEmptyTitle": "No hay sitios para este cliente",
-        "sitesEmptyDescription": "Los sitios vinculados a este cliente aparecerán aquí."
+        "sitesEmptyDescription": "Los sitios vinculados a este cliente aparecerán aquí.",
+        "addSite": "Añadir sitio"
       },
       "detailLoadError": "No se pudieron cargar los datos del cliente. Inténtalo de nuevo.",
       "form": {
@@ -925,6 +939,25 @@
         "editTitle": "Editar",
         "editSubtitle": "Actualiza los datos del sitio y guarda los cambios."
       },
+      "contactPerson": {
+        "sectionTitle": "Personas de contacto",
+    
+        "add": "Añadir persona de contacto",
+        "remove": "Quitar persona de contacto",
+        "titleLabel": "Título",
+        "titlePlaceholder": "Seleccionar título",
+        "contactLabel": "Persona de contacto",
+        "contactPlaceholder": "Seleccionar contacto",
+        "selectClientFirst": "Selecciona un cliente primero para añadir personas de contacto.",
+        "empty": "Aún no hay personas de contacto.",
+        "loadingContacts": "Cargando contactos…",
+        "noContactsForClient": "No hay contactos para este cliente",
+        "titles": {
+          "site_contact": "Contacto del sitio",
+          "finance": "Finanzas",
+          "emergency": "Emergencia"
+        }
+      },
       "validation": {
         "siteName": "Introduce un nombre de sitio.",
         "client": "Selecciona un cliente.",
@@ -932,7 +965,9 @@
         "country": "Selecciona un país.",
         "state": "Selecciona un estado o provincia.",
         "city": "Selecciona o escribe una ciudad.",
-        "pincode": "Introduce un código postal."
+        "pincode": "Introduce un código postal.",
+        "contactPersonTitle": "Selecciona un título.",
+        "contactPerson": "Selecciona una persona de contacto."
       },
       "location": {
         "searchPlaceholder": "Empieza a escribir la dirección…",
@@ -1110,7 +1145,7 @@
         "duplicateCountTitle": "Duplicar",
         "duplicateCountDescription": "Elige cuántas copias quieres añadir justo después del original.",
         "duplicateCountLabel": "Número de copias",
-        "duplicateCountHint": "Número entero de 1 a 50.",
+      
         "duplicateCountConfirm": "Duplicar",
         "duplicateCountInvalid": "Introduce un número entero entre 1 y 50.",
         "copySection": "Copiar sección",
@@ -1279,15 +1314,42 @@
         "editSubtitle": "Actualiza los datos del trabajo y guarda."
       },
       "placeholders": {
-        "assignedWorker": "Seleccionar técnico"
+        "assignedWorker": "Seleccionar técnico",
+        "client": "Seleccionar cliente",
+        "project": "Seleccionar proyecto",
+        "site": "Seleccionar sitio",
+        "form": "Seleccionar formulario",
+        "jobStatus": "Seleccionar estado",
+        "sectionName": "p. ej. Nivel 0",
+        "plotName": "p. ej. Habitación A",
+        "plotGroup": "Seleccionar grupo",
+        "compositeItem": "Seleccionar ítem compuesto"
+      },
+      "sections": {
+        "basic": "Detalles",
+        "relations": "Vínculos",
+        "schedule": "Programación",
+        "jobMeta": "Alcance del trabajo",
+        "jobMetaHint": "Sección, parcela, grupo e ítem compuesto opcionales para este trabajo."
       },
       "fields": {
         "title": "Título",
         "description": "Descripción",
+        "comments": "Comentarios",
+        "client": "Cliente",
+        "project": "Proyecto",
+        "site": "Sitio",
+        "form": "Formulario",
         "assignedWorker": "Técnico asignado",
         "startDate": "Fecha y hora de inicio",
         "endDate": "Fecha y hora de fin",
         "jobStatus": "Estado del trabajo",
+        "sectionName": "Nombre de sección",
+        "plotName": "Nombre de parcela",
+        "plotGroup": "Grupo",
+        "compositeItem": "Ítem compuesto",
+        "compositeQuantity": "Cantidad",
+        "plotTotal": "Total de parcela",
         "recordStatus": "Estado del registro",
         "isActive": "Activo",
         "jobId": "ID del trabajo",
@@ -1307,7 +1369,9 @@
         "assignedWorker": "Selecciona un técnico asignado.",
         "startDate": "Introduce fecha y hora de inicio.",
         "endDate": "Introduce fecha y hora de fin.",
-        "endBeforeStart": "La fecha de fin debe ser igual o posterior al inicio."
+        "endBeforeStart": "La fecha de fin debe ser igual o posterior al inicio.",
+        "optionalId": "Elige una opción válida.",
+        "compositeQuantity": "Introduce una cantidad mayor que cero cuando haya un ítem compuesto."
       }
     },
     "home": {
@@ -1509,6 +1573,46 @@
           "savedAll": "Todos los cambios guardados.",
           "saveAllError": "No se pudieron guardar todos los cambios.",
           "loading": "Cargando editor..."
+        }
+      },
+      "formsTab": {
+        "title": "Formularios",
+        "subtitle": "Gestiona formularios del proyecto y abre el constructor para editar layouts.",
+        "add": "Añadir formulario",
+        "searchPlaceholder": "Buscar formularios…",
+        "searchAria": "Buscar formularios",
+        "filterState": "Estado activo",
+        "filterAll": "Todos",
+        "empty": "No se encontraron formularios.",
+        "loadError": "No se pudieron cargar los formularios. Inténtalo de nuevo.",
+        "toggleActiveError": "No se pudo actualizar el estado del formulario. Inténtalo de nuevo.",
+        "activatedToast": "Formulario activado",
+        "deactivatedToast": "Formulario desactivado",
+        "edit": "Editar",
+        "activate": "Activar",
+        "deactivate": "Desactivar",
+        "prev": "Anterior",
+        "next": "Siguiente",
+        "pageLabel": "Mostrando {start}-{end} de {total} formularios",
+        "cancel": "Cancelar",
+        "continue": "Continuar",
+        "projectTypes": "Tipos de proyecto",
+        "projectTypePlaceholder": "Seleccionar tipo de proyecto",
+        "projectTypeSearch": "Buscar tipos de proyecto",
+        "loadingProjectTypes": "Cargando tipos de proyecto…",
+        "projectTypesLoadError": "No se pudieron cargar los tipos de proyecto. Inténtalo de nuevo.",
+        "selectProjectTypeTitle": "Seleccionar tipo de proyecto",
+        "selectProjectTypeDescription": "Elige un tipo de proyecto antes de crear un formulario.",
+        "status": {
+          "active": "Activo",
+          "inactive": "Inactivo"
+        },
+        "table": {
+          "name": "Nombre del formulario",
+          "projectType": "Tipo de proyecto",
+          "status": "Estado",
+          "created": "Creado",
+          "actions": "Acciones"
         }
       },
       "detailLoadError": "No se pudieron cargar los datos del proyecto. Inténtalo de nuevo.",

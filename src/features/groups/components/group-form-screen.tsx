@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { createGroup, fetchGroup, updateGroup } from "@/features/groups/api/group.api";
 import type { GroupItemRef } from "@/features/groups/types/group.types";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
@@ -11,7 +11,14 @@ import type { CompositeItem } from "@/features/composite-items/types/composite-i
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
+import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import {
+  buildQuickCreateReturnHref,
+  resolveFormBackUrl,
+  sanitizeInternalDashboardBack,
+} from "@/shared/utils/quick-create-navigation.util";
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
@@ -46,9 +53,11 @@ export function GroupFormScreen({ mode, groupId }: Props) {
   const t = useTranslations("Dashboard.groups");
   const tModal = useTranslations("Dashboard.groups.modal");
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "groups");
+  const safeBack = resolveFormBackUrl(searchParams.get("back"), "groups", routes.dashboard.groups);
   const isEdit = mode === "edit";
+  const pendingCompositeRowRef = React.useRef<string | null>(null);
 
   const nameId = React.useId();
   const [name, setName] = React.useState("");
@@ -68,6 +77,55 @@ export function GroupFormScreen({ mode, groupId }: Props) {
     () => compositeOptions.map((opt) => ({ value: String(opt.id), label: opt.name })),
     [compositeOptions],
   );
+
+  const draftReturnTo = React.useMemo(() => {
+    const qs = searchParams.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  }, [pathname, searchParams]);
+
+  const getFormDraft = React.useCallback(() => ({ name, rows }), [name, rows]);
+
+  const restoreFormDraft = React.useCallback((draft: unknown) => {
+    const saved = draft as { name?: string; rows?: CompositeRow[] };
+    if (typeof saved.name === "string") setName(saved.name);
+    if (Array.isArray(saved.rows) && saved.rows.length > 0) setRows(saved.rows);
+  }, []);
+
+  const reloadComposites = React.useCallback(async () => {
+    setCompositeLoadError(null);
+    try {
+      const { items } = await fetchCompositeItemsPage(1, 500);
+      setCompositeOptions(items);
+    } catch {
+      setCompositeLoadError(tModal("compositeLoadError"));
+    }
+  }, [tModal]);
+
+  const compositeQuickCreate = useQuickCreate({
+    kind: "composite-item",
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+  });
+
+  useQuickCreateReturn({
+    restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
+    onReloadOptions: reloadComposites,
+    onApplySelect: ({ selectTarget, selectId }) => {
+      if (selectTarget !== "composite-item") return;
+      const rowId = pendingCompositeRowRef.current;
+      if (rowId) {
+        setRows((prev) => prev.map((x) => (x.id === rowId ? { ...x, item: selectId } : x)));
+      } else {
+        setRows((prev) => {
+          const emptyIdx = prev.findIndex((r) => !r.item.trim());
+          if (emptyIdx >= 0) {
+            return prev.map((x, i) => (i === emptyIdx ? { ...x, item: selectId } : x));
+          }
+          return [...prev, { id: nextRowId(), item: selectId, abbreviation: "" }];
+        });
+      }
+      pendingCompositeRowRef.current = null;
+    },
+  });
 
   const compositeOptionsForRow = React.useCallback(
     (rowId: string) =>
@@ -167,7 +225,13 @@ export function GroupFormScreen({ mode, groupId }: Props) {
           ? await updateGroup(groupId, { name: name.trim(), items: compositeItems })
           : await createGroup({ name: name.trim(), items: compositeItems });
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
-      router.replace(`${safeBack}?highlight=${saved.id}`);
+      if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
+      const crossBack = sanitizeInternalDashboardBack(searchParams.get("back"));
+      if (!isEdit && crossBack) {
+        router.replace(buildQuickCreateReturnHref(crossBack, saved.id, "group"));
+      } else {
+        router.replace(`${safeBack}?highlight=${saved.id}`);
+      }
     } catch {
       toastError(t("loadError"));
     } finally {
@@ -249,6 +313,16 @@ export function GroupFormScreen({ mode, groupId }: Props) {
                         portaled
                         searchable
                         className="w-full"
+                        onAdd={
+                          compositeQuickCreate.onAdd
+                            ? () => {
+                                pendingCompositeRowRef.current = row.id;
+                                compositeQuickCreate.onAdd?.();
+                              }
+                            : undefined
+                        }
+                        addAriaLabel={compositeQuickCreate.addAriaLabel}
+                        addLabel={compositeQuickCreate.addLabel}
                       />
                     </div>
                     <div>

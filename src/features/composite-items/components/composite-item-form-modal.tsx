@@ -22,6 +22,8 @@ import {
   fieldErrorTextClassName,
   surfaceInputClassName,
 } from "@/shared/ui";
+import { usePathname } from "@/i18n/navigation";
+import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 
 type Props = {
@@ -47,6 +49,8 @@ function toNumberOrNull(raw: string): number | null {
 
 export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
   const t = useTranslations("Dashboard.compositeItems.modal");
+  const pathname = usePathname();
+  const pendingItemRowRef = React.useRef<string | null>(null);
 
   const nameId = React.useId();
   const skuId = React.useId();
@@ -85,6 +89,15 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
     () => itemOptions.map((it) => ({ value: String(it.id), label: itemLabelById[it.id] ?? it.name })),
     [itemLabelById, itemOptions],
   );
+
+  const itemQuickCreate = useQuickCreate({
+    kind: "item",
+    returnTo: pathname,
+    getFormDraft:
+      open && mode === "create"
+        ? () => ({ name, sku, qty, cost, sell, rows })
+        : undefined,
+  });
 
   const itemOptionsForRow = React.useCallback(
     (rowId: string) =>
@@ -359,6 +372,16 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
                     portaled
                     searchable
                     className="w-full"
+                    onAdd={
+                      itemQuickCreate.onAdd
+                        ? () => {
+                            pendingItemRowRef.current = r.id;
+                            itemQuickCreate.onAdd?.();
+                          }
+                        : undefined
+                    }
+                    addAriaLabel={itemQuickCreate.addAriaLabel}
+                    addLabel={itemQuickCreate.addLabel}
                   />
                 </div>
                 <div>

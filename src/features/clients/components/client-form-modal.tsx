@@ -35,9 +35,11 @@ type Props = {
   mode: "create" | "edit";
   client: Client | null;
   onSaved: () => void;
+  /** When set, returns the created client without requiring a list refresh. */
+  onCreated?: (client: Client) => void;
 };
 
-export function ClientFormModal({ open, onClose, mode, client, onSaved }: Props) {
+export function ClientFormModal({ open, onClose, mode, client, onSaved, onCreated }: Props) {
   const t = useTranslations("Dashboard.clients");
   const [saving, setSaving] = React.useState(false);
 
@@ -82,8 +84,9 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved }: Props)
         await updateClient(client.id, payload);
         toastSuccess(t("updatedToast"));
       } else {
-        await createClient(payload);
+        const created = await createClient(payload);
         toastSuccess(t("createdToast"));
+        onCreated?.(created);
       }
       onSaved();
       onClose();

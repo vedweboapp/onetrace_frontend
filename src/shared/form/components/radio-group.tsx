@@ -13,6 +13,7 @@ interface RadioGroupProps {
   name: string;
   options: (string | RadioOption)[];
   register: UseFormRegisterReturn;
+  defaultValue?: any;
   errors?: FieldError;
   readOnly?: boolean;
   className?: string;
@@ -23,6 +24,7 @@ const RadioGroup: React.FC<RadioGroupProps> = ({
   name,
   options = [],
   register,
+  defaultValue,
   errors,
   readOnly = false,
   className = "",
@@ -56,6 +58,11 @@ const RadioGroup: React.FC<RadioGroupProps> = ({
                   type="radio"
                   value={optValue}
                   disabled={readOnly}
+                  defaultChecked={
+                    defaultValue !== undefined &&
+                    defaultValue !== null &&
+                    String(optValue) === String(defaultValue)
+                  }
                   {...register}
                   className="
                     peer appearance-none w-5 h-5 border-2 border-gray-300 dark:border-slate-600 rounded-full

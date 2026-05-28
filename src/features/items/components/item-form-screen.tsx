@@ -9,7 +9,11 @@ import { createItem, fetchItem, updateItem } from "@/features/items/api/item.api
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import {
+  buildQuickCreateReturnHref,
+  resolveFormBackUrl,
+  sanitizeInternalDashboardBack,
+} from "@/shared/utils/quick-create-navigation.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { AppButton, FieldLabel, fieldErrorTextClassName, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
 
@@ -30,7 +34,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
   const tModal = useTranslations("Dashboard.items.modal");
   const router = useRouter();
   const searchParams = useSearchParams();
-  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "items");
+  const safeBack = resolveFormBackUrl(searchParams.get("back"), "items", routes.dashboard.items);
   const isEdit = mode === "edit";
 
   const nameId = React.useId();
@@ -112,7 +116,12 @@ export function ItemFormScreen({ mode, itemId }: Props) {
               selling_price: sellN,
             });
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
-      router.replace(`${safeBack}?highlight=${saved.id}`);
+      const crossBack = sanitizeInternalDashboardBack(searchParams.get("back"));
+      if (!isEdit && crossBack) {
+        router.replace(buildQuickCreateReturnHref(crossBack, saved.id, "item"));
+      } else {
+        router.replace(`${safeBack}?highlight=${saved.id}`);
+      }
     } catch {
       toastError(t("loadError"));
     } finally {

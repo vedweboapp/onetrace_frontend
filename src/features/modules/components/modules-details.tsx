@@ -31,8 +31,8 @@ const ModulesDetails = () => {
     const [params, setParam, setPageSize] = useUrlParams({
         page_size: 10,
     });
-    const page = params.page;
-    const pageSize = params.page_size;
+    const page = params.page ?? 1;
+    const pageSize = params.page_size ?? 10;
 
     // Local search state - NOT in URL
     const [search, setSearch] = useState("");

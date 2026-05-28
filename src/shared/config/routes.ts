@@ -29,6 +29,7 @@ export const routes = {
     settingsPersonalProfile: "/dashboard/settings/personal-profile",
     settingsCompanySettings: "/dashboard/settings/company-settings",
     settingsModules: "/dashboard/settings/modules",
+    settingsProjectForms: "/dashboard/settings/project-type-forms",
   },
 
 } as const;

@@ -113,9 +113,7 @@ export function ProjectDetailBody({
                 </span>
               </DetailMetricCard>
             ) : null}
-            <DetailMetricCard label={t("detail.metaProjectId")}>
-              <span className="tabular-nums">{detail.id}</span>
-            </DetailMetricCard>
+            
           </DetailMetricsGrid>
         </DetailPanelCard>
 

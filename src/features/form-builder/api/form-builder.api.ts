@@ -2,7 +2,7 @@ import api from "@/core/api/axios";
 import { FORM_BUILDER_API_PATHS } from "./form-builder.paths";
 import { assertApiSuccess } from "@/core/types/api.types";
 
-export async function getFormsList(params?: any): Promise<any[]> {
+export async function getFormsList(params?: any): Promise<any> {
   const { data } = await api.get(FORM_BUILDER_API_PATHS.formsList, { params });
   // Some endpoints might return the array directly or wrapped
   return data;

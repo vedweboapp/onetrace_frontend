@@ -1,11 +1,11 @@
 import React, { ChangeEvent, useMemo, useRef } from "react";
 import { Pencil } from "lucide-react";
 
-type ImageValue = File | string | null;
+type ImageValue = File | Blob | string | null | undefined;
 
 type ProfilePictureUploaderProps = {
     image: ImageValue;
-    setImage: React.Dispatch<React.SetStateAction<ImageValue>>;
+    setImage: (image: ImageValue) => void;
     allowedTypes?: string[];
     size?: number;
     readOnly?: boolean;
@@ -25,6 +25,10 @@ const ProfilePictureUploader = ({
 
         if (typeof image === "string") {
             return image;
+        }
+
+        if (!(image instanceof Blob)) {
+            return "";
         }
 
         return URL.createObjectURL(image);

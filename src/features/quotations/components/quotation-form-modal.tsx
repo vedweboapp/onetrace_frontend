@@ -27,6 +27,7 @@ import type { Site } from "@/features/sites/types/site.types";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import {
   AppButton,
   AppModal,
@@ -232,6 +233,26 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     [projectRows],
   );
 
+  const clientQuickCreate = useQuickCreate({ kind: "client" });
+
+  const projectQuickCreate = useQuickCreate({
+    kind: "project",
+    clientId: customerId,
+    addDisabled: saving || !customerId,
+  });
+
+  const siteQuickCreate = useQuickCreate({
+    kind: "site",
+    clientId: customerId,
+    addDisabled: saving || !customerId,
+  });
+
+  const contactQuickCreate = useQuickCreate({
+    kind: "contact",
+    clientId: customerId,
+    addDisabled: saving || !customerId,
+  });
+
   React.useEffect(() => {
     if (!open) return;
     const selectedProject = getValues("project")?.trim();
@@ -323,6 +344,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
         </>
       }
     >
+      <>
       <form id={FORM_DOM_ID} className="max-h-[min(70vh,680px)] space-y-6 overflow-y-auto pr-1" noValidate onSubmit={handleSubmit(submit)}>
         {/* {noClients ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
@@ -373,9 +395,12 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   options={clientOptions}
                   value={field.value}
                   emptyLabel={t("placeholders.customer")}
-                  disabled={saving || noClients}
+                  disabled={saving}
                   invalid={!!errors.customer}
                   onBlur={field.onBlur}
+                  onAdd={clientQuickCreate.onAdd}
+                  addAriaLabel={clientQuickCreate.addAriaLabel}
+                  addLabel={clientQuickCreate.addLabel}
                   onChange={(v) => {
                     field.onChange(v);
                     setValue("site", "");
@@ -402,9 +427,12 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   options={projectOptions}
                   value={field.value}
                   emptyLabel={t("placeholders.project")}
-                  disabled={saving || !customerId || projectOptions.length === 0}
+                  disabled={saving || !customerId}
                   invalid={!!errors.project}
                   onBlur={field.onBlur}
+                  onAdd={projectQuickCreate.onAdd}
+                  addAriaLabel={projectQuickCreate.addAriaLabel}
+                  addLabel={projectQuickCreate.addLabel}
                   onChange={(v) => {
                     field.onChange(v);
                     setValue("site", "");
@@ -428,9 +456,12 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   options={siteOptions}
                   value={field.value}
                   emptyLabel={t("placeholders.site")}
-                  disabled={saving || !projectId || siteOptions.length === 0}
+                  disabled={saving || !projectId}
                   invalid={!!errors.site}
                   onBlur={field.onBlur}
+                  onAdd={siteQuickCreate.onAdd}
+                  addAriaLabel={siteQuickCreate.addAriaLabel}
+                  addLabel={siteQuickCreate.addLabel}
                   onChange={field.onChange}
                 />
               )}
@@ -454,6 +485,9 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   emptyLabel={t("placeholders.contactOptional")}
                   disabled={saving || !customerId}
                   onBlur={field.onBlur}
+                  onAdd={contactQuickCreate.onAdd}
+                  addAriaLabel={contactQuickCreate.addAriaLabel}
+                  addLabel={contactQuickCreate.addLabel}
                   onChange={field.onChange}
                 />
               )}
@@ -473,6 +507,9 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   emptyLabel={t("placeholders.contactOptional")}
                   disabled={saving || !customerId}
                   onBlur={field.onBlur}
+                  onAdd={contactQuickCreate.onAdd}
+                  addAriaLabel={contactQuickCreate.addAriaLabel}
+                  addLabel={contactQuickCreate.addLabel}
                   onChange={field.onChange}
                 />
               )}
@@ -492,6 +529,9 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   emptyLabel={t("placeholders.contactOptional")}
                   disabled={saving || !customerId}
                   onBlur={field.onBlur}
+                  onAdd={contactQuickCreate.onAdd}
+                  addAriaLabel={contactQuickCreate.addAriaLabel}
+                  addLabel={contactQuickCreate.addLabel}
                   onChange={field.onChange}
                 />
               )}
@@ -610,6 +650,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
           </div>
         </div>
       </form>
+      </>
     </AppModal>
   );
 }

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import type { CSSProperties } from "react";
-import { Check, ChevronDown, X } from "lucide-react";
+import { Check, ChevronDown, Plus, X } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 
 /** Portaled lists are under `document.body` and skip inherited theme vars; copy from trigger. */
@@ -62,6 +62,12 @@ type Props = {
   clearable?: boolean;
   /** Accessible label for the clear control (recommended when `clearable` is true). */
   clearAriaLabel?: string;
+  /** Opens the related create form (shows a + control on the trigger and in the dropdown). */
+  onAdd?: () => void;
+  /** Accessible label for the add control (recommended when `onAdd` is set). */
+  addAriaLabel?: string;
+  /** Visible label for the add action in the dropdown footer. */
+  addLabel?: string;
 };
 
 const DROPDOWN_GAP = 4;
@@ -174,6 +180,9 @@ export function CheckmarkSelect({
   searchPlaceholder = "Search...",
   clearable = false,
   clearAriaLabel,
+  onAdd,
+  addAriaLabel,
+  addLabel,
 }: Props) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
@@ -183,6 +192,8 @@ export function CheckmarkSelect({
   const listRef = React.useRef<HTMLDivElement>(null);
   const selected = options.find((o) => o.value === value);
   const canClear = Boolean(clearable && !disabled && value.trim() !== "");
+  const showAdd = Boolean(onAdd && !disabled);
+  const useSplitTrigger = canClear || showAdd;
   const dropdownPlacement = useDropdownPlacement(open, anchorRef, side);
   const [portalAccent, setPortalAccent] = React.useState("#111111");
   const [portalOnAccent, setPortalOnAccent] = React.useState("#ffffff");
@@ -315,6 +326,26 @@ export function CheckmarkSelect({
             <li className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">No results</li>
           ) : null}
         </ul>
+        {showAdd ? (
+          <div className="shrink-0 border-t border-slate-200 p-2 dark:border-slate-600">
+            <button
+              type="button"
+              className={cn(
+                "flex w-full items-center justify-center gap-1.5 rounded-lg font-semibold text-[color:var(--dash-accent,#111111)] transition",
+                "hover:bg-slate-50 dark:hover:bg-slate-800",
+                size === "sm" ? "px-2 py-1.5 text-xs" : "px-3 py-2 text-sm",
+              )}
+              aria-label={addAriaLabel}
+              onClick={() => {
+                setOpen(false);
+                onAdd?.();
+              }}
+            >
+              <Plus className={size === "sm" ? "size-3.5" : "size-4"} strokeWidth={2.5} aria-hidden />
+              <span>{addLabel ?? addAriaLabel ?? "Add new"}</span>
+            </button>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -362,7 +393,7 @@ export function CheckmarkSelect({
         ),
   );
 
-  const clearSplitButtonClass = cn(
+  const sideActionButtonClass = cn(
     "flex shrink-0 items-center justify-center border-l border-slate-200 bg-transparent outline-none transition dark:border-slate-600",
     size === "sm" ? "w-7" : "w-8",
     disabled
@@ -374,6 +405,11 @@ export function CheckmarkSelect({
         ),
   );
 
+  const addSplitButtonClass = cn(
+    sideActionButtonClass,
+    !disabled && "text-[color:var(--dash-accent,#111111)] hover:text-[color:var(--dash-accent,#111111)]",
+  );
+
   return (
     <div ref={rootRef} className={cn("relative", className)}>
       {label ? (
@@ -381,7 +417,7 @@ export function CheckmarkSelect({
           {label}
         </span>
       ) : null}
-      {canClear ? (
+      {useSplitTrigger ? (
         <div ref={anchorRef} className={splitFrameClass} data-invalid={invalid ? true : undefined}>
           <button
             ref={triggerRef}
@@ -411,21 +447,40 @@ export function CheckmarkSelect({
               aria-hidden
             />
           </button>
-          <button
-            type="button"
-            aria-label={clearAriaLabel ?? "Clear"}
-            disabled={disabled}
-            className={clearSplitButtonClass}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (disabled) return;
-              onChange("");
-              setOpen(false);
-            }}
-          >
-            <X className={size === "sm" ? "size-3" : "size-3.5"} strokeWidth={2} aria-hidden />
-          </button>
+          {canClear ? (
+            <button
+              type="button"
+              aria-label={clearAriaLabel ?? "Clear"}
+              disabled={disabled}
+              className={sideActionButtonClass}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (disabled) return;
+                onChange("");
+                setOpen(false);
+              }}
+            >
+              <X className={size === "sm" ? "size-3" : "size-3.5"} strokeWidth={2} aria-hidden />
+            </button>
+          ) : null}
+          {showAdd ? (
+            <button
+              type="button"
+              aria-label={addAriaLabel ?? "Add new"}
+              disabled={disabled}
+              className={addSplitButtonClass}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (disabled) return;
+                setOpen(false);
+                onAdd?.();
+              }}
+            >
+              <Plus className={size === "sm" ? "size-3" : "size-3.5"} strokeWidth={2.5} aria-hidden />
+            </button>
+          ) : null}
         </div>
       ) : (
         <div ref={anchorRef} className="w-full min-w-0">

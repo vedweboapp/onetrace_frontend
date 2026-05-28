@@ -25,6 +25,8 @@ import CountrySelect from "../components/CountrySelect";
 import StateSelect from "../components/StateSelect";
 import CitySelect from "../components/CitySelect";
 import RichTextEditor from "../components/rich-text-editor";
+import { FormRule } from "./form-rules.types";
+import { buildFieldRuleState, FieldRuleState } from "./form-rules-engine";
 
 interface Field {
   api_name: string;
@@ -54,6 +56,8 @@ interface FormRendererProps {
   defaultValues?: any;
   autoPopulateData?: any;
   onFieldChange?: (name: string, value: any) => void;
+  rules?: FormRule[];
+  renderMode?: "desktop" | "phone";
 }
 
 export interface FormRendererRef {
@@ -211,6 +215,8 @@ const FormField: React.FC<{
   isSubmitted: boolean;
   dirtyFields: any;
   sectionFields?: Field[];
+  ruleState?: FieldRuleState;
+  forceSingleColumn?: boolean;
 }> = ({
   field,
   control,
@@ -222,8 +228,12 @@ const FormField: React.FC<{
   isSubmitted,
   dirtyFields,
   sectionFields = [],
+  ruleState,
+  forceSingleColumn = false,
 }) => {
   if (!field || !field.api_name) return null;
+
+  if (ruleState && ruleState.visible === false) return null;
 
   const normType = getNormalizedType(field.field_type);
   const Component = FIELD_COMPONENTS[normType] || Input;
@@ -288,7 +298,14 @@ const FormField: React.FC<{
     }
   }
 
+  if (ruleState?.required) {
+    validations.required = `${field.field_label || "This field"} is required (by rule)`;
+  }
+
   const isRequired = !!validations.required;
+
+  const isDisabled = !!ruleState?.disabled;
+  const isReadOnly = field.readOnly || isDisabled;
 
   const label = (
     <div className="flex items-center gap-1 mb-1">
@@ -302,8 +319,9 @@ const FormField: React.FC<{
   );
 
   const colSpan = field.colspan || 1;
-  const colSpanClass =
-    colSpan === 2
+  const colSpanClass = forceSingleColumn
+    ? ""
+    : colSpan === 2
       ? "md:col-span-2"
       : colSpan === 3
         ? "md:col-span-3"
@@ -318,7 +336,7 @@ const FormField: React.FC<{
           control={control}
           errors={errors}
           rules={validations}
-          readOnly={field.readOnly}
+          readOnly={isReadOnly}
           placeholder={field.placeholder}
         />
       </div>
@@ -338,7 +356,10 @@ const FormField: React.FC<{
     }
 
     const defaultChecked =
-      field.defaultChecked === true || field.defaultChecked === "true";
+      field.defaultChecked === true ||
+      field.defaultChecked === "true" ||
+      field.defaultValue === true ||
+      field.defaultValue === "true";
 
     return (
       <div className={colSpanClass}>
@@ -351,12 +372,12 @@ const FormField: React.FC<{
             <FormCheckbox
               label={label}
               name={field.api_name}
-              checked={!!value}
+              checked={value !== undefined ? !!value : defaultChecked}
               onChange={onChange}
               onBlur={onBlur}
               inputRef={ref}
               errors={getError(field.api_name)}
-              readOnly={field.readOnly}
+              readOnly={isReadOnly}
             />
           )}
         />
@@ -381,7 +402,7 @@ const FormField: React.FC<{
               onChange={onChange}
               onBlur={onBlur}
               errors={getError(field.api_name)}
-              readOnly={field.readOnly}
+              readOnly={isReadOnly}
               placeholder={field.placeholder}
             />
           )}
@@ -402,11 +423,12 @@ const FormField: React.FC<{
             <Component
               label={field.field_label}
               name={field.api_name}
-              value={value}
+              value={value ?? (normType === "multi_select" || normType === "user" ? [] : "")}
               onChange={onChange}
               control={control} // For FileUploader
               errors={getError(field.api_name)}
-              readOnly={field.readOnly}
+              readOnly={isReadOnly}
+              disabled={isDisabled}
               options={field.options || []}
               placeholder={field.placeholder}
               properties={field.properties}
@@ -431,8 +453,10 @@ const FormField: React.FC<{
     label: label,
     name: field.api_name,
     register: register(field.api_name, validations),
+    defaultValue: field.defaultValue !== undefined ? field.defaultValue : "",
     errors: getError(field.api_name),
-    readOnly: field.readOnly,
+    readOnly: isReadOnly,
+    disabled: isDisabled,
     placeholder: field.placeholder,
     className: "w-full",
     ...extraProps,
@@ -495,6 +519,60 @@ const sanitizeOutput = (data: any, schema: Section[]) => {
   return sanitized;
 };
 
+const buildDefaultValuesFromSchema = (
+  schema: Section[],
+  base: Record<string, unknown> = {},
+) => {
+  const formData: Record<string, unknown> = { ...base };
+
+  schema.forEach((s) => {
+    if (s.is_subform) {
+      const sfKey = s.subform_field_name || s.name;
+      if (sfKey && formData[sfKey] === undefined) {
+        formData[sfKey] = [];
+      }
+      return;
+    }
+
+    s?.fields?.forEach((f) => {
+      if (!f.api_name || formData[f.api_name] !== undefined) return;
+      const normType = getNormalizedType(f.field_type);
+      if (normType === "checkbox") {
+        // Use defaultChecked or defaultValue set in field config modal
+        formData[f.api_name] =
+          f.defaultChecked === true ||
+          f.defaultChecked === "true" ||
+          f.defaultValue === true ||
+          f.defaultValue === "true";
+      } else if (normType === "image_upload") {
+        formData[f.api_name] =
+          f.defaultValue !== undefined &&
+          f.defaultValue !== null &&
+          f.defaultValue !== ""
+            ? f.defaultValue
+            : null;
+      } else if (
+        ["multi_select", "file_upload", "user"].includes(normType)
+      ) {
+        // Use defaultValue array if set, otherwise empty array
+        formData[f.api_name] = Array.isArray(f.defaultValue)
+          ? f.defaultValue
+          : [];
+      } else {
+        // Use defaultValue (picklist, select, radio, single_line, etc.) if set
+        formData[f.api_name] =
+          f.defaultValue !== undefined &&
+          f.defaultValue !== null &&
+          f.defaultValue !== ""
+            ? f.defaultValue
+            : "";
+      }
+    });
+  });
+
+  return formData;
+};
+
 const mapDataToFormFields = (data: any, schema: Section[], defaultValues = {}) => {
   if (!data || !Array.isArray(schema)) return {};
   const formData: any = {};
@@ -540,7 +618,17 @@ const mapDataToFormFields = (data: any, schema: Section[], defaultValues = {}) =
           formData[f.api_name] = (defaultValues as any)[f.api_name];
         } else if (normType === "checkbox") {
           formData[f.api_name] =
-            f.defaultChecked === true || f.defaultChecked === "true";
+            f.defaultChecked === true ||
+            f.defaultChecked === "true" ||
+            f.defaultValue === true ||
+            f.defaultValue === "true";
+        } else if (
+          f.defaultValue !== undefined &&
+          f.defaultValue !== null &&
+          f.defaultValue !== ""
+        ) {
+          // Honour the default value configured in the field builder
+          formData[f.api_name] = f.defaultValue;
         } else {
           formData[f.api_name] = "";
         }
@@ -552,13 +640,16 @@ const mapDataToFormFields = (data: any, schema: Section[], defaultValues = {}) =
 };
 
 const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
-  ({ schema, defaultValues = {}, autoPopulateData = null, onFieldChange }, ref) => {
-    const initialValuesRef = useRef(
-      autoPopulateData
-        ? {
-            ...defaultValues,
-            ...mapDataToFormFields(autoPopulateData, schema, defaultValues),
-          }
+  ({ schema, defaultValues = {}, autoPopulateData = null, onFieldChange, rules = [], renderMode = "desktop" }, ref) => {
+    const forceSingleColumn = renderMode === "phone";
+    const initialValuesRef = useRef<Record<string, unknown>>(
+      Array.isArray(schema) && schema.length > 0
+        ? autoPopulateData
+          ? {
+              ...defaultValues,
+              ...mapDataToFormFields(autoPopulateData, schema, defaultValues),
+            }
+          : buildDefaultValuesFromSchema(schema, defaultValues)
         : { ...defaultValues },
     );
 
@@ -587,17 +678,31 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
     }, [watch, onFieldChange]);
 
     useEffect(() => {
-      if (!autoPopulateData) return;
-      const mapped = mapDataToFormFields(
-        autoPopulateData,
-        schema,
-        defaultValues,
-      );
-      if (JSON.stringify(mapped) === JSON.stringify(initialValuesRef.current))
+      if (!Array.isArray(schema) || schema.length === 0) return;
+
+      const merged = autoPopulateData
+        ? {
+            ...defaultValues,
+            ...mapDataToFormFields(autoPopulateData, schema, defaultValues),
+          }
+        : buildDefaultValuesFromSchema(schema, defaultValues);
+
+      if (JSON.stringify(merged) === JSON.stringify(initialValuesRef.current)) {
         return;
-      reset(mapped);
-      initialValuesRef.current = { ...mapped };
+      }
+
+      reset(merged);
+      initialValuesRef.current = { ...merged };
     }, [autoPopulateData, schema, reset, defaultValues]);
+
+    const formValues = watch();
+    
+    const fieldRuleState = React.useMemo(() => {
+      if (!rules || rules.length === 0) {
+        return new Map<string, FieldRuleState>();
+      }
+      return buildFieldRuleState(rules, formValues);
+    }, [rules, formValues]);
 
     const getError = (name: string) =>
       touchedFields?.[name] || isSubmitted ? (errors as any)[name] : undefined;
@@ -697,7 +802,11 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
                 </div>
               )}
               <div
-                className={`grid grid-cols-1 md:grid-cols-${section.column_count || 2} gap-x-10 gap-y-7`}
+                className={`grid gap-x-10 gap-y-7 ${
+                  forceSingleColumn || (section.column_count || 2) <= 1
+                    ? "grid-cols-1"
+                    : "grid-cols-1 md:grid-cols-2"
+                }`}
               >
                 {[...(section.fields || [])]
                   .filter((f) => !f.is_deleted)
@@ -715,6 +824,8 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
                       isSubmitted={isSubmitted}
                       dirtyFields={dirtyFields}
                       sectionFields={section.fields}
+                      ruleState={fieldRuleState.get(f.api_name)}
+                      forceSingleColumn={forceSingleColumn}
                     />
                   ))}
               </div>
