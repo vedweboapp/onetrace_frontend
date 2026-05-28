@@ -1575,6 +1575,46 @@
           "loading": "Cargando editor..."
         }
       },
+      "formsTab": {
+        "title": "Formularios",
+        "subtitle": "Gestiona formularios del proyecto y abre el constructor para editar layouts.",
+        "add": "Añadir formulario",
+        "searchPlaceholder": "Buscar formularios…",
+        "searchAria": "Buscar formularios",
+        "filterState": "Estado activo",
+        "filterAll": "Todos",
+        "empty": "No se encontraron formularios.",
+        "loadError": "No se pudieron cargar los formularios. Inténtalo de nuevo.",
+        "toggleActiveError": "No se pudo actualizar el estado del formulario. Inténtalo de nuevo.",
+        "activatedToast": "Formulario activado",
+        "deactivatedToast": "Formulario desactivado",
+        "edit": "Editar",
+        "activate": "Activar",
+        "deactivate": "Desactivar",
+        "prev": "Anterior",
+        "next": "Siguiente",
+        "pageLabel": "Mostrando {start}-{end} de {total} formularios",
+        "cancel": "Cancelar",
+        "continue": "Continuar",
+        "projectTypes": "Tipos de proyecto",
+        "projectTypePlaceholder": "Seleccionar tipo de proyecto",
+        "projectTypeSearch": "Buscar tipos de proyecto",
+        "loadingProjectTypes": "Cargando tipos de proyecto…",
+        "projectTypesLoadError": "No se pudieron cargar los tipos de proyecto. Inténtalo de nuevo.",
+        "selectProjectTypeTitle": "Seleccionar tipo de proyecto",
+        "selectProjectTypeDescription": "Elige un tipo de proyecto antes de crear un formulario.",
+        "status": {
+          "active": "Activo",
+          "inactive": "Inactivo"
+        },
+        "table": {
+          "name": "Nombre del formulario",
+          "projectType": "Tipo de proyecto",
+          "status": "Estado",
+          "created": "Creado",
+          "actions": "Acciones"
+        }
+      },
       "detailLoadError": "No se pudieron cargar los datos del proyecto. Inténtalo de nuevo.",
       "placeholders": {
         "client": "Seleccionar cliente",

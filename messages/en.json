@@ -1577,6 +1577,46 @@
           "loading": "Loading editor..."
         }
       },
+      "formsTab": {
+        "title": "Forms",
+        "subtitle": "Manage project forms and open the form builder to edit layouts.",
+        "add": "Add form",
+        "searchPlaceholder": "Search forms…",
+        "searchAria": "Search forms",
+        "filterState": "Active state",
+        "filterAll": "All",
+        "empty": "No forms found.",
+        "loadError": "Could not load forms. Try again.",
+        "toggleActiveError": "Could not update form status. Try again.",
+        "activatedToast": "Form activated",
+        "deactivatedToast": "Form deactivated",
+        "edit": "Edit",
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "prev": "Previous",
+        "next": "Next",
+        "pageLabel": "Showing {start}-{end} of {total} forms",
+        "cancel": "Cancel",
+        "continue": "Continue",
+        "projectTypes": "Project types",
+        "projectTypePlaceholder": "Select project type",
+        "projectTypeSearch": "Search project types",
+        "loadingProjectTypes": "Loading project types…",
+        "projectTypesLoadError": "Could not load project types. Try again.",
+        "selectProjectTypeTitle": "Select project type",
+        "selectProjectTypeDescription": "Choose a project type before creating a form.",
+        "status": {
+          "active": "Active",
+          "inactive": "Inactive"
+        },
+        "table": {
+          "name": "Form name",
+          "projectType": "Project type",
+          "status": "Status",
+          "created": "Created",
+          "actions": "Actions"
+        }
+      },
       "detailLoadError": "Could not load project details. Try again.",
       "placeholders": {
         "client": "Select client",
