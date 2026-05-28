@@ -1330,13 +1330,13 @@
         "basic": "Details",
         "relations": "Links",
         "schedule": "Schedule",
-        "jobMeta": "Work scope",
-        "jobMetaHint": "Optional section, plot, group, and composite item for this job."
+        "jobMeta": "Work scope"
+        
       },
       "fields": {
         "title": "Title",
         "description": "Description",
-        "comments": "Comments",
+      
         "client": "Client",
         "project": "Project",
         "site": "Site",

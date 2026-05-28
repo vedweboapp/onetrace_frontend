@@ -386,15 +386,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                 />
               </FieldGroup>
 
-              <FieldGroup label={t("fields.comments")} htmlFor="job-comments">
-                <textarea
-                  id="job-comments"
-                  rows={2}
-                  className={cn(surfaceInputClassName, "resize-y min-h-[72px]")}
-                  disabled={saving}
-                  {...register("comments")}
-                />
-              </FieldGroup>
+            
             </section>
 
             <section className="space-y-6">
@@ -597,7 +589,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
               <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {t("sections.jobMeta")}
               </h2>
-              <p className="text-sm text-slate-600 dark:text-slate-400">{t("sections.jobMetaHint")}</p>
+          
 
               <FieldGroup label={t("fields.sectionName")} htmlFor="job-meta-section">
                 <input
