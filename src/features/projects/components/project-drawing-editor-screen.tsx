@@ -681,29 +681,17 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     }
   }
 
-  function readFileAsDataUrl(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(String(reader.result ?? ""));
-      reader.onerror = () => reject(new Error("File reading failed"));
-      reader.readAsDataURL(file);
-    });
-  }
-
   async function filesToPinAttachments(files: File[]): Promise<DrawingPinAttachment[]> {
     if (!files.length) return [];
     const now = Date.now();
     const out: DrawingPinAttachment[] = [];
     let i = 0;
     for (const file of files) {
-      // Attachments draft is stored as data URLs so it can be persisted with the pin payload.
-      const dataUrl = await readFileAsDataUrl(file);
       out.push({
         id: -(now + i),
         file_name: file.name,
         content_type: file.type || null,
-        file_data: dataUrl,
-        data_url: dataUrl,
+        file: file, // Keep reference to original binary File object
       });
       i++;
     }
@@ -1052,36 +1040,63 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setPanMode(false);
   }
 
-  function toPayload(localPlots: LocalPlot[]): DrawingPlotUpsert[] {
-    return localPlots.map((p) => ({
+  function toPayload(localPlots: LocalPlot[], formData: FormData): DrawingPlotUpsert[] {
+    return localPlots.map((p, plotIndex) => ({
       ...(p.id > 0 ? { id: p.id } : {}),
+
       name: p.name,
       coordinates: p.coordinates,
       plot_border: p.plot_border,
       plot_bg: p.plot_bg,
-      pins: p.pins.map((pin) => ({
-        ...(pin.id > 0 ? { id: pin.id } : {}),
-        x_coordinate: pin.x_coordinate,
-        y_coordinate: pin.y_coordinate,
-        status: pin.status ?? undefined,
-        group: pin.group ?? null,
-        item: pin.item ?? null,
-        quantity: pin.quantity || 1,
-        variation: pin.variation ?? false,
-        location: pinLabels.get(pin.id),
-        description: pin.description ?? undefined,
-        attachments: pin.attachments ?? undefined,
-      })),
+
+      pins: p.pins.map((pin, pinIndex) => {
+        // Append file(s) to FormData
+        if (Array.isArray(pin.attachments) && pin.attachments.length) {
+          pin.attachments.forEach((att: any, idx) => {
+            if (att.file) {
+              formData.append(
+                `plots[${plotIndex}][pins][${pinIndex}][attachments][${idx}]`,
+                att.file
+              );
+            }
+          });
+        }
+
+        return {
+          ...(pin.id > 0 ? { id: pin.id } : {}),
+
+          x_coordinate: pin.x_coordinate,
+          y_coordinate: pin.y_coordinate,
+          status: pin.status ?? undefined,
+          group: pin.group ?? null,
+          item: pin.item ?? null,
+          quantity: pin.quantity || 1,
+          variation: pin.variation ?? false,
+          location: pinLabels.get(pin.id),
+          description: pin.description ?? undefined,
+          attachments: pin.attachments?.filter((att) => !att.file) ?? [],
+        };
+      }),
     }));
   }
 
   async function persistPlots(localPlots: LocalPlot[]) {
-    const updated = await updateDrawingPlots(projectId, drawingId, { plots: toPayload(localPlots) });
-    const normalized = (updated.plots ?? []).map(normalizePlot);
-    applyStableLocations(normalized);
-    setPlots(normalized);
-    setDirty(false);
-  }
+  // Create a new FormData for each save operation
+  const formData = new FormData();
+
+  // Build payload and attach files using the same FormData instance
+  const plotsPayload = toPayload(localPlots, formData);
+
+  // Append the JSON payload as a string field
+  formData.append('payload', JSON.stringify({ plots: plotsPayload }));
+
+  // Send multipart/form-data to the backend
+  const updated = await updateDrawingPlots(projectId, drawingId, formData);
+  const normalized = (updated.plots ?? []).map(normalizePlot);
+  applyStableLocations(normalized);
+  setPlots(normalized);
+  setDirty(false);
+}
 
   async function savePlotFromModal() {
     const name = plotNameDraft.trim();

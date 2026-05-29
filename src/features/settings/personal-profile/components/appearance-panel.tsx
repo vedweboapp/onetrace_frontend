@@ -8,20 +8,15 @@ import { usePathname as useNextPathname } from "next/navigation";
 import { stripLocaleSegmentsFromPathname } from "@/i18n/locale-path";
 import { routing } from "@/i18n/routing";
 import type { DashboardAccentId } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
-import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
+import { useDashboardAppearanceStore, ACCENT_ORDER } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 import { ACCENT_HEX } from "@/features/dashboard/utils/accent-hex.util";
 import { useShallow } from "zustand/react/shallow";
 import { AppButton, CheckmarkSelect, ListPageHeader } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import { Monitor, Moon, Sun } from "lucide-react";
 
-const PRESET_ACCENTS: { id: DashboardAccentId; hex: string; label: string }[] = [
-  { id: "black", hex: ACCENT_HEX.black, label: "Black" },
-  { id: "indigo", hex: ACCENT_HEX.indigo, label: "Indigo" },
-  { id: "teal", hex: ACCENT_HEX.teal, label: "Teal" },
-  { id: "violet", hex: ACCENT_HEX.violet, label: "Violet" },
-  { id: "emerald", hex: ACCENT_HEX.emerald, label: "Emerald" },
-];
+/* Accent presets are built dynamically from ACCENT_ORDER + ACCENT_HEX;
+   labels come from the translation file at runtime. */
 
 function useIsClient() {
   return useSyncExternalStore(
@@ -121,11 +116,11 @@ export function AppearancePanel() {
       {/* <ListPageHeader variant="page" title={t("title")} description={t("subtitle")} showViewToggle={false} /> */}
 
       {/* Workspace Preferences */}
-      <SectionShell title="Workspace Preferences">
+      <SectionShell title={t("themeHeading") + " & " + t("languageHeading")}>
         <div className="space-y-8">
           {/* Theme Selector */}
           <div>
-            <p className="mb-4 text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Interface Theme</p>
+            <p className="mb-4 text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">{t("themeSelectLabel")}</p>
             <div className="flex w-full max-w-sm items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-900">
               {(["light", "dark"] as const).map((mode) => {
                 const active = theme === mode;
@@ -144,7 +139,7 @@ export function AppearancePanel() {
                     {mode === "light" && <Sun size={16} />}
                     {mode === "dark" && <Moon size={16} />}
                     {/* {mode === "system" && <Monitor size={16} />} */}
-                    <span className="capitalize">{mode}</span>
+                    <span className="capitalize">{t(`theme.${mode}`)}</span>
                   </button>
                 );
               })}
@@ -155,8 +150,8 @@ export function AppearancePanel() {
             {/* Language Selector */}
             <CheckmarkSelect
               id="appearance-locale"
-              label="SYSTEM LANGUAGE"
-              listLabel="System Language"
+              label={t("languageSelectLabel").toUpperCase()}
+              listLabel={t("languageSelectLabel")}
               options={languageOptions}
               value={locale}
               onChange={switchLocale}
@@ -167,12 +162,13 @@ export function AppearancePanel() {
       </SectionShell>
 
       {/* Branding & Appearance */}
-      <SectionShell title="Branding & Appearance">
+      <SectionShell title={t("accentHeading")}>
         <div className="space-y-10">
           <div>
-            <p className="mb-6 text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Accent Color Presets</p>
+            <p className="mb-6 text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">{t("accentPresetsLabel")}</p>
             <div className="flex flex-wrap gap-8">
-              {PRESET_ACCENTS.map(({ id, hex, label }) => {
+              {ACCENT_ORDER.map((id) => {
+                const hex = ACCENT_HEX[id];
                 const selected = accentKind === "preset" && accent === id;
                 return (
                   <div key={id} className="flex flex-col items-center gap-3">
@@ -200,7 +196,7 @@ export function AppearancePanel() {
                       "text-[10px] font-bold uppercase tracking-tight transition-colors",
                       selected ? "text-slate-900 dark:text-white" : "text-slate-400"
                     )}>
-                      {label}
+                      {t(`accents.${id}`)}
                     </span>
                   </div>
                 );
@@ -209,9 +205,9 @@ export function AppearancePanel() {
           </div>
 
           <div className="flex flex-col gap-3">
-            <p className="mb-4 text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Custom Hex Color</p>
+            <p className="mb-4 text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">{t("customHexLabel")}</p>
             <div className="max-w-md space-y-3">
-              <div className="flex overflow-hidden rounded-xl border border-slate-200 bg-white focus-within:ring-2 focus-within:ring-slate-900/10 dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex overflow-hidden items-center rounded-xl border border-slate-200 bg-white focus-within:ring-2 focus-within:ring-slate-900/10 dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex items-center gap-3 px-3 py-2 flex-1">
                   <div
                     className="size-6 rounded-md border border-slate-200 cursor-pointer dark:border-slate-700 hover:scale-110 transition"
@@ -243,13 +239,13 @@ export function AppearancePanel() {
                   type="button"
                   onClick={handleApplyCustom}
                   style={{ background: normalizeHex(hexDraft) }}
-                  className="px-8 py-2.5 text-xs font-bold uppercase tracking-widest text-white transition hover:opacity-90 dark:text-black"
+                  className="px-8 mx-2 py-2.5 text-xs font-bold uppercase tracking-widest text-white transition hover:opacity-90 dark:text-black"
                 >
-                  Apply
+                  {t("applyCustom")}
                 </AppButton>
               </div>
               <p className="text-[11px] font-medium text-slate-400">
-                Enter a custom hex code to match your brand's identity exactly.
+                {t("customHint")}
               </p>
             </div>
           </div>

@@ -219,7 +219,15 @@
       "AddAddress": "Add Address",
       "Addresses": "Addresses",
       "Primary": "Primary"
-
+    },
+    "settingsAppearance": {
+      "workPrefrence": "WORK PREFREFRENCE",
+      "branding": "BRANDING &  APPEARANCE",
+      "interfaceTheme": "INTERFACE THEME",
+      "defaultLangauge": "SYSTEM LANGUAGE",
+      "accent": "Accent Color Presets",
+      "customColor": "CUSTOM HEX COLOR",
+      "customColorMessage": "Enter a custom hex code to match your brand's identity exactly."
     },
     "settingsCompany": {
       "organizationUpdatedToast": "Organization details updated successfully",
@@ -233,10 +241,10 @@
       "layoutUpdatedToast": "Layout updated successfully",
       "moduleCreatedToast": "Module created successfully"
     },
-    "settingsProjectForms":{
+    "settingsProjectForms": {
       "createNewForm": "Create new form",
       "headerLabel": "Project Forms",
-      "headerDescription":"Create and manage project in here.",
+      "headerDescription": "Create and manage project in here.",
       "searchPlaceholder": "Search project type forms",
       "searchAria": "Search project type forms",
       "loadError": "Failed to load forms. Please try again.",
@@ -272,7 +280,6 @@
       },
       "statusUpdatedToast": "Form status updated successfully",
       "statusUpdateErrorToast": "Failed to update form status. Please try again."
-
     },
     "settingsLayouts": {
       "statusUpdatedToast": "Layout status updated successfully"
@@ -984,7 +991,6 @@
       },
       "contactPerson": {
         "sectionTitle": "Contact persons",
-      
         "add": "Add contact person",
         "remove": "Remove contact person",
         "titleLabel": "Title",
@@ -1015,7 +1021,6 @@
       "location": {
         "searchPlaceholder": "Start typing street address…",
         "googleSearchPlaceholder": "Search address...",
-      
         "searchPlaceholderLine2": "Apartment, suite, building (optional)…",
         "searching": "Searching places…",
         "resolvingPlace": "Loading address details…",
@@ -1188,7 +1193,6 @@
         "duplicateCountTitle": "Duplicate",
         "duplicateCountDescription": "Choose how many copies to add right after the original.",
         "duplicateCountLabel": "Number of copies",
-      
         "duplicateCountConfirm": "Duplicate",
         "duplicateCountInvalid": "Enter a  number between 1 and 50.",
         "copySection": "Copy section",
@@ -1373,12 +1377,10 @@
         "relations": "Links",
         "schedule": "Schedule",
         "jobMeta": "Work scope"
-        
       },
       "fields": {
         "title": "Title",
         "description": "Description",
-      
         "client": "Client",
         "project": "Project",
         "site": "Site",

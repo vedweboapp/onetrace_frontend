@@ -68,7 +68,7 @@ const PersonalProfileForm = ({
                 {
                     address:
                         "123 Market Street, Suite 400\nSan Francisco, CA 94105\nUnited States",
-                    isPrimary: true,
+                    is_primary: true,
                 },
             ],
         },
@@ -116,7 +116,7 @@ const PersonalProfileForm = ({
                     {
                         address:
                             "123 Market Street, Suite 400\nSan Francisco, CA 94105\nUnited States",
-                        isPrimary: true,
+                        is_primary: true,
                     },
                 ],
             });
@@ -170,21 +170,22 @@ const PersonalProfileForm = ({
         setIsSaving(true);
         try {
             // Build JSON payload
+            const formData = new FormData();
             const payload: any = {
                 first_name: data.firstName,
                 last_name: data.lastName,
                 gender: data.gender.charAt(0).toUpperCase() + data.gender.slice(1),
                 // Primary email (first marked as primary or first email)
-                email:
-                    data.emails?.find((e) => e.is_primary)?.email ||
-                    data.emails?.[0]?.email ||
-                    "",
+                // email:
+                //     data.emails?.find((e) => e.is_primary)?.email ||
+                //     data.emails?.[0]?.email ||
+                //     "",
                 // Primary phone (first marked as primary or first phone)
-                phone_number: (
-                    data.phones?.find((p) => p.is_primary)?.phone ||
-                    data.phones?.[0]?.phone ||
-                    ""
-                ).replace("+", ""),
+                // phone_number: (
+                //     data.phones?.find((p) => p.is_primary)?.phone ||
+                //     data.phones?.[0]?.phone ||
+                //     ""
+                // ).replace("+", ""),
                 // All emails as array of objects
                 emails:
                     data.emails
@@ -201,17 +202,21 @@ const PersonalProfileForm = ({
                             phone: p.phone.replace("+", ""),
                             is_primary: p.is_primary || false,
                         })) || [],
+                addresses:
+                    data.addresses?.filter((a) => a.address)?.map((adress) => {
+                        return {
+                            address: adress.address,
+                            is_primary: adress.is_primary
+                        }
+                    })
             };
-
+            formData.append("user_detail", JSON.stringify(payload));
             // Convert image to base64 if it's a new file
             if (image instanceof File) {
-                payload.user_image = await imageToBase64(image);
-            } else if (typeof image === "string" && image.startsWith("data:")) {
-                // If already base64, include it
-                payload.user_image = image;
+                formData.append("user_image", image);
             }
 
-            await updatePersonalProfile(String(initialData.id), payload);
+            await updatePersonalProfile(String(initialData.id), formData);
 
             toastSuccess(t("updatedToast"));
             if (onSuccess) onSuccess();
@@ -224,6 +229,7 @@ const PersonalProfileForm = ({
     };
     const watchedEmails = useWatch({ control, name: "emails" });
     const watchedPhones = useWatch({ control, name: "phones" });
+    const watchedAddresses = useWatch({ control, name: "addresses" });
     if (isLoading) {
         return (
             <div className="w-full space-y-6 animate-pulse">
@@ -465,13 +471,14 @@ const PersonalProfileForm = ({
                                     variant="ghost"
                                     size="sm"
                                     onClick={() =>
-                                        appendAddress({ address: "", isPrimary: false })
+                                        appendAddress({ address: "", is_primary: false })
                                     }
                                     className="gap-2"
                                 >
                                     <Plus size={14} /> {t("AddAddress")}
                                 </AppButton>
                             )}
+
                         </div>
                         <div className="space-y-6">
                             {addressFields.map((field, index) => (
@@ -479,7 +486,7 @@ const PersonalProfileForm = ({
                                     key={field.id}
                                     className="relative flex gap-4 items-start p-5 rounded-xl border border-slate-200 bg-slate-50/50 group dark:border-slate-700 dark:bg-slate-900/30"
                                 >
-                                    {field.isPrimary && (
+                                    {field.is_primary && (
                                         <span className="absolute top-4 right-4 px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold uppercase tracking-tight dark:bg-blue-900/40 dark:text-blue-300">
                                             Primary
                                         </span>
@@ -496,6 +503,24 @@ const PersonalProfileForm = ({
                                             readOnly={!isEditing}
                                         />
                                     </div>
+                                    {isEditing && (
+                                        <label className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-50 dark:bg-slate-700 text-sm whitespace-nowrap mt-1.5">
+                                            <input
+                                                type="radio"
+                                                name="address_primary"
+                                                checked={!!watchedAddresses?.[index]?.is_primary}
+                                                onChange={() => {
+                                                    addressFields.forEach((_, i) => {
+                                                        setValue(`addresses.${i}.is_primary`, i === index);
+                                                    });
+                                                }}
+                                                className="w-4 h-4 cursor-pointer"
+                                            />
+                                            <span className="text-slate-600 dark:text-slate-300">
+                                                {t("Primary")}
+                                            </span>
+                                        </label>
+                                    )}
                                     {isEditing && addressFields.length > 1 && (
                                         <AppButton
                                             variant="ghost"
