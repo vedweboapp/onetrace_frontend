@@ -1,6 +1,7 @@
-import type { Job } from "@/features/jobs/types/job.types";
+import type { Job, JobClientRef, JobFormRef, JobProjectRef, JobSiteRef } from "@/features/jobs/types/job.types";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import type { UserProfile } from "@/features/users/types/user.types";
+import { jobFormsToFormIds } from "@/features/jobs/utils/job-form-map";
 
 export function getJobAssignedWorkerId(job: Pick<Job, "assigned_worker">): number | null {
   const w = job.assigned_worker;
@@ -15,6 +16,7 @@ export function jobAssignedWorkerLabel(
 ): string {
   const w = job.assigned_worker;
   if (w && typeof w === "object") {
+    if (typeof w.name === "string" && w.name.trim()) return w.name.trim();
     const full = `${w.first_name ?? ""} ${w.last_name ?? ""}`.trim();
     if (full) return full;
     if (w.username?.trim()) return w.username.trim();
@@ -36,6 +38,52 @@ export function getJobStatusRow(job: Pick<Job, "job_status">): WorkflowColourSta
   const s = job.job_status;
   if (s && typeof s === "object" && "status_name" in s) return s;
   return null;
+}
+
+export function jobClientLabel(client: Job["client"]): string {
+  if (client && typeof client === "object" && typeof client.name === "string" && client.name.trim()) {
+    return client.name.trim();
+  }
+  const id = typeof client === "number" ? client : (client as JobClientRef | undefined)?.id;
+  return id != null ? `#${id}` : "—";
+}
+
+export function jobProjectLabel(project: Job["project"]): string {
+  if (project && typeof project === "object" && typeof project.name === "string" && project.name.trim()) {
+    return project.name.trim();
+  }
+  const id = typeof project === "number" ? project : (project as JobProjectRef | undefined)?.id;
+  return id != null ? `#${id}` : "—";
+}
+
+export function jobSiteLabel(site: Job["site"]): string {
+  if (site && typeof site === "object" && typeof site.site_name === "string" && site.site_name.trim()) {
+    return site.site_name.trim();
+  }
+  const id = typeof site === "number" ? site : (site as JobSiteRef | undefined)?.id;
+  return id != null ? `#${id}` : "—";
+}
+
+export function jobFormEntries(job: Pick<Job, "forms">): JobFormRef[] {
+  const forms = job.forms;
+  if (forms == null) return [];
+  if (typeof forms === "number") return [{ id: forms }];
+  if (Array.isArray(forms)) {
+    return forms.map((entry) => {
+      if (typeof entry === "number") return { id: entry };
+      return { id: entry.id, name: entry.name };
+    });
+  }
+  if (typeof forms === "object") return [{ id: forms.id, name: forms.name }];
+  return [];
+}
+
+export function jobFormsSummary(job: Pick<Job, "forms">): string {
+  const entries = jobFormEntries(job);
+  if (entries.length === 0) return "—";
+  return entries
+    .map((f) => (f.name?.trim() ? f.name.trim() : `#${f.id}`))
+    .join(", ");
 }
 
 export function userProfileLabel(u: UserProfile): string {

@@ -17,7 +17,6 @@ import {
   jobToFormDefaults,
   mapJobFormToPayload,
 } from "@/features/jobs/utils/job-form-map";
-import { computeJobMetaPlotTotal, parsePositiveQuantity } from "@/features/jobs/utils/job-meta-payload.util";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import { fetchGroupsPage } from "@/features/groups/api/group.api";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
@@ -35,6 +34,7 @@ import {
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
+  MultiCheckSelect,
   SurfaceShell,
   surfaceInputClassName,
 } from "@/shared/ui";
@@ -79,8 +79,6 @@ export function JobFormScreen({ mode, jobId }: Props) {
         title: t("validation.title"),
         assignedWorker: t("validation.assignedWorker"),
         startDate: t("validation.startDate"),
-        endDate: t("validation.endDate"),
-        endBeforeStart: t("validation.endBeforeStart"),
         optionalId: t("validation.optionalId"),
         compositeQuantity: t("validation.compositeQuantity"),
       }),
@@ -102,8 +100,6 @@ export function JobFormScreen({ mode, jobId }: Props) {
 
   const selectedClient = useWatch({ control, name: "client" });
   const selectedProject = useWatch({ control, name: "project" });
-  const compositeItemId = useWatch({ control, name: "job_meta_composite_item_id" });
-  const compositeQuantity = useWatch({ control, name: "job_meta_composite_quantity" });
 
   const clientId = selectedClient && /^\d+$/.test(selectedClient) ? Number.parseInt(selectedClient, 10) : undefined;
   const projectId = selectedProject && /^\d+$/.test(selectedProject) ? Number.parseInt(selectedProject, 10) : undefined;
@@ -140,6 +136,17 @@ export function JobFormScreen({ mode, jobId }: Props) {
     kind: "composite-item",
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
+  const openFormsSettings = React.useCallback(() => {
+    router.push(routes.dashboard.settingsProjectForms);
+  }, [router]);
+  const openUsersSettings = React.useCallback(() => {
+    const qs = searchParams.toString();
+    const current = qs ? `${pathname}?${qs}` : pathname;
+    router.push(`${routes.dashboard.settingsUsers}/new?back=${encodeURIComponent(current)}`);
+  }, [router, pathname, searchParams]);
+  const openJobStatusSettings = React.useCallback(() => {
+    router.push(routes.dashboard.settingsJobStatus);
+  }, [router]);
 
   const reloadClients = React.useCallback(async () => {
     try {
@@ -225,7 +232,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
         return;
       }
       if (selectTarget === "group") {
-        setValue("job_meta_plot_group", selectId, { shouldDirty: true, shouldValidate: true });
+        setValue("job_meta_group", selectId, { shouldDirty: true, shouldValidate: true });
         return;
       }
       if (selectTarget === "composite-item") {
@@ -304,14 +311,6 @@ export function JobFormScreen({ mode, jobId }: Props) {
       cancelled = true;
     };
   }, [jobId, isEdit, reset, t]);
-
-  const plotTotalPreview = React.useMemo(() => {
-    const idRaw = (compositeItemId ?? "").trim();
-    const qty = parsePositiveQuantity(compositeQuantity ?? "");
-    if (!idRaw || !/^\d+$/.test(idRaw) || qty == null) return null;
-    const id = Number.parseInt(idRaw, 10);
-    return computeJobMetaPlotTotal(qty, compositePriceById.get(id));
-  }, [compositeItemId, compositeQuantity, compositePriceById]);
 
   async function submit(values: JobFormValues) {
     const compositeId = values.job_meta_composite_item_id.trim();
@@ -481,20 +480,23 @@ export function JobFormScreen({ mode, jobId }: Props) {
                   name="forms"
                   render={({ field }) => (
                     <div>
-                      <CheckmarkSelect
-                        id="job-form"
-                        label={t("fields.form")}
-                        options={formOptions}
-                        value={field.value}
-                        onChange={field.onChange}
-                        emptyLabel={t("placeholders.form")}
-                        disabled={saving || formOptions.length === 0}
-                        invalid={!!errors.forms}
-                        listLabel={t("fields.form")}
-                        portaled
-                        searchable
-                      />
-                      <FieldErrorText>{errors.forms?.message}</FieldErrorText>
+                      <FieldGroup label={t("fields.forms")} htmlFor="job-forms">
+                        <MultiCheckSelect
+                          id="job-forms"
+                          options={formOptions}
+                          values={field.value ?? []}
+                          onChange={(next) => field.onChange(next)}
+                          placeholder={t("fields.forms")}
+                          disabled={saving || formOptions.length === 0}
+                          invalid={!!errors.forms}
+                          listLabel={t("fields.forms")}
+                          portaled
+                          searchable
+                          onAdd={openFormsSettings}
+                          addAriaLabel={t("placeholders.addForm")}
+                          addLabel={t("placeholders.addForm")}
+                        />
+                      </FieldGroup>
                     </div>
                   )}
                 />
@@ -518,6 +520,9 @@ export function JobFormScreen({ mode, jobId }: Props) {
                         listLabel={t("fields.jobStatus")}
                         portaled
                         searchable
+                        onAdd={openJobStatusSettings}
+                        addAriaLabel="Add job status"
+                        addLabel="Add new"
                       />
                       <FieldErrorText>{errors.job_status?.message}</FieldErrorText>
                     </div>
@@ -540,6 +545,9 @@ export function JobFormScreen({ mode, jobId }: Props) {
                         listLabel={t("fields.assignedWorker")}
                         portaled
                         searchable
+                        onAdd={openUsersSettings}
+                        addAriaLabel="Add user"
+                        addLabel="Add new"
                       />
                       <FieldErrorText>{errors.assigned_worker?.message}</FieldErrorText>
                     </div>
@@ -552,7 +560,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
               <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {t("sections.schedule")}
               </h2>
-              <FormFieldRow cols="2">
+              <FormFieldRow cols="1">
                 <FieldGroup label={t("fields.startDate")} htmlFor="job-start" required>
                   <input
                     id="job-start"
@@ -564,78 +572,38 @@ export function JobFormScreen({ mode, jobId }: Props) {
                   />
                   <FieldErrorText>{errors.start_date?.message}</FieldErrorText>
                 </FieldGroup>
-                <FieldGroup label={t("fields.endDate")} htmlFor="job-end">
-                  <input
-                    id="job-end"
-                    type="datetime-local"
-                    aria-invalid={errors.end_date ? true : undefined}
-                    className={cn(surfaceInputClassName, errors.end_date && "border-red-500")}
-                    disabled={saving}
-                    {...register("end_date")}
-                  />
-                  <FieldErrorText>{errors.end_date?.message}</FieldErrorText>
-                </FieldGroup>
               </FormFieldRow>
-
-              <FieldGroup label={t("fields.recordStatus")} htmlFor="job-active">
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                  <input id="job-active" type="checkbox" className="size-4 rounded border-slate-300" disabled={saving} {...register("is_active")} />
-                  {t("fields.isActive")}
-                </label>
-              </FieldGroup>
             </section>
 
             <section className="space-y-6">
               <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {t("sections.jobMeta")}
               </h2>
-          
 
-              <FieldGroup label={t("fields.sectionName")} htmlFor="job-meta-section">
-                <input
-                  id="job-meta-section"
-                  className={surfaceInputClassName}
-                  disabled={saving}
-                  placeholder={t("placeholders.sectionName")}
-                  {...register("job_meta_section_name")}
-                />
-              </FieldGroup>
-
-              <FormFieldRow cols="2">
-                <FieldGroup label={t("fields.plotName")} htmlFor="job-meta-plot">
-                  <input
-                    id="job-meta-plot"
-                    className={surfaceInputClassName}
-                    disabled={saving}
-                    placeholder={t("placeholders.plotName")}
-                    {...register("job_meta_plot_name")}
-                  />
-                </FieldGroup>
-                <Controller
-                  control={control}
-                  name="job_meta_plot_group"
-                  render={({ field }) => (
-                    <div>
-                      <CheckmarkSelect
-                        id="job-meta-group"
-                        label={t("fields.plotGroup")}
-                        options={groupOptions}
-                        value={field.value}
-                        onChange={field.onChange}
-                        emptyLabel={t("placeholders.plotGroup")}
-                        disabled={saving}
-                        invalid={!!errors.job_meta_plot_group}
-                        listLabel={t("fields.plotGroup")}
-                        portaled
-                        searchable
-                        onAdd={groupQuickCreate.onAdd}
-                        addAriaLabel={groupQuickCreate.addAriaLabel}
-                      />
-                      <FieldErrorText>{errors.job_meta_plot_group?.message}</FieldErrorText>
-                    </div>
-                  )}
-                />
-              </FormFieldRow>
+              <Controller
+                control={control}
+                name="job_meta_group"
+                render={({ field }) => (
+                  <div>
+                    <CheckmarkSelect
+                      id="job-meta-group"
+                      label={t("fields.plotGroup")}
+                      options={groupOptions}
+                      value={field.value}
+                      onChange={field.onChange}
+                      emptyLabel={t("placeholders.plotGroup")}
+                      disabled={saving}
+                      invalid={!!errors.job_meta_group}
+                      listLabel={t("fields.plotGroup")}
+                      portaled
+                      searchable
+                      onAdd={groupQuickCreate.onAdd}
+                      addAriaLabel={groupQuickCreate.addAriaLabel}
+                    />
+                    <FieldErrorText>{errors.job_meta_group?.message}</FieldErrorText>
+                  </div>
+                )}
+              />
 
               <FormFieldRow cols="2">
                 <Controller
@@ -677,11 +645,6 @@ export function JobFormScreen({ mode, jobId }: Props) {
                 </FieldGroup>
               </FormFieldRow>
 
-              {plotTotalPreview != null ? (
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {t("fields.plotTotal")}: {plotTotalPreview.toFixed(2)}
-                </p>
-              ) : null}
             </section>
           </form>
         )}

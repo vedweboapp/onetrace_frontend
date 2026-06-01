@@ -4,6 +4,7 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { Controller, useForm, useWatch } from "react-hook-form";
+import { useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { createQuotation, fetchProjectLevelRowsForQuotation, fetchWorkspaceUsers } from "@/features/quotations/api/quotation.api";
@@ -28,6 +29,7 @@ import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { routes } from "@/shared/config/routes";
 import {
   AppButton,
   AppModal,
@@ -53,6 +55,7 @@ type Props = {
 
 export function QuotationFormModal({ open, onClose, onSaved }: Props) {
   const t = useTranslations("Dashboard.quotations");
+  const router = useRouter();
   const [saving, setSaving] = React.useState(false);
   const [formTab, setFormTab] = React.useState<"project" | "pricing">("project");
 
@@ -252,6 +255,10 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     clientId: customerId,
     addDisabled: saving || !customerId,
   });
+  const openUsersSettings = React.useCallback(() => {
+    const current = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : routes.dashboard.quotations;
+    router.push(`${routes.dashboard.settingsUsers}/new?back=${encodeURIComponent(current)}`);
+  }, [router]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -560,6 +567,9 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   emptyLabel={t("placeholders.userOptional")}
                   disabled={saving}
                   onBlur={field.onBlur}
+                  onAdd={openUsersSettings}
+                  addAriaLabel="Add user"
+                  addLabel="Add new"
                   onChange={field.onChange}
                 />
               )}
@@ -579,6 +589,9 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   emptyLabel={t("placeholders.userOptional")}
                   disabled={saving}
                   onBlur={field.onBlur}
+                  onAdd={openUsersSettings}
+                  addAriaLabel="Add user"
+                  addLabel="Add new"
                   onChange={field.onChange}
                 />
               )}
@@ -617,6 +630,9 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                     disabled={saving}
                     listLabel={t("fields.technicians")}
                     placeholder={t("placeholders.userOptional")}
+                    onAdd={openUsersSettings}
+                    addAriaLabel="Add user"
+                    addLabel="Add new"
                   />
                 )}
               />

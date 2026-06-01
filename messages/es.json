@@ -1142,7 +1142,7 @@
         "colItem": "Ítem compuesto",
         "colQty": "Cant.",
         "colUnit": "Precio unit.",
-        "colLine": "Total línea",
+        "colLine": "Total",
         "plotEmptyPins": "No hay pins con precio en este plot.",
         "noPlotsInSection": "No hay plots en esta sección.",
         "selectedCount": "{count} seleccionados",
@@ -1225,16 +1225,17 @@
         "loadError": "No se pudo cargar este artículo compuesto.",
         "backAria": "Volver al alcance de la cotización",
         "repeatBadge": "Incluido ×{count}",
-        "sectionQuoteLine": "En esta cotización",
+      
         "includedTimes": "Veces en la cotización",
         "packagePrice": "Precio del paquete",
         "scopeLineTotal": "Total de línea en la cotización",
         "openCatalogItem": "Abrir en catálogo de compuestos",
         "sectionComponents": "Contenido del paquete",
         "colQtyPerPackage": "Cant. / paquete",
-        "colQtyInScope": "Cant. en cotización",
+        "colQtyInScope": "Cant.",
+        "colProductName":"Nombre del producto",
         "colUnitPrice": "Precio unitario",
-        "colLineTotal": "Total de línea",
+        "colLineTotal": "Total",
         "noComponents": "No hay artículos componentes definidos para este paquete."
       },
       "fields": {
@@ -1341,10 +1342,17 @@
         "retry": "Reintentar",
         "backAria": "Volver a la lista de trabajos",
         "editWithIcon": "Editar",
+        "sectionRelations": "Cliente y vínculos",
+        "sectionWorkScope": "Alcance del trabajo",
+        "sectionQrCode": "Código QR",
         "sectionSchedule": "Programación",
         "sectionDescription": "Descripción",
         "statusUnknown": "Sin definir",
-        "notCompleted": "Sin completar"
+        "notCompleted": "Sin completar",
+        "qrCodeId": "ID del código QR",
+        "colCompositeItem": "Ítem compuesto",
+        "colUnitPrice": "Precio unitario",
+        "colLineTotal": "Total línea"
       },
       "updateStatus": {
         "action": "Actualizar estado",
@@ -1366,6 +1374,8 @@
         "project": "Seleccionar proyecto",
         "site": "Seleccionar sitio",
         "form": "Seleccionar formulario",
+        "formsEmpty": "No hay formularios disponibles",
+        "addForm": "Gestionar formularios",
         "jobStatus": "Seleccionar estado",
         "sectionName": "p. ej. Nivel 0",
         "plotName": "p. ej. Habitación A",
@@ -1376,7 +1386,8 @@
         "basic": "Detalles",
         "relations": "Vínculos",
         "schedule": "Programación",
-        "jobMeta": "Alcance del trabajo"
+        "jobMeta": "Alcance del trabajo",
+        "jobMetaHint": "Grupo, ítems compuestos y total opcionales enviados en job_meta."
       },
       "fields": {
         "title": "Título",
@@ -1385,6 +1396,7 @@
         "project": "Proyecto",
         "site": "Sitio",
         "form": "Formulario",
+        "forms": "Formularios",
         "assignedWorker": "Técnico asignado",
         "startDate": "Fecha y hora de inicio",
         "endDate": "Fecha y hora de fin",
@@ -1395,6 +1407,7 @@
         "compositeItem": "Ítem compuesto",
         "compositeQuantity": "Cantidad",
         "plotTotal": "Total de parcela",
+        "scopeTotal": "Total del alcance",
         "recordStatus": "Estado del registro",
         "isActive": "Activo",
         "jobId": "ID del trabajo",

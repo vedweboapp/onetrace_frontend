@@ -337,6 +337,9 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                       disabled={saving || noProjectTypes}
                       invalid={!!errors.project_type}
                       onBlur={field.onBlur}
+                      onAdd={() => router.push(routes.dashboard.settingsProjectTypes)}
+                      addAriaLabel="Add project type"
+                      addLabel="Add project type"
                       onChange={field.onChange}
                     />
                   )}
@@ -358,18 +361,12 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                     disabled={saving || !selectedClient}
                     placeholder={t("placeholders.site")}
                     listLabel={t("fields.sites")}
+                    onAdd={siteQuickCreate.onAdd}
+                    addAriaLabel={siteQuickCreate.addAriaLabel}
+                    addLabel={siteQuickCreate.addLabel}
                   />
                 )}
               />
-              {siteQuickCreate.onAdd ? (
-                <button
-                  type="button"
-                  className="mt-1.5 text-xs font-semibold text-[color:var(--dash-accent,#111111)] hover:underline"
-                  onClick={siteQuickCreate.onAdd}
-                >
-                  {siteQuickCreate.addLabel}
-                </button>
-              ) : null}
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("hints.sitesMultiSelect")}</p>
             </FieldGroup>
             <FieldGroup label={t("fields.description")} htmlFor="project-description" required>

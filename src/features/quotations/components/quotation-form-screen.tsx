@@ -51,6 +51,8 @@ import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
+import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { mergeUrlQueryParam, sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
@@ -151,6 +153,14 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     defaultValues: emptyQuotationFormDefaults(),
   });
 
+  const getFormDraft = React.useCallback(() => getValues(), [getValues]);
+  const restoreFormDraft = React.useCallback(
+    (draft: unknown) => {
+      reset(draft as QuotationFormValues, { keepDefaultValues: false });
+    },
+    [reset],
+  );
+
   React.useEffect(() => {
     if (!isEdit || !quotationId) return;
     let cancelled = false;
@@ -185,6 +195,39 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     projectIdStr && /^\d+$/.test(projectIdStr.trim())
       ? Number.parseInt(projectIdStr.trim(), 10)
       : undefined;
+
+  const clientQuickCreate = useQuickCreate({
+    kind: "client",
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+  });
+
+  const projectQuickCreate = useQuickCreate({
+    kind: "project",
+    clientId: customerId,
+    addDisabled: saving || !customerId,
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+  });
+
+  const siteQuickCreate = useQuickCreate({
+    kind: "site",
+    clientId: customerId,
+    addDisabled: saving || !customerId,
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+  });
+
+  const contactQuickCreate = useQuickCreate({
+    kind: "contact",
+    clientId: customerId,
+    addDisabled: saving || !customerId,
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+  });
+  const openUsersSettings = React.useCallback(() => {
+    const current = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : routes.dashboard.quotations;
+    router.push(`${routes.dashboard.settingsUsers}/new?back=${encodeURIComponent(current)}`);
+  }, [router]);
+  const openTagsSettings = React.useCallback(() => {
+    router.push(routes.dashboard.settingsTags);
+  }, [router]);
   const appliedFromProjectIdRef = React.useRef<number | null>(null);
   React.useEffect(() => {
     if (!createFromProjectId) {
@@ -448,6 +491,50 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     }
   }, [siteOptions, getValues, setValue]);
 
+  useQuickCreateReturn({
+    restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
+    onReloadOptions: async () => {
+      const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+      setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
+      if (customerId && customerId > 0) {
+        const [projects, contacts] = await Promise.all([
+          fetchProjectsPage(1, 500, { client: customerId, is_active: true }),
+          fetchContactsPage(1, 500, { client: customerId, is_active: true }),
+        ]);
+        setProjectRows(projects.items);
+        setContactOptions(contacts.items.map((c) => ({ value: String(c.id), label: c.name })));
+      }
+      if (projectId && projectId > 0) {
+        const { items } = await fetchSitesPage(1, 500, { project: projectId, is_active: true });
+        setSiteRows(items);
+      }
+    },
+    onApplySelect: ({ selectTarget, selectId }) => {
+      if (selectTarget === "client") {
+        setValue("customer", selectId, { shouldDirty: true, shouldValidate: true });
+        setValue("project", "", { shouldDirty: true, shouldValidate: true });
+        setValue("site", "", { shouldDirty: true, shouldValidate: true });
+        setValue("primary_customer_contact", "", { shouldDirty: true });
+        setValue("additional_customer_contact", "", { shouldDirty: true });
+        setValue("site_contact", "", { shouldDirty: true });
+        return;
+      }
+      if (selectTarget === "project") {
+        setValue("project", selectId, { shouldDirty: true, shouldValidate: true });
+        setValue("site", "", { shouldDirty: true, shouldValidate: true });
+        setValue("site_contact", "", { shouldDirty: true });
+        return;
+      }
+      if (selectTarget === "site") {
+        setValue("site", selectId, { shouldDirty: true, shouldValidate: true });
+        return;
+      }
+      if (selectTarget === "contact") {
+        setValue("primary_customer_contact", selectId, { shouldDirty: true, shouldValidate: true });
+      }
+    },
+  });
+
   const projectOptions = React.useMemo<Option[]>(() => {
     const base = projectRows.map((p) => ({ value: String(p.id), label: p.name }));
     const pid = existingDetail ? getQuotationProjectId(existingDetail.project) : null;
@@ -627,6 +714,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       disabled={saving || noClients}
                       invalid={!!errors.customer}
                       onBlur={field.onBlur}
+                      onAdd={clientQuickCreate.onAdd}
+                      addAriaLabel={clientQuickCreate.addAriaLabel}
+                      addLabel={clientQuickCreate.addLabel}
                       onChange={(v) => {
                         field.onChange(v);
                         setValue("project", "");
@@ -656,6 +746,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       disabled={saving || !customerId || noProjects}
                       invalid={!!errors.project}
                       onBlur={field.onBlur}
+                      onAdd={projectQuickCreate.onAdd}
+                      addAriaLabel={projectQuickCreate.addAriaLabel}
+                      addLabel={projectQuickCreate.addLabel}
                       onChange={(v) => {
                         field.onChange(v);
                         setValue("site", "");
@@ -682,6 +775,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       disabled={saving || !projectId || siteOptions.length === 0}
                       invalid={!!errors.site}
                       onBlur={field.onBlur}
+                      onAdd={siteQuickCreate.onAdd}
+                      addAriaLabel={siteQuickCreate.addAriaLabel}
+                      addLabel={siteQuickCreate.addLabel}
                       onChange={field.onChange}
                     />
                   )}
@@ -705,6 +801,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       emptyLabel={t("placeholders.contactOptional")}
                       disabled={saving || !customerId}
                       onBlur={field.onBlur}
+                      onAdd={contactQuickCreate.onAdd}
+                      addAriaLabel={contactQuickCreate.addAriaLabel}
+                      addLabel={contactQuickCreate.addLabel}
                       onChange={field.onChange}
                     />
                   )}
@@ -725,6 +824,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       emptyLabel={t("placeholders.contactOptional")}
                       disabled={saving || !customerId}
                       onBlur={field.onBlur}
+                      onAdd={contactQuickCreate.onAdd}
+                      addAriaLabel={contactQuickCreate.addAriaLabel}
+                      addLabel={contactQuickCreate.addLabel}
                       onChange={field.onChange}
                     />
                   )}
@@ -753,6 +855,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       emptyLabel={t("placeholders.userOptional")}
                       disabled={saving}
                       onBlur={field.onBlur}
+                      onAdd={openUsersSettings}
+                      addAriaLabel="Add user"
+                      addLabel="Add new"
                       onChange={field.onChange}
                     />
                   )}
@@ -773,6 +878,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       emptyLabel={t("placeholders.userOptional")}
                       disabled={saving}
                       onBlur={field.onBlur}
+                      onAdd={openUsersSettings}
+                      addAriaLabel="Add user"
+                      addLabel="Add new"
                       onChange={field.onChange}
                     />
                   )}
@@ -796,6 +904,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       disabled={saving}
                       listLabel={t("fields.tags")}
                       placeholder={t("placeholders.tags")}
+                      onAdd={openTagsSettings}
+                      addAriaLabel="Add tag"
+                      addLabel="Add new"
                     />
                   )}
                 />
@@ -823,6 +934,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                         disabled={saving}
                         listLabel={t("fields.technicians")}
                         placeholder={t("placeholders.userOptional")}
+                        onAdd={openUsersSettings}
+                        addAriaLabel="Add user"
+                        addLabel="Add new"
                       />
                     )}
                   />
