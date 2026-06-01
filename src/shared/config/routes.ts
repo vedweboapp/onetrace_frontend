@@ -30,6 +30,7 @@ export const routes = {
     settingsCompanySettings: "/dashboard/settings/company-settings",
     settingsModules: "/dashboard/settings/modules",
     settingsProjectForms: "/dashboard/settings/project-type-forms",
+    projectJobsForms: "/dashboard/projects/[id]/job-forms"
   },
 
 } as const;

@@ -4,8 +4,9 @@ import * as React from "react";
 import { LayoutGrid, List, Pencil, Plus, Power, PowerOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { useSearchParams } from "next/navigation";
-import { fetchFormsPage, patchForm } from "@/features/forms/api/forms.api";
+import { useParams, useSearchParams } from "next/navigation";
+import { patchForm } from "@/features/forms/api/forms.api";
+import { fetchProject, fetchProjectFormsPage } from "@/features/projects/api/project.api";
 import type { FormListItem } from "@/features/forms/types/form.types";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import type { ProjectType } from "@/features/project-types/types/project-type.types";
@@ -54,7 +55,10 @@ export function ProjectFormsTab() {
   const dateFmt = useDashboardDateFormat();
   const router = useRouter();
   const pathname = usePathname();
+  const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
+
+  const projectId = params.id;
 
   const viewMode = React.useMemo<ViewMode>(() => parseViewParam(searchParams.get("projectFormsView")), [searchParams]);
 
@@ -68,6 +72,7 @@ export function ProjectFormsTab() {
 
   const [search, setSearch] = React.useState("");
   const [activeFilter, setActiveFilter] = React.useState<ActiveFilter>("");
+
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
   const [items, setItems] = React.useState<FormListItem[]>([]);
@@ -99,25 +104,27 @@ export function ProjectFormsTab() {
   }, []);
 
   React.useEffect(() => {
+    if (!projectId) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
       setLoadError(null);
       try {
-        const { items: rows, pagination: p } = await fetchFormsPage(
+        const { items: rows, pagination: p } = await fetchProjectFormsPage(
+          Number(projectId),
           page,
           pageSize,
           {
             search: search || undefined,
             is_active: activeFilter === "" ? undefined : activeFilter === "true",
-          },
-          { silent: true },
+          }
         );
         if (!cancelled) {
           setItems(rows);
           setPagination(p);
         }
-      } catch {
+      } catch (err) {
+        console.error("Failed to fetch project forms:", err);
         if (!cancelled) {
           setItems([]);
           setLoadError(t("loadError"));
@@ -129,7 +136,7 @@ export function ProjectFormsTab() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, search, activeFilter, refreshNonce, t]);
+  }, [projectId, page, pageSize, search, activeFilter, refreshNonce, t]);
 
   React.useEffect(() => {
     if (!projectTypeModalOpen) return;
@@ -155,9 +162,11 @@ export function ProjectFormsTab() {
   }, [projectTypeModalOpen, t]);
 
   function openEdit(row: FormListItem) {
-    router.push(`${routes.dashboard.settingsProjectForms}/create?purpose=edit__project_form&layout_id=${row.id}`);
+    router.push(`/dashboard/projects/${projectId}/job-forms?purpose=edit_project_job_form&layout_id=${row.id}`);
   }
-
+  const openCreate = () => {
+    router.push(`/dashboard/projects/${projectId}/job-forms?purpose=create_project_job_form`);
+  }
   async function handleToggleActive(row: FormListItem, next: boolean) {
     setTogglingId(row.id);
     try {
@@ -201,19 +210,19 @@ export function ProjectFormsTab() {
             { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) },
             row.is_active
               ? {
-                  id: "deactivate",
-                  label: t("deactivate"),
-                  icon: PowerOff,
-                  onSelect: () => void handleToggleActive(row, false),
-                  disabled: togglingId === row.id,
-                }
+                id: "deactivate",
+                label: t("deactivate"),
+                icon: PowerOff,
+                onSelect: () => void handleToggleActive(row, false),
+                disabled: togglingId === row.id,
+              }
               : {
-                  id: "activate",
-                  label: t("activate"),
-                  icon: Power,
-                  onSelect: () => void handleToggleActive(row, true),
-                  disabled: togglingId === row.id,
-                },
+                id: "activate",
+                label: t("activate"),
+                icon: Power,
+                onSelect: () => void handleToggleActive(row, true),
+                disabled: togglingId === row.id,
+              },
           ]}
         />
       )),
@@ -265,10 +274,7 @@ export function ProjectFormsTab() {
         <AppButton
           type="button"
           size="sm"
-          onClick={() => {
-            setSelectedProjectTypeId(null);
-            setProjectTypeModalOpen(true);
-          }}
+          onClick={openCreate}
         >
           <Plus className="size-4" />
           {t("add")}
@@ -351,19 +357,19 @@ export function ProjectFormsTab() {
                         { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) },
                         row.is_active
                           ? {
-                              id: "deactivate",
-                              label: t("deactivate"),
-                              icon: PowerOff,
-                              onSelect: () => void handleToggleActive(row, false),
-                              disabled: togglingId === row.id,
-                            }
+                            id: "deactivate",
+                            label: t("deactivate"),
+                            icon: PowerOff,
+                            onSelect: () => void handleToggleActive(row, false),
+                            disabled: togglingId === row.id,
+                          }
                           : {
-                              id: "activate",
-                              label: t("activate"),
-                              icon: Power,
-                              onSelect: () => void handleToggleActive(row, true),
-                              disabled: togglingId === row.id,
-                            },
+                            id: "activate",
+                            label: t("activate"),
+                            icon: Power,
+                            onSelect: () => void handleToggleActive(row, true),
+                            disabled: togglingId === row.id,
+                          },
                       ]}
                     />
                   }
@@ -404,51 +410,6 @@ export function ProjectFormsTab() {
           </div>
         ) : null}
       </SurfaceShell>
-
-      <AppModal
-        open={projectTypeModalOpen}
-        onClose={() => setProjectTypeModalOpen(false)}
-        title={t("selectProjectTypeTitle")}
-        description={t("selectProjectTypeDescription")}
-        size="lg"
-        className="overflow-visible"
-        footer={
-          <>
-            <AppButton type="button" variant="secondary" onClick={() => setProjectTypeModalOpen(false)}>
-              {t("cancel")}
-            </AppButton>
-            <AppButton
-              type="button"
-              onClick={() => {
-                if (!selectedProjectTypeId) return;
-                setProjectTypeModalOpen(false);
-                router.push(`${routes.dashboard.settingsProjectForms}/${selectedProjectTypeId}/create?purpose=create_project_form`);
-              }}
-              disabled={!selectedProjectTypeId}
-            >
-              {t("continue")}
-            </AppButton>
-          </>
-        }
-      >
-        {projectTypesError ? (
-          <p className="text-sm text-red-600 dark:text-red-400">{projectTypesError}</p>
-        ) : null}
-        <CheckmarkSelect
-          listLabel={t("projectTypes")}
-          buttonAriaLabel={t("projectTypes")}
-          value={selectedProjectTypeId ? String(selectedProjectTypeId) : ""}
-          onChange={(value) => setSelectedProjectTypeId(value ? Number(value) : null)}
-          options={projectTypes.map((row) => ({ value: String(row.id), label: row.project_type || `#${row.id}` }))}
-          emptyLabel={projectTypesLoading ? t("loadingProjectTypes") : t("projectTypePlaceholder")}
-          disabled={projectTypesLoading || projectTypesError != null}
-          searchable
-          searchPlaceholder={t("projectTypeSearch")}
-          portaled={false}
-          side="bottom"
-          className="w-full"
-        />
-      </AppModal>
     </div>
   );
 }

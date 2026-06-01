@@ -692,6 +692,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         file_name: file.name,
         content_type: file.type || null,
         file: file, // Keep reference to original binary File object
+        url: URL.createObjectURL(file), // Generate local object URL for preview/download
       });
       i++;
     }
@@ -2065,12 +2066,21 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                         return (
                           <div className="flex flex-wrap gap-3">
                             {attachments.map((att, idx) => {
-                              const url = att.url ?? att.file_url ?? att.data_url ?? att.file_data ?? null;
+                              const url =
+                                att.url ??
+                                att.file_url ??
+                                (typeof att.attachment === "string" ? att.attachment : null) ??
+                                (typeof att.file === "string" ? att.file : null) ??
+                                att.data_url ??
+                                att.file_data ??
+                                (att.file && typeof att.file !== "string" ? URL.createObjectURL(att.file as any) : null);
                               const name =
-                                att.file_name ?? att.name ?? att.id != null ? `Attachment #${att.id}` : `Attachment ${idx + 1}`;
+                                att.file_name ??
+                                att.name ??
+                                (att.id != null ? `Attachment #${att.id}` : `Attachment ${idx + 1}`);
                               const isImage =
                                 (att.content_type ?? "").startsWith("image/") ||
-                                (typeof url === "string" && url.startsWith("data:image/"));
+                                (typeof url === "string" && (url.startsWith("data:image/") || /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(url)));
                               return (
                                 <div key={idx} className="flex flex-col items-start gap-1 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950">
                                   {url && isImage ? (
@@ -2091,21 +2101,57 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                                       {name}
                                     </p>
                                   )}
-                                  {isPinEditing ? (
-                                    <button
-                                      type="button"
-                                      className="text-[10px] font-bold text-red-600 hover:text-red-700"
-                                      onClick={() => {
-                                        setPinEditData((prev) => {
-                                          const curr = (prev.attachments ?? detailPin.attachments ?? []) as DrawingPinAttachment[];
-                                          const next = curr.filter((_, i) => i !== idx);
-                                          return { ...prev, attachments: next };
-                                        });
-                                      }}
-                                    >
-                                      Remove
-                                    </button>
-                                  ) : null}
+                                  <div className="flex items-center gap-2 mt-1 w-full">
+                                    {isPinEditing ? (
+                                      <button
+                                        type="button"
+                                        className="text-[10px] font-bold text-red-600 hover:text-red-700"
+                                        onClick={() => {
+                                          setPinEditData((prev) => {
+                                            const curr = (prev.attachments ?? detailPin.attachments ?? []) as DrawingPinAttachment[];
+                                            const next = curr.filter((_, i) => i !== idx);
+                                            return { ...prev, attachments: next };
+                                          });
+                                        }}
+                                      >
+                                        Remove
+                                      </button>
+                                    ) : null}
+                                    {url ? (
+                                      <button
+                                        type="button"
+                                        className="text-[10px] font-bold text-blue-600 hover:text-blue-700 hover:underline bg-transparent border-none p-0 cursor-pointer"
+                                        onClick={async () => {
+                                          if (url.startsWith("blob:") || url.startsWith("data:")) {
+                                            const link = document.createElement("a");
+                                            link.href = url;
+                                            link.download = name;
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                            return;
+                                          }
+                                          try {
+                                            const response = await fetch(url);
+                                            const blob = await response.blob();
+                                            const blobUrl = URL.createObjectURL(blob);
+                                            const link = document.createElement("a");
+                                            link.href = blobUrl;
+                                            link.download = name;
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                            URL.revokeObjectURL(blobUrl);
+                                          } catch (error) {
+                                            console.error("Failed to download file:", error);
+                                            window.open(url, "_blank");
+                                          }
+                                        }}
+                                      >
+                                        Download
+                                      </button>
+                                    ) : null}
+                                  </div>
                                 </div>
                               );
                             })}

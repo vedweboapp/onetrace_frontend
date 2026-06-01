@@ -362,7 +362,12 @@ export default function FormBuilderLayout({
   } = useFormStore();
 
   const searchParams = useSearchParams();
-  const purpose = searchParams.get("purpose");
+  const rawPurpose = searchParams.get("purpose");
+  const purpose = rawPurpose === "create_project_job_form"
+    ? "create_project_form"
+    : rawPurpose === "edit_project_job_form"
+      ? "edit__project_form"
+      : rawPurpose;
   const router = useRouter();
   const params = useParams();
   const routeModuleId = params?.id as string;
