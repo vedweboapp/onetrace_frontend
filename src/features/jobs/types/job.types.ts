@@ -96,6 +96,8 @@ export type JobCreateFromQuotationPayload = {
 
 export type JobUpdatePayload = Partial<JobCreatePayload> & {
   job_status?: number;
+  /** List/detail toggle; omitted on create payload. */
+  is_active?: boolean;
 };
 
 export type Job = {
