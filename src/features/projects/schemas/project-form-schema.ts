@@ -26,6 +26,7 @@ export function createProjectFormSchema(messages: ProjectFormMessages) {
         .refine((s) => Number.parseInt(s, 10) > 0, { message: messages.projectType }),
       description: z.string().trim().min(1, messages.description),
       sites: z.array(z.string()),
+      form_ids: z.array(z.string()).optional(),
       start_date: z.string().trim().min(1, messages.startDate),
       end_date: z.string().trim().min(1, messages.endDate),
     })

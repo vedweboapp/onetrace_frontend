@@ -51,6 +51,8 @@ interface Section {
 type RuleFieldOption = {
   value: string;
   label: string;
+  type?: string;
+  options?: any[];
 };
 
 /** Keep section.sequence aligned with builder order (active sections only). */
@@ -660,6 +662,8 @@ export default function FormBuilderLayout({
         .map((field) => ({
           value: field.api_name,
           label: `${field.field_label || field.api_name || "Untitled Field"} (${section.name || "Untitled Section"})`,
+          type: field.field_type,
+          options: field.options,
         })),
     );
 
