@@ -13,6 +13,7 @@ import type { CompositeItem } from "@/features/composite-items/types/composite-i
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import type { Item } from "@/features/items/types/item.types";
 import { parseCompositeScopeRepeat } from "@/features/quotations/utils/quotation-composite-scope-nav.util";
+import { loadQuotationScopePinDetails } from "@/features/quotations/utils/quotation-composite-scope-pins.util";
 import { formatMoneyDisplay } from "@/features/quotations/utils/quotation-level-pricing.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import {
@@ -29,7 +30,8 @@ import {
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { normalizeQuotationScopeBackHref } from "@/features/quotations/utils/quotation-block-scope.util";
+import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { AppButton, SurfaceShell } from "@/shared/ui";
 
 function parseUnitPrice(detail: CompositeItem): number {
@@ -68,10 +70,16 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
   const repeatCount = parseCompositeScopeRepeat(searchParams.get("repeat"));
   const sectionLabel = searchParams.get("section")?.trim() || null;
   const plotLabel = searchParams.get("plot")?.trim() || null;
-  const backHref =
-    sanitizeInternalListBack(searchParams.get("back"), "quotations") ??
-    sanitizeInternalListBack(searchParams.get("back"), "projects") ??
-    defaultBackHref;
+  const pinDetailsKey = searchParams.get("pinDetailsKey");
+  const pinDetails = React.useMemo(() => loadQuotationScopePinDetails(pinDetailsKey), [pinDetailsKey]);
+  const backHref = React.useMemo(
+    () =>
+      normalizeQuotationScopeBackHref(
+        searchParams.get("back"),
+        mergeUrlQueryParam(defaultBackHref, "tab", "pricing"),
+      ),
+    [searchParams, defaultBackHref],
+  );
 
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -79,6 +87,13 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
   const [childItemsById, setChildItemsById] = React.useState<Map<number, Item>>(new Map());
 
   React.useEffect(() => {
+    if (pinDetails) {
+      setLoading(false);
+      setError(null);
+      setDetail(null);
+      setChildItemsById(new Map());
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -107,30 +122,32 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
     return () => {
       cancelled = true;
     };
-  }, [compositeItemId, t]);
+  }, [compositeItemId, t, pinDetails]);
 
   const components = detail?.components ?? [];
   const packageUnitPrice = detail ? parseUnitPrice(detail) : 0;
   const scopeLineTotal = packageUnitPrice * repeatCount;
-  const contextParts = [sectionLabel, plotLabel].filter(Boolean);
+  const contextParts = [pinDetails?.sectionLabel ?? sectionLabel, pinDetails?.plotLabel ?? plotLabel].filter(Boolean);
+  const pinTotalQty = pinDetails ? pinDetails.rows.reduce((sum, row) => sum + row.quantity, 0) : 0;
+  const pinTotalAmount = pinDetails ? pinDetails.rows.reduce((sum, row) => sum + row.pins_total, 0) : 0;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <DetailPageHeader
-        title={loading ? t("loadingTitle") : (detail?.name ?? t("loadingTitle"))}
+        title={loading ? t("loadingTitle") : (pinDetails?.title ?? detail?.name ?? t("loadingTitle"))}
         backHref={backHref}
         backAriaLabel={t("backAria")}
         subtitle={
           contextParts.length > 0 ? (
             <span>
               {contextParts.join(" · ")}
-              {repeatCount > 1 ? (
+              {pinDetails ? null : repeatCount > 1 ? (
                 <span className="ml-2 font-medium text-slate-700 dark:text-slate-200">
                   {t("repeatBadge", { count: repeatCount })}
                 </span>
               ) : null}
             </span>
-          ) : repeatCount > 1 ? (
+          ) : pinDetails ? null : repeatCount > 1 ? (
             t("repeatBadge", { count: repeatCount })
           ) : null
         }
@@ -146,6 +163,116 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
               {tItems("detail.retry")}
             </AppButton>
           </SurfaceShell>
+        ) : pinDetails ? (
+          <div className={detailPageStackClassName}>
+            <DetailPanelCard >
+              <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-3">
+                <DetailMetricCard label={t("colQtyInScope")}>
+                  <span className="tabular-nums font-semibold">{pinTotalQty}</span>
+                </DetailMetricCard>
+                <DetailMetricCard label={t("colLineTotal")}>
+                  <span className="tabular-nums font-semibold text-[color:var(--dash-accent)]">
+                    {formatMoneyDisplay(pinTotalAmount, loc)}
+                  </span>
+                </DetailMetricCard>
+              </DetailMetricsGrid>
+            </DetailPanelCard>
+
+          <DetailPanelCard title={t("sectionComponents")}>
+  {pinDetails.rows.length > 0 ? (
+    <DetailLinkedTable
+      columns={[
+        {
+          id: "product",
+          header: (
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              {t("colProductName")}
+            </span>
+          ),
+        },
+        {
+          id: "qty",
+          header: (
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              {t("colQtyInScope")}
+            </span>
+          ),
+        },
+        {
+          id: "unit",
+          header: (
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              {t("colUnitPrice")}
+            </span>
+          ),
+        },
+        {
+          id: "line",
+          header: (
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              {t("colLineTotal")}
+            </span>
+          ),
+        },
+      ]}
+    >
+      {pinDetails.rows.map((row, index) => (
+        <DetailLinkedTableRow
+          key={`${row.pin_id ?? "draft"}-${row.pins_order}-${index}`}
+          index={index}
+        >
+          {/* Product Name */}
+          <DetailLinkedTableTd
+            className={detailLinkedTableCellClassName({
+              cellClassName:
+                "font-medium text-slate-700 dark:text-slate-200 min-w-[220px]",
+            })}
+          >
+            {row.name || "-"}
+          </DetailLinkedTableTd>
+
+          {/* Quantity */}
+          <DetailLinkedTableTd
+            narrow
+            className={detailLinkedTableCellClassName({
+              cellClassName:
+                "tabular-nums text-slate-600 dark:text-slate-300",
+            })}
+          >
+            {row.quantity}
+          </DetailLinkedTableTd>
+
+          {/* Unit Price */}
+          <DetailLinkedTableTd
+            narrow
+            className={detailLinkedTableCellClassName({
+              cellClassName:
+                "tabular-nums text-slate-600 dark:text-slate-300",
+            })}
+          >
+            {formatMoneyDisplay(row.selling_price, loc)}
+          </DetailLinkedTableTd>
+
+          {/* Line Total */}
+          <DetailLinkedTableTd
+            narrow
+            className={detailLinkedTableCellClassName({
+              cellClassName:
+                "tabular-nums font-semibold text-slate-900 dark:text-white",
+            })}
+          >
+            {formatMoneyDisplay(row.pins_total, loc)}
+          </DetailLinkedTableTd>
+        </DetailLinkedTableRow>
+      ))}
+    </DetailLinkedTable>
+  ) : (
+    <p className="text-sm text-slate-500 dark:text-slate-400">
+      {t("noComponents")}
+    </p>
+  )}
+</DetailPanelCard>
+          </div>
         ) : detail ? (
           <div className={detailPageStackClassName}>
             <DetailPanelCard title={t("sectionQuoteLine")}>

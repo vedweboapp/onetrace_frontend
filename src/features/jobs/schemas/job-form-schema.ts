@@ -5,8 +5,6 @@ export type JobFormMessages = {
   title: string;
   assignedWorker: string;
   startDate: string;
-  endDate: string;
-  endBeforeStart: string;
   optionalId: string;
   compositeQuantity: string;
 };
@@ -22,8 +20,7 @@ export function createJobFormSchema(messages: JobFormMessages) {
     .object({
       title: zTrimmedNonEmpty(messages.title),
       description: z.string(),
-      
-      forms: optionalPositiveId(messages.optionalId),
+      forms: z.array(z.string()),
       job_status: optionalPositiveId(messages.optionalId),
       client: optionalPositiveId(messages.optionalId),
       project: optionalPositiveId(messages.optionalId),
@@ -36,28 +33,11 @@ export function createJobFormSchema(messages: JobFormMessages) {
           message: messages.assignedWorker,
         }),
       start_date: zTrimmedNonEmpty(messages.startDate),
-      end_date: z.string().trim(),
-      is_active: z.boolean(),
-      job_meta_section_name: z.string(),
-      job_meta_plot_name: z.string(),
-      job_meta_plot_group: optionalPositiveId(messages.optionalId),
+      job_meta_group: optionalPositiveId(messages.optionalId),
       job_meta_composite_item_id: optionalPositiveId(messages.optionalId),
       job_meta_composite_quantity: z.string().trim(),
     })
     .superRefine((data, ctx) => {
-      const start = new Date(data.start_date);
-      const endRaw = data.end_date.trim();
-      if (endRaw) {
-        const end = new Date(endRaw);
-        if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && end.getTime() < start.getTime()) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["end_date"],
-            message: messages.endBeforeStart,
-          });
-        }
-      }
-
       const compositeId = data.job_meta_composite_item_id.trim();
       const qty = data.job_meta_composite_quantity.trim();
       if (compositeId && !qty) {

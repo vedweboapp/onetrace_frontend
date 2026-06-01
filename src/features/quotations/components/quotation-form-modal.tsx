@@ -256,7 +256,8 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     addDisabled: saving || !customerId,
   });
   const openUsersSettings = React.useCallback(() => {
-    router.push(routes.dashboard.settingsUsers);
+    const current = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : routes.dashboard.quotations;
+    router.push(`${routes.dashboard.settingsUsers}/new?back=${encodeURIComponent(current)}`);
   }, [router]);
 
   React.useEffect(() => {

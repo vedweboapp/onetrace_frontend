@@ -1095,7 +1095,7 @@
         "colItem": "Composite item",
         "colQty": "Qty",
         "colUnit": "Unit price",
-        "colLine": "Line total",
+        "colLine": "total",
         "plotEmptyPins": "No priced pins in this plot.",
         "noPlotsInSection": "No plots in this section.",
         "selectedCount": "{count} selected",
@@ -1179,16 +1179,17 @@
         "loadError": "Could not load this composite item.",
         "backAria": "Back to quote scope",
         "repeatBadge": "Included ×{count}",
-        "sectionQuoteLine": "On this quote",
+      
         "includedTimes": "Times on quote",
         "packagePrice": "Package price",
         "scopeLineTotal": "Line total on quote",
         "openCatalogItem": "Open in composite items catalog",
         "sectionComponents": "Package contents",
         "colQtyPerPackage": "Qty / package",
-        "colQtyInScope": "Qty on quote",
+        "colQtyInScope": "Qty",
+        "colProductName":"Product Name",
         "colUnitPrice": "Unit price",
-        "colLineTotal": "Line total",
+        "colLineTotal": "total",
         "noComponents": "No component items defined for this package."
       },
       "fields": {
@@ -1295,10 +1296,17 @@
         "retry": "Retry",
         "backAria": "Back to jobs list",
         "editWithIcon": "Edit",
+        "sectionRelations": "Client & links",
+        "sectionWorkScope": "Work scope",
+        "sectionQrCode": "QR code",
         "sectionSchedule": "Schedule",
         "sectionDescription": "Description",
         "statusUnknown": "Not set",
-        "notCompleted": "Not completed"
+        "notCompleted": "Not completed",
+        "qrCodeId": "QR code ID",
+        "colCompositeItem": "Composite item",
+        "colUnitPrice": "Unit price",
+        "colLineTotal": "Line total"
       },
       "updateStatus": {
         "action": "Update status",
@@ -1320,6 +1328,8 @@
         "project": "Select project",
         "site": "Select site",
         "form": "Select form",
+        "formsEmpty": "No forms available",
+        "addForm": "Manage forms",
         "jobStatus": "Select job status",
         "sectionName": "e.g. Level 0",
         "plotName": "e.g. Room A",
@@ -1331,7 +1341,7 @@
         "relations": "Links",
         "schedule": "Schedule",
         "jobMeta": "Work scope",
-        "jobMetaHint": "Optional section, plot, group, and composite item for this job."
+        "jobMetaHint": "Optional group, composite items, and scope total sent in job_meta."
       },
       "fields": {
         "title": "Title",
@@ -1341,6 +1351,7 @@
         "project": "Project",
         "site": "Site",
         "form": "Form",
+        "forms": "Forms",
         "assignedWorker": "Assigned worker",
         "startDate": "Start date & time",
         "endDate": "End date & time",
@@ -1351,6 +1362,7 @@
         "compositeItem": "Composite item",
         "compositeQuantity": "Quantity",
         "plotTotal": "Plot total",
+        "scopeTotal": "Scope total",
         "recordStatus": "Record status",
         "isActive": "Active",
         "jobId": "Job ID",

@@ -1,4 +1,8 @@
-import type { JobMetaCompositeItem, JobMetaPayload } from "@/features/jobs/types/job.types";
+import type {
+  JobMetaCompositeItem,
+  JobMetaLegacyPayload,
+  JobMetaPayload,
+} from "@/features/jobs/types/job.types";
 
 export function parsePositiveQuantity(raw: string): number | null {
   const s = raw.trim();
@@ -8,59 +12,73 @@ export function parsePositiveQuantity(raw: string): number | null {
   return n;
 }
 
-export function computeJobMetaPlotTotal(
+export function computeJobMetaLineTotal(
   quantity: number,
   sellingPrice: number | string | null | undefined,
 ): number {
-  const price = typeof sellingPrice === "number" && Number.isFinite(sellingPrice) ? sellingPrice : Number.parseFloat(String(sellingPrice ?? ""));
+  const price =
+    typeof sellingPrice === "number" && Number.isFinite(sellingPrice)
+      ? sellingPrice
+      : Number.parseFloat(String(sellingPrice ?? ""));
   if (!Number.isFinite(price) || price < 0) return 0;
   return quantity * price;
 }
 
+/** Normalize legacy nested `job_meta` to flat API shape for display and edit. */
+export function normalizeJobMeta(
+  meta: JobMetaPayload | JobMetaLegacyPayload | null | undefined,
+): JobMetaPayload | null {
+  if (!meta) return null;
+  if ("plot" in meta && meta.plot) {
+    const plot = meta.plot;
+    return {
+      total: plot.plot_total,
+      group: plot.group,
+      composite_items: plot.composite_items,
+    };
+  }
+  const flat = meta as JobMetaPayload;
+  return {
+    total: flat.total,
+    group: flat.group,
+    composite_items: flat.composite_items,
+  };
+}
+
 export function buildJobMetaPayload(input: {
-  sectionName: string;
-  plotName: string;
-  plotGroup: string;
+  groupId: string;
   compositeItemId: string;
   compositeQuantity: string;
   compositeSellingPrice?: number | string | null;
 }): JobMetaPayload | undefined {
-  const sectionName = input.sectionName.trim();
-  const plotName = input.plotName.trim();
-  const groupId = input.plotGroup.trim();
+  const groupRaw = input.groupId.trim();
   const compositeId = input.compositeItemId.trim();
   const quantityRaw = input.compositeQuantity.trim();
 
-  const hasSection = sectionName.length > 0;
-  const hasPlot = plotName.length > 0;
-  const hasGroup = groupId.length > 0 && /^\d+$/.test(groupId);
+  const hasGroup = groupRaw.length > 0 && /^\d+$/.test(groupRaw);
   const hasComposite = compositeId.length > 0 && /^\d+$/.test(compositeId);
   const quantity = parsePositiveQuantity(quantityRaw);
 
-  if (!hasSection && !hasPlot && !hasGroup && !hasComposite) return undefined;
+  if (!hasGroup && !hasComposite) return undefined;
 
   const composite_items: JobMetaCompositeItem[] = [];
-  if (hasComposite) {
+  if (hasComposite && quantity != null) {
     const id = Number.parseInt(compositeId, 10);
-    if (quantity != null) {
-      composite_items.push({ id, quantity });
-    }
+    composite_items.push({ id, quantity });
   }
 
-  const plot_total =
+  const unitPrice = input.compositeSellingPrice ?? null;
+  const lineTotal =
     quantity != null && composite_items.length > 0
-      ? computeJobMetaPlotTotal(quantity, input.compositeSellingPrice ?? null)
+      ? computeJobMetaLineTotal(quantity, unitPrice)
       : 0;
 
-  const plot: JobMetaPayload["plot"] = {
-    name: plotName,
-    plot_total,
-    ...(hasGroup ? { group: Number.parseInt(groupId, 10) } : {}),
-    ...(composite_items.length > 0 ? { composite_items } : {}),
-  };
-
-  return {
-    ...(hasSection ? { section: { name: sectionName } } : {}),
-    plot,
-  };
+  const payload: JobMetaPayload = {};
+  if (hasGroup) payload.group = Number.parseInt(groupRaw, 10);
+  if (composite_items.length > 0) payload.composite_items = composite_items;
+  if (lineTotal > 0) payload.total = lineTotal;
+  return payload;
 }
+
+/** @deprecated Use computeJobMetaLineTotal */
+export const computeJobMetaPlotTotal = computeJobMetaLineTotal;

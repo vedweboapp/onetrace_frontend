@@ -222,7 +222,8 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
   const openUsersSettings = React.useCallback(() => {
-    router.push(routes.dashboard.settingsUsers);
+    const current = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : routes.dashboard.quotations;
+    router.push(`${routes.dashboard.settingsUsers}/new?back=${encodeURIComponent(current)}`);
   }, [router]);
   const openTagsSettings = React.useCallback(() => {
     router.push(routes.dashboard.settingsTags);

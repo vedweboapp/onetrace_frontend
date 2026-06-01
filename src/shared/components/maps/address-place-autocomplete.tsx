@@ -58,8 +58,12 @@ export function AddressPlaceAutocomplete({
 
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
-  const [nominatimItems, setNominatimItems] = React.useState<PlaceSuggestion[]>([]);
-  const [googlePredictions, setGooglePredictions] = React.useState<GooglePlacePrediction[]>([]);
+  const [nominatimItems, setNominatimItems] = React.useState<PlaceSuggestion[]>(
+    [],
+  );
+  const [googlePredictions, setGooglePredictions] = React.useState<
+    GooglePlacePrediction[]
+  >([]);
   const [activeIndex, setActiveIndex] = React.useState(-1);
   const [resolvingPlace, setResolvingPlace] = React.useState(false);
 
@@ -86,7 +90,9 @@ export function AddressPlaceAutocomplete({
     const tid = window.setTimeout(async () => {
       try {
         if (useGooglePlaces) {
-          const predictions = await fetchGooglePlacePredictions(q, { countryIso });
+          const predictions = await fetchGooglePlacePredictions(q, {
+            countryIso,
+          });
           if (cancelled) return;
           setGooglePredictions(predictions);
           setNominatimItems([]);
@@ -95,11 +101,14 @@ export function AddressPlaceAutocomplete({
         }
 
         const params = new URLSearchParams({ q });
-        if (countryIso?.trim()) params.set("country", countryIso.trim().toLowerCase());
+        if (countryIso?.trim())
+          params.set("country", countryIso.trim().toLowerCase());
         if (contextCity?.trim()) params.set("city", contextCity.trim());
         if (contextState?.trim()) params.set("state", contextState.trim());
-        if (contextCountry?.trim()) params.set("countryName", contextCountry.trim());
-        if (contextPincode?.trim()) params.set("pincode", contextPincode.trim());
+        if (contextCountry?.trim())
+          params.set("countryName", contextCountry.trim());
+        if (contextPincode?.trim())
+          params.set("pincode", contextPincode.trim());
 
         const res = await fetch(`/api/places?${params}`);
         if (cancelled) return;
@@ -125,7 +134,15 @@ export function AddressPlaceAutocomplete({
       cancelled = true;
       window.clearTimeout(tid);
     };
-  }, [value, countryIso, contextCity, contextState, contextCountry, contextPincode, useGooglePlaces]);
+  }, [
+    value,
+    countryIso,
+    contextCity,
+    contextState,
+    contextCountry,
+    contextPincode,
+    useGooglePlaces,
+  ]);
 
   React.useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -168,7 +185,10 @@ export function AddressPlaceAutocomplete({
   const googleCount = googlePredictions.length;
   const nominatimCount = nominatimItems.length;
   const totalCount = useGooglePlaces ? googleCount : nominatimCount;
-  const showList = open && value.trim().length >= 2 && (loading || resolvingPlace || totalCount > 0);
+  const showList =
+    open &&
+    value.trim().length >= 2 &&
+    (loading || resolvingPlace || totalCount > 0);
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (!showList || totalCount === 0) return;
@@ -194,7 +214,10 @@ export function AddressPlaceAutocomplete({
 
   return (
     <div ref={wrapRef} className="relative">
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+      <label
+        htmlFor={id}
+        className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+      >
         {label}
         {required ? <span className="text-red-500"> *</span> : null}
       </label>
@@ -228,9 +251,14 @@ export function AddressPlaceAutocomplete({
           }, 200);
         }}
         onKeyDown={onKeyDown}
-        className={cn(surfaceInputClassName, invalid && "border-red-500 dark:border-red-500")}
+        className={cn(
+          surfaceInputClassName,
+          invalid && "border-red-500 dark:border-red-500",
+        )}
       />
-      {error ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p> : null}
+      {error ? (
+        <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>
+      ) : null}
 
       {showList ? (
         <ul
@@ -244,13 +272,22 @@ export function AddressPlaceAutocomplete({
             </li>
           ) : useGooglePlaces ? (
             googleCount === 0 ? (
-              <li className="px-3 py-2.5 text-sm text-slate-500">{t("noResults")}</li>
+              <li className="px-3 py-2.5 text-sm text-slate-500">
+                {t("noResults")}
+              </li>
             ) : (
               googlePredictions.map((prediction, idx) => {
-                const main = prediction.structured_formatting?.main_text ?? prediction.description;
-                const secondary = prediction.structured_formatting?.secondary_text ?? "";
+                const main =
+                  prediction.structured_formatting?.main_text ??
+                  prediction.description;
+                const secondary =
+                  prediction.structured_formatting?.secondary_text ?? "";
                 return (
-                  <li key={prediction.place_id} role="option" aria-selected={idx === activeIndex}>
+                  <li
+                    key={prediction.place_id}
+                    role="option"
+                    aria-selected={idx === activeIndex}
+                  >
                     <button
                       type="button"
                       className={cn(
@@ -267,7 +304,9 @@ export function AddressPlaceAutocomplete({
                         aria-hidden
                       />
                       <span className="min-w-0 flex-1">
-                        <span className="block font-medium text-slate-900 dark:text-slate-100">{main}</span>
+                        <span className="block font-medium text-slate-900 dark:text-slate-100">
+                          {main}
+                        </span>
                         {secondary ? (
                           <span className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">
                             {secondary}
@@ -280,10 +319,16 @@ export function AddressPlaceAutocomplete({
               })
             )
           ) : nominatimCount === 0 ? (
-            <li className="px-3 py-2.5 text-sm text-slate-500">{t("noResults")}</li>
+            <li className="px-3 py-2.5 text-sm text-slate-500">
+              {t("noResults")}
+            </li>
           ) : (
             nominatimItems.map((place, idx) => (
-              <li key={place.id} role="option" aria-selected={idx === activeIndex}>
+              <li
+                key={place.id}
+                role="option"
+                aria-selected={idx === activeIndex}
+              >
                 <button
                   type="button"
                   className={cn(
@@ -296,15 +341,15 @@ export function AddressPlaceAutocomplete({
                   onClick={() => void pickNominatim(place)}
                 >
                   <span className="block font-medium">{place.line1}</span>
-                  <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{place.label}</span>
+                  <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+                    {place.label}
+                  </span>
                 </button>
               </li>
             ))
           )}
         </ul>
       ) : null}
-
-    
     </div>
   );
 }
