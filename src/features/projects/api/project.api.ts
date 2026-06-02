@@ -85,7 +85,7 @@ export async function fetchProjectFormsPage(
   pageSize = 500,
   params?: Record<string, string | number | boolean | undefined>,
 ): Promise<{ items: FormListItem[]; pagination: FormsPagination }> {
-  const { data } = await api.get(PROJECT_PATHS.projectForms(projectId), {
+  const { data } = await api.get(PROJECT_PATHS.projectFormsList(projectId), {
     params: { page, page_size: pageSize, ...params },
   });
   return {
