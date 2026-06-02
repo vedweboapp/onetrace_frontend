@@ -15,6 +15,19 @@ export async function getProjectJobForm(id: string | number): Promise<any> {
   return data;
 }
 
+/** PUT /project-forms/{id}/update/ - update project job form metadata. */
+export async function updateProjectJobForm(
+  formId: string | number,
+  payload: Record<string, unknown>,
+): Promise<unknown> {
+  const { data } = await api.put(
+    PROJECT_PATHS.projectFormUpdate(formId),
+    payload,
+    { skipErrorToast: true },
+  );
+  return data?.data ?? data;
+}
+
 /**
  * POST /project-forms/{id}/sections/
  *
