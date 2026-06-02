@@ -182,8 +182,7 @@ const ProjectTypeFormList = () => {
                     is_active: true,
                 });
                 if (!cancelled) {
-                    const items = response?.items || response?.data || [];
-                    setProjectTypes(Array.isArray(items) ? items : []);
+                    setProjectTypes(Array.isArray(response.items) ? response.items : []);
                 }
             } catch {
                 if (!cancelled) {
