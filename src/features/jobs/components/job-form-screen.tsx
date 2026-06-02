@@ -40,6 +40,7 @@ import {
   SurfaceDateInput,
   SurfaceShell,
   surfaceInputClassName,
+  surfaceTextareaClassName,
 } from "@/shared/ui";
 
 type Props = {
@@ -462,7 +463,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                 <textarea
                   id="job-description"
                   rows={4}
-                  className={cn(surfaceInputClassName, "resize-y min-h-[100px]")}
+                  className={cn(surfaceTextareaClassName, "min-h-[100px]")}
                   disabled={saving}
                   {...register("description")}
                 />
