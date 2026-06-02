@@ -2,12 +2,10 @@ import type {
   FormBuilderApiHandlers,
   HandlerContext,
 } from "@/shared/form/formbuilder/form-builder.handlers";
-import {
-  createProjectForm,
-  updateProjectForm,
-} from "@/features/project-forms/api/project-forms.api";
+import { createProjectForm } from "@/features/project-forms/api/project-forms.api";
 import {
   getProjectJobForm,
+  updateProjectJobForm,
   createProjectJobFormSections,
   createProjectJobFormRules,
 } from "./project-job-form.api";
@@ -19,8 +17,8 @@ import {
  *   - create_project_job_form  (mapped internally to "create_project_form")
  *   - edit_project_job_form    (mapped internally to "edit__project_form")
  *
- * Form create/update reuse the generic `forms/` endpoints because the spec
- * does not expose a dedicated POST/PUT on /project-forms/.
+ * Form create reuses the generic `forms/` endpoint.
+ * Form update uses /project-forms/{id}/update/.
  * Sections and rules are routed through /project-forms/{id}/sections|rules/.
  *
  * Inject via:
@@ -52,7 +50,7 @@ export const projectJobFormHandlers: FormBuilderApiHandlers = {
   },
 
   /**
-   * Step 1 (edit) — PUT /api/v1/forms/{formId}/
+   * Step 1 (edit) — PUT /project-forms/{formId}/update/
    * Strips sections/rules — those are handled by createSections/createRules.
    */
   updateForm: async (
@@ -62,7 +60,7 @@ export const projectJobFormHandlers: FormBuilderApiHandlers = {
   ): Promise<any> => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { sections, rules, ...formMeta } = payload;
-    return updateProjectForm(id, formMeta);
+    return updateProjectJobForm(id, formMeta);
   },
 
   /**
