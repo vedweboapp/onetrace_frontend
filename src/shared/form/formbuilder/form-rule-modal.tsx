@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import { AppButton } from "@/shared/ui/app-button";
 import { FormRule, RuleCondition, FormRuleOutput, RuleAction } from "./form-rules.types";
+import MultiSelect from "../components/multi-select";
 
 /** Full-height drawer below the form builder sub-header (top-14 + h-14 = 7rem). */
 const FORM_BUILDER_SUBHEADER_OFFSET = "top-28";
@@ -12,7 +13,7 @@ const FORM_BUILDER_DRAWER_HEIGHT = "h-[calc(100dvh-7rem)]";
 type FormRuleModalProps = {
   onClose: () => void;
   onSave: (rule: FormRule) => void;
-  fields: { value: string; label: string }[];
+  fields: { value: string; label: string; type?: string; options?: any[] }[];
   initialRule?: FormRule | null;
   existingRules?: FormRule[];
 };
@@ -70,7 +71,21 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
   }, [outputs]);
 
   const triggerFieldOptions = React.useMemo(() => {
-    return fields.filter((field) => !selectedOutputFieldNames.has(field.value));
+    return fields.filter(
+      (field) => {
+        if (selectedOutputFieldNames.has(field.value)) return false;
+        const typeLower = (field.type || "").toLowerCase();
+        return (
+          typeLower !== "image_upload" &&
+          typeLower !== "imageupload" &&
+          typeLower !== "image" &&
+          typeLower !== "file_upload" &&
+          typeLower !== "fileupload" &&
+          typeLower !== "file" &&
+          typeLower !== "signature"
+        );
+      }
+    );
   }, [fields, selectedOutputFieldNames]);
 
   const handleAddOutput = () => {
@@ -139,6 +154,103 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
   };
 
   const isValueDisabled = condition === "is_empty" || condition === "is_not_empty";
+  const selectedField = fields.find((f) => f.value === triggerField);
+
+  const renderValueInput = () => {
+    if (isValueDisabled) {
+      return (
+        <input
+          type="text"
+          className="bg-gray-100 dark:bg-slate-800 cursor-not-allowed text-transparent w-full p-2.5 border border-gray-300 dark:border-slate-700 rounded-md outline-none"
+          disabled
+          value=""
+        />
+      );
+    }
+
+    const fieldType = selectedField?.type;
+
+    if (fieldType === "date") {
+      return (
+        <input
+          type="date"
+          className={`w-full p-2.5 border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`}
+          value={ruleValue}
+          onChange={(e) => setRuleValue(e.target.value)}
+        />
+      );
+    }
+
+    if (fieldType === "datetime") {
+      return (
+        <input
+          type="datetime-local"
+          className={`w-full p-2.5 border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`}
+          value={ruleValue}
+          onChange={(e) => setRuleValue(e.target.value)}
+        />
+      );
+    }
+    if (fieldType === "checkbox") {
+      return (
+        <select
+          className={`w-full p-2.5 border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+          value={ruleValue}
+          onChange={(e) => setRuleValue(e.target.value)}
+        >
+          <option value="">Select Option</option>
+          <option value="true">True (Checked)</option>
+          <option value="false">False (Unchecked)</option>
+        </select>
+      );
+    }
+
+    if (fieldType === "picklist" || fieldType === "multi_select" || fieldType === "radio") {
+      const isMulti = condition === "is_any_one_of" || condition === "is_none_of";
+      const fieldOptions = selectedField?.options || [];
+
+      if (isMulti) {
+        const parsedValues = ruleValue
+          ? ruleValue.split(",").map(s => s.trim()).filter(Boolean)
+          : [];
+        return (
+          <div className="w-full">
+            <MultiSelect
+              name="rule-value-multi"
+              options={fieldOptions}
+              value={parsedValues}
+              onChange={(newVal) => setRuleValue(newVal.join(", "))}
+              placeholder="Select options..."
+            />
+          </div>
+        );
+      } else {
+        return (
+          <select
+            className={`w-full p-2.5 border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+            value={ruleValue}
+            onChange={(e) => setRuleValue(e.target.value)}
+          >
+            <option value="">Select Option</option>
+            {fieldOptions.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+        );
+      }
+    }
+    return (
+      <input
+        type="text"
+        placeholder={condition === "is_any_one_of" || condition === "is_none_of" ? "comma, separated, values" : "Enter value"}
+        className={`w-full p-2.5 border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`}
+        value={ruleValue}
+        onChange={(e) => setRuleValue(e.target.value)}
+      />
+    );
+  };
 
   return (
     <>
@@ -234,14 +346,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
                     ))}
                   </select>
                   
-                  <input
-                    type="text"
-                    placeholder={condition === "is_any_one_of" || condition === "is_none_of" ? "comma, separated, values" : "Enter value"}
-                    className={`${isValueDisabled ? "bg-gray-100 dark:bg-slate-800 cursor-not-allowed text-transparent": "dark:bg-slate-900 dark:text-slate-100"} w-full p-2.5 border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} dark:border-slate-700 rounded-md outline-none`}
-                    disabled={isValueDisabled}
-                    value={ruleValue}
-                    onChange={(e) => setRuleValue(e.target.value)}
-                  />
+                  {renderValueInput()}
                 </div>
                 {(errors.triggerField || errors.condition || errors.ruleValue) && (
                   <span className="text-red-500 text-sm">Please complete the &quot;If&quot; condition fields</span>

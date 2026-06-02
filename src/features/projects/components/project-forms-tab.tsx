@@ -4,13 +4,11 @@ import * as React from "react";
 import { LayoutGrid, List, Pencil, Plus, Power, PowerOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { fetchFormsPage, patchForm } from "@/features/forms/api/forms.api";
+import { fetchProject, fetchProjectFormsPage, updateProject } from "@/features/projects/api/project.api";
 import type { FormListItem } from "@/features/forms/types/form.types";
-import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
-import type { ProjectType } from "@/features/project-types/types/project-type.types";
 import { cn } from "@/core/utils/http.util";
-import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -24,8 +22,10 @@ import {
   ListPageCard,
   ListPageCardGrid,
   ListPageSearchField,
+  MultiCheckSelect,
   SurfaceShell,
 } from "@/shared/ui";
+import { getProjectTypeId } from "@/features/projects/utils/project-type-id.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 
@@ -54,7 +54,10 @@ export function ProjectFormsTab() {
   const dateFmt = useDashboardDateFormat();
   const router = useRouter();
   const pathname = usePathname();
+  const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
+
+  const projectId = params.id;
 
   const viewMode = React.useMemo<ViewMode>(() => parseViewParam(searchParams.get("projectFormsView")), [searchParams]);
 
@@ -68,6 +71,7 @@ export function ProjectFormsTab() {
 
   const [search, setSearch] = React.useState("");
   const [activeFilter, setActiveFilter] = React.useState<ActiveFilter>("");
+
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
   const [items, setItems] = React.useState<FormListItem[]>([]);
@@ -84,11 +88,12 @@ export function ProjectFormsTab() {
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
-  const [projectTypeModalOpen, setProjectTypeModalOpen] = React.useState(false);
-  const [projectTypes, setProjectTypes] = React.useState<ProjectType[]>([]);
-  const [projectTypesLoading, setProjectTypesLoading] = React.useState(false);
-  const [projectTypesError, setProjectTypesError] = React.useState<string | null>(null);
-  const [selectedProjectTypeId, setSelectedProjectTypeId] = React.useState<number | null>(null);
+  const [assignOpen, setAssignOpen] = React.useState(false);
+  const [assignLoading, setAssignLoading] = React.useState(false);
+  const [assignSaving, setAssignSaving] = React.useState(false);
+  const [assignError, setAssignError] = React.useState<string | null>(null);
+  const [assignFormOptions, setAssignFormOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [selectedFormIds, setSelectedFormIds] = React.useState<string[]>([]);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
   const pageRange = getListPageRange(pagination);
@@ -99,25 +104,27 @@ export function ProjectFormsTab() {
   }, []);
 
   React.useEffect(() => {
+    if (!projectId) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
       setLoadError(null);
       try {
-        const { items: rows, pagination: p } = await fetchFormsPage(
+        const { items: rows, pagination: p } = await fetchProjectFormsPage(
+          Number(projectId),
           page,
           pageSize,
           {
             search: search || undefined,
             is_active: activeFilter === "" ? undefined : activeFilter === "true",
-          },
-          { silent: true },
+          }
         );
         if (!cancelled) {
           setItems(rows);
           setPagination(p);
         }
-      } catch {
+      } catch (err) {
+        console.error("Failed to fetch project forms:", err);
         if (!cancelled) {
           setItems([]);
           setLoadError(t("loadError"));
@@ -129,36 +136,74 @@ export function ProjectFormsTab() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, search, activeFilter, refreshNonce, t]);
+  }, [projectId, page, pageSize, search, activeFilter, refreshNonce, t]);
 
   React.useEffect(() => {
-    if (!projectTypeModalOpen) return;
+    if (!assignOpen || !projectId) return;
     let cancelled = false;
     (async () => {
-      setProjectTypesLoading(true);
-      setProjectTypesError(null);
+      setAssignLoading(true);
+      setAssignError(null);
+      setAssignFormOptions([]);
       try {
-        const { items: rows } = await fetchProjectTypesPage(1, 100, { is_active: true });
-        if (!cancelled) setProjectTypes(rows);
-      } catch {
-        if (!cancelled) {
-          setProjectTypes([]);
-          setProjectTypesError(t("projectTypesLoadError"));
+        const project = await fetchProject(Number(projectId));
+        const projectTypeId = getProjectTypeId(project);
+        if (!projectTypeId) {
+          if (!cancelled) {
+            setSelectedFormIds([]);
+            setAssignError(t("projectTypeMissingError"));
+          }
+          return;
         }
+        const { items: forms } = await fetchFormsPage(1, 500, { project_type: projectTypeId }, { silent: true });
+        if (!cancelled) {
+          const assignedIds = Array.isArray(project.form_ids)
+            ? project.form_ids
+            : Array.isArray(project.forms)
+              ? project.forms
+                  .map((form) => (typeof form === "number" ? form : form?.id))
+                  .filter((id): id is number => Number.isFinite(id) && id > 0)
+              : [];
+          setSelectedFormIds(assignedIds.map(String));
+          setAssignFormOptions(forms.map((form) => ({ value: String(form.id), label: form.name })));
+        }
+      } catch {
+        if (!cancelled) setAssignError(t("assignLoadError"));
       } finally {
-        if (!cancelled) setProjectTypesLoading(false);
+        if (!cancelled) setAssignLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [projectTypeModalOpen, t]);
+  }, [assignOpen, projectId, t]);
 
-  function openEdit(row: FormListItem) {
-    router.push(`${routes.dashboard.settingsProjectForms}/create?purpose=edit__project_form&layout_id=${row.id}`);
+  const openEdit = React.useCallback((row: FormListItem) => {
+    router.push(`/dashboard/projects/${projectId}/job-forms?purpose=edit_project_job_form&layout_id=${row.id}`);
+  }, [projectId, router]);
+
+  const openCreate = () => {
+    setAssignOpen(true);
+  };
+
+  async function handleSaveAssignedForms() {
+    if (!projectId) return;
+    setAssignSaving(true);
+    try {
+      const form_ids = selectedFormIds
+        .map((raw) => Number.parseInt(raw, 10))
+        .filter((id) => Number.isFinite(id) && id > 0);
+      await updateProject(Number(projectId), { form_ids });
+      toastSuccess(t("assignedToast"));
+      setAssignOpen(false);
+      setRefreshNonce((n) => n + 1);
+    } catch {
+      toastError(t("assignSaveError"));
+    } finally {
+      setAssignSaving(false);
+    }
   }
-
-  async function handleToggleActive(row: FormListItem, next: boolean) {
+  const handleToggleActive = React.useCallback(async (row: FormListItem, next: boolean) => {
     setTogglingId(row.id);
     try {
       await patchForm(row.id, { is_active: next });
@@ -169,7 +214,7 @@ export function ProjectFormsTab() {
     } finally {
       setTogglingId(null);
     }
-  }
+  }, [t]);
 
   const tableColumns = React.useMemo(() => {
     const c = entityCol<FormListItem>();
@@ -201,24 +246,24 @@ export function ProjectFormsTab() {
             { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) },
             row.is_active
               ? {
-                  id: "deactivate",
-                  label: t("deactivate"),
-                  icon: PowerOff,
-                  onSelect: () => void handleToggleActive(row, false),
-                  disabled: togglingId === row.id,
-                }
+                id: "deactivate",
+                label: t("deactivate"),
+                icon: PowerOff,
+                onSelect: () => void handleToggleActive(row, false),
+                disabled: togglingId === row.id,
+              }
               : {
-                  id: "activate",
-                  label: t("activate"),
-                  icon: Power,
-                  onSelect: () => void handleToggleActive(row, true),
-                  disabled: togglingId === row.id,
-                },
+                id: "activate",
+                label: t("activate"),
+                icon: Power,
+                onSelect: () => void handleToggleActive(row, true),
+                disabled: togglingId === row.id,
+              },
           ]}
         />
       )),
     ];
-  }, [dateFmt, t, tList, togglingId]);
+  }, [dateFmt, handleToggleActive, openEdit, t, tList, togglingId]);
 
   const viewToggle = (
     <div className="inline-flex shrink-0 items-center rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
@@ -265,13 +310,10 @@ export function ProjectFormsTab() {
         <AppButton
           type="button"
           size="sm"
-          onClick={() => {
-            setSelectedProjectTypeId(null);
-            setProjectTypeModalOpen(true);
-          }}
+          onClick={openCreate}
         >
           <Plus className="size-4" />
-          {t("add")}
+          {t("assign")}
         </AppButton>
       </div>
 
@@ -351,19 +393,19 @@ export function ProjectFormsTab() {
                         { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) },
                         row.is_active
                           ? {
-                              id: "deactivate",
-                              label: t("deactivate"),
-                              icon: PowerOff,
-                              onSelect: () => void handleToggleActive(row, false),
-                              disabled: togglingId === row.id,
-                            }
+                            id: "deactivate",
+                            label: t("deactivate"),
+                            icon: PowerOff,
+                            onSelect: () => void handleToggleActive(row, false),
+                            disabled: togglingId === row.id,
+                          }
                           : {
-                              id: "activate",
-                              label: t("activate"),
-                              icon: Power,
-                              onSelect: () => void handleToggleActive(row, true),
-                              disabled: togglingId === row.id,
-                            },
+                            id: "activate",
+                            label: t("activate"),
+                            icon: Power,
+                            onSelect: () => void handleToggleActive(row, true),
+                            disabled: togglingId === row.id,
+                          },
                       ]}
                     />
                   }
@@ -404,50 +446,58 @@ export function ProjectFormsTab() {
           </div>
         ) : null}
       </SurfaceShell>
-
       <AppModal
-        open={projectTypeModalOpen}
-        onClose={() => setProjectTypeModalOpen(false)}
-        title={t("selectProjectTypeTitle")}
-        description={t("selectProjectTypeDescription")}
+        open={assignOpen}
+        onClose={() => (!assignSaving ? setAssignOpen(false) : undefined)}
+        title={t("assignModalTitle")}
+        description={t("assignModalDescription")}
         size="lg"
-        className="overflow-visible"
+        isBusy={assignSaving}
         footer={
           <>
-            <AppButton type="button" variant="secondary" onClick={() => setProjectTypeModalOpen(false)}>
+            <AppButton
+              type="button"
+              variant="secondary"
+              disabled={assignSaving}
+              onClick={() => setAssignOpen(false)}
+            >
               {t("cancel")}
             </AppButton>
             <AppButton
               type="button"
-              onClick={() => {
-                if (!selectedProjectTypeId) return;
-                setProjectTypeModalOpen(false);
-                router.push(`${routes.dashboard.settingsProjectForms}/${selectedProjectTypeId}/create?purpose=create_project_form`);
-              }}
-              disabled={!selectedProjectTypeId}
+              variant="primary"
+              loading={assignSaving}
+              disabled={assignLoading || !!assignError}
+              onClick={() => void handleSaveAssignedForms()}
             >
-              {t("continue")}
+              {t("saveAssigned")}
             </AppButton>
           </>
         }
       >
-        {projectTypesError ? (
-          <p className="text-sm text-red-600 dark:text-red-400">{projectTypesError}</p>
-        ) : null}
-        <CheckmarkSelect
-          listLabel={t("projectTypes")}
-          buttonAriaLabel={t("projectTypes")}
-          value={selectedProjectTypeId ? String(selectedProjectTypeId) : ""}
-          onChange={(value) => setSelectedProjectTypeId(value ? Number(value) : null)}
-          options={projectTypes.map((row) => ({ value: String(row.id), label: row.project_type || `#${row.id}` }))}
-          emptyLabel={projectTypesLoading ? t("loadingProjectTypes") : t("projectTypePlaceholder")}
-          disabled={projectTypesLoading || projectTypesError != null}
-          searchable
-          searchPlaceholder={t("projectTypeSearch")}
-          portaled={false}
-          side="bottom"
-          className="w-full"
-        />
+        {assignLoading ? (
+          <div className="space-y-3">
+            <div className="h-11 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
+            <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+          </div>
+        ) : assignError ? (
+          <p className="text-sm text-red-600 dark:text-red-400">{assignError}</p>
+        ) : (
+          <div className="space-y-2">
+            <MultiCheckSelect
+              id="project-assign-form-ids"
+              options={assignFormOptions}
+              values={selectedFormIds}
+              onChange={setSelectedFormIds}
+              disabled={assignSaving || assignFormOptions.length === 0}
+              placeholder={t("assignPlaceholder")}
+              listLabel={t("assignListLabel")}
+            />
+            {assignFormOptions.length === 0 ? (
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t("assignEmpty")}</p>
+            ) : null}
+          </div>
+        )}
       </AppModal>
     </div>
   );

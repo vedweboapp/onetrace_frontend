@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { CheckSquare, Square, Clock, ChevronDown } from "lucide-react";
 import { updateOrganizationDetails } from "../api/company-settings.api";
 import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
@@ -13,7 +13,7 @@ import {
   SCHEDULE_TAB_FIELDS,
 } from "../utils/company-settings-diff.util";
 
-const DAYS_OF_WEEK = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const BREAK_OPTIONS = ["15 minutes", "30 minutes", "45 minutes", "1 hour"];
 
 interface CompanySettingScheduleProps {
@@ -38,6 +38,18 @@ const CompanySettingSchedule = ({ initialData, onSaveSuccess }: CompanySettingSc
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  const isDirty = useMemo(() => {
+    const current: OrganizationDetails = {
+      ...initialData,
+      workingDays,
+      startTime,
+      endTime,
+      breakDuration,
+    };
+    const patch = buildDirtyOrganizationPatch(initialData, current, SCHEDULE_TAB_FIELDS);
+    return hasDirtyFields(patch);
+  }, [initialData, workingDays, startTime, endTime, breakDuration]);
 
   const toggleDay = (day: string) => {
     setWorkingDays((prev) =>
@@ -104,8 +116,8 @@ const CompanySettingSchedule = ({ initialData, onSaveSuccess }: CompanySettingSc
                   type="button"
                   onClick={() => toggleDay(day)}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-semibold transition-colors duration-200 ${isSelected
-                      ? "bg-blue-50 border-blue-500 text-blue-600"
-                      : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+                    ? "bg-blue-50 border-blue-500 text-blue-600"
+                    : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
                     }`}
                 >
                   {isSelected ? (
@@ -172,17 +184,19 @@ const CompanySettingSchedule = ({ initialData, onSaveSuccess }: CompanySettingSc
           </div>
         </div>
 
-        {/* Action Button */}
-        <div className="flex justify-end pt-4 mt-2 border-t border-slate-100">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaving}
-            className="px-6 py-2.5 bg-[#0F172A] hover:bg-slate-800 active:scale-[0.98] transition-all text-white text-sm font-semibold rounded-[8px] shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSaving ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
+        {/* Action Button – only visible when something changed */}
+        {isDirty && (
+          <div className="flex justify-end pt-4 mt-2 border-t border-slate-100 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isSaving}
+              className="px-6 py-2.5 bg-[#0F172A] hover:bg-slate-800 active:scale-[0.98] transition-all text-white text-sm font-semibold rounded-[8px] shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSaving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        )}
       </div>
 
     </div>

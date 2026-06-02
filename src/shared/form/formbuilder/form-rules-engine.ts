@@ -7,29 +7,49 @@ export function evaluateCondition(fieldValue: any, condition: RuleCondition, rul
     fieldValue = '';
   }
 
-  const strFieldValue = String(fieldValue).toLowerCase();
-  
+  // Helper to convert rule value into an array of lowercase strings
+  const toLowerArray = (val: any): string[] => {
+    if (Array.isArray(val)) {
+      return val.map((v) => String(v).trim().toLowerCase()).filter(Boolean);
+    }
+    if (typeof val === 'string') {
+      return val.split(',').map((v) => v.trim().toLowerCase()).filter(Boolean);
+    }
+    return [String(val).trim().toLowerCase()].filter(Boolean);
+  };
+
+  const fieldValues = Array.isArray(fieldValue)
+    ? fieldValue.map((v) => String(v).trim().toLowerCase())
+    : [String(fieldValue).trim().toLowerCase()];
+
+  const ruleValues = toLowerArray(ruleValue);
+
   switch (condition) {
     case 'is':
-      return strFieldValue === String(ruleValue).toLowerCase();
+      if (Array.isArray(fieldValue)) {
+        return fieldValue.some((fv) =>
+          ruleValues.includes(String(fv).trim().toLowerCase())
+        );
+      }
+      return ruleValues.includes(String(fieldValue).trim().toLowerCase());
     case 'is_not':
-      return strFieldValue !== String(ruleValue).toLowerCase();
+      if (Array.isArray(fieldValue)) {
+        return !fieldValue.some((fv) =>
+          ruleValues.includes(String(fv).trim().toLowerCase())
+        );
+      }
+      return !ruleValues.includes(String(fieldValue).trim().toLowerCase());
     case 'ends_with':
-      return strFieldValue.endsWith(String(ruleValue).toLowerCase());
+      const strFieldValue = String(fieldValue).toLowerCase();
+      return ruleValues.some((rv) => strFieldValue.endsWith(rv));
     case 'is_empty':
-      return strFieldValue.trim() === '';
+      return fieldValues.length === 0 || (fieldValues.length === 1 && fieldValues[0] === '');
     case 'is_not_empty':
-      return strFieldValue.trim() !== '';
+      return fieldValues.length > 0 && !(fieldValues.length === 1 && fieldValues[0] === '');
     case 'is_any_one_of':
-      if (Array.isArray(ruleValue)) {
-        return ruleValue.some((val) => String(val).toLowerCase() === strFieldValue);
-      }
-      return false;
+      return fieldValues.some((fv) => ruleValues.includes(fv));
     case 'is_none_of':
-      if (Array.isArray(ruleValue)) {
-        return !ruleValue.some((val) => String(val).toLowerCase() === strFieldValue);
-      }
-      return true;
+      return !fieldValues.some((fv) => ruleValues.includes(fv));
     default:
       return false;
   }

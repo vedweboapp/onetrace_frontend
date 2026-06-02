@@ -102,7 +102,7 @@ export async function fetchDrawingDetail(projectId: number, drawingId: number): 
 export async function updateDrawingPlots(
   projectId: number,
   drawingId: number,
-  body: { plots: DrawingPlotUpsert[] },
+  body: FormData,
 ): Promise<DrawingDetail> {
   const { data } = await api.put<ApiEnvelope<DrawingDetail> | DrawingDetail>(
     DRAWING_PATHS.detail(projectId, drawingId),

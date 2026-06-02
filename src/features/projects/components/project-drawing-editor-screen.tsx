@@ -64,6 +64,19 @@ function inside(point: number[], vs: number[][]): boolean {
   return isInside;
 }
 
+const PIN_OUTSIDE_PLOT_MESSAGE = "Cannot edit boundary: Pin would be outside the plot. Move the pin first or remove it.";
+
+function pointOnSegment(point: number[], a: number[], b: number[], tolerance = 0.75): boolean {
+  return distanceToSegment(point, a, b) <= tolerance;
+}
+
+function insideOrOnBoundary(point: number[], polygon: number[][]): boolean {
+  if (inside(point, polygon)) return true;
+  return polygon.some((vertex, index) =>
+    pointOnSegment(point, vertex, polygon[(index + 1) % polygon.length]!),
+  );
+}
+
 const PLOT_PALETTE = [
   { border: "#059669", bg: "#0596690D" },  // Green
   { border: "#2563EB", bg: "#2563EB0D" },  // Blue
@@ -132,6 +145,19 @@ function pixelToPercent(pt: number[], pageSize: { width: number; height: number 
     Number(((pt[0] / pageSize.width) * 100).toFixed(6)),
     Number(((pt[1] / pageSize.height) * 100).toFixed(6)),
   ];
+}
+
+function plotContainsAllPins(
+  plot: LocalPlot,
+  coordinates: number[][],
+  pageSize: { width: number; height: number },
+): boolean {
+  if (coordinates.length < 3) return plot.pins.length === 0;
+  const polygon = coordinates.map((coordinate) => percentToPixel(coordinate, pageSize));
+  return plot.pins.every((pin) => {
+    const pinPoint = percentToPixel([pin.x_coordinate, pin.y_coordinate], pageSize);
+    return insideOrOnBoundary(pinPoint, polygon);
+  });
 }
 
 function getCentroid(points: number[][]): number[] {
@@ -655,29 +681,18 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     }
   }
 
-  function readFileAsDataUrl(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(String(reader.result ?? ""));
-      reader.onerror = () => reject(new Error("File reading failed"));
-      reader.readAsDataURL(file);
-    });
-  }
-
   async function filesToPinAttachments(files: File[]): Promise<DrawingPinAttachment[]> {
     if (!files.length) return [];
     const now = Date.now();
     const out: DrawingPinAttachment[] = [];
     let i = 0;
     for (const file of files) {
-      // Attachments draft is stored as data URLs so it can be persisted with the pin payload.
-      const dataUrl = await readFileAsDataUrl(file);
       out.push({
         id: -(now + i),
         file_name: file.name,
         content_type: file.type || null,
-        file_data: dataUrl,
-        data_url: dataUrl,
+        file: file, // Keep reference to original binary File object
+        url: URL.createObjectURL(file), // Generate local object URL for preview/download
       });
       i++;
     }
@@ -744,27 +759,32 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
       if (editingPlotId) {
         const pct = pixelToPercent(pt, pageSize);
+        const targetPlot = plots.find((p) => p.id === editingPlotId);
+        if (!targetPlot) return;
+
+        const coords = targetPlot.coordinates.map(c => percentToPixel(c, pageSize));
+        let bestIdx = coords.length;
+        let minDist = Infinity;
+
+        for (let i = 0; i < coords.length; i++) {
+          const d = distanceToSegment(pt, coords[i]!, coords[(i + 1) % coords.length]!);
+          if (d < minDist) {
+            minDist = d;
+            bestIdx = i + 1;
+          }
+        }
+
+        const nextCoords = [...targetPlot.coordinates];
+        nextCoords.splice(bestIdx, 0, pct);
+        if (!plotContainsAllPins(targetPlot, nextCoords, pageSize)) {
+          toastError(PIN_OUTSIDE_PLOT_MESSAGE);
+          return;
+        }
+
         setPlots((prev) =>
-          prev.map((p) => {
-            if (p.id !== editingPlotId) return p;
-
-        
-            const coords = p.coordinates.map(c => percentToPixel(c, pageSize));
-            let bestIdx = coords.length;
-            let minDist = Infinity;
-
-            for (let i = 0; i < coords.length; i++) {
-              const d = distanceToSegment(pt, coords[i]!, coords[(i + 1) % coords.length]!);
-              if (d < minDist) {
-                minDist = d;
-                bestIdx = i + 1;
-              }
-            }
-
-            const nextCoords = [...p.coordinates];
-            nextCoords.splice(bestIdx, 0, pct);
-            return { ...p, coordinates: nextCoords };
-          })
+          prev.map((p) =>
+            p.id === editingPlotId ? { ...p, coordinates: nextCoords } : p,
+          )
         );
         setDirty(true);
         return;
@@ -915,10 +935,10 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
           for (const pin of targetPlot.pins) {
             const pinPt = percentToPixel([pin.x_coordinate, pin.y_coordinate], ps);
-            if (!inside(pinPt, nextPolyPixels)) {
+            if (!insideOrOnBoundary(pinPt, nextPolyPixels)) {
               const now = Date.now();
               if (now - lastPinConstraintToastRef.current > 2000) {
-                toastError("Cannot move boundary: Pin would be outside the plot. Move the pin first or remove it.");
+                toastError(PIN_OUTSIDE_PLOT_MESSAGE);
                 lastPinConstraintToastRef.current = now;
               }
               return; // Block movement if any pin would be outside
@@ -1021,36 +1041,63 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setPanMode(false);
   }
 
-  function toPayload(localPlots: LocalPlot[]): DrawingPlotUpsert[] {
-    return localPlots.map((p) => ({
+  function toPayload(localPlots: LocalPlot[], formData: FormData): DrawingPlotUpsert[] {
+    return localPlots.map((p, plotIndex) => ({
       ...(p.id > 0 ? { id: p.id } : {}),
+
       name: p.name,
       coordinates: p.coordinates,
       plot_border: p.plot_border,
       plot_bg: p.plot_bg,
-      pins: p.pins.map((pin) => ({
-        ...(pin.id > 0 ? { id: pin.id } : {}),
-        x_coordinate: pin.x_coordinate,
-        y_coordinate: pin.y_coordinate,
-        status: pin.status ?? undefined,
-        group: pin.group ?? null,
-        item: pin.item ?? null,
-        quantity: pin.quantity || 1,
-        variation: pin.variation ?? false,
-        location: pinLabels.get(pin.id),
-        description: pin.description ?? undefined,
-        attachments: pin.attachments ?? undefined,
-      })),
+
+      pins: p.pins.map((pin, pinIndex) => {
+        // Append file(s) to FormData
+        if (Array.isArray(pin.attachments) && pin.attachments.length) {
+          pin.attachments.forEach((att: any, idx) => {
+            if (att.file) {
+              formData.append(
+                `plots[${plotIndex}][pins][${pinIndex}][attachments][${idx}]`,
+                att.file
+              );
+            }
+          });
+        }
+
+        return {
+          ...(pin.id > 0 ? { id: pin.id } : {}),
+
+          x_coordinate: pin.x_coordinate,
+          y_coordinate: pin.y_coordinate,
+          status: pin.status ?? undefined,
+          group: pin.group ?? null,
+          item: pin.item ?? null,
+          quantity: pin.quantity || 1,
+          variation: pin.variation ?? false,
+          location: pinLabels.get(pin.id),
+          description: pin.description ?? undefined,
+          attachments: pin.attachments?.filter((att) => !att.file) ?? [],
+        };
+      }),
     }));
   }
 
   async function persistPlots(localPlots: LocalPlot[]) {
-    const updated = await updateDrawingPlots(projectId, drawingId, { plots: toPayload(localPlots) });
-    const normalized = (updated.plots ?? []).map(normalizePlot);
-    applyStableLocations(normalized);
-    setPlots(normalized);
-    setDirty(false);
-  }
+  // Create a new FormData for each save operation
+  const formData = new FormData();
+
+  // Build payload and attach files using the same FormData instance
+  const plotsPayload = toPayload(localPlots, formData);
+
+  // Append the JSON payload as a string field
+  formData.append('payload', JSON.stringify({ plots: plotsPayload }));
+
+  // Send multipart/form-data to the backend
+  const updated = await updateDrawingPlots(projectId, drawingId, formData);
+  const normalized = (updated.plots ?? []).map(normalizePlot);
+  applyStableLocations(normalized);
+  setPlots(normalized);
+  setDirty(false);
+}
 
   async function savePlotFromModal() {
     const name = plotNameDraft.trim();
@@ -1232,6 +1279,11 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   }
 
   async function saveAllChanges() {
+    if (plots.some((plot) => !plotContainsAllPins(plot, plot.coordinates, pageSize))) {
+      toastError(PIN_OUTSIDE_PLOT_MESSAGE);
+      return;
+    }
+
     setSavingAll(true);
     try {
       await persistPlots(plots);
@@ -1671,10 +1723,14 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                                   toastError("Polygon must have at least 3 points");
                                   return;
                                 }
+                                const nextCoords = [...plot.coordinates];
+                                nextCoords.splice(idx, 1);
+                                if (!plotContainsAllPins(plot, nextCoords, pageSize)) {
+                                  toastError(PIN_OUTSIDE_PLOT_MESSAGE);
+                                  return;
+                                }
                                 setPlots(prev => prev.map(p => {
                                   if (p.id !== plot.id) return p;
-                                  const nextCoords = [...p.coordinates];
-                                  nextCoords.splice(idx, 1);
                                   return { ...p, coordinates: nextCoords };
                                 }));
                                 setDirty(true);
@@ -2010,12 +2066,21 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                         return (
                           <div className="flex flex-wrap gap-3">
                             {attachments.map((att, idx) => {
-                              const url = att.url ?? att.file_url ?? att.data_url ?? att.file_data ?? null;
+                              const url =
+                                att.url ??
+                                att.file_url ??
+                                (typeof att.attachment === "string" ? att.attachment : null) ??
+                                (typeof att.file === "string" ? att.file : null) ??
+                                att.data_url ??
+                                att.file_data ??
+                                (att.file && typeof att.file !== "string" ? URL.createObjectURL(att.file as any) : null);
                               const name =
-                                att.file_name ?? att.name ?? att.id != null ? `Attachment #${att.id}` : `Attachment ${idx + 1}`;
+                                att.file_name ??
+                                att.name ??
+                                (att.id != null ? `Attachment #${att.id}` : `Attachment ${idx + 1}`);
                               const isImage =
                                 (att.content_type ?? "").startsWith("image/") ||
-                                (typeof url === "string" && url.startsWith("data:image/"));
+                                (typeof url === "string" && (url.startsWith("data:image/") || /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(url)));
                               return (
                                 <div key={idx} className="flex flex-col items-start gap-1 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950">
                                   {url && isImage ? (
@@ -2036,21 +2101,57 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                                       {name}
                                     </p>
                                   )}
-                                  {isPinEditing ? (
-                                    <button
-                                      type="button"
-                                      className="text-[10px] font-bold text-red-600 hover:text-red-700"
-                                      onClick={() => {
-                                        setPinEditData((prev) => {
-                                          const curr = (prev.attachments ?? detailPin.attachments ?? []) as DrawingPinAttachment[];
-                                          const next = curr.filter((_, i) => i !== idx);
-                                          return { ...prev, attachments: next };
-                                        });
-                                      }}
-                                    >
-                                      Remove
-                                    </button>
-                                  ) : null}
+                                  <div className="flex items-center gap-2 mt-1 w-full">
+                                    {isPinEditing ? (
+                                      <button
+                                        type="button"
+                                        className="text-[10px] font-bold text-red-600 hover:text-red-700"
+                                        onClick={() => {
+                                          setPinEditData((prev) => {
+                                            const curr = (prev.attachments ?? detailPin.attachments ?? []) as DrawingPinAttachment[];
+                                            const next = curr.filter((_, i) => i !== idx);
+                                            return { ...prev, attachments: next };
+                                          });
+                                        }}
+                                      >
+                                        Remove
+                                      </button>
+                                    ) : null}
+                                    {url ? (
+                                      <button
+                                        type="button"
+                                        className="text-[10px] font-bold text-blue-600 hover:text-blue-700 hover:underline bg-transparent border-none p-0 cursor-pointer"
+                                        onClick={async () => {
+                                          if (url.startsWith("blob:") || url.startsWith("data:")) {
+                                            const link = document.createElement("a");
+                                            link.href = url;
+                                            link.download = name;
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                            return;
+                                          }
+                                          try {
+                                            const response = await fetch(url);
+                                            const blob = await response.blob();
+                                            const blobUrl = URL.createObjectURL(blob);
+                                            const link = document.createElement("a");
+                                            link.href = blobUrl;
+                                            link.download = name;
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                            URL.revokeObjectURL(blobUrl);
+                                          } catch (error) {
+                                            console.error("Failed to download file:", error);
+                                            window.open(url, "_blank");
+                                          }
+                                        }}
+                                      >
+                                        Download
+                                      </button>
+                                    ) : null}
+                                  </div>
                                 </div>
                               );
                             })}
