@@ -16,14 +16,16 @@ import {
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
   ActiveStatusBadge,
-  AddButton, AppButton,
+  AddButton,
   ConfirmDialog,
-  DashboardEmptyState,
   DataTablePaginationBar,
+  ListPageEmptyStates,
+  listPageSurfaceShellClassName,
   DataTableRowActionsMenu,
   ListPageCard,
   ListPageCardGrid,
@@ -135,7 +137,12 @@ export function GroupsPanel() {
   }, [refreshNonce]);
 
   const hasActiveFilters = hasListActiveFilters({ search });
-  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
   const pageRange = getListPageRange(pagination);
 
   function openCreate() {
@@ -223,7 +230,7 @@ export function GroupsPanel() {
     <div className="space-y-4">
       {!hideListChrome ? (
         <ListPageHeader
-          filtersActive={hasActiveFilters}
+          filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
@@ -245,10 +252,10 @@ export function GroupsPanel() {
         />
       ) : null}
 
-      <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
+      <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        ) : loading ? (
+        ) : listLoading ? (
           listViewMode === "list" ? (
             
             <div className="p-4 sm:p-6">
@@ -266,32 +273,16 @@ export function GroupsPanel() {
             </div>
           )
         ) : items.length === 0 ? (
-          hasActiveFilters ? (
-            <DashboardEmptyState
-              iconName="noResults"
-              title={tList("noResultsTitle")}
-              description={tList("noResultsDescription")}
-              action={
-                <AppButton
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setUrl({ search: null, page: null }, { replace: true })}
-                >
-                  {tList("clearFilters")}
-                </AppButton>
-              }
-            />
-          ) : (
-            <DashboardEmptyState
-              iconName="groups"
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
-              action={
-                <AddButton type="button" onClick={openCreate} />
-              }
-            />
-          )
+          <ListPageEmptyStates
+            emptyStateKind={emptyStateKind}
+            onboarding={{
+              iconName: "groups",
+              title: t("emptyTitle"),
+              description: t("emptyDescription"),
+              action: <AddButton type="button" onClick={openCreate} />,
+            }}
+            onClearFilters={() => setUrl({ search: null, page: null }, { replace: true })}
+          />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>

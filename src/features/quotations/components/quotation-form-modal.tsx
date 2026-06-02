@@ -39,6 +39,7 @@ import {
   FieldGroup,
   FormFieldRow,
   MultiCheckSelect,
+  SurfaceDateInput,
   surfaceInputClassName,
   surfaceTextareaClassName,
 } from "@/shared/ui";
@@ -256,7 +257,8 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     addDisabled: saving || !customerId,
   });
   const openUsersSettings = React.useCallback(() => {
-    router.push(routes.dashboard.settingsUsers);
+    const current = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : routes.dashboard.quotations;
+    router.push(`${routes.dashboard.settingsUsers}/new?back=${encodeURIComponent(current)}`);
   }, [router]);
 
   React.useEffect(() => {
@@ -547,7 +549,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
             <input id="quotation-order" className={surfaceInputClassName} {...register("order_number")} />
           </FieldGroup>
           <FieldGroup label={t("fields.dueDate")} htmlFor="quotation-due">
-            <input id="quotation-due" type="date" className={surfaceInputClassName} {...register("due_date")} />
+            <SurfaceDateInput id="quotation-due" type="date" {...register("due_date")} />
           </FieldGroup>
         </FormFieldRow>
 

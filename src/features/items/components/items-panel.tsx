@@ -10,14 +10,16 @@ import type { Item } from "@/features/items/types/item.types";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
-  AddButton, AppButton,
+  AddButton,
   ConfirmDialog,
   DataTablePaginationBar,
   DataTableRowActionsMenu,
-  DashboardEmptyState,
+  ListPageEmptyStates,
+  listPageSurfaceShellClassName,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
@@ -126,7 +128,12 @@ export function ItemsPanel() {
   }, [page, pageSize, refreshNonce, search, t]);
 
   const hasActiveFilters = hasListActiveFilters({ search });
-  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
 
   function openCreate() {
     router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
@@ -193,7 +200,7 @@ export function ItemsPanel() {
     <div className="space-y-6">
       {!hideListChrome ? (
         <ListPageHeader
-          filtersActive={hasActiveFilters}
+          filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
@@ -215,10 +222,10 @@ export function ItemsPanel() {
         />
       ) : null}
 
-      <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
+      <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        ) : loading ? (
+        ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
               <ListPageCardGrid>
@@ -235,32 +242,16 @@ export function ItemsPanel() {
             </div>
           )
         ) : items.length === 0 ? (
-          hasActiveFilters ? (
-            <DashboardEmptyState
-              iconName="noResults"
-              title={tList("noResultsTitle")}
-              description={tList("noResultsDescription")}
-              action={
-                <AppButton
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setUrl({ search: null, page: null }, { replace: true })}
-                >
-                  {tList("clearFilters")}
-                </AppButton>
-              }
-            />
-          ) : (
-            <DashboardEmptyState
-              iconName="items"
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
-              action={
-                <AddButton type="button" onClick={openCreate} />
-              }
-            />
-          )
+          <ListPageEmptyStates
+            emptyStateKind={emptyStateKind}
+            onboarding={{
+              iconName: "items",
+              title: t("emptyTitle"),
+              description: t("emptyDescription"),
+              action: <AddButton type="button" onClick={openCreate} />,
+            }}
+            onClearFilters={() => setUrl({ search: null, page: null }, { replace: true })}
+          />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>

@@ -2,6 +2,11 @@
 
 import React, { InputHTMLAttributes } from "react";
 import { FieldError, UseFormRegisterReturn } from "react-hook-form";
+import {
+  isNativeDateInputType,
+  nativeDatePickerHitAreaClassName,
+  openNativeDatePicker,
+} from "@/shared/ui/surface-date-input";
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & {
     label?: string;
@@ -23,8 +28,17 @@ const Input = ({
     errors,
     readOnly,
     className = "",
+    onClick,
     ...rest
 }: InputProps) => {
+    const isDateField = isNativeDateInputType(rest.type);
+
+    function handleDateClick(e: React.MouseEvent<HTMLInputElement>) {
+        onClick?.(e);
+        if (e.defaultPrevented || readOnly || rest.disabled) return;
+        openNativeDatePicker(e.currentTarget);
+    }
+
     return (
         <div
             className={`flex flex-col gap-1 w-full`}
@@ -46,6 +60,7 @@ const Input = ({
                 {...register}
                 {...rest}
                 readOnly={readOnly}
+                onClick={isDateField ? handleDateClick : onClick}
                 placeholder={
                     rest.placeholder ||
                     `Enter ${extractLabelText(
@@ -78,6 +93,7 @@ const Input = ({
                         }
                 focus:ring-2
                 focus:ring-blue-500
+                ${isDateField && !readOnly ? nativeDatePickerHitAreaClassName : ""}
               `
                     }
           ${className}

@@ -13,6 +13,7 @@ export const routes = {
     contacts: "/dashboard/contacts",
     sites: "/dashboard/sites",
     quotations: "/dashboard/quotations",
+    invoices: "/dashboard/invoices",
     jobs: "/dashboard/jobs",
     qrCodes: "/dashboard/qr-codes",
     projects: "/dashboard/projects",

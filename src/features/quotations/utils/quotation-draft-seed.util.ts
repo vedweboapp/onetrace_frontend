@@ -53,7 +53,12 @@ function mapQuoteApiPinsToDraft(pins: QuotationQuoteSectionPin[]): QuotationDraf
       id: newQuotationDraftId("line"),
       pin_id: typeof p.pin_id === "number" && p.pin_id > 0 ? p.pin_id : null,
       composite_item_id: p.composite_item_id,
-      name: p.name,
+      name:
+        typeof p.name === "string" && p.name.trim()
+          ? p.name.trim()
+          : p.composite_item_id != null
+            ? `Composite #${p.composite_item_id}`
+            : "—",
       quantity: p.quantity,
       selling_price: p.selling_price,
       pin_count: 1,

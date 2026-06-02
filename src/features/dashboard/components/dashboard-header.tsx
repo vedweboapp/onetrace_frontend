@@ -72,6 +72,7 @@ export function DashboardHeader() {
   const contactsHref = routes.dashboard.contacts;
   const sitesHref = routes.dashboard.sites;
   const quotationsHref = routes.dashboard.quotations;
+  const invoicesHref = routes.dashboard.invoices;
   const jobsHref = routes.dashboard.jobs;
   const qrCodesHref = routes.dashboard.qrCodes;
   const homeHref = routes.dashboard.root;
@@ -95,6 +96,8 @@ export function DashboardHeader() {
   const sitesActive = pathname === sitesHref || pathname.startsWith(`${sitesHref}/`);
   const quotationsActive =
     pathname === quotationsHref || pathname.startsWith(`${quotationsHref}/`);
+  const invoicesActive =
+    pathname === invoicesHref || pathname.startsWith(`${invoicesHref}/`);
   const jobsActive = pathname === jobsHref || pathname.startsWith(`${jobsHref}/`);
   const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
   const projectsActive =
@@ -126,39 +129,41 @@ export function DashboardHeader() {
       ? tNav("projects")
       : quotationsActive
         ? tNav("quotations")
-        : jobsActive
-          ? tNav("jobs")
-          : qrCodesActive
-            ? tNav("qrCodes")
-            : sitesActive
-              ? tNav("sites")
-              : contactsActive
-                ? tNav("contacts")
-                : clientsActive
-                  ? tNav("clients")
-                  : groupsActive
-                    ? tNav("groups")
-                    : compositeActive
-                      ? tNav("compositeItems")
-                      : personalProfileActive
-                        ? tSettingsNav("personalProfile")
-                        : companySettingsActive
-                          ? tSettingsNav("companySettings")
-                          : modulesActive
-                            ? tSettingsNav("modules")
-                            : customizationHubActive
-                              ? tSettingsNav("customization.label")
-                              : pinStatusActive
-                                ? tSettingsNav("pinStatus")
-                                : jobStatusActive
-                                  ? tSettingsNav("jobStatus")
-                                  : tagActive
-                                    ? tSettingsNav("tags")
-                                    : projectTypeActive
-                                      ? tSettingsNav("projectTypes")
-                                      : usersActive
-                                        ? tSettingsNav("users")
-                                        : tNav("home");
+        : invoicesActive
+          ? tNav("invoices")
+          : jobsActive
+            ? tNav("jobs")
+            : qrCodesActive
+              ? tNav("qrCodes")
+              : sitesActive
+                ? tNav("sites")
+                : contactsActive
+                  ? tNav("contacts")
+                  : clientsActive
+                    ? tNav("clients")
+                    : groupsActive
+                      ? tNav("groups")
+                      : compositeActive
+                        ? tNav("compositeItems")
+                        : personalProfileActive
+                          ? tSettingsNav("personalProfile")
+                          : companySettingsActive
+                            ? tSettingsNav("companySettings")
+                            : modulesActive
+                              ? tSettingsNav("modules")
+                              : customizationHubActive
+                                ? tSettingsNav("customization.label")
+                                : pinStatusActive
+                                  ? tSettingsNav("pinStatus")
+                                  : jobStatusActive
+                                    ? tSettingsNav("jobStatus")
+                                    : tagActive
+                                      ? tSettingsNav("tags")
+                                      : projectTypeActive
+                                        ? tSettingsNav("projectTypes")
+                                        : usersActive
+                                          ? tSettingsNav("users")
+                                          : tNav("home");
 
   return (
     <header className="flex h-auto shrink-0 flex-col bg-white dark:bg-slate-950">

@@ -8,13 +8,15 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchUsersPage } from "@/features/users/api/user.api";
 import type { UserProfile } from "@/features/users/types/user.types";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import {
   AddButton,
   AppButton,
-  DashboardEmptyState,
+  ListPageEmptyStates,
+  listPageSurfaceShellClassName,
   DataTablePaginationBar,
   DataTableRowActionsMenu,
   ListPageCard,
@@ -105,7 +107,12 @@ export function UsersPanel() {
   }, [page, pageSize, search, refreshNonce, t]);
 
   const hasActiveFilters = hasListActiveFilters({ search });
-  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
   const pageRange = getListPageRange(pagination);
 
   const tableColumns = React.useMemo(() => {
@@ -137,7 +144,7 @@ export function UsersPanel() {
     <div className="space-y-4">
       {!hideListChrome ? (
         <ListPageHeader
-          filtersActive={hasActiveFilters}
+          filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
@@ -167,17 +174,27 @@ export function UsersPanel() {
         />
       ) : null}
 
-      <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
+      <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        ) : loading ? (
+        ) : listLoading ? (
           listViewMode === "list" ? <div className="p-4 sm:p-6"><ListPageCardGrid>{Array.from({ length: 6 }, (_, i) => <ListPageCardSkeleton key={i} />)}</ListPageCardGrid></div> : <div className="space-y-2 p-6"><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /></div>
         ) : items.length === 0 ? (
-          hasActiveFilters ? (
-            <DashboardEmptyState iconName="noResults" title={tList("noResultsTitle")} description={tList("noResultsDescription")} action={<AppButton type="button" variant="secondary" size="sm" onClick={() => setUrl({ search: null, page: null }, { replace: true })}>{tList("clearFilters")}</AppButton>} />
-          ) : (
-            <DashboardEmptyState iconName="clients" title={t("emptyTitle")} description={t("emptyDescription")} action={<AddButton type="button" onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)} />} />
-          )
+          <ListPageEmptyStates
+            emptyStateKind={emptyStateKind}
+            onboarding={{
+              iconName: "clients",
+              title: t("emptyTitle"),
+              description: t("emptyDescription"),
+              action: (
+                <AddButton
+                  type="button"
+                  onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)}
+                />
+              ),
+            }}
+            onClearFilters={() => setUrl({ search: null, page: null }, { replace: true })}
+          />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>

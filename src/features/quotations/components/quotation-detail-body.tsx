@@ -3,6 +3,7 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import type {
   QuotationContactNested,
   QuotationDetail,
@@ -152,11 +153,14 @@ export function QuotationDetailBody({
   const t = useTranslations("Dashboard.quotations");
   const tMeta = useTranslations("Dashboard.common.detail");
   const locale = useLocale();
-  const [detailTab, setDetailTab] = React.useState<"project" | "pricing">("project");
+  const searchParams = useSearchParams();
+  const [detailTab, setDetailTab] = React.useState<"project" | "pricing">(() =>
+    searchParams.get("tab") === "pricing" ? "pricing" : "project",
+  );
 
   React.useEffect(() => {
-    setDetailTab("project");
-  }, [detail.id]);
+    setDetailTab(searchParams.get("tab") === "pricing" ? "pricing" : "project");
+  }, [detail.id, searchParams]);
 
   const snap = detail.site_snapshot;
   const snapshotAddressUsable =

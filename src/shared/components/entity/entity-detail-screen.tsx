@@ -82,7 +82,6 @@ export function EntityDetailScreen<T>({
     dateFmt,
     listBack,
   };
-
   const defaultSurface =
     loading ? (
       <EntityDetailLoadingSkeleton />

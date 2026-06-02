@@ -6,7 +6,7 @@ import type {
 } from "@/features/quotations/types/quotation-block-scope.types";
 import { draftPinTotal } from "@/features/quotations/utils/quotation-draft-compute.util";
 import type { QuotationScopeNavContext } from "@/features/quotations/utils/quotation-composite-scope-nav.util";
-import { mergeUrlQueryParam, sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 
 export const QUOTATION_BLOCK_SCOPE_SESSION_KEY = "quotation-block-scope-v1";
 
@@ -22,15 +22,30 @@ export function stripLocalePathPrefix(path: string): string {
   return path;
 }
 
-/** Return URL for Scope & Pricing after leaving block detail (locale-free path + tab). */
-export function buildQuotationScopeReturnHref(pathname: string): string {
-  if (typeof window === "undefined") {
-    return mergeUrlQueryParam(pathname, "tab", "pricing");
-  }
-  const params = new URLSearchParams(window.location.search);
+const QUOTATION_SCOPE_PRICING_PATH = /^\/dashboard\/quotations(?:\/new|\/\d+(?:\/edit)?)$/;
+
+/** Locale-free return URL for quotation Scope & Pricing (not the quotations list). */
+export function sanitizeQuotationScopePricingBack(decoded: string): string | null {
+  const qIdx = decoded.indexOf("?");
+  const pathOnly = stripLocalePathPrefix(qIdx >= 0 ? decoded.slice(0, qIdx) : decoded);
+  if (!QUOTATION_SCOPE_PRICING_PATH.test(pathOnly)) return null;
+  const params = new URLSearchParams(qIdx >= 0 ? decoded.slice(qIdx + 1) : "");
+  params.delete("back");
   params.set("tab", "pricing");
   const qs = params.toString();
+  return qs ? `${pathOnly}?${qs}` : mergeUrlQueryParam(pathOnly, "tab", "pricing");
+}
+
+/** Return URL for Scope & Pricing after leaving scope detail (locale-free path + tab). */
+export function buildQuotationScopeReturnHref(pathname: string): string {
   const base = stripLocalePathPrefix(pathname);
+  if (typeof window === "undefined") {
+    return mergeUrlQueryParam(base, "tab", "pricing");
+  }
+  const params = new URLSearchParams(window.location.search);
+  params.delete("back");
+  params.set("tab", "pricing");
+  const qs = params.toString();
   return qs ? `${base}?${qs}` : mergeUrlQueryParam(base, "tab", "pricing");
 }
 
@@ -45,11 +60,13 @@ export function normalizeQuotationScopeBackHref(
     } catch {
       decoded = raw.trim();
     }
-    const stripped = stripLocalePathPrefix(decoded);
-    const safe = sanitizeInternalListBack(stripped, "quotations");
+    const safe = sanitizeQuotationScopePricingBack(decoded);
     if (safe) return safe;
   }
-  return stripLocalePathPrefix(fallback);
+  return (
+    sanitizeQuotationScopePricingBack(fallback) ??
+    mergeUrlQueryParam(stripLocalePathPrefix(fallback), "tab", "pricing")
+  );
 }
 
 const SECTION_BLOCK_SUFFIX = "_section";
@@ -91,7 +108,7 @@ export function blockLinesToPerPinTableRows(lines: QuotationDraftLine[]): Quotat
     const total = draftPinTotal(line);
     return {
       rowKey: line.id,
-      name: line.name.trim() || "—",
+      name: (typeof line.name === "string" ? line.name : "").trim() || "—",
       quantity,
       listPrice,
       amount: total,

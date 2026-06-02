@@ -3,11 +3,16 @@
 import * as React from "react";
 import { ChevronDown, Copy, Pencil, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
 import type { QuotationDraft, QuotationDraftLine, QuotationDraftPlot, QuotationDraftSection } from "@/features/quotations/types/quotation-draft.types";
+import { buildQuotationScopeReturnHref } from "@/features/quotations/utils/quotation-block-scope.util";
+import { buildQuotationCompositeScopeHref } from "@/features/quotations/utils/quotation-composite-scope-nav.util";
+import { quotationDraftLineDisplayName } from "@/features/quotations/utils/quotation-draft-composite-aggregate.util";
+import { saveQuotationScopePinDetails } from "@/features/quotations/utils/quotation-composite-scope-pins.util";
 import { newQuotationDraftId } from "@/features/quotations/utils/quotation-draft-id.util";
 import {
   draftGrandTotal,
@@ -240,6 +245,8 @@ export function QuotationDraftComposer({
   const locale = useLocale();
   const loc = locale === "es" ? "es" : "en";
   const compositeFormId = React.useId();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const [newSectionName, setNewSectionName] = React.useState("");
   const [rowPick, setRowPick] = React.useState<Record<string, { groupId: string; compositeId: string }>>({});
@@ -850,6 +857,61 @@ export function QuotationDraftComposer({
     togglePlotOpen(plotId, !isOpen);
   }
 
+  const openCompositeScope = React.useCallback(
+    (args: {
+      compositeItemId: number;
+      displayName: string;
+      sectionLabel?: string;
+      plotLabel?: string;
+      pins: QuotationDraftLine[];
+      lineIndices: number[];
+    }) => {
+      const rows = args.lineIndices
+        .map((lineIndex, idx) => {
+          const pin = args.pins[lineIndex];
+          if (!pin) return null;
+          const qty = Number.isFinite(pin.quantity) ? pin.quantity : 0;
+          const unit = Number.isFinite(pin.selling_price) ? pin.selling_price : 0;
+          return {
+            pins_order: idx,
+            pin_id: typeof pin.pin_id === "number" && Number.isFinite(pin.pin_id) ? pin.pin_id : null,
+            name: quotationDraftLineDisplayName(pin),
+            quantity: qty,
+            selling_price: unit,
+            pins_total: qty * unit,
+          };
+        })
+        .filter((row): row is NonNullable<typeof row> => row != null);
+      const detailsKey = saveQuotationScopePinDetails({
+        title: args.displayName,
+        sectionLabel: args.sectionLabel,
+        plotLabel: args.plotLabel,
+        rows,
+      });
+      const backHref = buildQuotationScopeReturnHref(pathname);
+      const editMatch = pathname.match(/\/dashboard\/quotations\/(\d+)\/edit$/);
+      const detailMatch = pathname.match(/\/dashboard\/quotations\/(\d+)$/);
+      const context = editMatch
+        ? { mode: "edit" as const, quotationId: Number.parseInt(editMatch[1], 10) }
+        : detailMatch
+          ? { mode: "detail" as const, quotationId: Number.parseInt(detailMatch[1], 10) }
+          : ({ mode: "new" as const });
+      let href = buildQuotationCompositeScopeHref(context, {
+        compositeItemId: args.compositeItemId,
+        repeatCount: rows.length,
+        sectionLabel: args.sectionLabel,
+        plotLabel: args.plotLabel,
+        backHref,
+      });
+      if (detailsKey) {
+        const sep = href.includes("?") ? "&" : "?";
+        href = `${href}${sep}pinDetailsKey=${encodeURIComponent(detailsKey)}`;
+      }
+      router.push(href);
+    },
+    [router, pathname],
+  );
+
   if (!canShow) {
     return <p className="text-sm text-slate-500 dark:text-slate-400">{t("selectProjectHint")}</p>;
   }
@@ -1136,6 +1198,20 @@ export function QuotationDraftComposer({
                     labels={compositeLineLabels}
                     onDuplicateLine={(li) => openDuplicatePrompt({ kind: "section-line", si, li })}
                     onRemoveLines={(indices) => removeSectionCompositeLines(si, indices)}
+                    onCompositeClick={({ compositeItemId, displayName, lineIndices }) => {
+                      const fallbackCompositeId = lineIndices
+                        .map((lineIndex) => section.section_pins?.[lineIndex]?.composite_item_id ?? null)
+                        .find((id): id is number => typeof id === "number" && Number.isFinite(id) && id > 0);
+                      const targetCompositeId = compositeItemId ?? fallbackCompositeId;
+                      if (!targetCompositeId) return;
+                      openCompositeScope({
+                        compositeItemId: targetCompositeId,
+                        displayName,
+                        sectionLabel: section.name,
+                        pins: section.section_pins ?? [],
+                        lineIndices,
+                      });
+                    }}
                     readOnly={readOnly}
                   />
 
@@ -1203,6 +1279,21 @@ export function QuotationDraftComposer({
                           compositeLineLabels={compositeLineLabels}
                           onDuplicateLine={(li) => openDuplicatePrompt({ kind: "line", si, pi, li })}
                           onRemoveLines={(indices) => removePlotCompositeLines(si, pi, indices)}
+                          onCompositeClick={({ compositeItemId, displayName, lineIndices }) => {
+                            const fallbackCompositeId = lineIndices
+                              .map((lineIndex) => plot.pins?.[lineIndex]?.composite_item_id ?? null)
+                              .find((id): id is number => typeof id === "number" && Number.isFinite(id) && id > 0);
+                            const targetCompositeId = compositeItemId ?? fallbackCompositeId;
+                            if (!targetCompositeId) return;
+                            openCompositeScope({
+                              compositeItemId: targetCompositeId,
+                              displayName,
+                              sectionLabel: section.name,
+                              plotLabel: plot.name,
+                              pins: plot.pins,
+                              lineIndices,
+                            });
+                          }}
                           onSummaryClick={(e) => onPlotSummaryClick(e, plot.id, openPlotIds.has(plot.id))}
                           readOnly={readOnly}
                         />
@@ -1298,6 +1389,12 @@ type PlotBlockProps = {
   compositeLineLabels: CompositeLineLabels;
   onDuplicateLine: (li: number) => void;
   onRemoveLines: (lineIndices: number[]) => void;
+  onCompositeClick?: (args: {
+    compositeItemId: number;
+    repeatCount: number;
+    displayName: string;
+    lineIndices: number[];
+  }) => void;
   onSummaryClick: (e: React.MouseEvent<HTMLElement>) => void;
   readOnly?: boolean;
 };
@@ -1318,6 +1415,7 @@ function PlotBlock({
   compositeLineLabels,
   onDuplicateLine,
   onRemoveLines,
+  onCompositeClick,
   onSummaryClick,
   readOnly = false,
 }: PlotBlockProps) {
@@ -1499,6 +1597,7 @@ function PlotBlock({
             labels={compositeLineLabels}
             onDuplicateLine={onDuplicateLine}
             onRemoveLines={onRemoveLines}
+            onCompositeClick={onCompositeClick}
             readOnly={readOnly}
           />
         </div>

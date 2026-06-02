@@ -23,10 +23,10 @@ import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
   ActiveStatusBadge,
   AddButton,
-  AppButton,
   CheckmarkSelect,
   ConfirmDialog,
-  DashboardEmptyState,
+  ListPageEmptyStates,
+  listPageSurfaceShellClassName,
   DataTablePaginationBar,
   DataTableRowActionsMenu,
   ListPageCard,
@@ -392,7 +392,7 @@ export function JobsPanel() {
         />
       ) : null}
 
-      <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
+      <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
         ) : listLoading ? (
@@ -411,36 +411,17 @@ export function JobsPanel() {
             </div>
           )
         ) : items.length === 0 ? (
-          emptyStateKind === "onboarding" ? (
-            <DashboardEmptyState
-              iconName="jobStatus"
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
-              action={<AddButton type="button" onClick={openCreate} />}
-            />
-          ) : emptyStateKind === "activeOnly" ? (
-            <DashboardEmptyState
-              iconName="noResults"
-              title={tList("noActiveResultsTitle")}
-              description={tList("noActiveResultsDescription")}
-              action={
-                <AppButton type="button" variant="secondary" size="sm" onClick={switchToInactive}>
-                  {tList("viewInactive")}
-                </AppButton>
-              }
-            />
-          ) : (
-            <DashboardEmptyState
-              iconName="noResults"
-              title={tList("noResultsTitle")}
-              description={tList("noResultsDescription")}
-              action={
-                <AppButton type="button" variant="secondary" size="sm" onClick={clearFilters}>
-                  {tList("clearFilters")}
-                </AppButton>
-              }
-            />
-          )
+          <ListPageEmptyStates
+            emptyStateKind={emptyStateKind}
+            onboarding={{
+              iconName: "jobStatus",
+              title: t("emptyTitle"),
+              description: t("emptyDescription"),
+              action: <AddButton type="button" onClick={openCreate} />,
+            }}
+            onClearFilters={clearFilters}
+            onSwitchToInactive={switchToInactive}
+          />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>

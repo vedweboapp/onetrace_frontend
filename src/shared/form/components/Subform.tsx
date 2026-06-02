@@ -4,6 +4,8 @@ import React, { useState, useCallback } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Country, State, City } from "country-state-city";
 import { FormPhoneInput } from "./phone-input";
+import { isNativeDateInputType, nativeDatePickerHitAreaClassName, openNativeDatePicker } from "@/shared/ui/surface-date-input";
+import { cn } from "@/core/utils/http.util";
 
 interface SubformField {
   api_name: string;
@@ -212,14 +214,19 @@ const CellInput: React.FC<{
   };
 
   const inputType = inputTypeMap[norm] || "text";
+  const isDateField = isNativeDateInputType(inputType);
 
   return (
     <input
       type={inputType}
       value={value || ""}
       onChange={(e) => onChange(e.target.value)}
+      onClick={(e) => {
+        if (!isDateField) return;
+        openNativeDatePicker(e.currentTarget);
+      }}
       placeholder={field.placeholder || ""}
-      className={CELL_CLASS}
+      className={cn(CELL_CLASS, isDateField && nativeDatePickerHitAreaClassName)}
     />
   );
 };

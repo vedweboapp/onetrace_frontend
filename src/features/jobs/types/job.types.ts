@@ -8,31 +8,76 @@ export type JobUserRef = {
 
 export type JobAssignedWorkerRef = {
   id: number;
+  name?: string;
   email?: string;
   username?: string;
   first_name?: string | null;
   last_name?: string | null;
 };
 
-export type JobMetaSection = {
-  name: string;
+export type JobClientRef = {
+  id: number;
+  name?: string;
+  contact_person?: string | null;
+  email?: string | null;
+  phone?: string | null;
+};
+
+export type JobProjectRef = {
+  id: number;
+  name?: string;
+};
+
+export type JobSiteRef = {
+  id: number;
+  site_name?: string;
+  address_line_1?: string | null;
+  address_line_2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  pincode?: string | null;
+  what3words?: string | null;
+  is_active?: boolean;
+};
+
+export type JobFormRef = {
+  id: number;
+  name?: string;
+};
+
+export type JobQrCodeRef = {
+  qr_code_id?: string;
+  qr_image?: string | null;
 };
 
 export type JobMetaCompositeItem = {
-  id: number;
+  /** Legacy support for older API payload/response. */
+  id?: number;
+  /** New API shape for payload/response. */
+  item?: number | { id: number; name?: string; selling_price?: number };
+  group?: number | { id: number; name?: string } | null;
   quantity: number;
+  amount?: number;
+  /** Present on API responses; omitted on create. */
+  selling_price?: number;
 };
 
-export type JobMetaPlot = {
-  name: string;
-  group?: number;
-  plot_total?: number;
+/** POST/GET `job_meta` shape. */
+export type JobMetaPayload = {
+  total?: number;
   composite_items?: JobMetaCompositeItem[];
 };
 
-export type JobMetaPayload = {
-  section?: JobMetaSection;
-  plot: JobMetaPlot;
+/** Legacy nested shape (older API / drafts). */
+export type JobMetaLegacyPayload = {
+  section?: { name: string };
+  plot?: {
+    name: string;
+    group?: number;
+    plot_total?: number;
+    composite_items?: JobMetaCompositeItem[];
+  };
 };
 
 export type JobCreatePayload = {
@@ -40,10 +85,7 @@ export type JobCreatePayload = {
   description: string;
   assigned_worker: number;
   start_date: string;
-  end_date?: string;
-  is_active: boolean;
-  forms?: number;
-
+  forms?: number[];
   job_status?: number;
   client?: number;
   project?: number;
@@ -58,6 +100,8 @@ export type JobCreateFromQuotationPayload = {
 
 export type JobUpdatePayload = Partial<JobCreatePayload> & {
   job_status?: number;
+  /** List/detail toggle; omitted on create payload. */
+  is_active?: boolean;
 };
 
 export type Job = {
@@ -65,11 +109,11 @@ export type Job = {
   created_by: JobUserRef | null;
   modified_by: JobUserRef | null;
   created_at: string;
-  modified_at: string;
+  modified_at: string | null;
   deleted_at: string | null;
   is_deleted: boolean;
   title: string;
-  description: string;
+  description: string | null;
   assigned_worker: number | JobAssignedWorkerRef;
   job_pin_status?: string | null;
   job_status: number | WorkflowColourStatus | null;
@@ -79,12 +123,12 @@ export type Job = {
   is_active: boolean;
   deleted_by: unknown;
   organization?: number;
-  forms?: number | { id: number; name?: string };
-  
-  client?: number | { id: number; name?: string };
-  project?: number | { id: number; name?: string };
-  site?: number | { id: number; site_name?: string };
-  job_meta?: JobMetaPayload | null;
+  forms?: number | number[] | JobFormRef | JobFormRef[];
+  client?: number | JobClientRef;
+  project?: number | JobProjectRef;
+  site?: number | JobSiteRef;
+  qr_code?: JobQrCodeRef | null;
+  job_meta?: JobMetaPayload | JobMetaLegacyPayload | null;
 };
 
 export type JobPagination = {
