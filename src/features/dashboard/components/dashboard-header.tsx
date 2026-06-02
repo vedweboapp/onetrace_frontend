@@ -87,6 +87,7 @@ export function DashboardHeader() {
   const jobStatusHref = routes.dashboard.settingsJobStatus;
   const tagHref = routes.dashboard.settingsTags;
   const projectTypeHref = routes.dashboard.settingsProjectTypes;
+  const projectFormsHref = routes.dashboard.settingsProjectForms;
   const usersHref = routes.dashboard.settingsUsers;
   const homeActive = pathname === homeHref;
   const clientsActive =
@@ -118,6 +119,8 @@ export function DashboardHeader() {
   const tagActive = pathname === tagHref || pathname.startsWith(`${tagHref}/`);
   const projectTypeActive =
     pathname === projectTypeHref || pathname.startsWith(`${projectTypeHref}/`);
+  const projectFormsActive =
+    pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
   const customizationHubActive =
     pathname === customizationHref || pathname.startsWith(`${customizationHref}/`);
   const customizationActive = isCustomizationSettingsPath(pathname);

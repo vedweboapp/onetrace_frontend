@@ -11,6 +11,7 @@ import { fetchProjectTypesPage } from "@/features/project-types/api/project-type
 import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
 import { createProject, fetchProject, updateProject } from "@/features/projects/api/project.api";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
+import { fetchFormsPage } from "@/features/forms/api/forms.api";
 import { createProjectFormSchema, type ProjectFormValues } from "@/features/projects/schemas/project-form-schema";
 import {
   emptyProjectFormDefaults,
@@ -61,6 +62,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [projectTypeOptions, setProjectTypeOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [siteOptions, setSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [formOptions, setFormOptions] = React.useState<{ value: string; label: string }[]>([]);
 
   const schema = React.useMemo(
     () =>
@@ -90,6 +92,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   });
 
   const selectedClient = useWatch({ control, name: "client" });
+  const selectedProjectType = useWatch({ control, name: "project_type" });
 
   const reloadClients = React.useCallback(async () => {
     try {
@@ -185,6 +188,29 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       cancelled = true;
     };
   }, []);
+
+  // Reload forms when the selected project type changes
+  React.useEffect(() => {
+    if (!selectedProjectType || !/^\d+$/.test(selectedProjectType)) {
+      setFormOptions([]);
+      setValue("form_ids", []);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchFormsPage(1, 500, { project_type: selectedProjectType }, { silent: true });
+        if (!cancelled) {
+          setFormOptions(items.map((f) => ({ value: String(f.id), label: f.name })));
+        }
+      } catch {
+        if (!cancelled) setFormOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProjectType, setValue]);
 
   React.useEffect(() => {
     if (!selectedClient || !/^\d+$/.test(selectedClient)) {
@@ -357,6 +383,27 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                 <FieldErrorText>{errors.project_type?.message}</FieldErrorText>
               </FieldGroup>
             </FormFieldRow>
+            <FieldGroup label="Forms" htmlFor="project-form-ids">
+              <Controller
+                control={control}
+                name="form_ids"
+                render={({ field }) => (
+                  <MultiCheckSelect
+                    id="project-form-ids"
+                    options={formOptions}
+                    values={field.value ?? []}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    disabled={saving || !selectedProjectType || formOptions.length === 0}
+                    placeholder="Select forms..."
+                    listLabel="Forms"
+                  />
+                )}
+              />
+              {selectedProjectType && formOptions.length === 0 && (
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">No forms found for this project type.</p>
+              )}
+            </FieldGroup>
             <FieldGroup label={t("fields.sites")} htmlFor="project-sites">
               <Controller
                 control={control}

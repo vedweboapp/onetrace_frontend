@@ -559,12 +559,12 @@ const buildDefaultValuesFromSchema = (
           ? f.defaultValue
           : [];
       } else {
-        // Use defaultValue (picklist, select, radio, single_line, etc.) if set
+        // Use defaultValue (picklist, select, radio, single_line, etc.) if set.
+        // Guard against plain objects ({}) which break components like react-phone-number-input.
+        const dv = f.defaultValue;
         formData[f.api_name] =
-          f.defaultValue !== undefined &&
-          f.defaultValue !== null &&
-          f.defaultValue !== ""
-            ? f.defaultValue
+          dv !== undefined && dv !== null && dv !== "" && typeof dv !== "object"
+            ? dv
             : "";
       }
     });
@@ -612,7 +612,13 @@ const mapDataToFormFields = (data: any, schema: Section[], defaultValues = {}) =
               val === 1 ||
               val === "1";
           } else {
-            formData[f.api_name] = normType === "country" ? getCountryISO(val) : val;
+            // Guard: if the API returned a plain object for a scalar field (e.g. phone),
+            // normalise to empty string to avoid crashing components like react-phone-number-input.
+            if (typeof val === "object" && !Array.isArray(val)) {
+              formData[f.api_name] = "";
+            } else {
+              formData[f.api_name] = normType === "country" ? getCountryISO(val) : val;
+            }
           }
         } else if ((defaultValues as any)[f.api_name] !== undefined) {
           formData[f.api_name] = (defaultValues as any)[f.api_name];

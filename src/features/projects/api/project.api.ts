@@ -9,6 +9,11 @@ import type {
   ProjectListResponse,
   ProjectUpdatePayload,
 } from "../types/project.types";
+import type { FormListItem, FormsPagination } from "@/features/forms/types/form.types";
+import {
+  parseFormsListResponse,
+  parseFormsPaginationResponse,
+} from "@/features/forms/utils/parse-forms-list.util";
 
 function assertEnvelopeSuccess(envelope: { success: boolean; message?: string }) {
   if (!envelope.success) {
@@ -72,4 +77,19 @@ export async function patchProject(id: number, body: { is_active: boolean }): Pr
 export async function deleteProject(id: number): Promise<void> {
   const { data } = await api.delete<ApiEnvelope<unknown>>(PROJECT_PATHS.detail(id));
   assertApiSuccess(data);
+}
+
+export async function fetchProjectFormsPage(
+  projectId: number,
+  page = 1,
+  pageSize = 500,
+  params?: Record<string, string | number | boolean | undefined>,
+): Promise<{ items: FormListItem[]; pagination: FormsPagination }> {
+  const { data } = await api.get(PROJECT_PATHS.projectFormsList(projectId), {
+    params: { page, page_size: pageSize, ...params },
+  });
+  return {
+    items: parseFormsListResponse(data),
+    pagination: parseFormsPaginationResponse(data),
+  };
 }

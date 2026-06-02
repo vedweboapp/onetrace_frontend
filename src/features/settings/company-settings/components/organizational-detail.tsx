@@ -138,13 +138,13 @@ const OrganizationalDetail = React.forwardRef<OrganizationalDetailRef, Organizat
                             <div className="flex flex-col gap-3">
                                 <p className="text-xs text-gray-500">Upload a square logo (512x512px recommended)</p>
                                 <div className="flex gap-2">
-                                    <button 
+                                    {/* <button 
                                         type="button"
                                         disabled={!isEditing}
                                         className="px-4 py-2 bg-gray-900 dark:bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         Upload Logo
-                                    </button>
+                                    </button> */}
                                     <button 
                                         type="button"
                                         disabled={!isEditing}

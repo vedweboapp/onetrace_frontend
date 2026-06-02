@@ -218,7 +218,17 @@
       "AddPhone": "Añadir teléfono",
       "AddEmail": "Añadir correo electrónico",
       "AddAddress": "Añadir dirección",
-      "Addresses": "Direcciones"
+      "Addresses": "Direcciones",
+      "Primary": "Principal"
+    },
+    "settingsAppearance": {
+      "workPrefrence": "PREFERENCIA DE TRABAJO",
+      "branding": "MARCA Y APARIENCIA",
+      "interfaceTheme": "TEMA DE LA INTERFAZ",
+      "defaultLangauge": "IDIOMA DEL SISTEMA",
+      "accent": "PREAJUSTES DE COLOR DE ACENTO",
+      "customColor": "COLOR HEX PERSONALIZADO",
+      "customColorMessage": "Ingrese un código hexadecimal personalizado para que coincida exactamente con la identidad de su marca."
     },
     "settingsCompany": {
       "organizationUpdatedToast": "Datos de la organización actualizados correctamente",
@@ -231,6 +241,46 @@
       "layoutCreatedToast": "Diseño creado correctamente",
       "layoutUpdatedToast": "Diseño actualizado correctamente",
       "moduleCreatedToast": "Módulo creado correctamente"
+    },
+    "settingsProjectForms": {
+      "createNewForm": "Crear nuevo formulario",
+      "headerLabel": "Formularios de proyecto",
+      "headerDescription": "Crea y gestiona formularios de proyectos aquí.",
+      "searchPlaceholder": "Buscar formularios de tipo de proyecto",
+      "searchAria": "Buscar formularios de tipo de proyecto",
+      "loadError": "No se pudieron cargar los formularios. Inténtalo de nuevo.",
+      "projectTypesLoadError": "No se pudieron cargar los tipos de proyecto. Inténtalo de nuevo.",
+      "empty": "No se encontraron formularios. Crea tu primer formulario para empezar.",
+      "pageLabel": "{start}-{end} de {total}",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "rowsPerPage": "Filas por página",
+      "table": {
+        "formName": "Nombre del formulario",
+        "apiName": "Nombre API",
+        "projectType": "Tipo de proyecto",
+        "status": "Estado",
+        "created": "Creado",
+        "updated": "Actualizado"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "modal": {
+        "selectProjectTypeTitle": "Seleccionar tipo de proyecto",
+        "selectProjectTypeDescription": "Elige el tipo de proyecto al que pertenece este formulario.",
+        "cancel": "Cancelar",
+        "next": "Siguiente",
+        "projectTypesList": "Tipos de proyecto",
+        "selectProjectTypeAria": "Seleccionar tipo de proyecto",
+        "loadingProjectTypes": "Cargando tipos de proyecto...",
+        "selectProjectType": "Seleccionar tipo de proyecto",
+        "searchProjectTypes": "Buscar tipos de proyecto",
+        "noProjectTypes": "No se encontraron tipos de proyecto."
+      },
+      "statusUpdatedToast": "Estado del formulario actualizado correctamente",
+      "statusUpdateErrorToast": "No se pudo actualizar el estado del formulario. Inténtalo de nuevo."
     },
     "settingsLayouts": {
       "statusUpdatedToast": "Estado del diseño actualizado correctamente"
@@ -942,7 +992,6 @@
       },
       "contactPerson": {
         "sectionTitle": "Personas de contacto",
-    
         "add": "Añadir persona de contacto",
         "remove": "Quitar persona de contacto",
         "titleLabel": "Título",
@@ -973,7 +1022,6 @@
       "location": {
         "searchPlaceholder": "Empieza a escribir la dirección…",
         "googleSearchPlaceholder": "Buscar dirección…",
-      
         "searchPlaceholderLine2": "Piso, puerta, edificio (opcional)…",
         "searching": "Buscando lugares…",
         "resolvingPlace": "Cargando detalles de la dirección…",
@@ -1146,7 +1194,6 @@
         "duplicateCountTitle": "Duplicar",
         "duplicateCountDescription": "Elige cuántas copias quieres añadir justo después del original.",
         "duplicateCountLabel": "Número de copias",
-      
         "duplicateCountConfirm": "Duplicar",
         "duplicateCountInvalid": "Introduce un número entero entre 1 y 50.",
         "copySection": "Copiar sección",
@@ -1512,7 +1559,6 @@
       "fields": {
         "title": "Título",
         "description": "Descripción",
-        
         "client": "Cliente",
         "project": "Proyecto",
         "site": "Sitio",
@@ -1757,7 +1803,17 @@
       "formsTab": {
         "title": "Formularios",
         "subtitle": "Gestiona formularios del proyecto y abre el constructor para editar layouts.",
-        "add": "Añadir formulario",
+        "assign": "asignar formulario",
+        "assignModalTitle": "Asignar formularios",
+        "assignModalDescription": "Selecciona los formularios disponibles para el tipo de este proyecto.",
+        "assignPlaceholder": "Seleccionar formularios...",
+        "assignListLabel": "Formularios",
+        "assignEmpty": "No se encontraron formularios para este tipo de proyecto.",
+        "assignLoadError": "No se pudieron cargar los formularios disponibles. Inténtalo de nuevo.",
+        "assignSaveError": "No se pudieron asignar los formularios. Inténtalo de nuevo.",
+        "assignedToast": "Formularios asignados",
+        "projectTypeMissingError": "Este proyecto no tiene un tipo de proyecto.",
+        "saveAssigned": "Guardar formularios",
         "searchPlaceholder": "Buscar formularios…",
         "searchAria": "Buscar formularios",
         "filterState": "Estado activo",

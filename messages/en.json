@@ -218,8 +218,17 @@
       "AddPhone": "Add Phone",
       "AddEmail": "Add Email",
       "AddAddress": "Add Address",
-      "Addresses": "Addresses"
-
+      "Addresses": "Addresses",
+      "Primary": "Primary"
+    },
+    "settingsAppearance": {
+      "workPrefrence": "WORK PREFREFRENCE",
+      "branding": "BRANDING &  APPEARANCE",
+      "interfaceTheme": "INTERFACE THEME",
+      "defaultLangauge": "SYSTEM LANGUAGE",
+      "accent": "Accent Color Presets",
+      "customColor": "CUSTOM HEX COLOR",
+      "customColorMessage": "Enter a custom hex code to match your brand's identity exactly."
     },
     "settingsCompany": {
       "organizationUpdatedToast": "Organization details updated successfully",
@@ -232,6 +241,46 @@
       "layoutCreatedToast": "Layout created successfully",
       "layoutUpdatedToast": "Layout updated successfully",
       "moduleCreatedToast": "Module created successfully"
+    },
+    "settingsProjectForms": {
+      "createNewForm": "Create new form",
+      "headerLabel": "Project Forms",
+      "headerDescription": "Create and manage project in here.",
+      "searchPlaceholder": "Search project type forms",
+      "searchAria": "Search project type forms",
+      "loadError": "Failed to load forms. Please try again.",
+      "projectTypesLoadError": "Failed to load project types. Please try again.",
+      "empty": "No forms found. Create your first form to get started.",
+      "pageLabel": "{start}-{end} of {total}",
+      "prev": "Previous",
+      "next": "Next",
+      "rowsPerPage": "Rows per page",
+      "table": {
+        "formName": "Form Name",
+        "apiName": "API Name",
+        "projectType": "Project Type",
+        "status": "Status",
+        "created": "Created",
+        "updated": "Updated"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "modal": {
+        "selectProjectTypeTitle": "Select project type",
+        "selectProjectTypeDescription": "Choose the project type this form belongs to.",
+        "cancel": "Cancel",
+        "next": "Next",
+        "projectTypesList": "Project types",
+        "selectProjectTypeAria": "Select project type",
+        "loadingProjectTypes": "Loading project types...",
+        "selectProjectType": "Select project type",
+        "searchProjectTypes": "Search project types",
+        "noProjectTypes": "No project types found."
+      },
+      "statusUpdatedToast": "Form status updated successfully",
+      "statusUpdateErrorToast": "Failed to update form status. Please try again."
     },
     "settingsLayouts": {
       "statusUpdatedToast": "Layout status updated successfully"
@@ -943,7 +992,6 @@
       },
       "contactPerson": {
         "sectionTitle": "Contact persons",
-      
         "add": "Add contact person",
         "remove": "Remove contact person",
         "titleLabel": "Title",
@@ -974,7 +1022,6 @@
       "location": {
         "searchPlaceholder": "Start typing street address…",
         "googleSearchPlaceholder": "Search address...",
-      
         "searchPlaceholderLine2": "Apartment, suite, building (optional)…",
         "searching": "Searching places…",
         "resolvingPlace": "Loading address details…",
@@ -1147,7 +1194,6 @@
         "duplicateCountTitle": "Duplicate",
         "duplicateCountDescription": "Choose how many copies to add right after the original.",
         "duplicateCountLabel": "Number of copies",
-      
         "duplicateCountConfirm": "Duplicate",
         "duplicateCountInvalid": "Enter a  number between 1 and 50.",
         "copySection": "Copy section",
@@ -1513,7 +1559,7 @@
       "fields": {
         "title": "Title",
         "description": "Description",
-        
+      
         "client": "Client",
         "project": "Project",
         "site": "Site",
@@ -1759,7 +1805,17 @@
       "formsTab": {
         "title": "Forms",
         "subtitle": "Manage project forms and open the form builder to edit layouts.",
-        "add": "Add form",
+        "assign": "Assign forms",
+        "assignModalTitle": "Assign forms",
+        "assignModalDescription": "Select the forms available for this project's type.",
+        "assignPlaceholder": "Select forms...",
+        "assignListLabel": "Forms",
+        "assignEmpty": "No forms found for this project type.",
+        "assignLoadError": "Could not load available forms. Try again.",
+        "assignSaveError": "Could not assign forms. Try again.",
+        "assignedToast": "Forms assigned",
+        "projectTypeMissingError": "This project does not have a project type.",
+        "saveAssigned": "Save forms",
         "searchPlaceholder": "Search forms…",
         "searchAria": "Search forms",
         "filterState": "Active state",
