@@ -52,8 +52,13 @@ export type JobQrCodeRef = {
 };
 
 export type JobMetaCompositeItem = {
-  id: number;
+  /** Legacy support for older API payload/response. */
+  id?: number;
+  /** New API shape for payload/response. */
+  item?: number | { id: number; name?: string; selling_price?: number };
+  group?: number | { id: number; name?: string } | null;
   quantity: number;
+  amount?: number;
   /** Present on API responses; omitted on create. */
   selling_price?: number;
 };
@@ -61,7 +66,6 @@ export type JobMetaCompositeItem = {
 /** POST/GET `job_meta` shape. */
 export type JobMetaPayload = {
   total?: number;
-  group?: number;
   composite_items?: JobMetaCompositeItem[];
 };
 

@@ -1,14 +1,14 @@
 "use client";
 
 import * as React from "react";
+import { Plus, Trash2 } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
-import { fetchFormsPage } from "@/features/forms/api/forms.api";
+import { fetchProjectFormsByProject } from "@/features/forms/api/forms.api";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
 import { createJob, fetchJob, updateJob } from "@/features/jobs/api/job.api";
 import { createJobFormSchema, type JobFormValues } from "@/features/jobs/schemas/job-form-schema";
@@ -18,7 +18,9 @@ import {
   mapJobFormToPayload,
 } from "@/features/jobs/utils/job-form-map";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
-import { fetchGroupsPage } from "@/features/groups/api/group.api";
+import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
+import { formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
+import { fetchItemsPage } from "@/features/items/api/item.api";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import { cn } from "@/core/utils/http.util";
@@ -35,6 +37,7 @@ import {
   FieldGroup,
   FormFieldRow,
   MultiCheckSelect,
+  SurfaceDateInput,
   SurfaceShell,
   surfaceInputClassName,
 } from "@/shared/ui";
@@ -48,6 +51,9 @@ type Option = { value: string; label: string };
 
 export function JobFormScreen({ mode, jobId }: Props) {
   const t = useTranslations("Dashboard.jobs");
+  const tItems = useTranslations("Dashboard.items");
+  const tGroups = useTranslations("Dashboard.groups");
+  const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -70,8 +76,10 @@ export function JobFormScreen({ mode, jobId }: Props) {
   const [projectOptions, setProjectOptions] = React.useState<Option[]>([]);
   const [siteOptions, setSiteOptions] = React.useState<Option[]>([]);
   const [groupOptions, setGroupOptions] = React.useState<Option[]>([]);
-  const [compositeOptions, setCompositeOptions] = React.useState<Option[]>([]);
-  const [compositePriceById, setCompositePriceById] = React.useState<Map<number, number>>(new Map());
+  const [itemOptions, setItemOptions] = React.useState<Option[]>([]);
+  const [itemPriceById, setItemPriceById] = React.useState<Map<number, number>>(new Map());
+  const [itemGroupById, setItemGroupById] = React.useState<Map<number, number | null>>(new Map());
+  const [groupItemIdsByGroupId, setGroupItemIdsByGroupId] = React.useState<Map<number, Set<number>>>(new Map());
 
   const schema = React.useMemo(
     () =>
@@ -97,12 +105,23 @@ export function JobFormScreen({ mode, jobId }: Props) {
     resolver: zodResolver(schema),
     defaultValues: emptyJobFormDefaults(),
   });
+  const { fields, append, remove } = useFieldArray({ control, name: "job_meta_items" });
 
   const selectedClient = useWatch({ control, name: "client" });
   const selectedProject = useWatch({ control, name: "project" });
+  const jobMetaItems = useWatch({ control, name: "job_meta_items" }) ?? [];
 
   const clientId = selectedClient && /^\d+$/.test(selectedClient) ? Number.parseInt(selectedClient, 10) : undefined;
   const projectId = selectedProject && /^\d+$/.test(selectedProject) ? Number.parseInt(selectedProject, 10) : undefined;
+  const scopeTotal = React.useMemo(
+    () =>
+      jobMetaItems.reduce((sum, row) => {
+        const qty = parseMoneyValue(row.quantity);
+        const rate = parseMoneyValue(row.rate);
+        return sum + qty * rate;
+      }, 0),
+    [jobMetaItems],
+  );
 
   const getFormDraft = React.useCallback(() => getValues(), [getValues]);
   const restoreFormDraft = React.useCallback(
@@ -132,8 +151,8 @@ export function JobFormScreen({ mode, jobId }: Props) {
     kind: "group",
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
-  const compositeQuickCreate = useQuickCreate({
-    kind: "composite-item",
+  const itemQuickCreate = useQuickCreate({
+    kind: "item",
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
   const openFormsSettings = React.useCallback(() => {
@@ -183,27 +202,31 @@ export function JobFormScreen({ mode, jobId }: Props) {
     }
   }, [projectId]);
 
-  const reloadGroupsAndComposites = React.useCallback(async () => {
+  const reloadGroupsAndItems = React.useCallback(async () => {
     try {
-      const [groups, composites] = await Promise.all([fetchGroupsPage(1, 500), fetchCompositeItemsPage(1, 500)]);
+      const [groups, items] = await Promise.all([fetchGroupsPage(1, 500), fetchItemsPage(1, 500, { isActive: true })]);
       setGroupOptions(groups.items.map((g) => ({ value: String(g.id), label: g.name })));
-      setCompositeOptions(
-        composites.items.map((c) => ({
-          value: String(c.id),
-          label: c.name?.trim() || c.sku?.trim() || `#${c.id}`,
+      setItemOptions(
+        items.items.map((it) => ({
+          value: String(it.id),
+          label: it.name?.trim() || it.sku?.trim() || `#${it.id}`,
         })),
       );
       const prices = new Map<number, number>();
-      for (const c of composites.items) {
-        const raw = c.selling_price;
+      const groupMap = new Map<number, number | null>();
+      for (const it of items.items) {
+        const raw = it.selling_price;
         const n = typeof raw === "number" ? raw : Number.parseFloat(String(raw ?? ""));
-        if (Number.isFinite(n)) prices.set(c.id, n);
+        if (Number.isFinite(n)) prices.set(it.id, n);
+        groupMap.set(it.id, typeof it.group === "number" ? it.group : null);
       }
-      setCompositePriceById(prices);
+      setItemPriceById(prices);
+      setItemGroupById(groupMap);
     } catch {
       setGroupOptions([]);
-      setCompositeOptions([]);
-      setCompositePriceById(new Map());
+      setItemOptions([]);
+      setItemPriceById(new Map());
+      setItemGroupById(new Map());
     }
   }, []);
 
@@ -213,7 +236,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
       await reloadClients();
       await reloadProjects();
       await reloadSites();
-      await reloadGroupsAndComposites();
+      await reloadGroupsAndItems();
     },
     onApplySelect: ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {
@@ -232,11 +255,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
         return;
       }
       if (selectTarget === "group") {
-        setValue("job_meta_group", selectId, { shouldDirty: true, shouldValidate: true });
-        return;
-      }
-      if (selectTarget === "composite-item") {
-        setValue("job_meta_composite_item_id", selectId, { shouldDirty: true, shouldValidate: true });
+        setValue("job_meta_items.0.group", selectId, { shouldDirty: true, shouldValidate: true });
       }
     },
   });
@@ -245,21 +264,18 @@ export function JobFormScreen({ mode, jobId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const [workers, statuses, forms] = await Promise.all([
+        const [workers, statuses] = await Promise.all([
           loadTechnicianOptions(),
           fetchJobStatusesPage(1, 500),
-          fetchFormsPage(1, 500, undefined, { silent: true }),
         ]);
         if (!cancelled) {
           setWorkerOptions(workers);
           setJobStatusOptions(statuses.items.map((s) => ({ value: String(s.id), label: s.status_name })));
-          setFormOptions(forms.items.map((f) => ({ value: String(f.id), label: f.name })));
         }
       } catch {
         if (!cancelled) {
           setWorkerOptions([]);
           setJobStatusOptions([]);
-          setFormOptions([]);
         }
       }
     })();
@@ -270,8 +286,8 @@ export function JobFormScreen({ mode, jobId }: Props) {
 
   React.useEffect(() => {
     void reloadClients();
-    void reloadGroupsAndComposites();
-  }, [reloadClients, reloadGroupsAndComposites]);
+    void reloadGroupsAndItems();
+  }, [reloadClients, reloadGroupsAndItems]);
 
   React.useEffect(() => {
     if (!selectedClient || !/^\d+$/.test(selectedClient)) {
@@ -286,11 +302,73 @@ export function JobFormScreen({ mode, jobId }: Props) {
   React.useEffect(() => {
     if (!selectedProject || !/^\d+$/.test(selectedProject)) {
       setSiteOptions([]);
+      setFormOptions([]);
+      setValue("forms", []);
       setValue("site", "");
       return;
     }
     void reloadSites();
+    (async () => {
+      try {
+        const forms = await fetchProjectFormsByProject(Number.parseInt(selectedProject, 10), { silent: true });
+        setFormOptions(forms.map((f) => ({ value: String(f.id), label: f.name })));
+      } catch {
+        setFormOptions([]);
+      }
+    })();
   }, [selectedProject, setValue, reloadSites]);
+
+  React.useEffect(() => {
+    const groupIds = Array.from(
+      new Set(
+        jobMetaItems
+          .map((row) => row.group.trim())
+          .filter((raw) => /^\d+$/.test(raw))
+          .map((raw) => Number.parseInt(raw, 10))
+          .filter((id) => !groupItemIdsByGroupId.has(id)),
+      ),
+    );
+    if (groupIds.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(
+        groupIds.map(async (groupId) => {
+          try {
+            const group = await fetchGroup(groupId);
+            const ids = new Set<number>();
+            for (const entry of group.items ?? []) {
+              if (typeof entry.item === "number" && Number.isFinite(entry.item)) ids.add(entry.item);
+            }
+            return { groupId, ids };
+          } catch {
+            return { groupId, ids: new Set<number>() };
+          }
+        }),
+      );
+      if (cancelled) return;
+      setGroupItemIdsByGroupId((prev) => {
+        const next = new Map(prev);
+        for (const { groupId, ids } of entries) next.set(groupId, ids);
+        return next;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [groupItemIdsByGroupId, jobMetaItems]);
+
+  React.useEffect(() => {
+    jobMetaItems.forEach((row, index) => {
+      const itemId = /^\d+$/.test(row.item) ? Number.parseInt(row.item, 10) : null;
+      const selectedGroup = /^\d+$/.test(row.group) ? Number.parseInt(row.group, 10) : null;
+      if (itemId == null) return;
+      const itemGroup = itemGroupById.get(itemId) ?? null;
+      if (selectedGroup != null && itemGroup != null && selectedGroup !== itemGroup) {
+        setValue(`job_meta_items.${index}.item`, "", { shouldDirty: true });
+        setValue(`job_meta_items.${index}.rate`, "", { shouldDirty: true });
+      }
+    });
+  }, [itemGroupById, jobMetaItems, setValue]);
 
   React.useEffect(() => {
     if (!isEdit || !jobId) return;
@@ -313,12 +391,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
   }, [jobId, isEdit, reset, t]);
 
   async function submit(values: JobFormValues) {
-    const compositeId = values.job_meta_composite_item_id.trim();
-    const sellingPrice =
-      compositeId && /^\d+$/.test(compositeId)
-        ? compositePriceById.get(Number.parseInt(compositeId, 10))
-        : undefined;
-    const payload = mapJobFormToPayload(values, { compositeSellingPrice: sellingPrice });
+    const payload = mapJobFormToPayload(values);
     setSaving(true);
     try {
       const saved = isEdit && jobId ? await updateJob(jobId, payload) : await createJob(payload);
@@ -329,6 +402,16 @@ export function JobFormScreen({ mode, jobId }: Props) {
     } finally {
       setSaving(false);
     }
+  }
+
+  function itemOptionsForGroup(groupIdRaw: string): Option[] {
+    if (!/^\d+$/.test(groupIdRaw)) return itemOptions;
+    const gid = Number.parseInt(groupIdRaw, 10);
+    const explicit = groupItemIdsByGroupId.get(gid);
+    if (explicit && explicit.size > 0) {
+      return itemOptions.filter((opt) => explicit.has(Number.parseInt(opt.value, 10)));
+    }
+    return itemOptions.filter((opt) => (itemGroupById.get(Number.parseInt(opt.value, 10)) ?? null) === gid);
   }
 
   return (
@@ -562,11 +645,11 @@ export function JobFormScreen({ mode, jobId }: Props) {
               </h2>
               <FormFieldRow cols="1">
                 <FieldGroup label={t("fields.startDate")} htmlFor="job-start" required>
-                  <input
+                  <SurfaceDateInput
                     id="job-start"
                     type="datetime-local"
                     aria-invalid={errors.start_date ? true : undefined}
-                    className={cn(surfaceInputClassName, errors.start_date && "border-red-500")}
+                    invalid={!!errors.start_date}
                     disabled={saving}
                     {...register("start_date")}
                   />
@@ -579,72 +662,159 @@ export function JobFormScreen({ mode, jobId }: Props) {
               <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {t("sections.jobMeta")}
               </h2>
-
-              <Controller
-                control={control}
-                name="job_meta_group"
-                render={({ field }) => (
-                  <div>
-                    <CheckmarkSelect
-                      id="job-meta-group"
-                      label={t("fields.plotGroup")}
-                      options={groupOptions}
-                      value={field.value}
-                      onChange={field.onChange}
-                      emptyLabel={t("placeholders.plotGroup")}
-                      disabled={saving}
-                      invalid={!!errors.job_meta_group}
-                      listLabel={t("fields.plotGroup")}
-                      portaled
-                      searchable
-                      onAdd={groupQuickCreate.onAdd}
-                      addAriaLabel={groupQuickCreate.addAriaLabel}
-                    />
-                    <FieldErrorText>{errors.job_meta_group?.message}</FieldErrorText>
-                  </div>
-                )}
-              />
-
-              <FormFieldRow cols="2">
-                <Controller
-                  control={control}
-                  name="job_meta_composite_item_id"
-                  render={({ field }) => (
-                    <div>
-                      <CheckmarkSelect
-                        id="job-meta-composite"
-                        label={t("fields.compositeItem")}
-                        options={compositeOptions}
-                        value={field.value}
-                        onChange={field.onChange}
-                        emptyLabel={t("placeholders.compositeItem")}
-                        disabled={saving}
-                        invalid={!!errors.job_meta_composite_item_id}
-                        listLabel={t("fields.compositeItem")}
-                        portaled
-                        searchable
-                        onAdd={compositeQuickCreate.onAdd}
-                        addAriaLabel={compositeQuickCreate.addAriaLabel}
-                      />
-                      <FieldErrorText>{errors.job_meta_composite_item_id?.message}</FieldErrorText>
-                    </div>
-                  )}
-                />
-                <FieldGroup label={t("fields.compositeQuantity")} htmlFor="job-meta-qty">
-                  <input
-                    id="job-meta-qty"
-                    type="number"
-                    min={0}
-                    step="any"
-                    aria-invalid={errors.job_meta_composite_quantity ? true : undefined}
-                    className={cn(surfaceInputClassName, errors.job_meta_composite_quantity && "border-red-500")}
-                    disabled={saving}
-                    {...register("job_meta_composite_quantity")}
-                  />
-                  <FieldErrorText>{errors.job_meta_composite_quantity?.message}</FieldErrorText>
-                </FieldGroup>
-              </FormFieldRow>
-
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  {t("sections.jobMeta")}
+                </h3>
+                <AppButton
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  disabled={saving}
+                  onClick={() => append({ group: "", item: "", quantity: "1", rate: "" })}
+                >
+                  <Plus className="size-4" aria-hidden />
+                  {t("lineItems.addItem")}
+                </AppButton>
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                <table className="w-full min-w-[720px] text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
+                      <th className="px-3 py-2">{tGroups("title")}</th>
+                      <th className="px-3 py-2">{tItems("title")}</th>
+                      <th className="px-3 py-2">{t("lineItems.qty")}</th>
+                      <th className="px-3 py-2">{t("lineItems.rate")}</th>
+                      <th className="px-3 py-2">{t("lineItems.amount")}</th>
+                      <th className="px-3 py-2 w-12" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fields.map((field, index) => {
+                      const row = jobMetaItems[index];
+                      const qty = parseMoneyValue(row?.quantity);
+                      const rate = parseMoneyValue(row?.rate);
+                      const amount = qty * rate;
+                      const filteredItems = itemOptionsForGroup(row?.group ?? "");
+                      return (
+                        <tr key={field.id} className="border-b border-slate-100 dark:border-slate-800">
+                          <td className="px-3 py-2 align-top">
+                            <Controller
+                              control={control}
+                              name={`job_meta_items.${index}.group`}
+                              render={({ field: groupField }) => (
+                                <CheckmarkSelect
+                                  options={groupOptions}
+                                  value={groupField.value}
+                                  onChange={(v) => {
+                                    groupField.onChange(v);
+                                    setValue(`job_meta_items.${index}.item`, "", { shouldDirty: true });
+                                    setValue(`job_meta_items.${index}.rate`, "", { shouldDirty: true });
+                                  }}
+                                  emptyLabel={t("placeholders.plotGroup")}
+                                  disabled={saving}
+                                  portaled
+                                  searchable
+                                  size="sm"
+                                  clearable
+                                  className="h-8"
+                                  onAdd={groupQuickCreate.onAdd}
+                                  addAriaLabel={groupQuickCreate.addAriaLabel}
+                                />
+                              )}
+                            />
+                          </td>
+                          <td className="px-3 py-2 align-top">
+                            <div className="space-y-2">
+                              <Controller
+                                control={control}
+                                name={`job_meta_items.${index}.item`}
+                                render={({ field: itemField }) => (
+                                  <CheckmarkSelect
+                                    options={filteredItems}
+                                    value={itemField.value}
+                                    onChange={(v) => {
+                                      itemField.onChange(v);
+                                      if (v && /^\d+$/.test(v)) {
+                                        const price = itemPriceById.get(Number.parseInt(v, 10));
+                                        const currentQty = parseMoneyValue(jobMetaItems[index]?.quantity);
+                                        if (!Number.isFinite(currentQty) || currentQty <= 0) {
+                                          setValue(`job_meta_items.${index}.quantity`, "1", {
+                                            shouldDirty: true,
+                                          });
+                                        }
+                                        if (price != null && Number.isFinite(price)) {
+                                          setValue(`job_meta_items.${index}.rate`, String(price), {
+                                            shouldDirty: true,
+                                          });
+                                        }
+                                      }
+                                    }}
+                                    emptyLabel={t("placeholders.compositeItem")}
+                                    disabled={saving}
+                                    portaled
+                                    searchable
+                                    size="sm"
+                                    className="h-8"
+                                    onAdd={itemQuickCreate.onAdd}
+                                    addAriaLabel={itemQuickCreate.addAriaLabel}
+                                  />
+                                )}
+                              />
+                              <FieldErrorText>{errors.job_meta_items?.[index]?.item?.message}</FieldErrorText>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 align-top">
+                            <input
+                              type="number"
+                              min={0}
+                              step="any"
+                              className={cn(
+                                surfaceInputClassName,
+                                "h-8 w-24 px-2.5 text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                              )}
+                              disabled={saving}
+                              {...register(`job_meta_items.${index}.quantity`)}
+                            />
+                          </td>
+                          <td className="px-3 py-2 align-top">
+                            <input
+                              className={cn(surfaceInputClassName, "h-8 w-28 px-2.5 text-sm")}
+                              readOnly
+                              tabIndex={-1}
+                              aria-readonly
+                              {...register(`job_meta_items.${index}.rate`)}
+                            />
+                          </td>
+                          <td className="px-3 py-2 align-middle">
+                            <div className="flex h-8 items-center tabular-nums font-medium">
+                              {formatMoneyDisplay(amount, locale)}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 align-top">
+                            <AppButton
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              disabled={saving || fields.length <= 1}
+                              onClick={() => remove(index)}
+                              aria-label={t("lineItems.remove")}
+                            >
+                              <Trash2 className="size-4 text-red-600" aria-hidden />
+                            </AppButton>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="ml-auto max-w-xs rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">{t("fields.scopeTotal")}</span>
+                  <span className="text-xl font-bold tabular-nums">{formatMoneyDisplay(scopeTotal, locale)}</span>
+                </div>
+              </div>
             </section>
           </form>
         )}

@@ -17,6 +17,7 @@ export type DashboardListSection =
   | "contacts"
   | "sites"
   | "quotations"
+  | "invoices"
   | "jobs"
   | "qr-codes"
   | "projects"

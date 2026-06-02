@@ -151,6 +151,7 @@
       "contacts": "Contactos",
       "sites": "Sitios",
       "quotations": "Cotizaciones",
+      "invoices": "Facturas",
       "jobs": "Trabajos",
       "qrCodes": "Códigos QR",
       "projects": "Proyectos",
@@ -839,7 +840,7 @@
       "validation": {
         "name": "Introduce un nombre de contacto.",
         "email": "Introduce un correo válido.",
-        "phone": "Introduce un teléfono.",
+        "phoneInvalid": "Introduce un número válido con prefijo internacional.",
         "client": "Selecciona un cliente.",
         "addressLine1": "Introduce la línea 1 de la dirección.",
         "country": "Selecciona un país.",
@@ -1241,6 +1242,165 @@
         "project": "Selecciona un proyecto."
       }
     },
+    "invoices": {
+      "metaTitle": "Facturas",
+      "detailMetaTitle": "Detalles de la factura",
+      "title": "Historial de facturas",
+      "subtitle": "Genera y haz seguimiento de la facturación de clientes en todos los proyectos activos.",
+      "createInvoice": "Crear factura",
+      "edit": "Editar",
+      "searchPlaceholder": "Buscar facturas…",
+      "searchAria": "Buscar facturas",
+      "emptyTitle": "Aún no hay facturas",
+      "emptyDescription": "Crea tu primera factura para facturar a los clientes.",
+      "loadError": "No se pudieron cargar las facturas. Inténtalo de nuevo.",
+      "detailLoadError": "No se pudieron cargar los detalles de la factura. Inténtalo de nuevo.",
+      "createdToast": "Factura creada correctamente",
+      "updatedToast": "Factura actualizada correctamente",
+      "createError": "No se pudo crear la factura. Inténtalo de nuevo.",
+      "updateError": "No se pudo actualizar la factura. Inténtalo de nuevo.",
+      "filterStatus": "Estado",
+      "filterAllStatuses": "Todos los estados",
+      "filterClient": "Cliente",
+      "filterAllClients": "Todos los clientes",
+      "pageLabel": "Mostrando {start} a {end} de {total} resultados",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "status": {
+        "draft": "Borrador",
+        "sent": "Enviada",
+        "paid": "Pagada",
+        "pending": "Pendiente",
+        "overdue": "Vencida"
+      },
+      "table": {
+        "invoiceNumber": "Factura #",
+        "clientName": "Cliente",
+        "jobName": "Trabajo",
+        "amount": "Importe",
+        "issueDate": "Fecha de emisión",
+        "status": "Estado"
+      },
+      "card": {
+        "issueDate": "Fecha de emisión",
+        "amount": "Importe"
+      },
+      "tabs": {
+        "overview": "Resumen",
+        "lineItems": "Líneas"
+      },
+      "detail": {
+        "loadingTitle": "Cargando…",
+        "retry": "Reintentar",
+        "backAria": "Volver al listado de facturas",
+        "sectionInvoiceDetails": "Detalles de la factura",
+        "sectionLineItems": "Líneas de la factura",
+        "sectionSystemMetadata": "Metadatos del sistema",
+        "notModifiedYet": "Sin modificar"
+      },
+      "actions": {
+        "preview": "Vista previa",
+        "downloadPdf": "Descargar PDF",
+        "send": "Enviar factura"
+      },
+      "export": {
+        "success": "Factura descargada",
+        "failed": "No se pudo descargar la factura. Inténtalo de nuevo."
+      },
+      "send": {
+        "success": "Factura enviada",
+        "failed": "No se pudo enviar la factura. Inténtalo de nuevo."
+      },
+      "fields": {
+        "clientName": "Cliente",
+        "contactPerson": "Persona de contacto",
+        "invoiceNumber": "Número de factura",
+        "projectName": "Proyecto",
+        "issueDate": "Fecha de emisión",
+        "dueDate": "Fecha de vencimiento",
+        "paymentTerms": "Condiciones de pago",
+        "status": "Estado",
+        "billTo": "Facturar a",
+        "shipTo": "Enviar a",
+        "addressLine1": "Dirección línea 1",
+        "addressLine2": "Dirección línea 2",
+        "city": "Ciudad",
+        "state": "Estado / provincia",
+        "zipCode": "Código postal",
+        "country": "País",
+        "notesAndTerms": "Notas y condiciones",
+        "clientNotes": "Notas para el cliente",
+        "internalNotes": "Notas internas (privadas)",
+        "totalBalance": "Saldo total",
+        "createdAt": "Creado el",
+        "updatedAt": "Actualizado el",
+        "createdBy": "Creado por",
+        "modifiedBy": "Modificado por"
+      },
+      "placeholders": {
+        "client": "Seleccionar cliente",
+        "contact": "Seleccionar contacto",
+        "project": "Seleccionar proyecto",
+        "group": "Seleccionar grupo",
+        "item": "Seleccionar ítem",
+        "country": "Seleccionar país",
+        "state": "Seleccionar estado / provincia",
+        "city": "Seleccionar o escribir ciudad",
+        "paymentTerms": "Seleccionar condiciones",
+        "status": "Seleccionar estado"
+      },
+      "paymentTerms": {
+        "net7": "Neto 7 días",
+        "net15": "Neto 15 días",
+        "net30": "Neto 30 días",
+        "net45": "Neto 45 días",
+        "dueOnReceipt": "Al recibir"
+      },
+      "sections": {
+        "basic": "Información básica",
+        "addresses": "Facturación y envío",
+        "metadata": "Datos de la factura",
+        "lineItems": "Líneas",
+        "notes": "Notas y condiciones"
+      },
+      "lineItems": {
+        "productName": "Producto",
+        "description": "Descripción",
+        "qty": "Cant.",
+        "unit": "Unidad",
+        "rate": "Tarifa",
+        "amount": "Importe",
+        "discount": "Descuento",
+        "tax": "Impuesto",
+        "total": "Total",
+        "listPrice": "Precio de lista",
+        "addItem": "Añadir línea",
+        "remove": "Eliminar línea",
+        "selectProduct": "Seleccionar producto…",
+        "empty": "No hay líneas en esta factura."
+      },
+      "totals": {
+        "subtotal": "Subtotal",
+        "tax": "Impuestos",
+        "taxWithPercent": "Impuestos ({percent}%)",
+        "adjustment": "Ajuste",
+        "totalAmount": "Importe total"
+      },
+      "page": {
+        "createTitle": "Crear factura",
+        "editTitle": "Editar factura"
+      },
+      "modal": {
+        "cancel": "Cancelar",
+        "save": "Guardar cambios"
+      },
+      "validation": {
+        "client": "Selecciona un cliente.",
+        "issueDate": "Introduce la fecha de emisión.",
+        "lineDescription": "Introduce una descripción o selecciona un producto en cada línea.",
+        "lineQuantity": "Introduce una cantidad válida."
+      }
+    },
     "jobs": {
       "metaTitle": "Trabajos",
       "detailMetaTitle": "Detalles del trabajo",
@@ -1341,6 +1501,13 @@
         "schedule": "Programación",
         "jobMeta": "Alcance del trabajo",
         "jobMetaHint": "Grupo, ítems compuestos y total opcionales enviados en job_meta."
+      },
+      "lineItems": {
+        "qty": "Cant.",
+        "rate": "Precio unitario",
+        "amount": "Importe",
+        "addItem": "Añadir ítem",
+        "remove": "Eliminar línea"
       },
       "fields": {
         "title": "Título",

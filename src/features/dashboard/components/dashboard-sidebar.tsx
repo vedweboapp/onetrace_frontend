@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
-import { BookUser, Building2, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Tag, UserRound } from "lucide-react";
+import { BookUser, Building2, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, Tag, UserRound } from "lucide-react";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 
 import { useTranslations } from "next-intl";
@@ -152,6 +152,7 @@ function DashboardMainSidebar({
   const contactsHref = routes.dashboard.contacts;
   const sitesHref = routes.dashboard.sites;
   const quotationsHref = routes.dashboard.quotations;
+  const invoicesHref = routes.dashboard.invoices;
   const jobsHref = routes.dashboard.jobs;
   const qrCodesHref = routes.dashboard.qrCodes;
   const homeHref = routes.dashboard.root;
@@ -167,6 +168,8 @@ function DashboardMainSidebar({
   const sitesActive = pathname === sitesHref || pathname.startsWith(`${sitesHref}/`);
   const quotationsActive =
     pathname === quotationsHref || pathname.startsWith(`${quotationsHref}/`);
+  const invoicesActive =
+    pathname === invoicesHref || pathname.startsWith(`${invoicesHref}/`);
   const jobsActive = pathname === jobsHref || pathname.startsWith(`${jobsHref}/`);
   const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
   const projectsActive =
@@ -227,6 +230,14 @@ function DashboardMainSidebar({
           active={quotationsActive}
           label={t("quotations")}
           icon={FileText}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={invoicesHref}
+          active={invoicesActive}
+          label={t("invoices")}
+          icon={Receipt}
           expanded={expanded}
           resolved={resolved}
         />

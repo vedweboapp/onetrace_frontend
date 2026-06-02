@@ -33,51 +33,42 @@ export function normalizeJobMeta(
     const plot = meta.plot;
     return {
       total: plot.plot_total,
-      group: plot.group,
       composite_items: plot.composite_items,
     };
   }
   const flat = meta as JobMetaPayload;
   return {
     total: flat.total,
-    group: flat.group,
     composite_items: flat.composite_items,
   };
 }
 
-export function buildJobMetaPayload(input: {
-  groupId: string;
-  compositeItemId: string;
-  compositeQuantity: string;
-  compositeSellingPrice?: number | string | null;
-}): JobMetaPayload | undefined {
-  const groupRaw = input.groupId.trim();
-  const compositeId = input.compositeItemId.trim();
-  const quantityRaw = input.compositeQuantity.trim();
-
-  const hasGroup = groupRaw.length > 0 && /^\d+$/.test(groupRaw);
-  const hasComposite = compositeId.length > 0 && /^\d+$/.test(compositeId);
-  const quantity = parsePositiveQuantity(quantityRaw);
-
-  if (!hasGroup && !hasComposite) return undefined;
-
+export function buildJobMetaPayload(
+  rows: Array<{ group: string; item: string; quantity: string; rate?: string }>,
+): JobMetaPayload | undefined {
   const composite_items: JobMetaCompositeItem[] = [];
-  if (hasComposite && quantity != null) {
-    const id = Number.parseInt(compositeId, 10);
-    composite_items.push({ id, quantity });
+  let total = 0;
+
+  for (const row of rows) {
+    const itemRaw = row.item.trim();
+    const qty = parsePositiveQuantity(row.quantity);
+    if (!/^\d+$/.test(itemRaw) || qty == null) continue;
+    const itemId = Number.parseInt(itemRaw, 10);
+    const groupRaw = row.group.trim();
+    const group = /^\d+$/.test(groupRaw) ? Number.parseInt(groupRaw, 10) : null;
+    const rate = row.rate != null ? Number.parseFloat(String(row.rate).trim()) : Number.NaN;
+    const amount = Number.isFinite(rate) && rate >= 0 ? Number((qty * rate).toFixed(2)) : undefined;
+    composite_items.push({ item: itemId, group, quantity: qty, amount });
+    if (Number.isFinite(rate) && rate >= 0) {
+      total += computeJobMetaLineTotal(qty, rate);
+    }
   }
 
-  const unitPrice = input.compositeSellingPrice ?? null;
-  const lineTotal =
-    quantity != null && composite_items.length > 0
-      ? computeJobMetaLineTotal(quantity, unitPrice)
-      : 0;
-
-  const payload: JobMetaPayload = {};
-  if (hasGroup) payload.group = Number.parseInt(groupRaw, 10);
-  if (composite_items.length > 0) payload.composite_items = composite_items;
-  if (lineTotal > 0) payload.total = lineTotal;
-  return payload;
+  if (composite_items.length === 0) return undefined;
+  return {
+    composite_items,
+    total: total > 0 ? total : undefined,
+  };
 }
 
 /** @deprecated Use computeJobMetaLineTotal */

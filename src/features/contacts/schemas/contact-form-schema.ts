@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { City, State } from "country-state-city";
+import { isValidPhoneNumber } from "react-phone-number-input/min";
 import { zTrimmedNonEmpty } from "@/shared/form";
 
 export type ContactFormMessages = {
   name: string;
   email: string;
-  phone: string;
+  phoneInvalid: string;
   client: string;
   addressLine1: string;
   country: string;
@@ -19,7 +20,9 @@ export function createContactFormSchema(messages: ContactFormMessages) {
     .object({
       name: zTrimmedNonEmpty(messages.name),
       email: z.string().trim().email(messages.email),
-      phone: zTrimmedNonEmpty(messages.phone),
+      phone: z.string().refine((val) => isValidPhoneNumber(val), {
+        message: messages.phoneInvalid,
+      }),
       client: z
         .string()
         .trim()

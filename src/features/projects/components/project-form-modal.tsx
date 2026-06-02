@@ -27,6 +27,7 @@ import {
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
+  SurfaceDateInput,
   surfaceInputClassName,
 } from "@/shared/ui";
 
@@ -283,23 +284,23 @@ export function ProjectFormModal({
 
         <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
           <FieldGroup label={t("fields.startDate")} htmlFor="project-start" required>
-            <input
+            <SurfaceDateInput
               id="project-start"
               type="date"
               aria-invalid={errors.start_date ? true : undefined}
               aria-describedby={errors.start_date ? "project-start-err" : undefined}
-              className={cn(surfaceInputClassName, errors.start_date && "border-red-500 dark:border-red-500")}
+              invalid={!!errors.start_date}
               {...register("start_date")}
             />
             <FieldErrorText id="project-start-err">{errors.start_date?.message}</FieldErrorText>
           </FieldGroup>
           <FieldGroup label={t("fields.endDate")} htmlFor="project-end" required>
-            <input
+            <SurfaceDateInput
               id="project-end"
               type="date"
               aria-invalid={errors.end_date ? true : undefined}
               aria-describedby={errors.end_date ? "project-end-err" : undefined}
-              className={cn(surfaceInputClassName, errors.end_date && "border-red-500 dark:border-red-500")}
+              invalid={!!errors.end_date}
               {...register("end_date")}
             />
             <FieldErrorText id="project-end-err">{errors.end_date?.message}</FieldErrorText>

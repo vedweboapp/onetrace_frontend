@@ -59,7 +59,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
       createContactFormSchema({
         name: t("validation.name"),
         email: t("validation.email"),
-        phone: t("validation.phone"),
+        phoneInvalid: t("validation.phoneInvalid"),
         client: t("validation.client"),
         addressLine1: t("validation.addressLine1"),
         country: t("validation.country"),

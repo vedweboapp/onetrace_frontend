@@ -24,6 +24,7 @@ import {
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
+  SurfacePhoneField,
   surfaceInputClassName,
 } from "@/shared/ui";
 
@@ -58,7 +59,7 @@ export function ContactFormModal({
       createContactFormSchema({
         name: t("validation.name"),
         email: t("validation.email"),
-        phone: t("validation.phone"),
+        phoneInvalid: t("validation.phoneInvalid"),
         client: t("validation.client"),
         addressLine1: t("validation.addressLine1"),
         country: t("validation.country"),
@@ -210,16 +211,15 @@ export function ContactFormModal({
             />
             <FieldErrorText id="contact-email-err">{errors.email?.message}</FieldErrorText>
           </FieldGroup>
-          <FieldGroup label={t("fields.phone")} htmlFor="contact-phone" required>
-            <input
-              id="contact-phone"
-              aria-invalid={errors.phone ? true : undefined}
-              aria-describedby={errors.phone ? "contact-phone-err" : undefined}
-              className={cn(surfaceInputClassName, errors.phone && "border-red-500 dark:border-red-500")}
-              {...register("phone")}
-            />
-            <FieldErrorText id="contact-phone-err">{errors.phone?.message}</FieldErrorText>
-          </FieldGroup>
+          <SurfacePhoneField
+            control={control}
+            name="phone"
+            id="contact-phone"
+            label={t("fields.phone")}
+            required
+            error={errors.phone?.message}
+            disabled={saving}
+          />
           <AddressLineAutocompleteFields
             idPrefix="contact"
             control={control}

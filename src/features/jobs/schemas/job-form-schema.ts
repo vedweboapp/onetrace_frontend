@@ -33,30 +33,39 @@ export function createJobFormSchema(messages: JobFormMessages) {
           message: messages.assignedWorker,
         }),
       start_date: zTrimmedNonEmpty(messages.startDate),
-      job_meta_group: optionalPositiveId(messages.optionalId),
-      job_meta_composite_item_id: optionalPositiveId(messages.optionalId),
-      job_meta_composite_quantity: z.string().trim(),
+      job_meta_items: z
+        .array(
+          z.object({
+            group: optionalPositiveId(messages.optionalId),
+            item: optionalPositiveId(messages.optionalId),
+            quantity: z.string().trim(),
+            rate: z.string().trim(),
+          }),
+        )
+        .min(1),
     })
     .superRefine((data, ctx) => {
-      const compositeId = data.job_meta_composite_item_id.trim();
-      const qty = data.job_meta_composite_quantity.trim();
-      if (compositeId && !qty) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["job_meta_composite_quantity"],
-          message: messages.compositeQuantity,
-        });
-      }
-      if (qty && compositeId) {
+      data.job_meta_items.forEach((row, index) => {
+        const itemId = row.item.trim();
+        const qty = row.quantity.trim();
+        if (!itemId && !qty) return;
+        if (!itemId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["job_meta_items", index, "item"],
+            message: messages.optionalId,
+          });
+          return;
+        }
         const n = Number.parseFloat(qty);
         if (!Number.isFinite(n) || n <= 0) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            path: ["job_meta_composite_quantity"],
+            path: ["job_meta_items", index, "quantity"],
             message: messages.compositeQuantity,
           });
         }
-      }
+      });
     });
 }
 

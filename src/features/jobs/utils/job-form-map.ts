@@ -67,14 +67,8 @@ export function jobFormsToFormIds(forms: Job["forms"]): string[] {
 
 export function mapJobFormToPayload(
   values: JobFormValues,
-  options?: { compositeSellingPrice?: number | string | null },
 ): JobCreatePayload {
-  const job_meta = buildJobMetaPayload({
-    groupId: values.job_meta_group,
-    compositeItemId: values.job_meta_composite_item_id,
-    compositeQuantity: values.job_meta_composite_quantity,
-    compositeSellingPrice: options?.compositeSellingPrice,
-  });
+  const job_meta = buildJobMetaPayload(values.job_meta_items);
 
   const payload: JobCreatePayload = {
     title: values.title.trim(),
@@ -114,15 +108,19 @@ export function emptyJobFormDefaults(): JobFormValues {
     site: "",
     assigned_worker: "",
     start_date: "",
-    job_meta_group: "",
-    job_meta_composite_item_id: "",
-    job_meta_composite_quantity: "",
+    job_meta_items: [{ group: "", item: "", quantity: "", rate: "" }],
   };
 }
 
 export function jobToFormDefaults(job: Job): JobFormValues {
   const meta = normalizeJobMeta(job.job_meta);
-  const composite = meta?.composite_items?.[0];
+  const compositeItems =
+    meta?.composite_items?.map((row) => ({
+      group: typeof row.group === "number" ? String(row.group) : "",
+      item: String(row.item ?? row.id ?? ""),
+      quantity: row.quantity != null ? String(row.quantity) : "",
+      rate: row.selling_price != null ? String(row.selling_price) : "",
+    })) ?? [];
 
   return {
     title: job.title ?? "",
@@ -140,8 +138,6 @@ export function jobToFormDefaults(job: Job): JobFormValues {
     site: String(nestedId(job.site) ?? ""),
     assigned_worker: String(getJobAssignedWorkerId(job) ?? ""),
     start_date: formatApiDateTimeForHtmlDatetimeLocal(job.start_date),
-    job_meta_group: meta?.group != null ? String(meta.group) : "",
-    job_meta_composite_item_id: composite?.id != null ? String(composite.id) : "",
-    job_meta_composite_quantity: composite?.quantity != null ? String(composite.quantity) : "",
+    job_meta_items: compositeItems.length > 0 ? compositeItems : [{ group: "", item: "", quantity: "", rate: "" }],
   };
 }

@@ -17,10 +17,12 @@ import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/sha
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
   ActiveStatusBadge,
-  AddButton, AppButton,
+  AddButton,
+  AppButton,
   CheckmarkSelect,
   ConfirmDialog,
-  DashboardEmptyState,
+  ListPageEmptyStates,
+  listPageSurfaceShellClassName,
   DataTablePaginationBar,
   DataTableRowActionsMenu,
   ListPageActiveFilter,
@@ -287,7 +289,7 @@ export function SitesPanel() {
         />
       ) : null}
 
-      <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
+      <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
         ) : listLoading ? (
@@ -297,46 +299,24 @@ export function SitesPanel() {
             <div className="space-y-2 p-6"><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /></div>
           )
         ) : items.length === 0 ? (
-          emptyStateKind === "onboarding" ? (
-            <DashboardEmptyState
-              iconName="projects"
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
-              action={
+          <ListPageEmptyStates
+            emptyStateKind={emptyStateKind}
+            onboarding={{
+              iconName: "projects",
+              title: t("emptyTitle"),
+              description: t("emptyDescription"),
+              action: (
                 <AddButton
                   type="button"
                   onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)}
                 />
-              }
-            />
-          ) : emptyStateKind === "activeOnly" ? (
-            <DashboardEmptyState
-              iconName="noResults"
-              title={tList("noActiveResultsTitle")}
-              description={tList("noActiveResultsDescription")}
-              action={
-                <AppButton type="button" variant="secondary" size="sm" onClick={switchToInactive}>
-                  {tList("viewInactive")}
-                </AppButton>
-              }
-            />
-          ) : (
-            <DashboardEmptyState
-              iconName="noResults"
-              title={tList("noResultsTitle")}
-              description={tList("noResultsDescription")}
-              action={
-                <AppButton
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setUrl({ search: null, is_active: null, client: null, page: null }, { replace: true })}
-                >
-                  {tList("clearFilters")}
-                </AppButton>
-              }
-            />
-          )
+              ),
+            }}
+            onClearFilters={() =>
+              setUrl({ search: null, is_active: null, client: null, page: null }, { replace: true })
+            }
+            onSwitchToInactive={switchToInactive}
+          />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
+import { fetchItemsPage } from "@/features/items/api/item.api";
 import type { Job } from "@/features/jobs/types/job.types";
 import {
   getJobStatusRow,
@@ -62,7 +62,7 @@ export function JobDetailBody({
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchCompositeItemsPage(1, 500);
+        const { items } = await fetchItemsPage(1, 500, { isActive: true });
         if (cancelled) return;
         const map = new Map<number, string>();
         for (const item of items) {
@@ -77,6 +77,13 @@ export function JobDetailBody({
       cancelled = true;
     };
   }, [compositeRows.length]);
+
+  function compositeItemId(row: (typeof compositeRows)[number]): number | null {
+    if (typeof row.item === "number" && Number.isFinite(row.item)) return row.item;
+    if (row.item && typeof row.item === "object" && typeof row.item.id === "number") return row.item.id;
+    if (typeof row.id === "number" && Number.isFinite(row.id)) return row.id;
+    return null;
+  }
 
   const clientId = detail.client && typeof detail.client === "object" ? detail.client.id : typeof detail.client === "number" ? detail.client : null;
   const projectId =
@@ -167,14 +174,9 @@ export function JobDetailBody({
           ) : null}
         </DetailPanelCard>
 
-        {meta && (meta.total != null || meta.group != null || compositeRows.length > 0) ? (
+        {meta && (meta.total != null || compositeRows.length > 0) ? (
           <DetailPanelCard title={t("detail.sectionWorkScope")}>
             <DetailMetricsGrid className="sm:grid-cols-2">
-              {meta.group != null ? (
-                <DetailMetricCard label={t("fields.plotGroup")}>
-                  <span className="tabular-nums">#{meta.group}</span>
-                </DetailMetricCard>
-              ) : null}
               {meta.total != null && Number.isFinite(meta.total) ? (
                 <DetailMetricCard label={t("fields.scopeTotal")}>
                   <span className="tabular-nums font-semibold text-[color:var(--dash-accent)]">
@@ -195,24 +197,31 @@ export function JobDetailBody({
                 >
                   {compositeRows.map((row, index) => {
                     const unit =
-                      typeof row.selling_price === "number" && Number.isFinite(row.selling_price)
-                        ? row.selling_price
+                      typeof row.selling_price === "number" && Number.isFinite(row.selling_price) ? row.selling_price : row.item && typeof row.item === "object" && typeof row.item.selling_price === "number" && Number.isFinite(row.item.selling_price) ? row.item.selling_price
                         : 0;
                     const lineTotal = unit > 0 ? unit * row.quantity : 0;
-                    const name = compositeNameById.get(row.id) ?? `#${row.id}`;
+                    const itemId = compositeItemId(row);
+                    const name =
+                      (row.item && typeof row.item === "object" && row.item.name?.trim()) ||
+                      (itemId != null ? compositeNameById.get(itemId) : undefined) ||
+                      (itemId != null ? `#${itemId}` : "—");
                     return (
-                      <DetailLinkedTableRow key={`${row.id}-${index}`} index={index}>
+                      <DetailLinkedTableRow key={`${itemId ?? "row"}-${index}`} index={index}>
                         <DetailLinkedTableTd
                           className={detailLinkedTableCellClassName({
                             cellClassName: "font-medium text-slate-900 dark:text-slate-100",
                           })}
                         >
-                          <Link
-                            href={`${routes.dashboard.compositeItems}/${row.id}`}
-                            className="text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                          >
-                            {name}
-                          </Link>
+                          {itemId != null ? (
+                            <Link
+                              href={`${routes.dashboard.items}/${itemId}`}
+                              className="text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                            >
+                              {name}
+                            </Link>
+                          ) : (
+                            name
+                          )}
                         </DetailLinkedTableTd>
                         <DetailLinkedTableTd
                           narrow

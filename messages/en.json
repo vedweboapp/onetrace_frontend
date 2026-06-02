@@ -151,6 +151,7 @@
       "contacts": "Contacts",
       "sites": "Sites",
       "quotations": "Quotations",
+      "invoices": "Invoices",
       "jobs": "Jobs",
       "qrCodes": "QR codes",
       "projects": "Projects",
@@ -828,7 +829,7 @@
       "page": {
         "createTitle": "Create contact",
         "createSubtitle": "Fill in contact details and save.",
-        "editTitle": "Edi",
+        "editTitle": "Edit",
         "editSubtitle": "Update contact details and save changes."
       },
       "placeholders": {
@@ -840,7 +841,7 @@
       "validation": {
         "name": "Enter a contact name.",
         "email": "Enter a valid email address.",
-        "phone": "Enter a phone number.",
+        "phoneInvalid": "Enter a valid phone number including country code.",
         "client": "Select a client.",
         "addressLine1": "Enter address line 1.",
         "country": "Select a country.",
@@ -1242,6 +1243,165 @@
         "project": "Select a project."
       }
     },
+    "invoices": {
+      "metaTitle": "Invoices",
+      "detailMetaTitle": "Invoice details",
+      "title": "Invoice History",
+      "subtitle": "Generate and track client billing across all active projects.",
+      "createInvoice": "Create Invoice",
+      "edit": "Edit",
+      "searchPlaceholder": "Search invoices…",
+      "searchAria": "Search invoices",
+      "emptyTitle": "No invoices yet",
+      "emptyDescription": "Create your first invoice to bill clients for completed work.",
+      "loadError": "Could not load invoices. Try again.",
+      "detailLoadError": "Could not load invoice details. Try again.",
+      "createdToast": "Invoice created successfully",
+      "updatedToast": "Invoice updated successfully",
+      "createError": "Could not create the invoice. Try again.",
+      "updateError": "Could not update the invoice. Try again.",
+      "filterStatus": "Status",
+      "filterAllStatuses": "All statuses",
+      "filterClient": "Client",
+      "filterAllClients": "All clients",
+      "pageLabel": "Showing {start} to {end} of {total} results",
+      "prev": "Previous",
+      "next": "Next",
+      "status": {
+        "draft": "Draft",
+        "sent": "Sent",
+        "paid": "Paid",
+        "pending": "Pending",
+        "overdue": "Overdue"
+      },
+      "table": {
+        "invoiceNumber": "Invoice #",
+        "clientName": "Client name",
+        "jobName": "Job name",
+        "amount": "Amount",
+        "issueDate": "Issue date",
+        "status": "Status"
+      },
+      "card": {
+        "issueDate": "Issue date",
+        "amount": "Amount"
+      },
+      "tabs": {
+        "overview": "Overview",
+        "lineItems": "Line items"
+      },
+      "detail": {
+        "loadingTitle": "Loading…",
+        "retry": "Retry",
+        "backAria": "Back to invoices list",
+        "sectionInvoiceDetails": "Invoice details",
+        "sectionLineItems": "Invoice line items",
+        "sectionSystemMetadata": "System metadata",
+        "notModifiedYet": "Not modified yet"
+      },
+      "actions": {
+        "preview": "Preview invoice",
+        "downloadPdf": "Download PDF",
+        "send": "Send invoice"
+      },
+      "export": {
+        "success": "Invoice downloaded",
+        "failed": "Could not download the invoice. Try again."
+      },
+      "send": {
+        "success": "Invoice sent",
+        "failed": "Could not send the invoice. Try again."
+      },
+      "fields": {
+        "clientName": "Client name",
+        "contactPerson": "Contact person",
+        "invoiceNumber": "Invoice number",
+        "projectName": "Project name",
+        "issueDate": "Issue date",
+        "dueDate": "Due date",
+        "paymentTerms": "Payment terms",
+        "status": "Status",
+        "billTo": "Bill to",
+        "shipTo": "Ship to",
+        "addressLine1": "Address line 1",
+        "addressLine2": "Address line 2",
+        "city": "City",
+        "state": "State",
+        "zipCode": "Zip code",
+        "country": "Country",
+        "notesAndTerms": "Notes & terms",
+        "clientNotes": "Client notes",
+        "internalNotes": "Internal notes (private)",
+        "totalBalance": "Total balance",
+        "createdAt": "Created at",
+        "updatedAt": "Updated at",
+        "createdBy": "Created by",
+        "modifiedBy": "Modified by"
+      },
+      "placeholders": {
+        "client": "Select client",
+        "contact": "Select contact",
+        "project": "Select project",
+        "group": "Select group",
+        "item": "Select item",
+        "country": "Select country",
+        "state": "Select state / region",
+        "city": "Select or type city",
+        "paymentTerms": "Select payment terms",
+        "status": "Select status"
+      },
+      "paymentTerms": {
+        "net7": "Net 7 days",
+        "net15": "Net 15 days",
+        "net30": "Net 30 days",
+        "net45": "Net 45 days",
+        "dueOnReceipt": "Due on receipt"
+      },
+      "sections": {
+        "basic": "Basic information",
+        "addresses": "Bill to & ship to",
+        "metadata": "Invoice metadata",
+        "lineItems": "Line items",
+        "notes": "Notes & terms"
+      },
+      "lineItems": {
+        "productName": "Product name",
+        "description": "Description",
+        "qty": "Qty",
+        "unit": "Unit",
+        "rate": "Rate",
+        "amount": "Amount",
+        "discount": "Discount",
+        "tax": "Tax",
+        "total": "Total",
+        "listPrice": "List price",
+        "addItem": "Add item",
+        "remove": "Remove line",
+        "selectProduct": "Select product…",
+        "empty": "No line items on this invoice."
+      },
+      "totals": {
+        "subtotal": "Subtotal",
+        "tax": "Tax",
+        "taxWithPercent": "Tax ({percent}%)",
+        "adjustment": "Adjustment",
+        "totalAmount": "Total amount"
+      },
+      "page": {
+        "createTitle": "Create invoice",
+        "editTitle": "Edit invoice"
+      },
+      "modal": {
+        "cancel": "Cancel",
+        "save": "Save changes"
+      },
+      "validation": {
+        "client": "Select a client.",
+        "issueDate": "Enter an issue date.",
+        "lineDescription": "Enter a description or select a product for each line.",
+        "lineQuantity": "Enter a valid quantity."
+      }
+    },
     "jobs": {
       "metaTitle": "Jobs",
       "detailMetaTitle": "Job details",
@@ -1342,6 +1502,13 @@
         "schedule": "Schedule",
         "jobMeta": "Work scope",
         "jobMetaHint": "Optional group, composite items, and scope total sent in job_meta."
+      },
+      "lineItems": {
+        "qty": "Qty",
+        "rate": "Unit price",
+        "amount": "Amount",
+        "addItem": "Add item",
+        "remove": "Remove line"
       },
       "fields": {
         "title": "Title",
