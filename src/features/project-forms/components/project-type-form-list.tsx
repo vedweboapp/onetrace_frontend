@@ -285,7 +285,7 @@ const ProjectTypeFormList = () => {
                                     <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.formName")}</th>
                                     <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.apiName")}</th>
                                     <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.projectType")}</th>
-                                    <th className="px-4 py-3 text-center font-semibold text-slate-700 dark:text-slate-300">{t("table.status")}</th>
+                                    {/* <th className="px-4 py-3 text-center font-semibold text-slate-700 dark:text-slate-300">{t("table.status")}</th> */}
                                     <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.created")}</th>
                                     <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.updated")}</th>
                                 </tr>
@@ -316,7 +316,7 @@ const ProjectTypeFormList = () => {
                                                 {projectTypeLabel(row.project_type)}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 text-center">
+                                        {/* <td className="px-4 py-3 text-center">
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
@@ -348,7 +348,7 @@ const ProjectTypeFormList = () => {
                                                     />
                                                 </div>
                                             </button>
-                                        </td>
+                                        </td> */}
                                         <td className="px-4 py-3">
                                             <div className="block text-slate-500 dark:text-slate-400">
                                                 {row.created_at

@@ -17,7 +17,7 @@ export type ProjectUpsertPayload = {
 };
 
 export type ProjectCreatePayload = ProjectUpsertPayload;
-export type ProjectUpdatePayload = ProjectUpsertPayload;
+export type ProjectUpdatePayload = Partial<ProjectUpsertPayload>;
 
 /** When the API embeds client on project detail/list rows. */
 export type ProjectClientRef = {
