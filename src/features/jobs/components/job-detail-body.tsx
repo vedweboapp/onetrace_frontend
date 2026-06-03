@@ -13,7 +13,10 @@ import {
   jobProjectLabel,
   jobSiteLabel,
 } from "@/features/jobs/utils/job-nested-fields.util";
-import { normalizeJobMeta } from "@/features/jobs/utils/job-meta-payload.util";
+import {
+  normalizeJobMeta,
+  resolveJobMetaCompositeItemId,
+} from "@/features/jobs/utils/job-meta-payload.util";
 import { formatMoneyDisplay } from "@/features/quotations/utils/quotation-level-pricing.util";
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
@@ -79,10 +82,7 @@ export function JobDetailBody({
   }, [compositeRows.length]);
 
   function compositeItemId(row: (typeof compositeRows)[number]): number | null {
-    if (typeof row.item === "number" && Number.isFinite(row.item)) return row.item;
-    if (row.item && typeof row.item === "object" && typeof row.item.id === "number") return row.item.id;
-    if (typeof row.id === "number" && Number.isFinite(row.id)) return row.id;
-    return null;
+    return resolveJobMetaCompositeItemId(row);
   }
 
   const clientId = detail.client && typeof detail.client === "object" ? detail.client.id : typeof detail.client === "number" ? detail.client : null;
@@ -197,11 +197,27 @@ export function JobDetailBody({
                 >
                   {compositeRows.map((row, index) => {
                     const unit =
-                      typeof row.selling_price === "number" && Number.isFinite(row.selling_price) ? row.selling_price : row.item && typeof row.item === "object" && typeof row.item.selling_price === "number" && Number.isFinite(row.item.selling_price) ? row.item.selling_price
-                        : 0;
-                    const lineTotal = unit > 0 ? unit * row.quantity : 0;
+                      row.amount != null &&
+                      Number.isFinite(row.amount) &&
+                      row.quantity > 0
+                        ? row.amount / row.quantity
+                        : typeof row.selling_price === "number" && Number.isFinite(row.selling_price)
+                          ? row.selling_price
+                          : row.item &&
+                              typeof row.item === "object" &&
+                              typeof row.item.selling_price === "number" &&
+                              Number.isFinite(row.item.selling_price)
+                            ? row.item.selling_price
+                            : 0;
+                    const lineTotal =
+                      row.amount != null && Number.isFinite(row.amount)
+                        ? row.amount
+                        : unit > 0
+                          ? unit * row.quantity
+                          : 0;
                     const itemId = compositeItemId(row);
                     const name =
+                      row.name?.trim() ||
                       (row.item && typeof row.item === "object" && row.item.name?.trim()) ||
                       (itemId != null ? compositeNameById.get(itemId) : undefined) ||
                       (itemId != null ? `#${itemId}` : "—");

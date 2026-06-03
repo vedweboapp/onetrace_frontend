@@ -141,6 +141,18 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
   const subtotal = React.useMemo(() => computeFormSubtotal(lineItems), [lineItems]);
   const totalBalance = subtotal;
 
+  const groupLabelById = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const o of groupOptions) m.set(o.value, o.label);
+    return m;
+  }, [groupOptions]);
+
+  const itemLabelById = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const o of itemOptions) m.set(o.value, o.label);
+    return m;
+  }, [itemOptions]);
+
   const paymentTermOptions = React.useMemo(
     () => [
       { value: "net_7", label: t("paymentTerms.net7") },
@@ -208,6 +220,13 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
       }
       if (selectTarget === "group") {
         setValue("line_items.0.group", selectId, { shouldDirty: true, shouldValidate: true });
+        void fetchGroup(Number.parseInt(selectId, 10))
+          .then((g) => {
+            setValue("line_items.0.group_name", g.name?.trim() ?? "", { shouldDirty: true });
+          })
+          .catch(() => {
+            setValue("line_items.0.group_name", "", { shouldDirty: true });
+          });
         return;
       }
       if (selectTarget === "item") {
@@ -334,6 +353,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
       const itemGroup = itemGroupById.get(itemId) ?? null;
       if (selectedGroup != null && itemGroup != null && selectedGroup !== itemGroup) {
         setValue(`line_items.${index}.item`, "", { shouldDirty: true });
+        setValue(`line_items.${index}.item_name`, "", { shouldDirty: true });
         setValue(`line_items.${index}.rate`, "", { shouldDirty: true });
       }
     });
@@ -708,7 +728,11 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                                   value={groupField.value}
                                   onChange={(v) => {
                                     groupField.onChange(v);
+                                    setValue(`line_items.${index}.group_name`, v ? (groupLabelById.get(v) ?? "") : "", {
+                                      shouldDirty: true,
+                                    });
                                     setValue(`line_items.${index}.item`, "", { shouldDirty: true });
+                                    setValue(`line_items.${index}.item_name`, "", { shouldDirty: true });
                                     setValue(`line_items.${index}.rate`, "", { shouldDirty: true });
                                   }}
                                   emptyLabel={t("placeholders.group")}
@@ -736,8 +760,26 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                                     invalid={!!errors.line_items?.[index]?.item}
                                     onChange={(v) => {
                                       itemField.onChange(v);
+                                      setValue(
+                                        `line_items.${index}.item_name`,
+                                        v ? (itemLabelById.get(v) ?? "") : "",
+                                        { shouldDirty: true },
+                                      );
                                       if (v && /^\d+$/.test(v)) {
-                                        const price = itemPriceById.get(Number.parseInt(v, 10));
+                                        const itemId = Number.parseInt(v, 10);
+                                        const price = itemPriceById.get(itemId);
+                                        const linkedGroupId = itemGroupById.get(itemId);
+                                        if (linkedGroupId != null && linkedGroupId > 0) {
+                                          const groupKey = String(linkedGroupId);
+                                          setValue(`line_items.${index}.group`, groupKey, {
+                                            shouldDirty: true,
+                                          });
+                                          setValue(
+                                            `line_items.${index}.group_name`,
+                                            groupLabelById.get(groupKey) ?? "",
+                                            { shouldDirty: true },
+                                          );
+                                        }
                                         const currentQty = parseMoneyValue(lineItems[index]?.quantity);
                                         if (!Number.isFinite(currentQty) || currentQty <= 0) {
                                           setValue(`line_items.${index}.quantity`, "1", {

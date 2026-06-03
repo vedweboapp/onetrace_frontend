@@ -66,22 +66,37 @@ type DisplayLine = {
 function compositeLineToDisplay(row: InvoiceCompositeItem, index: number): DisplayLine {
   const item = row.item;
   const group = row.group;
+  const qty = parseMoneyValue(row.quantity);
   const productName =
-    (typeof item === "object" ? item?.name?.trim() : undefined) || "—";
+    row.name?.trim() ||
+    (typeof item === "object" ? item?.name?.trim() : undefined) ||
+    "—";
   const groupName =
     typeof group === "object"
       ? group?.name?.trim() || "—"
       : group != null
         ? `#${group}`
         : "—";
-  const itemId = typeof item === "object" ? item?.id : typeof item === "number" ? item : index;
+  const itemId =
+    typeof row.id === "number"
+      ? row.id
+      : typeof item === "object"
+        ? item?.id
+        : typeof item === "number"
+          ? item
+          : index;
+  const total =
+    row.amount != null && Number.isFinite(row.amount)
+      ? row.amount
+      : parseMoneyValue(row.line_total);
+  const listPrice = qty > 0 && total > 0 ? total / qty : parseMoneyValue(typeof item === "object" ? item?.selling_price : null);
   return {
     key: `composite-${itemId}-${index}`,
     productName,
     groupName,
-    qty: parseMoneyValue(row.quantity),
-    listPrice: parseMoneyValue(typeof item === "object" ? item?.selling_price : null),
-    total: parseMoneyValue(row.line_total),
+    qty,
+    listPrice,
+    total,
   };
 }
 

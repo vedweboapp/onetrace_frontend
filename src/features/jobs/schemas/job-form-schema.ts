@@ -37,7 +37,9 @@ export function createJobFormSchema(messages: JobFormMessages) {
         .array(
           z.object({
             group: optionalPositiveId(messages.optionalId),
+            group_name: z.string(),
             item: optionalPositiveId(messages.optionalId),
+            item_name: z.string(),
             quantity: z.string().trim(),
             rate: z.string().trim(),
           }),

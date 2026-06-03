@@ -21,7 +21,9 @@ const optionalId = (message: string) =>
 const lineItemShape = z.object({
   id: z.string(),
   group: z.string(),
+  group_name: z.string(),
   item: z.string(),
+  item_name: z.string(),
   quantity: z.string(),
   rate: z.string(),
 });

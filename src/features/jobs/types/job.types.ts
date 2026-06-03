@@ -51,15 +51,19 @@ export type JobQrCodeRef = {
   qr_image?: string | null;
 };
 
+export type JobMetaCompositeGroupRef = {
+  id: number;
+  name?: string;
+};
+
 export type JobMetaCompositeItem = {
-  /** Legacy support for older API payload/response. */
   id?: number;
-  /** New API shape for payload/response. */
-  item?: number | { id: number; name?: string; selling_price?: number };
-  group?: number | { id: number; name?: string } | null;
+  name?: string;
+  group?: JobMetaCompositeGroupRef | null;
   quantity: number;
   amount?: number;
-  /** Present on API responses; omitted on create. */
+  /** Legacy read paths (older API / drafts). */
+  item?: number | { id: number; name?: string; selling_price?: number };
   selling_price?: number;
 };
 

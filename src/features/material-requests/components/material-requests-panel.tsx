@@ -45,7 +45,7 @@ import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 export function MaterialRequestsPanel() {
   const t = useTranslations("Dashboard.materialRequests");
   const tList = useTranslations("Dashboard.list");
-  const dateFmt = useDashboardDateFormat();
+  const dateFmt = useDashboardDateFormat({ dateOnly: true });
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -184,10 +184,12 @@ export function MaterialRequestsPanel() {
     return m;
   }, [workerOptions]);
 
-  const hasActiveFilters =
-    hasListActiveFilters({ search, statusParam }) ||
-    Boolean(workerParam?.trim()) ||
-    Boolean(requestedDateParam?.trim());
+  const hasActiveFilters = hasListActiveFilters({
+    search,
+    statusParam,
+    workerNameParam: workerParam,
+    requestedDateParam,
+  });
   const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
     loading,
     loadError,
@@ -234,15 +236,12 @@ export function MaterialRequestsPanel() {
     <div className="space-y-4">
       {!hideListChrome ? (
         <ListPageHeader
-          title={t("title")}
-          description={t("subtitle")}
-          variant="page"
           filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
-          action={<AddButton type="button" onClick={openCreate}>{t("createRequest")}</AddButton>}
+          action={<AddButton type="button" onClick={openCreate} />}
           controls={
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <ListPageSearchField

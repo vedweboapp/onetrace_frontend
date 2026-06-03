@@ -46,11 +46,20 @@ export type InvoiceLineItem = {
   total?: number | string | null;
 };
 
+export type InvoiceCompositeGroupRef = {
+  id: number;
+  name?: string;
+};
+
 export type InvoiceCompositeItem = {
-  group?: { id: number; name?: string | null } | number | null;
-  item?: { id: number; name?: string | null; selling_price?: number | string | null } | number | null;
+  id?: number;
+  name?: string;
+  group?: InvoiceCompositeGroupRef | number | null;
   quantity: number;
+  amount?: number;
   line_total?: number | string | null;
+  /** Legacy read paths. */
+  item?: { id: number; name?: string | null; selling_price?: number | string | null } | number | null;
 };
 
 export type InvoiceListItem = {
@@ -110,8 +119,9 @@ export type InvoiceLineItemPayload = {
 };
 
 export type InvoiceCompositeItemPayload = {
-  group?: number | null;
-  item: number;
+  id: number;
+  name?: string;
+  group?: InvoiceCompositeGroupRef | null;
   quantity: number;
   amount?: number;
 };

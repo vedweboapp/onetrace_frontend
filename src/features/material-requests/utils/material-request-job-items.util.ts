@@ -1,17 +1,14 @@
 import type { Job } from "@/features/jobs/types/job.types";
-import { normalizeJobMeta } from "@/features/jobs/utils/job-meta-payload.util";
+import {
+  normalizeJobMeta,
+  resolveJobMetaCompositeItemId,
+} from "@/features/jobs/utils/job-meta-payload.util";
 import type { MaterialRequestFormValues } from "@/features/material-requests/schemas/material-request-form-schema";
 
 export type MaterialRequestFormItemRow = MaterialRequestFormValues["items"][number];
 
-export function resolveCompositeItemId(
-  entry: { item?: number | { id: number } | null },
-): number | null {
-  const item = entry.item;
-  if (typeof item === "number" && item > 0) return item;
-  if (item && typeof item === "object" && typeof item.id === "number" && item.id > 0) return item.id;
-  return null;
-}
+/** @deprecated Use resolveJobMetaCompositeItemId */
+export const resolveCompositeItemId = resolveJobMetaCompositeItemId;
 
 export function buildFormJobsFromJobIds(jobIds: number[]): MaterialRequestFormValues["jobs"] {
   return jobIds.map((id) => ({ job: String(id) }));
@@ -23,7 +20,7 @@ export function buildFormItemsFromJobs(jobs: Job[]): MaterialRequestFormItemRow[
   for (const job of jobs) {
     const meta = normalizeJobMeta(job.job_meta);
     for (const row of meta?.composite_items ?? []) {
-      const itemId = resolveCompositeItemId(row);
+      const itemId = resolveJobMetaCompositeItemId(row);
       if (itemId == null) continue;
       const qty = row.quantity != null && Number.isFinite(row.quantity) && row.quantity > 0 ? row.quantity : 1;
       items.push({

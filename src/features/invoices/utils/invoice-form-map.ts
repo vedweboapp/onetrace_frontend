@@ -7,9 +7,9 @@ import type {
   InvoiceCreatePayload,
   InvoiceDetail,
   InvoiceLineItem,
-  InvoiceLineItemPayload,
 } from "@/features/invoices/types/invoice.types";
 import type { InvoiceFormValues } from "@/features/invoices/schemas/invoice-form-schema";
+import { buildJobMetaPayload, type JobMetaFormRow } from "@/features/jobs/utils/job-meta-payload.util";
 import { computeLineAmount, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
 import { nestedId } from "@/features/invoices/utils/invoice-nested-fields.util";
 
@@ -76,7 +76,9 @@ export function emptyInvoiceLineItem(): InvoiceFormValues["line_items"][number] 
   return {
     id: newLineId(),
     group: "",
+    group_name: "",
     item: "",
+    item_name: "",
     quantity: "1",
     rate: "",
   };
@@ -87,22 +89,64 @@ export function lineItemFromApi(row: InvoiceLineItem): InvoiceFormValues["line_i
   return {
     id: row.id != null ? String(row.id) : newLineId(),
     group: "",
+    group_name: "",
     item: row.product != null ? String(row.product) : "",
+    item_name: row.product_name?.trim() ?? "",
     quantity: row.quantity != null ? String(row.quantity) : "1",
     rate: rate > 0 ? String(rate) : "",
   };
 }
 
 function compositeItemFromApi(row: InvoiceCompositeItem): InvoiceFormValues["line_items"][number] {
-  const groupId = typeof row.group === "object" ? row.group?.id : row.group;
-  const itemId = typeof row.item === "object" ? row.item?.id : row.item;
-  const rate = parseMoneyValue(typeof row.item === "object" ? row.item?.selling_price : null);
+  const itemId =
+    typeof row.id === "number"
+      ? row.id
+      : typeof row.item === "number"
+        ? row.item
+        : row.item && typeof row.item === "object"
+          ? row.item.id
+          : undefined;
+  const groupId =
+    typeof row.group === "number"
+      ? row.group
+      : row.group && typeof row.group === "object"
+        ? row.group.id
+        : undefined;
+  const groupName =
+    row.group && typeof row.group === "object" ? (row.group.name?.trim() ?? "") : "";
+  const itemName =
+    row.name?.trim() ||
+    (row.item && typeof row.item === "object" ? (row.item.name?.trim() ?? "") : "");
+  const qty = row.quantity != null && row.quantity > 0 ? row.quantity : 1;
+  let rate = "";
+  if (row.amount != null && Number.isFinite(row.amount) && qty > 0) {
+    rate = String(Number((row.amount / qty).toFixed(4)));
+  } else if (row.line_total != null) {
+    const lineTotal = parseMoneyValue(row.line_total);
+    if (lineTotal > 0 && qty > 0) rate = String(Number((lineTotal / qty).toFixed(4)));
+  } else if (row.item && typeof row.item === "object") {
+    const sp = parseMoneyValue(row.item.selling_price);
+    if (sp > 0) rate = String(sp);
+  }
   return {
     id: newLineId(),
     group: groupId != null ? String(groupId) : "",
+    group_name: groupName,
     item: itemId != null ? String(itemId) : "",
+    item_name: itemName,
     quantity: row.quantity != null ? String(row.quantity) : "1",
-    rate: rate > 0 ? String(rate) : "",
+    rate,
+  };
+}
+
+function lineItemToMetaRow(row: InvoiceFormValues["line_items"][number]): JobMetaFormRow {
+  return {
+    group: row.group,
+    group_name: row.group_name,
+    item: row.item,
+    item_name: row.item_name,
+    quantity: row.quantity,
+    rate: row.rate,
   };
 }
 
@@ -115,25 +159,7 @@ export function computeFormSubtotal(lines: InvoiceFormValues["line_items"]): num
 }
 
 export function mapInvoiceFormToPayload(values: InvoiceFormValues): InvoiceCreatePayload {
-  const line_items = values.line_items
-    .map((row) => {
-      const quantity = parseMoneyValue(row.quantity);
-      const rate = parseMoneyValue(row.rate);
-      const itemRaw = row.item.trim();
-      const item = itemRaw && /^\d+$/.test(itemRaw) ? Number.parseInt(itemRaw, 10) : undefined;
-      const groupRaw = row.group.trim();
-      const group = groupRaw && /^\d+$/.test(groupRaw) ? Number.parseInt(groupRaw, 10) : null;
-      const payload: InvoiceLineItemPayload = {
-        quantity,
-        list_price: rate,
-        rate,
-      };
-      if (item != null) payload.product = item;
-      const idRaw = row.id.trim();
-      if (/^\d+$/.test(idRaw)) payload.id = Number.parseInt(idRaw, 10);
-      return { payload, group, item };
-    })
-    .filter((row) => row.item != null);
+  const meta = buildJobMetaPayload(values.line_items.map(lineItemToMetaRow));
 
   const contactRaw = values.contact.trim();
   const contact =
@@ -141,19 +167,10 @@ export function mapInvoiceFormToPayload(values: InvoiceFormValues): InvoiceCreat
 
   const payload: InvoiceCreatePayload = {
     client: Number.parseInt(values.client, 10),
-    total: Number(
-      line_items
-        .reduce((sum, row) => sum + row.payload.quantity * parseMoneyValue(row.payload.rate), 0)
-        .toFixed(2),
-    ),
-    composite_items: line_items
-      .filter((row) => row.item != null && row.item > 0)
-      .map((row) => ({
-        group: row.group,
-        item: row.item as number,
-        quantity: row.payload.quantity,
-        amount: Number((row.payload.quantity * parseMoneyValue(row.payload.rate)).toFixed(2)),
-      })),
+    total: meta?.total ?? computeFormSubtotal(values.line_items),
+    composite_items: (meta?.composite_items ?? [])
+      .filter((row): row is typeof row & { id: number } => typeof row.id === "number")
+      .map(({ id, name, group, quantity, amount }) => ({ id, name, group, quantity, amount })),
   };
 
   if (contact != null) payload.contact = contact;
