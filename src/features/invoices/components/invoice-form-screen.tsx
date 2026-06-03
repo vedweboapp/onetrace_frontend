@@ -37,6 +37,7 @@ import {
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
+  RequiredMark,
   SurfaceDateInput,
   SurfaceShell,
   surfaceInputClassName,
@@ -87,6 +88,10 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
         issueDate: t("validation.issueDate"),
         lineDescription: t("validation.lineDescription"),
         lineQuantity: t("validation.lineQuantity"),
+        addressLine1: t("validation.addressLine1"),
+        country: t("validation.country"),
+        state: t("validation.state"),
+        city: t("validation.city"),
       }),
     [t],
   );
@@ -135,6 +140,18 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
 
   const subtotal = React.useMemo(() => computeFormSubtotal(lineItems), [lineItems]);
   const totalBalance = subtotal;
+
+  const groupLabelById = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const o of groupOptions) m.set(o.value, o.label);
+    return m;
+  }, [groupOptions]);
+
+  const itemLabelById = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const o of itemOptions) m.set(o.value, o.label);
+    return m;
+  }, [itemOptions]);
 
   const paymentTermOptions = React.useMemo(
     () => [
@@ -203,6 +220,13 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
       }
       if (selectTarget === "group") {
         setValue("line_items.0.group", selectId, { shouldDirty: true, shouldValidate: true });
+        void fetchGroup(Number.parseInt(selectId, 10))
+          .then((g) => {
+            setValue("line_items.0.group_name", g.name?.trim() ?? "", { shouldDirty: true });
+          })
+          .catch(() => {
+            setValue("line_items.0.group_name", "", { shouldDirty: true });
+          });
         return;
       }
       if (selectTarget === "item") {
@@ -329,6 +353,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
       const itemGroup = itemGroupById.get(itemId) ?? null;
       if (selectedGroup != null && itemGroup != null && selectedGroup !== itemGroup) {
         setValue(`line_items.${index}.item`, "", { shouldDirty: true });
+        setValue(`line_items.${index}.item_name`, "", { shouldDirty: true });
         setValue(`line_items.${index}.rate`, "", { shouldDirty: true });
       }
     });
@@ -386,6 +411,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
     const countryIso = useWatch({ control, name: countryIsoName });
     const stateIso = useWatch({ control, name: stateIsoName });
     const city = useWatch({ control, name: cityName });
+    const addressErrors = errors[prefix];
     return (
       <div className="space-y-4">
         <Controller
@@ -399,6 +425,8 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
               value={field.value ?? ""}
               onChange={field.onChange}
               onBlur={field.onBlur}
+              invalid={!!addressErrors?.address_line_1}
+              error={addressErrors?.address_line_1?.message}
               countryIso={typeof countryIso === "string" ? countryIso : ""}
               contextCity={typeof city === "string" ? city : ""}
               onSelectPlace={(place) => {
@@ -454,6 +482,11 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
             city: t("placeholders.city"),
           }}
           disabled={saving}
+          errors={{
+            country: addressErrors?.country_iso?.message,
+            state: addressErrors?.state_iso?.message,
+            city: addressErrors?.city?.message,
+          }}
           trailingSlot={
             <FieldGroup label={t("fields.zipCode")} htmlFor={`${prefix}-pincode`}>
               <input
@@ -533,6 +566,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                       <CheckmarkSelect
                         id="invoice-client"
                         label={t("fields.clientName")}
+                        required
                         options={clientOptions}
                         value={field.value}
                         onChange={(v) => {
@@ -665,7 +699,10 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
                       <th className="px-3 py-2">{tGroups("title")}</th>
-                      <th className="px-3 py-2">{tItems("title")}</th>
+                      <th className="px-3 py-2">
+                        {tItems("title")}
+                        <RequiredMark />
+                      </th>
                       <th className="px-3 py-2">{t("lineItems.qty")}</th>
                       <th className="px-3 py-2">{t("lineItems.rate")}</th>
                       <th className="px-3 py-2">{t("lineItems.amount")}</th>
@@ -691,7 +728,11 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                                   value={groupField.value}
                                   onChange={(v) => {
                                     groupField.onChange(v);
+                                    setValue(`line_items.${index}.group_name`, v ? (groupLabelById.get(v) ?? "") : "", {
+                                      shouldDirty: true,
+                                    });
                                     setValue(`line_items.${index}.item`, "", { shouldDirty: true });
+                                    setValue(`line_items.${index}.item_name`, "", { shouldDirty: true });
                                     setValue(`line_items.${index}.rate`, "", { shouldDirty: true });
                                   }}
                                   emptyLabel={t("placeholders.group")}
@@ -716,10 +757,29 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                                   <CheckmarkSelect
                                     options={filteredItems}
                                     value={itemField.value}
+                                    invalid={!!errors.line_items?.[index]?.item}
                                     onChange={(v) => {
                                       itemField.onChange(v);
+                                      setValue(
+                                        `line_items.${index}.item_name`,
+                                        v ? (itemLabelById.get(v) ?? "") : "",
+                                        { shouldDirty: true },
+                                      );
                                       if (v && /^\d+$/.test(v)) {
-                                        const price = itemPriceById.get(Number.parseInt(v, 10));
+                                        const itemId = Number.parseInt(v, 10);
+                                        const price = itemPriceById.get(itemId);
+                                        const linkedGroupId = itemGroupById.get(itemId);
+                                        if (linkedGroupId != null && linkedGroupId > 0) {
+                                          const groupKey = String(linkedGroupId);
+                                          setValue(`line_items.${index}.group`, groupKey, {
+                                            shouldDirty: true,
+                                          });
+                                          setValue(
+                                            `line_items.${index}.group_name`,
+                                            groupLabelById.get(groupKey) ?? "",
+                                            { shouldDirty: true },
+                                          );
+                                        }
                                         const currentQty = parseMoneyValue(lineItems[index]?.quantity);
                                         if (!Number.isFinite(currentQty) || currentQty <= 0) {
                                           setValue(`line_items.${index}.quantity`, "1", {
@@ -752,13 +812,16 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                               type="number"
                               min={0}
                               step="any"
+                              aria-invalid={errors.line_items?.[index]?.quantity ? true : undefined}
                               className={cn(
                                 surfaceInputClassName,
                                 "h-8 w-24 px-2.5 text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                                errors.line_items?.[index]?.quantity && "border-red-500",
                               )}
                               disabled={saving}
                               {...register(`line_items.${index}.quantity`)}
                             />
+                            <FieldErrorText>{errors.line_items?.[index]?.quantity?.message}</FieldErrorText>
                           </td>
                           <td className="px-3 py-2 align-top">
                             <input

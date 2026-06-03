@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import type { CSSProperties } from "react";
 import { Check, ChevronDown, Plus, X } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
+import { fieldRequiredMarkClassName } from "./field-primitives";
 
 /** Portaled lists are under `document.body` and skip inherited theme vars; copy from trigger. */
 function readDashAccent(el: HTMLElement | null): string {
@@ -68,6 +69,8 @@ type Props = {
   addAriaLabel?: string;
   /** Visible label for the add action in the dropdown footer. */
   addLabel?: string;
+  /** Shows a red asterisk after the field label. */
+  required?: boolean;
 };
 
 const DROPDOWN_GAP = 4;
@@ -183,6 +186,7 @@ export function CheckmarkSelect({
   onAdd,
   addAriaLabel,
   addLabel,
+  required,
 }: Props) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
@@ -411,6 +415,7 @@ export function CheckmarkSelect({
       {label ? (
         <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.1em] text-[color:var(--dash-accent,#111111)]">
           {label}
+          {required ? <span className={fieldRequiredMarkClassName} aria-hidden> *</span> : null}
         </span>
       ) : null}
       {useSplitTrigger ? (

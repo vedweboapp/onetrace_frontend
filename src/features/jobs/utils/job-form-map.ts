@@ -108,19 +108,51 @@ export function emptyJobFormDefaults(): JobFormValues {
     site: "",
     assigned_worker: "",
     start_date: "",
-    job_meta_items: [{ group: "", item: "", quantity: "", rate: "" }],
+    job_meta_items: [{ group: "", group_name: "", item: "", item_name: "", quantity: "", rate: "" }],
   };
 }
 
 export function jobToFormDefaults(job: Job): JobFormValues {
   const meta = normalizeJobMeta(job.job_meta);
   const compositeItems =
-    meta?.composite_items?.map((row) => ({
-      group: typeof row.group === "number" ? String(row.group) : "",
-      item: String(row.item ?? row.id ?? ""),
-      quantity: row.quantity != null ? String(row.quantity) : "",
-      rate: row.selling_price != null ? String(row.selling_price) : "",
-    })) ?? [];
+    meta?.composite_items?.map((row) => {
+      const itemId =
+        typeof row.id === "number"
+          ? row.id
+          : typeof row.item === "number"
+            ? row.item
+            : row.item && typeof row.item === "object"
+              ? row.item.id
+              : undefined;
+      const groupId =
+        typeof row.group === "number"
+          ? row.group
+          : row.group && typeof row.group === "object"
+            ? row.group.id
+            : undefined;
+      const groupName =
+        row.group && typeof row.group === "object" ? (row.group.name ?? "") : "";
+      const itemName =
+        row.name?.trim() ||
+        (row.item && typeof row.item === "object" ? (row.item.name?.trim() ?? "") : "");
+      const qty = row.quantity != null && row.quantity > 0 ? row.quantity : 1;
+      let rate = "";
+      if (row.amount != null && Number.isFinite(row.amount) && qty > 0) {
+        rate = String(Number((row.amount / qty).toFixed(4)));
+      } else if (row.selling_price != null) {
+        rate = String(row.selling_price);
+      } else if (row.item && typeof row.item === "object" && row.item.selling_price != null) {
+        rate = String(row.item.selling_price);
+      }
+      return {
+        group: groupId != null ? String(groupId) : "",
+        group_name: groupName,
+        item: itemId != null ? String(itemId) : "",
+        item_name: itemName,
+        quantity: row.quantity != null ? String(row.quantity) : "",
+        rate,
+      };
+    }) ?? [];
 
   return {
     title: job.title ?? "",
@@ -138,6 +170,9 @@ export function jobToFormDefaults(job: Job): JobFormValues {
     site: String(nestedId(job.site) ?? ""),
     assigned_worker: String(getJobAssignedWorkerId(job) ?? ""),
     start_date: formatApiDateTimeForHtmlDatetimeLocal(job.start_date),
-    job_meta_items: compositeItems.length > 0 ? compositeItems : [{ group: "", item: "", quantity: "", rate: "" }],
+    job_meta_items:
+      compositeItems.length > 0
+        ? compositeItems
+        : [{ group: "", group_name: "", item: "", item_name: "", quantity: "", rate: "" }],
   };
 }

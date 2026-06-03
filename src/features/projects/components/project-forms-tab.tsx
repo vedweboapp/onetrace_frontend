@@ -5,7 +5,8 @@ import { LayoutGrid, List, Pencil, Plus, Power, PowerOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useParams, useSearchParams } from "next/navigation";
-import { fetchFormsPage, patchForm } from "@/features/forms/api/forms.api";
+import { fetchFormsPage } from "@/features/forms/api/forms.api";
+import { updateProjectJobForm } from "@/features/projects/api/project-job-form.api";
 import { fetchProject, fetchProjectFormsPage, updateProject } from "@/features/projects/api/project.api";
 import type { FormListItem } from "@/features/forms/types/form.types";
 import { cn } from "@/core/utils/http.util";
@@ -206,7 +207,7 @@ export function ProjectFormsTab() {
   const handleToggleActive = React.useCallback(async (row: FormListItem, next: boolean) => {
     setTogglingId(row.id);
     try {
-      await patchForm(row.id, { is_active: next });
+      await updateProjectJobForm(row.id, { is_active: next });
       toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
       setRefreshNonce((n) => n + 1);
     } catch {
@@ -373,7 +374,7 @@ export function ProjectFormsTab() {
                 <ListPageCard
                   key={row.id}
                   title={row.name}
-                  subtitle={projectTypeLabel(row.project_type)}
+                  // subtitle={projectTypeLabel(row.project_type)}
                   footer={
                     <div className="flex w-full flex-wrap items-center justify-between gap-3">
                       <ActiveStatusBadge

@@ -1,22 +1,21 @@
 "use client";
 
 import * as React from "react";
-import { Calendar, Pencil, Plus } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { Calendar, Package, Pencil, Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { fetchInvoicesPage } from "@/features/invoices/api/invoice.api";
-import { InvoiceStatusBadge } from "@/features/invoices/components/invoice-status-badge";
-import type { InvoiceListItem } from "@/features/invoices/types/invoice.types";
+import { fetchMaterialRequestsPage } from "@/features/material-requests/api/material-request.api";
+import { MaterialRequestStatusBadge } from "@/features/material-requests/components/material-request-status-badge";
+import type { MaterialRequestListItem } from "@/features/material-requests/types/material-request.types";
+import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import {
-  invoiceClientLabel,
-  invoiceListAmount,
-  invoiceJobOrProjectLabel,
+  materialRequestItemsCount,
+  materialRequestJobLabel,
+  materialRequestWorkerLabel,
   nestedId,
-  normalizeInvoiceStatus,
-} from "@/features/invoices/utils/invoice-nested-fields.util";
-import { formatMoneyDisplay } from "@/features/invoices/utils/invoice-money.util";
+  normalizeMaterialRequestStatus,
+} from "@/features/material-requests/utils/material-request-nested-fields.util";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
@@ -35,6 +34,7 @@ import {
   ListPageCardSkeleton,
   ListPageHeader,
   ListPageSearchField,
+  SurfaceDateInput,
   SurfaceShell,
 } from "@/shared/ui";
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
@@ -42,10 +42,9 @@ import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 
-export function InvoicesPanel() {
-  const t = useTranslations("Dashboard.invoices");
+export function MaterialRequestsPanel() {
+  const t = useTranslations("Dashboard.materialRequests");
   const tList = useTranslations("Dashboard.list");
-  const locale = useLocale();
   const dateFmt = useDashboardDateFormat({ dateOnly: true });
   const router = useRouter();
   const pathname = usePathname();
@@ -69,12 +68,13 @@ export function InvoicesPanel() {
   const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } = useListUrlState();
 
   const statusParam = searchParams.get("status");
-  const clientParam = searchParams.get("client");
+  const workerParam = searchParams.get("worker_name");
+  const requestedDateParam = searchParams.get("requested_date");
   const statusFilter = statusParam?.trim() || undefined;
-  const clientFilter =
-    clientParam && /^\d+$/.test(clientParam) ? Number.parseInt(clientParam, 10) : undefined;
+  const workerFilter = workerParam?.trim() || undefined;
+  const requestedDateFilter = requestedDateParam?.trim() || undefined;
 
-  const [items, setItems] = React.useState<InvoiceListItem[]>([]);
+  const [items, setItems] = React.useState<MaterialRequestListItem[]>([]);
   const [pagination, setPagination] = React.useState({
     total_records: 0,
     total_pages: 1,
@@ -85,31 +85,28 @@ export function InvoicesPanel() {
   });
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
-  const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [workerOptions, setWorkerOptions] = React.useState<{ value: string; label: string }[]>([]);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
   const statusFilterOptions = React.useMemo(
     () => [
       { value: "draft", label: t("status.draft") },
-      { value: "sent", label: t("status.sent") },
-      { value: "paid", label: t("status.paid") },
       { value: "pending", label: t("status.pending") },
-      { value: "overdue", label: t("status.overdue") },
+      { value: "partially_dispatched", label: t("status.partiallyDispatched") },
+      { value: "dispatched", label: t("status.dispatched") },
     ],
     [t],
   );
 
   const statusLabel = React.useCallback(
     (code: string | null | undefined) => {
-      const norm = normalizeInvoiceStatus(code);
-      if (norm === "paid") return t("status.paid");
-      if (norm === "pending") return t("status.pending");
-      if (norm === "overdue") return t("status.overdue");
+      const norm = normalizeMaterialRequestStatus(code);
       if (norm === "draft") return t("status.draft");
-      if (norm === "sent") return t("status.sent");
-      const raw = code?.trim();
-      return raw || "—";
+      if (norm === "pending") return t("status.pending");
+      if (norm === "partially_dispatched" || norm === "partial") return t("status.partiallyDispatched");
+      if (norm === "dispatched") return t("status.dispatched");
+      return code?.trim() || "—";
     },
     [t],
   );
@@ -137,12 +134,10 @@ export function InvoicesPanel() {
     let cancelled = false;
     (async () => {
       try {
-        const { items: clients } = await fetchClientsPage(1, 500, { is_active: true }, { silent: true });
-        if (!cancelled) {
-          setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
-        }
+        const options = await loadTechnicianOptions();
+        if (!cancelled) setWorkerOptions(options);
       } catch {
-        if (!cancelled) setClientOptions([]);
+        if (!cancelled) setWorkerOptions([]);
       }
     })();
     return () => {
@@ -156,10 +151,11 @@ export function InvoicesPanel() {
       setLoading(true);
       setLoadError(null);
       try {
-        const { items: nextItems, pagination: p } = await fetchInvoicesPage(page, pageSize, {
+        const { items: nextItems, pagination: p } = await fetchMaterialRequestsPage(page, pageSize, {
           search: search || undefined,
           status: statusFilter,
-          client: clientFilter,
+          worker_name: workerFilter,
+          requested_date: requestedDateFilter,
         });
         if (!cancelled) {
           setItems(nextItems);
@@ -177,18 +173,23 @@ export function InvoicesPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, search, statusFilter, clientFilter, t]);
+  }, [page, pageSize, search, statusFilter, workerFilter, requestedDateFilter, t]);
 
-  const clientLabelById = React.useMemo(() => {
+  const workerLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
-    for (const o of clientOptions) {
+    for (const o of workerOptions) {
       const id = Number.parseInt(o.value, 10);
       if (Number.isFinite(id)) m[id] = o.label;
     }
     return m;
-  }, [clientOptions]);
+  }, [workerOptions]);
 
-  const hasActiveFilters = hasListActiveFilters({ search, statusParam, clientParam });
+  const hasActiveFilters = hasListActiveFilters({
+    search,
+    statusParam,
+    workerNameParam: workerParam,
+    requestedDateParam,
+  });
   const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
     loading,
     loadError,
@@ -198,83 +199,95 @@ export function InvoicesPanel() {
   const pageRange = getListPageRange(pagination);
 
   const tableColumns = React.useMemo(() => {
-    const c = entityCol<InvoiceListItem>();
-    const clientDisplay = (row: InvoiceListItem) => {
-      const clientId = nestedId(row.client);
-      return invoiceClientLabel(row.client, clientId != null ? clientLabelById[clientId] : undefined);
+    const c = entityCol<MaterialRequestListItem>();
+    const workerDisplay = (row: MaterialRequestListItem) => {
+      const workerId = nestedId(row.worker_name);
+      return materialRequestWorkerLabel(
+        row.worker_name,
+        workerId != null ? workerLabelById[workerId] : undefined,
+      );
     };
 
     return [
-      c.primary("invoice", t("table.invoiceNumber"), (r) => r.invoice_number),
-      c.truncate("client", t("table.clientName"), (r) => clientDisplay(r), {
-        title: (r) => clientDisplay(r),
+      c.primary("request", t("table.requestNumber"), (r) => r.request_number),
+      c.truncate("job", t("table.jobName"), (r) => materialRequestJobLabel(r), {
+        title: (r) => materialRequestJobLabel(r),
       }),
-      c.truncate("project", t("table.projectName"), (r) => invoiceJobOrProjectLabel(r)),
-      c.tabular("amount", t("table.amount"), (r) =>
-        formatMoneyDisplay(invoiceListAmount(r), locale),
+      c.truncate("worker", t("table.workerName"), (r) => workerDisplay(r), {
+        title: (r) => workerDisplay(r),
+      }),
+      c.tabular("requested", t("table.requestDate"), (r) =>
+        formatFlexibleApiDate(r.requested_date, dateFmt),
       ),
-      c.tabular("issue", t("table.issueDate"), (r) => formatFlexibleApiDate(r.issue_date, dateFmt)),
+      c.tabular("items", t("table.items"), (r) => String(materialRequestItemsCount(r))),
       c.custom("status", t("table.status"), (r) => (
-        <InvoiceStatusBadge status={r.status} label={statusLabel(r.status)} />
+        <MaterialRequestStatusBadge status={r.status} label={statusLabel(r.status)} />
       )),
       c.actions("actions", tList("openRowActions"), (row) => (
         <DataTableRowActionsMenu
           menuAriaLabel={tList("openRowActions")}
-          items={[
-            { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row.id) },
-          ]}
+          items={[{ id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row.id) }]}
         />
       )),
     ];
-  }, [t, tList, dateFmt, locale, clientLabelById, statusLabel, openEdit]);
+  }, [t, tList, dateFmt, workerLabelById, statusLabel, openEdit]);
 
   return (
     <div className="space-y-4">
       {!hideListChrome ? (
-      <ListPageHeader
-        filtersActive={filtersActive}
-        viewMode={listViewMode}
-        onViewModeChange={setListViewMode}
-        tableViewLabel={tList("tableView")}
-        listViewLabel={tList("listView")}
-        action={<AddButton type="button" onClick={openCreate} />}
-        controls={
-          <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            <ListPageSearchField
-              value={search}
-              onCommit={commitSearch}
-              placeholder={t("searchPlaceholder")}
-              ariaLabel={t("searchAria")}
-              className="sm:max-w-sm"
-            />
-            <CheckmarkSelect
-              listLabel={t("filterStatus")}
-              buttonAriaLabel={t("filterStatus")}
-              options={statusFilterOptions}
-              value={statusParam ?? ""}
-              emptyLabel={t("filterAllStatuses")}
-              portaled
-              clearable
-              clearAriaLabel={tList("clearFilter")}
-              className="w-full min-w-0 sm:w-44"
-              onChange={(v) => setUrl({ status: v || null, page: null }, { replace: true })}
-            />
-            <CheckmarkSelect
-              listLabel={t("filterClient")}
-              buttonAriaLabel={t("filterClient")}
-              options={clientOptions}
-              value={clientParam ?? ""}
-              emptyLabel={t("filterAllClients")}
-              portaled
-              searchable
-              clearable
-              clearAriaLabel={tList("clearFilter")}
-              className="w-full min-w-0 sm:w-56"
-              onChange={(v) => setUrl({ client: v || null, page: null }, { replace: true })}
-            />
-          </div>
-        }
-      />
+        <ListPageHeader
+          filtersActive={filtersActive}
+          viewMode={listViewMode}
+          onViewModeChange={setListViewMode}
+          tableViewLabel={tList("tableView")}
+          listViewLabel={tList("listView")}
+          action={<AddButton type="button" onClick={openCreate} />}
+          controls={
+            <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <ListPageSearchField
+                value={search}
+                onCommit={commitSearch}
+                placeholder={t("searchPlaceholder")}
+                ariaLabel={t("searchAria")}
+                className="sm:max-w-sm"
+              />
+              <CheckmarkSelect
+                listLabel={t("filterStatus")}
+                buttonAriaLabel={t("filterStatus")}
+                options={statusFilterOptions}
+                value={statusParam ?? ""}
+                emptyLabel={t("filterAllStatuses")}
+                portaled
+                clearable
+                clearAriaLabel={tList("clearFilter")}
+                className="w-full min-w-0 sm:w-44"
+                onChange={(v) => setUrl({ status: v || null, page: null }, { replace: true })}
+              />
+              <CheckmarkSelect
+                listLabel={t("filterWorker")}
+                buttonAriaLabel={t("filterWorker")}
+                options={workerOptions}
+                value={workerParam ?? ""}
+                emptyLabel={t("filterAllWorkers")}
+                portaled
+                searchable
+                clearable
+                clearAriaLabel={tList("clearFilter")}
+                className="w-full min-w-0 sm:w-56"
+                onChange={(v) => setUrl({ worker_name: v || null, page: null }, { replace: true })}
+              />
+              <SurfaceDateInput
+                type="date"
+                value={requestedDateParam ?? ""}
+                aria-label={t("filterRequestedDate")}
+                className="w-full min-w-0 sm:w-44"
+                onChange={(e) =>
+                  setUrl({ requested_date: e.target.value || null, page: null }, { replace: true })
+                }
+              />
+            </div>
+          }
+        />
       ) : null}
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
@@ -305,52 +318,51 @@ export function InvoicesPanel() {
               action: (
                 <AppButton type="button" variant="primary" size="sm" onClick={openCreate}>
                   <Plus className="size-4" strokeWidth={2.5} aria-hidden />
-                  {t("createInvoice")}
+                  {t("createRequest")}
                 </AppButton>
               ),
             }}
             onClearFilters={() =>
-              setUrl({ search: null, status: null, client: null, page: null }, { replace: true })
+              setUrl(
+                { search: null, status: null, worker_name: null, requested_date: null, page: null },
+                { replace: true },
+              )
             }
           />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>
               {items.map((row) => {
-                const clientId = nestedId(row.client);
-                const clientDisplay = invoiceClientLabel(
-                  row.client,
-                  clientId != null ? clientLabelById[clientId] : undefined,
+                const workerId = nestedId(row.worker_name);
+                const workerDisplay = materialRequestWorkerLabel(
+                  row.worker_name,
+                  workerId != null ? workerLabelById[workerId] : undefined,
                 );
-                const issueLabel = formatFlexibleApiDate(row.issue_date, dateFmt);
-                const amountLabel = formatMoneyDisplay(invoiceListAmount(row), locale);
+                const requestedLabel = formatFlexibleApiDate(row.requested_date, dateFmt);
+                const itemsCount = materialRequestItemsCount(row);
                 return (
                   <ListPageCard
                     key={row.id}
                     dataListRowId={row.id}
                     className={highlightClassName(row.id)}
-                    title={row.invoice_number}
-                    subtitle={clientDisplay}
-                    meta={<span className="block min-w-0 truncate">{invoiceJobOrProjectLabel(row)}</span>}
+                    title={row.request_number}
+                    subtitle={materialRequestJobLabel(row)}
+                    meta={<span className="block min-w-0 truncate">{workerDisplay}</span>}
                     footer={
                       <div className="flex w-full flex-wrap items-center justify-between gap-3">
                         <div className="flex min-w-0 flex-wrap items-center gap-3">
                           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
                             <Calendar className="size-3.5 shrink-0" aria-hidden />
                             <span className="uppercase tracking-wide text-[10px] text-slate-500">
-                              {t("card.issueDate")}
+                              {t("card.requestDate")}
                             </span>
-                            <span className="tabular-nums">{issueLabel}</span>
+                            <span className="tabular-nums">{requestedLabel}</span>
                           </span>
-                          <InvoiceStatusBadge status={row.status} label={statusLabel(row.status)} />
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                            {t("card.amount")}
-                          </p>
-                          <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100">
-                            {amountLabel}
-                          </p>
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
+                            <Package className="size-3.5 shrink-0" aria-hidden />
+                            <span>{t("card.items", { count: itemsCount })}</span>
+                          </span>
+                          <MaterialRequestStatusBadge status={row.status} label={statusLabel(row.status)} />
                         </div>
                       </div>
                     }
@@ -358,9 +370,7 @@ export function InvoicesPanel() {
                     menu={
                       <DataTableRowActionsMenu
                         menuAriaLabel={tList("openRowActions")}
-                        items={[
-                          { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row.id) },
-                        ]}
+                        items={[{ id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row.id) }]}
                       />
                     }
                   />

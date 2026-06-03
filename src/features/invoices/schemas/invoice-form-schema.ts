@@ -1,7 +1,11 @@
 import { z } from "zod";
-import { zTrimmedNonEmpty } from "@/shared/form";
+import {
+  addAddressLocationRefinements,
+  addressFieldsZodShape,
+  type AddressValidationMessages,
+} from "@/shared/utils/address-form-validation.util";
 
-export type InvoiceFormMessages = {
+export type InvoiceFormMessages = AddressValidationMessages & {
   client: string;
   issueDate: string;
   lineDescription: string;
@@ -14,24 +18,19 @@ const optionalId = (message: string) =>
     .trim()
     .refine((v) => v === "" || (/^\d+$/.test(v) && Number.parseInt(v, 10) > 0), { message });
 
-const addressShape = z.object({
-  address_line_1: z.string(),
-  address_line_2: z.string(),
-  country_iso: z.string(),
-  state_iso: z.string(),
-  city: z.string(),
-  pincode: z.string(),
-});
-
 const lineItemShape = z.object({
   id: z.string(),
   group: z.string(),
+  group_name: z.string(),
   item: z.string(),
+  item_name: z.string(),
   quantity: z.string(),
   rate: z.string(),
 });
 
 export function createInvoiceFormSchema(messages: InvoiceFormMessages) {
+  const addressShape = addressFieldsZodShape(messages);
+
   return z
     .object({
       client: z
@@ -50,6 +49,9 @@ export function createInvoiceFormSchema(messages: InvoiceFormMessages) {
       line_items: z.array(lineItemShape).min(1, { message: messages.lineDescription }),
     })
     .superRefine((data, ctx) => {
+      addAddressLocationRefinements(data.bill_to, ctx, ["bill_to"], messages);
+      addAddressLocationRefinements(data.ship_to, ctx, ["ship_to"], messages);
+
       data.line_items.forEach((row, index) => {
         const item = row.item.trim();
         if (!item) {

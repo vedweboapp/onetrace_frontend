@@ -27,6 +27,14 @@ export const surfaceSelectClassName = cn(
   "cursor-pointer appearance-none bg-slate-50/90 py-2.5 dark:bg-slate-900/70",
 );
 
+export function RequiredMark() {
+  return (
+    <span className={fieldRequiredMarkClassName} aria-hidden>
+      *
+    </span>
+  );
+}
+
 export function FieldLabel({
   children,
   htmlFor,
@@ -34,7 +42,6 @@ export function FieldLabel({
 }: {
   children: ReactNode;
   htmlFor?: string;
-  
   required?: boolean;
 }) {
   return (

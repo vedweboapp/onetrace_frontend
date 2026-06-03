@@ -11,7 +11,11 @@ import {
   type GooglePlacePrediction,
 } from "@/shared/utils/google-places-autocomplete.util";
 import { cn } from "@/core/utils/http.util";
-import { surfaceInputClassName } from "@/shared/ui/field-primitives";
+import {
+  fieldLabelClassName,
+  fieldRequiredMarkClassName,
+  surfaceInputClassName,
+} from "@/shared/ui/field-primitives";
 
 type Props = {
   id: string;
@@ -214,12 +218,9 @@ export function AddressPlaceAutocomplete({
 
   return (
     <div ref={wrapRef} className="relative">
-      <label
-        htmlFor={id}
-        className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
-      >
+      <label htmlFor={id} className={fieldLabelClassName}>
         {label}
-        {required ? <span className="text-red-500"> *</span> : null}
+        {required ? <span className={fieldRequiredMarkClassName} aria-hidden> *</span> : null}
       </label>
       <input
         id={id}

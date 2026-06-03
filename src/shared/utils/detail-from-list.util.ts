@@ -24,6 +24,7 @@ export type DashboardListSection =
   | "groups"
   | "items"
   | "composite-items"
+  | "material-requests"
   | "settings/users";
 
 export function sanitizeInternalListBack(

@@ -20,6 +20,7 @@ export const routes = {
     groups: "/dashboard/groups",
     items: "/dashboard/items",
     compositeItems: "/dashboard/composite-items",
+    materialRequests: "/dashboard/material-requests",
     settings: "/dashboard/settings",
     settingsPinStatus: "/dashboard/settings/pin-status",
     settingsJobStatus: "/dashboard/settings/job-status",

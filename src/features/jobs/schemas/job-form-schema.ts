@@ -37,7 +37,9 @@ export function createJobFormSchema(messages: JobFormMessages) {
         .array(
           z.object({
             group: optionalPositiveId(messages.optionalId),
+            group_name: z.string(),
             item: optionalPositiveId(messages.optionalId),
+            item_name: z.string(),
             quantity: z.string().trim(),
             rate: z.string().trim(),
           }),
@@ -48,7 +50,8 @@ export function createJobFormSchema(messages: JobFormMessages) {
       data.job_meta_items.forEach((row, index) => {
         const itemId = row.item.trim();
         const qty = row.quantity.trim();
-        if (!itemId && !qty) return;
+        const group = row.group.trim();
+        if (!itemId && !qty && !group) return;
         if (!itemId) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,

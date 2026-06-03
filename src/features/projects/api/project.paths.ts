@@ -7,6 +7,8 @@ export const PROJECT_PATHS = {
   projectForms: (id: number | string) => `project-forms/${id}/metadata/`,
   /** GET /project-forms/{id}/metadata/ */
   projectFormMetadata: (id: number | string) => `project-forms/${id}/metadata/`,
+  /** PUT /project-forms/{id}/update/ */
+  projectFormUpdate: (id: number | string) => `project-forms/${id}/update/`,
   /** POST /project-forms/{id}/sections/ */
   projectFormSections: (id: number | string) => `project-forms/${id}/sections/`,
   /** POST | PUT /project-forms/{id}/rules/ */
