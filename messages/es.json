@@ -171,6 +171,7 @@
       "jobStatus": "Estados de trabajo",
       "tags": "Etiquetas",
       "projectTypes": "Tipos de proyecto",
+      "installationTypes": "Tipos de instalación",
       "users": "Usuarios",
       "personalProfile": "Perfil personal",
       "projectForms": "Formularios de proyecto",
@@ -181,11 +182,15 @@
       "customization": {
         "label": "Personalización",
         "hubTitle": "Personalización",
-        "hubDescription": "Elige qué configurar: tipos de proyecto, estados de pin, estados de trabajo y etiquetas.",
+        "hubDescription": "Elige qué configurar: tipos de proyecto, tipos de instalación, estados de pin, estados de trabajo y etiquetas.",
         "items": {
           "projectTypes": {
             "title": "Tipos de proyecto",
             "description": "Categorías de proyecto con etiquetas de color."
+          },
+          "installationTypes": {
+            "title": "Tipos de instalación",
+            "description": "Clasifica instalaciones con etiquetas de color."
           },
           "pinStatus": {
             "title": "Estados de pin",
@@ -537,6 +542,62 @@
       "toggleActiveError": "No se pudo actualizar el estado. Inténtalo de nuevo.",
       "hexPlaceholder": "#000000",
       "validationName": "Introduce un nombre de tipo de proyecto.",
+      "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #DBEAFE)."
+    },
+    "installationTypes": {
+      "metaTitle": "Tipos de instalación",
+      "title": "Tipos de instalación",
+      "subtitle": "Define categorías de instalación con etiquetas de color.",
+      "add": "Añadir",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "filterState": "Estado activo",
+      "table": {
+        "type": "Tipo de instalación",
+        "status": "Estado del registro",
+        "created": "Creado",
+        "updated": "Última actualización",
+        "actions": "Acciones"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "byUser": "Por {user}"
+      },
+      "emptyTitle": "Aún no hay tipos de instalación",
+      "emptyDescription": "Crea tu primer tipo de instalación para clasificar el trabajo.",
+      "loadError": "No se pudieron cargar los tipos de instalación. Inténtalo de nuevo.",
+      "modal": {
+        "createTitle": "Nuevo tipo de instalación",
+        "editTitle": "Editar tipo de instalación",
+        "typeName": "Nombre",
+        "bgColour": "Color de fondo",
+        "textColour": "Color del texto",
+        "activeLabel": "Activo",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "deleteConfirmTitle": "¿Eliminar este tipo de instalación?",
+      "deleteConfirmBody": "Los registros que usen este tipo pueden verse afectados. Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar",
+      "pageLabel": "Mostrando {start}-{end} de {total} tipos de instalación",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "saved": "Tipo de instalación actualizado",
+      "created": "Tipo de instalación creado",
+      "deleted": "Tipo de instalación eliminado",
+      "activatedToast": "Tipo de instalación activado",
+      "deactivatedToast": "Tipo de instalación desactivado",
+      "toggleActiveError": "No se pudo actualizar el estado. Inténtalo de nuevo.",
+      "hexPlaceholder": "#000000",
+      "validationName": "Introduce un nombre de tipo de instalación.",
       "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #DBEAFE)."
     },
     "users": {
@@ -1622,6 +1683,16 @@
       "filterAllStatuses": "Todos los estados",
       "filterAssignedWorker": "Técnico asignado",
       "filterAllWorkers": "Todos los técnicos",
+      "massAssign": {
+        "assignTo": "Asignar a",
+        "apply": "Aplicar",
+        "selectRow": "Seleccionar trabajo",
+        "selectAll": "Seleccionar todos en esta página",
+        "selectedCount": "{count} seleccionados",
+        "success": "{count} trabajos asignados",
+        "error": "No se pudieron asignar los trabajos. Inténtelo de nuevo.",
+        "pickWorker": "Seleccionar técnico"
+      },
       "activate": "Activar",
       "deactivate": "Desactivar",
       "activatedToast": "Trabajo activado",
@@ -2212,6 +2283,9 @@
         "groupPlaceholder": "Seleccionar grupo",
         "groupError": "Selecciona un grupo.",
         "noGroupsHint": "No hay grupos. Crea al menos un grupo antes de añadir ítems compuestos.",
+        "installationType": "Tipo de instalación",
+        "installationTypePlaceholder": "Seleccionar tipo de instalación",
+        "installationTypesLoadError": "No se pudieron cargar los tipos de instalación.",
         "createdToast": "Ítem compuesto creado",
         "updatedToast": "Ítem compuesto actualizado"
       },

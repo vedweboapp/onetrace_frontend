@@ -12,6 +12,7 @@ export type EntityTableCellVariant =
   | "date"
   | "status"
   | "actions"
+  | "selection"
   | "custom";
 
 export type ColumnLayoutOpts = {
@@ -50,6 +51,7 @@ export type EntityTableColumn<T> = EntityTableColumnBase<T> &
         inactiveLabel: string;
       }
     | { variant: "actions"; render: (row: T) => ReactNode }
+    | { variant: "selection"; render: (row: T) => ReactNode }
     | { variant: "custom"; render: (row: T) => ReactNode }
   );
 
@@ -106,6 +108,18 @@ export function entityCol<T>() {
           render,
           narrow: true,
           headerSrOnly: opts?.headerSrOnly ?? true,
+        },
+        opts,
+      ),
+    selection: (id: string, header: ReactNode, render: (row: T) => ReactNode, opts?: ColumnLayoutOpts) =>
+      applyOpts(
+        {
+          id,
+          header,
+          variant: "selection",
+          render,
+          narrow: true,
+          headerSrOnly: opts?.headerSrOnly,
         },
         opts,
       ),

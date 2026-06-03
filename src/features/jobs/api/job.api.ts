@@ -8,6 +8,7 @@ import type {
   JobCreateFromQuotationPayload,
   JobCreatePayload,
   JobListResponse,
+  JobMassUpdatePayload,
   JobUpdatePayload,
 } from "../types/job.types";
 
@@ -91,5 +92,10 @@ export async function updateJob(id: number, body: JobUpdatePayload): Promise<Job
 
 export async function deleteJob(id: number): Promise<void> {
   const { data } = await api.delete<ApiEnvelope<null>>(JOB_PATHS.detail(id));
+  assertApiSuccess(data);
+}
+
+export async function massUpdateJobs(body: JobMassUpdatePayload): Promise<void> {
+  const { data } = await api.post<ApiEnvelope<unknown>>(JOB_PATHS.list, body);
   assertApiSuccess(data);
 }
