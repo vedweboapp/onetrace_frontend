@@ -78,6 +78,7 @@ export function DashboardHeader() {
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
+  const materialRequestsHref = routes.dashboard.materialRequests;
   const compositeHref = routes.dashboard.compositeItems;
   const personalProfileHref = routes.dashboard.settingsPersonalProfile;
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
@@ -104,6 +105,8 @@ export function DashboardHeader() {
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
   const groupsActive = pathname === groupsHref || pathname.startsWith(`${groupsHref}/`);
+  const materialRequestsActive =
+    pathname === materialRequestsHref || pathname.startsWith(`${materialRequestsHref}/`);
   const compositeActive =
     pathname === compositeHref || pathname.startsWith(`${compositeHref}/`);
   const personalProfileActive =
@@ -146,7 +149,9 @@ export function DashboardHeader() {
                     ? tNav("clients")
                     : groupsActive
                       ? tNav("groups")
-                      : compositeActive
+                      : materialRequestsActive
+                        ? tNav("materialRequests")
+                        : compositeActive
                         ? tNav("compositeItems")
                         : personalProfileActive
                           ? tSettingsNav("personalProfile")

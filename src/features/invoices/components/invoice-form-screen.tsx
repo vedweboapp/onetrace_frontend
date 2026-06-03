@@ -37,6 +37,7 @@ import {
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
+  RequiredMark,
   SurfaceDateInput,
   SurfaceShell,
   surfaceInputClassName,
@@ -87,6 +88,10 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
         issueDate: t("validation.issueDate"),
         lineDescription: t("validation.lineDescription"),
         lineQuantity: t("validation.lineQuantity"),
+        addressLine1: t("validation.addressLine1"),
+        country: t("validation.country"),
+        state: t("validation.state"),
+        city: t("validation.city"),
       }),
     [t],
   );
@@ -386,6 +391,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
     const countryIso = useWatch({ control, name: countryIsoName });
     const stateIso = useWatch({ control, name: stateIsoName });
     const city = useWatch({ control, name: cityName });
+    const addressErrors = errors[prefix];
     return (
       <div className="space-y-4">
         <Controller
@@ -399,6 +405,8 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
               value={field.value ?? ""}
               onChange={field.onChange}
               onBlur={field.onBlur}
+              invalid={!!addressErrors?.address_line_1}
+              error={addressErrors?.address_line_1?.message}
               countryIso={typeof countryIso === "string" ? countryIso : ""}
               contextCity={typeof city === "string" ? city : ""}
               onSelectPlace={(place) => {
@@ -454,6 +462,11 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
             city: t("placeholders.city"),
           }}
           disabled={saving}
+          errors={{
+            country: addressErrors?.country_iso?.message,
+            state: addressErrors?.state_iso?.message,
+            city: addressErrors?.city?.message,
+          }}
           trailingSlot={
             <FieldGroup label={t("fields.zipCode")} htmlFor={`${prefix}-pincode`}>
               <input
@@ -533,6 +546,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                       <CheckmarkSelect
                         id="invoice-client"
                         label={t("fields.clientName")}
+                        required
                         options={clientOptions}
                         value={field.value}
                         onChange={(v) => {
@@ -665,7 +679,10 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
                       <th className="px-3 py-2">{tGroups("title")}</th>
-                      <th className="px-3 py-2">{tItems("title")}</th>
+                      <th className="px-3 py-2">
+                        {tItems("title")}
+                        <RequiredMark />
+                      </th>
                       <th className="px-3 py-2">{t("lineItems.qty")}</th>
                       <th className="px-3 py-2">{t("lineItems.rate")}</th>
                       <th className="px-3 py-2">{t("lineItems.amount")}</th>
@@ -716,6 +733,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                                   <CheckmarkSelect
                                     options={filteredItems}
                                     value={itemField.value}
+                                    invalid={!!errors.line_items?.[index]?.item}
                                     onChange={(v) => {
                                       itemField.onChange(v);
                                       if (v && /^\d+$/.test(v)) {
@@ -752,13 +770,16 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                               type="number"
                               min={0}
                               step="any"
+                              aria-invalid={errors.line_items?.[index]?.quantity ? true : undefined}
                               className={cn(
                                 surfaceInputClassName,
                                 "h-8 w-24 px-2.5 text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                                errors.line_items?.[index]?.quantity && "border-red-500",
                               )}
                               disabled={saving}
                               {...register(`line_items.${index}.quantity`)}
                             />
+                            <FieldErrorText>{errors.line_items?.[index]?.quantity?.message}</FieldErrorText>
                           </td>
                           <td className="px-3 py-2 align-top">
                             <input

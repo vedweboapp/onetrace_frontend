@@ -27,6 +27,7 @@ export {
   FieldErrorText,
   FieldGroup,
   FieldLabel,
+  RequiredMark,
   fieldErrorTextClassName,
   fieldLabelClassName,
   fieldRequiredMarkClassName,

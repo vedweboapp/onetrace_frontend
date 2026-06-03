@@ -37,6 +37,7 @@ import {
   FieldGroup,
   FormFieldRow,
   MultiCheckSelect,
+  RequiredMark,
   SurfaceDateInput,
   SurfaceShell,
   surfaceInputClassName,
@@ -620,6 +621,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                       <CheckmarkSelect
                         id="job-worker"
                         label={t("fields.assignedWorker")}
+                        required
                         options={workerOptions}
                         value={field.value}
                         onChange={field.onChange}
@@ -683,7 +685,10 @@ export function JobFormScreen({ mode, jobId }: Props) {
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
                       <th className="px-3 py-2">{tGroups("title")}</th>
-                      <th className="px-3 py-2">{tItems("title")}</th>
+                      <th className="px-3 py-2">
+                        {tItems("title")}
+                        <RequiredMark />
+                      </th>
                       <th className="px-3 py-2">{t("lineItems.qty")}</th>
                       <th className="px-3 py-2">{t("lineItems.rate")}</th>
                       <th className="px-3 py-2">{t("lineItems.amount")}</th>
@@ -734,6 +739,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                                   <CheckmarkSelect
                                     options={filteredItems}
                                     value={itemField.value}
+                                    invalid={!!errors.job_meta_items?.[index]?.item}
                                     onChange={(v) => {
                                       itemField.onChange(v);
                                       if (v && /^\d+$/.test(v)) {
@@ -770,13 +776,16 @@ export function JobFormScreen({ mode, jobId }: Props) {
                               type="number"
                               min={0}
                               step="any"
+                              aria-invalid={errors.job_meta_items?.[index]?.quantity ? true : undefined}
                               className={cn(
                                 surfaceInputClassName,
                                 "h-8 w-24 px-2.5 text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                                errors.job_meta_items?.[index]?.quantity && "border-red-500",
                               )}
                               disabled={saving}
                               {...register(`job_meta_items.${index}.quantity`)}
                             />
+                            <FieldErrorText>{errors.job_meta_items?.[index]?.quantity?.message}</FieldErrorText>
                           </td>
                           <td className="px-3 py-2 align-top">
                             <input

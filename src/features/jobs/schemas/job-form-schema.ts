@@ -48,7 +48,8 @@ export function createJobFormSchema(messages: JobFormMessages) {
       data.job_meta_items.forEach((row, index) => {
         const itemId = row.item.trim();
         const qty = row.quantity.trim();
-        if (!itemId && !qty) return;
+        const group = row.group.trim();
+        if (!itemId && !qty && !group) return;
         if (!itemId) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,

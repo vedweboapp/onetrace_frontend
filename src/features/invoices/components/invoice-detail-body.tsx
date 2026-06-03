@@ -2,14 +2,14 @@
 
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
-import type { InvoiceDetail } from "@/features/invoices/types/invoice.types";
+import type { InvoiceCompositeItem, InvoiceDetail, InvoiceLineItem } from "@/features/invoices/types/invoice.types";
 import { InvoiceStatusBadge } from "@/features/invoices/components/invoice-status-badge";
 import {
   invoiceClientLabel,
-  invoiceContactLabel,
+  invoiceContactPersonLabel,
   invoiceJobOrProjectLabel,
-  nestedId,
-  parseInvoiceAmount,
+  invoicePaymentTermsLabel,
+  invoiceTotalAmount,
 } from "@/features/invoices/utils/invoice-nested-fields.util";
 import { formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
@@ -21,7 +21,6 @@ import {
   DetailPanelCard,
 } from "@/shared/components/layout/detail-metric-card";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
-import { invoicePaymentTermsLabel } from "@/features/invoices/utils/invoice-nested-fields.util";
 
 type Props = {
   detail: InvoiceDetail;
@@ -55,6 +54,65 @@ function AddressBlock({
   );
 }
 
+type DisplayLine = {
+  key: string;
+  productName: string;
+  groupName: string;
+  qty: number;
+  listPrice: number;
+  total: number;
+};
+
+function compositeLineToDisplay(row: InvoiceCompositeItem, index: number): DisplayLine {
+  const item = row.item;
+  const group = row.group;
+  const productName =
+    (typeof item === "object" ? item?.name?.trim() : undefined) || "—";
+  const groupName =
+    typeof group === "object"
+      ? group?.name?.trim() || "—"
+      : group != null
+        ? `#${group}`
+        : "—";
+  const itemId = typeof item === "object" ? item?.id : typeof item === "number" ? item : index;
+  return {
+    key: `composite-${itemId}-${index}`,
+    productName,
+    groupName,
+    qty: parseMoneyValue(row.quantity),
+    listPrice: parseMoneyValue(typeof item === "object" ? item?.selling_price : null),
+    total: parseMoneyValue(row.line_total),
+  };
+}
+
+function legacyLineToDisplay(row: InvoiceLineItem, index: number): DisplayLine {
+  const productName = (row.product_name ?? row.description ?? "—").trim() || "—";
+  return {
+    key: `line-${row.id ?? index}`,
+    productName,
+    groupName: "—",
+    qty: parseMoneyValue(row.quantity),
+    listPrice: parseMoneyValue(row.list_price ?? row.rate),
+    total: parseMoneyValue(row.total ?? row.amount),
+  };
+}
+
+function resolveDisplayLines(detail: InvoiceDetail): DisplayLine[] {
+  if (detail.composite_items?.length) {
+    return detail.composite_items.map(compositeLineToDisplay);
+  }
+  if (detail.line_items?.length) {
+    return detail.line_items.map(legacyLineToDisplay);
+  }
+  return [];
+}
+
+function resolveSubtotal(detail: InvoiceDetail, lines: DisplayLine[]): number {
+  if (detail.subtotal != null) return parseMoneyValue(detail.subtotal);
+  if (detail.sub_total != null) return parseMoneyValue(detail.sub_total);
+  return lines.reduce((sum, row) => sum + row.total, 0);
+}
+
 export function InvoiceDetailBody({
   detail,
   clientName,
@@ -68,36 +126,25 @@ export function InvoiceDetailBody({
   const locale = useLocale();
   const billTo = detail.bill_to ?? detail.billing_address;
   const shipTo = detail.ship_to ?? detail.shipping_address;
-  const lines = detail.composite_items ?? detail.line_items ?? [];
-  const subtotal =
-    detail.subtotal != null
-      ? parseMoneyValue(detail.subtotal)
-      : lines.reduce(
-          (sum, row) =>
-            sum +
-            parseMoneyValue(
-              "line_total" in row
-                ? row.line_total
-                : "amount" in row
-                  ? row.amount ?? row.total
-                  : 0,
-            ),
-          0,
-        );
+  const lines = resolveDisplayLines(detail);
+  const subtotal = resolveSubtotal(detail, lines);
   const taxTotal = parseMoneyValue(detail.tax_total);
-  const totalBalance = parseMoneyValue(detail.total_balance ?? detail.amount);
+  const totalBalance = invoiceTotalAmount(detail);
+  const clientNotes =
+    detail.client_notes?.trim() || detail.notes_and_terms?.trim() || "";
+  const internalNotes = detail.internal_notes?.trim() || "";
 
   return (
     <DetailPagePadding className="space-y-6">
       {activeTab === "overview" ? (
         <>
           <DetailPanelCard title={t("detail.sectionInvoiceDetails")}>
-            <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-3">
+            <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-4">
               <DetailMetricCard label={t("fields.clientName")}>
                 {invoiceClientLabel(detail.client, clientName)}
               </DetailMetricCard>
               <DetailMetricCard label={t("fields.contactPerson")}>
-                {invoiceContactLabel(detail.contact ?? detail.contact_person, contactName)}
+                {invoiceContactPersonLabel(detail, contactName)}
               </DetailMetricCard>
               <DetailMetricCard label={t("fields.invoiceNumber")}>
                 {detail.invoice_number}
@@ -125,10 +172,18 @@ export function InvoiceDetailBody({
             <AddressBlock title={t("fields.shipTo")} address={shipTo} />
           </div>
 
-          {detail.notes_and_terms?.trim() ? (
+          {clientNotes ? (
             <DetailPanelCard title={t("fields.notesAndTerms")}>
               <p className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
-                {detail.notes_and_terms}
+                {clientNotes}
+              </p>
+            </DetailPanelCard>
+          ) : null}
+
+          {internalNotes ? (
+            <DetailPanelCard title={t("fields.internalNotes")}>
+              <p className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
+                {internalNotes}
               </p>
             </DetailPanelCard>
           ) : null}
@@ -168,9 +223,9 @@ export function InvoiceDetailBody({
                 <thead>
                   <tr className="border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700">
                     <th className="pb-2 pr-3">{t("lineItems.productName")}</th>
-                    <th className="pb-2 pr-3">{t("filterStatus")}</th>
+                    <th className="pb-2 pr-3">{t("lineItems.group")}</th>
                     <th className="pb-2 pr-3 text-right">{t("lineItems.qty")}</th>
-                    <th className="pb-2 pr-3 text-right">{t("lineItems.rate")}</th>
+                    <th className="pb-2 pr-3 text-right">{t("lineItems.listPrice")}</th>
                     <th className="pb-2 text-right">{t("lineItems.total")}</th>
                   </tr>
                 </thead>
@@ -182,50 +237,21 @@ export function InvoiceDetailBody({
                       </td>
                     </tr>
                   ) : (
-                    lines.map((row, i) => {
-                      const name =
-                        ("item" in row
-                          ? (typeof row.item === "object" ? row.item?.name : undefined)
-                          : "product_name" in row
-                            ? row.product_name ?? row.description ?? "—"
-                            : "—")?.trim() || "—";
-                      const groupName =
-                        "group" in row
-                          ? typeof row.group === "object"
-                            ? row.group?.name?.trim() || "—"
-                            : row.group != null
-                              ? `#${row.group}`
-                              : "—"
-                          : "—";
-                      const qty = parseMoneyValue(row.quantity);
-                      const rate = parseMoneyValue(
-                        "item" in row
-                          ? (typeof row.item === "object" ? row.item?.selling_price : null)
-                          : "list_price" in row
-                            ? row.list_price ?? row.rate
-                            : null,
-                      );
-                      const total = parseMoneyValue(
-                        "line_total" in row
-                          ? row.line_total
-                          : "total" in row
-                            ? row.total ?? row.amount
-                            : 0,
-                      );
-                      return (
-                        <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
-                          <td className="py-3 pr-3 font-medium text-slate-900 dark:text-slate-100">{name}</td>
-                          <td className="py-3 pr-3">{groupName}</td>
-                          <td className="py-3 pr-3 text-right tabular-nums">{qty.toFixed(2)}</td>
-                          <td className="py-3 pr-3 text-right tabular-nums">
-                            {formatMoneyDisplay(rate, locale)}
-                          </td>
-                          <td className="py-3 text-right tabular-nums font-semibold">
-                            {formatMoneyDisplay(total, locale)}
-                          </td>
-                        </tr>
-                      );
-                    })
+                    lines.map((row) => (
+                      <tr key={row.key} className="border-b border-slate-100 dark:border-slate-800">
+                        <td className="py-3 pr-3 font-medium text-slate-900 dark:text-slate-100">
+                          {row.productName}
+                        </td>
+                        <td className="py-3 pr-3 text-slate-600 dark:text-slate-400">{row.groupName}</td>
+                        <td className="py-3 pr-3 text-right tabular-nums">{row.qty.toFixed(2)}</td>
+                        <td className="py-3 pr-3 text-right tabular-nums">
+                          {formatMoneyDisplay(row.listPrice, locale)}
+                        </td>
+                        <td className="py-3 text-right tabular-nums font-semibold">
+                          {formatMoneyDisplay(row.total, locale)}
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>

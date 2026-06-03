@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
-import { BookUser, Building2, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, Tag, UserRound } from "lucide-react";
+import { BookUser, Building2, ClipboardList, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, Tag, UserRound } from "lucide-react";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 
 import { useTranslations } from "next-intl";
@@ -158,6 +158,7 @@ function DashboardMainSidebar({
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
+  const materialRequestsHref = routes.dashboard.materialRequests;
   const itemsHref = routes.dashboard.items;
   const compositeHref = routes.dashboard.compositeItems;
   const homeActive = pathname === homeHref;
@@ -175,6 +176,8 @@ function DashboardMainSidebar({
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
   const groupsActive = pathname === groupsHref || pathname.startsWith(`${groupsHref}/`);
+  const materialRequestsActive =
+    pathname === materialRequestsHref || pathname.startsWith(`${materialRequestsHref}/`);
   const itemsActive = pathname === itemsHref || pathname.startsWith(`${itemsHref}/`);
   const compositeActive = pathname === compositeHref || pathname.startsWith(`${compositeHref}/`);
   const itemsSectionActive = itemsActive || compositeActive;
@@ -270,6 +273,14 @@ function DashboardMainSidebar({
           active={groupsActive}
           label={t("groups")}
           icon={Layers}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={materialRequestsHref}
+          active={materialRequestsActive}
+          label={t("materialRequests")}
+          icon={ClipboardList}
           expanded={expanded}
           resolved={resolved}
         />

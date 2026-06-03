@@ -156,6 +156,7 @@
       "qrCodes": "Códigos QR",
       "projects": "Proyectos",
       "groups": "Grupos",
+      "materialRequests": "Solicitud de material",
       "products": "Productos",
       "items": "Ítems",
       "itemsPlain": "Ítems",
@@ -1323,6 +1324,7 @@
       "table": {
         "invoiceNumber": "Factura #",
         "clientName": "Cliente",
+        "projectName": "Proyecto",
         "jobName": "Trabajo",
         "amount": "Importe",
         "issueDate": "Fecha de emisión",
@@ -1412,6 +1414,7 @@
       },
       "lineItems": {
         "productName": "Producto",
+        "group": "Grupo",
         "description": "Descripción",
         "qty": "Cant.",
         "unit": "Unidad",
@@ -1445,7 +1448,154 @@
         "client": "Selecciona un cliente.",
         "issueDate": "Introduce la fecha de emisión.",
         "lineDescription": "Introduce una descripción o selecciona un producto en cada línea.",
-        "lineQuantity": "Introduce una cantidad válida."
+        "lineQuantity": "Introduce una cantidad válida.",
+        "addressLine1": "Introduce la dirección línea 1.",
+        "country": "Selecciona un país.",
+        "state": "Selecciona un estado o región.",
+        "city": "Introduce o selecciona una ciudad."
+      }
+    },
+    "materialRequests": {
+      "metaTitle": "Solicitudes de material",
+      "detailMetaTitle": "Detalles de la solicitud",
+      "title": "Solicitudes de material",
+      "subtitle": "Gestiona y supervisa la compra y distribución de material en las obras.",
+      "createRequest": "Crear solicitud de material",
+      "edit": "Editar",
+      "searchPlaceholder": "Buscar solicitudes…",
+      "searchAria": "Buscar solicitudes de material",
+      "emptyTitle": "Aún no hay solicitudes",
+      "emptyDescription": "Crea tu primera solicitud para hacer seguimiento de material.",
+      "loadError": "No se pudieron cargar las solicitudes. Inténtalo de nuevo.",
+      "detailLoadError": "No se pudieron cargar los detalles. Inténtalo de nuevo.",
+      "createdToast": "Solicitud creada correctamente",
+      "updatedToast": "Solicitud actualizada correctamente",
+      "filterStatus": "Estado",
+      "filterAllStatuses": "Todos los estados",
+      "filterWorker": "Trabajador",
+      "filterAllWorkers": "Todos los trabajadores",
+      "filterRequestedDate": "Fecha solicitada",
+      "pageLabel": "Mostrando {start} a {end} de {total} resultados",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "status": {
+        "draft": "Borrador",
+        "pending": "Pendiente",
+        "partiallyDispatched": "Parcialmente enviado",
+        "dispatched": "Enviado"
+      },
+      "table": {
+        "requestNumber": "Solicitud",
+        "jobName": "Trabajo",
+        "workerName": "Trabajador",
+        "requestDate": "Fecha",
+        "items": "Ítems",
+        "status": "Estado"
+      },
+      "card": {
+        "requestDate": "Fecha",
+        "items": "{count} ítems"
+      },
+      "tabs": {
+        "overview": "Resumen",
+        "dispatch": "Envío",
+        "timeline": "Cronología"
+      },
+      "detail": {
+        "loadingTitle": "Cargando…",
+        "retry": "Reintentar",
+        "backAria": "Volver al listado",
+        "sectionOverview": "Resumen",
+        "sectionJobs": "Trabajos",
+        "sectionItems": "Ítems",
+        "sectionDispatch": "Envío",
+        "sectionTimeline": "Cronología de envío",
+        "sectionSystemMetadata": "Metadatos del sistema",
+        "notModifiedYet": "Sin modificar"
+      },
+      "actions": {
+        "dispatch": "Enviar"
+      },
+      "fields": {
+        "workerName": "Trabajador",
+        "requestedDate": "Fecha solicitada",
+        "status": "Estado",
+        "projectName": "Proyecto",
+        "clientName": "Cliente",
+        "notes": "Notas",
+        "createdAt": "Creado el",
+        "updatedAt": "Actualizado el",
+        "createdBy": "Creado por",
+        "modifiedBy": "Modificado por"
+      },
+      "placeholders": {
+        "worker": "Seleccionar trabajador",
+        "job": "Seleccionar trabajo",
+        "item": "Seleccionar ítem"
+      },
+      "sections": {
+        "general": "Información general",
+        "jobs": "Trabajos",
+        "items": "Ítems"
+      },
+      "jobs": {
+        "add": "Añadir trabajos",
+        "remove": "Eliminar trabajo",
+        "details": "Detalles del trabajo",
+        "empty": "No hay trabajos vinculados.",
+        "addModalTitle": "Seleccionar trabajos",
+        "addModalSubmit": "Añadir trabajos seleccionados",
+        "selectWorkerFirst": "Seleccione un trabajador primero.",
+        "loading": "Cargando trabajos…",
+        "loadError": "No se pudieron cargar los trabajos.",
+        "noJobsForWorker": "No hay trabajos activos asignados a este trabajador.",
+        "pickerLabel": "Trabajos",
+        "pickerPlaceholder": "Buscar y seleccionar trabajos…",
+        "emptyHint": "Pulse Añadir trabajos para vincular el trabajo de este técnico."
+      },
+      "items": {
+        "emptyNoJobs": "Añada trabajos arriba para cargar ítems del alcance de cada trabajo.",
+        "emptyNoMeta": "Los trabajos seleccionados no tienen ítems compuestos en su alcance."
+      },
+      "lineItems": {
+        "itemName": "Ítem",
+        "itemDetails": "Detalles del ítem",
+        "jobName": "Trabajo",
+        "requestQty": "Cant. solicitada",
+        "units": "Unidades",
+        "addItem": "Añadir ítem",
+        "remove": "Eliminar ítem",
+        "empty": "No hay ítems en esta solicitud."
+      },
+      "dispatch": {
+        "materialItem": "Material",
+        "requested": "Solicitado",
+        "dispatched": "Enviado",
+        "pending": "Pendiente",
+        "empty": "No hay datos de envío."
+      },
+      "timeline": {
+        "empty": "Aún no hay eventos.",
+        "event": "Evento"
+      },
+      "page": {
+        "createTitle": "Formulario de solicitud",
+        "editTitle": "Editar solicitud",
+        "formSubtitle": "Completa los datos para solicitar material del proyecto."
+      },
+      "modal": {
+        "cancel": "Cancelar",
+        "submit": "Enviar solicitud",
+        "saveChanges": "Guardar cambios"
+      },
+      "validation": {
+        "worker": "Selecciona un trabajador.",
+        "requestedDate": "Introduce la fecha solicitada.",
+        "job": "Selecciona un trabajo.",
+        "item": "Selecciona un ítem.",
+        "quantity": "Introduce una cantidad válida.",
+        "atLeastOneJob": "Añade al menos un trabajo.",
+        "atLeastOneItem": "Añade al menos un ítem."
       }
     },
     "jobs": {

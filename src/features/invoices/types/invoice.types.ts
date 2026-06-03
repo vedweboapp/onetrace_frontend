@@ -7,6 +7,9 @@ export type InvoiceUserRef = {
 export type InvoiceClientRef = {
   id: number;
   name?: string;
+  contact_person?: string | null;
+  email?: string | null;
+  phone?: string | null;
 };
 
 export type InvoiceContactRef = {
@@ -60,7 +63,7 @@ export type InvoiceListItem = {
   sub_total?: number | string | null;
   total_balance?: number | string | null;
   total?: number | string | null;
-  amount: number | string;
+  amount?: number | string | null;
   issue_date: string;
   due_date?: string | null;
   payment_terms?: string | null;
