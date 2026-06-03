@@ -9,6 +9,8 @@ import {
   fetchCompositeItem,
   updateCompositeItem,
 } from "@/features/composite-items/api/composite-item.api";
+import { fetchInstallationTypesPage } from "@/features/installation-types/api/installation-type.api";
+import { formatInstallationTypeLabel } from "@/features/installation-types/utils/installation-type-display.util";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import { cn } from "@/core/utils/http.util";
 import type { ItemComponentRef } from "@/features/items/types/item.types";
@@ -54,6 +56,12 @@ function toNumberOrNull(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function installationTypeIdPayload(value: string): { installation_type?: number } {
+  const id = toNumberOrNull(value);
+  if (id == null || id <= 0) return {};
+  return { installation_type: id };
+}
+
 export function CompositeItemFormScreen({ mode, itemId }: Props) {
   const t = useTranslations("Dashboard.compositeItems");
   const tModal = useTranslations("Dashboard.compositeItems.modal");
@@ -76,6 +84,9 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
   const [cost, setCost] = React.useState("0");
   const [sell, setSell] = React.useState("0");
   const [rows, setRows] = React.useState<ComponentRow[]>([{ id: nextRowId(), child_item: "", quantity: "1" }]);
+  const [installationType, setInstallationType] = React.useState("");
+  const [installationTypeOptions, setInstallationTypeOptions] = React.useState<CheckmarkSelectOption[]>([]);
+  const [installationTypesError, setInstallationTypesError] = React.useState<string | null>(null);
   const [itemOptions, setItemOptions] = React.useState<Item[]>([]);
   const [itemsError, setItemsError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
@@ -100,8 +111,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
   }, [pathname, searchParams]);
 
   const getFormDraft = React.useCallback(
-    () => ({ name, sku, qty, cost, sell, rows }),
-    [name, sku, qty, cost, sell, rows],
+    () => ({ name, sku, qty, cost, sell, installationType, rows }),
+    [name, sku, qty, cost, sell, installationType, rows],
   );
 
   const restoreFormDraft = React.useCallback((draft: unknown) => {
@@ -111,6 +122,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
       qty?: string;
       cost?: string;
       sell?: string;
+      installationType?: string;
       rows?: ComponentRow[];
     };
     if (typeof saved.name === "string") setName(saved.name);
@@ -118,6 +130,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     if (typeof saved.qty === "string") setQty(saved.qty);
     if (typeof saved.cost === "string") setCost(saved.cost);
     if (typeof saved.sell === "string") setSell(saved.sell);
+    if (typeof saved.installationType === "string") setInstallationType(saved.installationType);
     if (Array.isArray(saved.rows) && saved.rows.length > 0) setRows(saved.rows);
   }, []);
 
@@ -171,11 +184,26 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     let cancelled = false;
     (async () => {
       setItemsError(null);
+      setInstallationTypesError(null);
       try {
-        const { items: next } = await fetchItemsPage(1, 500, { isComposite: false });
-        if (!cancelled) setItemOptions(next);
+        const [itemsRes, installationTypesRes] = await Promise.all([
+          fetchItemsPage(1, 500, { isComposite: false }),
+          fetchInstallationTypesPage(1, 500, { is_active: true }),
+        ]);
+        if (!cancelled) {
+          setItemOptions(itemsRes.items);
+          setInstallationTypeOptions(
+            installationTypesRes.items.map((row) => ({
+              value: String(row.id),
+              label: formatInstallationTypeLabel(row),
+            })),
+          );
+        }
       } catch {
-        if (!cancelled) setItemsError(tModal("itemsLoadError"));
+        if (!cancelled) {
+          setItemsError(tModal("itemsLoadError"));
+          setInstallationTypesError(tModal("installationTypesLoadError"));
+        }
       }
     })();
     return () => {
@@ -197,6 +225,11 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
           setQty(String(item.quantity ?? 0));
           setCost(String(item.cost_price ?? 0));
           setSell(String(item.selling_price ?? 0));
+          setInstallationType(
+            item.installation_type != null && item.installation_type > 0
+              ? String(item.installation_type)
+              : "",
+          );
           const comps = item.components ?? [];
           setRows(
             comps.length > 0
@@ -258,6 +291,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
       return;
     }
 
+    const installationTypePayload = installationTypeIdPayload(installationType);
+
     setSubmitting(true);
     try {
       const saved =
@@ -269,6 +304,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
               cost_price: costN,
               selling_price: sellN,
               components: comps,
+              ...installationTypePayload,
             })
           : await createCompositeItem({
               name: name.trim(),
@@ -277,6 +313,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
               cost_price: costN,
               selling_price: sellN,
               components: comps,
+              ...installationTypePayload,
             });
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
@@ -340,6 +377,27 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
               <div>
                 <FieldLabel htmlFor={qtyId} required>{tModal("quantity")}</FieldLabel>
                 <input id={qtyId} type="number" inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} disabled={submitting} className={surfaceInputClassName} min={0} />
+              </div>
+            </div>
+            <div>
+              <FieldLabel>{tModal("installationType")}</FieldLabel>
+              {installationTypesError ? (
+                <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">{installationTypesError}</p>
+              ) : null}
+              <div className="mt-2">
+                <CheckmarkSelect
+                  listLabel={tModal("installationType")}
+                  buttonAriaLabel={tModal("installationType")}
+                  value={installationType}
+                  onChange={setInstallationType}
+                  options={installationTypeOptions}
+                  emptyLabel={tModal("installationTypePlaceholder")}
+                  disabled={submitting}
+                  portaled
+                  searchable
+                  clearable
+                  className="w-full max-w-md"
+                />
               </div>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

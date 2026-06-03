@@ -88,6 +88,7 @@ export function DashboardHeader() {
   const jobStatusHref = routes.dashboard.settingsJobStatus;
   const tagHref = routes.dashboard.settingsTags;
   const projectTypeHref = routes.dashboard.settingsProjectTypes;
+  const installationTypeHref = routes.dashboard.settingsInstallationTypes;
   const projectFormsHref = routes.dashboard.settingsProjectForms;
   const usersHref = routes.dashboard.settingsUsers;
   const homeActive = pathname === homeHref;
@@ -122,6 +123,8 @@ export function DashboardHeader() {
   const tagActive = pathname === tagHref || pathname.startsWith(`${tagHref}/`);
   const projectTypeActive =
     pathname === projectTypeHref || pathname.startsWith(`${projectTypeHref}/`);
+  const installationTypeActive =
+    pathname === installationTypeHref || pathname.startsWith(`${installationTypeHref}/`);
   const projectFormsActive =
     pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
   const customizationHubActive =
@@ -167,9 +170,11 @@ export function DashboardHeader() {
                                     ? tSettingsNav("jobStatus")
                                     : tagActive
                                       ? tSettingsNav("tags")
-                                      : projectTypeActive
-                                        ? tSettingsNav("projectTypes")
-                                        : usersActive
+                                      : installationTypeActive
+                                        ? tSettingsNav("installationTypes")
+                                        : projectTypeActive
+                                          ? tSettingsNav("projectTypes")
+                                          : usersActive
                                           ? tSettingsNav("users")
                                           : tNav("home");
 

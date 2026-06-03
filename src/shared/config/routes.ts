@@ -26,6 +26,7 @@ export const routes = {
     settingsJobStatus: "/dashboard/settings/job-status",
     settingsTags: "/dashboard/settings/tag",
     settingsProjectTypes: "/dashboard/settings/project-type",
+    settingsInstallationTypes: "/dashboard/settings/installation-type",
     settingsCustomization: "/dashboard/settings/customization",
     settingsUsers: "/dashboard/settings/users",
     settingsPersonalProfile: "/dashboard/settings/personal-profile",

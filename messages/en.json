@@ -171,6 +171,7 @@
       "jobStatus": "Job statuses",
       "tags": "Tags",
       "projectTypes": "Project types",
+      "installationTypes": "Installation types",
       "users": "Users",
       "personalProfile": "Personal Profile",
       "companySettings": "Company Settings",
@@ -181,11 +182,15 @@
       "customization": {
         "label": "Customization",
         "hubTitle": "Customization",
-        "hubDescription": "Choose what to configure — project types, pin statuses, job statuses, and tags.",
+        "hubDescription": "Choose what to configure — project types, installation types, pin statuses, job statuses, and tags.",
         "items": {
           "projectTypes": {
             "title": "Project types",
             "description": "Categories for projects with colored labels."
+          },
+          "installationTypes": {
+            "title": "Installation types",
+            "description": "Classify installations with colored labels."
           },
           "pinStatus": {
             "title": "Pin statuses",
@@ -537,6 +542,62 @@
       "toggleActiveError": "Could not update project type status. Try again.",
       "hexPlaceholder": "#000000",
       "validationName": "Enter a project type name.",
+      "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
+    },
+    "installationTypes": {
+      "metaTitle": "Installation types",
+      "title": "Installation types",
+      "subtitle": "Define installation categories with colored labels for use across the app.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "filterState": "Active state",
+      "table": {
+        "type": "Installation type",
+        "status": "Record status",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "emptyTitle": "No installation types yet",
+      "emptyDescription": "Create your first installation type to classify work.",
+      "loadError": "Could not load installation types. Try again.",
+      "modal": {
+        "createTitle": "New installation type",
+        "editTitle": "Edit installation type",
+        "typeName": "Name",
+        "bgColour": "Background color",
+        "textColour": "Text color",
+        "activeLabel": "Active",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this installation type?",
+      "deleteConfirmBody": "Records using this type may need to be updated. This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} installation types",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Installation type updated",
+      "created": "Installation type created",
+      "deleted": "Installation type deleted",
+      "activatedToast": "Installation type activated",
+      "deactivatedToast": "Installation type deactivated",
+      "toggleActiveError": "Could not update installation type status. Try again.",
+      "hexPlaceholder": "#000000",
+      "validationName": "Enter an installation type name.",
       "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
     },
     "users": {
@@ -1622,6 +1683,16 @@
       "filterAllStatuses": "All statuses",
       "filterAssignedWorker": "Assigned worker",
       "filterAllWorkers": "All technicians",
+      "massAssign": {
+        "assignTo": "Assign to",
+        "apply": "Apply",
+        "selectRow": "Select job",
+        "selectAll": "Select all on this page",
+        "selectedCount": "{count} selected",
+        "success": "Assigned {count} jobs",
+        "error": "Could not assign jobs. Try again.",
+        "pickWorker": "Select a technician"
+      },
       "activate": "Activate",
       "deactivate": "Deactivate",
       "activatedToast": "Job activated",
@@ -2216,6 +2287,9 @@
         "groupPlaceholder": "Select group",
         "groupError": "Select a group.",
         "noGroupsHint": "No groups found. Create at least one group before adding composite items.",
+        "installationType": "Installation type",
+        "installationTypePlaceholder": "Select installation type",
+        "installationTypesLoadError": "Could not load installation types.",
         "createdToast": "Composite item created",
         "updatedToast": "Composite item updated"
       },

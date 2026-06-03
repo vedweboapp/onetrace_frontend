@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
-import { deleteJob, fetchJobsPage, updateJob } from "@/features/jobs/api/job.api";
+import { deleteJob, fetchJobsPage, massUpdateJobs, updateJob } from "@/features/jobs/api/job.api";
 import type { Job } from "@/features/jobs/types/job.types";
 import {
   getJobStatusId,
@@ -20,9 +20,11 @@ import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format
 import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
+import { cn } from "@/core/utils/http.util";
 import {
   ActiveStatusBadge,
   AddButton,
+  AppButton,
   CheckmarkSelect,
   ConfirmDialog,
   ListPageEmptyStates,
@@ -110,8 +112,13 @@ export function JobsPanel() {
   const [deletingJob, setDeletingJob] = React.useState<Job | null>(null);
   const [deleting, setDeleting] = React.useState(false);
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
+  const [selectedJobIds, setSelectedJobIds] = React.useState<Set<number>>(() => new Set());
+  const [massAssignWorkerId, setMassAssignWorkerId] = React.useState("");
+  const [massAssigning, setMassAssigning] = React.useState(false);
+  const selectAllRef = React.useRef<HTMLInputElement>(null);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
+  const selectedCount = selectedJobIds.size;
 
   const workerLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -203,6 +210,72 @@ export function JobsPanel() {
     t,
   ]);
 
+  React.useEffect(() => {
+    setSelectedJobIds(new Set());
+    setMassAssignWorkerId("");
+  }, [page, pageSize, search, isActiveFilter, jobStatusFilter, assignedWorkerFilter]);
+
+  const allPageSelected =
+    items.length > 0 && items.every((row) => selectedJobIds.has(row.id));
+  const somePageSelected = items.some((row) => selectedJobIds.has(row.id));
+
+  React.useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = somePageSelected && !allPageSelected;
+    }
+  }, [somePageSelected, allPageSelected]);
+
+  const toggleSelectAllPage = React.useCallback(() => {
+    setSelectedJobIds((prev) => {
+      const next = new Set(prev);
+      if (allPageSelected) {
+        for (const row of items) next.delete(row.id);
+      } else {
+        for (const row of items) next.add(row.id);
+      }
+      return next;
+    });
+  }, [allPageSelected, items]);
+
+  const toggleRowSelected = React.useCallback((id: number) => {
+    setSelectedJobIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  async function handleMassAssign() {
+    const workerId =
+      massAssignWorkerId && /^\d+$/.test(massAssignWorkerId)
+        ? Number.parseInt(massAssignWorkerId, 10)
+        : null;
+    if (!workerId || selectedJobIds.size === 0) return;
+    setMassAssigning(true);
+    try {
+      await massUpdateJobs({
+        operation: "massUpdate",
+        jobIds: [...selectedJobIds],
+        assigned_worker: workerId,
+      });
+      toastSuccess(t("massAssign.success", { count: selectedJobIds.size }));
+      setSelectedJobIds(new Set());
+      setMassAssignWorkerId("");
+      setRefreshNonce((n) => n + 1);
+    } catch {
+      toastError(t("massAssign.error"));
+    } finally {
+      setMassAssigning(false);
+    }
+  }
+
+  const rowCheckboxClassName = cn(
+    "size-4 shrink-0 cursor-pointer rounded border-slate-300 text-[color:var(--dash-accent,#111)]",
+    "focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-1",
+    "dark:border-slate-600 dark:bg-slate-900",
+  );
+
   function openCreate() {
     router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
   }
@@ -255,6 +328,29 @@ export function JobsPanel() {
   const tableColumns = React.useMemo(() => {
     const c = entityCol<Job>();
     return [
+      c.selection(
+        "select",
+        (
+          <input
+            ref={selectAllRef}
+            type="checkbox"
+            className={rowCheckboxClassName}
+            checked={allPageSelected}
+            aria-label={t("massAssign.selectAll")}
+            onChange={toggleSelectAllPage}
+          />
+        ),
+        (row) => (
+          <input
+            type="checkbox"
+            className={rowCheckboxClassName}
+            checked={selectedJobIds.has(row.id)}
+            aria-label={t("massAssign.selectRow")}
+            onChange={() => toggleRowSelected(row.id)}
+          />
+        ),
+        { narrow: true },
+      ),
       c.primary("title", t("table.title"), (r) => r.title),
       c.custom("jobStatus", t("table.jobStatus"), (r) => statusChipForRow(r)),
       c.truncate("worker", t("table.assignedWorker"), (r) =>
@@ -297,7 +393,19 @@ export function JobsPanel() {
         />
       )),
     ];
-  }, [t, tList, dateFmt, workerLabelById, statusById, togglingId]);
+  }, [
+    t,
+    tList,
+    dateFmt,
+    workerLabelById,
+    statusById,
+    togglingId,
+    allPageSelected,
+    selectedJobIds,
+    toggleSelectAllPage,
+    toggleRowSelected,
+    rowCheckboxClassName,
+  ]);
 
   const hasActiveFilters = hasListActiveFilters({
     search,
@@ -392,6 +500,42 @@ export function JobsPanel() {
         />
       ) : null}
 
+      {selectedCount > 0 && !listLoading && !loadError ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/60 sm:flex-row sm:flex-wrap sm:items-center">
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            {t("massAssign.selectedCount", { count: selectedCount })}
+          </p>
+          <div className="flex min-w-0 flex-1 flex-col gap-2 sm:max-w-md sm:flex-row sm:items-center">
+            <span className="shrink-0 text-sm text-slate-600 dark:text-slate-400">
+              {t("massAssign.assignTo")}
+            </span>
+            <CheckmarkSelect
+              listLabel={t("massAssign.assignTo")}
+              buttonAriaLabel={t("massAssign.assignTo")}
+              options={workerOptions}
+              value={massAssignWorkerId}
+              emptyLabel={t("massAssign.pickWorker")}
+              portaled
+              searchable
+              clearable
+              className="min-w-0 flex-1"
+              disabled={massAssigning}
+              onChange={setMassAssignWorkerId}
+            />
+          </div>
+          <AppButton
+            type="button"
+            variant="primary"
+            size="sm"
+            loading={massAssigning}
+            disabled={!massAssignWorkerId || massAssigning}
+            onClick={() => void handleMassAssign()}
+          >
+            {t("massAssign.apply")}
+          </AppButton>
+        </div>
+      ) : null}
+
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
@@ -430,6 +574,15 @@ export function JobsPanel() {
                   key={row.id}
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
+                  leading={
+                    <input
+                      type="checkbox"
+                      className={rowCheckboxClassName}
+                      checked={selectedJobIds.has(row.id)}
+                      aria-label={t("massAssign.selectRow")}
+                      onChange={() => toggleRowSelected(row.id)}
+                    />
+                  }
                   title={row.title}
                   subtitle={jobAssignedWorkerLabel(row, workerLabelById)}
                   footer={
