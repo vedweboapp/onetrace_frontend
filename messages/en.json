@@ -1701,7 +1701,16 @@
           "jobsheets": "Job Sheets",
           "jobs": "Jobs",
           "docs": "Docs",
-          "approvals": "Approvals"
+          "approvals": "Approvals",
+          "pins": "Pins"
+        },
+        "pinsTableHeaders":{
+          "location": "Location",
+          "drawing": "Drawing",
+          "plot": "Plot",
+          "Product": "Product",
+          "status": "Status",
+          "createdAt": "Created at"
         }
       },
       "drawings": {
