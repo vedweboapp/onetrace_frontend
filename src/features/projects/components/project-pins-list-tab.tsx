@@ -7,7 +7,6 @@ import {
 } from "@/shared/ui";
 import { useTranslations } from "next-intl";
 import React from "react";
-import { ProjectPinsHeaders } from "../types/project.types";
 
 const ProjectPinsListTab = () => {
   const ts = useTranslations("Dashboard.projects.detail.pinsTableHeaders");
