@@ -2178,11 +2178,11 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                           isPinEditing ?(
                             <>
                             <CheckmarkSelect
-                              options={projectForms?.map(f => ({ value: f.id, label: f.name })) ?? []}
-                              value={isPinEditing ? pinEditData.formId : detailPin.formId}
+                              options={projectForms?.map(f => ({ value: String(f.id), label: f.name })) ?? []}
+                              value={isPinEditing ? String(pinEditData.formId ?? "") : String(detailPin?.formId ?? "")}
                               onChange={(value) => {
                                 if (isPinEditing) {
-                                  setPinEditData(prev => ({ ...prev, formId: value }));
+                                  setPinEditData(prev => ({ ...prev, formId: value ? Number(value) : null }));
                                 }
                               }}
                             />
