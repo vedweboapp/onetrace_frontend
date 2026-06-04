@@ -109,8 +109,7 @@ export type JobUpdatePayload = Partial<JobCreatePayload> & {
 };
 
 export type JobMassUpdatePayload = {
-  operation: "massUpdate";
-  jobIds: number[];
+  job_ids: number[];
   assigned_worker: number;
 };
 

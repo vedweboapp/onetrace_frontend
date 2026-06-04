@@ -15,6 +15,7 @@ import type { Item } from "@/features/items/types/item.types";
 import { parseCompositeScopeRepeat } from "@/features/quotations/utils/quotation-composite-scope-nav.util";
 import { loadQuotationScopePinDetails } from "@/features/quotations/utils/quotation-composite-scope-pins.util";
 import { formatMoneyDisplay } from "@/features/quotations/utils/quotation-level-pricing.util";
+import { EntityDetailLoadingSkeleton } from "@/shared/components/entity";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import {
   DetailLinkedTable,
@@ -134,7 +135,8 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <DetailPageHeader
-        title={loading ? t("loadingTitle") : (pinDetails?.title ?? detail?.name ?? t("loadingTitle"))}
+        title={pinDetails?.title ?? detail?.name ?? tItems("detailMetaTitle")}
+        titleLoading={loading}
         backHref={backHref}
         backAriaLabel={t("backAria")}
         subtitle={
@@ -155,7 +157,9 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
 
       <DetailPagePadding className="flex-1">
         {loading ? (
-          <SurfaceShell className="p-6 text-sm text-slate-500 dark:text-slate-400">{t("loadingTitle")}</SurfaceShell>
+          <SurfaceShell>
+            <EntityDetailLoadingSkeleton />
+          </SurfaceShell>
         ) : error ? (
           <SurfaceShell className="space-y-3 p-6">
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>

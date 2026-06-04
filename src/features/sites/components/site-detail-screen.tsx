@@ -127,7 +127,6 @@ export function SiteDetailScreen({ siteId }: Props) {
       fetch={fetchSite}
       getTitle={(detail) => detail.site_name}
       labels={{
-        loadingTitle: t("detail.loadingTitle"),
         metaTitle: t("detailMetaTitle"),
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),

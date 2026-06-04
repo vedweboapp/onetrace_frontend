@@ -12,7 +12,6 @@ import type { DashboardListSection } from "@/shared/utils/detail-from-list.util"
 import { SurfaceShell } from "@/shared/ui";
 
 export type EntityDetailScreenLabels = {
-  loadingTitle: string;
   metaTitle: string;
   backAria: string;
   retry: string;
@@ -73,7 +72,8 @@ export function EntityDetailScreen<T>({
     onDetailChange?.(detail);
   }, [detail, onDetailChange]);
 
-  const title = detail ? getTitle(detail) : loading ? labels.loadingTitle : labels.metaTitle;
+  const title = detail ? getTitle(detail) : labels.metaTitle;
+  const titleLoading = loading && !detail;
   const screenCtx: EntityDetailScreenContext<T> = {
     detail,
     loading,
@@ -95,6 +95,7 @@ export function EntityDetailScreen<T>({
     <div className={className ?? "pb-8 sm:pb-10"}>
       <DetailPageHeader
         title={title}
+        titleLoading={titleLoading}
         backHref={listBack}
         backAriaLabel={labels.backAria}
         subtitle={detail && subtitle ? subtitle(detail) : undefined}

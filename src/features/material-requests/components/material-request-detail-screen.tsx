@@ -79,7 +79,6 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
       listSection="material-requests"
       listRoute={routes.dashboard.materialRequests}
       labels={{
-        loadingTitle: t("detail.loadingTitle"),
         metaTitle: t("detailMetaTitle"),
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),

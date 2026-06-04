@@ -10,6 +10,8 @@ import {
   fetchCompositeItemsPage,
 } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
+import { InstallationTypeChip } from "@/features/installation-types/components/installation-type-chip";
+import { resolveInstallationTypeChipData } from "@/features/items/utils/item-installation-type.util";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -38,6 +40,12 @@ import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 function moneyDisplay(v: unknown): string {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : Number.NaN;
   return Number.isFinite(n) ? n.toFixed(2) : "—";
+}
+
+function installationTypeCell(row: CompositeItem) {
+  const chip = resolveInstallationTypeChipData(row.installation_type);
+  if (!chip) return <span className="text-sm text-slate-500">—</span>;
+  return <InstallationTypeChip row={chip} />;
 }
 
 export function CompositeItemsPanel() {
@@ -170,6 +178,7 @@ export function CompositeItemsPanel() {
     const c = entityCol<CompositeItem>();
     return [
       c.primary("name", t("table.name"), (r) => r.name),
+      c.custom("installationType", t("table.installationType"), (r) => installationTypeCell(r)),
       c.mono("sku", t("modal.sku"), (r) => r.sku || "—", { cellClassName: "text-slate-600 dark:text-slate-400" }),
       c.tabular("qty", t("modal.quantity"), (r) => r.quantity ?? "—", {
         cellClassName: "text-slate-600 dark:text-slate-400",
@@ -281,7 +290,8 @@ export function CompositeItemsPanel() {
                   subtitle={row.sku ? <span className="font-mono text-xs">{row.sku}</span> : undefined}
                   description={`Qty: ${row.quantity ?? "—"} · Cost: ${moneyDisplay(row.cost_price)} · Sell: ${moneyDisplay(row.selling_price)}`}
                   footer={
-                    <div className="flex w-full justify-end">
+                    <div className="flex w-full flex-wrap items-center justify-between gap-2">
+                      {installationTypeCell(row)}
                       <span className="text-xs text-slate-500 dark:text-slate-400">
                         {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}
                       </span>

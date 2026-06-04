@@ -10,6 +10,7 @@ import {
   updateCompositeItem,
 } from "@/features/composite-items/api/composite-item.api";
 import { fetchInstallationTypesPage } from "@/features/installation-types/api/installation-type.api";
+import { getInstallationTypeId } from "@/features/items/utils/item-installation-type.util";
 import { formatInstallationTypeLabel } from "@/features/installation-types/utils/installation-type-display.util";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import { cn } from "@/core/utils/http.util";
@@ -225,11 +226,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
           setQty(String(item.quantity ?? 0));
           setCost(String(item.cost_price ?? 0));
           setSell(String(item.selling_price ?? 0));
-          setInstallationType(
-            item.installation_type != null && item.installation_type > 0
-              ? String(item.installation_type)
-              : "",
-          );
+          const installationTypeId = getInstallationTypeId(item.installation_type);
+          setInstallationType(installationTypeId != null ? String(installationTypeId) : "");
           const comps = item.components ?? [];
           setRows(
             comps.length > 0

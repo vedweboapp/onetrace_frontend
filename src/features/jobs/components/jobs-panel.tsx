@@ -1,12 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { Calendar, Pencil, Power, PowerOff, Trash2 } from "lucide-react";
+import { Calendar, Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
-import { deleteJob, fetchJobsPage, massUpdateJobs, updateJob } from "@/features/jobs/api/job.api";
+import { deleteJob, fetchAllJobIds, fetchJobsPage, massUpdateJobs } from "@/features/jobs/api/job.api";
 import type { Job } from "@/features/jobs/types/job.types";
 import {
   getJobStatusId,
@@ -17,12 +17,11 @@ import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-opt
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
-import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import { cn } from "@/core/utils/http.util";
 import {
-  ActiveStatusBadge,
   AddButton,
   AppButton,
   CheckmarkSelect,
@@ -34,7 +33,6 @@ import {
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
-  ListPageActiveFilter,
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
@@ -73,13 +71,11 @@ export function JobsPanel() {
     pageSize,
     listViewMode,
     search,
-    isActiveParam,
     setUrl,
     setPage,
     setPageSize,
     setListViewMode,
   } = useListUrlState();
-  const isActiveFilter = parseIsActiveParam(isActiveParam) ?? true;
 
   const jobStatusParam = searchParams.get("job_status");
   const assignedWorkerParam = searchParams.get("assigned_worker");
@@ -111,14 +107,23 @@ export function JobsPanel() {
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deletingJob, setDeletingJob] = React.useState<Job | null>(null);
   const [deleting, setDeleting] = React.useState(false);
-  const [togglingId, setTogglingId] = React.useState<number | null>(null);
   const [selectedJobIds, setSelectedJobIds] = React.useState<Set<number>>(() => new Set());
   const [massAssignWorkerId, setMassAssignWorkerId] = React.useState("");
   const [massAssigning, setMassAssigning] = React.useState(false);
+  const [selectingAll, setSelectingAll] = React.useState(false);
   const selectAllRef = React.useRef<HTMLInputElement>(null);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
   const selectedCount = selectedJobIds.size;
+
+  const listFilters = React.useMemo(
+    () => ({
+      search: search || undefined,
+      job_status: jobStatusFilter,
+      assigned_worker: assignedWorkerFilter,
+    }),
+    [search, jobStatusFilter, assignedWorkerFilter],
+  );
 
   const workerLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -179,7 +184,6 @@ export function JobsPanel() {
       try {
         const { items: nextItems, pagination: p } = await fetchJobsPage(page, pageSize, {
           search: search || undefined,
-          is_active: isActiveFilter,
           job_status: jobStatusFilter,
           assigned_worker: assignedWorkerFilter,
         });
@@ -203,7 +207,6 @@ export function JobsPanel() {
     page,
     pageSize,
     search,
-    isActiveFilter,
     jobStatusFilter,
     assignedWorkerFilter,
     refreshNonce,
@@ -213,29 +216,34 @@ export function JobsPanel() {
   React.useEffect(() => {
     setSelectedJobIds(new Set());
     setMassAssignWorkerId("");
-  }, [page, pageSize, search, isActiveFilter, jobStatusFilter, assignedWorkerFilter]);
+  }, [pageSize, search, jobStatusFilter, assignedWorkerFilter]);
 
-  const allPageSelected =
-    items.length > 0 && items.every((row) => selectedJobIds.has(row.id));
+  const allMatchingSelected =
+    pagination.total_records > 0 && selectedCount === pagination.total_records;
   const somePageSelected = items.some((row) => selectedJobIds.has(row.id));
 
   React.useEffect(() => {
     if (selectAllRef.current) {
-      selectAllRef.current.indeterminate = somePageSelected && !allPageSelected;
+      selectAllRef.current.indeterminate = somePageSelected && !allMatchingSelected;
     }
-  }, [somePageSelected, allPageSelected]);
+  }, [somePageSelected, allMatchingSelected]);
 
-  const toggleSelectAllPage = React.useCallback(() => {
-    setSelectedJobIds((prev) => {
-      const next = new Set(prev);
-      if (allPageSelected) {
-        for (const row of items) next.delete(row.id);
-      } else {
-        for (const row of items) next.add(row.id);
-      }
-      return next;
-    });
-  }, [allPageSelected, items]);
+  const toggleSelectAll = React.useCallback(async () => {
+    if (allMatchingSelected) {
+      setSelectedJobIds(new Set());
+      return;
+    }
+
+    setSelectingAll(true);
+    try {
+      const ids = await fetchAllJobIds(listFilters, { silent: true });
+      setSelectedJobIds(new Set(ids));
+    } catch {
+      toastError(t("massAssign.selectAllError"));
+    } finally {
+      setSelectingAll(false);
+    }
+  }, [allMatchingSelected, listFilters, t]);
 
   const toggleRowSelected = React.useCallback((id: number) => {
     setSelectedJobIds((prev) => {
@@ -255,8 +263,7 @@ export function JobsPanel() {
     setMassAssigning(true);
     try {
       await massUpdateJobs({
-        operation: "massUpdate",
-        jobIds: [...selectedJobIds],
+        job_ids: [...selectedJobIds],
         assigned_worker: workerId,
       });
       toastSuccess(t("massAssign.success", { count: selectedJobIds.size }));
@@ -300,19 +307,6 @@ export function JobsPanel() {
     }
   }
 
-  async function handleToggleActive(row: Job, next: boolean) {
-    setTogglingId(row.id);
-    try {
-      await updateJob(row.id, { is_active: next });
-      toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
-      setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("toggleActiveError"));
-    } finally {
-      setTogglingId(null);
-    }
-  }
-
   function statusChipForRow(row: Job) {
     const expanded = getJobStatusRow(row);
     if (expanded) return <WorkflowColourStatusChip row={expanded} />;
@@ -335,9 +329,10 @@ export function JobsPanel() {
             ref={selectAllRef}
             type="checkbox"
             className={rowCheckboxClassName}
-            checked={allPageSelected}
+            checked={allMatchingSelected}
+            disabled={selectingAll || items.length === 0}
             aria-label={t("massAssign.selectAll")}
-            onChange={toggleSelectAllPage}
+            onChange={() => void toggleSelectAll()}
           />
         ),
         (row) => (
@@ -358,7 +353,6 @@ export function JobsPanel() {
       ),
       c.tabular("start", t("table.start"), (r) => formatFlexibleApiDate(r.start_date, dateFmt)),
       c.tabular("end", t("table.end"), (r) => formatFlexibleApiDate(r.end_date, dateFmt)),
-      c.status("status", t("table.recordStatus"), (r) => r.is_active, t("status.active"), t("status.inactive")),
       c.actions("actions", t("table.actions"), (row) => (
         <DataTableRowActionsMenu
           menuAriaLabel={tList("openRowActions")}
@@ -374,21 +368,6 @@ export function JobsPanel() {
                 setDeleteOpen(true);
               },
             },
-            row.is_active
-              ? {
-                  id: "deactivate",
-                  label: t("deactivate"),
-                  icon: PowerOff,
-                  onSelect: () => void handleToggleActive(row, false),
-                  disabled: togglingId === row.id,
-                }
-              : {
-                  id: "activate",
-                  label: t("activate"),
-                  icon: Power,
-                  onSelect: () => void handleToggleActive(row, true),
-                  disabled: togglingId === row.id,
-                },
           ]}
         />
       )),
@@ -399,47 +378,29 @@ export function JobsPanel() {
     dateFmt,
     workerLabelById,
     statusById,
-    togglingId,
-    allPageSelected,
+    allMatchingSelected,
     selectedJobIds,
-    toggleSelectAllPage,
+    selectingAll,
+    toggleSelectAll,
     toggleRowSelected,
     rowCheckboxClassName,
   ]);
 
   const hasActiveFilters = hasListActiveFilters({
     search,
-    isActiveParam,
     jobStatusParam,
     assignedWorkerParam,
   });
-  const countInactive = React.useCallback(async () => {
-    const { pagination: p } = await fetchJobsPage(1, 1, {
-      search: search || undefined,
-      is_active: false,
-      job_status: jobStatusFilter,
-      assigned_worker: assignedWorkerFilter,
-    });
-    return p.total_records;
-  }, [search, jobStatusFilter, assignedWorkerFilter]);
-  const { hideListChrome, listLoading, emptyStateKind, filtersActive, switchToInactive } =
-    useListActiveInactiveEmptyState({
-      loading,
-      loadError,
-      itemsLength: items.length,
-      isActiveParam,
-      isActiveFilter,
-      hasActiveFilters,
-      setUrl,
-      countInactive,
-    });
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
   const pageRange = getListPageRange(pagination);
 
   function clearFilters() {
-    setUrl(
-      { search: null, is_active: null, job_status: null, assigned_worker: null, page: null },
-      { replace: true },
-    );
+    setUrl({ search: null, job_status: null, assigned_worker: null, page: null }, { replace: true });
   }
 
   return (
@@ -484,16 +445,6 @@ export function JobsPanel() {
                 clearable
                 className="w-full min-w-0 sm:w-44"
                 onChange={(v) => setUrl({ assigned_worker: v || null, page: null }, { replace: true })}
-              />
-              <ListPageActiveFilter
-                activeLabel={t("status.active")}
-                inactiveLabel={t("status.inactive")}
-                filterLabel={t("filterState")}
-                filterAriaLabel={t("filterState")}
-                isActiveParam={isActiveParam}
-                onChange={(isActive) =>
-                  setUrl({ is_active: isActive ? null : "false", page: null }, { replace: true })
-                }
               />
             </div>
           }
@@ -564,7 +515,6 @@ export function JobsPanel() {
               action: <AddButton type="button" onClick={openCreate} />,
             }}
             onClearFilters={clearFilters}
-            onSwitchToInactive={switchToInactive}
           />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
@@ -587,13 +537,7 @@ export function JobsPanel() {
                   subtitle={jobAssignedWorkerLabel(row, workerLabelById)}
                   footer={
                     <div className="flex w-full flex-wrap items-center justify-between gap-3">
-                      <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        {statusChipForRow(row)}
-                        <ActiveStatusBadge
-                          active={row.is_active}
-                          label={row.is_active ? t("status.active") : t("status.inactive")}
-                        />
-                      </div>
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">{statusChipForRow(row)}</div>
                       <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
                         <Calendar className="size-3.5 shrink-0" aria-hidden />
                         {formatFlexibleApiDate(row.start_date, dateFmt)}
@@ -616,21 +560,6 @@ export function JobsPanel() {
                             setDeleteOpen(true);
                           },
                         },
-                        row.is_active
-                          ? {
-                              id: "deactivate",
-                              label: t("deactivate"),
-                              icon: PowerOff,
-                              onSelect: () => void handleToggleActive(row, false),
-                              disabled: togglingId === row.id,
-                            }
-                          : {
-                              id: "activate",
-                              label: t("activate"),
-                              icon: Power,
-                              onSelect: () => void handleToggleActive(row, true),
-                              disabled: togglingId === row.id,
-                            },
                       ]}
                     />
                   }

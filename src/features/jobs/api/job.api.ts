@@ -55,6 +55,23 @@ export async function fetchJobsPage(
   return { items: data.data, pagination: data.pagination };
 }
 
+/** Collect every job id matching list filters (all pages). */
+export async function fetchAllJobIds(
+  filters?: JobListFilters,
+  options?: JobRequestOptions,
+): Promise<number[]> {
+  const ids: number[] = [];
+  let pageNum = 1;
+  const pageSize = 500;
+  while (true) {
+    const { items, pagination } = await fetchJobsPage(pageNum, pageSize, filters, options);
+    for (const row of items) ids.push(row.id);
+    if (pagination.total_pages === 0 || pageNum >= pagination.total_pages) break;
+    pageNum += 1;
+  }
+  return ids;
+}
+
 export async function fetchJob(id: number, options?: JobRequestOptions): Promise<Job> {
   const { data } = await api.get<ApiEnvelope<Job>>(JOB_PATHS.detail(id), {
     skipErrorToast: options?.silent === true,
@@ -96,6 +113,6 @@ export async function deleteJob(id: number): Promise<void> {
 }
 
 export async function massUpdateJobs(body: JobMassUpdatePayload): Promise<void> {
-  const { data } = await api.post<ApiEnvelope<unknown>>(JOB_PATHS.list, body);
+  const { data } = await api.post<ApiEnvelope<unknown>>(JOB_PATHS.massUpdate, body);
   assertApiSuccess(data);
 }
