@@ -32,6 +32,7 @@ import {
   ConfirmDialog,
   DashboardUnderDevelopmentState,
 } from "@/shared/ui";
+import ProjectPinsListTab from "./project-pins-list-tab";
 
 type Props = {
   projectId: number;
@@ -60,6 +61,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
       { id: "forms", label: t("detail.tabs.forms") },
       { id: "drawings", label: t("detail.tabs.drawings") },
       { id: "jobs", label: t("detail.tabs.jobs") },
+      { id: "Pins", label: t("detail.tabs.pins") },
       { id: "jobsheets", label: t("detail.tabs.jobsheets") },
       { id: "docs", label: t("detail.tabs.docs") },
       { id: "approvals", label: t("detail.tabs.approvals") },
@@ -230,6 +232,8 @@ export function ProjectDetailScreen({ projectId }: Props) {
             <ProjectDrawingsTab projectId={detail.id} />
           ) : detail && activeTab === "forms" ? (
             <ProjectFormsTab />
+          ) : detail && activeTab === "Pins" ? (
+            <ProjectPinsListTab />
           ) : activeTab !== "details" ? (
             <DashboardUnderDevelopmentState
               className="min-h-[calc(100vh-280px)] rounded-none px-4 sm:min-h-[420px] sm:px-6"
