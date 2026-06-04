@@ -1921,8 +1921,17 @@
           "jobsheets": "Hojas de trabajo",
           "jobs": "Trabajos",
           "docs": "Documentos",
-          "approvals": "Aprobaciones"
-        }
+          "approvals": "Aprobaciones",
+          "pins": "patas"
+        }, 
+        "pinsTableHeaders": {
+        "location": "Ubicación",
+        "drawing": "Plano",
+        "plot": "Parcela",
+        "product": "Producto",
+        "status": "Estado",
+        "createdAt": "Fecha de creación"
+}
       },
       "drawings": {
         "title": "Planos",

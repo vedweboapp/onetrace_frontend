@@ -19,6 +19,8 @@ import {
 } from "@/core/errors/api-error-text";
 import FormRenderer, { FormRendererRef } from "./FormRenderer";
 import FormRuleModal from "./form-rule-modal";
+import RuleTypeModal from "../components/RuleTypeModal";
+import FormAdvancedRuleModal from "./form-advanced-rule-modal";
 import { FormRule } from "./form-rules.types";
 import { Edit2, Monitor, Smartphone, Trash2 } from "lucide-react";
 import type { FormBuilderApiHandlers } from "./form-builder.handlers";
@@ -506,19 +508,42 @@ export default function FormBuilderLayout({
           setSections(initializedSections);
         }
         if (layoutObj?.rules) {
+          /** Normalise API condition values to lowercase snake_case so they
+           *  match the dropdown option values ("is", "is_not", "is_empty", …).
+           *  The API may return "Is", "Is Not", "Is Empty" etc. */
+          const normalizeCondition = (c: string): string => {
+            if (!c) return c;
+            return c.toLowerCase().replace(/\s+/g, '_');
+          };
           const loadedRules = (layoutObj.rules || []).map((r: any) => {
             if (r.logic) {
-              return {
+              const ruleData: any = {
                 _uid: r.uuid || r._uid || `rule-${Date.now()}-${Math.random()}`,
                 name: r.name,
                 ...r.logic,
+                condition: r.logic.condition ? normalizeCondition(r.logic.condition) : undefined,
                 id: r.id ?? r.logic.id,
               };
+              if (r.logic.blocks) {
+                ruleData.blocks = r.logic.blocks.map((b: any) => ({
+                  ...b,
+                  condition: normalizeCondition(b.condition),
+                }));
+              }
+              return ruleData;
             }
-            return {
+            const ruleData: any = {
               ...r,
               _uid: r.uuid || r._uid || `rule-${Date.now()}-${Math.random()}`,
+              condition: r.condition ? normalizeCondition(r.condition) : undefined,
             };
+            if (r.blocks) {
+              ruleData.blocks = r.blocks.map((b: any) => ({
+                ...b,
+                condition: normalizeCondition(b.condition),
+              }));
+            }
+            return ruleData;
           });
           setRules(loadedRules);
         }
@@ -535,19 +560,39 @@ export default function FormBuilderLayout({
           setModuleName(layoutObj.name);
         }
         if (layoutObj?.rules) {
+          const normalizeCondition = (c: string): string => {
+            if (!c) return c;
+            return c.toLowerCase().replace(/\s+/g, '_');
+          };
           const loadedRules = (layoutObj.rules || []).map((r: any) => {
             if (r.logic) {
-              return {
+              const ruleData: any = {
                 _uid: r.uuid || r._uid || `rule-${Date.now()}-${Math.random()}`,
                 name: r.name,
                 ...r.logic,
+                condition: r.logic.condition ? normalizeCondition(r.logic.condition) : undefined,
                 id: r.id ?? r.logic.id,
               };
+              if (r.logic.blocks) {
+                ruleData.blocks = r.logic.blocks.map((b: any) => ({
+                  ...b,
+                  condition: normalizeCondition(b.condition),
+                }));
+              }
+              return ruleData;
             }
-            return {
+            const ruleData: any = {
               ...r,
               _uid: r.uuid || r._uid || `rule-${Date.now()}-${Math.random()}`,
+              condition: r.condition ? normalizeCondition(r.condition) : undefined,
             };
+            if (r.blocks) {
+              ruleData.blocks = r.blocks.map((b: any) => ({
+                ...b,
+                condition: normalizeCondition(b.condition),
+              }));
+            }
+            return ruleData;
           });
           setRules(loadedRules);
         }
@@ -649,6 +694,8 @@ export default function FormBuilderLayout({
 
   const [showModal, setShowModal] = useState<any>(null);
   const [showRuleModal, setShowRuleModal] = useState<boolean>(false);
+  const [showRuleTypeModal, setShowRuleTypeModal] = useState<boolean>(false);
+  const [showAdvancedRuleModal, setShowAdvancedRuleModal] = useState<boolean>(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
@@ -862,6 +909,8 @@ export default function FormBuilderLayout({
               condition: r.condition,
               value: r.value,
               output_fields: r.output_fields,
+              rule_type: r.rule_type || "normal",
+              ...(r.rule_type === "advanced" ? { blocks: r.blocks } : {}),
             },
           };
         });
@@ -1227,6 +1276,7 @@ export default function FormBuilderLayout({
       return [...prev, rule];
     });
     setShowRuleModal(false);
+    setShowAdvancedRuleModal(false);
     setEditingRule(null);
     setDirty(true);
   };
@@ -1240,12 +1290,43 @@ export default function FormBuilderLayout({
     
     <div className="relative flex flex-col h-full">
        {
+         showRuleTypeModal && (
+           <RuleTypeModal
+             isOpen={showRuleTypeModal}
+             onClose={() => setShowRuleTypeModal(false)}
+             onSelect={(type) => {
+               setShowRuleTypeModal(false);
+               setEditingRule(null);
+               if (type === "advanced") {
+                 setShowAdvancedRuleModal(true);
+               } else {
+                 setShowRuleModal(true);
+               }
+             }}
+           />
+         )
+       }
+       {
           showRuleModal && (
             <FormRuleModal
               initialRule={editingRule}
               onSave={handleSaveRule}
               onClose={() => {
                 setShowRuleModal(false);
+                setEditingRule(null);
+              }}
+              fields={ruleFieldOptions}
+              existingRules={rules}
+            />
+          )
+        }
+        {
+          showAdvancedRuleModal && (
+            <FormAdvancedRuleModal
+              initialRule={editingRule}
+              onSave={handleSaveRule}
+              onClose={() => {
+                setShowAdvancedRuleModal(false);
                 setEditingRule(null);
               }}
               fields={ruleFieldOptions}
@@ -1407,7 +1488,7 @@ export default function FormBuilderLayout({
                 <AppButton
                   onClick={() => {
                     setEditingRule(null);
-                    setShowRuleModal(true);
+                    setShowRuleTypeModal(true);
                   }}
                 >
                   Add Rule
@@ -1421,23 +1502,48 @@ export default function FormBuilderLayout({
                 ) : (
                   <div className="flex flex-col gap-3">
                     {rules.map((rule, idx) => (
-                      <div key={rule._uid} className="flex items-center justify-between p-4 border border-gray-200 dark:border-slate-700 rounded-md hover:shadow-sm transition-shadow">
-                        <div>
-                          <h4 className="font-semibold text-slate-900 dark:text-slate-100">{rule.name}</h4>
-                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                            <strong>If</strong> {ruleFieldOptions.find(f => f.value === rule.field_api_name)?.label || rule.field_api_name} {rule.condition.replace(/_/g, ' ')} {rule.value ? (Array.isArray(rule.value) ? rule.value.join(', ') : rule.value) : ''}
-                            <br/>
-                            <strong>Then</strong> {rule.output_fields.length} action(s) applied.
-                          </p>
+                      <div key={rule._uid} className="flex items-start justify-between p-4 border border-gray-200 dark:border-slate-700 rounded-md hover:shadow-sm transition-shadow">
+                        <div className="space-y-2 flex-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold text-slate-900 dark:text-slate-100">{rule.name}</h4>
+                            {rule.rule_type === "advanced" && (
+                              <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 text-xs font-semibold rounded">
+                                Advanced
+                              </span>
+                            )}
+                          </div>
+                          {rule.rule_type === "advanced" && rule.blocks ? (
+                            <div className="space-y-2 mt-1 pl-3 border-l-2 border-purple-500/50">
+                              {rule.blocks.map((block, bIdx) => (
+                                <p key={block._uid} className="text-sm text-slate-500 dark:text-slate-400">
+                                  <strong className="text-xs text-slate-400">Block #{bIdx + 1}:</strong>
+                                  <br />
+                                  <strong>If</strong> {ruleFieldOptions.find(f => f.value === block.field_api_name)?.label || block.field_api_name} {block.condition.replace(/_/g, ' ')} {block.value ? (Array.isArray(block.value) ? block.value.join(', ') : block.value) : ''}
+                                  <br />
+                                  <strong>Then</strong> {block.output_fields.length} action(s) applied.
+                                </p>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                              <strong>If</strong> {ruleFieldOptions.find(f => f.value === rule.field_api_name)?.label || rule.field_api_name} {rule.condition?.replace(/_/g, ' ') || ''} {rule.value ? (Array.isArray(rule.value) ? rule.value.join(', ') : rule.value) : ''}
+                              <br/>
+                              <strong>Then</strong> {rule.output_fields?.length || 0} action(s) applied.
+                            </p>
+                          )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0 ml-4">
                           <AppButton 
                             variant="ghost" 
                             size="sm" 
                             className="p-2"
                             onClick={() => {
                               setEditingRule(rule);
-                              setShowRuleModal(true);
+                              if (rule.rule_type === "advanced") {
+                                setShowAdvancedRuleModal(true);
+                              } else {
+                                setShowRuleModal(true);
+                              }
                             }}
                           >
                             <Edit2 className="size-4" />

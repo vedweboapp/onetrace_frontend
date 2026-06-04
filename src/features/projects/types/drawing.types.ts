@@ -42,6 +42,7 @@ export type DrawingPin = {
   quantity?: number;
   variation?: boolean;
   location?: number | string;
+  formId? : number | null;
 
   /** Optional description shown in the pin details panel. */
   description?: string | null;

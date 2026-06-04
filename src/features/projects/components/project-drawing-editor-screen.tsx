@@ -23,13 +23,14 @@ import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
 import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
-import { AppButton, ConfirmDialog, DetailPanel, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
+import { AppButton, CheckmarkSelect, ConfirmDialog, DetailPanel, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import DrawingBottomToolbar from "./drawing-bottom-toolbar";
 import PlotToolbar from "./plot-toolbar";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+import { fetchProjectFormsPage } from "../api/project.api";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -355,7 +356,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [dirty, setDirty] = React.useState(false);
   const [zoom, setZoom] = React.useState(1);
   const [showVariations, setShowVariations] = React.useState(false);
-
+  const [projectForms, setProjectForms] = React.useState<{ id: number; name: string }[]>([]);
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [items, setItems] = React.useState<CompositeItem[]>([]);
   const [statuses, setStatuses] = React.useState<PinStatus[]>([]);
@@ -462,6 +463,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         fetchGroupsPage(1, 500),
         fetchCompositeItemsPage(1, 500),
         fetchPinStatusesPage(1, 500),
+        fetchProjectFormsPage(projectId,1,500),
+
       ]);
 
       // 1. Drawing Detail (Critical)
@@ -492,6 +495,10 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         const statusItems = results[3].value.items;
         setStatuses(statusItems);
         setSelectedStatusId((prev) => prev || (statusItems[0] ? String(statusItems[0].id) : ""));
+      }
+      //5.forms  lists
+      if(results[4].status === "fulfilled") {
+        setProjectForms(results[4].value.items);
       }
     } catch {
       toastError(t("loadError"));
@@ -530,7 +537,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       cancelled = true;
     };
   }, [selectedGroupId]);
-
+  console.log("project forms", projectForms);
   const groupIdsNeedingAbbrev = React.useMemo(() => {
     const ids = new Set<number>();
     for (const plot of plots) {
@@ -1071,6 +1078,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
           status: pin.status ?? undefined,
           group: pin.group ?? null,
           item: pin.item ?? null,
+          formId: pin.formId ?? null,
           quantity: pin.quantity || 1,
           variation: pin.variation ?? false,
           location: pinLabels.get(pin.id),
@@ -2160,7 +2168,31 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                       })()}
                     </div>
                   </div>
-
+                  <div className="py-3 border-b border-slate-50 dark:border-slate-800/50">
+                      <div className="flex items-center  justify-between">
+                        <div className="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-form-icon lucide-form"><path d="M4 14h6"/><path d="M4 2h10"/><rect x="4" y="18" width="16" height="4" rx="1"/><rect x="4" y="6" width="16" height="4" rx="1"/></svg>
+                        <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Form</span>
+                        </div>
+                        {
+                          isPinEditing ?(
+                            <>
+                            <CheckmarkSelect
+                              options={projectForms?.map(f => ({ value: f.id, label: f.name })) ?? []}
+                              value={isPinEditing ? pinEditData.formId : detailPin.formId}
+                              onChange={(value) => {
+                                if (isPinEditing) {
+                                  setPinEditData(prev => ({ ...prev, formId: value }));
+                                }
+                              }}
+                            />
+                            </>
+                          ):(<span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              {projectForms?.find(f => f.id === (isPinEditing ? pinEditData.formId : detailPin.formId))?.name || "Select Form"}
+                            </span>)
+                         }
+                        </div> 
+                  </div>
                   {/* Variation toggle row */}
                   <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800/50">
                     <div className="flex items-center gap-3">
