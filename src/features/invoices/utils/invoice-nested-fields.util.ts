@@ -41,6 +41,17 @@ export function invoiceContactLabel(
   return id != null ? `#${id}` : "—";
 }
 
+export function invoiceContactPersonLabel(
+  detail: Pick<InvoiceDetail, "client" | "contact" | "contact_person">,
+  fallbackName?: string,
+): string {
+  const client = detail.client;
+  if (client && typeof client === "object" && client.contact_person?.trim()) {
+    return client.contact_person.trim();
+  }
+  return invoiceContactLabel(detail.contact ?? detail.contact_person, fallbackName);
+}
+
 export function parseInvoiceAmount(raw: number | string | null | undefined): number {
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;
   if (typeof raw === "string" && raw.trim()) {
@@ -50,8 +61,18 @@ export function parseInvoiceAmount(raw: number | string | null | undefined): num
   return 0;
 }
 
+export function invoiceTotalAmount(row: {
+  total?: number | string | null;
+  total_balance?: number | string | null;
+  subtotal?: number | string | null;
+  sub_total?: number | string | null;
+  amount?: number | string | null;
+}): number {
+  return parseInvoiceAmount(row.total ?? row.total_balance ?? row.subtotal ?? row.sub_total ?? row.amount);
+}
+
 export function invoiceListAmount(row: InvoiceListItem): number {
-  return parseInvoiceAmount(row.total_balance ?? row.total ?? row.sub_total ?? row.amount);
+  return invoiceTotalAmount(row);
 }
 
 export function normalizeInvoiceStatus(raw: string | null | undefined): string {

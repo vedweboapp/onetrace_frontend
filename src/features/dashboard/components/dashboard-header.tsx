@@ -78,6 +78,7 @@ export function DashboardHeader() {
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
+  const materialRequestsHref = routes.dashboard.materialRequests;
   const compositeHref = routes.dashboard.compositeItems;
   const personalProfileHref = routes.dashboard.settingsPersonalProfile;
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
@@ -87,6 +88,7 @@ export function DashboardHeader() {
   const jobStatusHref = routes.dashboard.settingsJobStatus;
   const tagHref = routes.dashboard.settingsTags;
   const projectTypeHref = routes.dashboard.settingsProjectTypes;
+  const installationTypeHref = routes.dashboard.settingsInstallationTypes;
   const projectFormsHref = routes.dashboard.settingsProjectForms;
   const usersHref = routes.dashboard.settingsUsers;
   const homeActive = pathname === homeHref;
@@ -104,6 +106,8 @@ export function DashboardHeader() {
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
   const groupsActive = pathname === groupsHref || pathname.startsWith(`${groupsHref}/`);
+  const materialRequestsActive =
+    pathname === materialRequestsHref || pathname.startsWith(`${materialRequestsHref}/`);
   const compositeActive =
     pathname === compositeHref || pathname.startsWith(`${compositeHref}/`);
   const personalProfileActive =
@@ -119,6 +123,8 @@ export function DashboardHeader() {
   const tagActive = pathname === tagHref || pathname.startsWith(`${tagHref}/`);
   const projectTypeActive =
     pathname === projectTypeHref || pathname.startsWith(`${projectTypeHref}/`);
+  const installationTypeActive =
+    pathname === installationTypeHref || pathname.startsWith(`${installationTypeHref}/`);
   const projectFormsActive =
     pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
   const customizationHubActive =
@@ -146,7 +152,9 @@ export function DashboardHeader() {
                     ? tNav("clients")
                     : groupsActive
                       ? tNav("groups")
-                      : compositeActive
+                      : materialRequestsActive
+                        ? tNav("materialRequests")
+                        : compositeActive
                         ? tNav("compositeItems")
                         : personalProfileActive
                           ? tSettingsNav("personalProfile")
@@ -162,9 +170,11 @@ export function DashboardHeader() {
                                     ? tSettingsNav("jobStatus")
                                     : tagActive
                                       ? tSettingsNav("tags")
-                                      : projectTypeActive
-                                        ? tSettingsNav("projectTypes")
-                                        : usersActive
+                                      : installationTypeActive
+                                        ? tSettingsNav("installationTypes")
+                                        : projectTypeActive
+                                          ? tSettingsNav("projectTypes")
+                                          : usersActive
                                           ? tSettingsNav("users")
                                           : tNav("home");
 

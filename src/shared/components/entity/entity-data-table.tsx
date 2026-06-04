@@ -69,6 +69,7 @@ function renderEntityTableCell<T>(column: EntityTableColumn<T>, row: T): ReactNo
         />
       );
     case "actions":
+    case "selection":
       return column.render(row);
     case "custom":
       return column.render(row);
@@ -153,16 +154,16 @@ export function EntityDataTable<T extends { id: number | string }>({
                   onClick={clickable ? () => onRowClick(row) : undefined}
                 >
                   {columns.map((col) => {
-                    const isActions = col.variant === "actions";
+                    const isolateClick = col.variant === "actions" || col.variant === "selection";
                     return (
                       <DataTableTd
                         key={col.id}
                         narrow={col.narrow}
                         className={columnCellClassName(col)}
-                        onPointerDown={isActions ? (e) => e.stopPropagation() : undefined}
-                        onMouseDown={isActions ? (e) => e.stopPropagation() : undefined}
-                        onClick={isActions ? (e) => e.stopPropagation() : undefined}
-                        onKeyDown={isActions ? (e) => e.stopPropagation() : undefined}
+                        onPointerDown={isolateClick ? (e) => e.stopPropagation() : undefined}
+                        onMouseDown={isolateClick ? (e) => e.stopPropagation() : undefined}
+                        onClick={isolateClick ? (e) => e.stopPropagation() : undefined}
+                        onKeyDown={isolateClick ? (e) => e.stopPropagation() : undefined}
                       >
                         {renderEntityTableCell(col, row)}
                       </DataTableTd>

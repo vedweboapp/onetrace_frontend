@@ -1,8 +1,18 @@
 import type {
+  JobMetaCompositeGroupRef,
   JobMetaCompositeItem,
   JobMetaLegacyPayload,
   JobMetaPayload,
 } from "@/features/jobs/types/job.types";
+
+export type JobMetaFormRow = {
+  group: string;
+  group_name?: string;
+  item: string;
+  item_name?: string;
+  quantity: string;
+  rate?: string;
+};
 
 export function parsePositiveQuantity(raw: string): number | null {
   const s = raw.trim();
@@ -24,6 +34,25 @@ export function computeJobMetaLineTotal(
   return quantity * price;
 }
 
+/** Resolve composite line item id from API response (id or legacy `item`). */
+export function resolveJobMetaCompositeItemId(
+  row: Pick<JobMetaCompositeItem, "id" | "item">,
+): number | null {
+  if (typeof row.id === "number" && row.id > 0) return row.id;
+  const item = row.item;
+  if (typeof item === "number" && item > 0) return item;
+  if (item && typeof item === "object" && typeof item.id === "number" && item.id > 0) return item.id;
+  return null;
+}
+
+function resolveGroupRef(groupRaw: string, groupName?: string): JobMetaCompositeGroupRef | null {
+  const trimmed = groupRaw.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const id = Number.parseInt(trimmed, 10);
+  const name = groupName?.trim();
+  return name ? { id, name } : { id };
+}
+
 /** Normalize legacy nested `job_meta` to flat API shape for display and edit. */
 export function normalizeJobMeta(
   meta: JobMetaPayload | JobMetaLegacyPayload | null | undefined,
@@ -43,9 +72,7 @@ export function normalizeJobMeta(
   };
 }
 
-export function buildJobMetaPayload(
-  rows: Array<{ group: string; item: string; quantity: string; rate?: string }>,
-): JobMetaPayload | undefined {
+export function buildJobMetaPayload(rows: JobMetaFormRow[]): JobMetaPayload | undefined {
   const composite_items: JobMetaCompositeItem[] = [];
   let total = 0;
 
@@ -53,13 +80,30 @@ export function buildJobMetaPayload(
     const itemRaw = row.item.trim();
     const qty = parsePositiveQuantity(row.quantity);
     if (!/^\d+$/.test(itemRaw) || qty == null) continue;
-    const itemId = Number.parseInt(itemRaw, 10);
-    const groupRaw = row.group.trim();
-    const group = /^\d+$/.test(groupRaw) ? Number.parseInt(groupRaw, 10) : null;
+
+    const id = Number.parseInt(itemRaw, 10);
     const rate = row.rate != null ? Number.parseFloat(String(row.rate).trim()) : Number.NaN;
-    const amount = Number.isFinite(rate) && rate >= 0 ? Number((qty * rate).toFixed(2)) : undefined;
-    composite_items.push({ item: itemId, group, quantity: qty, amount });
-    if (Number.isFinite(rate) && rate >= 0) {
+    const amount =
+      Number.isFinite(rate) && rate >= 0
+        ? Number((qty * rate).toFixed(2))
+        : undefined;
+
+    const name = row.item_name?.trim() || undefined;
+    const group = resolveGroupRef(row.group, row.group_name);
+
+    const line: JobMetaCompositeItem = {
+      id,
+      quantity: qty,
+    };
+    if (name) line.name = name;
+    if (group) line.group = group;
+    if (amount != null) line.amount = amount;
+
+    composite_items.push(line);
+
+    if (amount != null) {
+      total += amount;
+    } else if (Number.isFinite(rate) && rate >= 0) {
       total += computeJobMetaLineTotal(qty, rate);
     }
   }
@@ -67,7 +111,7 @@ export function buildJobMetaPayload(
   if (composite_items.length === 0) return undefined;
   return {
     composite_items,
-    total: total > 0 ? total : undefined,
+    total: Number(total.toFixed(2)),
   };
 }
 

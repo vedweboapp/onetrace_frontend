@@ -34,28 +34,10 @@ export async function fetchProjectFormsByProject(
   projectId: number,
   options?: FormsRequestOptions,
 ): Promise<ProjectFormOption[]> {
-  const { data } = await api.get("projects-forms/", {
+  const { data } = await api.get("project-forms/", {
     params: { project_id: projectId },
     skipErrorToast: options?.silent === true,
   });
 
-  const raw =
-    Array.isArray((data as { data?: unknown })?.data)
-      ? (data as { data: unknown[] }).data
-      : Array.isArray((data as { forms?: unknown })?.forms)
-        ? ((data as { forms: unknown[] }).forms ?? [])
-        : [];
-
-  return raw
-    .map((entry) => {
-      if (!entry || typeof entry !== "object") return null;
-      const obj = entry as { id?: unknown; name?: unknown };
-      const id = typeof obj.id === "number" ? obj.id : Number.parseInt(String(obj.id ?? ""), 10);
-      if (!Number.isFinite(id) || id <= 0) return null;
-      return {
-        id,
-        name: String(obj.name ?? `#${id}`).trim() || `#${id}`,
-      };
-    })
-    .filter((v): v is ProjectFormOption => v != null);
+  return parseFormsListResponse(data).map(({ id, name }) => ({ id, name }));
 }

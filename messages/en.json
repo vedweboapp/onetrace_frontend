@@ -156,6 +156,7 @@
       "qrCodes": "QR codes",
       "projects": "Projects",
       "groups": "Groups",
+      "materialRequests": "Material request",
       "products": "Products",
       "items": "Items",
       "itemsPlain": "Items",
@@ -170,6 +171,7 @@
       "jobStatus": "Job statuses",
       "tags": "Tags",
       "projectTypes": "Project types",
+      "installationTypes": "Installation types",
       "users": "Users",
       "personalProfile": "Personal Profile",
       "companySettings": "Company Settings",
@@ -180,11 +182,15 @@
       "customization": {
         "label": "Customization",
         "hubTitle": "Customization",
-        "hubDescription": "Choose what to configure — project types, pin statuses, job statuses, and tags.",
+        "hubDescription": "Choose what to configure — project types, installation types, pin statuses, job statuses, and tags.",
         "items": {
           "projectTypes": {
             "title": "Project types",
             "description": "Categories for projects with colored labels."
+          },
+          "installationTypes": {
+            "title": "Installation types",
+            "description": "Classify installations with colored labels."
           },
           "pinStatus": {
             "title": "Pin statuses",
@@ -536,6 +542,62 @@
       "toggleActiveError": "Could not update project type status. Try again.",
       "hexPlaceholder": "#000000",
       "validationName": "Enter a project type name.",
+      "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
+    },
+    "installationTypes": {
+      "metaTitle": "Installation types",
+      "title": "Installation types",
+      "subtitle": "Define installation categories with colored labels for use across the app.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "filterState": "Active state",
+      "table": {
+        "type": "Installation type",
+        "status": "Record status",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "emptyTitle": "No installation types yet",
+      "emptyDescription": "Create your first installation type to classify work.",
+      "loadError": "Could not load installation types. Try again.",
+      "modal": {
+        "createTitle": "New installation type",
+        "editTitle": "Edit installation type",
+        "typeName": "Name",
+        "bgColour": "Background color",
+        "textColour": "Text color",
+        "activeLabel": "Active",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this installation type?",
+      "deleteConfirmBody": "Records using this type may need to be updated. This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} installation types",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Installation type updated",
+      "created": "Installation type created",
+      "deleted": "Installation type deleted",
+      "activatedToast": "Installation type activated",
+      "deactivatedToast": "Installation type deactivated",
+      "toggleActiveError": "Could not update installation type status. Try again.",
+      "hexPlaceholder": "#000000",
+      "validationName": "Enter an installation type name.",
       "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
     },
     "users": {
@@ -1323,6 +1385,7 @@
       "table": {
         "invoiceNumber": "Invoice #",
         "clientName": "Client name",
+        "projectName": "Project name",
         "jobName": "Job name",
         "amount": "Amount",
         "issueDate": "Issue date",
@@ -1412,6 +1475,7 @@
       },
       "lineItems": {
         "productName": "Product name",
+        "group": "Group",
         "description": "Description",
         "qty": "Qty",
         "unit": "Unit",
@@ -1445,7 +1509,154 @@
         "client": "Select a client.",
         "issueDate": "Enter an issue date.",
         "lineDescription": "Enter a description or select a product for each line.",
-        "lineQuantity": "Enter a valid quantity."
+        "lineQuantity": "Enter a valid quantity.",
+        "addressLine1": "Enter address line 1.",
+        "country": "Select a country.",
+        "state": "Select a state or region.",
+        "city": "Enter or select a city."
+      }
+    },
+    "materialRequests": {
+      "metaTitle": "Material requests",
+      "detailMetaTitle": "Material request details",
+      "title": "Material requests",
+      "subtitle": "Manage and monitor material procurement and distribution across job sites.",
+      "createRequest": "Create material request",
+      "edit": "Edit",
+      "searchPlaceholder": "Search material requests…",
+      "searchAria": "Search material requests",
+      "emptyTitle": "No material requests yet",
+      "emptyDescription": "Create your first material request to track procurement and dispatch.",
+      "loadError": "Could not load material requests. Try again.",
+      "detailLoadError": "Could not load material request details. Try again.",
+      "createdToast": "Material request created successfully",
+      "updatedToast": "Material request updated successfully",
+      "filterStatus": "Status",
+      "filterAllStatuses": "All statuses",
+      "filterWorker": "Worker",
+      "filterAllWorkers": "All workers",
+      "filterRequestedDate": "Requested date",
+      "pageLabel": "Showing {start} to {end} of {total} results",
+      "prev": "Previous",
+      "next": "Next",
+      "status": {
+        "draft": "Draft",
+        "pending": "Pending",
+        "partiallyDispatched": "Partially dispatched",
+        "dispatched": "Dispatched"
+      },
+      "table": {
+        "requestNumber": "Request",
+        "jobName": "Job",
+        "workerName": "Worker name",
+        "requestDate": "Request date",
+        "items": "Items",
+        "status": "Status"
+      },
+      "card": {
+        "requestDate": "Request date",
+        "items": "{count} items"
+      },
+      "tabs": {
+        "overview": "Overview",
+        "dispatch": "Dispatch",
+        "timeline": "Timeline"
+      },
+      "detail": {
+        "loadingTitle": "Loading…",
+        "retry": "Retry",
+        "backAria": "Back to material requests list",
+        "sectionOverview": "Overview",
+        "sectionJobs": "Jobs",
+        "sectionItems": "Items",
+        "sectionDispatch": "Dispatch",
+        "sectionTimeline": "Dispatch timeline",
+        "sectionSystemMetadata": "System metadata",
+        "notModifiedYet": "Not modified yet"
+      },
+      "actions": {
+        "dispatch": "Dispatch"
+      },
+      "fields": {
+        "workerName": "Worker name",
+        "requestedDate": "Requested date",
+        "status": "Status",
+        "projectName": "Project name",
+        "clientName": "Client name",
+        "notes": "Notes",
+        "createdAt": "Created at",
+        "updatedAt": "Updated at",
+        "createdBy": "Created by",
+        "modifiedBy": "Modified by"
+      },
+      "placeholders": {
+        "worker": "Select worker",
+        "job": "Select job",
+        "item": "Select item"
+      },
+      "sections": {
+        "general": "General information",
+        "jobs": "Jobs",
+        "items": "Items"
+      },
+      "jobs": {
+        "add": "Add jobs",
+        "remove": "Remove job",
+        "details": "Job details",
+        "empty": "No jobs linked to this request.",
+        "addModalTitle": "Select jobs",
+        "addModalSubmit": "Add selected jobs",
+        "selectWorkerFirst": "Select a worker first.",
+        "loading": "Loading jobs…",
+        "loadError": "Could not load jobs for this worker.",
+        "noJobsForWorker": "No active jobs assigned to this worker.",
+        "pickerLabel": "Jobs",
+        "pickerPlaceholder": "Search and select jobs…",
+        "emptyHint": "Click Add jobs to link work from this technician."
+      },
+      "items": {
+        "emptyNoJobs": "Add jobs above to load line items from each job's work scope.",
+        "emptyNoMeta": "Selected jobs have no composite items in their work scope."
+      },
+      "lineItems": {
+        "itemName": "Item name",
+        "itemDetails": "Item details",
+        "jobName": "Job name",
+        "requestQty": "Request qty",
+        "units": "Units",
+        "addItem": "Add item",
+        "remove": "Remove item",
+        "empty": "No items on this request."
+      },
+      "dispatch": {
+        "materialItem": "Material item",
+        "requested": "Requested",
+        "dispatched": "Dispatched",
+        "pending": "Pending",
+        "empty": "No dispatch data for this request."
+      },
+      "timeline": {
+        "empty": "No timeline events yet.",
+        "event": "Event"
+      },
+      "page": {
+        "createTitle": "Material request form",
+        "editTitle": "Edit material request",
+        "formSubtitle": "Please fill out the details below to request project materials."
+      },
+      "modal": {
+        "cancel": "Cancel",
+        "submit": "Submit request",
+        "saveChanges": "Save changes"
+      },
+      "validation": {
+        "worker": "Select a worker.",
+        "requestedDate": "Enter a requested date.",
+        "job": "Select a job.",
+        "item": "Select an item.",
+        "quantity": "Enter a valid quantity.",
+        "atLeastOneJob": "Add at least one job.",
+        "atLeastOneItem": "Add at least one item."
       }
     },
     "jobs": {
@@ -1472,6 +1683,16 @@
       "filterAllStatuses": "All statuses",
       "filterAssignedWorker": "Assigned worker",
       "filterAllWorkers": "All technicians",
+      "massAssign": {
+        "assignTo": "Assign to",
+        "apply": "Apply",
+        "selectRow": "Select job",
+        "selectAll": "Select all on this page",
+        "selectedCount": "{count} selected",
+        "success": "Assigned {count} jobs",
+        "error": "Could not assign jobs. Try again.",
+        "pickWorker": "Select a technician"
+      },
       "activate": "Activate",
       "deactivate": "Deactivate",
       "activatedToast": "Job activated",
@@ -2075,6 +2296,9 @@
         "groupPlaceholder": "Select group",
         "groupError": "Select a group.",
         "noGroupsHint": "No groups found. Create at least one group before adding composite items.",
+        "installationType": "Installation type",
+        "installationTypePlaceholder": "Select installation type",
+        "installationTypesLoadError": "Could not load installation types.",
         "createdToast": "Composite item created",
         "updatedToast": "Composite item updated"
       },

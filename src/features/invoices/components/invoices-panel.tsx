@@ -209,7 +209,7 @@ export function InvoicesPanel() {
       c.truncate("client", t("table.clientName"), (r) => clientDisplay(r), {
         title: (r) => clientDisplay(r),
       }),
-      c.truncate("job", t("table.jobName"), (r) => invoiceJobOrProjectLabel(r)),
+      c.truncate("project", t("table.projectName"), (r) => invoiceJobOrProjectLabel(r)),
       c.tabular("amount", t("table.amount"), (r) =>
         formatMoneyDisplay(invoiceListAmount(r), locale),
       ),

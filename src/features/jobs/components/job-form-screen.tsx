@@ -37,9 +37,11 @@ import {
   FieldGroup,
   FormFieldRow,
   MultiCheckSelect,
+  RequiredMark,
   SurfaceDateInput,
   SurfaceShell,
   surfaceInputClassName,
+  surfaceTextareaClassName,
 } from "@/shared/ui";
 
 type Props = {
@@ -122,6 +124,18 @@ export function JobFormScreen({ mode, jobId }: Props) {
       }, 0),
     [jobMetaItems],
   );
+
+  const groupLabelById = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const o of groupOptions) m.set(o.value, o.label);
+    return m;
+  }, [groupOptions]);
+
+  const itemLabelById = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const o of itemOptions) m.set(o.value, o.label);
+    return m;
+  }, [itemOptions]);
 
   const getFormDraft = React.useCallback(() => getValues(), [getValues]);
   const restoreFormDraft = React.useCallback(
@@ -256,6 +270,13 @@ export function JobFormScreen({ mode, jobId }: Props) {
       }
       if (selectTarget === "group") {
         setValue("job_meta_items.0.group", selectId, { shouldDirty: true, shouldValidate: true });
+        void fetchGroup(Number.parseInt(selectId, 10))
+          .then((g) => {
+            setValue("job_meta_items.0.group_name", g.name?.trim() ?? "", { shouldDirty: true });
+          })
+          .catch(() => {
+            setValue("job_meta_items.0.group_name", "", { shouldDirty: true });
+          });
       }
     },
   });
@@ -365,6 +386,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
       const itemGroup = itemGroupById.get(itemId) ?? null;
       if (selectedGroup != null && itemGroup != null && selectedGroup !== itemGroup) {
         setValue(`job_meta_items.${index}.item`, "", { shouldDirty: true });
+        setValue(`job_meta_items.${index}.item_name`, "", { shouldDirty: true });
         setValue(`job_meta_items.${index}.rate`, "", { shouldDirty: true });
       }
     });
@@ -462,7 +484,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                 <textarea
                   id="job-description"
                   rows={4}
-                  className={cn(surfaceInputClassName, "resize-y min-h-[100px]")}
+                  className={cn(surfaceTextareaClassName, "min-h-[100px]")}
                   disabled={saving}
                   {...register("description")}
                 />
@@ -619,6 +641,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                       <CheckmarkSelect
                         id="job-worker"
                         label={t("fields.assignedWorker")}
+                        required
                         options={workerOptions}
                         value={field.value}
                         onChange={field.onChange}
@@ -671,7 +694,16 @@ export function JobFormScreen({ mode, jobId }: Props) {
                   variant="primary"
                   size="sm"
                   disabled={saving}
-                  onClick={() => append({ group: "", item: "", quantity: "1", rate: "" })}
+                  onClick={() =>
+                    append({
+                      group: "",
+                      group_name: "",
+                      item: "",
+                      item_name: "",
+                      quantity: "1",
+                      rate: "",
+                    })
+                  }
                 >
                   <Plus className="size-4" aria-hidden />
                   {t("lineItems.addItem")}
@@ -682,7 +714,10 @@ export function JobFormScreen({ mode, jobId }: Props) {
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
                       <th className="px-3 py-2">{tGroups("title")}</th>
-                      <th className="px-3 py-2">{tItems("title")}</th>
+                      <th className="px-3 py-2">
+                        {tItems("title")}
+                        <RequiredMark />
+                      </th>
                       <th className="px-3 py-2">{t("lineItems.qty")}</th>
                       <th className="px-3 py-2">{t("lineItems.rate")}</th>
                       <th className="px-3 py-2">{t("lineItems.amount")}</th>
@@ -708,7 +743,11 @@ export function JobFormScreen({ mode, jobId }: Props) {
                                   value={groupField.value}
                                   onChange={(v) => {
                                     groupField.onChange(v);
+                                    setValue(`job_meta_items.${index}.group_name`, v ? (groupLabelById.get(v) ?? "") : "", {
+                                      shouldDirty: true,
+                                    });
                                     setValue(`job_meta_items.${index}.item`, "", { shouldDirty: true });
+                                    setValue(`job_meta_items.${index}.item_name`, "", { shouldDirty: true });
                                     setValue(`job_meta_items.${index}.rate`, "", { shouldDirty: true });
                                   }}
                                   emptyLabel={t("placeholders.plotGroup")}
@@ -733,10 +772,29 @@ export function JobFormScreen({ mode, jobId }: Props) {
                                   <CheckmarkSelect
                                     options={filteredItems}
                                     value={itemField.value}
+                                    invalid={!!errors.job_meta_items?.[index]?.item}
                                     onChange={(v) => {
                                       itemField.onChange(v);
+                                      setValue(
+                                        `job_meta_items.${index}.item_name`,
+                                        v ? (itemLabelById.get(v) ?? "") : "",
+                                        { shouldDirty: true },
+                                      );
                                       if (v && /^\d+$/.test(v)) {
-                                        const price = itemPriceById.get(Number.parseInt(v, 10));
+                                        const itemId = Number.parseInt(v, 10);
+                                        const price = itemPriceById.get(itemId);
+                                        const linkedGroupId = itemGroupById.get(itemId);
+                                        if (linkedGroupId != null && linkedGroupId > 0) {
+                                          const groupKey = String(linkedGroupId);
+                                          setValue(`job_meta_items.${index}.group`, groupKey, {
+                                            shouldDirty: true,
+                                          });
+                                          setValue(
+                                            `job_meta_items.${index}.group_name`,
+                                            groupLabelById.get(groupKey) ?? "",
+                                            { shouldDirty: true },
+                                          );
+                                        }
                                         const currentQty = parseMoneyValue(jobMetaItems[index]?.quantity);
                                         if (!Number.isFinite(currentQty) || currentQty <= 0) {
                                           setValue(`job_meta_items.${index}.quantity`, "1", {
@@ -769,13 +827,16 @@ export function JobFormScreen({ mode, jobId }: Props) {
                               type="number"
                               min={0}
                               step="any"
+                              aria-invalid={errors.job_meta_items?.[index]?.quantity ? true : undefined}
                               className={cn(
                                 surfaceInputClassName,
                                 "h-8 w-24 px-2.5 text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                                errors.job_meta_items?.[index]?.quantity && "border-red-500",
                               )}
                               disabled={saving}
                               {...register(`job_meta_items.${index}.quantity`)}
                             />
+                            <FieldErrorText>{errors.job_meta_items?.[index]?.quantity?.message}</FieldErrorText>
                           </td>
                           <td className="px-3 py-2 align-top">
                             <input

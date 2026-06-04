@@ -33,6 +33,7 @@ export type Item = {
   deleted_by?: unknown;
   organization?: number;
   group?: number | null;
+  installation_type?: number | null;
 };
 
 export type ItemCreatePayload = {
@@ -44,6 +45,7 @@ export type ItemCreatePayload = {
   selling_price: number;
   reorder_quantity?: number;
   group?: number;
+  installation_type?: number;
   components?: ItemComponentRef[];
 };
 

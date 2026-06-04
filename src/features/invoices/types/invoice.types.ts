@@ -7,6 +7,9 @@ export type InvoiceUserRef = {
 export type InvoiceClientRef = {
   id: number;
   name?: string;
+  contact_person?: string | null;
+  email?: string | null;
+  phone?: string | null;
 };
 
 export type InvoiceContactRef = {
@@ -43,11 +46,20 @@ export type InvoiceLineItem = {
   total?: number | string | null;
 };
 
+export type InvoiceCompositeGroupRef = {
+  id: number;
+  name?: string;
+};
+
 export type InvoiceCompositeItem = {
-  group?: { id: number; name?: string | null } | number | null;
-  item?: { id: number; name?: string | null; selling_price?: number | string | null } | number | null;
+  id?: number;
+  name?: string;
+  group?: InvoiceCompositeGroupRef | number | null;
   quantity: number;
+  amount?: number;
   line_total?: number | string | null;
+  /** Legacy read paths. */
+  item?: { id: number; name?: string | null; selling_price?: number | string | null } | number | null;
 };
 
 export type InvoiceListItem = {
@@ -60,7 +72,7 @@ export type InvoiceListItem = {
   sub_total?: number | string | null;
   total_balance?: number | string | null;
   total?: number | string | null;
-  amount: number | string;
+  amount?: number | string | null;
   issue_date: string;
   due_date?: string | null;
   payment_terms?: string | null;
@@ -107,8 +119,9 @@ export type InvoiceLineItemPayload = {
 };
 
 export type InvoiceCompositeItemPayload = {
-  group?: number | null;
-  item: number;
+  id: number;
+  name?: string;
+  group?: InvoiceCompositeGroupRef | null;
   quantity: number;
   amount?: number;
 };
