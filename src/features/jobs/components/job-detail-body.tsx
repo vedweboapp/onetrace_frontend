@@ -31,7 +31,6 @@ import {
   DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
-  DetailStatusMetric,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
@@ -95,12 +94,6 @@ export function JobDetailBody({
       <div className={detailPageStackClassName}>
         <DetailPanelCard>
           <DetailMetricsGrid>
-            <DetailStatusMetric
-              label={t("fields.recordStatus")}
-              isActive={detail.is_active}
-              activeLabel={t("status.active")}
-              inactiveLabel={t("status.inactive")}
-            />
             <DetailMetricCard label={t("fields.jobStatus")}>
               <WorkflowColourStatusChip
                 row={statusRow}

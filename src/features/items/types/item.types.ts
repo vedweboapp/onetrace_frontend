@@ -11,6 +11,17 @@ export type ItemComponentRef = {
   quantity: number;
 };
 
+/** Expanded installation type on item read responses. */
+export type ItemInstallationTypeRef = {
+  id: number;
+  installation_type?: string | null;
+  name?: string | null;
+  bg_color?: string | null;
+  bg_colour?: string | null;
+  text_color?: string | null;
+  text_colour?: string | null;
+};
+
 export type Item = {
   id: number;
   components?: ItemComponentRef[];
@@ -33,7 +44,7 @@ export type Item = {
   deleted_by?: unknown;
   organization?: number;
   group?: number | null;
-  installation_type?: number | null;
+  installation_type?: number | ItemInstallationTypeRef | null;
 };
 
 export type ItemCreatePayload = {

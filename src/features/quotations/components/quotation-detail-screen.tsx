@@ -189,7 +189,6 @@ export function QuotationDetailScreen({ quotationId }: Props) {
       getTitle={(detail) => detail.quote_name}
       onDetailChange={setDetailForSite}
       labels={{
-        loadingTitle: t("detail.loadingTitle"),
         metaTitle: t("detailMetaTitle"),
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),

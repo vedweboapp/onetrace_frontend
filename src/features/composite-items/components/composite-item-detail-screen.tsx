@@ -50,7 +50,6 @@ export function CompositeItemDetailScreen({ itemId }: Props) {
       fetch={fetchCompositeItem}
       getTitle={(detail) => detail.name}
       labels={{
-        loadingTitle: tItems("detail.loadingTitle"),
         metaTitle: tItems("detailMetaTitle"),
         backAria: t("detail.backAria"),
         retry: tItems("detail.retry"),

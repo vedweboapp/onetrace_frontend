@@ -48,7 +48,6 @@ export function GroupDetailScreen({ groupId }: Props) {
       fetch={fetchGroup}
       getTitle={(detail) => detail.name}
       labels={{
-        loadingTitle: t("detail.loadingTitle"),
         metaTitle: t("detailMetaTitle"),
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),
