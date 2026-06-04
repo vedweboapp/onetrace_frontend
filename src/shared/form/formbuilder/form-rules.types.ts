@@ -17,6 +17,15 @@ export type FormRuleOutput = {
   action: RuleAction;
 };
 
+export type FormRuleBlock = {
+  _uid: string;
+  field_api_name: string;
+  field_id?: number | null;
+  condition: RuleCondition;
+  value: string | string[] | null;
+  output_fields: FormRuleOutput[];
+};
+
 export type FormRule = {
   _uid: string;              // client id for list management
   id?: number | string;      // backend id when saved
@@ -24,9 +33,11 @@ export type FormRule = {
   uuid?: string;
   name: string;              // max 20 chars
   sequence: number;
-  field_api_name: string;    // trigger field
+  field_api_name?: string;    // trigger field (optional for advanced)
   field_id?: number | null;
-  condition: RuleCondition;
-  value: string | string[] | null;
-  output_fields: FormRuleOutput[];
+  condition?: RuleCondition;  // optional for advanced
+  value?: string | string[] | null; // optional for advanced
+  output_fields?: FormRuleOutput[]; // optional for advanced
+  rule_type?: "normal" | "advanced";
+  blocks?: FormRuleBlock[];
 };

@@ -5,6 +5,8 @@ import { X, Plus, Trash2 } from "lucide-react";
 import { AppButton } from "@/shared/ui/app-button";
 import { FormRule, RuleCondition, FormRuleOutput, RuleAction } from "./form-rules.types";
 import MultiSelect from "../components/multi-select";
+import PhoneInput from "react-phone-number-input";
+import { SurfacePhoneCountrySelect } from "@/shared/ui/surface-phone-country-select";
 
 /** Full-height drawer below the form builder sub-header (top-14 + h-14 = 7rem). */
 const FORM_BUILDER_SUBHEADER_OFFSET = "top-28";
@@ -49,8 +51,8 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
   );
 
   const [outputs, setOutputs] = useState<FormRuleOutput[]>(
-    initialRule?.output_fields?.length 
-      ? initialRule.output_fields 
+    initialRule?.output_fields?.length
+      ? initialRule.output_fields
       : [{ field_api_name: "", action: "show" }]
   );
 
@@ -60,10 +62,32 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
     const claimed = new Set<string>();
     existingRules.forEach(r => {
       if (r._uid !== initialRule?._uid) {
-        r.output_fields.forEach(o => claimed.add(o.field_api_name));
+        if (r.rule_type === "advanced" && r.blocks) {
+          r.blocks.forEach(b => {
+            b.output_fields?.forEach(o => claimed.add(o.field_api_name));
+          });
+        } else {
+          r.output_fields?.forEach(o => claimed.add(o.field_api_name));
+        }
       }
     });
     return claimed;
+  }, [existingRules, initialRule]);
+
+  const triggerFieldsUsedInOtherRules = React.useMemo(() => {
+    const usedTriggers = new Set<string>();
+    existingRules.forEach(r => {
+      if (r._uid !== initialRule?._uid) {
+        if (r.rule_type === "advanced" && r.blocks) {
+          r.blocks.forEach(b => {
+            if (b.field_api_name) usedTriggers.add(b.field_api_name);
+          });
+        } else {
+          if (r.field_api_name) usedTriggers.add(r.field_api_name);
+        }
+      }
+    });
+    return usedTriggers;
   }, [existingRules, initialRule]);
 
   const selectedOutputFieldNames = React.useMemo(() => {
@@ -114,7 +138,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
     if (name.length > 20) newErrors.name = "Maximum 20 characters";
     if (!triggerField) newErrors.triggerField = "Trigger field is required";
     if (!condition) newErrors.condition = "Condition is required";
-    
+
     if (condition !== "is_empty" && condition !== "is_not_empty" && !ruleValue) {
       newErrors.ruleValue = "Value is required";
     }
@@ -191,6 +215,23 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
         />
       );
     }
+    if (fieldType === "phone" || fieldType === "mobile") {
+      return (
+        <PhoneInput
+          international
+          defaultCountry="IN"
+          placeholder="Enter phone number"
+          className="w-full mt-1.5"
+          value={ruleValue}
+          onChange={(val) => setRuleValue(val || "")}
+          countrySelectComponent={SurfacePhoneCountrySelect}
+          numberInputProps={{
+            className: `w-full p-2.5 border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`,
+          }}
+        />
+      );
+    }
+
     if (fieldType === "checkbox") {
       return (
         <select
@@ -284,10 +325,10 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <div className="flex flex-col gap-2 border-b border-gray-200 dark:border-slate-700 pb-4 border-dotted">
             <label htmlFor="rule-name" className="text-sm font-medium text-slate-900 dark:text-slate-100">Rule Name</label>
-            <input 
-              type="text" 
-              id="rule-name" 
-              className={`w-full p-2 border ${errors.name ? 'border-red-500' : 'border-gray-200'} rounded-md dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700`} 
+            <input
+              type="text"
+              id="rule-name"
+              className={`w-full p-2 border ${errors.name ? 'border-red-500' : 'border-gray-200'} rounded-md dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700`}
               placeholder="Enter Rule name"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -301,7 +342,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
               )}
             </div>
           </div>
-          
+
           <div className="flex gap-4 py-6">
             {/* Left Labels */}
             <div className="flex flex-col items-center">
@@ -320,7 +361,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
               {/* IF SECTION */}
               <div className="flex flex-col gap-2">
                 <div className="flex gap-3 items-center">
-                  <select 
+                  <select
                     className={`w-64 p-2.5 border ${errors.triggerField ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
                     value={triggerField}
                     onChange={(e) => setTriggerField(e.target.value)}
@@ -333,10 +374,10 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
                     ))}
                   </select>
 
-                  <select 
-                    className={`w-52 p-2.5 border ${errors.condition ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`} 
+                  <select
+                    className={`w-52 p-2.5 border ${errors.condition ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
                     value={condition}
-                    onChange={(e)=>setCondition(e.target.value as RuleCondition)}
+                    onChange={(e) => setCondition(e.target.value as RuleCondition)}
                   >
                     <option value="">Select Condition</option>
                     {conditionTypes.map((c) => (
@@ -345,7 +386,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
                       </option>
                     ))}
                   </select>
-                  
+
                   {renderValueInput()}
                 </div>
                 {(errors.triggerField || errors.condition || errors.ruleValue) && (
@@ -361,22 +402,15 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
 
                 <div className="flex flex-col gap-3">
                   {outputs.map((output, idx) => {
-                    const claimedByCurrentRuleOtherRows = new Set<string>();
-                    outputs.forEach((o, i) => {
-                      if (i !== idx && o.field_api_name) {
-                        claimedByCurrentRuleOtherRows.add(o.field_api_name);
-                      }
-                    });
-
                     const availableFields = fields.filter(f =>
                       f.value !== triggerField &&
                       !claimedByOtherRules.has(f.value) &&
-                      !claimedByCurrentRuleOtherRows.has(f.value)
+                      !triggerFieldsUsedInOtherRules.has(f.value)
                     );
 
                     return (
                       <div key={idx} className="flex gap-3 items-center">
-                        <select 
+                        <select
                           className="w-52 p-2.5 border border-gray-300 rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100"
                           value={output.action}
                           onChange={(e) => handleOutputChange(idx, "action", e.target.value)}
@@ -386,7 +420,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
                           ))}
                         </select>
 
-                        <select 
+                        <select
                           className={`w-full p-2.5 border ${!output.field_api_name && errors.outputs ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
                           value={output.field_api_name}
                           onChange={(e) => handleOutputChange(idx, "field_api_name", e.target.value)}
@@ -396,22 +430,23 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
                             <option key={f.value} value={f.value}>{f.label}</option>
                           ))}
                         </select>
-                      
-                      <AppButton 
-                        type="button" 
-                        variant="ghost" 
-                        className={`text-red-500 p-2 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 ${outputs.length === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        onClick={() => handleRemoveOutput(idx)}
-                        disabled={outputs.length === 1}
-                        aria-label="Remove action"
-                      >
-                        <Trash2 className="size-4" />
-                      </AppButton>
-                    </div>
-                  )})}
-                  
-                  <button 
-                    type="button" 
+
+                        <AppButton
+                          type="button"
+                          variant="ghost"
+                          className={`text-red-500 p-2 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 ${outputs.length === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          onClick={() => handleRemoveOutput(idx)}
+                          disabled={outputs.length === 1}
+                          aria-label="Remove action"
+                        >
+                          <Trash2 className="size-4" />
+                        </AppButton>
+                      </div>
+                    )
+                  })}
+
+                  <button
+                    type="button"
                     className="text-blue-600 dark:text-blue-400 text-sm font-medium flex items-center gap-1 w-max mt-1 hover:underline"
                     onClick={handleAddOutput}
                   >
