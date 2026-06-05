@@ -1,5 +1,6 @@
 import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
+import { fetchAllEntityIds } from "@/shared/mass-actions";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { INVOICE_PATHS } from "./invoice.paths";
@@ -42,6 +43,10 @@ export async function fetchInvoicesPage(
   const { data } = await api.get<InvoiceListResponse>(INVOICE_PATHS.list, { params });
   assertEnvelopeSuccess(data);
   return { items: data.data, pagination: data.pagination };
+}
+
+export async function fetchAllInvoiceIds(filters?: InvoiceListFilters): Promise<number[]> {
+  return fetchAllEntityIds((page, pageSize) => fetchInvoicesPage(page, pageSize, filters));
 }
 
 export async function fetchInvoice(id: number, options?: { silent?: boolean }): Promise<InvoiceDetail> {

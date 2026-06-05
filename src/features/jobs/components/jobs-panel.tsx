@@ -5,8 +5,12 @@ import { Calendar, Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { fetchClientsPage } from "@/features/clients/api/client.api";
+import { fetchFormsPage } from "@/features/forms/api/forms.api";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
-import { deleteJob, fetchAllJobIds, fetchJobsPage, massUpdateJobs } from "@/features/jobs/api/job.api";
+import { deleteJob, fetchAllJobIds, fetchJobsPage } from "@/features/jobs/api/job.api";
+import { fetchProjectsPage } from "@/features/projects/api/project.api";
+import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Job } from "@/features/jobs/types/job.types";
 import {
   getJobStatusId,
@@ -20,10 +24,13 @@ import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
-import { cn } from "@/core/utils/http.util";
+import {
+  MassActionBar,
+  buildJobMassUpdateFields,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
 import {
   AddButton,
-  AppButton,
   CheckmarkSelect,
   ConfirmDialog,
   ListPageEmptyStates,
@@ -102,19 +109,16 @@ export function JobsPanel() {
 
   const [workerOptions, setWorkerOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [jobStatusOptions, setJobStatusOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [massClientOptions, setMassClientOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [massProjectOptions, setMassProjectOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [massSiteOptions, setMassSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [massFormOptions, setMassFormOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [statusById, setStatusById] = React.useState<Record<number, { status_name: string; bg_colour: string; text_colour: string }>>({});
 
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deletingJob, setDeletingJob] = React.useState<Job | null>(null);
   const [deleting, setDeleting] = React.useState(false);
-  const [selectedJobIds, setSelectedJobIds] = React.useState<Set<number>>(() => new Set());
-  const [massAssignWorkerId, setMassAssignWorkerId] = React.useState("");
-  const [massAssigning, setMassAssigning] = React.useState(false);
-  const [selectingAll, setSelectingAll] = React.useState(false);
-  const selectAllRef = React.useRef<HTMLInputElement>(null);
-
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
-  const selectedCount = selectedJobIds.size;
 
   const listFilters = React.useMemo(
     () => ({
@@ -124,6 +128,47 @@ export function JobsPanel() {
     }),
     [search, jobStatusFilter, assignedWorkerFilter],
   );
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildJobMassUpdateFields(
+        {
+          workerOptions,
+          jobStatusOptions,
+          clientOptions: massClientOptions,
+          projectOptions: massProjectOptions,
+          siteOptions: massSiteOptions,
+          formOptions: massFormOptions,
+        },
+        {
+          title: t("fields.title"),
+          description: t("fields.description"),
+          client: t("fields.client"),
+          project: t("fields.project"),
+          site: t("fields.site"),
+          forms: t("fields.forms"),
+          jobStatus: t("fields.jobStatus"),
+          assignedWorker: t("fields.assignedWorker"),
+          startDate: t("fields.startDate"),
+        },
+      ),
+    [workerOptions, jobStatusOptions, massClientOptions, massProjectOptions, massSiteOptions, massFormOptions, t],
+  );
+
+  const fetchAllIds = React.useCallback(
+    () => fetchAllJobIds(listFilters, { silent: true }),
+    [listFilters],
+  );
+
+  const mass = useEntityListMassActions({
+    resource: "jobs",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search, jobStatusFilter, assignedWorkerFilter],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
 
   const workerLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -146,13 +191,26 @@ export function JobsPanel() {
     let cancelled = false;
     (async () => {
       try {
-        const [workers, statuses] = await Promise.all([
+        const [workers, statuses, clients, projects, sites, forms] = await Promise.all([
           loadTechnicianOptions(),
           fetchJobStatusesPage(1, 500),
+          fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
+          fetchProjectsPage(1, 500, { is_active: true }),
+          fetchSitesPage(1, 500, { is_active: true }),
+          fetchFormsPage(1, 500, undefined, { silent: true }),
         ]);
         if (!cancelled) {
           setWorkerOptions(workers);
           setJobStatusOptions(statuses.items.map((s) => ({ value: String(s.id), label: s.status_name })));
+          setMassClientOptions(clients.items.map((c) => ({ value: String(c.id), label: c.name })));
+          setMassProjectOptions(projects.items.map((p) => ({ value: String(p.id), label: p.name })));
+          setMassSiteOptions(sites.items.map((s) => ({ value: String(s.id), label: s.site_name })));
+          setMassFormOptions(
+            forms.items.map((f) => ({
+              value: String(f.id),
+              label: f.name?.trim() || `#${f.id}`,
+            })),
+          );
           const byId: Record<number, { status_name: string; bg_colour: string; text_colour: string }> = {};
           for (const s of statuses.items) {
             byId[s.id] = {
@@ -167,6 +225,10 @@ export function JobsPanel() {
         if (!cancelled) {
           setWorkerOptions([]);
           setJobStatusOptions([]);
+          setMassClientOptions([]);
+          setMassProjectOptions([]);
+          setMassSiteOptions([]);
+          setMassFormOptions([]);
           setStatusById({});
         }
       }
@@ -213,76 +275,6 @@ export function JobsPanel() {
     t,
   ]);
 
-  React.useEffect(() => {
-    setSelectedJobIds(new Set());
-    setMassAssignWorkerId("");
-  }, [pageSize, search, jobStatusFilter, assignedWorkerFilter]);
-
-  const allMatchingSelected =
-    pagination.total_records > 0 && selectedCount === pagination.total_records;
-  const somePageSelected = items.some((row) => selectedJobIds.has(row.id));
-
-  React.useEffect(() => {
-    if (selectAllRef.current) {
-      selectAllRef.current.indeterminate = somePageSelected && !allMatchingSelected;
-    }
-  }, [somePageSelected, allMatchingSelected]);
-
-  const toggleSelectAll = React.useCallback(async () => {
-    if (allMatchingSelected) {
-      setSelectedJobIds(new Set());
-      return;
-    }
-
-    setSelectingAll(true);
-    try {
-      const ids = await fetchAllJobIds(listFilters, { silent: true });
-      setSelectedJobIds(new Set(ids));
-    } catch {
-      toastError(t("massAssign.selectAllError"));
-    } finally {
-      setSelectingAll(false);
-    }
-  }, [allMatchingSelected, listFilters, t]);
-
-  const toggleRowSelected = React.useCallback((id: number) => {
-    setSelectedJobIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
-
-  async function handleMassAssign() {
-    const workerId =
-      massAssignWorkerId && /^\d+$/.test(massAssignWorkerId)
-        ? Number.parseInt(massAssignWorkerId, 10)
-        : null;
-    if (!workerId || selectedJobIds.size === 0) return;
-    setMassAssigning(true);
-    try {
-      await massUpdateJobs({
-        job_ids: [...selectedJobIds],
-        assigned_worker: workerId,
-      });
-      toastSuccess(t("massAssign.success", { count: selectedJobIds.size }));
-      setSelectedJobIds(new Set());
-      setMassAssignWorkerId("");
-      setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("massAssign.error"));
-    } finally {
-      setMassAssigning(false);
-    }
-  }
-
-  const rowCheckboxClassName = cn(
-    "size-4 shrink-0 cursor-pointer rounded border-slate-300 text-[color:var(--dash-accent,#111)]",
-    "focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-1",
-    "dark:border-slate-600 dark:bg-slate-900",
-  );
-
   function openCreate() {
     router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
   }
@@ -326,22 +318,22 @@ export function JobsPanel() {
         "select",
         (
           <input
-            ref={selectAllRef}
+            ref={mass.selection.selectAllRef}
             type="checkbox"
-            className={rowCheckboxClassName}
-            checked={allMatchingSelected}
-            disabled={selectingAll || items.length === 0}
-            aria-label={t("massAssign.selectAll")}
-            onChange={() => void toggleSelectAll()}
+            className={mass.selection.rowCheckboxClassName}
+            checked={mass.selection.allMatchingSelected}
+            disabled={mass.selection.selectingAll || items.length === 0}
+            aria-label={mass.selectAllAriaLabel}
+            onChange={() => void mass.selection.toggleSelectAll()}
           />
         ),
         (row) => (
           <input
             type="checkbox"
-            className={rowCheckboxClassName}
-            checked={selectedJobIds.has(row.id)}
-            aria-label={t("massAssign.selectRow")}
-            onChange={() => toggleRowSelected(row.id)}
+            className={mass.selection.rowCheckboxClassName}
+            checked={mass.selection.isSelected(row.id)}
+            aria-label={mass.selectRowAriaLabel}
+            onChange={() => mass.selection.toggleRowSelected(row.id)}
           />
         ),
         { narrow: true },
@@ -378,12 +370,7 @@ export function JobsPanel() {
     dateFmt,
     workerLabelById,
     statusById,
-    allMatchingSelected,
-    selectedJobIds,
-    selectingAll,
-    toggleSelectAll,
-    toggleRowSelected,
-    rowCheckboxClassName,
+    mass,
   ]);
 
   const hasActiveFilters = hasListActiveFilters({
@@ -451,40 +438,13 @@ export function JobsPanel() {
         />
       ) : null}
 
-      {selectedCount > 0 && !listLoading && !loadError ? (
-        <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/60 sm:flex-row sm:flex-wrap sm:items-center">
-          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-            {t("massAssign.selectedCount", { count: selectedCount })}
-          </p>
-          <div className="flex min-w-0 flex-1 flex-col gap-2 sm:max-w-md sm:flex-row sm:items-center">
-            <span className="shrink-0 text-sm text-slate-600 dark:text-slate-400">
-              {t("massAssign.assignTo")}
-            </span>
-            <CheckmarkSelect
-              listLabel={t("massAssign.assignTo")}
-              buttonAriaLabel={t("massAssign.assignTo")}
-              options={workerOptions}
-              value={massAssignWorkerId}
-              emptyLabel={t("massAssign.pickWorker")}
-              portaled
-              searchable
-              clearable
-              className="min-w-0 flex-1"
-              disabled={massAssigning}
-              onChange={setMassAssignWorkerId}
-            />
-          </div>
-          <AppButton
-            type="button"
-            variant="primary"
-            size="sm"
-            loading={massAssigning}
-            disabled={!massAssignWorkerId || massAssigning}
-            onClick={() => void handleMassAssign()}
-          >
-            {t("massAssign.apply")}
-          </AppButton>
-        </div>
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
+        />
       ) : null}
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
@@ -527,10 +487,10 @@ export function JobsPanel() {
                   leading={
                     <input
                       type="checkbox"
-                      className={rowCheckboxClassName}
-                      checked={selectedJobIds.has(row.id)}
-                      aria-label={t("massAssign.selectRow")}
-                      onChange={() => toggleRowSelected(row.id)}
+                      className={mass.selection.rowCheckboxClassName}
+                      checked={mass.selection.isSelected(row.id)}
+                      aria-label={mass.selectRowAriaLabel}
+                      onChange={() => mass.selection.toggleRowSelected(row.id)}
                     />
                   }
                   title={row.title}

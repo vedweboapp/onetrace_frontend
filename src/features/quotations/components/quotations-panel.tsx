@@ -6,7 +6,8 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { fetchQuotationsPage } from "@/features/quotations/api/quotation.api";
+import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { fetchAllQuotationIds, fetchQuotationsPage } from "@/features/quotations/api/quotation.api";
 import type { QuotationListItem } from "@/features/quotations/types/quotation.types";
 import {
   getQuotationCustomerId,
@@ -15,7 +16,9 @@ import {
   quotationSiteLabel,
   quotationTagsLabels,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
+import type { Tag } from "@/features/tags/types/tag.types";
 import { fetchTagsPage } from "@/features/tags/api/tag.api";
+import { fetchUsersPage } from "@/features/users/api/user.api";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
@@ -41,7 +44,11 @@ import {
   ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
-import { cn } from "@/core/utils/http.util";
+import {
+  MassActionBar,
+  buildQuotationMassUpdateFields,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
@@ -96,12 +103,17 @@ export function QuotationsPanel() {
   });
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
-  const refreshNonce = 0;
+  const [refreshNonce, setRefreshNonce] = React.useState(0);
 
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [siteRows, setSiteRows] = React.useState<Site[]>([]);
   const [projectRows, setProjectRows] = React.useState<Project[]>([]);
   const [tagLabelById, setTagLabelById] = React.useState<Record<number, string>>({});
+  const [massSiteOptions, setMassSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [massProjectOptions, setMassProjectOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [massContactOptions, setMassContactOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [massTagOptions, setMassTagOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [massUserOptions, setMassUserOptions] = React.useState<{ value: string; label: string }[]>([]);
   const openCreate = React.useCallback(() => {
     router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
   }, [listHref, pathname, router]);
@@ -137,12 +149,38 @@ export function QuotationsPanel() {
     let cancelled = false;
     (async () => {
       try {
-        const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+        const [clientsRes, sitesRes, projectsRes, contactsRes, tagsRes, usersRes] = await Promise.all([
+          fetchClientsPage(1, 500, { is_active: true }),
+          fetchSitesPage(1, 500, { is_active: true }),
+          fetchProjectsPage(1, 500, { is_active: true }),
+          fetchContactsPage(1, 500, { is_active: true }),
+          fetchTagsPage(1, 500, { is_active: true }),
+          fetchUsersPage(1, 500),
+        ]);
         if (!cancelled) {
-          setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
+          setClientOptions(clientsRes.items.map((c) => ({ value: String(c.id), label: c.name })));
+          setMassSiteOptions(sitesRes.items.map((s) => ({ value: String(s.id), label: s.site_name })));
+          setMassProjectOptions(projectsRes.items.map((p) => ({ value: String(p.id), label: p.name })));
+          setMassContactOptions(contactsRes.items.map((c) => ({ value: String(c.id), label: c.name })));
+          const tagLabel = (row: Tag) => row.name ?? row.tag_name ?? `#${row.id}`;
+          setMassTagOptions(tagsRes.items.map((row) => ({ value: String(row.id), label: tagLabel(row) })));
+          setMassUserOptions(
+            usersRes.items.map((u) => {
+              const fullName = `${u.user_detail.first_name ?? ""} ${u.user_detail.last_name ?? ""}`.trim();
+              const label = fullName || u.user_detail.email?.trim() || `#${u.user_detail.id}`;
+              return { value: String(u.user_detail.id), label };
+            }),
+          );
         }
       } catch {
-        if (!cancelled) setClientOptions([]);
+        if (!cancelled) {
+          setClientOptions([]);
+          setMassSiteOptions([]);
+          setMassProjectOptions([]);
+          setMassContactOptions([]);
+          setMassTagOptions([]);
+          setMassUserOptions([]);
+        }
       }
     })();
     return () => {
@@ -275,6 +313,74 @@ export function QuotationsPanel() {
     [siteRows],
   );
 
+  const listFilters = React.useMemo(
+    () => ({
+      search: search || undefined,
+      customer: customerFilter,
+      site: siteFilter,
+      project: projectFilter,
+      status: statusFilter,
+    }),
+    [search, customerFilter, siteFilter, projectFilter, statusFilter],
+  );
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildQuotationMassUpdateFields(
+        {
+          clientOptions,
+          siteOptions: massSiteOptions,
+          projectOptions: massProjectOptions,
+          contactOptions: massContactOptions,
+          userOptions: massUserOptions,
+          tagOptions: massTagOptions,
+          statusOptions: statusFilterOptions,
+        },
+        {
+          quoteName: t("fields.quoteName"),
+          customer: t("fields.customer"),
+          site: t("fields.site"),
+          project: t("fields.project"),
+          primaryContact: t("fields.primaryContact"),
+          additionalContact: t("fields.additionalContact"),
+          siteContact: t("fields.siteContact"),
+          orderNumber: t("fields.orderNumber"),
+          dueDate: t("fields.dueDate"),
+          salesperson: t("fields.salesperson"),
+          projectManager: t("fields.projectManager"),
+          technicians: t("fields.technicians"),
+          tags: t("fields.tags"),
+          description: t("fields.description"),
+          status: t("table.status"),
+          isActive: t("filterState"),
+          activeLabel: t("status.active"),
+          inactiveLabel: t("status.inactive"),
+        },
+      ),
+    [
+      clientOptions,
+      massSiteOptions,
+      massProjectOptions,
+      massContactOptions,
+      massUserOptions,
+      massTagOptions,
+      statusFilterOptions,
+      t,
+    ],
+  );
+
+  const fetchAllIds = React.useCallback(() => fetchAllQuotationIds(listFilters), [listFilters]);
+
+  const mass = useEntityListMassActions({
+    resource: "quotations",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search, customerFilter, siteFilter, projectFilter, statusFilter],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
   const hasActiveFilters = hasListActiveFilters({
     search,
     customerParam,
@@ -314,6 +420,30 @@ export function QuotationsPanel() {
     const tagsDisplay = (row: QuotationListItem) => quotationTagsLabels(row.tags, tagLabelById);
 
     return [
+      c.selection(
+        "select",
+        (
+          <input
+            ref={mass.selection.selectAllRef}
+            type="checkbox"
+            className={mass.selection.rowCheckboxClassName}
+            checked={mass.selection.allMatchingSelected}
+            disabled={mass.selection.selectingAll || items.length === 0}
+            aria-label={mass.selectAllAriaLabel}
+            onChange={() => void mass.selection.toggleSelectAll()}
+          />
+        ),
+        (row) => (
+          <input
+            type="checkbox"
+            className={mass.selection.rowCheckboxClassName}
+            checked={mass.selection.isSelected(row.id)}
+            aria-label={mass.selectRowAriaLabel}
+            onChange={() => mass.selection.toggleRowSelected(row.id)}
+          />
+        ),
+        { narrow: true },
+      ),
       c.primary("quote", t("table.quote"), (r) => r.quote_name),
       c.truncate("customer", t("table.customer"), (r) => customerDisplay(r), {
         title: (r) => customerDisplay(r),
@@ -341,7 +471,7 @@ export function QuotationsPanel() {
         />
       )),
     ];
-  }, [t, tList, dateFmt, dueFmt, clientLabelById, siteLabelById, tagLabelById, quoteStatusLabel]);
+  }, [t, tList, dateFmt, dueFmt, clientLabelById, siteLabelById, tagLabelById, quoteStatusLabel, mass, items.length]);
 
   return (
     <div className="space-y-4">
@@ -420,6 +550,15 @@ export function QuotationsPanel() {
         />
       ) : null}
 
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
+        />
+      ) : null}
+
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
@@ -473,6 +612,15 @@ export function QuotationsPanel() {
                     key={row.id}
                     dataListRowId={row.id}
                     className={highlightClassName(row.id)}
+                    leading={
+                      <input
+                        type="checkbox"
+                        className={mass.selection.rowCheckboxClassName}
+                        checked={mass.selection.isSelected(row.id)}
+                        aria-label={mass.selectRowAriaLabel}
+                        onChange={() => mass.selection.toggleRowSelected(row.id)}
+                      />
+                    }
                     title={row.quote_name}
                     subtitle={tagsLine !== "—" ? tagsLine : undefined}
                     meta={

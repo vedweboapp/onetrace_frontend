@@ -5,7 +5,7 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchItemsPage } from "@/features/items/api/item.api";
+import { fetchAllItemIds, fetchItemsPage } from "@/features/items/api/item.api";
 import type { Item } from "@/features/items/types/item.types";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
@@ -32,6 +32,12 @@ import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.u
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { deleteItem } from "@/features/items/api/item.api";
+import {
+  MassActionBar,
+  buildItemMassUpdateFields,
+  massSelectionColumn,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
 
 function asNumberMaybe(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -50,6 +56,7 @@ function moneyDisplay(v: unknown): string {
 
 export function ItemsPanel() {
   const t = useTranslations("Dashboard.items");
+  const tComposite = useTranslations("Dashboard.compositeItems");
   const tList = useTranslations("Dashboard.list");
   const dateFmt = useDashboardDateFormat();
   const router = useRouter();
@@ -90,6 +97,40 @@ export function ItemsPanel() {
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
   const pageRange = getListPageRange(pagination);
+
+  const listFilters = React.useMemo(
+    () => ({ search: search || undefined, isComposite: false as const }),
+    [search],
+  );
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildItemMassUpdateFields({
+        name: t("modal.name"),
+        sku: t("modal.sku"),
+        quantity: t("modal.quantity"),
+        costPrice: t("modal.costPrice"),
+        sellingPrice: t("modal.sellingPrice"),
+        isActive: tComposite("table.status"),
+        activeLabel: tComposite("statusActive"),
+        inactiveLabel: tComposite("statusInactive"),
+      }),
+    [t, tComposite],
+  );
+
+  const fetchAllIds = React.useCallback(() => fetchAllItemIds(listFilters), [listFilters]);
+
+  const mass = useEntityListMassActions({
+    resource: "items",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
+  const massSel = React.useMemo(() => massSelectionColumn(mass, items.length), [mass, items.length]);
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -161,6 +202,7 @@ export function ItemsPanel() {
   const tableColumns = React.useMemo(() => {
     const c = entityCol<Item>();
     return [
+      massSel.tableColumn,
       c.primary("name", t("table.name"), (r) => r.name),
       c.mono("sku", t("table.sku"), (r) => r.sku || "—", { cellClassName: "text-slate-600 dark:text-slate-400" }),
       c.tabular("qty", t("table.quantity"), (r) => r.quantity ?? "—", {
@@ -194,7 +236,7 @@ export function ItemsPanel() {
         />
       )),
     ];
-  }, [t, tList, dateFmt]);
+  }, [t, tList, dateFmt, massSel.tableColumn]);
 
   return (
     <div className="space-y-6">
@@ -219,6 +261,15 @@ export function ItemsPanel() {
               />
             </div>
           }
+        />
+      ) : null}
+
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
         />
       ) : null}
 
@@ -260,6 +311,7 @@ export function ItemsPanel() {
                   key={row.id}
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
+                  leading={massSel.cardLeading(row)}
                   title={row.name}
                   subtitle={row.sku ? <span className="font-mono text-xs">{row.sku}</span> : undefined}
                   description={`Qty: ${row.quantity ?? "—"} · Cost: ${moneyDisplay(row.cost_price)} · Sell: ${moneyDisplay(row.selling_price)}`}

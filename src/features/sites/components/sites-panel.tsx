@@ -6,9 +6,13 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { deleteSite, fetchSitesPage, patchSite } from "@/features/sites/api/site.api";
+import { deleteSite, fetchAllSiteIds, fetchSitesPage, patchSite } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
-import { cn } from "@/core/utils/http.util";
+import {
+  MassActionBar,
+  buildSiteMassUpdateFields,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -100,6 +104,49 @@ export function SitesPanel() {
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
+
+  const listFilters = React.useMemo(
+    () => ({
+      search: search || undefined,
+      is_active: isActiveFilter,
+      client: clientFilter,
+    }),
+    [search, isActiveFilter, clientFilter],
+  );
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildSiteMassUpdateFields(clientOptions, {
+        siteName: t("fields.siteName"),
+        client: t("fields.client"),
+        addressLine1: t("fields.addressLine1"),
+        addressLine2: t("fields.addressLine2"),
+        country: t("fields.country"),
+        state: t("fields.stateProvince"),
+        city: t("fields.city"),
+        pincode: t("fields.pincode"),
+        what3words: t("fields.what3words"),
+        latitude: t("fields.latitude"),
+        longitude: t("fields.longitude"),
+        isActive: t("table.status"),
+        activeLabel: t("status.active"),
+        inactiveLabel: t("status.inactive"),
+      }),
+    [clientOptions, t],
+  );
+
+  const fetchAllIds = React.useCallback(() => fetchAllSiteIds(listFilters), [listFilters]);
+
+  const mass = useEntityListMassActions({
+    resource: "sites",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search, isActiveFilter, clientFilter],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -191,6 +238,30 @@ export function SitesPanel() {
   const tableColumns = React.useMemo(() => {
     const c = entityCol<Site>();
     return [
+      c.selection(
+        "select",
+        (
+          <input
+            ref={mass.selection.selectAllRef}
+            type="checkbox"
+            className={mass.selection.rowCheckboxClassName}
+            checked={mass.selection.allMatchingSelected}
+            disabled={mass.selection.selectingAll || items.length === 0}
+            aria-label={mass.selectAllAriaLabel}
+            onChange={() => void mass.selection.toggleSelectAll()}
+          />
+        ),
+        (row) => (
+          <input
+            type="checkbox"
+            className={mass.selection.rowCheckboxClassName}
+            checked={mass.selection.isSelected(row.id)}
+            aria-label={mass.selectRowAriaLabel}
+            onChange={() => mass.selection.toggleRowSelected(row.id)}
+          />
+        ),
+        { narrow: true },
+      ),
       c.primary("name", t("table.name"), (r) => r.site_name),
       c.text("client", t("table.client"), (r) => siteClientName(r, clientLabelById)),
       c.truncate("address", t("table.address"), (r) => r.address_line_1?.trim() || "—", { maxWidth: "md" }),
@@ -236,7 +307,7 @@ export function SitesPanel() {
         />
       )),
     ];
-  }, [t, tList, dateFmt, clientLabelById, togglingId, listHref, pathname, router]);
+  }, [t, tList, dateFmt, clientLabelById, togglingId, listHref, pathname, router, mass, items.length]);
 
   return (
     <div className="space-y-4">
@@ -289,6 +360,15 @@ export function SitesPanel() {
         />
       ) : null}
 
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
+        />
+      ) : null}
+
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
@@ -325,6 +405,15 @@ export function SitesPanel() {
                   key={row.id}
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
+                  leading={
+                    <input
+                      type="checkbox"
+                      className={mass.selection.rowCheckboxClassName}
+                      checked={mass.selection.isSelected(row.id)}
+                      aria-label={mass.selectRowAriaLabel}
+                      onChange={() => mass.selection.toggleRowSelected(row.id)}
+                    />
+                  }
                   title={row.site_name}
                   subtitle={siteClientName(row, clientLabelById)}
                   meta={row.city?.trim() || row.state?.trim() || row.country?.trim() || "—"}

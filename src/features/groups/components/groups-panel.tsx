@@ -7,7 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
-import { deleteGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
+import { deleteGroup, fetchAllGroupIds, fetchGroupsPage } from "@/features/groups/api/group.api";
 import type { Group } from "@/features/groups/types/group.types";
 import {
   groupLinkedItemsNamesSummary,
@@ -38,6 +38,12 @@ import { cn } from "@/core/utils/http.util";
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import {
+  MassActionBar,
+  buildGroupMassUpdateFields,
+  massSelectionColumn,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
 
 export function GroupsPanel() {
   const t = useTranslations("Dashboard.groups");
@@ -84,6 +90,33 @@ export function GroupsPanel() {
   const [deleting, setDeleting] = React.useState(false);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
+
+  const listFilters = React.useMemo(() => ({ search: search || undefined }), [search]);
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildGroupMassUpdateFields({
+        name: t("modal.name"),
+        isActive: t("table.status"),
+        activeLabel: t("statusActive"),
+        inactiveLabel: t("statusInactive"),
+      }),
+    [t],
+  );
+
+  const fetchAllIds = React.useCallback(() => fetchAllGroupIds(listFilters), [listFilters]);
+
+  const mass = useEntityListMassActions({
+    resource: "groups",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
+  const massSel = React.useMemo(() => massSelectionColumn(mass, items.length), [mass, items.length]);
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -176,6 +209,7 @@ export function GroupsPanel() {
   const tableColumns = React.useMemo(() => {
     const c = entityCol<Group>();
     return [
+      massSel.tableColumn,
       c.primary("name", t("table.name"), (r) => r.name),
       c.tabular("itemCount", t("table.itemCount"), (r) => r.items?.length ?? 0, {
         cellClassName: "text-slate-600 dark:text-slate-400",
@@ -224,7 +258,7 @@ export function GroupsPanel() {
         { headerSrOnly: false },
       ),
     ];
-  }, [compositeById, t, tList, dateFmt]);
+  }, [compositeById, t, tList, dateFmt, massSel.tableColumn]);
 
   return (
     <div className="space-y-4">
@@ -249,6 +283,15 @@ export function GroupsPanel() {
               />
             </div>
           }
+        />
+      ) : null}
+
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
         />
       ) : null}
 
@@ -291,6 +334,7 @@ export function GroupsPanel() {
                   key={row.id}
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
+                  leading={massSel.cardLeading(row)}
                   title={row.name}
                   subtitle={
                     row.items && row.items.length > 0

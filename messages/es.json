@@ -157,6 +157,7 @@
       "projects": "Proyectos",
       "groups": "Grupos",
       "materialRequests": "Solicitud de material",
+      "dispatches": "Envíos",
       "products": "Productos",
       "items": "Ítems",
       "itemsPlain": "Ítems",
@@ -1034,6 +1035,8 @@
         "city": "Ciudad",
         "pincode": "Código postal",
         "what3words": "what3words",
+        "latitude": "Latitud",
+        "longitude": "Longitud",
         "status": "Estado",
         "createdAt": "Creado",
         "updatedAt": "Última actualización",
@@ -1566,6 +1569,13 @@
         "loadingTitle": "Cargando…",
         "retry": "Reintentar",
         "backAria": "Volver al listado",
+        "tabsAria": "Secciones del detalle de solicitud",
+        "tabOverview": "Resumen",
+        "tabTimeline": "Cronología",
+        "tabLogs": "Registros",
+        "sectionLogs": "Registro de actividad",
+        "sectionDispatches": "Envíos",
+        "dispatchLink": "Ver envío #{id}",
         "sectionOverview": "Resumen",
         "sectionJobs": "Trabajos",
         "sectionItems": "Ítems",
@@ -1623,6 +1633,7 @@
         "itemDetails": "Detalles del ítem",
         "jobName": "Trabajo",
         "requestQty": "Cant. solicitada",
+        "requestQtyHint": "La cantidad proviene del alcance de cada trabajo y no se puede editar aquí.",
         "units": "Unidades",
         "addItem": "Añadir ítem",
         "remove": "Eliminar ítem",
@@ -1633,11 +1644,40 @@
         "requested": "Solicitado",
         "dispatched": "Enviado",
         "pending": "Pendiente",
-        "empty": "No hay datos de envío."
+        "empty": "No hay datos de envío.",
+        "modalTitle": "Enviar material",
+        "modalHint": "Indique las cantidades a enviar ahora. También puede añadir ítems extra que no estaban en la solicitud original.",
+        "pageTitle": "Enviar material",
+        "pageSubtitle": "Enviar cantidades para {requestNumber}",
+        "pageSubtitleGeneric": "Registrar envío de material para esta solicitud",
+        "pageHint": "Indique las cantidades a enviar ahora. Puede enviar más de lo solicitado; el excedente se mostrará como +cant. También puede añadir ítems extra que no estaban en la solicitud original.",
+        "backAria": "Volver a la solicitud",
+        "confirm": "Confirmar envío",
+        "successToast": "Envío registrado",
+        "sectionLines": "Ítems solicitados",
+        "sectionExtra": "Añadir ítems extra",
+        "sectionExtraSent": "Ítems extra enviados",
+        "dispatchNow": "Cant. a enviar",
+        "extraItem": "Ítem extra",
+        "extraQty": "Cant.",
+        "addExtra": "Añadir",
+        "removeExtra": "Eliminar ítem extra"
       },
       "timeline": {
         "empty": "Aún no hay eventos.",
         "event": "Evento"
+      },
+      "logs": {
+        "viewDispatch": "Ver registro de envío"
+      },
+      "restock": {
+        "column": "Repuesto",
+        "sectionTitle": "Reponer ítems no usados",
+        "hint": "Devuelva al inventario las cantidades enviadas que no se utilizaron.",
+        "alreadyRestocked": "Ya repuesto",
+        "returnQty": "Cant. a devolver",
+        "confirm": "Reponer en inventario",
+        "successToast": "Ítems repuestos en inventario"
       },
       "page": {
         "createTitle": "Formulario de solicitud",
@@ -1657,6 +1697,77 @@
         "quantity": "Introduce una cantidad válida.",
         "atLeastOneJob": "Añade al menos un trabajo.",
         "atLeastOneItem": "Añade al menos un ítem."
+      }
+    },
+    "dispatches": {
+      "metaTitle": "Envíos",
+      "detailMetaTitle": "Detalle del envío",
+      "pageTitle": "Envíos",
+      "pageSubtitle": "Seguimiento de envíos creados desde solicitudes de material.",
+      "searchPlaceholder": "Buscar envíos…",
+      "loadError": "No se pudieron cargar los envíos.",
+      "detailLoadError": "No se pudo cargar el detalle del envío.",
+      "emptyTitle": "Aún no hay envíos",
+      "emptyDescription": "Envíe material desde una solicitud para crear registros aquí.",
+      "pageLabel": "Mostrando {start} a {end} de {total} resultados",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "units": "Unidades",
+      "actions": {
+        "view": "Ver detalle"
+      },
+      "table": {
+        "dispatchId": "ID envío",
+        "jobName": "Trabajo",
+        "dispatchDate": "Fecha",
+        "status": "Estado",
+        "workerName": "Trabajador",
+        "qty": "Cant.",
+        "materialItem": "Material",
+        "requested": "Solicitado",
+        "pending": "Pendiente",
+        "dispatched": "Enviado",
+        "extra": "Extra",
+        "restocked": "Repuesto"
+      },
+      "restock": {
+        "action": "Reponer",
+        "hint": "Devuelva la cantidad no usada de este envío al inventario.",
+        "returnQty": "Cant. a devolver",
+        "confirm": "Reponer en inventario",
+        "close": "Cerrar",
+        "successToast": "Ítems repuestos en inventario"
+      },
+      "status": {
+        "dispatched": "Enviado",
+        "delivered": "Entregado",
+        "inTransit": "En tránsito",
+        "processing": "Procesando",
+        "draft": "Borrador",
+        "delayed": "Retrasado"
+      },
+      "fields": {
+        "dispatchTo": "Enviar a",
+        "dispatchDate": "Fecha de envío",
+        "materialRequest": "Solicitud",
+        "jobName": "Trabajo",
+        "createdAt": "Creado el",
+        "updatedAt": "Última modificación",
+        "createdBy": "Creado por",
+        "modifiedBy": "Modificado por"
+      },
+      "detail": {
+        "backAria": "Volver al listado de envíos",
+        "retry": "Reintentar",
+        "sectionOverview": "Resumen",
+        "sectionItems": "Materiales",
+        "sectionSystemMetadata": "Metadatos del sistema",
+        "notModifiedYet": "Sin modificar",
+        "noItems": "No hay ítems en este envío.",
+        "extraItem": "Ítem extra (no estaba en la solicitud)",
+        "viewLine": "Detalle",
+        "actions": "Acciones",
+        "restockHistory": "Historial de reposición"
       }
     },
     "jobs": {
@@ -1824,6 +1935,35 @@
     "home": {
       "title": "Trabajando en esta página",
       "body": "Esta sección está en desarrollo. Vuelve pronto para ver novedades."
+    },
+    "massActions": {
+      "bulkBarAria": "Acciones masivas para filas seleccionadas",
+      "selectedCount": "{count} seleccionados",
+      "actionLabel": "Acción",
+      "pickAction": "Elegir acción",
+      "fieldLabel": "Campo",
+      "pickField": "Elegir campo",
+      "valueLabel": "Valor",
+      "pickValue": "Elegir valor",
+      "valuePlaceholder": "Introducir valor",
+      "exportFormatLabel": "Formato",
+      "pickExportFormat": "Elegir formato",
+      "exportFormatXlsx": "Excel (.xlsx)",
+      "exportFormatCsv": "CSV (.csv)",
+      "apply": "Aplicar",
+      "cancel": "Cancelar",
+      "selectAll": "Seleccionar todas las filas coincidentes",
+      "selectRow": "Seleccionar fila",
+      "selectAllError": "No se pudieron seleccionar todas las filas. Inténtalo de nuevo.",
+      "success": "Acción masiva completada",
+      "deleteConfirmTitle": "¿Eliminar los registros seleccionados?",
+      "deleteConfirmBody": "Vas a eliminar {count} registros. Esta acción no se puede deshacer.",
+      "deleteConfirm": "Eliminar",
+      "actions": {
+        "massUpdate": "Actualización masiva",
+        "massDelete": "Eliminación masiva",
+        "massExport": "Exportación masiva"
+      }
     },
     "list": {
       "searchPlaceholder": "Buscar…",

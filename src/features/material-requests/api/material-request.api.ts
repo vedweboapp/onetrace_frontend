@@ -1,13 +1,18 @@
 import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
+import { fetchAllEntityIds } from "@/shared/mass-actions";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import { resolveMaterialRequestRequestUrl } from "./material-request-http.util";
 import { MATERIAL_REQUEST_PATHS } from "./material-request.paths";
+import type { MaterialRequestDispatchPayload } from "../types/material-request-dispatch.types";
 import type {
   MaterialRequestCreatePayload,
   MaterialRequestDetail,
   MaterialRequestListItem,
   MaterialRequestListResponse,
+  MaterialRequestLogEntry,
+  MaterialRequestRestockPayload,
   MaterialRequestUpdatePayload,
 } from "../types/material-request.types";
 
@@ -39,24 +44,53 @@ export async function fetchMaterialRequestsPage(
     params.worker_name = String(filters.worker_name).trim();
   }
 
-  const { data } = await api.get<MaterialRequestListResponse>(MATERIAL_REQUEST_PATHS.list, { params });
+  const { data } = await api.get<MaterialRequestListResponse>(
+    resolveMaterialRequestRequestUrl(MATERIAL_REQUEST_PATHS.list),
+    { params },
+  );
   assertEnvelopeSuccess(data);
   return { items: data.data, pagination: data.pagination };
+}
+
+export async function fetchAllMaterialRequestIds(filters?: MaterialRequestListFilters): Promise<number[]> {
+  return fetchAllEntityIds((page, pageSize) => fetchMaterialRequestsPage(page, pageSize, filters));
 }
 
 export async function fetchMaterialRequest(
   id: number,
   options?: { silent?: boolean },
 ): Promise<MaterialRequestDetail> {
-  const { data } = await api.get<ApiEnvelope<MaterialRequestDetail>>(MATERIAL_REQUEST_PATHS.detail(id), {
-    skipErrorToast: options?.silent === true,
-  });
+  const { data } = await api.get<ApiEnvelope<MaterialRequestDetail>>(
+    resolveMaterialRequestRequestUrl(MATERIAL_REQUEST_PATHS.detail(id)),
+    {
+      skipErrorToast: options?.silent === true,
+    },
+  );
+  assertApiSuccess(data);
+  return data.data;
+}
+
+export async function dispatchMaterialRequest(
+  id: number,
+  _detail: MaterialRequestDetail,
+  payload: MaterialRequestDispatchPayload,
+  _itemLabels: Record<number, string>,
+): Promise<MaterialRequestDetail> {
+  void _detail;
+  void _itemLabels;
+  const { data } = await api.post<ApiEnvelope<MaterialRequestDetail>>(
+    resolveMaterialRequestRequestUrl(MATERIAL_REQUEST_PATHS.dispatch(id)),
+    payload,
+  );
   assertApiSuccess(data);
   return data.data;
 }
 
 export async function createMaterialRequest(body: MaterialRequestCreatePayload): Promise<MaterialRequestDetail> {
-  const { data } = await api.post<ApiEnvelope<MaterialRequestDetail>>(MATERIAL_REQUEST_PATHS.list, body);
+  const { data } = await api.post<ApiEnvelope<MaterialRequestDetail>>(
+    resolveMaterialRequestRequestUrl(MATERIAL_REQUEST_PATHS.list),
+    body,
+  );
   assertApiSuccess(data);
   return data.data;
 }
@@ -65,7 +99,30 @@ export async function updateMaterialRequest(
   id: number,
   body: MaterialRequestUpdatePayload,
 ): Promise<MaterialRequestDetail> {
-  const { data } = await api.patch<ApiEnvelope<MaterialRequestDetail>>(MATERIAL_REQUEST_PATHS.detail(id), body);
+  const { data } = await api.patch<ApiEnvelope<MaterialRequestDetail>>(
+    resolveMaterialRequestRequestUrl(MATERIAL_REQUEST_PATHS.detail(id)),
+    body,
+  );
+  assertApiSuccess(data);
+  return data.data;
+}
+
+export async function fetchMaterialRequestLogs(id: number): Promise<MaterialRequestLogEntry[]> {
+  const { data } = await api.get<ApiEnvelope<MaterialRequestLogEntry[]>>(
+    resolveMaterialRequestRequestUrl(MATERIAL_REQUEST_PATHS.logs(id)),
+  );
+  assertApiSuccess(data);
+  return data.data;
+}
+
+export async function restockMaterialRequest(
+  id: number,
+  payload: MaterialRequestRestockPayload,
+): Promise<MaterialRequestDetail> {
+  const { data } = await api.post<ApiEnvelope<MaterialRequestDetail>>(
+    resolveMaterialRequestRequestUrl(MATERIAL_REQUEST_PATHS.restock(id)),
+    payload,
+  );
   assertApiSuccess(data);
   return data.data;
 }

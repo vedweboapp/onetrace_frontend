@@ -66,23 +66,34 @@ export function DataTableRow({
   );
 }
 
+const selectionColumnClassName = "w-11 min-w-11 max-w-11 pl-4 pr-2 py-2.5 align-middle";
+
+function SelectionColumnContent({ children }: { children: ReactNode }) {
+  return <div className="flex items-center justify-start">{children}</div>;
+}
+
 export type DataTableThProps = ComponentPropsWithoutRef<"th">;
 
 export function DataTableTh({
   narrow,
+  compact,
   className,
   children,
   ...props
-}: DataTableThProps & { narrow?: boolean }) {
+}: DataTableThProps & { narrow?: boolean; compact?: boolean }) {
   return (
     <th
       className={cn(
-        narrow ? "w-11 px-2 py-2 align-middle" : "px-4 py-2.5 align-middle",
+        compact
+          ? selectionColumnClassName
+          : narrow
+            ? "w-11 px-2 py-2.5 align-middle"
+            : "px-4 py-2.5 align-middle",
         className,
       )}
       {...props}
     >
-      {children}
+      {compact ? <SelectionColumnContent>{children}</SelectionColumnContent> : children}
     </th>
   );
 }
@@ -91,17 +102,25 @@ export type DataTableTdProps = ComponentPropsWithoutRef<"td">;
 
 export function DataTableTd({
   narrow,
+  compact,
   className,
+  children,
   ...props
-}: DataTableTdProps & { narrow?: boolean }) {
+}: DataTableTdProps & { narrow?: boolean; compact?: boolean }) {
   return (
     <td
       className={cn(
-        narrow ? "w-11 px-2 py-2 align-middle" : "px-4 py-2.5 align-middle text-slate-600 dark:text-slate-400",
+        compact
+          ? selectionColumnClassName
+          : narrow
+            ? "w-11 px-2 py-2.5 align-middle"
+            : "px-4 py-2.5 align-middle text-slate-600 dark:text-slate-400",
         className,
       )}
       {...props}
-    />
+    >
+      {compact ? <SelectionColumnContent>{children}</SelectionColumnContent> : children}
+    </td>
   );
 }
 

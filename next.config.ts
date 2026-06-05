@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { DISPATCH_USE_MOCK } from "./src/features/dispatches/api/dispatch.mock.config";
+import { MATERIAL_REQUEST_USE_MOCK } from "./src/features/material-requests/api/material-request.mock.config";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
@@ -23,9 +25,17 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: googleMapsKey,
   },
   async rewrites() {
+    const mockPrefixes = [
+      MATERIAL_REQUEST_USE_MOCK ? "material-requests" : null,
+      DISPATCH_USE_MOCK ? "dispatches" : null,
+    ].filter(Boolean) as string[];
+    const source =
+      mockPrefixes.length > 0
+        ? `/api/v1/:path((?!${mockPrefixes.join("|")}).*)`
+        : "/api/v1/:path*";
     return [
       {
-        source: "/api/v1/:path*",
+        source,
         destination: `${backendOrigin}/api/v1/:path*`,
       },
     ];
