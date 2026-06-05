@@ -23,10 +23,12 @@ import {
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
+  AppButton,
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
+import { routes } from "@/shared/config/routes";
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
@@ -122,14 +124,12 @@ export function DispatchesPanel() {
     ];
   }, [dateFmt, t]);
 
-  const pageRange = getListPageRange(pagination.current_page, pagination.page_size, pagination.total_records);
+  const pageRange = getListPageRange(pagination);
 
   return (
     <div className="space-y-4">
       {!hideListChrome ? (
         <ListPageHeader
-          title={t("pageTitle")}
-          subtitle={t("pageSubtitle")}
           filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
@@ -172,6 +172,16 @@ export function DispatchesPanel() {
               iconName: "items",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
+              action: (
+                <AppButton
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => router.push(routes.dashboard.materialRequests)}
+                >
+                  {t("emptyAction")}
+                </AppButton>
+              ),
             }}
             onClearFilters={() => setUrl({ search: null, page: null }, { replace: true })}
           />

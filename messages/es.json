@@ -1711,6 +1711,7 @@
       "detailLoadError": "No se pudo cargar el detalle del envío.",
       "emptyTitle": "Aún no hay envíos",
       "emptyDescription": "Envíe material desde una solicitud para crear registros aquí.",
+      "emptyAction": "Ir a solicitudes de material",
       "pageLabel": "Mostrando {start} a {end} de {total} resultados",
       "prev": "Anterior",
       "next": "Siguiente",
