@@ -1711,6 +1711,7 @@
       "detailLoadError": "Could not load dispatch details. Try again.",
       "emptyTitle": "No dispatches yet",
       "emptyDescription": "Dispatch materials from a material request to create dispatch records here.",
+      "emptyAction": "Go to material requests",
       "pageLabel": "Showing {start} to {end} of {total} results",
       "prev": "Previous",
       "next": "Next",
