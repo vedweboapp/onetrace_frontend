@@ -88,6 +88,9 @@ export function DetailPagePadding({ children, className }: { children: ReactNode
 }
 
 /** White section card for detail pages (overview, address, system metadata, etc.). */
+export { DetailCollapsibleSection, type DetailCollapsibleSectionProps } from "./detail-collapsible-section";
+export { DetailSectionCountBadge } from "./detail-section-count-badge";
+
 export function DetailPanelCard({
   title,
   headerRight,

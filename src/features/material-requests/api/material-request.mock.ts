@@ -15,12 +15,18 @@ import type {
   MaterialRequestUpdatePayload,
 } from "@/features/material-requests/types/material-request.types";
 import {
+  materialRequestExtraItemId,
   materialRequestItemDispatchedQty,
   materialRequestItemRequestedQty,
   materialRequestItemStockQty,
   materialRequestJobLabel,
   nestedId,
 } from "@/features/material-requests/utils/material-request-nested-fields.util";
+import {
+  loadDispatchUserLabelById,
+  normalizeDispatchWorkerRef,
+  resolveMockDispatchedBy,
+} from "@/features/dispatches/utils/dispatch-enrich.util";
 import { materialRequestLineKey } from "@/features/material-requests/utils/material-request-line-key.util";
 import {
   createDispatchFromMaterialRequestMock,
@@ -231,6 +237,40 @@ async function loadItemLabels(authHeader?: string | null): Promise<Record<number
   }
 }
 
+async function enrichExtraDispatchItems(
+  items: MaterialRequestExtraDispatchItem[],
+  authHeader?: string | null,
+): Promise<MaterialRequestExtraDispatchItem[]> {
+  const labels = await loadItemLabels(authHeader);
+  return items.map((row) => {
+    const itemId = materialRequestExtraItemId(row);
+    const name =
+      row.item_name?.trim() ||
+      (typeof row.item === "object" ? row.item.name?.trim() : null) ||
+      labels[itemId] ||
+      `Item #${itemId}`;
+    return {
+      ...row,
+      item: { id: itemId, name },
+      item_name: name,
+    };
+  });
+}
+
+async function enrichMaterialRequestDetail(
+  detail: MaterialRequestDetail,
+  authHeader?: string | null,
+): Promise<MaterialRequestDetail> {
+  const userLabels = await loadDispatchUserLabelById();
+  const worker = normalizeDispatchWorkerRef(detail.worker_name, userLabels);
+  const extra_dispatch_items = await enrichExtraDispatchItems(detail.extra_dispatch_items ?? [], authHeader);
+  return {
+    ...detail,
+    worker_name: worker ?? detail.worker_name,
+    extra_dispatch_items,
+  };
+}
+
 async function buildJobsFromPayload(
   jobIds: number[],
   authHeader?: string | null,
@@ -334,10 +374,14 @@ export function resolveMaterialRequestDetailFallback(id: number): MaterialReques
   return applyMaterialRequestMock(entity);
 }
 
-export async function fetchMaterialRequestMock(id: number): Promise<MaterialRequestDetail | null> {
+export async function fetchMaterialRequestMock(
+  id: number,
+  authHeader?: string | null,
+): Promise<MaterialRequestDetail | null> {
   const entity = getMaterialRequestMockEntity(id);
   if (!entity) return null;
-  return applyMaterialRequestMock(entity);
+  const applied = applyMaterialRequestMock(entity);
+  return enrichMaterialRequestDetail(applied, authHeader);
 }
 
 export async function fetchMaterialRequestsPageMock(
@@ -417,10 +461,11 @@ export async function dispatchMaterialRequestMock(
   for (const extra of payload.extra_items) {
     const qty = Math.max(0, extra.quantity);
     if (qty <= 0 || extra.item <= 0) continue;
+    const itemName = itemLabels[extra.item] ?? `Item #${extra.item}`;
     const row: MaterialRequestExtraDispatchItem = {
       id: `extra-${Date.now()}-${extra.item}-${Math.random().toString(36).slice(2, 7)}`,
-      item: extra.item,
-      item_name: itemLabels[extra.item] ?? `#${extra.item}`,
+      item: { id: extra.item, name: itemName },
+      item_name: itemName,
       quantity: qty,
       dispatched_at: now,
     };
@@ -478,11 +523,16 @@ export async function dispatchMaterialRequestMock(
       });
     }
 
+    const userLabels = await loadDispatchUserLabelById();
+    const workerRef = normalizeDispatchWorkerRef(detail.worker_name, userLabels);
+    const dispatchedBy = resolveMockDispatchedBy(authHeader);
+
     const dispatch = createDispatchFromMaterialRequestMock({
       materialRequestId: id,
       materialRequestNumber: detail.request_number,
       jobName: detail.job_name,
-      workerName: detail.worker_name,
+      workerName: workerRef ?? detail.worker_name,
+      dispatchedBy,
       lines: dispatchLines,
     });
 
@@ -520,5 +570,5 @@ export async function dispatchMaterialRequestMock(
   saveMaterialRequestMockRecord(id, record);
   upsertMaterialRequestMockEntity(nextBase);
 
-  return applyMaterialRequestMock(nextBase);
+  return enrichMaterialRequestDetail(applyMaterialRequestMock(nextBase), authHeader);
 }

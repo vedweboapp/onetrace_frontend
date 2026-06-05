@@ -1,580 +1,444 @@
 ================================================================================
-  MATERIAL REQUESTS — FRONTEND API CONTRACT & MOCK DOCUMENTATION
-  OneTrace Frontend | Generated for backend / Swagger alignment
+  MATERIAL REQUEST · DISPATCH · RETURN TO STOCK — API REFERENCE
+  Base URL: /api/v1/
 ================================================================================
 
-BASE URL (all real HTTP calls)
-  /api/v1/
+All responses use this envelope:
 
-API path constants file:
-  src/features/material-requests/api/material-request.paths.ts
-
-HTTP client + envelope handling:
-  src/core/api/axios.ts
-  src/core/types/api.types.ts  (ApiEnvelope: { success, message, data })
-
-Standard response envelope (real API):
   {
-    "success": true,
-    "message": "Human-readable message",
-    "data": { ... }           // single object OR array depending on endpoint
-    "pagination": { ... }     // list endpoints only
+    "success": true | false,
+    "message": "string",
+    "data": { ... } | [ ... ],
+    "pagination": { ... }          // list endpoints only
   }
 
-================================================================================
-  HOW MOCK WORKS TODAY (VISIBLE IN NETWORK TAB)
-================================================================================
+Pagination (list endpoints):
 
-Toggle file:
-  src/features/material-requests/api/material-request.mock.config.ts
-
-  export const MATERIAL_REQUEST_USE_MOCK = true;   // <-- current setting
-
-When MATERIAL_REQUEST_USE_MOCK = true:
-  - Browser sends REAL HTTP via axios to /api/v1/material-requests/...
-  - You can see every request in DevTools → Network (filter: material-requests)
-  - Copy Request Payload + Response JSON from there for Swagger docs
-  - Next.js route handlers return mock JSON:
-      src/app/api/v1/material-requests/route.ts              GET list, POST create
-      src/app/api/v1/material-requests/[id]/route.ts         GET detail, PATCH update
-      src/app/api/v1/material-requests/[id]/dispatch/route.ts POST dispatch
-  - Mock data stored in server memory (globalThis) — resets when dev server restarts
-  - Job/item enrichment still calls real backend (jobs/{id}/, items/) with your auth token
-
-Mock implementation files:
-  src/features/material-requests/api/material-request.api.ts        ← axios client (always HTTP)
-  src/features/material-requests/api/material-request.mock.ts       ← mock business logic
-  src/features/material-requests/api/material-request.mock-store.ts ← in-memory DB
-  src/features/material-requests/api/material-request.mock-route.util.ts
-
-Mock database structure (sessionStorage):
   {
-    "nextId": number,
-    "entities": {
-      "<id>": MaterialRequestDetail    // saved request body + nested jobs/items
-    },
-    "records": {
-      "<id>": {
-        "lineDispatched": { "<line_key>": number },   // dispatch qty per line
-        "extraItems": [ ... ],                         // extra dispatched items
-        "timeline": [ ... ]                            // dispatch history events
-      }
-    }
-  }
-
-Mock request_number format:
-  "MR-00001", "MR-00002", ...  (zero-padded id, not year-based)
-
-Mock auto-status after dispatch (overrides draft/pending when dispatch happens):
-  - "partially_dispatched" — some lines still have pending qty
-  - "dispatched"           — all requested lines fully dispatched (or over-dispatched)
-
-================================================================================
-  SWITCH MOCK → REAL API (minimal frontend work)
-================================================================================
-
-Step 1 — Backend implements endpoints below with SAME paths, payloads, and shapes.
-
-Step 2 — In material-request.mock.config.ts set:
-  MATERIAL_REQUEST_USE_MOCK = false
-  (Route handlers auto-proxy to BACKEND_API_ORIGIN)
-
-Step 3 — Optional cleanup after backend verified:
-  Delete material-request.mock.ts
-  Delete material-request.mock-store.ts
-  Delete material-request.mock.config.ts
-  Remove mock imports from material-request.api.ts
-
-No UI changes required if backend matches this contract.
-
-================================================================================
-  FRONTEND FILE MAP (where data is sent / received)
-================================================================================
-
-API layer (fetch / create / update / dispatch):
-  src/features/material-requests/api/material-request.api.ts
-
-Types (payload + response TypeScript shapes):
-  src/features/material-requests/types/material-request.types.ts
-  src/features/material-requests/types/material-request-dispatch.types.ts
-
-Form → API payload mapping:
-  src/features/material-requests/utils/material-request-form-map.ts
-
-Pages / screens that call APIs:
-  List:   src/features/material-requests/components/material-requests-panel.tsx
-          → fetchMaterialRequestsPage(), fetchAllMaterialRequestIds()
-
-  Create: src/app/.../material-requests/new/page.tsx
-          → MaterialRequestFormScreen → createMaterialRequest()
-
-  Edit:   src/app/.../material-requests/[id]/edit/page.tsx
-          → MaterialRequestFormScreen → fetchMaterialRequest(), updateMaterialRequest()
-
-  Detail: src/app/.../material-requests/[id]/page.tsx
-          → MaterialRequestDetailScreen → fetchMaterialRequest()
-
-  Dispatch: src/app/.../material-requests/[id]/dispatch/page.tsx
-          → MaterialRequestDispatchScreen → fetchMaterialRequest(), dispatchMaterialRequest()
-
-Supporting APIs (NOT mocked — always hit backend):
-  Jobs picker:     fetchJobsPage(1, 500, { is_active: true, assigned_worker: workerId })
-                   File: src/features/material-requests/components/material-request-add-jobs-modal.tsx
-
-  Job details:     fetchJob(id) per selected job
-                   File: src/features/material-requests/components/material-request-form-screen.tsx
-
-  Item labels:     fetchItemsPage(1, 500, { isActive: true })
-                   Files: form-screen, dispatch-screen, mock enrichment
-
-  Worker dropdown: loadTechnicianOptions()
-                   Files: form-screen, list panel filters, detail screen
-
-Mass bulk actions (uses same list filters + ids):
-  src/shared/mass-actions/mass-action-config.ts
-  apiSegment: "material-requests"
-  idsKey: "material_request_ids"
-
-================================================================================
-  1. CREATE MATERIAL REQUEST
-================================================================================
-
-Endpoint:
-  POST /api/v1/material-requests/
-
-Frontend function:
-  createMaterialRequest(body)
-  File: material-request.api.ts
-
-Request payload (MaterialRequestCreatePayload):
-{
-  "worker_name": 1,                    // INTEGER — technician user id (not display name)
-  "requested_date": "2026-06-02",      // YYYY-MM-DD
-  "status": "draft",                   // optional, defaults to "draft"
-
-  "jobs": [
-    { "job": 11 },
-    { "job": 15 }
-  ],
-
-  "items": [
-    {
-      "job": 11,
-      "item": 19,
-      "quantity": 23                    // request qty from job work scope (read-only in UI)
-    },
-    {
-      "job": 15,
-      "item": 22,
-      "quantity": 10
-    }
-  ],
-
-  "notes": "Need approval before dispatch"   // optional
-}
-
-IMPORTANT vs older draft spec:
-  - worker_name is NUMBER (user id), not string "Rahul Sharma"
-  - items use field name "quantity" (NOT "request_quantity") on create/update from frontend
-  - items do NOT send "group" on create — group comes back in response if backend provides it
-
-Expected response (MaterialRequestDetail inside envelope.data):
-{
-  "success": true,
-  "message": "Material request created successfully",
-  "data": {
-    "id": 1,
-    "request_number": "MR-00001",
-
-    "worker_name": 1,                    // mock may return number; backend SHOULD return object:
-    // OR expanded:
-    // "worker_name": { "id": 1, "name": "Rahul Sharma", "email": "...", "username": "..." },
-
-    "requested_date": "2026-06-02",
-    "status": "draft",
-
-    "jobs": [
-      {
-        "id": 11,
-        "title": "Downtown Mall Renovation",
-        "project": { "id": 5, "name": "Alpha Phase" }
-      },
-      {
-        "id": 15,
-        "title": "City Office Extension",
-        "project": { "id": 9, "name": "Corporate Tower" }
-      }
-    ],
-
-    "items": [
-      {
-        "id": 1,
-        "job": { "id": 11, "title": "Downtown Mall Renovation" },
-      
-        "item": {
-          "id": 19,
-          "name": "Portland Cement (Type I)",
-          "selling_price": 25,
-          "quantity": 23,                                   // requested qty
-          "available_stock": 500,
-          "dispatched_quantity": 0
-        },
-        "quantity": 23,
-        "dispatched_quantity": 0
-      },
-      {
-        "id": 2,
-        "job": { "id": 15, "title": "City Office Extension" },
-        "group": null,
-        "item": {
-          "id": 22,
-          "name": "Copper Wiring (2.5mm²)",
-          "selling_price": 25,
-          "quantity": 10,
-          "available_stock": 120,
-          "dispatched_quantity": 0
-        },
-        "quantity": 10,
-        "dispatched_quantity": 0
-      }
-    ],
-
-    "items_count": 2,
-    "job_name": "Downtown Mall Renovation",    // first job title — used in list card/table
-
-    "notes": "Need approval before dispatch",
-
-    "timeline": [],                            // empty on create
-    "extra_dispatch_items": [],                // empty until dispatch
-
-    "created_by": { "id": 1, "email": "admin@yopmail.com", "username": "admin" },
-    "modified_by": null,
-    "created_at": "2026-06-02T09:50:23.686285Z",
-    "modified_at": null
-  }
-}
-
-================================================================================
-  2. LIST MATERIAL REQUESTS (paginated + filters)
-================================================================================
-
-Endpoint:
-  GET /api/v1/material-requests/
-
-Frontend function:
-  fetchMaterialRequestsPage(page, pageSize, filters)
-  File: material-request.api.ts
-
-Query parameters:
-  page=1
-  page_size=20
-  search=MR-00001              // optional — matches request_number, job_name, notes, worker id
-  status=draft                 // optional — exact match
-  requested_date=2026-06-02    // optional — date portion match
-  worker_name=1                // optional — worker USER ID (integer as string), not display name
-
-Example requests:
-  GET /api/v1/material-requests/?page=1&page_size=20
-  GET /api/v1/material-requests/?search=MR-00001
-  GET /api/v1/material-requests/?status=draft
-  GET /api/v1/material-requests/?requested_date=2026-06-02
-  GET /api/v1/material-requests/?worker_name=1
-
-Expected response:
-{
-  "success": true,
-  "message": "Data fetched successfully",
-  "data": [
-    {
-      "id": 1,
-      "request_number": "MR-00001",
-      "worker_name": 1,                    // or expanded worker object — UI resolves label
-      "requested_date": "2026-06-02",
-      "status": "draft",
-      "jobs": [ ... ],                     // optional in list
-      "items": [ ... ],                      // optional in list
-      "job_name": "Downtown Mall Renovation",
-      "items_count": 2,
-      "notes": "Need approval before dispatch",
-      "created_at": "2026-06-02T10:30:00Z"
-    }
-  ],
-  "pagination": {
-    "total_records": 1,
+    "total_records": 0,
     "total_pages": 1,
     "current_page": 1,
     "page_size": 20,
     "next": null,
     "previous": null
   }
+
+Refs in responses: send id in request; return id + name (and email/username where relevant).
+
+  worker_name:   { "id": 5, "name": "John Smith" }
+  dispatched_by: { "id": 1, "name": "Admin", "email": "...", "username": "..." }
+  item:          { "id": 19, "name": "Portland Cement" }
+
+
+================================================================================
+  MATERIAL REQUEST
+================================================================================
+
+--------------------------------------------------------------------------------
+1. List material requests
+--------------------------------------------------------------------------------
+GET /api/v1/material-requests/
+
+Query:
+  page=1
+  page_size=20
+  search=MR-00001          (optional)
+  status=draft             (optional)
+  requested_date=2026-06-02 (optional, YYYY-MM-DD)
+  worker_name=5            (optional, worker user id)
+
+Response data[]:
+{
+  "id": 1,
+  "request_number": "MR-00001",
+  "worker_name": { "id": 5, "name": "John Smith" },
+  "requested_date": "2026-06-02",
+  "status": "draft",
+  "job_name": "Downtown Mall Renovation",
+  "items_count": 2,
+  "notes": "string",
+  "created_at": "2026-06-02T10:30:00Z"
 }
 
-NOTE: Frontend list uses items_count + job_name (not total_jobs / total_items fields).
-      Backend may add total_jobs/total_items but frontend does not read them today.
+--------------------------------------------------------------------------------
+2. Create material request
+--------------------------------------------------------------------------------
+POST /api/v1/material-requests/
 
-================================================================================
-  3. GET SINGLE MATERIAL REQUEST (detail)
-================================================================================
-
-Endpoint:
-  GET /api/v1/material-requests/{id}/
-
-Frontend function:
-  fetchMaterialRequest(id)
-  File: material-request.api.ts
-
-Example:
-  GET /api/v1/material-requests/1/
-
-Expected response:
-  Same shape as CREATE response data (MaterialRequestDetail), including after dispatches:
-  - items[].dispatched_quantity updated per line
-  - status may be partially_dispatched | dispatched
-  - timeline[] populated with dispatch events
-  - extra_dispatch_items[] for items not on original request
-
-Timeline entry shape:
+Payload:
 {
-  "id": "tl-1780633738054-abc1234",    // string or number
-  "title": "Materials dispatched",
-  "description": "Dispatched 15 units including 1 extra item(s).",
-  "occurred_at": "2026-06-03T14:22:00.000Z",
-  "tag": "dispatch"
-}
-
-Extra dispatch item shape:
-{
-  "id": "extra-1780633738054-19-x7k2m",
-  "item": 19,
-  "item_name": "Portland Cement (Type I)",
-  "quantity": 5,
-  "dispatched_at": "2026-06-03T14:22:00.000Z"
-}
-
-Dispatched display rule (frontend UI):
-  If dispatched_quantity > requested quantity:
-    Show as "10 +5" meaning 10 requested + 5 surplus (total 15 dispatched)
-
-================================================================================
-  4. UPDATE MATERIAL REQUEST
-================================================================================
-
-Endpoint (frontend uses PATCH, not PUT):
-  PATCH /api/v1/material-requests/{id}/
-
-Frontend function:
-  updateMaterialRequest(id, body)
-  File: material-request.api.ts
-
-Request payload (MaterialRequestUpdatePayload — all fields optional):
-{
-  "worker_name": 1,
-  "requested_date": "2026-06-05",
-  "status": "pending",
-
+  "worker_name": 5,
+  "requested_date": "2026-06-02",
+  "status": "draft",
   "jobs": [
     { "job": 11 }
   ],
-
   "items": [
-    {
-      "job": 11,
-      "item": 19,
-      "quantity": 80
-    }
+    { "job": 11, "item": 19, "quantity": 23 }
   ],
-
-  "notes": "Approved by project manager"
+  "notes": "optional"
 }
 
-IMPORTANT:
-  - Frontend sends worker_name as INTEGER id (same as create)
-  - Frontend sends quantity (NOT request_quantity, NOT remarks) — align backend or add mapping
-  - PUT is NOT called by frontend today; PATCH is used
+Response data: MaterialRequestDetail (see §4)
 
-Expected response:
-  Same MaterialRequestDetail shape as GET detail.
+--------------------------------------------------------------------------------
+3. Update material request
+--------------------------------------------------------------------------------
+PATCH /api/v1/material-requests/{id}/
 
-================================================================================
-  5. DISPATCH MATERIALS (NEW — required for dispatch screen)
-================================================================================
-
-Endpoint (NOT in original draft — backend must add):
-  POST /api/v1/material-requests/{id}/dispatch/
-
-Frontend function:
-  dispatchMaterialRequest(id, detail, payload, itemLabels)
-  File: material-request.api.ts
-  Screen: material-request-dispatch-screen.tsx
-
-Currently when mock OFF:
-  throws Error("Material request dispatch API is not available yet.")
-
-Request payload (MaterialRequestDispatchPayload):
+Payload (all fields optional):
 {
-  "lines": [
+  "worker_name": 5,
+  "requested_date": "2026-06-05",
+  "status": "pending",
+  "jobs": [ { "job": 11 } ],
+  "items": [ { "job": 11, "item": 19, "quantity": 80 } ],
+  "notes": "string"
+}
+
+Response data: MaterialRequestDetail (see §4)
+
+--------------------------------------------------------------------------------
+4. Get material request detail
+--------------------------------------------------------------------------------
+GET /api/v1/material-requests/{id}/
+
+Response data:
+{
+  "id": 1,
+  "request_number": "MR-00001",
+  "worker_name": { "id": 5, "name": "John Smith" },
+  "requested_date": "2026-06-02",
+  "status": "partially_dispatched",
+  "jobs": [
     {
-      "line_key": "1",                      // see line_key rules below
-      "quantity": 10                        // qty to dispatch NOW (can exceed pending)
-    },
-    {
-      "line_key": "job-11-item-19",
-      "quantity": 5
+      "id": 11,
+      "title": "Downtown Mall Renovation",
+      "project": { "id": 5, "name": "Alpha Phase" }
     }
   ],
-  "extra_items": [
+  "items": [
     {
-      "item": 25,                           // catalog item id
-      "quantity": 3
+      "id": 1,
+      "job": { "id": 11, "title": "Downtown Mall Renovation" },
+      "group": { "id": 2, "name": "Cement" },
+      "item": {
+        "id": 19,
+        "name": "Portland Cement (Type I)",
+        "stock_quantity": 500
+      },
+      "requested_quantity": 23,
+      "dispatched_quantity": 15,
+      "pending_quantity": 8,
+      "restocked_quantity": 0
+    }
+  ],
+  "items_count": 1,
+  "job_name": "Downtown Mall Renovation",
+  "notes": "string",
+  "dispatch_ids": [1, 2],
+  "extra_dispatch_items": [
+    {
+      "id": "extra-abc123",
+      "item": { "id": 25, "name": "Extra Item Name" },
+      "item_name": "Extra Item Name",
+      "quantity": 3,
+      "dispatched_at": "2026-06-03T14:22:00Z"
+    }
+  ],
+  "created_by": { "id": 1, "name": "Admin" },
+  "modified_by": null,
+  "created_at": "2026-06-02T09:50:23Z",
+  "modified_at": "2026-06-03T14:22:00Z"
+}
+
+Status values: draft | pending | partially_dispatched | dispatched
+
+Dispatched qty display: fulfilled = min(dispatched, requested); surplus = max(0, dispatched - requested)
+
+--------------------------------------------------------------------------------
+5. Dispatch materials (creates dispatch record)
+--------------------------------------------------------------------------------
+POST /api/v1/material-requests/{id}/dispatch/
+
+Payload:
+{
+  "lines": [
+    { "line_key": "1", "quantity": 10 }
+  ],
+  "extra_items": [
+    { "item": 25, "quantity": 3 }
+  ]
+}
+
+line_key rules:
+  - item row id as string:        "1"
+  - or job+item:                  "job-11-item-19"
+  - or index fallback:            "idx-0"
+
+Response data: MaterialRequestDetail (updated quantities, status, dispatch_ids, extra_dispatch_items)
+
+Side effect: creates Dispatch record (see DISPATCH §2)
+
+--------------------------------------------------------------------------------
+6. Material request activity logs
+--------------------------------------------------------------------------------
+GET /api/v1/material-requests/{id}/logs/
+
+Response data[]:
+{
+  "id": "log-abc123",
+  "title": "Materials dispatched",
+  "description": "Dispatch DSP-00001: 13 units.",
+  "occurred_at": "2026-06-03T14:22:00Z",
+  "tag": "dispatch",
+  "dispatch_id": 1
+}
+
+
+================================================================================
+  DISPATCH
+================================================================================
+
+--------------------------------------------------------------------------------
+1. List dispatches
+--------------------------------------------------------------------------------
+GET /api/v1/dispatches
+
+Query:
+  page=1
+  page_size=20
+  search=DSP-00001         (optional)
+  status=dispatched        (optional)
+  worker_name=5            (optional)
+  material_request_id=1    (optional)
+
+Response data[]:
+{
+  "id": 1,
+  "dispatch_number": "DSP-00001",
+  "material_request_id": 1,
+  "material_request_number": "MR-00001",
+  "job_name": "Downtown Mall Renovation",
+  "dispatch_date": "2026-06-03",
+  "status": "dispatched",
+  "worker_name": { "id": 5, "name": "John Smith" },
+  "total_qty": 13,
+  "created_at": "2026-06-03T14:22:00Z"
+}
+
+--------------------------------------------------------------------------------
+2. Get dispatch detail
+--------------------------------------------------------------------------------
+GET /api/v1/dispatches/{id}
+
+Response data:
+{
+  "id": 1,
+  "dispatch_number": "DSP-00001",
+  "material_request_id": 1,
+  "material_request_number": "MR-00001",
+  "job_name": "Downtown Mall Renovation",
+  "dispatch_date": "2026-06-03",
+  "status": "dispatched",
+  "worker_name": { "id": 5, "name": "John Smith" },
+  "dispatch_to": "John Smith",
+  "dispatched_by": { "id": 1, "name": "Admin", "email": "admin@example.com", "username": "admin" },
+  "total_qty": 13,
+  "lines": [
+    {
+      "id": 1,
+      "line_key": "1",
+      "material_request_line_id": 1,
+      "job": { "id": 11, "title": "Downtown Mall Renovation" },
+      "item": { "id": 19, "name": "Portland Cement (Type I)" },
+      "worker_name": { "id": 5, "name": "John Smith" },
+      "requested_quantity": 23,
+      "dispatched_quantity": 10,
+      "pending_quantity": 13,
+      "extra_quantity": 0,
+      "restocked_quantity": 0,
+      "restock_history": [],
+      "is_extra": false,
+      "dispatched_at": "2026-06-03T14:22:00Z"
+    },
+    {
+      "id": 2,
+      "line_key": "extra-25-...",
+      "material_request_line_id": null,
+      "job": null,
+      "item": { "id": 25, "name": "Extra Item Name" },
+      "requested_quantity": 0,
+      "dispatched_quantity": 3,
+      "pending_quantity": 0,
+      "extra_quantity": 3,
+      "restocked_quantity": 0,
+      "restock_history": [],
+      "is_extra": true,
+      "dispatched_at": "2026-06-03T14:22:00Z"
+    }
+  ],
+  "created_by": { "id": 1, "name": "Admin" },
+  "modified_by": null,
+  "created_at": "2026-06-03T14:22:00Z",
+  "modified_at": null
+}
+
+--------------------------------------------------------------------------------
+3. Dispatch activity logs
+--------------------------------------------------------------------------------
+GET /api/v1/dispatches/{id}/logs
+
+Response data[]:
+{
+  "id": "dlog-abc123",
+  "title": "Dispatch created",
+  "description": "Dispatched 13 unit(s) across 2 line(s).",
+  "occurred_at": "2026-06-03T14:22:00Z",
+  "tag": "dispatch",
+  "line_id": null
+}
+
+
+================================================================================
+  RETURN TO STOCK
+================================================================================
+
+Flow:
+  1. Operator loads returnable materials (grouped by MR item or extra)
+  2. Operator submits return request
+  3. Approver completes request → quantities credited to inventory
+
+--------------------------------------------------------------------------------
+1. Load returnable materials (operator)
+--------------------------------------------------------------------------------
+GET /api/v1/dispatches/worker-return-materials
+
+Query:
+  worker_name=5                              (required, worker user id)
+  date_preset=today                          (today | yesterday | custom | material_request)
+  date_from=2026-06-01                       (required when date_preset=custom)
+  date_to=2026-06-03                         (required when date_preset=custom)
+  material_request_id=1                      (required when date_preset=material_request)
+
+Response data:
+{
+  "worker_name": { "id": 5, "name": "John Smith" },
+  "date_from": "2026-06-03",
+  "date_to": "2026-06-03",
+  "material_request_id": null,
+  "lines": [
+    {
+      "group_key": "mr:1:item:19",
+      "item_id": 19,
+      "item_name": "Portland Cement (Type I)",
+      "material_request_id": 1,
+      "material_request_number": "MR-00001",
+      "is_extra": false,
+      "dispatched_quantity": 10,
+      "returned_quantity": 2,
+      "returnable_quantity": 8,
+      "pending_request_quantity": 0,
+      "sources": [
+        { "dispatch_id": 1, "line_id": 1, "returnable_quantity": 8 }
+      ]
+    },
+    {
+      "group_key": "extra:item:25",
+      "item_id": 25,
+      "item_name": "Extra Item Name",
+      "material_request_id": null,
+      "material_request_number": null,
+      "is_extra": true,
+      "dispatched_quantity": 3,
+      "returned_quantity": 0,
+      "returnable_quantity": 3,
+      "pending_request_quantity": 0,
+      "sources": [
+        { "dispatch_id": 1, "line_id": 2, "returnable_quantity": 3 }
+      ]
     }
   ]
 }
 
-line_key rules (frontend generates, backend should accept):
-  1. If item row has id:     line_key = String(item.id)           e.g. "1"
-  2. Else if job+item known: line_key = "job-{jobId}-item-{itemId}" e.g. "job-11-item-19"
-  3. Else fallback:          line_key = "idx-{index}"             e.g. "idx-0"
+Note: One row per item per material request (or per extra). Not repeated per dispatch.
 
-  Utility file: src/features/material-requests/utils/material-request-line-key.util.ts
+--------------------------------------------------------------------------------
+2. Submit return request (operator)
+--------------------------------------------------------------------------------
+POST /api/v1/dispatch-return-requests
 
-Business rules:
-  - quantity on each line is incremental dispatch amount (added to existing dispatched_quantity)
-  - Over-dispatch allowed: total dispatched can exceed requested quantity
-  - extra_items are items NOT on the original request (tracked separately)
+Payload:
+{
+  "worker_name": 5,
+  "lines": [
+    {
+      "dispatch_id": 1,
+      "line_id": 1,
+      "quantity": 5,
+      "return_type": "unused",
+      "reason": "Not used on site"
+    }
+  ]
+}
 
-Expected response:
-  Full MaterialRequestDetail after dispatch (same as GET detail), with:
-  - updated dispatched_quantity per line
-  - new timeline entry
-  - extra_dispatch_items appended
-  - status auto-updated to partially_dispatched or dispatched
+return_type: unused | faulty
 
-================================================================================
-  6. DELETE MATERIAL REQUEST
-================================================================================
+Response data:
+{
+  "id": 1,
+  "request_number": "RR-00001",
+  "worker_name": { "id": 5, "name": "John Smith" },
+  "status": "pending",
+  "lines": [
+    {
+      "dispatch_id": 1,
+      "dispatch_number": "DSP-00001",
+      "line_id": 1,
+      "item_id": 19,
+      "item_name": "Portland Cement (Type I)",
+      "job_name": "Downtown Mall Renovation",
+      "quantity": 5,
+      "return_type": "unused",
+      "reason": "Not used on site"
+    }
+  ],
+  "requested_at": "2026-06-05T11:26:29Z",
+  "completed_at": null
+}
 
-Endpoint (in draft spec):
-  DELETE /api/v1/material-requests/{id}/
+--------------------------------------------------------------------------------
+3. List return requests (approver)
+--------------------------------------------------------------------------------
+GET /api/v1/dispatch-return-requests
 
-Frontend status:
-  NOT IMPLEMENTED in material-request.api.ts yet.
-  No delete button on detail screen currently.
+Query:
+  status=pending           (optional: pending | completed | rejected)
+  worker_name=5            (optional)
 
-If backend adds DELETE, frontend will need a new deleteMaterialRequest() function.
+Response data[]: DispatchReturnRequest (same shape as §2 response)
 
-================================================================================
-  7. BULK / MASS ACTIONS
-================================================================================
+--------------------------------------------------------------------------------
+4. Complete return request — return to stock (approver)
+--------------------------------------------------------------------------------
+POST /api/v1/dispatch-return-requests/{id}/complete
 
-Configured segment:
-  POST /api/v1/material-requests/mass-update/   (or project convention)
-  idsKey in payload: "material_request_ids"
+Payload: none
 
-File: src/shared/mass-actions/mass-action-config.ts
+Response data:
+{
+  "id": 1,
+  "request_number": "RR-00001",
+  "worker_name": { "id": 5, "name": "John Smith" },
+  "status": "completed",
+  "lines": [ ... ],
+  "requested_at": "2026-06-05T11:26:29Z",
+  "completed_at": "2026-06-05T12:00:00Z"
+}
 
-Follow same mass-action pattern as clients/jobs (check existing mass-update endpoints).
+Side effect: updates dispatch line restocked_quantity and material request restocked_quantity
 
-================================================================================
-  STATUS VALUES
-================================================================================
-
-Used in frontend UI today (filters, badges, form):
-  draft
-  pending
-  partially_dispatched    (alias accepted: "partial")
-  dispatched
-
-User's suggested workflow statuses (not all wired in UI yet):
-  draft, submitted, approved, rejected, fulfilled
-
-Backend recommendation:
-  Support at minimum: draft, pending, partially_dispatched, dispatched
-  Additional workflow statuses can be added without breaking UI (badge shows raw label)
-
-================================================================================
-  SUPPORTING APIs (used by Material Request feature — already real)
-================================================================================
-
-A) List jobs for worker (job picker modal)
-   GET /api/v1/jobs/?page=1&page_size=500&is_active=true&assigned_worker={workerId}
-   File: material-request-add-jobs-modal.tsx
-
-B) Get single job (enrich titles, project, work scope)
-   GET /api/v1/jobs/{id}/
-   File: material-request-form-screen.tsx, material-request.mock.ts
-
-C) List items (labels for form + dispatch extra items)
-   GET /api/v1/items/?page=1&page_size=500&is_active=true
-   File: material-request-form-screen.tsx, material-request-dispatch-screen.tsx
-
-D) Technician / worker dropdown
-   loadTechnicianOptions() — existing users API in jobs feature
-   File: material-request-form-screen.tsx, material-requests-panel.tsx
-
-E) Job work scope → form line items (client-side, no dedicated API today)
-   Frontend reads job.job_meta.composite_items from fetchJob() response
-   and builds items[] with job + item + quantity automatically.
-   File: material-request-job-items.util.ts
-
-Suggested future API (from your draft — NOT implemented in frontend yet):
-   GET /api/v1/jobs/{id}/items/
-   Response: [{ "id": 19, "name": "Portland Cement", "unit": "Bag", "available_stock": 500 }]
 
 ================================================================================
-  RECOMMENDED DB STRUCTURE (aligned with frontend)
-================================================================================
-
-material_requests
-  id, request_number, worker_name_id (FK user), requested_date, status, notes,
-  created_by_id, modified_by_id, created_at, modified_at
-
-material_request_jobs
-  id, material_request_id, job_id
-
-material_request_items
-  id, material_request_id, job_id, group_id (nullable), item_id,
-  request_quantity, remarks (optional),
-  dispatched_quantity (default 0)
-
-material_request_dispatch_events (timeline)
-  id, material_request_id, title, description, occurred_at, tag
-
-material_request_extra_dispatch_items
-  id, material_request_id, item_id, quantity, dispatched_at
-
-================================================================================
-  FRONTEND USER FLOW (pages)
-================================================================================
-
-1. List        /dashboard/material-requests
-2. Create      /dashboard/material-requests/new
-3. Detail      /dashboard/material-requests/{id}     (tabs: Overview | Timeline)
-4. Edit        /dashboard/material-requests/{id}/edit
-5. Dispatch    /dashboard/material-requests/{id}/dispatch
-
-Create/Edit form sections:
-  General: worker_name (select), requested_date, status, notes
-  Jobs:    add via modal (filtered by worker)
-  Items:   auto-loaded from job work scope; quantity READ-ONLY in UI
-
-Dispatch page:
-  Table of requested lines with dispatch qty input (+ surplus preview)
-  Extra items section (pick from items catalog)
-
-================================================================================
-  QUICK REFERENCE — FUNCTION → HTTP
-================================================================================
-
-fetchMaterialRequestsPage()  → GET    material-requests/
-fetchMaterialRequest(id)     → GET    material-requests/{id}/
-createMaterialRequest(body)  → POST   material-requests/
-updateMaterialRequest(id)    → PATCH  material-requests/{id}/
-dispatchMaterialRequest(id)  → POST   material-requests/{id}/dispatch/  (to implement)
-fetchAllMaterialRequestIds() → GET    material-requests/ (paginated, all pages)
-
-All paths relative to /api/v1/
-Path constants: src/features/material-requests/api/material-request.paths.ts
-
-================================================================================
-  END OF DOCUMENT
+  END
 ================================================================================

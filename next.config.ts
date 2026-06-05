@@ -28,6 +28,7 @@ const nextConfig: NextConfig = {
     const mockPrefixes = [
       MATERIAL_REQUEST_USE_MOCK ? "material-requests" : null,
       DISPATCH_USE_MOCK ? "dispatches" : null,
+      DISPATCH_USE_MOCK ? "dispatch-return-requests" : null,
     ].filter(Boolean) as string[];
     const source =
       mockPrefixes.length > 0

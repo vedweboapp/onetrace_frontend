@@ -25,6 +25,11 @@ import { DetailPageHeader } from "@/shared/components/layout/detail-page-header"
 import { routes } from "@/shared/config/routes";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
 import { DispatchedQuantityCell } from "@/shared/components/quantity/dispatched-quantity-cell";
+import {
+  quantityTableCellClass,
+  quantityTableHeaderClass,
+  quantityTableInputCellClass,
+} from "@/shared/components/quantity/quantity-table-columns";
 import { AppButton, CheckmarkSelect, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
 
 type LineDraft = {
@@ -247,10 +252,10 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
                       <th className="px-3 py-2">{t("lineItems.itemDetails")}</th>
-                      <th className="px-3 py-2 text-right">{t("dispatch.requested")}</th>
-                      <th className="px-3 py-2 text-right">{t("dispatch.dispatched")}</th>
-                      <th className="px-3 py-2 text-right">{t("dispatch.pending")}</th>
-                      <th className="px-3 py-2 text-right">{t("dispatch.dispatchNow")}</th>
+                      <th className={quantityTableHeaderClass}>{t("dispatch.requested")}</th>
+                      <th className={quantityTableHeaderClass}>{t("dispatch.dispatched")}</th>
+                      <th className={quantityTableHeaderClass}>{t("dispatch.pending")}</th>
+                      <th className={cn(quantityTableHeaderClass, "w-36")}>{t("dispatch.dispatchNow")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -272,24 +277,28 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
                             <td className="px-3 py-3 font-medium text-slate-900 dark:text-slate-100">
                               {row.materialName}
                             </td>
-                            <td className="px-3 py-3 text-right tabular-nums">{row.requested.toFixed(0)}</td>
-                            <td className="px-3 py-3 text-right">
+                            <td className={cn(quantityTableCellClass, "font-medium")}>
+                              {row.requested.toFixed(0)} {t("lineItems.units")}
+                            </td>
+                            <td className={quantityTableCellClass}>
                               <DispatchedQuantityCell
                                 fulfilled={Math.min(row.alreadyDispatched, row.requested)}
                                 surplus={Math.max(0, row.alreadyDispatched - row.requested)}
                                 unitsLabel={t("lineItems.units")}
                               />
                             </td>
-                            <td className="px-3 py-3 text-right tabular-nums">{row.pending.toFixed(0)}</td>
-                            <td className="px-3 py-3 text-right">
-                              <div className="inline-flex items-center justify-end gap-1.5">
+                            <td className={quantityTableCellClass}>
+                              {row.pending.toFixed(0)} {t("lineItems.units")}
+                            </td>
+                            <td className={quantityTableInputCellClass}>
+                              <div className="inline-flex w-full items-center justify-center gap-1.5">
                                 <input
                                   type="number"
                                   min={0}
                                   step="any"
                                   value={row.dispatchQty}
                                   disabled={saving}
-                                  className={cn(compactInputClass, "w-20 text-right")}
+                                  className={cn(compactInputClass, "w-20 text-center")}
                                   onChange={(e) => updateLineQty(row.line_key, e.target.value)}
                                 />
                                 {surplusPreview ? (

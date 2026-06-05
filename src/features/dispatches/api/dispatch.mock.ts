@@ -1,11 +1,31 @@
 import type {
+  CreateDispatchReturnRequestPayload,
   DispatchDetail,
   DispatchLineItem,
   DispatchListItem,
   DispatchLogEntry,
   DispatchPagination,
   DispatchRestockPayload,
+  DispatchReturnItemsData,
+  DispatchReturnRequest,
+  DispatchReturnRequestListFilters,
+  DispatchReturnToStockPayload,
+  WorkerReturnMaterialsData,
+  WorkerReturnMaterialsFilters,
 } from "@/features/dispatches/types/dispatch.types";
+import {
+  allocateDispatchReturnRequestMockId,
+  listDispatchReturnRequestMocks,
+  upsertDispatchReturnRequestMock,
+  getDispatchReturnRequestMock,
+} from "./dispatch-return-request.mock-store";
+import { buildDispatchReturnItems, buildWorkerReturnMaterials } from "@/features/dispatches/utils/dispatch-return.util";
+import {
+  DEFAULT_MOCK_DISPATCH_USER,
+  enrichDispatchDetail,
+  enrichDispatchListItem,
+} from "@/features/dispatches/utils/dispatch-enrich.util";
+import type { DispatchUserRef } from "@/features/dispatches/types/dispatch.types";
 import { getMaterialRequestMockRecord, saveMaterialRequestMockRecord } from "@/features/material-requests/api/material-request.mock-store";
 import {
   allocateDispatchMockId,
@@ -39,6 +59,7 @@ export type CreateDispatchFromMaterialRequestInput = {
   materialRequestNumber: string;
   jobName?: string | null;
   workerName: DispatchDetail["worker_name"];
+  dispatchedBy?: DispatchUserRef;
   lines: CreateDispatchLineInput[];
 };
 
@@ -110,11 +131,14 @@ export async function fetchDispatchesPageMock(
     .filter((row) => matchesFilters(row, filters))
     .map(toListItem);
   const { slice, pagination } = paginate(all, page, pageSize);
-  return { items: slice, pagination };
+  const items = await Promise.all(slice.map((row) => enrichDispatchListItem(row)));
+  return { items, pagination };
 }
 
 export async function fetchDispatchMock(id: number): Promise<DispatchDetail | null> {
-  return getDispatchMockEntity(id);
+  const detail = getDispatchMockEntity(id);
+  if (!detail) return null;
+  return enrichDispatchDetail(detail);
 }
 
 export async function fetchDispatchLogsMock(id: number): Promise<DispatchLogEntry[]> {
@@ -156,6 +180,8 @@ export function createDispatchFromMaterialRequestMock(input: CreateDispatchFromM
     };
   });
 
+  const dispatchedBy = input.dispatchedBy ?? DEFAULT_MOCK_DISPATCH_USER;
+
   const detail: DispatchDetail = {
     id,
     dispatch_number: `DSP-${String(id).padStart(5, "0")}`,
@@ -166,6 +192,7 @@ export function createDispatchFromMaterialRequestMock(input: CreateDispatchFromM
     status: "dispatched",
     worker_name: input.workerName,
     dispatch_to: workerLabel(input.workerName),
+    dispatched_by: dispatchedBy,
     total_qty,
     lines,
     logs: [
@@ -179,12 +206,137 @@ export function createDispatchFromMaterialRequestMock(input: CreateDispatchFromM
     ],
     created_at: now,
     modified_at: null,
-    created_by: { id: 1, email: "admin@yopmail.com", username: "admin" },
+    created_by: dispatchedBy,
     modified_by: null,
   };
 
   upsertDispatchMockEntity(detail);
   return detail;
+}
+
+export async function fetchWorkerReturnMaterialsMock(
+  filters: WorkerReturnMaterialsFilters,
+): Promise<WorkerReturnMaterialsData> {
+  const pending = listDispatchReturnRequestMocks();
+  return buildWorkerReturnMaterials(listDispatchMockEntities(), filters, pending);
+}
+
+export async function createDispatchReturnRequestMock(
+  payload: CreateDispatchReturnRequestPayload,
+): Promise<DispatchReturnRequest> {
+  const now = new Date().toISOString();
+  const id = allocateDispatchReturnRequestMockId();
+  const lines: DispatchReturnRequest["lines"] = [];
+
+  for (const input of payload.lines) {
+    const qty = Math.max(0, input.quantity);
+    if (qty <= 0) continue;
+    const detail = getDispatchMockEntity(input.dispatch_id);
+    if (!detail) continue;
+    const line = detail.lines.find((row) => row.id === input.line_id);
+    if (!line) continue;
+
+    const returnable = Math.max(0, line.dispatched_quantity - line.restocked_quantity);
+    const pending = listDispatchReturnRequestMocks()
+      .filter((r) => r.status === "pending")
+      .flatMap((r) => r.lines)
+      .filter((l) => l.dispatch_id === input.dispatch_id && l.line_id === input.line_id)
+      .reduce((sum, l) => sum + l.quantity, 0);
+    const applied = Math.min(qty, Math.max(0, returnable - pending));
+    if (applied <= 0) continue;
+
+    lines.push({
+      dispatch_id: detail.id,
+      dispatch_number: detail.dispatch_number,
+      line_id: line.id,
+      item_id: line.item.id,
+      item_name: line.item.name?.trim() || null,
+      job_name: line.job?.title?.trim() || null,
+      quantity: applied,
+      return_type: input.return_type,
+      reason: input.reason?.trim() || null,
+    });
+  }
+
+  if (lines.length === 0) throw new Error("No valid return lines in request");
+
+  const workerRef =
+    getDispatchMockEntity(lines[0].dispatch_id)?.worker_name ?? payload.worker_name;
+
+  const request: DispatchReturnRequest = {
+    id,
+    request_number: `RR-${String(id).padStart(5, "0")}`,
+    worker_name: workerRef,
+    status: "pending",
+    lines,
+    requested_at: now,
+    completed_at: null,
+  };
+
+  upsertDispatchReturnRequestMock(request);
+  return request;
+}
+
+export async function fetchDispatchReturnRequestsMock(
+  filters?: DispatchReturnRequestListFilters,
+): Promise<DispatchReturnRequest[]> {
+  return listDispatchReturnRequestMocks().filter((row) => {
+    if (filters?.status && row.status !== filters.status) return false;
+    if (filters?.worker_name != null) {
+      const id = typeof row.worker_name === "number" ? row.worker_name : row.worker_name?.id;
+      if (id !== filters.worker_name) return false;
+    }
+    return true;
+  });
+}
+
+export async function completeDispatchReturnRequestMock(requestId: number): Promise<DispatchReturnRequest> {
+  const request = getDispatchReturnRequestMock(requestId);
+  if (!request) throw new Error(`Return request ${requestId} not found`);
+  if (request.status !== "pending") throw new Error("Return request is not pending");
+
+  const byDispatch = new Map<number, DispatchReturnToStockPayload["lines"]>();
+  for (const line of request.lines) {
+    const bucket = byDispatch.get(line.dispatch_id) ?? [];
+    bucket.push({
+      line_id: line.line_id,
+      quantity: line.quantity,
+      return_type: line.return_type,
+    });
+    byDispatch.set(line.dispatch_id, bucket);
+  }
+
+  for (const [dispatchId, lines] of byDispatch) {
+    await returnDispatchToStockMock(dispatchId, { lines });
+  }
+
+  const updated: DispatchReturnRequest = {
+    ...request,
+    status: "completed",
+    completed_at: new Date().toISOString(),
+  };
+  upsertDispatchReturnRequestMock(updated);
+  return updated;
+}
+
+export async function fetchDispatchReturnItemsMock(dispatchId: number): Promise<DispatchReturnItemsData | null> {
+  const detail = getDispatchMockEntity(dispatchId);
+  if (!detail) return null;
+  return buildDispatchReturnItems(detail);
+}
+
+export async function returnDispatchToStockMock(
+  dispatchId: number,
+  payload: DispatchReturnToStockPayload,
+): Promise<DispatchDetail> {
+  const restockPayload: DispatchRestockPayload = {
+    lines: payload.lines.map((row) => ({
+      line_id: row.line_id,
+      quantity: row.quantity,
+      return_type: row.return_type,
+    })),
+  };
+  return restockDispatchMock(dispatchId, restockPayload);
 }
 
 export async function restockDispatchMock(
@@ -210,16 +362,19 @@ export async function restockDispatchMock(
     const applied = Math.min(qty, maxReturn);
     if (applied <= 0) continue;
 
+    const returnType = input.return_type === "faulty" ? "faulty" : "unused";
+
     line.restocked_quantity += applied;
-    line.restock_history.push({ quantity: applied, restocked_at: now });
+    line.restock_history.push({ quantity: applied, restocked_at: now, return_type: returnType });
     restockedUnits += applied;
 
+    const reasonLabel = returnType === "faulty" ? "faulty" : "unused";
     logs.unshift({
       id: `dlog-${Date.now()}-${line.id}-${Math.random().toString(36).slice(2, 6)}`,
-      title: "Item restocked",
-      description: `${line.item.name ?? `Item #${line.item.id}`}: returned ${applied} unit(s) to inventory.`,
+      title: returnType === "faulty" ? "Faulty item returned" : "Item returned to stock",
+      description: `${line.item.name ?? `Item #${line.item.id}`}: ${applied} unit(s) (${reasonLabel}) added back to inventory.`,
       occurred_at: now,
-      tag: "restock",
+      tag: "return_to_stock",
       line_id: line.id,
     });
 
@@ -231,10 +386,10 @@ export async function restockDispatchMock(
       mrRecord.logs = [
         {
           id: `log-${Date.now()}-${line.line_key}`,
-          title: "Items restocked",
-          description: `${detail.dispatch_number}: ${line.item.name ?? `Item #${line.item.id}`} — ${applied} unit(s) returned.`,
+          title: returnType === "faulty" ? "Faulty item returned" : "Items returned to stock",
+          description: `${detail.dispatch_number}: ${line.item.name ?? `Item #${line.item.id}`} — ${applied} unit(s) (${reasonLabel}) returned.`,
           occurred_at: now,
-          tag: "restock",
+          tag: "return_to_stock",
           dispatch_id: dispatchId,
         },
         ...mrRecord.logs,

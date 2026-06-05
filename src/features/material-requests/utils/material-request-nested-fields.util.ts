@@ -1,3 +1,4 @@
+import type { MaterialRequestExtraDispatchItem } from "@/features/material-requests/types/material-request-dispatch.types";
 import type {
   MaterialRequestDetail,
   MaterialRequestItemRef,
@@ -177,6 +178,18 @@ export function materialRequestDispatchRows(items: MaterialRequestItemRef[] | un
       pending: Math.max(0, requested - dispatched),
     };
   });
+}
+
+export function materialRequestExtraItemId(row: MaterialRequestExtraDispatchItem): number {
+  if (typeof row.item === "number") return row.item;
+  return row.item.id;
+}
+
+export function materialRequestExtraItemName(row: MaterialRequestExtraDispatchItem): string {
+  if (typeof row.item === "object" && row.item.name?.trim()) return row.item.name.trim();
+  if (row.item_name?.trim()) return row.item_name.trim();
+  const id = materialRequestExtraItemId(row);
+  return id > 0 ? `Item #${id}` : "—";
 }
 
 export function materialRequestWorkerRef(
