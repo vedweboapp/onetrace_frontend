@@ -835,6 +835,7 @@ export default function FormBuilderLayout({
     try {
       setSaving(true);
       const isNew = !formSchema || formSchema.length === 0;
+      let savedFormId: string | number | undefined = undefined;
 
       const formatFieldPayload = (f: any, fIdx: number) => {
         const fieldPayload: any = {
@@ -1123,6 +1124,7 @@ export default function FormBuilderLayout({
           purpose === "edit__project_form"
             ? resolvedLayoutId
             : createdForm?.id ?? createdForm?.form_id;
+        savedFormId = formId;
 
         if (
           purpose === "edit__project_form" &&
@@ -1191,7 +1193,10 @@ export default function FormBuilderLayout({
 
       toastSuccess(successMessage);
 
-      if (isClose) {
+      if (purpose === "create_project_form" && savedFormId) {
+        const locale = params?.locale || "en";
+        router.push(`/${locale}/dashboard/settings/project-type-forms/create?purpose=edit__project_form&layout_id=${savedFormId}`);
+      } else if (isClose) {
         if (purpose === "create_module") {
           router.push("/dashboard/settings/modules");
         } else if (purpose === "create_project_form") {
