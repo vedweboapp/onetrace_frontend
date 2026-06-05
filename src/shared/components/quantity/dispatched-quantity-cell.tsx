@@ -15,7 +15,7 @@ export function DispatchedQuantityCell({ fulfilled, surplus, unitsLabel, classNa
   }
 
   return (
-    <span className={cn("inline-flex flex-wrap items-center justify-end gap-1.5", className)}>
+    <span className={cn("inline-flex w-full flex-wrap items-center justify-center gap-1.5", className)}>
       {fulfilled > 0 ? (
         <span className="tabular-nums font-medium text-slate-900 dark:text-slate-100">
           {fulfilled.toFixed(0)} {unitsLabel}

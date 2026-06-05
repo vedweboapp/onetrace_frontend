@@ -26,7 +26,8 @@ export async function GET(request: Request, context: RouteContext) {
   const id = parseId(rawId);
   if (id == null) return mockJsonError("Invalid material request id", 404);
 
-  const detail = await fetchMaterialRequestMock(id);
+  const authHeader = request.headers.get("Authorization");
+  const detail = await fetchMaterialRequestMock(id, authHeader);
   if (!detail) return mockJsonError("Material request not found", 404);
 
   return mockJsonSuccess("Data fetched successfully", detail);

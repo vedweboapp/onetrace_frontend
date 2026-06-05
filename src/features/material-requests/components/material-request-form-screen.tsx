@@ -35,6 +35,10 @@ import {
 import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+import {
+  DetailCollapsibleSection,
+  DetailSectionCountBadge,
+} from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
 import {
@@ -385,11 +389,11 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
               </div>
             </section>
 
-            <section className="space-y-4">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  {t("sections.jobs")}
-                </h2>
+            <DetailCollapsibleSection
+              title={t("sections.jobs")}
+              badge={jobFields.length > 0 ? <DetailSectionCountBadge count={jobFields.length} /> : null}
+              toggleAriaLabel={t("sections.toggle")}
+              headerRight={
                 <AppButton
                   type="button"
                   variant="secondary"
@@ -400,8 +404,8 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
                   <Plus className="size-4" aria-hidden />
                   {t("jobs.add")}
                 </AppButton>
-              </div>
-
+              }
+            >
               {jobFields.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700">
                   {workerId == null ? t("jobs.selectWorkerFirst") : t("jobs.emptyHint")}
@@ -451,13 +455,13 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
                 </div>
               )}
               <FieldErrorText>{errors.jobs?.message}</FieldErrorText>
-            </section>
+            </DetailCollapsibleSection>
 
-            <section className="space-y-4">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {t("sections.items")}
-              </h2>
-
+            <DetailCollapsibleSection
+              title={t("sections.items")}
+              badge={itemFields.length > 0 ? <DetailSectionCountBadge count={itemFields.length} /> : null}
+              toggleAriaLabel={t("sections.toggle")}
+            >
               {itemFields.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700">
                   {jobFields.length === 0 ? t("items.emptyNoJobs") : t("items.emptyNoMeta")}
@@ -516,7 +520,7 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
                 </div>
               )}
               <FieldErrorText>{errors.items?.message}</FieldErrorText>
-            </section>
+            </DetailCollapsibleSection>
 
             <FieldGroup label={t("fields.notes")} htmlFor="mr-notes">
               <textarea

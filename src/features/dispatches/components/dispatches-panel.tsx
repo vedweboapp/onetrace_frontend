@@ -31,6 +31,7 @@ import {
 import { routes } from "@/shared/config/routes";
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
+import { quantityTableCellClass, quantityTableHeaderClass } from "@/shared/components/quantity/quantity-table-columns";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 
@@ -120,7 +121,12 @@ export function DispatchesPanel() {
         <DispatchStatusBadge status={r.status} label={dispatchStatusLabel(t, r.status)} />
       )),
       c.truncate("worker_name", t("table.workerName"), (r) => dispatchWorkerLabel(r.worker_name)),
-      c.tabular("total_qty", t("table.qty"), (r) => r.total_qty, { cellClassName: "text-right" }),
+      c.tabular(
+        "total_qty",
+        t("table.qty"),
+        (r) => `${r.total_qty} ${t("units")}`,
+        { headerClassName: quantityTableHeaderClass, cellClassName: quantityTableCellClass },
+      ),
     ];
   }, [dateFmt, t]);
 

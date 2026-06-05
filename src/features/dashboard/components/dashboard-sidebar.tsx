@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
-import { BookUser, Building2, ClipboardList, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, Tag, Truck, UserRound } from "lucide-react";
+import { BookUser, Building2, ClipboardList, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Tag, Truck, UserRound } from "lucide-react";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 
 import { useTranslations } from "next-intl";
@@ -160,6 +160,7 @@ function DashboardMainSidebar({
   const groupsHref = routes.dashboard.groups;
   const materialRequestsHref = routes.dashboard.materialRequests;
   const dispatchesHref = routes.dashboard.dispatches;
+  const returnToStockHref = routes.dashboard.returnToStock;
   const itemsHref = routes.dashboard.items;
   const compositeHref = routes.dashboard.compositeItems;
   const homeActive = pathname === homeHref;
@@ -181,6 +182,8 @@ function DashboardMainSidebar({
     pathname === materialRequestsHref || pathname.startsWith(`${materialRequestsHref}/`);
   const dispatchesActive =
     pathname === dispatchesHref || pathname.startsWith(`${dispatchesHref}/`);
+  const returnToStockActive =
+    pathname === returnToStockHref || pathname.startsWith(`${returnToStockHref}/`);
   const itemsActive = pathname === itemsHref || pathname.startsWith(`${itemsHref}/`);
   const compositeActive = pathname === compositeHref || pathname.startsWith(`${compositeHref}/`);
   const itemsSectionActive = itemsActive || compositeActive;
@@ -292,6 +295,14 @@ function DashboardMainSidebar({
           active={dispatchesActive}
           label={t("dispatches")}
           icon={Truck}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={returnToStockHref}
+          active={returnToStockActive}
+          label={t("returnToStock")}
+          icon={RotateCcw}
           expanded={expanded}
           resolved={resolved}
         />

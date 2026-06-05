@@ -1,13 +1,12 @@
 "use client";
 
-import * as React from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { fetchItemsPage } from "@/features/items/api/item.api";
 import type { MaterialRequestDetail } from "@/features/material-requests/types/material-request.types";
 import { MaterialRequestStatusBadge } from "@/features/material-requests/components/material-request-status-badge";
 import {
   materialRequestDispatchedDisplay,
+  materialRequestExtraItemName,
   materialRequestItemGroupName,
   materialRequestItemJobTitle,
   materialRequestItemPendingQty,
@@ -19,12 +18,18 @@ import {
   materialRequestWorkerLabel,
 } from "@/features/material-requests/utils/material-request-nested-fields.util";
 import { DispatchedQuantityCell } from "@/shared/components/quantity/dispatched-quantity-cell";
+import {
+  quantityTableCellClass,
+  quantityTableHeaderClass,
+} from "@/shared/components/quantity/quantity-table-columns";
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
 import {
+  DetailCollapsibleSection,
   DetailMetricCard,
   DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
+  DetailSectionCountBadge,
 } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
@@ -49,33 +54,6 @@ export function MaterialRequestDetailBody({ detail, workerName, dateFmt, dueFmt,
   const extraItems = detail.extra_dispatch_items ?? [];
   const dispatchIds = detail.dispatch_ids ?? [];
   const showRestockedColumn = (detail.items ?? []).some((row) => materialRequestItemRestockedQty(row) > 0);
-  const [itemLabelById, setItemLabelById] = React.useState<Record<number, string>>({});
-
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetchItemsPage(1, 500, { isActive: true });
-        if (cancelled) return;
-        const labels: Record<number, string> = {};
-        for (const item of res.items) {
-          labels[item.id] = item.name?.trim() || item.sku?.trim() || `#${item.id}`;
-        }
-        setItemLabelById(labels);
-      } catch {
-        if (!cancelled) setItemLabelById({});
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  function extraItemLabel(itemId: number, itemName?: string | null): string {
-    const fromRow = itemName?.trim();
-    if (fromRow) return fromRow;
-    return itemLabelById[itemId] ?? `#${itemId}`;
-  }
 
   return (
     <DetailPagePadding className="space-y-6">
@@ -110,7 +88,15 @@ export function MaterialRequestDetailBody({ detail, workerName, dateFmt, dueFmt,
         </DetailPanelCard>
       ) : null}
 
-      <DetailPanelCard title={t("detail.sectionJobs")}>
+      <DetailCollapsibleSection
+        title={t("detail.sectionJobs")}
+        badge={
+          (detail.jobs ?? []).length > 0 ? (
+            <DetailSectionCountBadge count={(detail.jobs ?? []).length} />
+          ) : null
+        }
+        toggleAriaLabel={t("sections.toggle")}
+      >
         {(detail.jobs ?? []).length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">{t("jobs.empty")}</p>
         ) : (
@@ -125,20 +111,28 @@ export function MaterialRequestDetailBody({ detail, workerName, dateFmt, dueFmt,
             ))}
           </div>
         )}
-      </DetailPanelCard>
+      </DetailCollapsibleSection>
 
-      <DetailPanelCard title={t("detail.sectionItems")}>
+      <DetailCollapsibleSection
+        title={t("detail.sectionItems")}
+        badge={
+          (detail.items ?? []).length > 0 ? (
+            <DetailSectionCountBadge count={(detail.items ?? []).length} />
+          ) : null
+        }
+        toggleAriaLabel={t("sections.toggle")}
+      >
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
                 <th className="px-3 py-2">{t("lineItems.itemDetails")}</th>
                 <th className="px-3 py-2">{t("lineItems.jobName")}</th>
-                <th className="px-3 py-2 text-right">{t("dispatch.requested")}</th>
-                <th className="px-3 py-2 text-right">{t("dispatch.dispatched")}</th>
-                <th className="px-3 py-2 text-right">{t("dispatch.pending")}</th>
+                <th className={quantityTableHeaderClass}>{t("dispatch.requested")}</th>
+                <th className={quantityTableHeaderClass}>{t("dispatch.dispatched")}</th>
+                <th className={quantityTableHeaderClass}>{t("dispatch.pending")}</th>
                 {showRestockedColumn ? (
-                  <th className="px-3 py-2 text-right">{t("restock.column")}</th>
+                  <th className={quantityTableHeaderClass}>{t("restock.column")}</th>
                 ) : null}
               </tr>
             </thead>
@@ -171,26 +165,21 @@ export function MaterialRequestDetailBody({ detail, workerName, dateFmt, dueFmt,
                       <td className="px-3 py-3 text-slate-600 dark:text-slate-400">
                         {materialRequestItemJobTitle(row)}
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums font-medium">
+                      <td className={cn(quantityTableCellClass, "font-medium")}>
                         {requested.toFixed(0)} {t("lineItems.units")}
                       </td>
-                      <td className="px-3 py-3 text-right">
+                      <td className={quantityTableCellClass}>
                         <DispatchedQuantityCell
                           fulfilled={dispatchedParts.fulfilled}
                           surplus={dispatchedParts.surplus}
                           unitsLabel={t("lineItems.units")}
                         />
                       </td>
-                      <td
-                        className={cn(
-                          "px-3 py-3 text-right tabular-nums",
-                          pendingTone(pending, requested),
-                        )}
-                      >
+                      <td className={cn(quantityTableCellClass, pendingTone(pending, requested))}>
                         {pending <= 0 ? "—" : `${pending.toFixed(0)} ${t("lineItems.units")}`}
                       </td>
                       {showRestockedColumn ? (
-                        <td className="px-3 py-3 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
+                        <td className={cn(quantityTableCellClass, "text-emerald-700 dark:text-emerald-400")}>
                           {restocked > 0 ? `${restocked.toFixed(0)} ${t("lineItems.units")}` : "—"}
                         </td>
                       ) : null}
@@ -201,7 +190,7 @@ export function MaterialRequestDetailBody({ detail, workerName, dateFmt, dueFmt,
             </tbody>
           </table>
         </div>
-      </DetailPanelCard>
+      </DetailCollapsibleSection>
 
       {extraItems.length > 0 ? (
         <DetailPanelCard title={t("dispatch.sectionExtraSent")}>
@@ -210,7 +199,7 @@ export function MaterialRequestDetailBody({ detail, workerName, dateFmt, dueFmt,
               <thead>
                 <tr className="border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700">
                   <th className="pb-2 pr-3">{t("lineItems.itemDetails")}</th>
-                  <th className="pb-2 text-right">{t("dispatch.dispatched")}</th>
+                  <th className="pb-2 text-center w-32 whitespace-nowrap">{t("dispatch.dispatched")}</th>
                   <th className="pb-2 text-right">{t("fields.updatedAt")}</th>
                 </tr>
               </thead>
@@ -218,9 +207,9 @@ export function MaterialRequestDetailBody({ detail, workerName, dateFmt, dueFmt,
                 {extraItems.map((row) => (
                   <tr key={row.id} className="border-b border-slate-100 dark:border-slate-800">
                     <td className="py-3 pr-3 font-medium text-slate-900 dark:text-slate-100">
-                      {extraItemLabel(row.item, row.item_name)}
+                      {materialRequestExtraItemName(row)}
                     </td>
-                    <td className="py-3 text-right tabular-nums">
+                    <td className="py-3 text-center tabular-nums whitespace-nowrap">
                       {row.quantity.toFixed(0)} {t("lineItems.units")}
                     </td>
                     <td className="py-3 text-right text-slate-600 dark:text-slate-400">
