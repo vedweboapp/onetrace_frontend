@@ -2,6 +2,7 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import { fetchAllEntityIds } from "@/shared/mass-actions";
 import { QUOTATION_PATHS } from "./quotation.paths";
 import type {
   ProjectLevelForQuotation,
@@ -49,6 +50,10 @@ export async function fetchQuotationsPage(
   const { data } = await api.get<QuotationListResponse>(QUOTATION_PATHS.list, { params });
   assertEnvelopeSuccess(data);
   return { items: data.data, pagination: data.pagination };
+}
+
+export async function fetchAllQuotationIds(filters?: QuotationListFilters): Promise<number[]> {
+  return fetchAllEntityIds((page, pageSize) => fetchQuotationsPage(page, pageSize, filters));
 }
 
 export async function fetchQuotation(id: number): Promise<QuotationDetail> {

@@ -1,3 +1,5 @@
+import type { MaterialRequestExtraDispatchItem } from "./material-request-dispatch.types";
+
 export type MaterialRequestUserRef = {
   id: number;
   email?: string | null;
@@ -24,6 +26,7 @@ export type MaterialRequestItemProductRef = {
   name?: string | null;
   selling_price?: number | string | null;
   quantity?: number | null;
+  stock_quantity?: number | null;
   available_stock?: number | null;
   dispatched_quantity?: number | null;
 };
@@ -33,8 +36,12 @@ export type MaterialRequestItemRef = {
   job?: { id: number; title?: string | null; job_details?: string | null } | number | null;
   group?: { id: number; name?: string | null } | null;
   item?: MaterialRequestItemProductRef | number | null;
+  /** @deprecated Prefer requested_quantity */
   quantity?: number | null;
+  requested_quantity?: number | null;
   dispatched_quantity?: number | null;
+  pending_quantity?: number | null;
+  restocked_quantity?: number | null;
 };
 
 export type MaterialRequestTimelineEntry = {
@@ -43,6 +50,18 @@ export type MaterialRequestTimelineEntry = {
   description?: string | null;
   occurred_at?: string | null;
   tag?: string | null;
+  dispatch_id?: number | null;
+};
+
+export type MaterialRequestLogEntry = MaterialRequestTimelineEntry;
+
+export type MaterialRequestRestockLineInput = {
+  line_key: string;
+  quantity: number;
+};
+
+export type MaterialRequestRestockPayload = {
+  lines: MaterialRequestRestockLineInput[];
 };
 
 export type MaterialRequestListItem = {
@@ -63,7 +82,11 @@ export type MaterialRequestDetail = MaterialRequestListItem & {
   modified_by?: MaterialRequestUserRef | null;
   modified_at?: string | null;
   created_by?: MaterialRequestUserRef | null;
+  /** @deprecated Use GET material-requests/{id}/logs/ */
   timeline?: MaterialRequestTimelineEntry[];
+  extra_dispatch_items?: MaterialRequestExtraDispatchItem[];
+  dispatch_ids?: number[];
+  restocked_quantity?: Record<string, number>;
 };
 
 export type MaterialRequestJobPayload = {

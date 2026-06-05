@@ -108,12 +108,6 @@ export type JobUpdatePayload = Partial<JobCreatePayload> & {
   is_active?: boolean;
 };
 
-export type JobMassUpdatePayload = {
-  operation: "massUpdate";
-  jobIds: number[];
-  assigned_worker: number;
-};
-
 export type Job = {
   id: number;
   created_by: JobUserRef | null;

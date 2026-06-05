@@ -35,6 +35,10 @@ import {
 import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+import {
+  DetailCollapsibleSection,
+  DetailSectionCountBadge,
+} from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
 import {
@@ -186,6 +190,7 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
         if (cancelled) return;
         const defaults = materialRequestToFormDefaults(row);
         reset(defaults);
+        prevWorkerRef.current = defaults.worker_name;
 
         const jobIds = defaults.jobs
           .map((j) => Number.parseInt(j.job, 10))
@@ -199,15 +204,17 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
           setSelectedJobsById(byId);
         }
 
-        for (const line of row.items ?? []) {
-          const item = line.item;
-          if (item && typeof item === "object" && item.name?.trim()) {
-            setItemLabelById((prev) => ({
-              ...prev,
-              [item.id]: item.name!.trim(),
-            }));
+        setItemLabelById((prev) => {
+          const next = { ...prev };
+          for (const line of row.items ?? []) {
+            const item = line.item;
+            if (item && typeof item === "object" && item.id > 0) {
+              const label = item.name?.trim();
+              if (label) next[item.id] = label;
+            }
           }
-        }
+          return next;
+        });
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
       } finally {
@@ -257,6 +264,12 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
     return job?.title?.trim() || (jobIdRaw ? `#${jobIdRaw}` : "—");
   }
 
+  function formatRequestQtyDisplay(raw: string | undefined): string {
+    const n = Number.parseFloat(String(raw ?? "").trim());
+    if (!Number.isFinite(n) || n <= 0) return "—";
+    return Number.isInteger(n) ? String(n) : n.toFixed(2);
+  }
+
   async function submit(values: MaterialRequestFormValues) {
     const payload = mapMaterialRequestFormToPayload(values);
     setSaving(true);
@@ -266,7 +279,11 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
           ? await updateMaterialRequest(materialRequestId, payload)
           : await createMaterialRequest(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(`${safeBack}/${saved.id}?back=${encodeURIComponent(safeBack)}`);
+      if (isEdit) {
+        router.replace(`${safeBack}/${saved.id}?back=${encodeURIComponent(safeBack)}`);
+      } else {
+        router.replace(safeBack);
+      }
     } finally {
       setSaving(false);
     }
@@ -372,11 +389,11 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
               </div>
             </section>
 
-            <section className="space-y-4">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  {t("sections.jobs")}
-                </h2>
+            <DetailCollapsibleSection
+              title={t("sections.jobs")}
+              badge={jobFields.length > 0 ? <DetailSectionCountBadge count={jobFields.length} /> : null}
+              toggleAriaLabel={t("sections.toggle")}
+              headerRight={
                 <AppButton
                   type="button"
                   variant="secondary"
@@ -387,8 +404,8 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
                   <Plus className="size-4" aria-hidden />
                   {t("jobs.add")}
                 </AppButton>
-              </div>
-
+              }
+            >
               {jobFields.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700">
                   {workerId == null ? t("jobs.selectWorkerFirst") : t("jobs.emptyHint")}
@@ -438,13 +455,13 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
                 </div>
               )}
               <FieldErrorText>{errors.jobs?.message}</FieldErrorText>
-            </section>
+            </DetailCollapsibleSection>
 
-            <section className="space-y-4">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {t("sections.items")}
-              </h2>
-
+            <DetailCollapsibleSection
+              title={t("sections.items")}
+              badge={itemFields.length > 0 ? <DetailSectionCountBadge count={itemFields.length} /> : null}
+              toggleAriaLabel={t("sections.toggle")}
+            >
               {itemFields.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700">
                   {jobFields.length === 0 ? t("items.emptyNoJobs") : t("items.emptyNoMeta")}
@@ -459,10 +476,7 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
                           <RequiredMark />
                         </th>
                         <th className="px-3 py-2">{t("lineItems.jobName")}</th>
-                        <th className="px-3 py-2">
-                          {t("lineItems.requestQty")}
-                          <RequiredMark />
-                        </th>
+                        <th className="px-3 py-2">{t("lineItems.requestQty")}</th>
                         <th className="px-3 py-2 w-12" />
                       </tr>
                     </thead>
@@ -481,20 +495,9 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
                               {jobDisplayTitle(row?.job ?? "")}
                               <FieldErrorText>{errors.items?.[index]?.job?.message}</FieldErrorText>
                             </td>
-                            <td className="px-3 py-3 align-top">
-                              <input
-                                type="number"
-                                min={1}
-                                step="any"
-                                aria-invalid={errors.items?.[index]?.quantity ? true : undefined}
-                                className={cn(
-                                  surfaceInputClassName,
-                                  "h-8 w-24 px-2.5 text-sm",
-                                  errors.items?.[index]?.quantity && "border-red-500",
-                                )}
-                                disabled={saving}
-                                {...register(`items.${index}.quantity`)}
-                              />
+                            <td className="px-3 py-3 tabular-nums font-medium text-slate-900 dark:text-slate-100">
+                              {formatRequestQtyDisplay(row?.quantity)}
+                              <input type="hidden" {...register(`items.${index}.quantity`)} />
                               <FieldErrorText>{errors.items?.[index]?.quantity?.message}</FieldErrorText>
                             </td>
                             <td className="px-3 py-3 align-top">
@@ -517,7 +520,7 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
                 </div>
               )}
               <FieldErrorText>{errors.items?.message}</FieldErrorText>
-            </section>
+            </DetailCollapsibleSection>
 
             <FieldGroup label={t("fields.notes")} htmlFor="mr-notes">
               <textarea

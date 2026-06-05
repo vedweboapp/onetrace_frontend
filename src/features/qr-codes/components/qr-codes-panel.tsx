@@ -5,7 +5,8 @@ import { QrCode, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { deleteQrCode, fetchQrCodesPage } from "@/features/qr-codes/api/qr-code.api";
+import { deleteQrCode, fetchAllQrCodeIds, fetchQrCodesPage } from "@/features/qr-codes/api/qr-code.api";
+import { fetchJobsPage } from "@/features/jobs/api/job.api";
 import { QrCodeGenerateModal } from "@/features/qr-codes/components/qr-code-generate-modal";
 import type { QrCode as QrCodeRecord, QrCodeStatus } from "@/features/qr-codes/types/qr-code.types";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
@@ -33,6 +34,12 @@ import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.u
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
+import {
+  MassActionBar,
+  buildQrCodeMassUpdateFields,
+  massSelectionColumn,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
 
 function isQrAssigned(row: QrCodeRecord): boolean {
   return row.status === "assigned" || row.is_assigned;
@@ -91,6 +98,8 @@ export function QrCodesPanel() {
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
+  const [jobOptions, setJobOptions] = React.useState<{ value: string; label: string }[]>([]);
+
   const statusFilterOptions = React.useMemo(
     () => [
       { value: "assigned", label: t("status.assigned") },
@@ -98,6 +107,59 @@ export function QrCodesPanel() {
     ],
     [t],
   );
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items: jobs } = await fetchJobsPage(1, 500, undefined, { silent: true });
+        if (!cancelled) {
+          setJobOptions(
+            jobs.map((j) => ({
+              value: String(j.id),
+              label: j.title?.trim() || `#${j.id}`,
+            })),
+          );
+        }
+      } catch {
+        if (!cancelled) setJobOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const listFilters = React.useMemo(
+    () => ({ search: search || undefined, status: statusFilter }),
+    [search, statusFilter],
+  );
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildQrCodeMassUpdateFields(
+        { statusOptions: statusFilterOptions, jobOptions },
+        {
+          status: t("table.status"),
+          assignedTo: t("table.assignedJob"),
+        },
+      ),
+    [t, statusFilterOptions, jobOptions],
+  );
+
+  const fetchAllIds = React.useCallback(() => fetchAllQrCodeIds(listFilters), [listFilters]);
+
+  const mass = useEntityListMassActions({
+    resource: "qrCodes",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search, statusFilter],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
+  const massSel = React.useMemo(() => massSelectionColumn(mass, items.length), [mass, items.length]);
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -152,6 +214,7 @@ export function QrCodesPanel() {
   const tableColumns = React.useMemo(() => {
     const c = entityCol<QrCodeRecord>();
     return [
+      massSel.tableColumn,
       c.custom(
         "qr_image",
         t("table.qrImage"),
@@ -207,7 +270,7 @@ export function QrCodesPanel() {
         />
       )),
     ];
-  }, [t, tList, dateFmt]);
+  }, [t, tList, dateFmt, massSel.tableColumn]);
 
   const hasActiveFilters = hasListActiveFilters({ search, statusParam });
   const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
@@ -256,6 +319,15 @@ export function QrCodesPanel() {
           </div>
         }
       />
+      ) : null}
+
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
+        />
       ) : null}
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
@@ -326,14 +398,17 @@ export function QrCodesPanel() {
                     }
                     onCardClick={() => openDetail(row.id)}
                     leading={
-                      row.qr_image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={row.qr_image}
-                          alt={row.qr_code_id}
-                          className="size-16 shrink-0 rounded-md border border-slate-200 bg-white object-contain p-1 dark:border-slate-700"
-                        />
-                      ) : undefined
+                      <div className="flex items-start gap-2">
+                        {massSel.cardLeading(row)}
+                        {row.qr_image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={row.qr_image}
+                            alt={row.qr_code_id}
+                            className="size-16 shrink-0 rounded-md border border-slate-200 bg-white object-contain p-1 dark:border-slate-700"
+                          />
+                        ) : null}
+                      </div>
                     }
                     menu={
                       <DataTableRowActionsMenu

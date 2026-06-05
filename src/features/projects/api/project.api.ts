@@ -1,5 +1,6 @@
 import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
+import { fetchAllEntityIds } from "@/shared/mass-actions";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { PROJECT_PATHS } from "./project.paths";
@@ -48,6 +49,10 @@ export async function fetchProjectsPage(
   const { data } = await api.get<ProjectListResponse>(PROJECT_PATHS.list, { params });
   assertEnvelopeSuccess(data);
   return { items: data.data, pagination: data.pagination };
+}
+
+export async function fetchAllProjectIds(filters?: ProjectListFilters): Promise<number[]> {
+  return fetchAllEntityIds((page, pageSize) => fetchProjectsPage(page, pageSize, filters));
 }
 
 export async function fetchProject(id: number): Promise<Project> {

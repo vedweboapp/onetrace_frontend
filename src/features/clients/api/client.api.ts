@@ -2,6 +2,7 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import { fetchAllEntityIds } from "@/shared/mass-actions";
 import { CLIENT_PATHS } from "./client.paths";
 import type {
   Client,
@@ -43,6 +44,13 @@ export async function fetchClientsPage(
   });
   assertEnvelopeSuccess(data);
   return { items: data.data, pagination: data.pagination };
+}
+
+export async function fetchAllClientIds(
+  filters?: ClientListFilters,
+  options?: ClientRequestOptions,
+): Promise<number[]> {
+  return fetchAllEntityIds((page, pageSize) => fetchClientsPage(page, pageSize, filters, options));
 }
 
 export async function fetchClient(id: number, options?: ClientRequestOptions): Promise<Client> {

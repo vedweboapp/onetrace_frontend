@@ -1,5 +1,5 @@
 export const INVOICE_PATHS = {
-  list: "invoices/",
-  detail: (id: number) => `invoices/${id}/`,
-  send: (id: number) => `invoices/${id}/send/`,
+  list: "invoice/",
+  detail: (id: number) => `invoice/${id}/`,
+  send: (id: number) => `invoice/${id}/send/`,
 } as const;

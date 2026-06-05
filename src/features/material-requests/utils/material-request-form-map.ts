@@ -43,10 +43,15 @@ export function mapMaterialRequestFormToPayload(values: MaterialRequestFormValue
 }
 
 export function materialRequestToFormDefaults(detail: MaterialRequestDetail): MaterialRequestFormValues {
-  const jobs =
-    detail.jobs && detail.jobs.length > 0
-      ? detail.jobs.map((job) => ({ job: String(job.id) }))
-      : [];
+  const jobIdSet = new Set<number>();
+  for (const job of detail.jobs ?? []) {
+    if (job.id > 0) jobIdSet.add(job.id);
+  }
+  for (const row of detail.items ?? []) {
+    const jobId = nestedId(row.job);
+    if (jobId != null) jobIdSet.add(jobId);
+  }
+  const jobs = [...jobIdSet].map((id) => ({ job: String(id) }));
 
   const items =
     detail.items && detail.items.length > 0

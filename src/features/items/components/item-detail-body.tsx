@@ -3,8 +3,10 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { InstallationTypeChip } from "@/features/installation-types/components/installation-type-chip";
 import type { Item } from "@/features/items/types/item.types";
 import { fetchItemsPage } from "@/features/items/api/item.api";
+import { resolveInstallationTypeChipData } from "@/features/items/utils/item-installation-type.util";
 import { routes } from "@/shared/config/routes";
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
 import {
@@ -40,6 +42,7 @@ export function ItemDetailBody({
   const [childItemsById, setChildItemsById] = React.useState<Map<number, Item>>(new Map());
 
   const groupId = typeof detail.group === "number" && Number.isFinite(detail.group) && detail.group > 0 ? detail.group : null;
+  const installationTypeChip = resolveInstallationTypeChipData(detail.installation_type);
   const components = detail.components ?? [];
 
   React.useEffect(() => {
@@ -90,6 +93,11 @@ export function ItemDetailBody({
             <DetailMetricCard label={t("detail.sell")}>
               <span className="tabular-nums">{moneyDisplay(detail.selling_price)}</span>
             </DetailMetricCard>
+            {installationTypeChip ? (
+              <DetailMetricCard label={t("detail.installationType")}>
+                <InstallationTypeChip row={installationTypeChip} />
+              </DetailMetricCard>
+            ) : null}
             {groupId ? (
               <DetailMetricCard label={t("detail.group")}>
                 <Link

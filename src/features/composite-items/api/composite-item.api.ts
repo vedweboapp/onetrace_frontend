@@ -1,4 +1,11 @@
-import { createItem, deleteItem, fetchItem, fetchItemsPage, updateItem } from "@/features/items/api/item.api";
+import {
+  createItem,
+  deleteItem,
+  fetchAllItemIds,
+  fetchItem,
+  fetchItemsPage,
+  updateItem,
+} from "@/features/items/api/item.api";
 import type { ItemListFilters } from "@/features/items/api/item.api";
 import type { ItemCreatePayload } from "@/features/items/types/item.types";
 import type { CompositeItem, CompositeItemCreatePayload, CompositeItemListResponse, CompositeItemUpdatePayload } from "../types/composite-item.types";
@@ -17,6 +24,10 @@ export async function fetchCompositeItemsPage(
     isComposite: true,
   };
   return await fetchItemsPage(page, pageSize, listFilters);
+}
+
+export async function fetchAllCompositeItemIds(filters?: CompositeItemListFilters): Promise<number[]> {
+  return fetchAllItemIds({ search: filters?.search, isComposite: true });
 }
 
 export async function fetchCompositeItem(id: number): Promise<CompositeItem> {

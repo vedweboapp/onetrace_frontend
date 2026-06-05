@@ -16,6 +16,7 @@ import {
   DetailPanelCard,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
+import { EntityDetailLoadingSkeleton } from "@/shared/components/entity";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import { AppButton, EditButton, SurfaceShell } from "@/shared/ui";
@@ -79,6 +80,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
               detail.user_detail.email
             : t("detailMetaTitle")
         }
+        titleLoading={loading && !detail}
         backHref={safeBack}
         backAriaLabel={t("detail.backAria")}
         subtitle={
@@ -130,10 +132,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
 
       <SurfaceShell className={detailRecordSurfaceShellClassName}>
         {loading ? (
-          <div className="space-y-3 p-4 sm:p-6">
-            <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-            <div className="h-4 w-full animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-          </div>
+          <EntityDetailLoadingSkeleton />
         ) : error ? (
           <div className="space-y-4 p-4 sm:p-6">
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>

@@ -5,7 +5,10 @@ import { Calendar, Package, Pencil, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchMaterialRequestsPage } from "@/features/material-requests/api/material-request.api";
+import {
+  fetchAllMaterialRequestIds,
+  fetchMaterialRequestsPage,
+} from "@/features/material-requests/api/material-request.api";
 import { MaterialRequestStatusBadge } from "@/features/material-requests/components/material-request-status-badge";
 import type { MaterialRequestListItem } from "@/features/material-requests/types/material-request.types";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
@@ -41,6 +44,12 @@ import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.u
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import {
+  MassActionBar,
+  buildMaterialRequestMassUpdateFields,
+  massSelectionColumn,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
 
 export function MaterialRequestsPanel() {
   const t = useTranslations("Dashboard.materialRequests");
@@ -85,6 +94,7 @@ export function MaterialRequestsPanel() {
   });
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [workerOptions, setWorkerOptions] = React.useState<{ value: string; label: string }[]>([]);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
@@ -173,7 +183,7 @@ export function MaterialRequestsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, search, statusFilter, workerFilter, requestedDateFilter, t]);
+  }, [page, pageSize, search, statusFilter, workerFilter, requestedDateFilter, refreshNonce, t]);
 
   const workerLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -198,6 +208,44 @@ export function MaterialRequestsPanel() {
   });
   const pageRange = getListPageRange(pagination);
 
+  const listFilters = React.useMemo(
+    () => ({
+      search: search || undefined,
+      status: statusFilter,
+      worker_name: workerFilter,
+      requested_date: requestedDateFilter,
+    }),
+    [search, statusFilter, workerFilter, requestedDateFilter],
+  );
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildMaterialRequestMassUpdateFields(
+        { workerOptions, statusOptions: statusFilterOptions },
+        {
+          worker: t("filterWorker"),
+          requestedDate: t("table.requestDate"),
+          status: t("table.status"),
+          notes: t("fields.notes"),
+        },
+      ),
+    [t, workerOptions, statusFilterOptions],
+  );
+
+  const fetchAllIds = React.useCallback(() => fetchAllMaterialRequestIds(listFilters), [listFilters]);
+
+  const mass = useEntityListMassActions({
+    resource: "materialRequests",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search, statusFilter, workerFilter, requestedDateFilter],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
+  const massSel = React.useMemo(() => massSelectionColumn(mass, items.length), [mass, items.length]);
+
   const tableColumns = React.useMemo(() => {
     const c = entityCol<MaterialRequestListItem>();
     const workerDisplay = (row: MaterialRequestListItem) => {
@@ -209,6 +257,7 @@ export function MaterialRequestsPanel() {
     };
 
     return [
+      massSel.tableColumn,
       c.primary("request", t("table.requestNumber"), (r) => r.request_number),
       c.truncate("job", t("table.jobName"), (r) => materialRequestJobLabel(r), {
         title: (r) => materialRequestJobLabel(r),
@@ -230,7 +279,7 @@ export function MaterialRequestsPanel() {
         />
       )),
     ];
-  }, [t, tList, dateFmt, workerLabelById, statusLabel, openEdit]);
+  }, [t, tList, dateFmt, workerLabelById, statusLabel, openEdit, massSel.tableColumn]);
 
   return (
     <div className="space-y-4">
@@ -290,6 +339,15 @@ export function MaterialRequestsPanel() {
         />
       ) : null}
 
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
+        />
+      ) : null}
+
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
@@ -345,6 +403,7 @@ export function MaterialRequestsPanel() {
                     key={row.id}
                     dataListRowId={row.id}
                     className={highlightClassName(row.id)}
+                    leading={massSel.cardLeading(row)}
                     title={row.request_number}
                     subtitle={materialRequestJobLabel(row)}
                     meta={<span className="block min-w-0 truncate">{workerDisplay}</span>}

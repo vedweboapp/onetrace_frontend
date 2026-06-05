@@ -63,10 +63,10 @@ export function ListPageCard({
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-1 items-start gap-2.5 pr-2">
+        <div className="flex min-w-0 flex-1 items-start gap-3 pr-2">
           {leading ? (
             <div
-              className="shrink-0 pt-0.5"
+              className="flex shrink-0 items-center self-center"
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
             >

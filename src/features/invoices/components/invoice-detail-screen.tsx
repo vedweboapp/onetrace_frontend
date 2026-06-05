@@ -109,7 +109,6 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
       listSection="invoices"
       listRoute={routes.dashboard.invoices}
       labels={{
-        loadingTitle: t("detail.loadingTitle"),
         metaTitle: t("detailMetaTitle"),
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),

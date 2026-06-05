@@ -21,6 +21,8 @@ export const routes = {
     items: "/dashboard/items",
     compositeItems: "/dashboard/composite-items",
     materialRequests: "/dashboard/material-requests",
+    dispatches: "/dashboard/dispatches",
+    returnToStock: "/dashboard/return-to-stock",
     settings: "/dashboard/settings",
     settingsPinStatus: "/dashboard/settings/pin-status",
     settingsJobStatus: "/dashboard/settings/job-status",

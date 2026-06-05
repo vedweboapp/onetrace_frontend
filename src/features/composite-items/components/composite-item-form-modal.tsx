@@ -12,6 +12,7 @@ import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-
 import { cn } from "@/core/utils/http.util";
 import type { ItemComponentRef } from "@/features/items/types/item.types";
 import { fetchInstallationTypesPage } from "@/features/installation-types/api/installation-type.api";
+import { getInstallationTypeId } from "@/features/items/utils/item-installation-type.util";
 import { formatInstallationTypeLabel } from "@/features/installation-types/utils/installation-type-display.util";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import type { Item } from "@/features/items/types/item.types";
@@ -76,11 +77,11 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
     if (!comps || comps.length === 0) return [{ id: nextRowId(), child_item: "", quantity: "1" }];
     return comps.map((c) => ({ id: nextRowId(), child_item: String(c.child_item), quantity: String(c.quantity) }));
   });
-  const [installationType, setInstallationType] = React.useState(() =>
-    mode === "edit" && item?.installation_type != null && item.installation_type > 0
-      ? String(item.installation_type)
-      : "",
-  );
+  const [installationType, setInstallationType] = React.useState(() => {
+    if (mode !== "edit" || !item) return "";
+    const id = getInstallationTypeId(item.installation_type);
+    return id != null ? String(id) : "";
+  });
   const [installationTypeOptions, setInstallationTypeOptions] = React.useState<CheckmarkSelectOption[]>([]);
   const [installationTypesError, setInstallationTypesError] = React.useState<string | null>(null);
   const [itemOptions, setItemOptions] = React.useState<Item[]>([]);
@@ -132,9 +133,8 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
       setQty(String(item.quantity ?? 0));
       setCost(String(item.cost_price ?? 0));
       setSell(String(item.selling_price ?? 0));
-      setInstallationType(
-        item.installation_type != null && item.installation_type > 0 ? String(item.installation_type) : "",
-      );
+      const installationTypeId = getInstallationTypeId(item.installation_type);
+      setInstallationType(installationTypeId != null ? String(installationTypeId) : "");
       const comps = item.components ?? [];
       setRows(
         comps.length > 0

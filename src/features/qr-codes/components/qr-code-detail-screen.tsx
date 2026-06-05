@@ -45,7 +45,6 @@ export function QrCodeDetailScreen({ qrCodeId }: Props) {
         getTitle={(detail) => detail.qr_code_id}
         onDetailChange={(detail) => setTitleLabel(detail?.qr_code_id ?? null)}
         labels={{
-          loadingTitle: t("detail.loadingTitle"),
           metaTitle: t("detailMetaTitle"),
           backAria: t("detail.backAria"),
           retry: t("detail.retry"),

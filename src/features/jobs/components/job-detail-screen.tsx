@@ -59,7 +59,6 @@ export function JobDetailScreen({ jobId }: Props) {
       fetch={fetchJob}
       getTitle={(detail) => detail.title}
       labels={{
-        loadingTitle: t("detail.loadingTitle"),
         metaTitle: t("detailMetaTitle"),
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),

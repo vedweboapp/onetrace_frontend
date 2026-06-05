@@ -622,7 +622,8 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   return (
     <div className="pb-12">
       <DetailPageHeader
-        title={isEdit ? existingDetail?.quote_name ?? t("detail.loadingTitle") : t("page.createTitle")}
+        title={isEdit ? (existingDetail?.quote_name ?? t("page.editTitle")) : t("page.createTitle")}
+        titleLoading={isEdit && loadingExisting && !existingDetail}
         backHref={safeBack}
         backAriaLabel={t("detail.backAria")}
         subtitle={

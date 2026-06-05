@@ -2,6 +2,7 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import { fetchAllEntityIds } from "@/shared/mass-actions";
 import { SITE_PATHS } from "./site.paths";
 import type {
   Site,
@@ -42,6 +43,10 @@ export async function fetchSitesPage(
   const { data } = await api.get<SiteListResponse>(SITE_PATHS.list, { params });
   assertEnvelopeSuccess(data);
   return { items: data.data, pagination: data.pagination };
+}
+
+export async function fetchAllSiteIds(filters?: SiteListFilters): Promise<number[]> {
+  return fetchAllEntityIds((page, pageSize) => fetchSitesPage(page, pageSize, filters));
 }
 
 export async function fetchSite(id: number): Promise<Site> {

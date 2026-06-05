@@ -6,7 +6,9 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { fetchInvoicesPage } from "@/features/invoices/api/invoice.api";
+import { fetchAllInvoiceIds, fetchInvoicesPage } from "@/features/invoices/api/invoice.api";
+import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { InvoiceStatusBadge } from "@/features/invoices/components/invoice-status-badge";
 import type { InvoiceListItem } from "@/features/invoices/types/invoice.types";
 import {
@@ -41,6 +43,12 @@ import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.u
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import {
+  MassActionBar,
+  buildInvoiceMassUpdateFields,
+  massSelectionColumn,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
 
 export function InvoicesPanel() {
   const t = useTranslations("Dashboard.invoices");
@@ -85,7 +93,10 @@ export function InvoicesPanel() {
   });
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [contactOptions, setContactOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [projectOptions, setProjectOptions] = React.useState<{ value: string; label: string }[]>([]);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
@@ -96,6 +107,17 @@ export function InvoicesPanel() {
       { value: "paid", label: t("status.paid") },
       { value: "pending", label: t("status.pending") },
       { value: "overdue", label: t("status.overdue") },
+    ],
+    [t],
+  );
+
+  const paymentTermOptions = React.useMemo(
+    () => [
+      { value: "net_7", label: t("paymentTerms.net7") },
+      { value: "net_45", label: t("paymentTerms.net45") },
+      { value: "net_30", label: t("paymentTerms.net30") },
+      { value: "net_15", label: t("paymentTerms.net15") },
+      { value: "due_on_receipt", label: t("paymentTerms.dueOnReceipt") },
     ],
     [t],
   );
@@ -137,12 +159,26 @@ export function InvoicesPanel() {
     let cancelled = false;
     (async () => {
       try {
-        const { items: clients } = await fetchClientsPage(1, 500, { is_active: true }, { silent: true });
-        if (!cancelled) {
-          setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
-        }
+        const [clientsRes, contactsRes, projectsRes] = await Promise.all([
+          fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
+          fetchContactsPage(1, 500, { is_active: true }),
+          fetchProjectsPage(1, 500, { is_active: true }),
+        ]);
+        if (cancelled) return;
+        setClientOptions(clientsRes.items.map((c) => ({ value: String(c.id), label: c.name })));
+        setContactOptions(
+          contactsRes.items.map((c) => ({
+            value: String(c.id),
+            label: c.name?.trim() || `#${c.id}`,
+          })),
+        );
+        setProjectOptions(projectsRes.items.map((p) => ({ value: String(p.id), label: p.name })));
       } catch {
-        if (!cancelled) setClientOptions([]);
+        if (!cancelled) {
+          setClientOptions([]);
+          setContactOptions([]);
+          setProjectOptions([]);
+        }
       }
     })();
     return () => {
@@ -177,7 +213,7 @@ export function InvoicesPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, search, statusFilter, clientFilter, t]);
+  }, [page, pageSize, search, statusFilter, clientFilter, refreshNonce, t]);
 
   const clientLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -197,6 +233,53 @@ export function InvoicesPanel() {
   });
   const pageRange = getListPageRange(pagination);
 
+  const listFilters = React.useMemo(
+    () => ({
+      search: search || undefined,
+      status: statusFilter,
+      client: clientFilter,
+    }),
+    [search, statusFilter, clientFilter],
+  );
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildInvoiceMassUpdateFields(
+        {
+          clientOptions,
+          contactOptions,
+          projectOptions,
+          statusOptions: statusFilterOptions,
+          paymentTermOptions,
+        },
+        {
+          client: t("fields.clientName"),
+          contact: t("fields.contactPerson"),
+          project: t("fields.projectName"),
+          dueDate: t("fields.dueDate"),
+          paymentTerms: t("fields.paymentTerms"),
+          status: t("fields.status"),
+          clientNotes: t("fields.clientNotes"),
+          internalNotes: t("fields.internalNotes"),
+        },
+      ),
+    [t, clientOptions, contactOptions, projectOptions, statusFilterOptions, paymentTermOptions],
+  );
+
+  const fetchAllIds = React.useCallback(() => fetchAllInvoiceIds(listFilters), [listFilters]);
+
+  const mass = useEntityListMassActions({
+    resource: "invoices",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search, statusFilter, clientFilter],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
+  const massSel = React.useMemo(() => massSelectionColumn(mass, items.length), [mass, items.length]);
+
   const tableColumns = React.useMemo(() => {
     const c = entityCol<InvoiceListItem>();
     const clientDisplay = (row: InvoiceListItem) => {
@@ -205,6 +288,7 @@ export function InvoicesPanel() {
     };
 
     return [
+      massSel.tableColumn,
       c.primary("invoice", t("table.invoiceNumber"), (r) => r.invoice_number),
       c.truncate("client", t("table.clientName"), (r) => clientDisplay(r), {
         title: (r) => clientDisplay(r),
@@ -226,7 +310,7 @@ export function InvoicesPanel() {
         />
       )),
     ];
-  }, [t, tList, dateFmt, locale, clientLabelById, statusLabel, openEdit]);
+  }, [t, tList, dateFmt, locale, clientLabelById, statusLabel, openEdit, massSel.tableColumn]);
 
   return (
     <div className="space-y-4">
@@ -275,6 +359,24 @@ export function InvoicesPanel() {
           </div>
         }
       />
+      ) : null}
+
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
+        />
+      ) : null}
+
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
+        />
       ) : null}
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
@@ -329,6 +431,7 @@ export function InvoicesPanel() {
                     key={row.id}
                     dataListRowId={row.id}
                     className={highlightClassName(row.id)}
+                    leading={massSel.cardLeading(row)}
                     title={row.invoice_number}
                     subtitle={clientDisplay}
                     meta={<span className="block min-w-0 truncate">{invoiceJobOrProjectLabel(row)}</span>}

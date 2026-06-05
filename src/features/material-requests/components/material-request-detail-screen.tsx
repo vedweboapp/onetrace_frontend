@@ -2,12 +2,19 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchMaterialRequest } from "@/features/material-requests/api/material-request.api";
 import { MaterialRequestDetailBody } from "@/features/material-requests/components/material-request-detail-body";
+import { MaterialRequestDetailTimeline } from "@/features/material-requests/components/material-request-detail-timeline";
 import type { MaterialRequestDetail } from "@/features/material-requests/types/material-request.types";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import { normalizeMaterialRequestStatus } from "@/features/material-requests/utils/material-request-nested-fields.util";
-import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
+import {
+  EntityDetailEditButton,
+  EntityDetailErrorState,
+  EntityDetailLoadingSkeleton,
+  EntityDetailScreen,
+} from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
 import { AppButton, AppTabs } from "@/shared/ui";
 
@@ -17,6 +24,9 @@ type Props = {
 
 export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
   const t = useTranslations("Dashboard.materialRequests");
+  const router = useRouter();
+  const pathname = usePathname();
+  const [activeTab, setActiveTab] = React.useState("overview");
   const dueFmt = React.useMemo(
     () =>
       new Intl.DateTimeFormat(undefined, {
@@ -27,7 +37,6 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
     [],
   );
 
-  const [activeTab, setActiveTab] = React.useState<"overview" | "dispatch" | "timeline">("overview");
   const [workerNames, setWorkerNames] = React.useState<Record<number, string>>({});
 
   React.useEffect(() => {
@@ -66,9 +75,8 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
 
   const detailTabs = React.useMemo(
     () => [
-      { id: "overview", label: t("tabs.overview") },
-      { id: "dispatch", label: t("tabs.dispatch") },
-      { id: "timeline", label: t("tabs.timeline") },
+      { id: "overview", label: t("detail.tabOverview") },
+      { id: "logs", label: t("detail.tabActivityTimeline") },
     ],
     [t],
   );
@@ -79,7 +87,6 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
       listSection="material-requests"
       listRoute={routes.dashboard.materialRequests}
       labels={{
-        loadingTitle: t("detail.loadingTitle"),
         metaTitle: t("detailMetaTitle"),
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),
@@ -91,12 +98,22 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
         <AppTabs
           tabs={detailTabs}
           value={activeTab}
-          onValueChange={(id) => setActiveTab(id as "overview" | "dispatch" | "timeline")}
+          onValueChange={setActiveTab}
+          ariaLabel={t("detail.tabsAria")}
+          panelIdPrefix="material-request-detail-tab"
+          className="-mx-1 px-1 sm:-mx-0 sm:px-0"
         />
       }
-      actions={({ detail, listBack }) => (
+      actions={({ listBack }) => (
         <div className="flex flex-wrap items-center gap-2">
-          <AppButton type="button" variant="primary" size="sm">
+          <AppButton
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() =>
+              router.push(`${pathname}/dispatch?back=${encodeURIComponent(listBack)}`)
+            }
+          >
             {t("actions.dispatch")}
           </AppButton>
           <EntityDetailEditButton
@@ -106,25 +123,39 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
           />
         </div>
       )}
-    >
-      {({ detail, dateFmt }) => {
-        const workerId =
-          typeof detail.worker_name === "number"
-            ? detail.worker_name
-            : detail.worker_name && typeof detail.worker_name === "object"
-              ? detail.worker_name.id
-              : undefined;
-        return (
-          <MaterialRequestDetailBody
-            detail={detail}
-            workerName={workerId != null ? workerNames[workerId] : undefined}
-            dateFmt={dateFmt}
-            dueFmt={dueFmt}
-            statusLabel={statusLabel(detail.status)}
-            activeTab={activeTab}
-          />
-        );
-      }}
-    </EntityDetailScreen>
+      renderSurface={({ detail, loading, error, retry, dateFmt }) => (
+        <div
+          role="tabpanel"
+          id={`material-request-detail-tab-${activeTab}`}
+          aria-labelledby={`material-request-detail-tab-trigger-${activeTab}`}
+        >
+          {loading ? (
+            <EntityDetailLoadingSkeleton />
+          ) : error ? (
+            <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
+          ) : detail && activeTab === "overview" ? (
+            (() => {
+              const workerId =
+                typeof detail.worker_name === "number"
+                  ? detail.worker_name
+                  : detail.worker_name && typeof detail.worker_name === "object"
+                    ? detail.worker_name.id
+                    : undefined;
+              return (
+                <MaterialRequestDetailBody
+                  detail={detail}
+                  workerName={workerId != null ? workerNames[workerId] : undefined}
+                  dateFmt={dateFmt}
+                  dueFmt={dueFmt}
+                  statusLabel={statusLabel(detail.status)}
+                />
+              );
+            })()
+          ) : detail && activeTab === "logs" ? (
+            <MaterialRequestDetailTimeline materialRequestId={detail.id} dateFmt={dateFmt} />
+          ) : null}
+        </div>
+      )}
+    />
   );
 }

@@ -157,7 +157,6 @@ export function ProjectDetailScreen({ projectId }: Props) {
       getTitle={(detail) => detail.name}
       onDetailChange={setDetailForClient}
       labels={{
-        loadingTitle: t("detail.loadingTitle"),
         metaTitle: t("detailMetaTitle"),
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),

@@ -9,7 +9,7 @@ import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import { ProjectTypeChip } from "@/features/project-types/components/project-type-chip";
 import type { ProjectType } from "@/features/project-types/types/project-type.types";
-import { deleteProject, fetchProjectsPage, patchProject } from "@/features/projects/api/project.api";
+import { deleteProject, fetchAllProjectIds, fetchProjectsPage, patchProject } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { projectTypesById, resolveProjectTypeChipData } from "@/features/projects/utils/project-type-id.util";
@@ -39,6 +39,12 @@ import { cn } from "@/core/utils/http.util";
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import {
+  MassActionBar,
+  buildProjectMassUpdateFields,
+  massSelectionColumn,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
 
 function projectRowClientLabel(row: Project, labels: Record<number, string>): string {
   const cid = getProjectClientId(row);
@@ -184,6 +190,53 @@ export function ProjectsPanel() {
     return m;
   }, [clientOptions]);
 
+  const projectTypeOptions = React.useMemo(
+    () =>
+      Object.values(projectTypeById).map((pt) => ({
+        value: String(pt.id),
+        label: pt.project_type?.trim() || `#${pt.id}`,
+      })),
+    [projectTypeById],
+  );
+
+  const listFilters = React.useMemo(
+    () => ({ search: search || undefined, is_active: isActiveFilter }),
+    [search, isActiveFilter],
+  );
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildProjectMassUpdateFields(
+        { clientOptions, projectTypeOptions },
+        {
+          name: t("table.name"),
+          client: t("table.client"),
+          projectType: t("table.projectType"),
+          description: t("table.description"),
+          startDate: t("table.start"),
+          endDate: t("table.end"),
+          isActive: t("table.status"),
+          activeLabel: t("status.active"),
+          inactiveLabel: t("status.inactive"),
+        },
+      ),
+    [t, clientOptions, projectTypeOptions],
+  );
+
+  const fetchAllIds = React.useCallback(() => fetchAllProjectIds(listFilters), [listFilters]);
+
+  const mass = useEntityListMassActions({
+    resource: "projects",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search, isActiveFilter],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
+  const massSel = React.useMemo(() => massSelectionColumn(mass, items.length), [mass, items.length]);
+
   function openCreate() {
     router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
   }
@@ -235,6 +288,7 @@ export function ProjectsPanel() {
   const tableColumns = React.useMemo(() => {
     const c = entityCol<Project>();
     return [
+      massSel.tableColumn,
       c.primary("name", t("table.name"), (r) => r.name),
       c.text("client", t("table.client"), (r) => projectRowClientLabel(r, clientLabelById)),
       c.custom("projectType", t("table.projectType"), (r) => {
@@ -286,7 +340,7 @@ export function ProjectsPanel() {
         />
       )),
     ];
-  }, [t, tList, clientLabelById, projectTypeById, togglingId]);
+  }, [t, tList, clientLabelById, projectTypeById, togglingId, massSel.tableColumn]);
 
   const hasActiveFilters = hasListActiveFilters({ search, isActiveParam });
   const countInactive = React.useCallback(async () => {
@@ -345,6 +399,15 @@ export function ProjectsPanel() {
         />
       ) : null}
 
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
+        />
+      ) : null}
+
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
@@ -388,6 +451,7 @@ export function ProjectsPanel() {
                   key={row.id}
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
+                  leading={massSel.cardLeading(row)}
                   title={row.name}
                   subtitle={projectRowClientLabel(row, clientLabelById)}
                   meta={`${formatDay(row.start_date)} – ${formatDay(row.end_date)}`}

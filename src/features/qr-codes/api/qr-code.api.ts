@@ -1,4 +1,5 @@
 import api from "@/core/api/axios";
+import { fetchAllEntityIds } from "@/shared/mass-actions";
 import { QR_CODE_PATHS } from "./qr-code.paths";
 import type { QrCode, QrCodeGeneratePayload, QrCodePagination } from "../types/qr-code.types";
 import type { QrCodeStatus } from "../types/qr-code.types";
@@ -38,6 +39,10 @@ export async function fetchQrCodesPage(
     skipErrorToast: options?.silent === true,
   });
   return parseQrCodeListResponse(data, page, pageSize);
+}
+
+export async function fetchAllQrCodeIds(filters?: QrCodeListFilters): Promise<number[]> {
+  return fetchAllEntityIds((page, pageSize) => fetchQrCodesPage(page, pageSize, filters, { silent: true }));
 }
 
 export async function fetchQrCode(id: number, options?: QrCodeRequestOptions): Promise<QrCode> {
