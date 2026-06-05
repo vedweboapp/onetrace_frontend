@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { fetchContactsPage, updateContact } from "@/features/contacts/api/contact.api";
+import { fetchAllContactIds, fetchContactsPage, updateContact } from "@/features/contacts/api/contact.api";
 import type { Contact } from "@/features/contacts/types/contact.types";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -32,7 +32,11 @@ import {
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
-import { cn } from "@/core/utils/http.util";
+import {
+  MassActionBar,
+  buildContactMassUpdateFields,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 
 function contactClientId(row: Contact): number | null {
@@ -106,6 +110,47 @@ export function ContactsPanel() {
   );
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
+
+  const listFilters = React.useMemo(
+    () => ({
+      search: search || undefined,
+      is_active: isActiveFilter,
+      client: clientFilter,
+    }),
+    [search, isActiveFilter, clientFilter],
+  );
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildContactMassUpdateFields(clientOptions, {
+        name: t("fields.name"),
+        email: t("fields.email"),
+        phone: t("fields.phone"),
+        client: t("fields.client"),
+        addressLine1: t("fields.addressLine1"),
+        addressLine2: t("fields.addressLine2"),
+        country: t("fields.country"),
+        state: t("fields.stateProvince"),
+        city: t("fields.city"),
+        pincode: t("fields.pincode"),
+        isActive: t("table.status"),
+        activeLabel: t("status.active"),
+        inactiveLabel: t("status.inactive"),
+      }),
+    [clientOptions, t],
+  );
+
+  const fetchAllIds = React.useCallback(() => fetchAllContactIds(listFilters), [listFilters]);
+
+  const mass = useEntityListMassActions({
+    resource: "contacts",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search, isActiveFilter, clientFilter],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -208,6 +253,30 @@ export function ContactsPanel() {
   const tableColumns = React.useMemo(() => {
     const c = entityCol<Contact>();
     return [
+      c.selection(
+        "select",
+        (
+          <input
+            ref={mass.selection.selectAllRef}
+            type="checkbox"
+            className={mass.selection.rowCheckboxClassName}
+            checked={mass.selection.allMatchingSelected}
+            disabled={mass.selection.selectingAll || items.length === 0}
+            aria-label={mass.selectAllAriaLabel}
+            onChange={() => void mass.selection.toggleSelectAll()}
+          />
+        ),
+        (row) => (
+          <input
+            type="checkbox"
+            className={mass.selection.rowCheckboxClassName}
+            checked={mass.selection.isSelected(row.id)}
+            aria-label={mass.selectRowAriaLabel}
+            onChange={() => mass.selection.toggleRowSelected(row.id)}
+          />
+        ),
+        { narrow: true },
+      ),
       c.primary("name", t("table.name"), (r) => r.name),
       c.text("client", t("table.client"), (r) => contactClientName(r, clientLabelById)),
       c.truncate("email", t("table.email"), (r) => r.email),
@@ -238,7 +307,7 @@ export function ContactsPanel() {
         />
       )),
     ];
-  }, [t, tList, dateFmt, clientLabelById, togglingId, openEdit]);
+  }, [t, tList, dateFmt, clientLabelById, togglingId, openEdit, mass, items.length]);
 
   return (
     <div className="space-y-4">
@@ -289,6 +358,15 @@ export function ContactsPanel() {
         />
       ) : null}
 
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
+        />
+      ) : null}
+
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
@@ -330,6 +408,15 @@ export function ContactsPanel() {
                   key={row.id}
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
+                  leading={
+                    <input
+                      type="checkbox"
+                      className={mass.selection.rowCheckboxClassName}
+                      checked={mass.selection.isSelected(row.id)}
+                      aria-label={mass.selectRowAriaLabel}
+                      onChange={() => mass.selection.toggleRowSelected(row.id)}
+                    />
+                  }
                   title={row.name}
                   subtitle={contactClientName(row, clientLabelById)}
                   meta={row.email}

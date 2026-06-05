@@ -162,6 +162,7 @@ export function mapInvoiceFormToPayload(values: InvoiceFormValues): InvoiceCreat
   const meta = buildJobMetaPayload(values.line_items.map(lineItemToMetaRow));
 
   const contactRaw = values.contact.trim();
+  
   const contact =
     contactRaw && /^\d+$/.test(contactRaw) ? Number.parseInt(contactRaw, 10) : undefined;
 

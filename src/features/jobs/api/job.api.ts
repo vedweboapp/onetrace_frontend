@@ -3,12 +3,12 @@ import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { JOB_PATHS } from "./job.paths";
+import { fetchAllEntityIds } from "@/shared/mass-actions";
 import type {
   Job,
   JobCreateFromQuotationPayload,
   JobCreatePayload,
   JobListResponse,
-  JobMassUpdatePayload,
   JobUpdatePayload,
 } from "../types/job.types";
 
@@ -60,16 +60,7 @@ export async function fetchAllJobIds(
   filters?: JobListFilters,
   options?: JobRequestOptions,
 ): Promise<number[]> {
-  const ids: number[] = [];
-  let pageNum = 1;
-  const pageSize = 500;
-  while (true) {
-    const { items, pagination } = await fetchJobsPage(pageNum, pageSize, filters, options);
-    for (const row of items) ids.push(row.id);
-    if (pagination.total_pages === 0 || pageNum >= pagination.total_pages) break;
-    pageNum += 1;
-  }
-  return ids;
+  return fetchAllEntityIds((page, pageSize) => fetchJobsPage(page, pageSize, filters, options));
 }
 
 export async function fetchJob(id: number, options?: JobRequestOptions): Promise<Job> {
@@ -112,7 +103,3 @@ export async function deleteJob(id: number): Promise<void> {
   assertApiSuccess(data);
 }
 
-export async function massUpdateJobs(body: JobMassUpdatePayload): Promise<void> {
-  const { data } = await api.post<ApiEnvelope<unknown>>(JOB_PATHS.massUpdate, body);
-  assertApiSuccess(data);
-}

@@ -133,7 +133,12 @@ export function EntityDataTable<T extends { id: number | string }>({
         <DataTableHead>
           <tr>
             {columns.map((col) => (
-              <DataTableTh key={col.id} narrow={col.narrow} className={columnHeaderClassName(col)}>
+              <DataTableTh
+                key={col.id}
+                narrow={col.narrow && col.variant !== "selection"}
+                compact={col.variant === "selection"}
+                className={columnHeaderClassName(col)}
+              >
                 {col.headerSrOnly ? <span className="sr-only">{col.header}</span> : col.header}
               </DataTableTh>
             ))}
@@ -158,7 +163,8 @@ export function EntityDataTable<T extends { id: number | string }>({
                     return (
                       <DataTableTd
                         key={col.id}
-                        narrow={col.narrow}
+                        narrow={col.narrow && col.variant !== "selection"}
+                        compact={col.variant === "selection"}
                         className={columnCellClassName(col)}
                         onPointerDown={isolateClick ? (e) => e.stopPropagation() : undefined}
                         onMouseDown={isolateClick ? (e) => e.stopPropagation() : undefined}

@@ -5,7 +5,7 @@ import { Pencil, Phone, Power, PowerOff, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { deleteClient, fetchClientsPage, updateClient } from "@/features/clients/api/client.api";
+import { deleteClient, fetchAllClientIds, fetchClientsPage, updateClient } from "@/features/clients/api/client.api";
 import type { Client } from "@/features/clients/types/client.types";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -31,7 +31,11 @@ import {
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
-import { cn } from "@/core/utils/http.util";
+import {
+  MassActionBar,
+  buildClientMassUpdateFields,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { toastError } from "@/shared/feedback/app-toast";
 
@@ -90,6 +94,48 @@ export function ClientsPanel() {
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
+
+  const listFilters = React.useMemo(
+    () => ({
+      search: search || undefined,
+      is_active: isActiveFilter,
+    }),
+    [search, isActiveFilter],
+  );
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildClientMassUpdateFields({
+        name: t("fields.name"),
+        email: t("fields.email"),
+        phone: t("fields.phone"),
+        addressLine1: t("fields.addressLine1"),
+        addressLine2: t("fields.addressLine2"),
+        country: t("fields.country"),
+        state: t("fields.stateProvince"),
+        city: t("fields.city"),
+        pincode: t("fields.pincode"),
+        isActive: t("table.status"),
+        activeLabel: t("status.active"),
+        inactiveLabel: t("status.inactive"),
+      }),
+    [t],
+  );
+
+  const fetchAllIds = React.useCallback(
+    () => fetchAllClientIds(listFilters, { silent: true }),
+    [listFilters],
+  );
+
+  const mass = useEntityListMassActions({
+    resource: "clients",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search, isActiveFilter],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -165,6 +211,30 @@ export function ClientsPanel() {
   const tableColumns = React.useMemo(() => {
     const c = entityCol<Client>();
     return [
+      c.selection(
+        "select",
+        (
+          <input
+            ref={mass.selection.selectAllRef}
+            type="checkbox"
+            className={mass.selection.rowCheckboxClassName}
+            checked={mass.selection.allMatchingSelected}
+            disabled={mass.selection.selectingAll || items.length === 0}
+            aria-label={mass.selectAllAriaLabel}
+            onChange={() => void mass.selection.toggleSelectAll()}
+          />
+        ),
+        (row) => (
+          <input
+            type="checkbox"
+            className={mass.selection.rowCheckboxClassName}
+            checked={mass.selection.isSelected(row.id)}
+            aria-label={mass.selectRowAriaLabel}
+            onChange={() => mass.selection.toggleRowSelected(row.id)}
+          />
+        ),
+        { narrow: true },
+      ),
       c.primary("name", t("table.name"), (r) => r.name),
       c.truncate("email", t("table.email"), (r) => r.email),
       c.phone("phone", t("table.phone"), (r) => r.phone),
@@ -204,7 +274,7 @@ export function ClientsPanel() {
         />
       )),
     ];
-  }, [t, tList, dateFmt, togglingId]);
+  }, [t, tList, dateFmt, togglingId, mass, items.length]);
 
   const hasActiveFilters = hasListActiveFilters({ search, isActiveParam });
   const countInactive = React.useCallback(async () => {
@@ -261,6 +331,15 @@ export function ClientsPanel() {
         />
       ) : null}
 
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
+        />
+      ) : null}
+
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
@@ -302,6 +381,15 @@ export function ClientsPanel() {
                   key={row.id}
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
+                  leading={
+                    <input
+                      type="checkbox"
+                      className={mass.selection.rowCheckboxClassName}
+                      checked={mass.selection.isSelected(row.id)}
+                      aria-label={mass.selectRowAriaLabel}
+                      onChange={() => mass.selection.toggleRowSelected(row.id)}
+                    />
+                  }
                   title={row.name}
                   subtitle={row.email}
                   footer={

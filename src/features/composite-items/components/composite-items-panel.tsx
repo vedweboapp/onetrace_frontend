@@ -7,8 +7,11 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import {
   deleteCompositeItem,
+  fetchAllCompositeItemIds,
   fetchCompositeItemsPage,
 } from "@/features/composite-items/api/composite-item.api";
+import { fetchGroupsPage } from "@/features/groups/api/group.api";
+import { fetchInstallationTypesPage } from "@/features/installation-types/api/installation-type.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import { InstallationTypeChip } from "@/features/installation-types/components/installation-type-chip";
 import { resolveInstallationTypeChipData } from "@/features/items/utils/item-installation-type.util";
@@ -36,6 +39,12 @@ import { cn } from "@/core/utils/http.util";
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import {
+  MassActionBar,
+  buildCompositeItemMassUpdateFields,
+  massSelectionColumn,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
 
 function moneyDisplay(v: unknown): string {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : Number.NaN;
@@ -100,7 +109,76 @@ export function CompositeItemsPanel() {
   const [deletingItem, setDeletingItem] = React.useState<CompositeItem | null>(null);
   const [deleting, setDeleting] = React.useState(false);
 
+  const [groupOptions, setGroupOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [installationTypeOptions, setInstallationTypeOptions] = React.useState<
+    { value: string; label: string }[]
+  >([]);
+
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [groupsRes, typesRes] = await Promise.all([
+          fetchGroupsPage(1, 500),
+          fetchInstallationTypesPage(1, 500, { is_active: true }),
+        ]);
+        if (cancelled) return;
+        setGroupOptions(groupsRes.items.map((g) => ({ value: String(g.id), label: g.name })));
+        setInstallationTypeOptions(
+          typesRes.items.map((it) => ({
+            value: String(it.id),
+            label: it.installation_type?.trim() || `#${it.id}`,
+          })),
+        );
+      } catch {
+        if (!cancelled) {
+          setGroupOptions([]);
+          setInstallationTypeOptions([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const listFilters = React.useMemo(() => ({ search: search || undefined }), [search]);
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildCompositeItemMassUpdateFields(
+        { groupOptions, installationTypeOptions },
+        {
+          name: t("modal.name"),
+          sku: t("modal.sku"),
+          quantity: t("modal.quantity"),
+          costPrice: t("modal.costPrice"),
+          sellingPrice: t("modal.sellingPrice"),
+          group: t("modal.group"),
+          installationType: t("modal.installationType"),
+          isActive: t("table.status"),
+          activeLabel: t("statusActive"),
+          inactiveLabel: t("statusInactive"),
+        },
+      ),
+    [t, groupOptions, installationTypeOptions],
+  );
+
+  const fetchAllIds = React.useCallback(() => fetchAllCompositeItemIds(listFilters), [listFilters]);
+
+  const mass = useEntityListMassActions({
+    resource: "compositeItems",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
+  const massSel = React.useMemo(() => massSelectionColumn(mass, items.length), [mass, items.length]);
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -177,6 +255,7 @@ export function CompositeItemsPanel() {
   const tableColumns = React.useMemo(() => {
     const c = entityCol<CompositeItem>();
     return [
+      massSel.tableColumn,
       c.primary("name", t("table.name"), (r) => r.name),
       c.custom("installationType", t("table.installationType"), (r) => installationTypeCell(r)),
       c.mono("sku", t("modal.sku"), (r) => r.sku || "—", { cellClassName: "text-slate-600 dark:text-slate-400" }),
@@ -220,7 +299,7 @@ export function CompositeItemsPanel() {
         />
       )),
     ];
-  }, [t, tList, dateFmt]);
+  }, [t, tList, dateFmt, massSel.tableColumn]);
 
   return (
     <div className="space-y-6">
@@ -245,6 +324,15 @@ export function CompositeItemsPanel() {
               />
             </div>
           }
+        />
+      ) : null}
+
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
         />
       ) : null}
 
@@ -286,6 +374,7 @@ export function CompositeItemsPanel() {
                   key={row.id}
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
+                  leading={massSel.cardLeading(row)}
                   title={row.name}
                   subtitle={row.sku ? <span className="font-mono text-xs">{row.sku}</span> : undefined}
                   description={`Qty: ${row.quantity ?? "—"} · Cost: ${moneyDisplay(row.cost_price)} · Sell: ${moneyDisplay(row.selling_price)}`}

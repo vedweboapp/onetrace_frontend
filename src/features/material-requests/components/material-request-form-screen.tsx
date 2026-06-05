@@ -186,6 +186,7 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
         if (cancelled) return;
         const defaults = materialRequestToFormDefaults(row);
         reset(defaults);
+        prevWorkerRef.current = defaults.worker_name;
 
         const jobIds = defaults.jobs
           .map((j) => Number.parseInt(j.job, 10))
@@ -199,15 +200,17 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
           setSelectedJobsById(byId);
         }
 
-        for (const line of row.items ?? []) {
-          const item = line.item;
-          if (item && typeof item === "object" && item.name?.trim()) {
-            setItemLabelById((prev) => ({
-              ...prev,
-              [item.id]: item.name!.trim(),
-            }));
+        setItemLabelById((prev) => {
+          const next = { ...prev };
+          for (const line of row.items ?? []) {
+            const item = line.item;
+            if (item && typeof item === "object" && item.id > 0) {
+              const label = item.name?.trim();
+              if (label) next[item.id] = label;
+            }
           }
-        }
+          return next;
+        });
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
       } finally {
@@ -257,6 +260,12 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
     return job?.title?.trim() || (jobIdRaw ? `#${jobIdRaw}` : "—");
   }
 
+  function formatRequestQtyDisplay(raw: string | undefined): string {
+    const n = Number.parseFloat(String(raw ?? "").trim());
+    if (!Number.isFinite(n) || n <= 0) return "—";
+    return Number.isInteger(n) ? String(n) : n.toFixed(2);
+  }
+
   async function submit(values: MaterialRequestFormValues) {
     const payload = mapMaterialRequestFormToPayload(values);
     setSaving(true);
@@ -266,7 +275,11 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
           ? await updateMaterialRequest(materialRequestId, payload)
           : await createMaterialRequest(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(`${safeBack}/${saved.id}?back=${encodeURIComponent(safeBack)}`);
+      if (isEdit) {
+        router.replace(`${safeBack}/${saved.id}?back=${encodeURIComponent(safeBack)}`);
+      } else {
+        router.replace(safeBack);
+      }
     } finally {
       setSaving(false);
     }
@@ -459,10 +472,7 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
                           <RequiredMark />
                         </th>
                         <th className="px-3 py-2">{t("lineItems.jobName")}</th>
-                        <th className="px-3 py-2">
-                          {t("lineItems.requestQty")}
-                          <RequiredMark />
-                        </th>
+                        <th className="px-3 py-2">{t("lineItems.requestQty")}</th>
                         <th className="px-3 py-2 w-12" />
                       </tr>
                     </thead>
@@ -481,20 +491,9 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
                               {jobDisplayTitle(row?.job ?? "")}
                               <FieldErrorText>{errors.items?.[index]?.job?.message}</FieldErrorText>
                             </td>
-                            <td className="px-3 py-3 align-top">
-                              <input
-                                type="number"
-                                min={1}
-                                step="any"
-                                aria-invalid={errors.items?.[index]?.quantity ? true : undefined}
-                                className={cn(
-                                  surfaceInputClassName,
-                                  "h-8 w-24 px-2.5 text-sm",
-                                  errors.items?.[index]?.quantity && "border-red-500",
-                                )}
-                                disabled={saving}
-                                {...register(`items.${index}.quantity`)}
-                              />
+                            <td className="px-3 py-3 tabular-nums font-medium text-slate-900 dark:text-slate-100">
+                              {formatRequestQtyDisplay(row?.quantity)}
+                              <input type="hidden" {...register(`items.${index}.quantity`)} />
                               <FieldErrorText>{errors.items?.[index]?.quantity?.message}</FieldErrorText>
                             </td>
                             <td className="px-3 py-3 align-top">

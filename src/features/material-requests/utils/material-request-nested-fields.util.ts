@@ -85,12 +85,24 @@ export function materialRequestItemJobTitle(row: MaterialRequestItemRef): string
 }
 
 export function materialRequestItemRequestedQty(row: MaterialRequestItemRef): number {
+  if (typeof row.requested_quantity === "number" && Number.isFinite(row.requested_quantity)) {
+    return row.requested_quantity;
+  }
   if (typeof row.quantity === "number" && Number.isFinite(row.quantity)) return row.quantity;
   const item = row.item;
   if (item && typeof item === "object" && typeof item.quantity === "number" && Number.isFinite(item.quantity)) {
     return item.quantity;
   }
   return 0;
+}
+
+export function materialRequestItemStockQty(row: MaterialRequestItemRef): number | null {
+  const item = row.item;
+  if (item && typeof item === "object") {
+    if (typeof item.stock_quantity === "number" && Number.isFinite(item.stock_quantity)) return item.stock_quantity;
+    if (typeof item.available_stock === "number" && Number.isFinite(item.available_stock)) return item.available_stock;
+  }
+  return null;
 }
 
 export function materialRequestItemDispatchedQty(row: MaterialRequestItemRef): number {
@@ -102,6 +114,45 @@ export function materialRequestItemDispatchedQty(row: MaterialRequestItemRef): n
     return item.dispatched_quantity;
   }
   return 0;
+}
+
+export function materialRequestItemPendingQty(row: MaterialRequestItemRef): number {
+  if (typeof row.pending_quantity === "number" && Number.isFinite(row.pending_quantity)) {
+    return Math.max(0, row.pending_quantity);
+  }
+  return Math.max(0, materialRequestItemRequestedQty(row) - materialRequestItemDispatchedQty(row));
+}
+
+export function materialRequestItemRestockedQty(row: MaterialRequestItemRef): number {
+  if (typeof row.restocked_quantity === "number" && Number.isFinite(row.restocked_quantity)) {
+    return row.restocked_quantity;
+  }
+  return 0;
+}
+
+export function materialRequestItemDispatchedSurplus(row: MaterialRequestItemRef): number {
+  return Math.max(0, materialRequestItemDispatchedQty(row) - materialRequestItemRequestedQty(row));
+}
+
+export type MaterialRequestDispatchedDisplay = {
+  fulfilled: number;
+  surplus: number;
+};
+
+export function materialRequestDispatchedDisplay(row: MaterialRequestItemRef): MaterialRequestDispatchedDisplay {
+  const requested = materialRequestItemRequestedQty(row);
+  const dispatched = materialRequestItemDispatchedQty(row);
+  const fulfilled = dispatched <= 0 ? 0 : Math.min(dispatched, requested);
+  const surplus = Math.max(0, dispatched - requested);
+  return { fulfilled, surplus };
+}
+
+/** @deprecated Prefer materialRequestDispatchedDisplay for split fulfilled/surplus UI. */
+export function formatMaterialRequestDispatchedLabel(row: MaterialRequestItemRef): string {
+  const { fulfilled, surplus } = materialRequestDispatchedDisplay(row);
+  if (fulfilled <= 0 && surplus <= 0) return "0";
+  if (surplus <= 0) return fulfilled.toFixed(0);
+  return `${fulfilled.toFixed(0)} +${surplus.toFixed(0)}`;
 }
 
 export type MaterialRequestDispatchRow = {

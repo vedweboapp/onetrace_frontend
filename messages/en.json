@@ -157,6 +157,7 @@
       "projects": "Projects",
       "groups": "Groups",
       "materialRequests": "Material request",
+      "dispatches": "Dispatches",
       "products": "Products",
       "items": "Items",
       "itemsPlain": "Items",
@@ -1034,6 +1035,8 @@
         "city": "City",
         "pincode": "Postal / ZIP code",
         "what3words": "What3words",
+        "latitude": "Latitude",
+        "longitude": "Longitude",
         "status": "Status",
         "createdAt": "Created",
         "updatedAt": "Last updated",
@@ -1566,6 +1569,15 @@
         "loadingTitle": "Loading…",
         "retry": "Retry",
         "backAria": "Back to material requests list",
+        "tabsAria": "Material request detail sections",
+        "tabOverview": "Overview",
+        "tabTimeline": "Timeline",
+        "tabLogs": "Logs",
+        "tabActivityTimeline": "Activity timeline",
+        "sectionLogs": "Activity logs",
+        "sectionActivityTimeline": "Activity timeline",
+        "sectionDispatches": "Dispatches",
+        "dispatchLink": "View dispatch #{id}",
         "sectionOverview": "Overview",
         "sectionJobs": "Jobs",
         "sectionItems": "Items",
@@ -1623,6 +1635,7 @@
         "itemDetails": "Item details",
         "jobName": "Job name",
         "requestQty": "Request qty",
+        "requestQtyHint": "Quantity comes from each job's work scope and cannot be edited here.",
         "units": "Units",
         "addItem": "Add item",
         "remove": "Remove item",
@@ -1633,11 +1646,40 @@
         "requested": "Requested",
         "dispatched": "Dispatched",
         "pending": "Pending",
-        "empty": "No dispatch data for this request."
+        "empty": "No dispatch data for this request.",
+        "modalTitle": "Dispatch materials",
+        "modalHint": "Enter quantities to dispatch now. You can also add extra items not on the original request.",
+        "pageTitle": "Dispatch materials",
+        "pageSubtitle": "Dispatch quantities for {requestNumber}",
+        "pageSubtitleGeneric": "Record material dispatch for this request",
+        "pageHint": "Enter quantities to dispatch now. You may dispatch more than requested; surplus will show as +qty. You can also add extra items not on the original request.",
+        "backAria": "Back to material request",
+        "confirm": "Confirm dispatch",
+        "successToast": "Dispatch recorded",
+        "sectionLines": "Requested items",
+        "sectionExtra": "Add extra items",
+        "sectionExtraSent": "Extra items dispatched",
+        "dispatchNow": "Dispatch qty",
+        "extraItem": "Extra item",
+        "extraQty": "Qty",
+        "addExtra": "Add",
+        "removeExtra": "Remove extra item"
       },
       "timeline": {
         "empty": "No timeline events yet.",
         "event": "Event"
+      },
+      "logs": {
+        "viewDispatch": "View dispatch record"
+      },
+      "restock": {
+        "column": "Restocked",
+        "sectionTitle": "Restock unused items",
+        "hint": "Return unused dispatched quantities back to inventory.",
+        "alreadyRestocked": "Already restocked",
+        "returnQty": "Return qty",
+        "confirm": "Restock to inventory",
+        "successToast": "Items restocked to inventory"
       },
       "page": {
         "createTitle": "Material request form",
@@ -1657,6 +1699,81 @@
         "quantity": "Enter a valid quantity.",
         "atLeastOneJob": "Add at least one job.",
         "atLeastOneItem": "Add at least one item."
+      }
+    },
+    "dispatches": {
+      "metaTitle": "Dispatches",
+      "detailMetaTitle": "Dispatch details",
+      "pageTitle": "Dispatches",
+      "pageSubtitle": "Track material dispatches created from material requests.",
+      "searchPlaceholder": "Search dispatches…",
+      "loadError": "Could not load dispatches. Try again.",
+      "detailLoadError": "Could not load dispatch details. Try again.",
+      "emptyTitle": "No dispatches yet",
+      "emptyDescription": "Dispatch materials from a material request to create dispatch records here.",
+      "pageLabel": "Showing {start} to {end} of {total} results",
+      "prev": "Previous",
+      "next": "Next",
+      "units": "Units",
+      "actions": {
+        "view": "View details"
+      },
+      "table": {
+        "dispatchId": "Dispatch ID",
+        "jobName": "Job name",
+        "dispatchDate": "Dispatch date",
+        "status": "Status",
+        "workerName": "Worker name",
+        "qty": "Qty",
+        "materialItem": "Material item",
+        "requested": "Requested",
+        "pending": "Pending",
+        "dispatched": "Dispatched",
+        "extra": "Extra",
+        "restocked": "Restocked"
+      },
+      "restock": {
+        "action": "Restock",
+        "hint": "Return unused quantity from this dispatch back to inventory.",
+        "returnQty": "Return qty",
+        "confirm": "Restock to inventory",
+        "close": "Close",
+        "successToast": "Items restocked to inventory"
+      },
+      "status": {
+        "dispatched": "Dispatched",
+        "delivered": "Delivered",
+        "inTransit": "In transit",
+        "processing": "Processing",
+        "draft": "Draft",
+        "delayed": "Delayed"
+      },
+      "fields": {
+        "dispatchTo": "Dispatch to",
+        "dispatchDate": "Dispatch date",
+        "materialRequest": "Material request",
+        "jobName": "Job name",
+        "createdAt": "Created at",
+        "updatedAt": "Last modified",
+        "createdBy": "Created by",
+        "modifiedBy": "Modified by"
+      },
+      "detail": {
+        "backAria": "Back to dispatches list",
+        "retry": "Retry",
+        "sectionOverview": "Overview",
+        "sectionItems": "Material items",
+        "sectionSystemMetadata": "System metadata",
+        "notModifiedYet": "Not modified yet",
+        "noItems": "No items on this dispatch.",
+        "extraItem": "Extra item (not on original request)",
+        "viewLine": "Details",
+        "actions": "Actions",
+        "restockHistory": "Restock history",
+        "lineMetaTitle": "Dispatch item details",
+        "lineTitle": "Dispatch item",
+        "lineSubtitle": "From dispatch {dispatch}",
+        "lineBackAria": "Back to dispatch"
       }
     },
     "jobs": {
@@ -1825,6 +1942,35 @@
     "home": {
       "title": "Working on this page",
       "body": "This section is under development. Check back soon for updates."
+    },
+    "massActions": {
+      "bulkBarAria": "Bulk actions for selected rows",
+      "selectedCount": "{count} selected",
+      "actionLabel": "Action",
+      "pickAction": "Choose action",
+      "fieldLabel": "Field",
+      "pickField": "Choose field",
+      "valueLabel": "Value",
+      "pickValue": "Choose value",
+      "valuePlaceholder": "Enter value",
+      "exportFormatLabel": "Format",
+      "pickExportFormat": "Choose format",
+      "exportFormatXlsx": "Excel (.xlsx)",
+      "exportFormatCsv": "CSV (.csv)",
+      "apply": "Apply",
+      "cancel": "Cancel",
+      "selectAll": "Select all matching rows",
+      "selectRow": "Select row",
+      "selectAllError": "Could not select all rows. Try again.",
+      "success": "Bulk action completed",
+      "deleteConfirmTitle": "Delete selected records?",
+      "deleteConfirmBody": "You are about to delete {count} records. This cannot be undone.",
+      "deleteConfirm": "Delete",
+      "actions": {
+        "massUpdate": "Mass update",
+        "massDelete": "Mass delete",
+        "massExport": "Mass export"
+      }
     },
     "list": {
       "searchPlaceholder": "Search…",

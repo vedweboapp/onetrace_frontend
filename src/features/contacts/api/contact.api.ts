@@ -2,6 +2,7 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import { fetchAllEntityIds } from "@/shared/mass-actions";
 import { CONTACT_PATHS } from "./contact.paths";
 import type { Contact, ContactCreatePayload, ContactListResponse, ContactUpdatePayload } from "../types/contact.types";
 
@@ -34,6 +35,10 @@ export async function fetchContactsPage(
   const { data } = await api.get<ContactListResponse>(CONTACT_PATHS.list, { params });
   assertEnvelopeSuccess(data);
   return { items: data.data, pagination: data.pagination };
+}
+
+export async function fetchAllContactIds(filters?: ContactListFilters): Promise<number[]> {
+  return fetchAllEntityIds((page, pageSize) => fetchContactsPage(page, pageSize, filters));
 }
 
 export async function fetchContact(id: number): Promise<Contact> {
