@@ -55,6 +55,7 @@ export type DrawingPin = {
     name: string;
     sku: string;
     is_composite: boolean;
+    installation_type?: number | null;
   } | null;
   group_detail?: any;
   status_detail?: {

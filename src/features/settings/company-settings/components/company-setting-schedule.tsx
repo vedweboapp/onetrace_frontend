@@ -28,8 +28,8 @@ const CompanySettingSchedule = ({ initialData, onSaveSuccess }: CompanySettingSc
 
   const [workingDays, setWorkingDays] = useState<string[]>(
     initialData.workingDays && initialData.workingDays.length > 0
-      ? initialData.workingDays
-      : ["monday", "tuesday", "wednesday", "thursday", "friday"]
+      ? initialData.workingDays.map(d => d.charAt(0).toUpperCase() + d.slice(1).toLowerCase())
+      : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
   );
   const [startTime, setStartTime] = useState(initialData.startTime || "09:00");
   const [endTime, setEndTime] = useState(initialData.endTime || "17:00");
@@ -92,12 +92,12 @@ const CompanySettingSchedule = ({ initialData, onSaveSuccess }: CompanySettingSc
   const timezoneDisplay = initialData.timezone || "GMT+0";
 
   return (
-    <div className={`bg-white rounded-xl border border-slate-200/80 p-0 shadow-sm flex flex-col transition-opacity duration-500 mt-2 ${isMounted ? "animate-in fade-in duration-500 opacity-100" : "opacity-0"}`}>
+    <div className={`bg-white dark:bg-slate-900 dark:border-slate-700 dark:border-slate-600 rounded-xl border border-slate-200/80 p-0 shadow-sm flex flex-col transition-opacity duration-500 mt-2 ${isMounted ? "animate-in fade-in duration-500 opacity-100" : "opacity-0"}`}>
 
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-slate-100">
-        <h2 className="text-xl font-bold text-slate-800 tracking-tight">Working Schedule</h2>
-        <span className="text-sm font-medium text-slate-500">Current Timezone: {timezoneDisplay}</span>
+      <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-700">
+        <h2 className="text-xl font-bold text-slate-800 tracking-tight dark:text-slate-200">Working Schedule</h2>
+        <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Current Timezone: {timezoneDisplay}</span>
       </div>
 
       <div className="p-8 flex flex-col gap-8">
@@ -144,7 +144,7 @@ const CompanySettingSchedule = ({ initialData, onSaveSuccess }: CompanySettingSc
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full pl-4 pr-10 py-3 rounded-lg border border-slate-200 bg-slate-50/50 text-slate-800 text-sm font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                className="w-full pl-4 dark:bg-slate-600 dark:border-slate-500 dark:text-slate-300 pr-10 py-3 rounded-lg border border-slate-200 bg-slate-50/50 text-slate-800 text-sm font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
                 style={{ colorScheme: "light" }}
               />
               {/* <Clock className="absolute right-3.5 top-1/2 -translate-y-1/2 size-4.5 text-slate-400 pointer-events-none" /> */}
@@ -161,7 +161,7 @@ const CompanySettingSchedule = ({ initialData, onSaveSuccess }: CompanySettingSc
                 type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className="w-full pl-4 pr-10 py-3 rounded-lg border border-slate-200 bg-slate-50/50 text-slate-800 text-sm font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                className="w-full pl-4 pr-10 py-3 dark:bg-slate-600 dark:border-slate-500 dark:text-slate-300 rounded-lg border border-slate-200 bg-slate-50/50 text-slate-800 text-sm font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
                 style={{ colorScheme: "light" }}
               />
               {/* <Clock className="absolute right-3.5 top-1/2 -translate-y-1/2 size-4.5 text-slate-400 pointer-events-none" /> */}
@@ -178,7 +178,7 @@ const CompanySettingSchedule = ({ initialData, onSaveSuccess }: CompanySettingSc
                 type="time"
                 value={breakDuration}
                 onChange={(e) => setBreakDuration(e.target.value)}
-                className="w-full pl-4 pr-10 py-3 rounded-lg border border-slate-200 bg-slate-50/50 text-slate-800 text-sm font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors appearance-none cursor-pointer"
+                className="w-full pl-4 pr-10 py-3 dark:bg-slate-600 dark:border-slate-500 dark:text-slate-300 rounded-lg border border-slate-200 bg-slate-50/50 text-slate-800 text-sm font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors appearance-none cursor-pointer"
               />
             </div>
           </div>

@@ -289,6 +289,7 @@ const FormAdvancedRuleModal = ({
           disabled
           value=""
         />
+        
       );
     }
 
@@ -407,12 +408,12 @@ const FormAdvancedRuleModal = ({
         onClick={onClose}
       />
       <aside
-        className={`fixed right-0 z-[30] flex w-full max-w-5xl flex-col overflow-hidden border-l border-gray-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 sm:w-[50%] ${FORM_BUILDER_SUBHEADER_OFFSET} ${FORM_BUILDER_DRAWER_HEIGHT}`}
+        className={`fixed right-0 z-[30] flex w-full 2xl:w-[40%] md:w-[45%] max-w-5xl flex-col overflow-hidden border-l border-gray-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 sm:w-[50%] ${FORM_BUILDER_SUBHEADER_OFFSET} ${FORM_BUILDER_DRAWER_HEIGHT}`}
         role="dialog"
         aria-modal="true"
         aria-label="Advanced Form Rule"
       >
-        <header className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-slate-700">
+        <header className="flex  shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-slate-700">
           <span className="font-bold text-slate-900 dark:text-slate-100">
             {initialRule ? "Edit Advanced Rule" : "Add Advanced Rule"}
           </span>
@@ -491,9 +492,9 @@ const FormAdvancedRuleModal = ({
 
                     <div className="flex flex-col gap-4 w-full">
                       {/* IF Section */}
-                      <div className="flex gap-3 items-center w-full">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center w-full">
                         <select
-                          className={`w-64 p-2.5 border ${errors[`block-${idx}-triggerField`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+                          className={`w-full p-2.5 border ${errors[`block-${idx}-triggerField`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
                           value={block.field_api_name}
                           onChange={(e) => handleBlockChange(idx, { field_api_name: e.target.value })}
                         >
@@ -506,7 +507,7 @@ const FormAdvancedRuleModal = ({
                         </select>
 
                         <select
-                          className={`w-52 p-2.5 border ${errors[`block-${idx}-condition`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+                          className={`w-full p-2.5 border ${errors[`block-${idx}-condition`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
                           value={block.condition}
                           onChange={(e) => handleBlockChange(idx, { condition: e.target.value as RuleCondition })}
                         >
@@ -538,7 +539,7 @@ const FormAdvancedRuleModal = ({
                           return (
                             <div key={outIdx} className="flex gap-3 items-center">
                               <select
-                                className="w-52 p-2.5 border border-gray-300 rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100"
+                                className="w-full p-2.5 border border-gray-300 rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100"
                                 value={output.action}
                                 onChange={(e) => handleOutputChange(idx, outIdx, "action", e.target.value)}
                               >

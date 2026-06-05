@@ -265,6 +265,7 @@
         "formName": "Nombre del formulario",
         "apiName": "Nombre API",
         "projectType": "Tipo de proyecto",
+        "installationType": "Tipo de instalación",
         "status": "Estado",
         "created": "Creado",
         "updated": "Actualizado"
@@ -283,8 +284,15 @@
         "loadingProjectTypes": "Cargando tipos de proyecto...",
         "selectProjectType": "Seleccionar tipo de proyecto",
         "searchProjectTypes": "Buscar tipos de proyecto",
-        "noProjectTypes": "No se encontraron tipos de proyecto."
+        "noProjectTypes": "No se encontraron tipos de proyecto.",
+        "loadingInstallationTypes": "Cargando tipos de instalación...",
+        "searchInstallationTypes": "Buscar tipos de instalación",
+        "installationTypesList": "Tipos de instalación",
+        "selectInstallationTypeAria": "Seleccionar tipo de instalación",
+        "selectInstallationType": "Seleccionar tipo de instalación",
+        "noInstallationTypes": "No se encontraron tipos de instalación."
       },
+      "installationTypesLoadError": "No se pudieron cargar los tipos de instalación. Inténtalo de nuevo.",
       "statusUpdatedToast": "Estado del formulario actualizado correctamente",
       "statusUpdateErrorToast": "No se pudo actualizar el estado del formulario. Inténtalo de nuevo."
     },

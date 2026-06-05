@@ -372,6 +372,7 @@ export default function FormBuilderLayout({
     : rawPurpose === "edit_project_job_form"
       ? "edit__project_form"
       : rawPurpose;
+  const installationTypeId = searchParams.get("installation_type_id") || undefined;
   const router = useRouter();
   const params = useParams();
   const routeModuleId = params?.id as string;
@@ -977,6 +978,7 @@ export default function FormBuilderLayout({
           .map((sec) => {
             return {
               id: Number(sec.id) || sec.id,
+              is_custom: sec.is_custom,
               fields: [],
             };
           });
@@ -1105,9 +1107,11 @@ export default function FormBuilderLayout({
         // they need without reading from the URL themselves.
         const handlerCtx = {
           purpose,
+          rawPurpose,
           targetModule,
           resolvedLayoutId,
           projectTypeId,
+          installationTypeId,
         };
 
         // Step 1: POST /api/v1/forms/ for create, PUT /api/v1/forms/{formId}/ for edit.

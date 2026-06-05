@@ -71,9 +71,9 @@ export const projectJobFormHandlers: FormBuilderApiHandlers = {
   createSections: async (
     formId: string | number,
     sections: any,
-    _ctx: HandlerContext,
+    ctx: HandlerContext,
   ): Promise<any> => {
-    return createProjectJobFormSections(formId, sections);
+    return createProjectJobFormSections(formId, sections, ctx.rawPurpose);
   },
 
   /**

@@ -177,9 +177,9 @@ export default function DynamicFieldPreview({
           : "border-dotted border-2"
       } flex items-center justify-between bg-gray-50 dark:bg-slate-800 rounded-[4px] border-gray-300 dark:border-slate-600 px-5 py-3 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-md transition-all cursor-pointer`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex  items-center gap-3">
         <div className="font-medium text-gray-800 dark:text-gray-100 flex flex-col">
-          <span className="flex items-center gap-2">
+          <span className="flex flex-col lg:flex-row items-center gap-2">
             {field.field_label || "Untitled Field"}
             {field.api_name && (
               <span className="text-[11px] font-normal text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-slate-700 px-1.5 py-0.5 rounded border border-gray-200 dark:border-slate-600">

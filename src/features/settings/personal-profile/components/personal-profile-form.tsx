@@ -246,7 +246,7 @@ const PersonalProfileForm = ({
             onSubmit={handleSubmit(handleActualSubmit)}
         >
             {/* Header / Basic Info Summary */}
-            <div className="flex w-full border border-gray-200 rounded-xl shadow-sm p-5 bg-white gap-6 items-center dark:bg-slate-800 dark:border-slate-700">
+            <div className="flex w-full border border-gray-200 rounded-xl shadow-sm p-5 bg-white gap-6 items-center dark:bg-slate-900 dark:border-slate-700">
                 <ProfilePictureUploader
                     image={image}
                     setImage={setImage}

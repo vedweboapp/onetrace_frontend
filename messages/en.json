@@ -265,6 +265,7 @@
         "formName": "Form Name",
         "apiName": "API Name",
         "projectType": "Project Type",
+        "installationType": "Installation Type",
         "status": "Status",
         "created": "Created",
         "updated": "Updated"
@@ -283,8 +284,15 @@
         "loadingProjectTypes": "Loading project types...",
         "selectProjectType": "Select project type",
         "searchProjectTypes": "Search project types",
-        "noProjectTypes": "No project types found."
+        "noProjectTypes": "No project types found.",
+        "loadingInstallationTypes": "Loading installation types...",
+        "searchInstallationTypes": "Search installation types",
+        "installationTypesList": "Installation Types",
+        "selectInstallationTypeAria": "Select installation type",
+        "selectInstallationType": "Select an installation type",
+        "noInstallationTypes": "No installation types found."
       },
+      "installationTypesLoadError": "Failed to load installation types. Please try again.",
       "statusUpdatedToast": "Form status updated successfully",
       "statusUpdateErrorToast": "Failed to update form status. Please try again."
     },
@@ -1288,7 +1296,6 @@
         "loadError": "Could not load this composite item.",
         "backAria": "Back to quote scope",
         "repeatBadge": "Included ×{count}",
-      
         "includedTimes": "Times on quote",
         "packagePrice": "Package price",
         "scopeLineTotal": "Line total on quote",
@@ -1296,7 +1303,7 @@
         "sectionComponents": "Package contents",
         "colQtyPerPackage": "Qty / package",
         "colQtyInScope": "Qty",
-        "colProductName":"Product Name",
+        "colProductName": "Product Name",
         "colUnitPrice": "Unit price",
         "colLineTotal": "total",
         "noComponents": "No component items defined for this package."
@@ -1780,7 +1787,6 @@
       "fields": {
         "title": "Title",
         "description": "Description",
-      
         "client": "Client",
         "project": "Project",
         "site": "Site",
@@ -1925,7 +1931,7 @@
           "approvals": "Approvals",
           "pins": "Pins"
         },
-        "pinsTableHeaders":{
+        "pinsTableHeaders": {
           "location": "Location",
           "drawing": "Drawing",
           "plot": "Plot",

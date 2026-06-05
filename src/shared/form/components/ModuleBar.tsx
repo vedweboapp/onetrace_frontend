@@ -65,7 +65,7 @@ const ModuleBar: React.FC = () => {
     
       {/* Scrollable field list */}
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2 grid-cols-2">
           {FormFieldsSchema?.map((item: any, index: number) => (
             <React.Fragment key={index}>
               {item.component}
