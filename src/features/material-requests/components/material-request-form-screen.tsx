@@ -186,6 +186,7 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
         if (cancelled) return;
         const defaults = materialRequestToFormDefaults(row);
         reset(defaults);
+        prevWorkerRef.current = defaults.worker_name;
 
         const jobIds = defaults.jobs
           .map((j) => Number.parseInt(j.job, 10))
@@ -199,15 +200,17 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
           setSelectedJobsById(byId);
         }
 
-        for (const line of row.items ?? []) {
-          const item = line.item;
-          if (item && typeof item === "object" && item.name?.trim()) {
-            setItemLabelById((prev) => ({
-              ...prev,
-              [item.id]: item.name!.trim(),
-            }));
+        setItemLabelById((prev) => {
+          const next = { ...prev };
+          for (const line of row.items ?? []) {
+            const item = line.item;
+            if (item && typeof item === "object" && item.id > 0) {
+              const label = item.name?.trim();
+              if (label) next[item.id] = label;
+            }
           }
-        }
+          return next;
+        });
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
       } finally {
@@ -272,7 +275,11 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
           ? await updateMaterialRequest(materialRequestId, payload)
           : await createMaterialRequest(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(`${safeBack}/${saved.id}?back=${encodeURIComponent(safeBack)}`);
+      if (isEdit) {
+        router.replace(`${safeBack}/${saved.id}?back=${encodeURIComponent(safeBack)}`);
+      } else {
+        router.replace(safeBack);
+      }
     } finally {
       setSaving(false);
     }

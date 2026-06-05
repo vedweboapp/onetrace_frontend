@@ -41,7 +41,7 @@ export function MaterialRequestDetailTimeline({ materialRequestId, dateFmt }: Pr
 
   return (
     <DetailPagePadding>
-      <DetailPanelCard title={t("detail.sectionLogs")}>
+      <DetailPanelCard title={t("detail.sectionActivityTimeline")}>
         {loading ? (
           <p className="text-sm text-slate-500">{t("detail.loadingTitle")}</p>
         ) : error ? (

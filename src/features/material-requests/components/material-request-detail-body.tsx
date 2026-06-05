@@ -3,10 +3,11 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { fetchItemsPage } from "@/features/items/api/item.api";
 import type { MaterialRequestDetail } from "@/features/material-requests/types/material-request.types";
 import { MaterialRequestStatusBadge } from "@/features/material-requests/components/material-request-status-badge";
 import {
-  formatMaterialRequestDispatchedLabel,
+  materialRequestDispatchedDisplay,
   materialRequestItemGroupName,
   materialRequestItemJobTitle,
   materialRequestItemPendingQty,
@@ -17,6 +18,7 @@ import {
   materialRequestJobTitle,
   materialRequestWorkerLabel,
 } from "@/features/material-requests/utils/material-request-nested-fields.util";
+import { DispatchedQuantityCell } from "@/shared/components/quantity/dispatched-quantity-cell";
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
 import {
   DetailMetricCard,
@@ -47,6 +49,33 @@ export function MaterialRequestDetailBody({ detail, workerName, dateFmt, dueFmt,
   const extraItems = detail.extra_dispatch_items ?? [];
   const dispatchIds = detail.dispatch_ids ?? [];
   const showRestockedColumn = (detail.items ?? []).some((row) => materialRequestItemRestockedQty(row) > 0);
+  const [itemLabelById, setItemLabelById] = React.useState<Record<number, string>>({});
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetchItemsPage(1, 500, { isActive: true });
+        if (cancelled) return;
+        const labels: Record<number, string> = {};
+        for (const item of res.items) {
+          labels[item.id] = item.name?.trim() || item.sku?.trim() || `#${item.id}`;
+        }
+        setItemLabelById(labels);
+      } catch {
+        if (!cancelled) setItemLabelById({});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function extraItemLabel(itemId: number, itemName?: string | null): string {
+    const fromRow = itemName?.trim();
+    if (fromRow) return fromRow;
+    return itemLabelById[itemId] ?? `#${itemId}`;
+  }
 
   return (
     <DetailPagePadding className="space-y-6">
@@ -128,7 +157,7 @@ export function MaterialRequestDetailBody({ detail, workerName, dateFmt, dueFmt,
                     product && typeof product === "object" && product.id > 0 ? `SKU: ${product.id}` : null;
                   const meta = [groupName !== "—" ? groupName : null, sku].filter(Boolean).join(" • ");
                   const requested = materialRequestItemRequestedQty(row);
-                  const dispatchedLabel = formatMaterialRequestDispatchedLabel(row);
+                  const dispatchedParts = materialRequestDispatchedDisplay(row);
                   const pending = materialRequestItemPendingQty(row);
                   const restocked = materialRequestItemRestockedQty(row);
                   return (
@@ -145,9 +174,12 @@ export function MaterialRequestDetailBody({ detail, workerName, dateFmt, dueFmt,
                       <td className="px-3 py-3 text-right tabular-nums font-medium">
                         {requested.toFixed(0)} {t("lineItems.units")}
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums">
-                        <span>{dispatchedLabel}</span>
-                        <span className="text-slate-500 dark:text-slate-400"> {t("lineItems.units")}</span>
+                      <td className="px-3 py-3 text-right">
+                        <DispatchedQuantityCell
+                          fulfilled={dispatchedParts.fulfilled}
+                          surplus={dispatchedParts.surplus}
+                          unitsLabel={t("lineItems.units")}
+                        />
                       </td>
                       <td
                         className={cn(
@@ -186,7 +218,7 @@ export function MaterialRequestDetailBody({ detail, workerName, dateFmt, dueFmt,
                 {extraItems.map((row) => (
                   <tr key={row.id} className="border-b border-slate-100 dark:border-slate-800">
                     <td className="py-3 pr-3 font-medium text-slate-900 dark:text-slate-100">
-                      {row.item_name?.trim() || `#${row.item}`}
+                      {extraItemLabel(row.item, row.item_name)}
                     </td>
                     <td className="py-3 text-right tabular-nums">
                       {row.quantity.toFixed(0)} {t("lineItems.units")}

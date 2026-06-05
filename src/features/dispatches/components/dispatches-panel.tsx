@@ -169,7 +169,7 @@ export function DispatchesPanel() {
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
             onboarding={{
-              iconName: "jobs",
+              iconName: "items",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
             }}

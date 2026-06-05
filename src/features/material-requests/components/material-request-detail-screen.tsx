@@ -76,7 +76,7 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
   const detailTabs = React.useMemo(
     () => [
       { id: "overview", label: t("detail.tabOverview") },
-      { id: "logs", label: t("detail.tabLogs") },
+      { id: "logs", label: t("detail.tabActivityTimeline") },
     ],
     [t],
   );

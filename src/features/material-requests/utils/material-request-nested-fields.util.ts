@@ -134,14 +134,25 @@ export function materialRequestItemDispatchedSurplus(row: MaterialRequestItemRef
   return Math.max(0, materialRequestItemDispatchedQty(row) - materialRequestItemRequestedQty(row));
 }
 
-/** e.g. `10` or `10 +5` when dispatched exceeds requested. */
-export function formatMaterialRequestDispatchedLabel(row: MaterialRequestItemRef): string {
+export type MaterialRequestDispatchedDisplay = {
+  fulfilled: number;
+  surplus: number;
+};
+
+export function materialRequestDispatchedDisplay(row: MaterialRequestItemRef): MaterialRequestDispatchedDisplay {
   const requested = materialRequestItemRequestedQty(row);
   const dispatched = materialRequestItemDispatchedQty(row);
-  if (dispatched <= 0) return "0";
-  if (dispatched <= requested) return dispatched.toFixed(0);
-  const surplus = dispatched - requested;
-  return `${requested.toFixed(0)} +${surplus.toFixed(0)}`;
+  const fulfilled = dispatched <= 0 ? 0 : Math.min(dispatched, requested);
+  const surplus = Math.max(0, dispatched - requested);
+  return { fulfilled, surplus };
+}
+
+/** @deprecated Prefer materialRequestDispatchedDisplay for split fulfilled/surplus UI. */
+export function formatMaterialRequestDispatchedLabel(row: MaterialRequestItemRef): string {
+  const { fulfilled, surplus } = materialRequestDispatchedDisplay(row);
+  if (fulfilled <= 0 && surplus <= 0) return "0";
+  if (surplus <= 0) return fulfilled.toFixed(0);
+  return `${fulfilled.toFixed(0)} +${surplus.toFixed(0)}`;
 }
 
 export type MaterialRequestDispatchRow = {

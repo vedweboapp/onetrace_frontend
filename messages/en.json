@@ -1573,7 +1573,9 @@
         "tabOverview": "Overview",
         "tabTimeline": "Timeline",
         "tabLogs": "Logs",
+        "tabActivityTimeline": "Activity timeline",
         "sectionLogs": "Activity logs",
+        "sectionActivityTimeline": "Activity timeline",
         "sectionDispatches": "Dispatches",
         "dispatchLink": "View dispatch #{id}",
         "sectionOverview": "Overview",
@@ -1767,7 +1769,11 @@
         "extraItem": "Extra item (not on original request)",
         "viewLine": "Details",
         "actions": "Actions",
-        "restockHistory": "Restock history"
+        "restockHistory": "Restock history",
+        "lineMetaTitle": "Dispatch item details",
+        "lineTitle": "Dispatch item",
+        "lineSubtitle": "From dispatch {dispatch}",
+        "lineBackAria": "Back to dispatch"
       }
     },
     "jobs": {

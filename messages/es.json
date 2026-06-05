@@ -1573,7 +1573,9 @@
         "tabOverview": "Resumen",
         "tabTimeline": "Cronología",
         "tabLogs": "Registros",
+        "tabActivityTimeline": "Cronología de actividad",
         "sectionLogs": "Registro de actividad",
+        "sectionActivityTimeline": "Cronología de actividad",
         "sectionDispatches": "Envíos",
         "dispatchLink": "Ver envío #{id}",
         "sectionOverview": "Resumen",
@@ -1767,7 +1769,11 @@
         "extraItem": "Ítem extra (no estaba en la solicitud)",
         "viewLine": "Detalle",
         "actions": "Acciones",
-        "restockHistory": "Historial de reposición"
+        "restockHistory": "Historial de reposición",
+        "lineMetaTitle": "Detalle del material enviado",
+        "lineTitle": "Material enviado",
+        "lineSubtitle": "Del envío {dispatch}",
+        "lineBackAria": "Volver al envío"
       }
     },
     "jobs": {

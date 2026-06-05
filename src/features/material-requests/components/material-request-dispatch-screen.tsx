@@ -24,6 +24,7 @@ import { toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
+import { DispatchedQuantityCell } from "@/shared/components/quantity/dispatched-quantity-cell";
 import { AppButton, CheckmarkSelect, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
 
 type LineDraft = {
@@ -272,7 +273,13 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
                               {row.materialName}
                             </td>
                             <td className="px-3 py-3 text-right tabular-nums">{row.requested.toFixed(0)}</td>
-                            <td className="px-3 py-3 text-right tabular-nums">{row.alreadyDispatched.toFixed(0)}</td>
+                            <td className="px-3 py-3 text-right">
+                              <DispatchedQuantityCell
+                                fulfilled={Math.min(row.alreadyDispatched, row.requested)}
+                                surplus={Math.max(0, row.alreadyDispatched - row.requested)}
+                                unitsLabel={t("lineItems.units")}
+                              />
+                            </td>
                             <td className="px-3 py-3 text-right tabular-nums">{row.pending.toFixed(0)}</td>
                             <td className="px-3 py-3 text-right">
                               <div className="inline-flex items-center justify-end gap-1.5">
@@ -286,8 +293,8 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
                                   onChange={(e) => updateLineQty(row.line_key, e.target.value)}
                                 />
                                 {surplusPreview ? (
-                                  <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                                    {surplusPreview}
+                                  <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                                    {surplusPreview} {t("lineItems.units")}
                                   </span>
                                 ) : null}
                               </div>

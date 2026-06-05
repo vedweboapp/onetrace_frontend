@@ -17,7 +17,6 @@ type Props = {
 
 export function DispatchDetailScreen({ dispatchId }: Props) {
   const t = useTranslations("Dashboard.dispatches");
-  const [liveDetail, setLiveDetail] = React.useState<DispatchDetail | null>(null);
   const dueFmt = React.useMemo(
     () =>
       new Intl.DateTimeFormat(undefined, {
@@ -27,10 +26,6 @@ export function DispatchDetailScreen({ dispatchId }: Props) {
       }),
     [],
   );
-
-  React.useEffect(() => {
-    setLiveDetail(null);
-  }, [dispatchId]);
 
   return (
     <EntityDetailScreen<DispatchDetail>
@@ -46,18 +41,14 @@ export function DispatchDetailScreen({ dispatchId }: Props) {
       fetch={fetchDispatch}
       getTitle={(detail) => detail.dispatch_number}
     >
-      {({ detail, dateFmt }) => {
-        const active = liveDetail?.id === detail.id ? liveDetail : detail;
-        return (
-          <DispatchDetailBody
-            detail={active}
-            dateFmt={dateFmt}
-            dueFmt={dueFmt}
-            statusLabel={dispatchStatusLabel(t, active.status)}
-            onDetailChange={setLiveDetail}
-          />
-        );
-      }}
+      {({ detail, dateFmt }) => (
+        <DispatchDetailBody
+          detail={detail}
+          dateFmt={dateFmt}
+          dueFmt={dueFmt}
+          statusLabel={dispatchStatusLabel(t, detail.status)}
+        />
+      )}
     </EntityDetailScreen>
   );
 }
