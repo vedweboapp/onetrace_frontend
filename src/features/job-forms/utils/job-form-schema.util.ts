@@ -6,6 +6,7 @@ import type {
 
 function normalizeField(raw: Record<string, unknown>, index: number): NormalizedFormField {
   const properties = (raw.properties as Record<string, unknown> | undefined) ?? {};
+  const validation = (raw.validation as Record<string, unknown> | undefined) ?? {};
   const validationRules =
     (properties.validation_rules as Record<string, unknown> | undefined) ?? {};
 
@@ -13,6 +14,16 @@ function normalizeField(raw: Record<string, unknown>, index: number): Normalized
     raw.editor_type ??
     validationRules.editorType ??
     validationRules.editor_type;
+
+  const isRequired =
+    raw.required === true ||
+    properties.is_required === true ||
+    validation.is_required === true;
+
+  const isReadOnly =
+    raw.readOnly === true ||
+    properties.is_readonly === true ||
+    validation.is_readonly === true;
 
   return {
     ...raw,
@@ -22,8 +33,16 @@ function normalizeField(raw: Record<string, unknown>, index: number): Normalized
     field_type: String(raw.field_type ?? raw.type ?? "single_line"),
     order: (raw.order ?? raw.sequence ?? index) as number,
     editor_type: editorType,
-    options: raw.options ?? [],
-    readOnly: raw.readOnly === true,
+    options: Array.isArray(raw.options) ? raw.options : [],
+    placeholder:
+      typeof raw.placeholder === "string"
+        ? raw.placeholder
+        : typeof properties.placeholder === "string"
+          ? properties.placeholder
+          : undefined,
+    help_text: typeof raw.help_text === "string" ? raw.help_text : undefined,
+    required: isRequired,
+    readOnly: isReadOnly,
   };
 }
 

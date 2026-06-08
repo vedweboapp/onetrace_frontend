@@ -60,7 +60,7 @@ export function JobFormsSection({ jobId, forms, backHref }: Props) {
         {forms.map((form) => {
           const submission = submissionByFormId.get(form.id);
           const label = form.name?.trim() || `#${form.id}`;
-          const href = `${routes.dashboard.jobFormFill(jobId, form.id)}?back=${encodeURIComponent(jobDetailHref)}`;
+          const href = `${routes.dashboard.jobFormFill(jobId, form.id)}&name=${encodeURIComponent(label)}&back=${encodeURIComponent(jobDetailHref)}`;
 
           return (
             <li key={form.id}>

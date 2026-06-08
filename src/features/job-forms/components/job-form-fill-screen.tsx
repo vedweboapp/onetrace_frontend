@@ -70,19 +70,32 @@ export function JobFormFillScreen({ jobId, formId, formNameHint }: Props) {
   const readOnly = uiMode === "view";
   const rendererKey = `${uiMode}-${previewLayout}-${submission?.id ?? "new"}`;
 
+  function formPageQuery(extra?: { mode?: string | null }) {
+    const params = new URLSearchParams();
+    params.set("formId", String(formId));
+    params.set("back", safeBack);
+    if (formNameHint?.trim()) params.set("name", formNameHint.trim());
+    if (extra?.mode) params.set("mode", extra.mode);
+    return `${pathname}?${params.toString()}`;
+  }
+
   const load = React.useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const [schema, submittedRows] = await Promise.all([
-        fetchJobFormSchema(formId),
-        fetchJobSubmittedForms(jobId),
-      ]);
+      const schema = await fetchJobFormSchema(formId);
       const maps = buildFieldMaps(schema.sections);
       setFieldMaps(maps);
       setFormTitle(schema.name?.trim() || formNameHint?.trim() || t("untitledForm"));
       setSchemaSections(schema.sections);
       setRules((schema.rules ?? []) as FormRule[]);
+
+      let submittedRows: Awaited<ReturnType<typeof fetchJobSubmittedForms>> = [];
+      try {
+        submittedRows = await fetchJobSubmittedForms(jobId);
+      } catch {
+        submittedRows = [];
+      }
 
       const existing =
         submittedRows.find((row) => row.job_form_id === formId || row.form_id === formId) ?? null;
@@ -150,7 +163,7 @@ export function JobFormFillScreen({ jobId, formId, formNameHint }: Props) {
       );
       toastSuccess(submission ? t("updatedToast") : t("submittedToast"));
       if (modeParam === "edit") {
-        router.replace(`${pathname}?back=${encodeURIComponent(safeBack)}`);
+        router.replace(formPageQuery());
       }
     } catch {
       toastError(t("submitError"));
@@ -158,12 +171,12 @@ export function JobFormFillScreen({ jobId, formId, formNameHint }: Props) {
   });
 
   function enterEditMode() {
-    router.push(`${pathname}?mode=edit&back=${encodeURIComponent(safeBack)}`);
+    router.push(formPageQuery({ mode: "edit" }));
   }
 
   function cancelEdit() {
     if (submission) {
-      router.replace(`${pathname}?back=${encodeURIComponent(safeBack)}`);
+      router.replace(formPageQuery());
       setDefaultValues(
         mapSubmissionValuesToFormDefaults(
           submission.values,

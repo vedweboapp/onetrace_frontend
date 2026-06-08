@@ -14,7 +14,7 @@ export const routes = {
     invoices: "/dashboard/invoices",
     jobs: "/dashboard/jobs",
     jobFormFill: (jobId: number | string, formId: number | string) =>
-      `/dashboard/jobs/${jobId}/forms/${formId}`,
+      `/dashboard/jobs/${jobId}/form?formId=${formId}`,
     qrCodes: "/dashboard/qr-codes",
     projects: "/dashboard/projects",
     groups: "/dashboard/groups",
