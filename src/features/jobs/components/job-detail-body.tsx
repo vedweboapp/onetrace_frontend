@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import type { Job } from "@/features/jobs/types/job.types";
+import { JobFormsSection } from "@/features/job-forms/components/job-forms-section";
 import {
   getJobStatusRow,
   jobAssignedWorkerLabel,
@@ -148,23 +149,11 @@ export function JobDetailBody({
               )}
             </DetailMetricCard>
           </DetailMetricsGrid>
-          {formEntries.length > 0 ? (
-            <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {t("fields.forms")}
-              </p>
-              <ul className="flex flex-wrap gap-2">
-                {formEntries.map((form) => (
-                  <li
-                    key={form.id}
-                    className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100"
-                  >
-                    {form.name?.trim() || `#${form.id}`}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+          <JobFormsSection
+            jobId={detail.id}
+            forms={formEntries}
+            backHref={`${routes.dashboard.jobs}/${detail.id}`}
+          />
         </DetailPanelCard>
 
         {meta && (meta.total != null || compositeRows.length > 0) ? (

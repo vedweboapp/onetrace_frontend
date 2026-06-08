@@ -45,18 +45,9 @@ export function createMaterialRequestFormSchema(messages: MaterialRequestFormMes
 
       let validItemCount = 0;
       data.items.forEach((row, index) => {
-        const jobId = row.job.trim();
         const itemId = row.item.trim();
         const qtyRaw = row.quantity.trim();
-        if (!jobId && !itemId && !qtyRaw) return;
-        if (!/^\d+$/.test(jobId)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["items", index, "job"],
-            message: messages.job,
-          });
-          return;
-        }
+        if (!itemId && !qtyRaw) return;
         if (!/^\d+$/.test(itemId)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,

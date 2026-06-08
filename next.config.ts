@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 import { DISPATCH_USE_MOCK } from "./src/features/dispatches/api/dispatch.mock.config";
+import { MATERIAL_STATUS_USE_MOCK } from "./src/features/material-status/api/material-status.mock.config";
 import { MATERIAL_REQUEST_USE_MOCK } from "./src/features/material-requests/api/material-request.mock.config";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
@@ -29,6 +30,7 @@ const nextConfig: NextConfig = {
       MATERIAL_REQUEST_USE_MOCK ? "material-requests" : null,
       DISPATCH_USE_MOCK ? "dispatches" : null,
       DISPATCH_USE_MOCK ? "dispatch-return-requests" : null,
+      MATERIAL_STATUS_USE_MOCK ? "material-status" : null,
     ].filter(Boolean) as string[];
     const source =
       mockPrefixes.length > 0

@@ -14,23 +14,17 @@ import {
   resolveWorkerReturnDateRange,
 } from "@/features/dispatches/utils/worker-return-date.util";
 
+import {
+  aggregatedDispatchReturnLinesToApi,
+  aggregateDispatchReturnLines,
+  extraQuantityPool,
+  extraReturnedForLine,
+  extraReturnableForLine,
+  isLineReturnableAsExtra,
+} from "@/features/dispatches/utils/dispatch-line-aggregate.util";
+
 export function buildDispatchReturnItems(detail: DispatchDetail): DispatchReturnItemsData {
-  const lines: DispatchReturnItem[] = detail.lines
-    .map((line) => {
-      const returnable = Math.max(0, line.dispatched_quantity - line.restocked_quantity);
-      return {
-        line_id: line.id,
-        item_id: line.item.id,
-        item_name: line.item.name?.trim() || null,
-        job_name: line.job?.title?.trim() || null,
-        worker_name: line.worker_name ?? detail.worker_name,
-        dispatched_quantity: line.dispatched_quantity,
-        returned_quantity: line.restocked_quantity,
-        returnable_quantity: returnable,
-        is_extra: line.is_extra,
-      };
-    })
-    .filter((row) => row.returnable_quantity > 0);
+  const lines = aggregatedDispatchReturnLinesToApi(aggregateDispatchReturnLines(detail));
 
   return {
     dispatch_id: detail.id,
@@ -134,11 +128,14 @@ export function buildWorkerReturnMaterials(
     }
 
     for (const line of detail.lines) {
-      const returnable = Math.max(0, line.dispatched_quantity - line.restocked_quantity);
+      if (!isLineReturnableAsExtra(line)) continue;
+
       const pendingRequest = pendingQtyForLine(pendingRequests, detail.id, line.id);
-      const available = Math.max(0, returnable - pendingRequest);
+      const available = extraReturnableForLine(line, pendingRequest);
       if (available <= 0) continue;
 
+      const extraPool = extraQuantityPool(line);
+      const extraReturned = extraReturnedForLine(line);
       const mrId = line.is_extra ? 0 : detail.material_request_id;
       const groupKey = aggregateGroupKey(line.item.id, line.is_extra, mrId);
       const existing = groupMap.get(groupKey);
@@ -150,8 +147,8 @@ export function buildWorkerReturnMaterials(
       };
 
       if (existing) {
-        existing.dispatched_quantity += line.dispatched_quantity;
-        existing.returned_quantity += line.restocked_quantity;
+        existing.dispatched_quantity += extraPool;
+        existing.returned_quantity += extraReturned;
         existing.returnable_quantity += available;
         existing.pending_request_quantity += pendingRequest;
         existing.sources.push(source);
@@ -163,8 +160,8 @@ export function buildWorkerReturnMaterials(
           material_request_id: line.is_extra ? null : detail.material_request_id,
           material_request_number: line.is_extra ? null : detail.material_request_number,
           is_extra: line.is_extra,
-          dispatched_quantity: line.dispatched_quantity,
-          returned_quantity: line.restocked_quantity,
+          dispatched_quantity: extraPool,
+          returned_quantity: extraReturned,
           returnable_quantity: available,
           pending_request_quantity: pendingRequest,
           sources: [source],

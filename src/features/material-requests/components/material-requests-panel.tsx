@@ -9,6 +9,7 @@ import {
   fetchAllMaterialRequestIds,
   fetchMaterialRequestsPage,
 } from "@/features/material-requests/api/material-request.api";
+import { useMaterialStatusCatalog } from "@/features/material-status/hooks/use-material-status-catalog";
 import { MaterialRequestStatusBadge } from "@/features/material-requests/components/material-request-status-badge";
 import type { MaterialRequestListItem } from "@/features/material-requests/types/material-request.types";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
@@ -17,7 +18,6 @@ import {
   materialRequestJobLabel,
   materialRequestWorkerLabel,
   nestedId,
-  normalizeMaterialRequestStatus,
 } from "@/features/material-requests/utils/material-request-nested-fields.util";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -98,28 +98,8 @@ export function MaterialRequestsPanel() {
   const [workerOptions, setWorkerOptions] = React.useState<{ value: string; label: string }[]>([]);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
-
-  const statusFilterOptions = React.useMemo(
-    () => [
-      { value: "draft", label: t("status.draft") },
-      { value: "pending", label: t("status.pending") },
-      { value: "partially_dispatched", label: t("status.partiallyDispatched") },
-      { value: "dispatched", label: t("status.dispatched") },
-    ],
-    [t],
-  );
-
-  const statusLabel = React.useCallback(
-    (code: string | null | undefined) => {
-      const norm = normalizeMaterialRequestStatus(code);
-      if (norm === "draft") return t("status.draft");
-      if (norm === "pending") return t("status.pending");
-      if (norm === "partially_dispatched" || norm === "partial") return t("status.partiallyDispatched");
-      if (norm === "dispatched") return t("status.dispatched");
-      return code?.trim() || "—";
-    },
-    [t],
-  );
+  const { options: statusFilterOptions, labelFor: statusLabel, rowFor: statusRowFor } =
+    useMaterialStatusCatalog();
 
   const openCreate = React.useCallback(() => {
     router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
@@ -270,7 +250,11 @@ export function MaterialRequestsPanel() {
       ),
       c.tabular("items", t("table.items"), (r) => String(materialRequestItemsCount(r))),
       c.custom("status", t("table.status"), (r) => (
-        <MaterialRequestStatusBadge status={r.status} label={statusLabel(r.status)} />
+        <MaterialRequestStatusBadge
+          status={r.status}
+          label={statusLabel(r.status)}
+          statusRow={statusRowFor(r.status)}
+        />
       )),
       c.actions("actions", tList("openRowActions"), (row) => (
         <DataTableRowActionsMenu
@@ -279,7 +263,7 @@ export function MaterialRequestsPanel() {
         />
       )),
     ];
-  }, [t, tList, dateFmt, workerLabelById, statusLabel, openEdit, massSel.tableColumn]);
+  }, [t, tList, dateFmt, workerLabelById, statusLabel, statusRowFor, openEdit, massSel.tableColumn]);
 
   return (
     <div className="space-y-4">
@@ -421,7 +405,11 @@ export function MaterialRequestsPanel() {
                             <Package className="size-3.5 shrink-0" aria-hidden />
                             <span>{t("card.items", { count: itemsCount })}</span>
                           </span>
-                          <MaterialRequestStatusBadge status={row.status} label={statusLabel(row.status)} />
+                          <MaterialRequestStatusBadge
+                            status={row.status}
+                            label={statusLabel(row.status)}
+                            statusRow={statusRowFor(row.status)}
+                          />
                         </div>
                       </div>
                     }

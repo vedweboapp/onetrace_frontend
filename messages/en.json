@@ -171,6 +171,7 @@
       "appearance": "Appearance",
       "pinStatus": "Pin statuses",
       "jobStatus": "Job statuses",
+      "materialStatus": "Material statuses",
       "tags": "Tags",
       "projectTypes": "Project types",
       "installationTypes": "Installation types",
@@ -184,7 +185,7 @@
       "customization": {
         "label": "Customization",
         "hubTitle": "Customization",
-        "hubDescription": "Choose what to configure — project types, installation types, pin statuses, job statuses, and tags.",
+        "hubDescription": "Choose what to configure — project types, installation types, pin statuses, job statuses, material statuses, and tags.",
         "items": {
           "projectTypes": {
             "title": "Project types",
@@ -201,6 +202,10 @@
           "jobStatus": {
             "title": "Job statuses",
             "description": "Workflow statuses for jobs."
+          },
+          "materialStatus": {
+            "title": "Material statuses",
+            "description": "Workflow statuses for material requests."
           },
           "tags": {
             "title": "Tags",
@@ -429,6 +434,58 @@
       },
       "deleteConfirmTitle": "Delete this status?",
       "deleteConfirmBody": "Jobs using this status may need to be updated. This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} statuses",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Status updated",
+      "created": "Status created",
+      "deleted": "Status deleted",
+      "hexPlaceholder": "#000000",
+      "validationName": "Enter a status name.",
+      "validationHex": "Use a valid 6-digit hex color (e.g. #E5E7EB)."
+    },
+    "materialStatus": {
+      "metaTitle": "Material statuses",
+      "title": "Material statuses",
+      "subtitle": "Create and manage workflow labels for material requests. Colors are used when displaying status chips across the app.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "table": {
+        "type": "Type",
+        "kindPin": "Pin",
+        "kindJob": "Job",
+        "name": "Name",
+        "tag": "Tag",
+        "status": "Status",
+        "createdBy": "Created by",
+        "createdAt": "Created at",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "empty": "No material statuses yet. Add one to get started.",
+      "emptyTitle": "No material statuses yet",
+      "emptyDescription": "Create workflow labels for material requests used across your workspace.",
+      "loadError": "Could not load material statuses. Try again.",
+      "modal": {
+        "createTitle": "New material status",
+        "editTitle": "Edit",
+        "statusName": "Status name",
+        "bgColour": "Background color",
+        "textColour": "Text color",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this status?",
+      "deleteConfirmBody": "Material requests using this status may need to be updated. This action cannot be undone.",
       "confirmDelete": "Delete",
       "pageLabel": "Showing {start}-{end} of {total} statuses",
       "prev": "Previous",
@@ -1605,7 +1662,8 @@
       "placeholders": {
         "worker": "Select worker",
         "job": "Select job",
-        "item": "Select item"
+        "item": "Select item",
+        "status": "Select status"
       },
       "sections": {
         "general": "General information",
@@ -1759,7 +1817,8 @@
         "source": "Source",
         "sourceExtra": "Extra item",
         "alreadyReturned": "Already returned",
-        "operatorHint": "Select a worker and date range. Items are grouped by material request or extra — each item appears once with total quantity.",
+        "operatorHint": "Select a worker and date range. Only extra items and surplus quantities (dispatched above request) are listed for return.",
+        "surplusQty": "+{qty} surplus",
         "approverHint": "Review pending return requests from operators and confirm to move quantities back into stock.",
         "selectWorker": "Select worker",
         "selectMaterialRequest": "Select material request",
@@ -1783,7 +1842,7 @@
         "completeSuccessToast": "Items returned to stock successfully",
         "noPendingRequests": "No pending return requests.",
         "loadError": "Could not load returnable items. Try again.",
-        "empty": "No returnable materials for the selected filters.",
+        "empty": "No extra or surplus materials to return for the selected filters.",
         "returnable": "Returnable",
         "returnQty": "Return qty",
         "returnType": "Return type",
@@ -1912,6 +1971,33 @@
         "confirm": "Update status",
         "placeholder": "Select status",
         "loading": "Loading statuses…"
+      },
+      "forms": {
+        "sectionTitle": "Forms",
+        "pageTitle": "Job form",
+        "fillSubtitle": "Fill out the form and submit when complete.",
+        "viewSubtitle": "Submitted form details.",
+        "editSubtitle": "Update submitted values and save.",
+        "backAria": "Back to job",
+        "submit": "Submit form",
+        "saveChanges": "Save changes",
+        "edit": "Edit",
+        "cancel": "Cancel",
+        "retry": "Retry",
+        "remarks": "Remarks",
+        "remarksPlaceholder": "Optional notes about this submission",
+        "submittedAt": "Submitted",
+        "statusSubmitted": "Submitted",
+        "statusPending": "Not submitted",
+        "submittedToast": "Form submitted successfully",
+        "updatedToast": "Form updated successfully",
+        "submitError": "Could not submit the form. Try again.",
+        "loadError": "Could not load the form. Try again.",
+        "validationEmpty": "Fill at least one field before submitting.",
+        "emptySchema": "This form has no fields yet.",
+        "untitledForm": "Form",
+        "layoutDesktop": "Desktop",
+        "layoutPhone": "Phone"
       },
       "page": {
         "createTitle": "New job",

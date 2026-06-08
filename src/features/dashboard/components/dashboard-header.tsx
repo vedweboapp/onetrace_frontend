@@ -86,6 +86,7 @@ export function DashboardHeader() {
   const customizationHref = routes.dashboard.settingsCustomization;
   const pinStatusHref = routes.dashboard.settingsPinStatus;
   const jobStatusHref = routes.dashboard.settingsJobStatus;
+  const materialStatusHref = routes.dashboard.settingsMaterialStatus;
   const tagHref = routes.dashboard.settingsTags;
   const projectTypeHref = routes.dashboard.settingsProjectTypes;
   const installationTypeHref = routes.dashboard.settingsInstallationTypes;
@@ -120,6 +121,8 @@ export function DashboardHeader() {
     pathname === pinStatusHref || pathname.startsWith(`${pinStatusHref}/`);
   const jobStatusActive =
     pathname === jobStatusHref || pathname.startsWith(`${jobStatusHref}/`);
+  const materialStatusActive =
+    pathname === materialStatusHref || pathname.startsWith(`${materialStatusHref}/`);
   const tagActive = pathname === tagHref || pathname.startsWith(`${tagHref}/`);
   const projectTypeActive =
     pathname === projectTypeHref || pathname.startsWith(`${projectTypeHref}/`);
@@ -168,7 +171,9 @@ export function DashboardHeader() {
                                   ? tSettingsNav("pinStatus")
                                   : jobStatusActive
                                     ? tSettingsNav("jobStatus")
-                                    : tagActive
+                                    : materialStatusActive
+                                      ? tSettingsNav("materialStatus")
+                                      : tagActive
                                       ? tSettingsNav("tags")
                                       : installationTypeActive
                                         ? tSettingsNav("installationTypes")
