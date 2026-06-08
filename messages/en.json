@@ -1697,7 +1697,8 @@
       },
       "items": {
         "emptyNoJobs": "Add jobs above to load line items from each job's work scope.",
-        "emptyNoMeta": "Selected jobs have no composite items in their work scope."
+        "emptyNoMeta": "Selected jobs have no composite items in their work scope.",
+        "derivedOnSubmit": "Line items are calculated on the server when you submit. View them on the material request detail page after saving."
       },
       "lineItems": {
         "itemName": "Item name",

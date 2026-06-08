@@ -52,7 +52,7 @@ export function JobFormsSection({ jobId, forms, backHref }: Props) {
   if (forms.length === 0) return null;
 
   return (
-    <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
+    <div className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-800">
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
         {t("sectionTitle")}
       </p>
@@ -60,7 +60,7 @@ export function JobFormsSection({ jobId, forms, backHref }: Props) {
         {forms.map((form) => {
           const submission = submissionByFormId.get(form.id);
           const label = form.name?.trim() || `#${form.id}`;
-          const href = `${routes.dashboard.jobFormFill(jobId, form.id)}?back=${encodeURIComponent(jobDetailHref)}`;
+          const href = `${routes.dashboard.jobFormFill(jobId, form.id)}&name=${encodeURIComponent(label)}&back=${encodeURIComponent(jobDetailHref)}`;
 
           return (
             <li key={form.id}>

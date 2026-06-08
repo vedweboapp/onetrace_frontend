@@ -11,8 +11,8 @@ export const detailMapFillClassName = cn(
 );
 
 export const detailMapSideGridClassName = cn(
-  "grid grid-cols-1 gap-4",
-  "lg:grid-cols-[minmax(0,1fr)_minmax(320px,40%)] lg:items-start lg:gap-5",
+  "grid grid-cols-1 gap-3",
+  "lg:grid-cols-[minmax(0,1fr)_minmax(320px,40%)] lg:items-start lg:gap-4",
   "xl:grid-cols-[minmax(0,1fr)_minmax(380px,42%)]",
 );
 
@@ -80,7 +80,7 @@ export function DetailPageMapLayout({
       <div className={cn("order-2 min-w-0 lg:order-1", detailPageStackClassName)}>{children}</div>
       <DetailMapSideColumn title={mapTitle} map={map ?? null} className="order-1 lg:order-2" />
       {footer ? (
-        <div className="order-3 min-w-0 border-t border-slate-200/90 pt-6 dark:border-slate-800 lg:col-span-2">
+        <div className="order-3 min-w-0 border-t border-slate-200/90 pt-4 dark:border-slate-800 lg:col-span-2">
           {footer}
         </div>
       ) : null}

@@ -32,7 +32,7 @@ export function ContactDetailBody({ detail, clientName, dateFmt }: Props) {
   return (
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
-        <DetailPanelCard>
+        <DetailPanelCard title={t("detail.sectionOverview")}>
           <DetailMetricsGrid>
             <DetailStatusMetric
               label={t("fields.status")}

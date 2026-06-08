@@ -1164,10 +1164,7 @@ export default function FormBuilderLayout({
         ) {
           if (deletedRuleIds.length > 0 && rawPurpose === "edit_project_job_form") {
             await api.post(`project-forms/${formId}/rules/mass-delete/`, {
-              rules: deletedRuleIds.map((entry) => ({
-                id: entry.id,
-                template_rule_id: entry.template_rule_id,
-              })),
+              rule_ids: deletedRuleIds.map((entry) => entry.id),
             });
           }
           await apiHandlers.updateForm(formId, finalPayload, handlerCtx);

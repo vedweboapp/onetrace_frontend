@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Monitor, Smartphone } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -27,8 +26,7 @@ import { DetailPageHeader } from "@/shared/components/layout/detail-page-header"
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
-import { AppButton, FieldGroup, SurfaceShell, surfaceTextareaClassName } from "@/shared/ui";
-import { cn } from "@/core/utils/http.util";
+import { AppButton, SurfaceShell } from "@/shared/ui";
 
 type UiMode = "fill" | "view" | "edit";
 
@@ -56,8 +54,6 @@ export function JobFormFillScreen({ jobId, formId, formNameHint }: Props) {
   const [rules, setRules] = React.useState<FormRule[]>([]);
   const [defaultValues, setDefaultValues] = React.useState<Record<string, unknown>>({});
   const [submission, setSubmission] = React.useState<JobFormSubmission | null>(null);
-  const [remarks, setRemarks] = React.useState("");
-  const [previewLayout, setPreviewLayout] = React.useState<"desktop" | "phone">("desktop");
   const [fieldMaps, setFieldMaps] = React.useState(() => buildFieldMaps([]));
 
   const modeParam = searchParams.get("mode");
@@ -68,26 +64,38 @@ export function JobFormFillScreen({ jobId, formId, formNameHint }: Props) {
   }, [submission, modeParam]);
 
   const readOnly = uiMode === "view";
-  const rendererKey = `${uiMode}-${previewLayout}-${submission?.id ?? "new"}`;
+  const rendererKey = `${uiMode}-${submission?.id ?? "new"}`;
+
+  function formPageQuery(extra?: { mode?: string | null }) {
+    const params = new URLSearchParams();
+    params.set("formId", String(formId));
+    params.set("back", safeBack);
+    if (formNameHint?.trim()) params.set("name", formNameHint.trim());
+    if (extra?.mode) params.set("mode", extra.mode);
+    return `${pathname}?${params.toString()}`;
+  }
 
   const load = React.useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const [schema, submittedRows] = await Promise.all([
-        fetchJobFormSchema(formId),
-        fetchJobSubmittedForms(jobId),
-      ]);
+      const schema = await fetchJobFormSchema(formId);
       const maps = buildFieldMaps(schema.sections);
       setFieldMaps(maps);
       setFormTitle(schema.name?.trim() || formNameHint?.trim() || t("untitledForm"));
       setSchemaSections(schema.sections);
       setRules((schema.rules ?? []) as FormRule[]);
 
+      let submittedRows: Awaited<ReturnType<typeof fetchJobSubmittedForms>> = [];
+      try {
+        submittedRows = await fetchJobSubmittedForms(jobId);
+      } catch {
+        submittedRows = [];
+      }
+
       const existing =
         submittedRows.find((row) => row.job_form_id === formId || row.form_id === formId) ?? null;
       setSubmission(existing);
-      setRemarks(existing?.remarks?.trim() ?? "");
 
       const defaults = existing
         ? mapSubmissionValuesToFormDefaults(
@@ -127,7 +135,6 @@ export function JobFormFillScreen({ jobId, formId, formNameHint }: Props) {
       const saved = await submitJobForm(jobId, {
         job_form_id: formId,
         status: "submitted",
-        remarks: remarks.trim() || undefined,
         values,
       });
       const enriched: JobFormSubmission = {
@@ -150,7 +157,7 @@ export function JobFormFillScreen({ jobId, formId, formNameHint }: Props) {
       );
       toastSuccess(submission ? t("updatedToast") : t("submittedToast"));
       if (modeParam === "edit") {
-        router.replace(`${pathname}?back=${encodeURIComponent(safeBack)}`);
+        router.replace(formPageQuery());
       }
     } catch {
       toastError(t("submitError"));
@@ -158,12 +165,12 @@ export function JobFormFillScreen({ jobId, formId, formNameHint }: Props) {
   });
 
   function enterEditMode() {
-    router.push(`${pathname}?mode=edit&back=${encodeURIComponent(safeBack)}`);
+    router.push(formPageQuery({ mode: "edit" }));
   }
 
   function cancelEdit() {
     if (submission) {
-      router.replace(`${pathname}?back=${encodeURIComponent(safeBack)}`);
+      router.replace(formPageQuery());
       setDefaultValues(
         mapSubmissionValuesToFormDefaults(
           submission.values,
@@ -172,7 +179,6 @@ export function JobFormFillScreen({ jobId, formId, formNameHint }: Props) {
           fieldMaps.fieldTypeByFieldId,
         ),
       );
-      setRemarks(submission.remarks?.trim() ?? "");
     } else {
       router.push(safeBack);
     }
@@ -235,7 +241,7 @@ export function JobFormFillScreen({ jobId, formId, formNameHint }: Props) {
         ) : (
           <div className="space-y-6 p-4 sm:p-6">
             {uiMode === "view" && submission ? (
-              <div className="flex flex-wrap gap-4 text-sm text-slate-600 dark:text-slate-400">
+              <div className="text-sm text-slate-600 dark:text-slate-400">
                 <span>
                   {t("submittedAt")}:{" "}
                   <span className="font-medium text-slate-900 dark:text-slate-100">
@@ -244,83 +250,22 @@ export function JobFormFillScreen({ jobId, formId, formNameHint }: Props) {
                       : "—"}
                   </span>
                 </span>
-                {submission.remarks?.trim() ? (
-                  <span>
-                    {t("remarks")}:{" "}
-                    <span className="font-medium text-slate-900 dark:text-slate-100">
-                      {submission.remarks}
-                    </span>
-                  </span>
-                ) : null}
               </div>
             ) : null}
 
-            {!readOnly ? (
-              <FieldGroup label={t("remarks")} htmlFor="job-form-remarks">
-                <textarea
-                  id="job-form-remarks"
-                  rows={2}
-                  value={remarks}
-                  disabled={submitting}
-                  placeholder={t("remarksPlaceholder")}
-                  className={cn(surfaceTextareaClassName, "min-h-[4rem]")}
-                  onChange={(e) => setRemarks(e.target.value)}
+            <div className="w-full rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8 dark:border-slate-700 dark:bg-slate-900">
+              {displaySections.length > 0 ? (
+                <FormRenderer
+                  key={rendererKey}
+                  ref={formRef}
+                  schema={displaySections}
+                  rules={rules}
+                  defaultValues={defaultValues}
+                  renderMode="desktop"
                 />
-              </FieldGroup>
-            ) : null}
-
-            <div className="flex items-center justify-end">
-              <div className="inline-flex rounded-md border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
-                <button
-                  type="button"
-                  className={cn(
-                    "flex h-9 items-center gap-2 rounded px-3 text-sm transition",
-                    previewLayout === "desktop"
-                      ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
-                      : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
-                  )}
-                  onClick={() => setPreviewLayout("desktop")}
-                >
-                  <Monitor className="size-4" aria-hidden />
-                  {t("layoutDesktop")}
-                </button>
-                <button
-                  type="button"
-                  className={cn(
-                    "flex h-9 items-center gap-2 rounded px-3 text-sm transition",
-                    previewLayout === "phone"
-                      ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
-                      : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
-                  )}
-                  onClick={() => setPreviewLayout("phone")}
-                >
-                  <Smartphone className="size-4" aria-hidden />
-                  {t("layoutPhone")}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex w-full justify-center">
-              <div
-                className={cn(
-                  "border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900",
-                  previewLayout === "phone" ? "rounded-[28px] p-4" : "w-full rounded-xl p-6 sm:p-8",
-                )}
-                style={previewLayout === "phone" ? { width: 390, maxWidth: "100%" } : undefined}
-              >
-                {displaySections.length > 0 ? (
-                  <FormRenderer
-                    key={rendererKey}
-                    ref={formRef}
-                    schema={displaySections}
-                    rules={rules}
-                    defaultValues={defaultValues}
-                    renderMode={previewLayout}
-                  />
-                ) : (
-                  <p className="text-sm text-slate-500">{t("emptySchema")}</p>
-                )}
-              </div>
+              ) : (
+                <p className="text-sm text-slate-500">{t("emptySchema")}</p>
+              )}
             </div>
           </div>
         )}

@@ -19,6 +19,7 @@ import {
   DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
+  detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 
@@ -150,7 +151,8 @@ export function InvoiceDetailBody({
   const internalNotes = detail.internal_notes?.trim() || "";
 
   return (
-    <DetailPagePadding className="space-y-6">
+    <DetailPagePadding>
+      <div className={detailPageStackClassName}>
       {activeTab === "overview" ? (
         <>
           <DetailPanelCard title={t("detail.sectionInvoiceDetails")}>
@@ -203,11 +205,9 @@ export function InvoiceDetailBody({
             </DetailPanelCard>
           ) : null}
 
-          <DetailPanelCard>
+          <DetailPanelCard title={t("fields.totalBalance")}>
             <div className="flex items-center justify-between gap-4">
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                {t("fields.totalBalance")}
-              </span>
+              <span className="sr-only">{t("fields.totalBalance")}</span>
               <span className="text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
                 {formatMoneyDisplay(totalBalance, locale)}
               </span>
@@ -273,7 +273,7 @@ export function InvoiceDetailBody({
             </div>
           </DetailPanelCard>
 
-          <DetailPanelCard>
+          <DetailPanelCard title={t("totals.totalAmount")}>
             <div className="ml-auto max-w-xs space-y-2 text-sm">
               <div className="flex justify-between gap-4">
                 <span className="text-slate-600 dark:text-slate-400">{t("totals.subtotal")}</span>
@@ -299,6 +299,7 @@ export function InvoiceDetailBody({
           </DetailPanelCard>
         </>
       )}
+      </div>
     </DetailPagePadding>
   );
 }

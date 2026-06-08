@@ -74,7 +74,7 @@ export function ProjectDetailBody({
   return (
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
-        <DetailPanelCard>
+        <DetailPanelCard title={t("detail.sectionOverview")}>
           <DetailMetricsGrid className="sm:grid-cols-2">
             <DetailStatusMetric
               label={t("table.status")}

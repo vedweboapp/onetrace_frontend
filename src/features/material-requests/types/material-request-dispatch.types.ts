@@ -13,7 +13,10 @@ export type MaterialRequestExtraDispatchItem = {
 };
 
 export type MaterialRequestDispatchLineInput = {
-  line_key: string;
+  /** Per underlying MR line — legacy. */
+  line_key?: string;
+  /** Per product — backend allocates across source lines. */
+  item_id?: number;
   quantity: number;
 };
 

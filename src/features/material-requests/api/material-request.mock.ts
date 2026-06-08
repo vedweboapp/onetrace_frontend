@@ -28,6 +28,14 @@ import {
   resolveMockDispatchedBy,
 } from "@/features/dispatches/utils/dispatch-enrich.util";
 import { materialRequestLineKey } from "@/features/material-requests/utils/material-request-line-key.util";
+import { buildMaterialRequestItemSummaries } from "@/features/material-requests/utils/material-request-summary.util";
+import {
+  allocateMaterialRequestDispatchQuantity,
+} from "@/features/material-requests/utils/material-request-item-aggregate.util";
+import {
+  normalizeJobMeta,
+  resolveJobMetaCompositeItemId,
+} from "@/features/jobs/utils/job-meta-payload.util";
 import {
   createDispatchFromMaterialRequestMock,
   type CreateDispatchLineInput,
@@ -97,7 +105,7 @@ export function applyMaterialRequestMock(detail: MaterialRequestDetail): Materia
 
   const status = record.statusOverride ?? recomputeStatus({ ...detail, items }, record);
 
-  return {
+  const enriched = {
     ...detail,
     status,
     items,
@@ -107,6 +115,11 @@ export function applyMaterialRequestMock(detail: MaterialRequestDetail): Materia
     dispatch_ids: record.dispatchIds,
     restocked_quantity: record.lineRestocked,
     modified_at: detail.modified_at ?? new Date().toISOString(),
+  };
+
+  return {
+    ...enriched,
+    item_summaries: buildMaterialRequestItemSummaries(items),
   };
 }
 
@@ -298,11 +311,59 @@ async function buildJobsFromPayload(
   return jobs;
 }
 
-async function buildItemsFromPayload(
-  payloadItems: MaterialRequestCreatePayload["items"],
+async function buildItemsFromJobs(
+  jobIds: number[],
   itemLabels: Record<number, string>,
   authHeader?: string | null,
 ): Promise<MaterialRequestItemRef[]> {
+  const items: MaterialRequestItemRef[] = [];
+  let lineId = 1;
+
+  for (const jobId of jobIds) {
+    let jobTitle = `Job #${jobId}`;
+    let meta = null;
+    try {
+      const job = await mockBackendFetchJob(jobId, authHeader);
+      if (job) {
+        jobTitle = job.title?.trim() || jobTitle;
+        meta = normalizeJobMeta(job.job_meta as Parameters<typeof normalizeJobMeta>[0]);
+      }
+    } catch {
+      /* use defaults */
+    }
+
+    for (const row of meta?.composite_items ?? []) {
+      const itemId = resolveJobMetaCompositeItemId(row);
+      if (itemId == null) continue;
+      const qty =
+        row.quantity != null && Number.isFinite(row.quantity) && row.quantity > 0 ? row.quantity : 1;
+      const itemName =
+        itemLabels[itemId] ??
+        row.name?.trim() ??
+        (row.item && typeof row.item === "object" ? row.item.name?.trim() : null) ??
+        `Item #${itemId}`;
+
+      items.push({
+        id: lineId++,
+        job: { id: jobId, title: jobTitle },
+        item: { id: itemId, name: itemName, quantity: qty, dispatched_quantity: 0 },
+        quantity: qty,
+        requested_quantity: qty,
+        dispatched_quantity: 0,
+        pending_quantity: qty,
+      });
+    }
+  }
+
+  return items;
+}
+
+async function buildItemsFromPayload(
+  payloadItems: MaterialRequestCreatePayload["items"] | undefined,
+  itemLabels: Record<number, string>,
+  authHeader?: string | null,
+): Promise<MaterialRequestItemRef[]> {
+  if (!payloadItems?.length) return [];
   const jobTitleById = new Map<number, string>();
   const uniqueJobIds = [...new Set(payloadItems.map((row) => row.job))];
   for (const jobId of uniqueJobIds) {
@@ -332,6 +393,13 @@ async function buildItemsFromPayload(
   });
 }
 
+function jobsChanged(payloadJobs: number[] | undefined, existing: MaterialRequestDetail | undefined): boolean {
+  if (!payloadJobs) return false;
+  const nextIds = [...payloadJobs].sort((a, b) => a - b).join(",");
+  const prevIds = (existing?.jobs ?? []).map((j) => j.id).sort((a, b) => a - b).join(",");
+  return nextIds !== prevIds;
+}
+
 async function buildDetailFromPayload(
   payload: MaterialRequestCreatePayload,
   id: number,
@@ -341,7 +409,15 @@ async function buildDetailFromPayload(
   const itemLabels = await loadItemLabels(authHeader);
   const jobIds = payload.jobs?.map((j) => j.job) ?? existing?.jobs?.map((j) => j.id) ?? [];
   const jobs = await buildJobsFromPayload(jobIds, authHeader);
-  const items = await buildItemsFromPayload(payload.items ?? [], itemLabels, authHeader);
+  const payloadJobIds = payload.jobs?.map((j) => j.job);
+  let items: MaterialRequestItemRef[];
+  if (payload.items && payload.items.length > 0) {
+    items = await buildItemsFromPayload(payload.items, itemLabels, authHeader);
+  } else if (existing?.items?.length && !jobsChanged(payloadJobIds, existing)) {
+    items = existing.items;
+  } else {
+    items = await buildItemsFromJobs(jobIds, itemLabels, authHeader);
+  }
   const now = new Date().toISOString();
 
   return {
@@ -421,13 +497,7 @@ export async function updateMaterialRequestMock(
     requested_date: body.requested_date ?? existing.requested_date,
     status: body.status ?? existing.status,
     jobs: body.jobs ?? existing.jobs?.map((j) => ({ job: j.id })) ?? [],
-    items:
-      body.items ??
-      (existing.items ?? []).map((row) => ({
-        job: nestedId(row.job) ?? 0,
-        item: nestedId(row.item) ?? 0,
-        quantity: materialRequestItemRequestedQty(row),
-      })),
+    items: body.items,
     notes: body.notes ?? existing.notes ?? undefined,
   };
 
@@ -450,11 +520,37 @@ export async function dispatchMaterialRequestMock(
   const items = detail.items ?? [];
   let dispatchedUnits = 0;
 
+  const expandedLines: Array<{ line_key: string; quantity: number }> = [];
+
   for (const line of payload.lines) {
     const qty = Math.max(0, line.quantity);
     if (qty <= 0) continue;
-    record.lineDispatched[line.line_key] = (record.lineDispatched[line.line_key] ?? 0) + qty;
-    dispatchedUnits += qty;
+
+    if (line.line_key?.trim()) {
+      expandedLines.push({ line_key: line.line_key.trim(), quantity: qty });
+      continue;
+    }
+
+    if (line.item_id != null && line.item_id > 0) {
+      const sources = items
+        .map((row, index) => {
+          const itemId = nestedId(row.item);
+          if (itemId !== line.item_id) return null;
+          const key = materialRequestLineKey(row, index);
+          const requested = materialRequestItemRequestedQty(row);
+          const dispatched = record.lineDispatched[key] ?? materialRequestItemDispatchedQty(row);
+          const pending = Math.max(0, requested - dispatched);
+          return { lineKey: key, pending, requested, alreadyDispatched: dispatched };
+        })
+        .filter((row): row is NonNullable<typeof row> => row != null);
+
+      expandedLines.push(...allocateMaterialRequestDispatchQuantity(sources, qty));
+    }
+  }
+
+  for (const line of expandedLines) {
+    record.lineDispatched[line.line_key] = (record.lineDispatched[line.line_key] ?? 0) + line.quantity;
+    dispatchedUnits += line.quantity;
   }
 
   const now = new Date().toISOString();
@@ -476,7 +572,7 @@ export async function dispatchMaterialRequestMock(
   if (dispatchedUnits > 0) {
     const dispatchLines: CreateDispatchLineInput[] = [];
 
-    for (const line of payload.lines) {
+    for (const line of expandedLines) {
       const qty = Math.max(0, line.quantity);
       if (qty <= 0) continue;
       const rowIndex = items.findIndex((row, index) => materialRequestLineKey(row, index) === line.line_key);
