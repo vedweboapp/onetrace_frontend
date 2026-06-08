@@ -593,7 +593,7 @@ export default function FormBuilderLayout({
                 ...r.logic,
                 condition: r.logic.condition ? normalizeCondition(r.logic.condition) : undefined,
                 id: r.id ?? r.logic.id,
-                template_rule_id: r.template_rule_id ?? null,
+                template_rule_id: r.template_rule_id ?? r.template_rule ?? null,
               };
               if (r.logic.blocks) {
                 ruleData.blocks = r.logic.blocks.map((b: any) => ({
@@ -607,7 +607,7 @@ export default function FormBuilderLayout({
               ...r,
               _uid: r.uuid || r._uid || `rule-${Date.now()}-${Math.random()}`,
               condition: r.condition ? normalizeCondition(r.condition) : undefined,
-              template_rule_id: r.template_rule_id ?? null,
+              template_rule_id: r.template_rule_id ?? r.template_rule ?? null,
             };
             if (r.blocks) {
               ruleData.blocks = r.blocks.map((b: any) => ({
