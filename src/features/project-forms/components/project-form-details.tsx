@@ -166,7 +166,7 @@ const ProjectFormDetails = () => {
             rows={items}
             onRowClick={(row) =>
               router.push(
-                `${routes.dashboard.settingsProjectForms}/create?purpose=edit__project_form&layout_id=${row.id}`,
+                `${routes.dashboard.settingsProjectForms}/create?purpose=edit_project_form&layout_id=${row.id}`,
               )
             }
           />

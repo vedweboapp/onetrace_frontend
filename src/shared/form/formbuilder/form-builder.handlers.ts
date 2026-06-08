@@ -4,10 +4,13 @@
  */
 export interface HandlerContext {
   purpose: string | null;
+  rawPurpose?: string | null;
   targetModule: string;
   resolvedLayoutId?: string | number;
   /** The project-type route id, only populated for create_project_form flows */
   projectTypeId?: string;
+  /** The installation-type id, only populated for create_project_form flows */
+  installationTypeId?: string;
 }
 
 /**

@@ -18,6 +18,8 @@ import { getProjectFormList, updateProjectForm } from "@/features/project-forms/
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import type { ProjectType } from "@/features/project-types/types/project-type.types";
+import { fetchInstallationTypesPage } from "@/features/installation-types/api/installation-type.api";
+import type { InstallationType } from "@/features/installation-types/types/installation-type.types";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -54,15 +56,25 @@ function textValue(value: unknown): string {
 
 function projectTypeLabel(value: unknown): string {
     const record = asRecord(value);
-    if (!record) return textValue(value) || "â€”";
+    if (!record) return textValue(value) || "—";
     return (
         textValue(record.project_type) ||
         textValue(record.name) ||
         textValue(record.label) ||
-        (record.id != null ? `#${String(record.id)}` : "â€”")
+        (record.id != null ? `#${String(record.id)}` : "—")
     );
 }
 
+function installationTypeLabel(value: unknown): string {
+    const record = asRecord(value);
+    if (!record) return textValue(value) || "—";
+    return (
+        textValue(record.installation_type) ||
+        textValue(record.name) ||
+        textValue(record.label) ||
+        (record.id != null ? `#${String(record.id)}` : "—")
+    );
+}
 function formApiName(row: FormListItem): string {
     return row.api_name || textValue(row.apiName) || "â€”";
 }
@@ -99,6 +111,12 @@ const ProjectTypeFormList = () => {
     const [projectTypesLoading, setProjectTypesLoading] = React.useState(false);
     const [projectTypesError, setProjectTypesError] = React.useState<string | null>(null);
     const [togglingId, setTogglingId] = React.useState<string | number | null>(null);
+
+    // Installation type state
+    const [installationTypes, setInstallationTypes] = React.useState<InstallationType[]>([]);
+    const [installationTypesLoading, setInstallationTypesLoading] = React.useState(false);
+    const [installationTypesError, setInstallationTypesError] = React.useState<string | null>(null);
+    const [selectedInstallationTypeId, setSelectedInstallationTypeId] = React.useState<number | null>(null);
     const [selectedProjectTypeId, setSelectedProjectTypeId] = React.useState<number | null>(null);
 
     React.useEffect(() => {
@@ -175,6 +193,7 @@ const ProjectTypeFormList = () => {
         if (!projectTypeModalOpen) return;
         let cancelled = false;
         (async () => {
+            // Fetch project types
             setProjectTypesLoading(true);
             setProjectTypesError(null);
             try {
@@ -192,6 +211,23 @@ const ProjectTypeFormList = () => {
             } finally {
                 if (!cancelled) setProjectTypesLoading(false);
             }
+
+            // Fetch installation types
+            setInstallationTypesLoading(true);
+            setInstallationTypesError(null);
+            try {
+                const response = await fetchInstallationTypesPage(1, 50, { is_active: true });
+                if (!cancelled) {
+                    setInstallationTypes(Array.isArray(response.items) ? response.items : []);
+                }
+            } catch {
+                if (!cancelled) {
+                    setInstallationTypes([]);
+                    setInstallationTypesError(t("installationTypesLoadError"));
+                }
+            } finally {
+                if (!cancelled) setInstallationTypesLoading(false);
+            }
         })();
         return () => {
             cancelled = true;
@@ -204,12 +240,12 @@ const ProjectTypeFormList = () => {
     }, []);
 
     const continueToCreateForm = React.useCallback(() => {
-        if (!selectedProjectTypeId) return;
+        if (!selectedProjectTypeId || !selectedInstallationTypeId) return;
         setProjectTypeModalOpen(false);
         router.push(
-            `/dashboard/settings/project-type-forms/${selectedProjectTypeId}/create?purpose=create_project_form`,
+            `/dashboard/settings/project-type-forms/${selectedProjectTypeId}/create?purpose=create_project_form&installation_type_id=${selectedInstallationTypeId}`,
         );
-    }, [router, selectedProjectTypeId]);
+    }, [router, selectedProjectTypeId, selectedInstallationTypeId]);
 
     const handleToggleActive = React.useCallback(
         async (row: FormListItem) => {
@@ -243,6 +279,17 @@ const ProjectTypeFormList = () => {
                 }))
                 : [],
         [projectTypes],
+    );
+
+    const installationTypeOptions = React.useMemo<CheckmarkSelectOption[]>(
+        () =>
+            Array.isArray(installationTypes)
+                ? installationTypes.map((inst) => ({
+                    value: String(inst.id),
+                    label: inst.installation_type || `#${inst.id}`,
+                }))
+                : [],
+        [installationTypes],
     );
 
     const pageRange = getListPageRange(pagination);
@@ -284,7 +331,7 @@ const ProjectTypeFormList = () => {
                                     <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.formName")}</th>
                                     <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.apiName")}</th>
                                     <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.projectType")}</th>
-                                    {/* <th className="px-4 py-3 text-center font-semibold text-slate-700 dark:text-slate-300">{t("table.status")}</th> */}
+                                    <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.installationType")}</th>
                                     <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.created")}</th>
                                     <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.updated")}</th>
                                 </tr>
@@ -295,7 +342,7 @@ const ProjectTypeFormList = () => {
                                         key={row.id}
                                         onClick={() =>
                                             router.push(
-                                                `/dashboard/settings/project-type-forms/create?purpose=edit__project_form&layout_id=${row.id}`,
+                                                `/dashboard/settings/project-type-forms/create?purpose=edit_project_form&layout_id=${row.id}`,
                                             )
                                         }
                                         className="cursor-pointer border-b border-slate-100 hover:bg-slate-50/50 dark:border-slate-800 dark:hover:bg-slate-900/30"
@@ -315,39 +362,11 @@ const ProjectTypeFormList = () => {
                                                 {projectTypeLabel(row.project_type)}
                                             </span>
                                         </td>
-                                        {/* <td className="px-4 py-3 text-center">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleToggleActive(row);
-                                                }}
-                                                disabled={togglingId === row.id}
-                                                className="relative inline-flex items-center rounded-full transition-colors"
-                                                role="switch"
-                                                aria-checked={row.is_active}
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={row.is_active || false}
-                                                    onChange={() => {}}
-                                                    disabled={togglingId === row.id}
-                                                    className="sr-only"
-                                                />
-                                                <div
-                                                    className={`h-6 w-11 rounded-full transition-colors ${
-                                                        row.is_active
-                                                            ? "bg-green-500 dark:bg-green-600"
-                                                            : "bg-slate-300 dark:bg-slate-600"
-                                                    } ${togglingId === row.id ? "opacity-50" : ""}`}
-                                                >
-                                                    <div
-                                                        className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform ${
-                                                            row.is_active ? "translate-x-5" : "translate-x-0.5"
-                                                        }`}
-                                                    />
-                                                </div>
-                                            </button>
-                                        </td> */}
+                                        <td className="px-4 py-3">
+                                            <span className="text-slate-600 dark:text-slate-300">
+                                                {installationTypeLabel(row.installation_type)}
+                                            </span>
+                                        </td>
                                         <td className="px-4 py-3">
                                             <div className="block text-slate-500 dark:text-slate-400">
                                                 {row.created_at
@@ -419,7 +438,7 @@ const ProjectTypeFormList = () => {
                         <AppButton
                             type="button"
                             onClick={continueToCreateForm}
-                            disabled={!selectedProjectTypeId}
+                            disabled={!selectedProjectTypeId || !selectedInstallationTypeId}
                         >
                             {t("modal.next")}
                         </AppButton>
@@ -433,29 +452,55 @@ const ProjectTypeFormList = () => {
                         </p>
                     ) : null}
                     <CheckmarkSelect
-                        listLabel={t("modal.projectTypesList")}
-                        buttonAriaLabel={t("modal.selectProjectTypeAria")}
-                        value={selectedProjectTypeId ? String(selectedProjectTypeId) : ""}
-                        onChange={(value) =>
-                            setSelectedProjectTypeId(value ? Number(value) : null)
-                        }
-                        options={projectTypeOptions}
-                        emptyLabel={
-                            projectTypesLoading
-                                ? t("modal.loadingProjectTypes")
-                                : t("modal.selectProjectType")
-                        }
-                        disabled={projectTypesLoading || projectTypesError != null}
-                        searchable
-                        searchPlaceholder={t("modal.searchProjectTypes")}
-                        portaled={false}
-                        side="bottom"
-                        className="w-full"
+                      listLabel={t("modal.projectTypesList")}
+                      buttonAriaLabel={t("modal.selectProjectTypeAria")}
+                      value={selectedProjectTypeId ? String(selectedProjectTypeId) : ""}
+                      onChange={(value) =>
+                        setSelectedProjectTypeId(value ? Number(value) : null)
+                      }
+                      options={projectTypeOptions}
+                      emptyLabel={
+                        projectTypesLoading
+                          ? t("modal.loadingProjectTypes")
+                          : t("modal.selectProjectType")
+                      }
+                      disabled={projectTypesLoading || projectTypesError != null}
+                      searchable
+                      searchPlaceholder={t("modal.searchProjectTypes")}
+                      portaled={false}
+                      side="bottom"
+                      className="w-full"
+                    />
+                    {/* Installation Type Select */}
+                    <CheckmarkSelect
+                      listLabel={t("modal.installationTypesList")}
+                      buttonAriaLabel={t("modal.selectInstallationTypeAria")}
+                      value={selectedInstallationTypeId ? String(selectedInstallationTypeId) : ""}
+                      onChange={(value) =>
+                        setSelectedInstallationTypeId(value ? Number(value) : null)
+                      }
+                      options={installationTypeOptions}
+                      emptyLabel={
+                        installationTypesLoading
+                          ? t("modal.loadingInstallationTypes")
+                          : t("modal.selectInstallationType")
+                      }
+                      disabled={installationTypesLoading || installationTypesError != null}
+                      searchable
+                      searchPlaceholder={t("modal.searchInstallationTypes")}
+                      portaled={false}
+                      side="bottom"
+                      className="w-full mt-2"
                     />
                     {!projectTypesLoading && !projectTypesError && projectTypeOptions.length === 0 ? (
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                            {t("modal.noProjectTypes")}
-                        </p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        {t("modal.noProjectTypes")}
+                      </p>
+                    ) : null}
+                    {!installationTypesLoading && !installationTypesError && installationTypeOptions.length === 0 ? (
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                        {t("modal.noInstallationTypes")}
+                      </p>
                     ) : null}
                 </div>
             </AppModal>

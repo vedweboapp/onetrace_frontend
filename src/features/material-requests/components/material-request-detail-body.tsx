@@ -3,20 +3,15 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import type { MaterialRequestDetail } from "@/features/material-requests/types/material-request.types";
+import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import { MaterialRequestStatusBadge } from "@/features/material-requests/components/material-request-status-badge";
 import {
-  materialRequestDispatchedDisplay,
   materialRequestExtraItemName,
-  materialRequestItemGroupName,
-  materialRequestItemJobTitle,
-  materialRequestItemPendingQty,
-  materialRequestItemProductName,
-  materialRequestItemRequestedQty,
-  materialRequestItemRestockedQty,
   materialRequestJobProjectName,
   materialRequestJobTitle,
   materialRequestWorkerLabel,
 } from "@/features/material-requests/utils/material-request-nested-fields.util";
+import { aggregateMaterialRequestItems } from "@/features/material-requests/utils/material-request-item-aggregate.util";
 import { DispatchedQuantityCell } from "@/shared/components/quantity/dispatched-quantity-cell";
 import {
   quantityTableCellClass,
@@ -41,6 +36,7 @@ type Props = {
   dateFmt: Intl.DateTimeFormat;
   dueFmt: Intl.DateTimeFormat;
   statusLabel: string;
+  statusRow?: Pick<WorkflowColourStatus, "status_name" | "bg_colour" | "text_colour"> | null;
 };
 
 function pendingTone(pending: number, requested: number): string {
@@ -49,11 +45,19 @@ function pendingTone(pending: number, requested: number): string {
   return "font-semibold text-amber-600 dark:text-amber-400";
 }
 
-export function MaterialRequestDetailBody({ detail, workerName, dateFmt, dueFmt, statusLabel }: Props) {
+export function MaterialRequestDetailBody({
+  detail,
+  workerName,
+  dateFmt,
+  dueFmt,
+  statusLabel,
+  statusRow,
+}: Props) {
   const t = useTranslations("Dashboard.materialRequests");
   const extraItems = detail.extra_dispatch_items ?? [];
   const dispatchIds = detail.dispatch_ids ?? [];
-  const showRestockedColumn = (detail.items ?? []).some((row) => materialRequestItemRestockedQty(row) > 0);
+  const aggregatedItems = aggregateMaterialRequestItems(detail.items);
+  const showRestockedColumn = aggregatedItems.some((row) => row.restocked > 0);
 
   return (
     <DetailPagePadding className="space-y-6">
@@ -63,7 +67,7 @@ export function MaterialRequestDetailBody({ detail, workerName, dateFmt, dueFmt,
             {materialRequestWorkerLabel(detail.worker_name, workerName)}
           </DetailMetricCard>
           <DetailMetricCard label={t("fields.status")}>
-            <MaterialRequestStatusBadge status={detail.status} label={statusLabel} />
+            <MaterialRequestStatusBadge status={detail.status} label={statusLabel} statusRow={statusRow} />
           </DetailMetricCard>
           <DetailMetricCard label={t("fields.requestedDate")}>
             {formatFlexibleApiDate(detail.requested_date, dueFmt)}
@@ -116,18 +120,17 @@ export function MaterialRequestDetailBody({ detail, workerName, dateFmt, dueFmt,
       <DetailCollapsibleSection
         title={t("detail.sectionItems")}
         badge={
-          (detail.items ?? []).length > 0 ? (
-            <DetailSectionCountBadge count={(detail.items ?? []).length} />
+          aggregatedItems.length > 0 ? (
+            <DetailSectionCountBadge count={aggregatedItems.length} />
           ) : null
         }
         toggleAriaLabel={t("sections.toggle")}
       >
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-sm">
+          <table className="w-full min-w-[560px] text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
                 <th className="px-3 py-2">{t("lineItems.itemDetails")}</th>
-                <th className="px-3 py-2">{t("lineItems.jobName")}</th>
                 <th className={quantityTableHeaderClass}>{t("dispatch.requested")}</th>
                 <th className={quantityTableHeaderClass}>{t("dispatch.dispatched")}</th>
                 <th className={quantityTableHeaderClass}>{t("dispatch.pending")}</th>
@@ -137,50 +140,39 @@ export function MaterialRequestDetailBody({ detail, workerName, dateFmt, dueFmt,
               </tr>
             </thead>
             <tbody>
-              {(detail.items ?? []).length === 0 ? (
+              {aggregatedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={showRestockedColumn ? 6 : 5} className="px-3 py-6 text-center text-slate-500">
+                  <td colSpan={showRestockedColumn ? 5 : 4} className="px-3 py-6 text-center text-slate-500">
                     {t("lineItems.empty")}
                   </td>
                 </tr>
               ) : (
-                (detail.items ?? []).map((row, index) => {
-                  const product = row.item;
-                  const groupName = materialRequestItemGroupName(row);
-                  const sku =
-                    product && typeof product === "object" && product.id > 0 ? `SKU: ${product.id}` : null;
-                  const meta = [groupName !== "—" ? groupName : null, sku].filter(Boolean).join(" • ");
-                  const requested = materialRequestItemRequestedQty(row);
-                  const dispatchedParts = materialRequestDispatchedDisplay(row);
-                  const pending = materialRequestItemPendingQty(row);
-                  const restocked = materialRequestItemRestockedQty(row);
+                aggregatedItems.map((row) => {
+                  const meta = row.groupName !== "—" ? row.groupName : null;
                   return (
-                    <tr key={row.id ?? index} className="border-b border-slate-100 dark:border-slate-800">
+                    <tr key={row.key} className="border-b border-slate-100 dark:border-slate-800">
                       <td className="px-3 py-3">
-                        <p className="font-medium text-slate-900 dark:text-slate-100">
-                          {materialRequestItemProductName(row)}
-                        </p>
+                        <p className="font-medium text-slate-900 dark:text-slate-100">{row.materialName}</p>
                         {meta ? <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{meta}</p> : null}
                       </td>
-                      <td className="px-3 py-3 text-slate-600 dark:text-slate-400">
-                        {materialRequestItemJobTitle(row)}
-                      </td>
                       <td className={cn(quantityTableCellClass, "font-medium")}>
-                        {requested.toFixed(0)} {t("lineItems.units")}
+                        {row.requested.toFixed(0)} {t("lineItems.units")}
                       </td>
                       <td className={quantityTableCellClass}>
                         <DispatchedQuantityCell
-                          fulfilled={dispatchedParts.fulfilled}
-                          surplus={dispatchedParts.surplus}
+                          fulfilled={row.fulfilled}
+                          surplus={row.surplus}
                           unitsLabel={t("lineItems.units")}
                         />
                       </td>
-                      <td className={cn(quantityTableCellClass, pendingTone(pending, requested))}>
-                        {pending <= 0 ? "—" : `${pending.toFixed(0)} ${t("lineItems.units")}`}
+                      <td className={cn(quantityTableCellClass, pendingTone(row.pending, row.requested))}>
+                        {row.pending.toFixed(0)} {t("lineItems.units")}
                       </td>
                       {showRestockedColumn ? (
                         <td className={cn(quantityTableCellClass, "text-emerald-700 dark:text-emerald-400")}>
-                          {restocked > 0 ? `${restocked.toFixed(0)} ${t("lineItems.units")}` : "—"}
+                          {row.restocked > 0
+                            ? `${row.restocked.toFixed(0)} ${t("lineItems.units")}`
+                            : `0 ${t("lineItems.units")}`}
                         </td>
                       ) : null}
                     </tr>

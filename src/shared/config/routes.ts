@@ -1,5 +1,3 @@
-import { rootCertificates } from "tls";
-
 export const routes = {
   home: "/",
   auth: {
@@ -15,6 +13,8 @@ export const routes = {
     quotations: "/dashboard/quotations",
     invoices: "/dashboard/invoices",
     jobs: "/dashboard/jobs",
+    jobFormFill: (jobId: number | string, formId: number | string) =>
+      `/dashboard/jobs/${jobId}/form?formId=${formId}`,
     qrCodes: "/dashboard/qr-codes",
     projects: "/dashboard/projects",
     groups: "/dashboard/groups",
@@ -26,6 +26,7 @@ export const routes = {
     settings: "/dashboard/settings",
     settingsPinStatus: "/dashboard/settings/pin-status",
     settingsJobStatus: "/dashboard/settings/job-status",
+    settingsMaterialStatus: "/dashboard/settings/material-status",
     settingsTags: "/dashboard/settings/tag",
     settingsProjectTypes: "/dashboard/settings/project-type",
     settingsInstallationTypes: "/dashboard/settings/installation-type",

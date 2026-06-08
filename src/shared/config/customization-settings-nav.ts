@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ListTodo, Plug, Shapes, Tag, Tags } from "lucide-react";
+import { ClipboardList, ListTodo, Plug, Shapes, Tag, Tags } from "lucide-react";
 import { routes } from "@/shared/config/routes";
 
 export type CustomizationSettingsItemId =
@@ -7,6 +7,7 @@ export type CustomizationSettingsItemId =
   | "installationTypes"
   | "pinStatus"
   | "jobStatus"
+  | "materialStatus"
   | "tags";
 
 export type CustomizationSettingsItem = {
@@ -20,6 +21,7 @@ export const CUSTOMIZATION_SETTINGS_ITEMS: CustomizationSettingsItem[] = [
   { id: "installationTypes", href: routes.dashboard.settingsInstallationTypes, icon: Plug },
   { id: "pinStatus", href: routes.dashboard.settingsPinStatus, icon: Tags },
   { id: "jobStatus", href: routes.dashboard.settingsJobStatus, icon: ListTodo },
+  { id: "materialStatus", href: routes.dashboard.settingsMaterialStatus, icon: ClipboardList },
   { id: "tags", href: routes.dashboard.settingsTags, icon: Tag },
 ];
 

@@ -320,8 +320,8 @@ export function WorkerReturnToStockScreen({
             <div className="space-y-6">
               <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-900/40">
                 <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">{t("return.operatorHint")}</p>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <div>
+                <div className="flex flex-wrap items-end gap-4">
+                  <div className="min-w-[10rem] flex-1 sm:max-w-xs">
                     <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                       {t("table.workerName")}
                     </label>
@@ -337,7 +337,7 @@ export function WorkerReturnToStockScreen({
                       onChange={setWorkerId}
                     />
                   </div>
-                  <div>
+                  <div className="min-w-[10rem] flex-1 sm:max-w-xs">
                     <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                       {t("return.dateFilter")}
                     </label>
@@ -354,7 +354,7 @@ export function WorkerReturnToStockScreen({
                   </div>
                   {datePreset === "custom" ? (
                     <>
-                      <div>
+                      <div className="min-w-[10rem] flex-1 sm:max-w-xs">
                         <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                           {t("return.dateFrom")}
                         </label>
@@ -365,7 +365,7 @@ export function WorkerReturnToStockScreen({
                           onChange={(e) => setDateFrom(e.target.value)}
                         />
                       </div>
-                      <div>
+                      <div className="min-w-[10rem] flex-1 sm:max-w-xs">
                         <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                           {t("return.dateTo")}
                         </label>
@@ -379,7 +379,7 @@ export function WorkerReturnToStockScreen({
                     </>
                   ) : null}
                   {datePreset === "material_request" ? (
-                    <div>
+                    <div className="min-w-[10rem] flex-1 sm:max-w-xs">
                       <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                         {t("fields.materialRequest")}
                       </label>
@@ -396,9 +396,14 @@ export function WorkerReturnToStockScreen({
                       />
                     </div>
                   ) : null}
-                </div>
-                <div className="mt-4 flex justify-end">
-                  <AppButton type="button" variant="secondary" size="sm" loading={loading} onClick={() => void loadMaterials()}>
+                  <AppButton
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    loading={loading}
+                    className="shrink-0"
+                    onClick={() => void loadMaterials()}
+                  >
                     {t("return.loadMaterials")}
                   </AppButton>
                 </div>
@@ -425,9 +430,8 @@ export function WorkerReturnToStockScreen({
                         <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
                           <th className="px-3 py-2">{t("table.materialItem")}</th>
                           <th className="px-3 py-2">{t("return.source")}</th>
-                          <th className={quantityTableHeaderClass}>{t("table.dispatched")}</th>
+                          <th className={quantityTableHeaderClass}>{t("table.extra")}</th>
                           <th className={quantityTableHeaderClass}>{t("return.alreadyReturned")}</th>
-                          <th className={quantityTableHeaderClass}>{t("return.returnable")}</th>
                           <th className={quantityTableHeaderClass}>{t("return.returnQty")}</th>
                           <th className="px-3 py-2">{t("return.returnType")}</th>
                           <th className="px-3 py-2">{t("return.reason")}</th>
@@ -443,6 +447,11 @@ export function WorkerReturnToStockScreen({
                                 <p className="font-medium text-slate-900 dark:text-slate-100">
                                   {row.item_name?.trim() || `#${row.item_id}`}
                                 </p>
+                                {!row.is_extra && row.dispatched_quantity > 0 ? (
+                                  <span className="mt-0.5 block text-xs font-medium text-amber-600 dark:text-amber-400">
+                                    {t("return.surplusQty", { qty: row.dispatched_quantity })}
+                                  </span>
+                                ) : null}
                               </td>
                               <td className="px-3 py-3">
                                 {row.is_extra ? (
@@ -469,12 +478,6 @@ export function WorkerReturnToStockScreen({
                               <td className={cn(quantityTableCellClass, "text-slate-500")}>
                                 <QuantityWithUnits
                                   value={row.returned_quantity}
-                                  unitsLabel={t("units")}
-                                />
-                              </td>
-                              <td className={cn(quantityTableCellClass, "font-medium")}>
-                                <QuantityWithUnits
-                                  value={row.returnable_quantity}
                                   unitsLabel={t("units")}
                                 />
                               </td>

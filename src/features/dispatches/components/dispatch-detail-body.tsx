@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { DispatchStatusBadge } from "@/features/dispatches/components/dispatch-status-badge";
 import type { DispatchDetail } from "@/features/dispatches/types/dispatch.types";
+import { aggregateDispatchDetailLines } from "@/features/dispatches/utils/dispatch-line-aggregate.util";
 import { dispatchWorkerLabel, normalizeDispatchStatus } from "@/features/dispatches/utils/dispatch-display.util";
 import { DispatchedQuantityCell } from "@/shared/components/quantity/dispatched-quantity-cell";
 import {
@@ -33,6 +34,7 @@ type Props = {
 
 export function DispatchDetailBody({ detail, dateFmt, dueFmt, statusLabel }: Props) {
   const t = useTranslations("Dashboard.dispatches");
+  const aggregatedLines = React.useMemo(() => aggregateDispatchDetailLines(detail.lines), [detail.lines]);
 
   return (
     <DetailPagePadding className="space-y-6">
@@ -76,65 +78,48 @@ export function DispatchDetailBody({ detail, dateFmt, dueFmt, statusLabel }: Pro
 
       <DetailPanelCard title={t("detail.sectionItems")}>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px] text-left text-sm">
+          <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
                 <th className="px-3 py-2">{t("table.materialItem")}</th>
-                <th className="px-3 py-2">{t("table.jobName")}</th>
-                <th className="px-3 py-2">{t("table.workerName")}</th>
                 <th className={quantityTableHeaderClass}>{t("table.requested")}</th>
                 <th className={quantityTableHeaderClass}>{t("table.pending")}</th>
                 <th className={quantityTableHeaderClass}>{t("table.dispatched")}</th>
               </tr>
             </thead>
             <tbody>
-              {detail.lines.length === 0 ? (
+              {aggregatedLines.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-slate-500">
+                  <td colSpan={4} className="px-3 py-6 text-center text-slate-500">
                     {t("detail.noItems")}
                   </td>
                 </tr>
               ) : (
-                detail.lines.map((row) => {
-                  const fulfilled = Math.max(0, row.dispatched_quantity - row.extra_quantity);
-                  return (
-                    <tr key={row.id} className="border-b border-slate-100 dark:border-slate-800">
-                      <td className="px-3 py-3">
-                        <span className="font-medium text-slate-900 dark:text-slate-100">
-                          {row.item.name?.trim() || `#${row.item.id}`}
+                aggregatedLines.map((row) => (
+                  <tr key={row.key} className="border-b border-slate-100 dark:border-slate-800">
+                    <td className="px-3 py-3">
+                      <span className="font-medium text-slate-900 dark:text-slate-100">{row.itemName}</span>
+                      {row.isExtra ? (
+                        <span className="mt-1 block text-xs font-medium text-amber-600 dark:text-amber-400">
+                          {t("detail.extraItem")}
                         </span>
-                        {row.is_extra ? (
-                          <span className="mt-1 block text-xs font-medium text-amber-600 dark:text-amber-400">
-                            {t("detail.extraItem")}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="px-3 py-3 text-slate-600 dark:text-slate-400">
-                        {row.job?.title?.trim() || "—"}
-                      </td>
-                      <td className="px-3 py-3 text-slate-600 dark:text-slate-400">
-                        {dispatchWorkerLabel(row.worker_name ?? detail.worker_name)}
-                      </td>
-                      <td className={cn(quantityTableCellClass, "font-medium")}>
-                        <QuantityWithUnits value={row.requested_quantity} unitsLabel={t("units")} />
-                      </td>
-                      <td className={quantityTableCellClass}>
-                        <QuantityWithUnits
-                          value={row.pending_quantity}
-                          unitsLabel={t("units")}
-                          showDashWhenZero
-                        />
-                      </td>
-                      <td className={quantityTableCellClass}>
-                        <DispatchedQuantityCell
-                          fulfilled={fulfilled}
-                          surplus={row.extra_quantity}
-                          unitsLabel={t("units")}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })
+                      ) : null}
+                    </td>
+                    <td className={cn(quantityTableCellClass, "font-medium")}>
+                      <QuantityWithUnits value={row.requested} unitsLabel={t("units")} />
+                    </td>
+                    <td className={quantityTableCellClass}>
+                      <QuantityWithUnits value={row.pending} unitsLabel={t("units")} />
+                    </td>
+                    <td className={quantityTableCellClass}>
+                      <DispatchedQuantityCell
+                        fulfilled={row.fulfilled}
+                        surplus={row.surplus}
+                        unitsLabel={t("units")}
+                      />
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>

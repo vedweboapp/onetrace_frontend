@@ -15,7 +15,7 @@ export function buildFormJobsFromJobIds(jobIds: number[]): MaterialRequestFormVa
 }
 
 export function buildFormItemsFromJobs(jobs: Job[]): MaterialRequestFormItemRow[] {
-  const items: MaterialRequestFormItemRow[] = [];
+  const qtyByItem = new Map<number, number>();
 
   for (const job of jobs) {
     const meta = normalizeJobMeta(job.job_meta);
@@ -23,15 +23,15 @@ export function buildFormItemsFromJobs(jobs: Job[]): MaterialRequestFormItemRow[
       const itemId = resolveJobMetaCompositeItemId(row);
       if (itemId == null) continue;
       const qty = row.quantity != null && Number.isFinite(row.quantity) && row.quantity > 0 ? row.quantity : 1;
-      items.push({
-        job: String(job.id),
-        item: String(itemId),
-        quantity: String(qty),
-      });
+      qtyByItem.set(itemId, (qtyByItem.get(itemId) ?? 0) + qty);
     }
   }
 
-  return items;
+  return [...qtyByItem.entries()].map(([itemId, qty]) => ({
+    job: "",
+    item: String(itemId),
+    quantity: Number.isInteger(qty) ? String(qty) : qty.toFixed(2),
+  }));
 }
 
 export function jobProjectLabel(job: Job): string {

@@ -1,7 +1,7 @@
 import type { FormListItem, FormsPagination } from "@/features/forms/types/form.types";
 
 function normalizeRow(raw: Record<string, unknown>): FormListItem | null {
-  const id = raw.form_id ?? raw.id;
+  const id = raw.id ?? raw.form_id;
   if (id == null || (typeof id !== "number" && typeof id !== "string")) return null;
   const numId = typeof id === "number" ? id : Number.parseInt(String(id), 10);
   if (!Number.isFinite(numId) || numId <= 0) return null;
@@ -11,6 +11,7 @@ function normalizeRow(raw: Record<string, unknown>): FormListItem | null {
     (typeof raw.title === "string" && raw.title.trim()) ||
     `#${numId}`;
   return {
+    ...raw,
     id: numId,
     name,
     is_active: typeof raw.is_active === "boolean" ? raw.is_active : undefined,

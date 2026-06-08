@@ -37,10 +37,58 @@ export async function updateProjectJobForm(
 export async function createProjectJobFormSections(
   formId: string | number,
   sectionsPayload: any,
+  purpose?: string | null,
 ): Promise<any> {
-  const payload = Array.isArray(sectionsPayload)
-    ? { create: sectionsPayload }
-    : sectionsPayload;
+  const normalize = (payload: any) => {
+    const isEditProjectJobForm = purpose === "edit_project_job_form";
+
+    if (Array.isArray(payload)) {
+      if (isEditProjectJobForm) {
+        return payload.map((sec) => ({ ...sec, is_custom: true }));
+      }
+      return payload;
+    }
+
+    // Differential payload with create/update/delete keys
+    const result: any = {};
+    if (payload.create) {
+      if (isEditProjectJobForm) {
+        result.create = payload.create.map((sec) => ({ ...sec, is_custom: true }));
+      } else {
+        result.create = payload.create;
+      }
+    }
+
+    if (payload.update) {
+      if (isEditProjectJobForm) {
+        // Preserve each updated section's own is_custom flag (default false)
+        result.update = payload.update.map((sec) => ({ ...sec, is_custom: sec.is_custom ?? false }));
+      } else {
+        result.update = payload.update;
+      }
+    }
+
+    if (payload.delete) {
+      if (isEditProjectJobForm) {
+        // Delete payload expects { id, is_custom, fields }
+        result.delete = payload.delete.map((sec) => ({
+          id: sec.id,
+          is_custom: sec.is_custom ?? false,
+          fields: sec.fields || [],
+        }));
+      } else {
+        // Standard delete payload expects { id, fields }
+        result.delete = payload.delete.map((sec) => ({
+          id: sec.id,
+          fields: sec.fields || [],
+        }));
+      }
+    }
+
+    return result;
+  };
+
+  const payload = normalize(sectionsPayload);
   const { data } = await api.post(
     PROJECT_PATHS.projectFormSections(formId),
     payload,

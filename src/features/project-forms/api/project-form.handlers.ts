@@ -33,6 +33,7 @@ export const projectFormHandlers: FormBuilderApiHandlers = {
     const enrichedPayload = {
       ...formMeta,
       ...(ctx.projectTypeId ? { project_type: ctx.projectTypeId } : {}),
+      ...(ctx.installationTypeId ? { installation_type: ctx.installationTypeId } : {}),
     };
     return createProjectForm(enrichedPayload);
   },

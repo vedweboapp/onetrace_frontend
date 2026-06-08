@@ -6,6 +6,59 @@ import { Check, ChevronDown, Plus, X } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import type { CheckmarkSelectOption } from "./checkmark-select";
 
+const DROPDOWN_GAP = 4;
+const DROPDOWN_MIN_SPACE = 120;
+const DROPDOWN_PREFERRED_MAX = 320;
+
+type DropdownPlacement = {
+  top: number;
+  left: number;
+  width: number;
+  transform: string;
+  maxHeight: number;
+  openUp: boolean;
+};
+
+function measureDropdownPlacement(
+  anchor: HTMLElement,
+  side: "top" | "bottom" | "auto" = "auto",
+): DropdownPlacement {
+  const r = anchor.getBoundingClientRect();
+  const vh = window.innerHeight;
+  const spaceBelow = vh - r.bottom - DROPDOWN_GAP;
+  const spaceAbove = r.top - DROPDOWN_GAP;
+
+  let openUp = false;
+  if (side === "top") openUp = true;
+  else if (side === "bottom") openUp = false;
+  else openUp = spaceBelow < DROPDOWN_MIN_SPACE && spaceAbove > spaceBelow;
+
+  const maxHeight = Math.max(
+    DROPDOWN_MIN_SPACE,
+    Math.min(DROPDOWN_PREFERRED_MAX, (openUp ? spaceAbove : spaceBelow) - 8),
+  );
+
+  if (openUp) {
+    return {
+      top: r.top - DROPDOWN_GAP,
+      left: r.left,
+      width: r.width,
+      transform: "translateY(-100%)",
+      maxHeight,
+      openUp: true,
+    };
+  }
+
+  return {
+    top: r.bottom + DROPDOWN_GAP,
+    left: r.left,
+    width: r.width,
+    transform: "none",
+    maxHeight,
+    openUp: false,
+  };
+}
+
 type Props = {
   id?: string;
   options: CheckmarkSelectOption[];
@@ -20,6 +73,8 @@ type Props = {
   searchable?: boolean;
   searchPlaceholder?: string;
   portaled?: boolean;
+  /** Opening direction; `"auto"` flips based on viewport space. */
+  side?: "top" | "bottom" | "auto";
   onAdd?: () => void;
   addAriaLabel?: string;
   addLabel?: string;
@@ -39,6 +94,7 @@ export function MultiCheckSelect({
   searchable = true,
   searchPlaceholder = "Search...",
   portaled = true,
+  side = "auto",
   onAdd,
   addAriaLabel,
   addLabel,
@@ -48,7 +104,14 @@ export function MultiCheckSelect({
   const rootRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const panelRef = React.useRef<HTMLDivElement>(null);
-  const [panelRect, setPanelRect] = React.useState({ top: 0, left: 0, width: 0 });
+  const [placement, setPlacement] = React.useState<DropdownPlacement>({
+    top: 0,
+    left: 0,
+    width: 0,
+    transform: "none",
+    maxHeight: DROPDOWN_PREFERRED_MAX,
+    openUp: false,
+  });
 
   const selectedMap = React.useMemo(() => new Set(values), [values]);
   const selectedOptions = React.useMemo(
@@ -61,23 +124,22 @@ export function MultiCheckSelect({
     return options.filter((o) => o.label.toLowerCase().includes(q));
   }, [options, query]);
 
-  const updateRect = React.useCallback(() => {
+  const updatePlacement = React.useCallback(() => {
     const el = triggerRef.current;
     if (!el || !open || !portaled) return;
-    const r = el.getBoundingClientRect();
-    setPanelRect({ top: r.bottom + 4, left: r.left, width: r.width });
-  }, [open, portaled]);
+    setPlacement(measureDropdownPlacement(el, side));
+  }, [open, portaled, side]);
 
   React.useLayoutEffect(() => {
-    updateRect();
+    updatePlacement();
     if (!open || !portaled) return;
-    window.addEventListener("resize", updateRect);
-    window.addEventListener("scroll", updateRect, true);
+    window.addEventListener("resize", updatePlacement);
+    window.addEventListener("scroll", updatePlacement, true);
     return () => {
-      window.removeEventListener("resize", updateRect);
-      window.removeEventListener("scroll", updateRect, true);
+      window.removeEventListener("resize", updatePlacement);
+      window.removeEventListener("scroll", updatePlacement, true);
     };
-  }, [open, portaled, updateRect]);
+  }, [open, portaled, updatePlacement]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -86,8 +148,14 @@ export function MultiCheckSelect({
       if (rootRef.current?.contains(target) || panelRef.current?.contains(target)) return;
       setOpen(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    // Defer so the opening click does not immediately close the panel.
+    const timerId = window.setTimeout(() => {
+      document.addEventListener("click", handler);
+    }, 0);
+    return () => {
+      window.clearTimeout(timerId);
+      document.removeEventListener("click", handler);
+    };
   }, [open]);
 
   React.useEffect(() => {
@@ -108,20 +176,27 @@ export function MultiCheckSelect({
     invalid && "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/20 dark:border-red-500",
   );
 
+  const panelMaxHeight = open ? placement.maxHeight : DROPDOWN_PREFERRED_MAX;
+
   const panel = (
     <div
       ref={panelRef}
       data-ot-checkmark-portal=""
-      className="z-[200] max-h-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10"
+      className={cn(
+        "z-[200] flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
+        !portaled && "absolute left-0 top-full z-10 mt-1 w-full",
+      )}
       style={
         portaled
           ? {
               position: "fixed",
-              top: panelRect.top,
-              left: panelRect.left,
-              width: Math.max(panelRect.width, 220),
+              top: placement.top,
+              left: placement.left,
+              width: Math.max(placement.width, 220),
+              transform: placement.transform,
+              maxHeight: panelMaxHeight,
             }
-          : undefined
+          : { maxHeight: panelMaxHeight }
       }
     >
       {searchable ? (
@@ -134,7 +209,7 @@ export function MultiCheckSelect({
           />
         </div>
       ) : null}
-      <ul role="listbox" aria-label={listLabel} className="max-h-64 overflow-auto py-1">
+      <ul role="listbox" aria-label={listLabel} className="min-h-0 flex-1 overflow-auto py-1">
         {filteredOptions.map((opt) => {
           const checked = selectedMap.has(opt.value);
           return (

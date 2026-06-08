@@ -7,6 +7,8 @@ export type FormListItem = {
   modified_by?: { id: number; email?: string; username?: string } | null;
   created_at?: string;
   modified_at?: string | null;
+  installation_type?: any;
+  installation_type_id?: any;
   [key: string]: unknown;
 };
 

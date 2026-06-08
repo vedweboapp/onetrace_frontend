@@ -15,7 +15,7 @@ import {
  *
  * Supports both purposes:
  *   - create_project_job_form  (mapped internally to "create_project_form")
- *   - edit_project_job_form    (mapped internally to "edit__project_form")
+ *   - edit_project_job_form    (mapped internally to "edit_project_form")
  *
  * Form create reuses the generic `forms/` endpoint.
  * Form update uses /project-forms/{id}/update/.
@@ -71,9 +71,9 @@ export const projectJobFormHandlers: FormBuilderApiHandlers = {
   createSections: async (
     formId: string | number,
     sections: any,
-    _ctx: HandlerContext,
+    ctx: HandlerContext,
   ): Promise<any> => {
-    return createProjectJobFormSections(formId, sections);
+    return createProjectJobFormSections(formId, sections, ctx.rawPurpose);
   },
 
   /**

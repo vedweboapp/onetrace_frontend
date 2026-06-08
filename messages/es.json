@@ -171,6 +171,7 @@
       "appearance": "Apariencia",
       "pinStatus": "Estados de pin",
       "jobStatus": "Estados de trabajo",
+      "materialStatus": "Estados de material",
       "tags": "Etiquetas",
       "projectTypes": "Tipos de proyecto",
       "installationTypes": "Tipos de instalación",
@@ -184,7 +185,7 @@
       "customization": {
         "label": "Personalización",
         "hubTitle": "Personalización",
-        "hubDescription": "Elige qué configurar: tipos de proyecto, tipos de instalación, estados de pin, estados de trabajo y etiquetas.",
+        "hubDescription": "Elige qué configurar: tipos de proyecto, tipos de instalación, estados de pin, estados de trabajo, estados de material y etiquetas.",
         "items": {
           "projectTypes": {
             "title": "Tipos de proyecto",
@@ -201,6 +202,10 @@
           "jobStatus": {
             "title": "Estados de trabajo",
             "description": "Estados de flujo para trabajos."
+          },
+          "materialStatus": {
+            "title": "Estados de material",
+            "description": "Estados de flujo para solicitudes de material."
           },
           "tags": {
             "title": "Etiquetas",
@@ -267,6 +272,7 @@
         "formName": "Nombre del formulario",
         "apiName": "Nombre API",
         "projectType": "Tipo de proyecto",
+        "installationType": "Tipo de instalación",
         "status": "Estado",
         "created": "Creado",
         "updated": "Actualizado"
@@ -285,8 +291,15 @@
         "loadingProjectTypes": "Cargando tipos de proyecto...",
         "selectProjectType": "Seleccionar tipo de proyecto",
         "searchProjectTypes": "Buscar tipos de proyecto",
-        "noProjectTypes": "No se encontraron tipos de proyecto."
+        "noProjectTypes": "No se encontraron tipos de proyecto.",
+        "loadingInstallationTypes": "Cargando tipos de instalación...",
+        "searchInstallationTypes": "Buscar tipos de instalación",
+        "installationTypesList": "Tipos de instalación",
+        "selectInstallationTypeAria": "Seleccionar tipo de instalación",
+        "selectInstallationType": "Seleccionar tipo de instalación",
+        "noInstallationTypes": "No se encontraron tipos de instalación."
       },
+      "installationTypesLoadError": "No se pudieron cargar los tipos de instalación. Inténtalo de nuevo.",
       "statusUpdatedToast": "Estado del formulario actualizado correctamente",
       "statusUpdateErrorToast": "No se pudo actualizar el estado del formulario. Inténtalo de nuevo."
     },
@@ -429,6 +442,58 @@
       },
       "deleteConfirmTitle": "¿Eliminar este estado?",
       "deleteConfirmBody": "Los trabajos que usen este estado pueden verse afectados. Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar",
+      "pageLabel": "Mostrando {start}-{end} de {total} estados",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "saved": "Estado actualizado",
+      "created": "Estado creado",
+      "deleted": "Estado eliminado",
+      "hexPlaceholder": "#000000",
+      "validationName": "Introduce un nombre de estado.",
+      "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #E5E7EB)."
+    },
+    "materialStatus": {
+      "metaTitle": "Estados de material",
+      "title": "Estados de material",
+      "subtitle": "Crea y gestiona etiquetas de flujo para solicitudes de material. Los colores se usan en las pastillas de estado en toda la app.",
+      "add": "Añadir",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "table": {
+        "type": "Tipo",
+        "kindPin": "Pin",
+        "kindJob": "Trabajo",
+        "name": "Nombre",
+        "tag": "Etiqueta",
+        "status": "Estado",
+        "createdBy": "Creado por",
+        "createdAt": "Creado el",
+        "created": "Creado",
+        "updated": "Última actualización",
+        "actions": "Acciones"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "byUser": "Por {user}"
+      },
+      "empty": "Aún no hay estados de material. Añade uno para empezar.",
+      "emptyTitle": "Aún no hay estados de material",
+      "emptyDescription": "Crea etiquetas de flujo para solicitudes de material en tu espacio de trabajo.",
+      "loadError": "No se pudieron cargar los estados de material. Inténtalo de nuevo.",
+      "modal": {
+        "createTitle": "Nuevo estado de material",
+        "editTitle": "Editar",
+        "statusName": "Nombre del estado",
+        "bgColour": "Color de fondo",
+        "textColour": "Color del texto",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "deleteConfirmTitle": "¿Eliminar este estado?",
+      "deleteConfirmBody": "Las solicitudes de material que usen este estado pueden verse afectadas. Esta acción no se puede deshacer.",
       "confirmDelete": "Eliminar",
       "pageLabel": "Mostrando {start}-{end} de {total} estados",
       "prev": "Anterior",
@@ -1605,7 +1670,8 @@
       "placeholders": {
         "worker": "Seleccionar trabajador",
         "job": "Seleccionar trabajo",
-        "item": "Seleccionar ítem"
+        "item": "Seleccionar ítem",
+        "status": "Seleccionar estado"
       },
       "sections": {
         "general": "Información general",
@@ -1759,7 +1825,8 @@
         "source": "Origen",
         "sourceExtra": "Ítem extra",
         "alreadyReturned": "Ya devuelto",
-        "operatorHint": "Seleccione trabajador y rango de fechas. Los ítems se agrupan por solicitud de material o extra — cada ítem aparece una vez con la cantidad total.",
+        "operatorHint": "Seleccione trabajador y rango de fechas. Solo se listan ítems extra y cantidades en exceso (despachadas por encima de lo solicitado) para devolución.",
+        "surplusQty": "+{qty} excedente",
         "approverHint": "Revise las solicitudes pendientes y confirme para devolver las cantidades al inventario.",
         "selectWorker": "Seleccionar trabajador",
         "selectMaterialRequest": "Seleccionar solicitud",
@@ -1783,7 +1850,7 @@
         "completeSuccessToast": "Ítems devueltos al inventario correctamente",
         "noPendingRequests": "No hay solicitudes de devolución pendientes.",
         "loadError": "No se pudieron cargar los ítems devolvibles.",
-        "empty": "No hay materiales devolvibles con los filtros seleccionados.",
+        "empty": "No hay materiales extra o en exceso para devolver con los filtros seleccionados.",
         "returnable": "Devolvible",
         "returnQty": "Cant. a devolver",
         "returnType": "Tipo de devolución",
@@ -1912,6 +1979,33 @@
         "confirm": "Actualizar estado",
         "placeholder": "Seleccionar estado",
         "loading": "Cargando estados…"
+      },
+      "forms": {
+        "sectionTitle": "Formularios",
+        "pageTitle": "Formulario del trabajo",
+        "fillSubtitle": "Complete el formulario y envíelo cuando termine.",
+        "viewSubtitle": "Detalles del formulario enviado.",
+        "editSubtitle": "Actualice los valores enviados y guarde.",
+        "backAria": "Volver al trabajo",
+        "submit": "Enviar formulario",
+        "saveChanges": "Guardar cambios",
+        "edit": "Editar",
+        "cancel": "Cancelar",
+        "retry": "Reintentar",
+        "remarks": "Observaciones",
+        "remarksPlaceholder": "Notas opcionales sobre este envío",
+        "submittedAt": "Enviado",
+        "statusSubmitted": "Enviado",
+        "statusPending": "Sin enviar",
+        "submittedToast": "Formulario enviado correctamente",
+        "updatedToast": "Formulario actualizado correctamente",
+        "submitError": "No se pudo enviar el formulario. Inténtelo de nuevo.",
+        "loadError": "No se pudo cargar el formulario. Inténtelo de nuevo.",
+        "validationEmpty": "Complete al menos un campo antes de enviar.",
+        "emptySchema": "Este formulario aún no tiene campos.",
+        "untitledForm": "Formulario",
+        "layoutDesktop": "Escritorio",
+        "layoutPhone": "Teléfono"
       },
       "page": {
         "createTitle": "Nuevo trabajo",

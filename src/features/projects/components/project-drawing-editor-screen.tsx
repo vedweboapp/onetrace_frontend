@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Crosshair, FileText, Hand, MapPinned, Maximize, SquareDashed, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Crosshair, FileText, Hand, MapPinned, Maximize, SquareDashed, X, ZoomIn, ZoomOut, LayoutGrid } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
@@ -12,6 +12,7 @@ import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
 import type { PinStatus } from "@/features/pin-status/types/pin-status.types";
+import type { FormListItem } from "@/features/forms/types/form.types";
 import type { DrawingPin, DrawingPinAttachment, DrawingPlot, DrawingPlotUpsert } from "@/features/projects/types/drawing.types";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
 import {
@@ -356,7 +357,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [dirty, setDirty] = React.useState(false);
   const [zoom, setZoom] = React.useState(1);
   const [showVariations, setShowVariations] = React.useState(false);
-  const [projectForms, setProjectForms] = React.useState<{ id: number; name: string }[]>([]);
+  const [projectForms, setProjectForms] = React.useState<FormListItem[]>([]);
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [items, setItems] = React.useState<CompositeItem[]>([]);
   const [statuses, setStatuses] = React.useState<PinStatus[]>([]);
@@ -463,7 +464,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         fetchGroupsPage(1, 500),
         fetchCompositeItemsPage(1, 500),
         fetchPinStatusesPage(1, 500),
-        fetchProjectFormsPage(projectId,1,500),
+        fetchProjectFormsPage(projectId, 1, 500),
 
       ]);
 
@@ -497,7 +498,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         setSelectedStatusId((prev) => prev || (statusItems[0] ? String(statusItems[0].id) : ""));
       }
       //5.forms  lists
-      if(results[4].status === "fulfilled") {
+      if (results[4].status === "fulfilled") {
         setProjectForms(results[4].value.items);
       }
     } catch {
@@ -664,6 +665,98 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       setActiveTool(tool);
     }
   }
+  const filterForms = React.useCallback((CompositeItmeInstallationId: string) => {
+    if (!CompositeItmeInstallationId) {
+      return [];
+    }
+
+    const Fomrs = projectForms
+      ?.filter((form) => {
+        const formType = form?.installation_type?.id ?? form?.installation_type_id;
+        if (formType == null) return false;
+        return String(formType) === String(CompositeItmeInstallationId);
+      })
+      .map((projectform) => ({
+        label: projectform.name,
+        value: String(projectform.id)
+      }));
+    return Fomrs ?? [];
+  }, [projectForms]);
+
+  const compositeItemInstallationType = React.useMemo(() => {
+    if (!detailPin) return "";
+    const currentItemId = isPinEditing ? pinEditData.item : detailPin.item;
+    const selectedItem = items.find((i) => i.id === currentItemId);
+    return selectedItem?.installation_type != null ? String(selectedItem.installation_type) : "";
+  }, [detailPin, isPinEditing, pinEditData.item, items]);
+
+  const availableForms = React.useMemo(() => {
+    return filterForms(compositeItemInstallationType);
+  }, [compositeItemInstallationType, filterForms]);
+
+  const updatePinFormId = React.useCallback((pinId: number, formId: number | null) => {
+    setPlots((prevPlots) => {
+      let changed = false;
+      const nextPlots = prevPlots.map((p) => ({
+        ...p,
+        pins: p.pins.map((pin) => {
+          if (pin.id === pinId && pin.formId !== formId) {
+            changed = true;
+            return { ...pin, formId };
+          }
+          return pin;
+        }),
+      }));
+      if (changed) {
+        setDirty(true);
+      }
+      return nextPlots;
+    });
+
+    setDetailPin((prev) => {
+      if (prev && prev.id === pinId && prev.formId !== formId) {
+        return { ...prev, formId };
+      }
+      return prev;
+    });
+  }, []);
+
+  React.useEffect(() => {
+    if (!detailPin) return;
+    if (!compositeItemInstallationType) return;
+
+    const forms = filterForms(compositeItemInstallationType);
+    const currentFormId = isPinEditing ? pinEditData.formId : detailPin.formId;
+
+    if (forms.length === 1) {
+      const singleFormId = Number(forms[0]!.value);
+      if (currentFormId !== singleFormId) {
+        if (isPinEditing) {
+          setPinEditData((prev) => ({ ...prev, formId: singleFormId }));
+        } else {
+          updatePinFormId(detailPin.id, singleFormId);
+        }
+      }
+    } else if (forms.length === 0) {
+      if (currentFormId !== null && currentFormId !== undefined) {
+        if (isPinEditing) {
+          setPinEditData((prev) => ({ ...prev, formId: null }));
+        } else {
+          updatePinFormId(detailPin.id, null);
+        }
+      }
+    } else {
+      const isValid = forms.some((f) => Number(f.value) === currentFormId);
+      if (!isValid && currentFormId !== null && currentFormId !== undefined) {
+        if (isPinEditing) {
+          setPinEditData((prev) => ({ ...prev, formId: null }));
+        } else {
+          updatePinFormId(detailPin.id, null);
+        }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailPin?.id, isPinEditing, compositeItemInstallationType, pinEditData.formId, updatePinFormId]);
 
   function requestClose() {
     if (tempPoints.length > 0 && activeTool === "pen") {
@@ -1090,22 +1183,22 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   }
 
   async function persistPlots(localPlots: LocalPlot[]) {
-  // Create a new FormData for each save operation
-  const formData = new FormData();
+    // Create a new FormData for each save operation
+    const formData = new FormData();
 
-  // Build payload and attach files using the same FormData instance
-  const plotsPayload = toPayload(localPlots, formData);
+    // Build payload and attach files using the same FormData instance
+    const plotsPayload = toPayload(localPlots, formData);
 
-  // Append the JSON payload as a string field
-  formData.append('payload', JSON.stringify({ plots: plotsPayload }));
+    // Append the JSON payload as a string field
+    formData.append('payload', JSON.stringify({ plots: plotsPayload }));
 
-  // Send multipart/form-data to the backend
-  const updated = await updateDrawingPlots(projectId, drawingId, formData);
-  const normalized = (updated.plots ?? []).map(normalizePlot);
-  applyStableLocations(normalized);
-  setPlots(normalized);
-  setDirty(false);
-}
+    // Send multipart/form-data to the backend
+    const updated = await updateDrawingPlots(projectId, drawingId, formData);
+    const normalized = (updated.plots ?? []).map(normalizePlot);
+    applyStableLocations(normalized);
+    setPlots(normalized);
+    setDirty(false);
+  }
 
   async function savePlotFromModal() {
     const name = plotNameDraft.trim();
@@ -1203,7 +1296,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         id: selectedItem.id,
         name: selectedItem.name,
         sku: selectedItem.sku || "",
-        is_composite: selectedItem.is_composite
+        is_composite: selectedItem.is_composite,
+        installation_type: selectedItem?.installation_type ?? null
       } : null
     };
 
@@ -1271,7 +1365,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         id: nextItem.id,
         name: nextItem.name,
         sku: nextItem.sku || "",
-        is_composite: nextItem.is_composite
+        is_composite: nextItem.is_composite,
+        installation_type: nextItem?.installation_type ?? null
       } : detailPin.item_detail
     };
 
@@ -2169,29 +2264,32 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     </div>
                   </div>
                   <div className="py-3 border-b border-slate-50 dark:border-slate-800/50">
-                      <div className="flex items-center  justify-between">
-                        <div className="flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-form-icon lucide-form"><path d="M4 14h6"/><path d="M4 2h10"/><rect x="4" y="18" width="16" height="4" rx="1"/><rect x="4" y="6" width="16" height="4" rx="1"/></svg>
+                    <div className="flex items-center justify-between overflow-hidden">
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <LayoutGrid className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                         <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Form</span>
-                        </div>
-                        {
-                          isPinEditing ?(
+                      </div>
+                      {
+                        availableForms.length > 0 ? (
+                          isPinEditing ? (
                             <>
-                            <CheckmarkSelect
-                              options={projectForms?.map(f => ({ value: String(f.id), label: f.name })) ?? []}
-                              value={isPinEditing ? String(pinEditData.formId ?? "") : String(detailPin?.formId ?? "")}
-                              onChange={(value) => {
-                                if (isPinEditing) {
-                                  setPinEditData(prev => ({ ...prev, formId: value ? Number(value) : null }));
-                                }
-                              }}
-                            />
+                              <CheckmarkSelect
+                                options={availableForms}
+                                value={isPinEditing ? String(pinEditData.formId ?? "") : String(detailPin?.formId ?? "")}
+                                onChange={(value) => {
+                                  if (isPinEditing) {
+                                    setPinEditData(prev => ({ ...prev, formId: value ? Number(value) : null }));
+                                  }
+                                }}
+                                portaled
+                              />
                             </>
-                          ):(<span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                              {projectForms?.find(f => f.id === (isPinEditing ? pinEditData.formId : detailPin.formId))?.name || "Select Form"}
-                            </span>)
-                         }
-                        </div> 
+                          ) : (<span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                            {projectForms?.find(f => f.id === (isPinEditing ? pinEditData.formId : detailPin.formId))?.name || "Select Form"}
+                          </span>)
+                        ) : null
+                      }
+                    </div>
                   </div>
                   {/* Variation toggle row */}
                   <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800/50">

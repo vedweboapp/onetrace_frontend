@@ -8,7 +8,7 @@ import { MaterialRequestDetailBody } from "@/features/material-requests/componen
 import { MaterialRequestDetailTimeline } from "@/features/material-requests/components/material-request-detail-timeline";
 import type { MaterialRequestDetail } from "@/features/material-requests/types/material-request.types";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
-import { normalizeMaterialRequestStatus } from "@/features/material-requests/utils/material-request-nested-fields.util";
+import { useMaterialStatusCatalog } from "@/features/material-status/hooks/use-material-status-catalog";
 import {
   EntityDetailEditButton,
   EntityDetailErrorState,
@@ -61,17 +61,7 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
     };
   }, []);
 
-  const statusLabel = React.useCallback(
-    (code: string | null | undefined) => {
-      const norm = normalizeMaterialRequestStatus(code);
-      if (norm === "draft") return t("status.draft");
-      if (norm === "pending") return t("status.pending");
-      if (norm === "partially_dispatched" || norm === "partial") return t("status.partiallyDispatched");
-      if (norm === "dispatched") return t("status.dispatched");
-      return code?.trim() || "—";
-    },
-    [t],
-  );
+  const { labelFor: statusLabel, rowFor: statusRowFor } = useMaterialStatusCatalog();
 
   const detailTabs = React.useMemo(
     () => [
@@ -148,6 +138,7 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
                   dateFmt={dateFmt}
                   dueFmt={dueFmt}
                   statusLabel={statusLabel(detail.status)}
+                  statusRow={statusRowFor(detail.status)}
                 />
               );
             })()
