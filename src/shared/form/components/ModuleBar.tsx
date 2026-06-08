@@ -78,7 +78,7 @@ const ModuleBar: React.FC = () => {
       <div className="p-4 space-y-3 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700 shrink-0">
     
         <DraggableAddButton type="ADD_SECTION" label="Add New Section" variant="secondary" />
-        <DraggableAddButton type="ADD_SUBFORM" label="Add New Subform" variant="primary" />
+        {/* <DraggableAddButton type="ADD_SUBFORM" label="Add New Subform" variant="primary" /> */}
       </div>
     </div>
   );

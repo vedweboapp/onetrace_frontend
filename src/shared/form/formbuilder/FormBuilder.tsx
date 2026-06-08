@@ -47,6 +47,7 @@ interface Section {
   is_subform?: boolean;
   is_deleted?: boolean;
   is_active?: boolean;
+  is_custom?: boolean;
   fields: Field[];
 }
 
@@ -99,11 +100,10 @@ const TopDropZone: React.FC<TopDropZoneProps> = ({ onDrop }) => {
   return (
     <div
       ref={drop as any}
-      className={`h-16 rounded-md p-2 transition-all ${
-        isOver
-          ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40 shadow-md"
-          : "border-dashed border-transparent"
-      }`}
+      className={`h-16 rounded-md p-2 transition-all ${isOver
+        ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40 shadow-md"
+        : "border-dashed border-transparent"
+        }`}
     >
       <div className="text-center h-full text-sm text-gray-500 dark:text-gray-400 mt-6">
         Drop "Add New Section" here to insert at the top
@@ -278,11 +278,10 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
 
         <div
           ref={drop as any}
-          className={`min-h-[150px] bg-white dark:bg-slate-900 rounded-[8px] p-6 transition-all ${
-            section.fields.length === 0
-              ? "flex items-center justify-center border-dotted border-2 border-gray-300 dark:border-slate-600"
-              : ""
-          } ${isOver ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30 shadow-sm" : ""}`}
+          className={`min-h-[150px] bg-white dark:bg-slate-900 rounded-[8px] p-6 transition-all ${section.fields.length === 0
+            ? "flex items-center justify-center border-dotted border-2 border-gray-300 dark:border-slate-600"
+            : ""
+            } ${isOver ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30 shadow-sm" : ""}`}
         >
           {section.fields.length === 0 ? (
             <div className="flex items-center justify-center w-full">
@@ -341,11 +340,10 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
 
       <div
         ref={addDrop as any}
-        className={`h-16 rounded-md p-2 transition-all ${
-          isOverAdd
-            ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40 shadow-md"
-            : "border-dashed border-transparent"
-        }`}
+        className={`h-16 rounded-md p-2 transition-all ${isOverAdd
+          ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40 shadow-md"
+          : "border-dashed border-transparent"
+          }`}
       >
         <div className="text-center h-full text-sm text-gray-500 dark:text-gray-400 mt-6 border-dotted">
           Drop "Add New Section" here to insert below
@@ -738,16 +736,16 @@ export default function FormBuilderLayout({
       prev.map((sec) =>
         sec._uid === sectionUid
           ? {
-              ...sec,
-              fields: [
-                ...sec.fields,
-                {
-                  _uid: `${Date.now()}`,
-                  order: sec.fields.length,
-                  ...fieldConfig,
-                },
-              ],
-            }
+            ...sec,
+            fields: [
+              ...sec.fields,
+              {
+                _uid: `${Date.now()}`,
+                order: sec.fields.length,
+                ...fieldConfig,
+              },
+            ],
+          }
           : sec,
       ),
     );
@@ -765,11 +763,11 @@ export default function FormBuilderLayout({
       prev.map((sec) =>
         sec._uid === sectionUid
           ? {
-              ...sec,
-              fields: sec.fields.map((f) =>
-                f._uid === fieldUid ? { ...f, ...newConfig } : f,
-              ),
-            }
+            ...sec,
+            fields: sec.fields.map((f) =>
+              f._uid === fieldUid ? { ...f, ...newConfig } : f,
+            ),
+          }
           : sec,
       ),
     );
@@ -823,15 +821,15 @@ export default function FormBuilderLayout({
         prev.map((s) =>
           s._uid === sectionUid
             ? {
-                ...s,
+              ...s,
+              is_active: false,
+              is_deleted: true,
+              fields: (s.fields || []).map((f) => ({
+                ...f,
                 is_active: false,
                 is_deleted: true,
-                fields: (s.fields || []).map((f) => ({
-                  ...f,
-                  is_active: false,
-                  is_deleted: true,
-                })),
-              }
+              })),
+            }
             : s,
         ),
       ),
@@ -1241,13 +1239,13 @@ export default function FormBuilderLayout({
       prev.map((sec) =>
         sec._uid === sectionUid
           ? {
-              ...sec,
-              fields: sec.fields.map((f) =>
-                f._uid === fieldUid
-                  ? { ...f, is_active: false, is_deleted: true }
-                  : f,
-              ),
-            }
+            ...sec,
+            fields: sec.fields.map((f) =>
+              f._uid === fieldUid
+                ? { ...f, is_active: false, is_deleted: true }
+                : f,
+            ),
+          }
           : sec,
       ),
     );
@@ -1317,53 +1315,53 @@ export default function FormBuilderLayout({
   };
 
   return (
-    
+
     <div className="relative flex flex-col h-full">
-       {
-         showRuleTypeModal && (
-           <RuleTypeModal
-             isOpen={showRuleTypeModal}
-             onClose={() => setShowRuleTypeModal(false)}
-             onSelect={(type) => {
-               setShowRuleTypeModal(false);
-               setEditingRule(null);
-               if (type === "advanced") {
-                 setShowAdvancedRuleModal(true);
-               } else {
-                 setShowRuleModal(true);
-               }
-             }}
-           />
-         )
-       }
-       {
-          showRuleModal && (
-            <FormRuleModal
-              initialRule={editingRule}
-              onSave={handleSaveRule}
-              onClose={() => {
-                setShowRuleModal(false);
-                setEditingRule(null);
-              }}
-              fields={ruleFieldOptions}
-              existingRules={rules}
-            />
-          )
-        }
-        {
-          showAdvancedRuleModal && (
-            <FormAdvancedRuleModal
-              initialRule={editingRule}
-              onSave={handleSaveRule}
-              onClose={() => {
-                setShowAdvancedRuleModal(false);
-                setEditingRule(null);
-              }}
-              fields={ruleFieldOptions}
-              existingRules={rules}
-            />
-          )
-        }
+      {
+        showRuleTypeModal && (
+          <RuleTypeModal
+            isOpen={showRuleTypeModal}
+            onClose={() => setShowRuleTypeModal(false)}
+            onSelect={(type) => {
+              setShowRuleTypeModal(false);
+              setEditingRule(null);
+              if (type === "advanced") {
+                setShowAdvancedRuleModal(true);
+              } else {
+                setShowRuleModal(true);
+              }
+            }}
+          />
+        )
+      }
+      {
+        showRuleModal && (
+          <FormRuleModal
+            initialRule={editingRule}
+            onSave={handleSaveRule}
+            onClose={() => {
+              setShowRuleModal(false);
+              setEditingRule(null);
+            }}
+            fields={ruleFieldOptions}
+            existingRules={rules}
+          />
+        )
+      }
+      {
+        showAdvancedRuleModal && (
+          <FormAdvancedRuleModal
+            initialRule={editingRule}
+            onSave={handleSaveRule}
+            onClose={() => {
+              setShowAdvancedRuleModal(false);
+              setEditingRule(null);
+            }}
+            fields={ruleFieldOptions}
+            existingRules={rules}
+          />
+        )
+      }
       {/* Responsive Sub-header (Single Row) */}
       <div
         className="fixed top-14 z-20 flex border-t border-gray-200 dark:border-gray-700 items-center justify-between h-14 px-6 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-gray-700 transition-all duration-300"
@@ -1421,7 +1419,7 @@ export default function FormBuilderLayout({
         className="p-6 transition-all duration-300 pt-10"
         style={{ marginLeft: canvasMarginLeft }}
       >
-       
+
         <div className="mx-auto">
           {activeTab === "form" && (
             <div className="space-y-4">
@@ -1458,11 +1456,10 @@ export default function FormBuilderLayout({
                 <div className="inline-flex rounded-md border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
                   <button
                     type="button"
-                    className={`flex h-9 items-center gap-2 rounded px-3 text-sm transition ${
-                      previewLayout === "desktop"
-                        ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
-                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                    }`}
+                    className={`flex h-9 items-center gap-2 rounded px-3 text-sm transition ${previewLayout === "desktop"
+                      ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                      : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                      }`}
                     onClick={() => setPreviewLayout("desktop")}
                   >
                     <Monitor className="size-4" />
@@ -1470,11 +1467,10 @@ export default function FormBuilderLayout({
                   </button>
                   <button
                     type="button"
-                    className={`flex h-9 items-center gap-2 rounded px-3 text-sm transition ${
-                      previewLayout === "phone"
-                        ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
-                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                    }`}
+                    className={`flex h-9 items-center gap-2 rounded px-3 text-sm transition ${previewLayout === "phone"
+                      ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                      : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                      }`}
                     onClick={() => setPreviewLayout("phone")}
                   >
                     <Smartphone className="size-4" />
@@ -1484,9 +1480,8 @@ export default function FormBuilderLayout({
               </div>
               <div className="flex w-full justify-center">
                 <div
-                  className={`bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm ${
-                    previewLayout === "phone" ? "rounded-[28px] p-4" : "w-full rounded-xl p-8"
-                  }`}
+                  className={`bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm ${previewLayout === "phone" ? "rounded-[28px] p-4" : "w-full rounded-xl p-8"
+                    }`}
                   style={
                     previewLayout === "phone"
                       ? { width: 390, maxWidth: "100%" }
@@ -1557,15 +1552,15 @@ export default function FormBuilderLayout({
                           ) : (
                             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                               <strong>If</strong> {ruleFieldOptions.find(f => f.value === rule.field_api_name)?.label || rule.field_api_name} {rule.condition?.replace(/_/g, ' ') || ''} {rule.value ? (Array.isArray(rule.value) ? rule.value.join(', ') : rule.value) : ''}
-                              <br/>
+                              <br />
                               <strong>Then</strong> {rule.output_fields?.length || 0} action(s) applied.
                             </p>
                           )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-4">
-                          <AppButton 
-                            variant="ghost" 
-                            size="sm" 
+                          <AppButton
+                            variant="ghost"
+                            size="sm"
                             className="p-2"
                             onClick={() => {
                               setEditingRule(rule);
@@ -1578,9 +1573,9 @@ export default function FormBuilderLayout({
                           >
                             <Edit2 className="size-4" />
                           </AppButton>
-                          <AppButton 
-                            variant="ghost" 
-                            size="sm" 
+                          <AppButton
+                            variant="ghost"
+                            size="sm"
                             className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
                             onClick={() => handleDeleteRule(rule._uid)}
                           >

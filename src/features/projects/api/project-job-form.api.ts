@@ -44,7 +44,7 @@ export async function createProjectJobFormSections(
 
     if (Array.isArray(payload)) {
       if (isEditProjectJobForm) {
-        return payload.map((sec) => ({ ...sec, is_custom: true }));
+        return payload.map((sec: any) => ({ ...sec, is_custom: true }));
       }
       return payload;
     }
@@ -53,7 +53,7 @@ export async function createProjectJobFormSections(
     const result: any = {};
     if (payload.create) {
       if (isEditProjectJobForm) {
-        result.create = payload.create.map((sec) => ({ ...sec, is_custom: true }));
+        result.create = payload.create.map((sec: any) => ({ ...sec, is_custom: true }));
       } else {
         result.create = payload.create;
       }
@@ -62,7 +62,7 @@ export async function createProjectJobFormSections(
     if (payload.update) {
       if (isEditProjectJobForm) {
         // Preserve each updated section's own is_custom flag (default false)
-        result.update = payload.update.map((sec) => ({ ...sec, is_custom: sec.is_custom ?? false }));
+        result.update = payload.update.map((sec: any) => ({ ...sec, is_custom: sec.is_custom ?? false }));
       } else {
         result.update = payload.update;
       }
@@ -71,14 +71,14 @@ export async function createProjectJobFormSections(
     if (payload.delete) {
       if (isEditProjectJobForm) {
         // Delete payload expects { id, is_custom, fields }
-        result.delete = payload.delete.map((sec) => ({
+        result.delete = payload.delete.map((sec: any) => ({
           id: sec.id,
           is_custom: sec.is_custom ?? false,
           fields: sec.fields || [],
         }));
       } else {
         // Standard delete payload expects { id, fields }
-        result.delete = payload.delete.map((sec) => ({
+        result.delete = payload.delete.map((sec: any) => ({
           id: sec.id,
           fields: sec.fields || [],
         }));
