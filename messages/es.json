@@ -1698,7 +1698,8 @@
       },
       "items": {
         "emptyNoJobs": "Añada trabajos arriba para cargar ítems del alcance de cada trabajo.",
-        "emptyNoMeta": "Los trabajos seleccionados no tienen ítems compuestos en su alcance."
+        "emptyNoMeta": "Los trabajos seleccionados no tienen ítems compuestos en su alcance.",
+        "derivedOnSubmit": "Los ítems se calculan en el servidor al enviar. Véalos en el detalle de la solicitud después de guardar."
       },
       "lineItems": {
         "itemName": "Ítem",

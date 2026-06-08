@@ -93,7 +93,7 @@ export function JobDetailBody({
   return (
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
-        <DetailPanelCard>
+        <DetailPanelCard title={t("sections.basic")}>
           <DetailMetricsGrid>
             <DetailMetricCard label={t("fields.jobStatus")}>
               <WorkflowColourStatusChip
@@ -168,7 +168,7 @@ export function JobDetailBody({
               ) : null}
             </DetailMetricsGrid>
             {compositeRows.length > 0 ? (
-              <div className="mt-4">
+              <div className="mt-3">
                 <DetailLinkedTable
                   columns={[
                     { id: "name", header: t("detail.colCompositeItem"), widthClass: "w-[34%]" },

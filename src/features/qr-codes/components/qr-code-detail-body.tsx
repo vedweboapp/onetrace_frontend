@@ -53,7 +53,7 @@ export function QrCodeDetailBody({ detail, dateFmt }: Props) {
           </div>
         </DetailPanelCard>
 
-        <DetailPanelCard>
+        <DetailPanelCard title={t("table.assignedJob")}>
           <DetailMetricsGrid>
             <DetailMetricCard label={t("detail.assignedJob")}>
               {detail.assigned_to_id != null && detail.assigned_to_id > 0 ? (

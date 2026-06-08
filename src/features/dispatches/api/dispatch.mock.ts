@@ -19,7 +19,13 @@ import {
   upsertDispatchReturnRequestMock,
   getDispatchReturnRequestMock,
 } from "./dispatch-return-request.mock-store";
-import { buildDispatchReturnItems, buildWorkerReturnMaterials } from "@/features/dispatches/utils/dispatch-return.util";
+import {
+  allocateReturnQuantityAcrossSources,
+  buildDispatchReturnItems,
+  buildWorkerReturnMaterials,
+} from "@/features/dispatches/utils/dispatch-return.util";
+import { buildDispatchLineSummaries } from "@/features/dispatches/utils/dispatch-summary.util";
+import { allocateReturnQuantityAcrossDispatchLines } from "@/features/dispatches/utils/dispatch-line-aggregate.util";
 import {
   DEFAULT_MOCK_DISPATCH_USER,
   enrichDispatchDetail,
@@ -138,7 +144,8 @@ export async function fetchDispatchesPageMock(
 export async function fetchDispatchMock(id: number): Promise<DispatchDetail | null> {
   const detail = getDispatchMockEntity(id);
   if (!detail) return null;
-  return enrichDispatchDetail(detail);
+  const enriched = await enrichDispatchDetail(detail);
+  return { ...enriched, line_summaries: buildDispatchLineSummaries(enriched.lines) };
 }
 
 export async function fetchDispatchLogsMock(id: number): Promise<DispatchLogEntry[]> {
@@ -228,7 +235,28 @@ export async function createDispatchReturnRequestMock(
   const id = allocateDispatchReturnRequestMockId();
   const lines: DispatchReturnRequest["lines"] = [];
 
-  for (const input of payload.lines) {
+  let requestLines = payload.lines ?? [];
+
+  if (payload.groups?.length) {
+    const workerMaterials = buildWorkerReturnMaterials(
+      listDispatchMockEntities(),
+      {
+        worker_name: payload.worker_name,
+        date_preset: "custom",
+        date_from: "2000-01-01",
+        date_to: "2099-12-31",
+      },
+      listDispatchReturnRequestMocks(),
+    );
+
+    requestLines = payload.groups.flatMap((group) => {
+      const row = workerMaterials.lines.find((line) => line.group_key === group.group_key);
+      if (!row) return [];
+      return allocateReturnQuantityAcrossSources(row, group.quantity, group.return_type, group.reason);
+    });
+  }
+
+  for (const input of requestLines) {
     const qty = Math.max(0, input.quantity);
     if (qty <= 0) continue;
     const detail = getDispatchMockEntity(input.dispatch_id);
@@ -329,14 +357,35 @@ export async function returnDispatchToStockMock(
   dispatchId: number,
   payload: DispatchReturnToStockPayload,
 ): Promise<DispatchDetail> {
+  let lines = payload.lines ?? [];
+
+  if (payload.groups?.length) {
+    const returnData = await fetchDispatchReturnItemsMock(dispatchId);
+    if (!returnData) throw new Error(`Dispatch ${dispatchId} not found`);
+
+    lines = payload.groups.flatMap((group) => {
+      const qty = Math.max(0, group.quantity);
+      if (qty <= 0) return [];
+      const row = returnData.lines.find((line) => (line.group_key ?? `line-${line.line_id}`) === group.group_key);
+      if (!row) return [];
+      const sources = row.sources ?? [{ line_id: row.line_id, returnable_quantity: row.returnable_quantity }];
+      return allocateReturnQuantityAcrossDispatchLines(sources, qty).map((allocated) => ({
+        line_id: allocated.line_id,
+        quantity: allocated.quantity,
+        return_type: group.return_type,
+      }));
+    });
+  }
+
   const restockPayload: DispatchRestockPayload = {
-    lines: payload.lines.map((row) => ({
+    lines: lines.map((row) => ({
       line_id: row.line_id,
       quantity: row.quantity,
       return_type: row.return_type,
     })),
   };
-  return restockDispatchMock(dispatchId, restockPayload);
+  const detail = await restockDispatchMock(dispatchId, restockPayload);
+  return { ...detail, line_summaries: buildDispatchLineSummaries(detail.lines) };
 }
 
 export async function restockDispatchMock(

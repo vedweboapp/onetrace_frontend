@@ -1,5 +1,4 @@
 import type { MaterialRequestItemRef } from "@/features/material-requests/types/material-request.types";
-import type { MaterialRequestFormValues } from "@/features/material-requests/schemas/material-request-form-schema";
 import { materialRequestLineKey } from "@/features/material-requests/utils/material-request-line-key.util";
 import {
   materialRequestDispatchedDisplay,
@@ -96,26 +95,6 @@ export function aggregateMaterialRequestItems(
       };
     })
     .sort((a, b) => a.materialName.localeCompare(b.materialName));
-}
-
-export function aggregateMaterialRequestFormItems(
-  items: MaterialRequestFormValues["items"],
-): MaterialRequestFormValues["items"] {
-  const qtyByItem = new Map<number, number>();
-
-  for (const row of items) {
-    const itemId = Number.parseInt(row.item.trim(), 10);
-    const qty = Number.parseFloat(row.quantity.trim());
-    if (!Number.isFinite(itemId) || itemId <= 0) continue;
-    if (!Number.isFinite(qty) || qty <= 0) continue;
-    qtyByItem.set(itemId, (qtyByItem.get(itemId) ?? 0) + qty);
-  }
-
-  return [...qtyByItem.entries()].map(([itemId, qty]) => ({
-    job: "",
-    item: String(itemId),
-    quantity: Number.isInteger(qty) ? String(qty) : qty.toFixed(2),
-  }));
 }
 
 export function materialRequestUniqueItemCount(items: MaterialRequestItemRef[] | undefined): number {

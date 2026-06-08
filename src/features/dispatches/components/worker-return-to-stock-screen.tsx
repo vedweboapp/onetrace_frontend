@@ -18,7 +18,6 @@ import type {
   WorkerReturnMaterialLine,
 } from "@/features/dispatches/types/dispatch.types";
 import {
-  allocateReturnQuantityAcrossSources,
   dispatchReturnWorkerLabel,
 } from "@/features/dispatches/utils/dispatch-return.util";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
@@ -246,23 +245,23 @@ export function WorkerReturnToStockScreen({
     const worker = Number.parseInt(workerId, 10);
     if (!materials || !Number.isFinite(worker)) return;
 
-    const lines = materials.lines.flatMap((row) => {
+    const groups = materials.lines.flatMap((row) => {
       const draft = drafts[lineDraftKey(row)];
       const quantity = Number.parseFloat(draft?.returnQty?.trim() ?? "");
       if (!Number.isFinite(quantity) || quantity <= 0) return [];
-      return allocateReturnQuantityAcrossSources(
-        row,
+      return [{
+        group_key: row.group_key,
         quantity,
-        draft?.returnType ?? "unused",
-        draft?.reason?.trim() || undefined,
-      );
+        return_type: draft?.returnType ?? "unused",
+        reason: draft?.reason?.trim() || undefined,
+      }];
     });
 
-    if (lines.length === 0) return;
+    if (groups.length === 0) return;
 
     setSubmitting(true);
     try {
-      await createDispatchReturnRequest({ worker_name: worker, lines });
+      await createDispatchReturnRequest({ worker_name: worker, groups });
       toastSuccess(t("return.requestSubmittedToast"));
       setDrafts({});
       await loadMaterials();

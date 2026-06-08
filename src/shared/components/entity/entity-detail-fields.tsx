@@ -176,7 +176,7 @@ export function DetailSystemMetadataSection({
   const modifiedByUser = normalizeDetailAuditUser(modifiedBy);
 
   return (
-    <DetailPanelCard title={labels.sectionTitle}>
+    <DetailPanelCard title={labels.sectionTitle} defaultOpen={false}>
       <DetailMetricsGrid className="sm:grid-cols-2">
         {status ? (
           <DetailMetricCard label={status.statusLabel}>
