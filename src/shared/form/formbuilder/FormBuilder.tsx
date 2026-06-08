@@ -66,6 +66,23 @@ const reindexSectionSequences = (sections: Section[]): Section[] => {
   });
 };
 
+type CreatedFormResponse = {
+  id?: string | number;
+  form_id?: string | number;
+  data?: {
+    id?: string | number;
+    form_id?: string | number;
+  };
+};
+
+const getCreatedFormId = (
+  response: CreatedFormResponse | null | undefined,
+): string | number | undefined =>
+  response?.form_id ??
+  response?.id ??
+  response?.data?.form_id ??
+  response?.data?.id;
+
 interface TopDropZoneProps {
   onDrop: (isSubform: boolean) => void;
 }
@@ -369,8 +386,8 @@ export default function FormBuilderLayout({
   const rawPurpose = searchParams.get("purpose");
   const purpose = rawPurpose === "create_project_job_form"
     ? "create_project_form"
-    : rawPurpose === "edit_project_job_form"
-      ? "edit__project_form"
+    : rawPurpose === "edit_project_job_form" || rawPurpose === "edit__project_form"
+      ? "edit_project_form"
       : rawPurpose;
   const installationTypeId = searchParams.get("installation_type_id") || undefined;
   const router = useRouter();
@@ -386,7 +403,7 @@ export default function FormBuilderLayout({
   const [moduleName, setModuleName] = useState(
     purpose === "create_layout" || purpose === "create_project_form"
       ? "New Layout"
-      : purpose === "edit_layout" || purpose === "edit__project_form"
+      : purpose === "edit_layout" || purpose === "edit_project_form"
         ? "Loading Layout..."
         : targetModule || "Untitled",
   );
@@ -423,7 +440,7 @@ export default function FormBuilderLayout({
   useEffect(() => {
     const loadSchema = async () => {
       if (
-        (purpose === "edit_layout" || purpose === "edit__project_form") &&
+        (purpose === "edit_layout" || purpose === "edit_project_form") &&
         resolvedLayoutId
       ) {
         const handlerCtx = {
@@ -552,7 +569,7 @@ export default function FormBuilderLayout({
         purpose !== "create_module" &&
         purpose !== "create_layout" &&
         purpose !== "edit_layout" &&
-        purpose !== "edit__project_form" &&
+        purpose !== "edit_project_form" &&
         purpose !== "create_project_form"
       ) {
         const data = await getFormSchema(targetModule);
@@ -920,7 +937,7 @@ export default function FormBuilderLayout({
 
       let finalPayload: any;
 
-      if (purpose === "edit_layout" || purpose === "edit__project_form") {
+      if (purpose === "edit_layout" || purpose === "edit_project_form") {
         // Build differential update structure as requested by the API
         // Get all non-deleted sections sorted by their current position
         const allNonDeletedSections = sections.filter((sec) => !sec.is_deleted);
@@ -1002,7 +1019,7 @@ export default function FormBuilderLayout({
           });
         }
 
-        if (purpose === "edit__project_form") {
+        if (purpose === "edit_project_form") {
           finalPayload = {
             name: moduleName,
             api_name: moduleName.toLowerCase().replace(/[^a-z0-9]/g, "_"),
@@ -1100,7 +1117,7 @@ export default function FormBuilderLayout({
       }
 
       if (
-        (purpose === "create_project_form" || purpose === "edit__project_form") &&
+        (purpose === "create_project_form" || purpose === "edit_project_form") &&
         apiHandlers
       ) {
         // ── Project Form flow ─────────────────────────────────────────────
@@ -1121,13 +1138,17 @@ export default function FormBuilderLayout({
             ? await apiHandlers.createForm(finalPayload, handlerCtx)
             : null;
         const formId =
-          purpose === "edit__project_form"
+          purpose === "edit_project_form"
             ? resolvedLayoutId
-            : createdForm?.id ?? createdForm?.form_id;
+            : getCreatedFormId(createdForm);
         savedFormId = formId;
 
+        if (purpose === "create_project_form" && !formId) {
+          throw new Error("Form creation response did not include form_id.");
+        }
+
         if (
-          purpose === "edit__project_form" &&
+          purpose === "edit_project_form" &&
           formId &&
           apiHandlers.updateForm
         ) {
@@ -1183,7 +1204,7 @@ export default function FormBuilderLayout({
         successMessage = t("moduleCreatedToast");
       } else if (purpose === "create_project_form") {
         successMessage = "Project form created successfully.";
-      } else if (purpose === "edit__project_form") {
+      } else if (purpose === "edit_project_form") {
         successMessage = "Project form updated successfully.";
       } else if (purpose === "create_layout" || isNew) {
         successMessage = t("layoutCreatedToast");
@@ -1193,9 +1214,9 @@ export default function FormBuilderLayout({
 
       toastSuccess(successMessage);
 
-      if (purpose === "create_project_form" && savedFormId) {
+      if (purpose === "create_project_form" && savedFormId && !isClose) {
         const locale = params?.locale || "en";
-        router.push(`/${locale}/dashboard/settings/project-type-forms/create?purpose=edit__project_form&layout_id=${savedFormId}`);
+        router.push(`/${locale}/dashboard/settings/project-type-forms/create?purpose=edit_project_form&layout_id=${savedFormId}`);
       } else if (isClose) {
         if (purpose === "create_module") {
           router.push("/dashboard/settings/modules");

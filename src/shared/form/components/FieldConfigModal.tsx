@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { FIELD_TYPES } from "./fieldTypes";
 import { AppButton as Button } from "@/shared/ui/app-button";
+import { GripVertical, Plus, Trash2 } from "lucide-react";
+import { useDrag, useDrop } from "react-dnd";
 
 interface FieldConfigModalProps {
   fieldType: string;
@@ -21,6 +23,117 @@ function InfoIcon() {
     >
       <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 4a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-1 4h2v6h-2v-6z" />
     </svg>
+  );
+}
+
+const OPTION_DND_TYPE = "FIELD_CONFIG_OPTION";
+
+// Pure helpers — defined at module level so useState initializers can safely call them.
+const parseOptionsLines = (text: string): string[] =>
+  text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+
+const normalizeOptionValue = (option: unknown): string =>
+  typeof option === "string"
+    ? option
+    : String(
+        (option as { label?: unknown; value?: unknown } | null)?.label ??
+          (option as { label?: unknown; value?: unknown } | null)?.value ??
+          "",
+      );
+
+type DraggableOptionRowProps = {
+  value: string;
+  index: number;
+  onChange: (index: number, value: string) => void;
+  onDelete: (index: number) => void;
+  onMove: (fromIndex: number, toIndex: number) => void;
+};
+
+function DraggableOptionRow({
+  value,
+  index,
+  onChange,
+  onDelete,
+  onMove,
+}: DraggableOptionRowProps) {
+  const rowRef = useRef<HTMLDivElement | null>(null);
+
+  const [, drop] = useDrop(
+    () => ({
+      accept: OPTION_DND_TYPE,
+      hover: (item: { index: number }, monitor) => {
+        if (!rowRef.current) return;
+        const fromIndex = item.index;
+        const toIndex = index;
+        if (fromIndex === toIndex) return;
+
+        const rect = rowRef.current.getBoundingClientRect();
+        const midpoint = (rect.bottom - rect.top) / 2;
+        const clientOffset = monitor.getClientOffset();
+        if (!clientOffset) return;
+        const hoverY = clientOffset.y - rect.top;
+
+        if (fromIndex < toIndex && hoverY < midpoint) return;
+        if (fromIndex > toIndex && hoverY > midpoint) return;
+
+        onMove(fromIndex, toIndex);
+        item.index = toIndex;
+      },
+    }),
+    [index, onMove],
+  );
+
+  const [{ isDragging }, drag] = useDrag(
+    () => ({
+      type: OPTION_DND_TYPE,
+      item: { index },
+      collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+    }),
+    [index],
+  );
+
+  const setRowNode = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      rowRef.current = node;
+      drop(node);
+    },
+    [drop],
+  );
+
+  return (
+    <div
+      ref={setRowNode}
+      className={`flex items-center gap-2 rounded-md border border-gray-200 bg-white p-2 transition dark:border-slate-700 dark:bg-slate-900 ${
+        isDragging ? "opacity-50" : ""
+      }`}
+    >
+      <button
+        ref={drag as unknown as React.Ref<HTMLButtonElement>}
+        type="button"
+        aria-label="Drag option"
+        className="flex size-8 shrink-0 cursor-grab items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing dark:hover:bg-slate-800 dark:hover:text-slate-200"
+      >
+        <GripVertical className="size-4" />
+      </button>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(index, e.target.value)}
+        placeholder="Option label"
+        className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100"
+      />
+      <button
+        type="button"
+        aria-label="Delete option"
+        onClick={() => onDelete(index)}
+        className="flex size-8 shrink-0 items-center justify-center rounded text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+      >
+        <Trash2 className="size-4" />
+      </button>
+    </div>
   );
 }
 
@@ -49,8 +162,9 @@ export default function FieldConfigModal({
   });
 
   const [optionsText, setOptionsText] = useState(
-    (config.options || []).join("\n")
+    (config.options || []).map(normalizeOptionValue).join("\n")
   );
+  const [optionsMode, setOptionsMode] = useState<"normal" | "mass">("normal");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
 
@@ -69,11 +183,7 @@ export default function FieldConfigModal({
     });
   };
 
-  const parseOptionsLines = (text: string) =>
-    text
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line !== "");
+
 
   const getOptionsList = (): string[] => {
     const fromText = parseOptionsLines(optionsText);
@@ -100,6 +210,44 @@ export default function FieldConfigModal({
     });
   };
 
+  const setOptionsFromNormalEditor = (lines: string[]) => {
+    setOptionsText(lines.join("\n"));
+    applyOptionsUpdate(lines);
+  };
+
+  const handleNormalOptionChange = (index: number, value: string) => {
+    const options = (config.options || []).map(normalizeOptionValue);
+    options[index] = value;
+    setOptionsFromNormalEditor(options);
+  };
+
+  const handleAddNormalOption = () => {
+    setOptionsFromNormalEditor([...(config.options || []).map(normalizeOptionValue), ""]);
+  };
+
+  const handleDeleteNormalOption = (index: number) => {
+    const options = (config.options || []).map(normalizeOptionValue);
+    options.splice(index, 1);
+    setOptionsFromNormalEditor(options);
+  };
+
+  const handleMoveNormalOption = (fromIndex: number, toIndex: number) => {
+    const options = (config.options || []).map(normalizeOptionValue);
+    const [moved] = options.splice(fromIndex, 1);
+    options.splice(toIndex, 0, moved);
+    setOptionsFromNormalEditor(options);
+  };
+
+  const switchOptionsMode = (mode: "normal" | "mass") => {
+    if (mode === "normal") {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      applyOptionsUpdate(parseOptionsLines(optionsText));
+    } else {
+      setOptionsText((config.options || []).map(normalizeOptionValue).join("\n"));
+    }
+    setOptionsMode(mode);
+  };
+
   const handleOptionsTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setOptionsText(e.target.value);
     if (debounceTimer) clearTimeout(debounceTimer);
@@ -115,13 +263,16 @@ export default function FieldConfigModal({
   };
 
   const handleSave = () => {
-    const lines = optionsText
-      .split("\n")
-      .map((line: string) => line.trim())
-      .filter((line: string) => line !== "");
+    // In normal mode use config.options (kept in sync by applyOptionsUpdate).
+    // In mass mode parse the textarea text directly.
+    const finalOptions =
+      optionsMode === "normal"
+        ? (config.options || []).map(normalizeOptionValue)
+        : parseOptionsLines(optionsText);
+
     const finalConfig = {
       ...config,
-      options: lines,
+      options: finalOptions,
       field_type: config.field_type || fieldType,
     };
 
@@ -404,21 +555,80 @@ export default function FieldConfigModal({
         );
       }
 
-      case "options":
+      case "options": {
+        const normalOptions: string[] = (config.options || []).map(normalizeOptionValue);
+
         return (
           <div key={field.key} className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              {field.label}
-              <span className="text-red-500">{field.required ? "*" : ""}</span>
-            </label>
-            <textarea
-              value={optionsText}
-              onChange={handleOptionsTextChange}
-              onBlur={handleOptionsBlur}
-              placeholder="One option per line"
-              rows={6}
-              className={`w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-[8px] bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 font-mono text-sm resize-none outline-none ${errors[field.key] ? "border-red-500" : ""}`}
-            />
+            <div className="flex items-center justify-between gap-3">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                {field.label}
+                <span className="text-red-500">{field.required ? "*" : ""}</span>
+              </label>
+              <div className="inline-flex rounded-md border border-gray-200 bg-gray-50 p-1 dark:border-slate-700 dark:bg-slate-800">
+                <button
+                  type="button"
+                  onClick={() => switchOptionsMode("normal")}
+                  className={`rounded px-3 py-1.5 text-xs font-medium transition ${
+                    optionsMode === "normal"
+                      ? "bg-white text-gray-900 shadow-sm dark:bg-slate-900 dark:text-gray-100"
+                      : "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                  }`}
+                >
+                  Add Options
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchOptionsMode("mass")}
+                  className={`rounded px-3 py-1.5 text-xs font-medium transition ${
+                    optionsMode === "mass"
+                      ? "bg-white text-gray-900 shadow-sm dark:bg-slate-900 dark:text-gray-100"
+                      : "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                  }`}
+                >
+                  Add Mass Options
+                </button>
+              </div>
+            </div>
+            {optionsMode === "normal" ? (
+              <div className="rounded-md border border-gray-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
+                <div className="space-y-2">
+                  {normalOptions.length > 0 ? (
+                    normalOptions.map((option, index) => (
+                      <DraggableOptionRow
+                        key={`option-${index}`}
+                        value={option}
+                        index={index}
+                        onChange={handleNormalOptionChange}
+                        onDelete={handleDeleteNormalOption}
+                        onMove={handleMoveNormalOption}
+                      />
+                    ))
+                  ) : (
+                    <div className="rounded-md border border-dashed border-gray-300 bg-white px-3 py-5 text-center text-sm text-gray-500 dark:border-slate-700 dark:bg-slate-900 dark:text-gray-400">
+                      No options added yet
+                    </div>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="mt-3"
+                  onClick={handleAddNormalOption}
+                >
+                  <Plus className="size-4" /> Add option
+                </Button>
+              </div>
+            ) : (
+              <textarea
+                value={optionsText}
+                onChange={handleOptionsTextChange}
+                onBlur={handleOptionsBlur}
+                placeholder="One option per line"
+                rows={6}
+                className={`w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-[8px] bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 font-mono text-sm resize-none outline-none ${errors[field.key] ? "border-red-500" : ""}`}
+              />
+            )}
             {errors[field.key] && (
               <p className="text-red-600 text-sm mt-1">{errors[field.key]}</p>
             )}
@@ -433,12 +643,12 @@ export default function FieldConfigModal({
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {config.options.map((opt: string, idx: number) => (
+                  {config.options.map((opt: any, idx: number) => (
                     <span
                       key={idx}
                       className="inline-flex items-center px-3 py-1.5 bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-700 rounded-md text-sm text-gray-700 dark:text-gray-200 font-medium shadow-sm hover:shadow transition-shadow"
                     >
-                      {opt}
+                      {normalizeOptionValue(opt)}
                     </span>
                   ))}
                 </div>
@@ -446,6 +656,7 @@ export default function FieldConfigModal({
             )}
           </div>
         );
+      }
 
       case "tooltip-panel":
         return (

@@ -342,7 +342,7 @@ const ProjectTypeFormList = () => {
                                         key={row.id}
                                         onClick={() =>
                                             router.push(
-                                                `/dashboard/settings/project-type-forms/create?purpose=edit__project_form&layout_id=${row.id}`,
+                                                `/dashboard/settings/project-type-forms/create?purpose=edit_project_form&layout_id=${row.id}`,
                                             )
                                         }
                                         className="cursor-pointer border-b border-slate-100 hover:bg-slate-50/50 dark:border-slate-800 dark:hover:bg-slate-900/30"

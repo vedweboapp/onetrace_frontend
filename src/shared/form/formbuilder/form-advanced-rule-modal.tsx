@@ -7,6 +7,7 @@ import { FormRule, RuleCondition, FormRuleOutput, RuleAction, FormRuleBlock } fr
 import MultiSelect from "../components/multi-select";
 import PhoneInput from "react-phone-number-input";
 import { SurfacePhoneCountrySelect } from "@/shared/ui/surface-phone-country-select";
+import { currencyList } from "../components/currency-list";
 
 const FORM_BUILDER_SUBHEADER_OFFSET = "top-28";
 const FORM_BUILDER_DRAWER_HEIGHT = "h-[calc(100dvh-7rem)]";
@@ -347,6 +348,23 @@ const FormAdvancedRuleModal = ({
           <option value="">Select Option</option>
           <option value="true">True (Checked)</option>
           <option value="false">False (Unchecked)</option>
+        </select>
+      );
+    }
+
+    if (fieldType === "currency") {
+      return (
+        <select
+          className={`w-full p-2.5 border ${errors[`block-${blockIdx}-ruleValue`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+          value={blockValue}
+          onChange={(e) => handleBlockChange(blockIdx, { value: e.target.value })}
+        >
+          <option value="">Select Currency</option>
+          {currencyList.map((currency) => (
+            <option key={`${currency.countryCode}-${currency.value}`} value={currency.value}>
+              {currency.label} - {currency.value}
+            </option>
+          ))}
         </select>
       );
     }
