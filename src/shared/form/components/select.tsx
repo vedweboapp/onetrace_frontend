@@ -58,6 +58,8 @@ const Select = ({
         flex-col
         gap-1
         w-full
+        relative
+        overflow-visible
       `}
         >
             {label && (
@@ -85,6 +87,7 @@ const Select = ({
           w-full
           text-slate-900
           dark:text-white
+          text-left
           ${readOnly
                         ? `
                 border-none

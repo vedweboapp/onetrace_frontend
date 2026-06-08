@@ -17,6 +17,7 @@ import {
   parseApiFailurePayload,
   resolveApiErrorUserText,
 } from "@/core/errors/api-error-text";
+import api from "@/core/api/axios";
 import FormRenderer, { FormRendererRef } from "./FormRenderer";
 import FormRuleModal from "./form-rule-modal";
 import RuleTypeModal from "../components/RuleTypeModal";
@@ -418,6 +419,7 @@ export default function FormBuilderLayout({
 
   const [rules, setRules] = useState<FormRule[]>([]);
   const [editingRule, setEditingRule] = useState<FormRule | null>(null);
+  const [deletedRuleIds, setDeletedRuleIds] = useState<{ id: string | number; template_rule_id: string | number | null }[]>([]);
 
   const [activeTab, setActiveTab] = useState<"form" | "preview" | "rules">("form");
   const [previewLayout, setPreviewLayout] = useState<"desktop" | "phone">("desktop");
@@ -437,6 +439,7 @@ export default function FormBuilderLayout({
 
   useEffect(() => {
     const loadSchema = async () => {
+      setDeletedRuleIds([]);
       if (
         (purpose === "edit_layout" || purpose === "edit_project_form") &&
         resolvedLayoutId
@@ -539,6 +542,7 @@ export default function FormBuilderLayout({
                 ...r.logic,
                 condition: r.logic.condition ? normalizeCondition(r.logic.condition) : undefined,
                 id: r.id ?? r.logic.id,
+                template_rule_id: r.template_rule_id ?? r.template_rule ?? null,
               };
               if (r.logic.blocks) {
                 ruleData.blocks = r.logic.blocks.map((b: any) => ({
@@ -552,6 +556,7 @@ export default function FormBuilderLayout({
               ...r,
               _uid: r.uuid || r._uid || `rule-${Date.now()}-${Math.random()}`,
               condition: r.condition ? normalizeCondition(r.condition) : undefined,
+              template_rule_id: r.template_rule_id ?? r.template_rule ?? null,
             };
             if (r.blocks) {
               ruleData.blocks = r.blocks.map((b: any) => ({
@@ -588,6 +593,7 @@ export default function FormBuilderLayout({
                 ...r.logic,
                 condition: r.logic.condition ? normalizeCondition(r.logic.condition) : undefined,
                 id: r.id ?? r.logic.id,
+                template_rule_id: r.template_rule_id ?? null,
               };
               if (r.logic.blocks) {
                 ruleData.blocks = r.logic.blocks.map((b: any) => ({
@@ -601,6 +607,7 @@ export default function FormBuilderLayout({
               ...r,
               _uid: r.uuid || r._uid || `rule-${Date.now()}-${Math.random()}`,
               condition: r.condition ? normalizeCondition(r.condition) : undefined,
+              template_rule_id: r.template_rule_id ?? null,
             };
             if (r.blocks) {
               ruleData.blocks = r.blocks.map((b: any) => ({
@@ -860,6 +867,10 @@ export default function FormBuilderLayout({
           sequence: fIdx + 1,
         };
 
+        if (f.is_custom !== undefined) {
+          fieldPayload.is_custom = f.is_custom;
+        }
+
         if (f.placeholder) fieldPayload.placeholder = f.placeholder;
         if (f.helpText) fieldPayload.help_text = f.helpText;
         if (f.options && f.options.length > 0) fieldPayload.options = f.options;
@@ -980,6 +991,7 @@ export default function FormBuilderLayout({
               sequence: sequencePosition,
               column_count: sec.column_count,
               is_subform: !!sec.is_subform,
+              is_custom: sec.is_custom,
               fields: activeFields,
             };
           });
@@ -1150,6 +1162,14 @@ export default function FormBuilderLayout({
           formId &&
           apiHandlers.updateForm
         ) {
+          if (deletedRuleIds.length > 0 && rawPurpose === "edit_project_job_form") {
+            await api.post(`project-forms/${formId}/rules/mass-delete/`, {
+              rules: deletedRuleIds.map((entry) => ({
+                id: entry.id,
+                template_rule_id: entry.template_rule_id,
+              })),
+            });
+          }
           await apiHandlers.updateForm(formId, finalPayload, handlerCtx);
         }
 
@@ -1196,6 +1216,7 @@ export default function FormBuilderLayout({
       }
 
       setDirty(false);
+      setDeletedRuleIds([]);
 
       let successMessage = t("layoutSavedToast");
       if (purpose === "create_module") {
@@ -1310,6 +1331,33 @@ export default function FormBuilderLayout({
   };
 
   const handleDeleteRule = (uid: string) => {
+    const ruleToDelete = rules.find((r) => r._uid === uid);
+    if (ruleToDelete) {
+      const ruleId = ruleToDelete.id ?? ruleToDelete.rule_id;
+      const templateRuleId = (ruleToDelete as any).template_rule_id;
+      const hasValidId = ruleId != null && ruleId !== "";
+      const hasTemplateId = templateRuleId != null && templateRuleId !== "";
+
+      if (hasValidId || hasTemplateId) {
+        setDeletedRuleIds((prev) => {
+          const isDuplicate = prev.some(
+            (entry) =>
+              (hasValidId && entry.id === ruleId) ||
+              (hasTemplateId && entry.template_rule_id === templateRuleId),
+          );
+          if (!isDuplicate) {
+            return [
+              ...prev,
+              {
+                id: hasValidId ? ruleId : null,
+                template_rule_id: templateRuleId ?? null,
+              },
+            ];
+          }
+          return prev;
+        });
+      }
+    }
     setRules((prev) => prev.filter((r) => r._uid !== uid));
     setDirty(true);
   };

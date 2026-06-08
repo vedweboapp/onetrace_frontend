@@ -98,10 +98,10 @@ function measureDropdownPlacement(
   let openUp = false;
   if (side === "top") openUp = true;
   else if (side === "bottom") openUp = false;
-  else openUp = spaceBelow < DROPDOWN_MIN_SPACE && spaceAbove > spaceBelow;
+  else openUp = spaceBelow < DROPDOWN_PREFERRED_MAX && spaceAbove > spaceBelow;
 
   const maxHeight = Math.max(
-    DROPDOWN_MIN_SPACE,
+    80,
     Math.min(DROPDOWN_PREFERRED_MAX, (openUp ? spaceAbove : spaceBelow) - 8),
   );
 

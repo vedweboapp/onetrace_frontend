@@ -2274,6 +2274,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                           isPinEditing ? (
                             <>
                               <CheckmarkSelect
+                                side={"left"}
                                 options={availableForms}
                                 value={isPinEditing ? String(pinEditData.formId ?? "") : String(detailPin?.formId ?? "")}
                                 onChange={(value) => {
