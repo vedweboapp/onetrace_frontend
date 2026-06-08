@@ -1,4 +1,9 @@
 import type { MaterialRequestExtraDispatchItem } from "@/features/material-requests/types/material-request-dispatch.types";
+import {
+  aggregateMaterialRequestItems,
+  materialRequestUniqueItemCount,
+  type AggregatedMaterialRequestItem,
+} from "@/features/material-requests/utils/material-request-item-aggregate.util";
 import type {
   MaterialRequestDetail,
   MaterialRequestItemRef,
@@ -51,6 +56,8 @@ export function materialRequestJobLabel(row: MaterialRequestListItem | MaterialR
 }
 
 export function materialRequestItemsCount(row: MaterialRequestListItem | MaterialRequestDetail): number {
+  const unique = materialRequestUniqueItemCount(row.items);
+  if (unique > 0) return unique;
   if (typeof row.items_count === "number" && Number.isFinite(row.items_count)) return row.items_count;
   return row.items?.length ?? 0;
 }
@@ -158,26 +165,26 @@ export function formatMaterialRequestDispatchedLabel(row: MaterialRequestItemRef
 
 export type MaterialRequestDispatchRow = {
   key: string;
+  itemId: number;
   materialName: string;
   groupName: string;
   requested: number;
   dispatched: number;
   pending: number;
+  sources: AggregatedMaterialRequestItem["sources"];
 };
 
 export function materialRequestDispatchRows(items: MaterialRequestItemRef[] | undefined): MaterialRequestDispatchRow[] {
-  return (items ?? []).map((row, index) => {
-    const requested = materialRequestItemRequestedQty(row);
-    const dispatched = materialRequestItemDispatchedQty(row);
-    return {
-      key: String(row.id ?? index),
-      materialName: materialRequestItemProductName(row),
-      groupName: materialRequestItemGroupName(row),
-      requested,
-      dispatched,
-      pending: Math.max(0, requested - dispatched),
-    };
-  });
+  return aggregateMaterialRequestItems(items).map((row) => ({
+    key: row.key,
+    itemId: row.itemId,
+    materialName: row.materialName,
+    groupName: row.groupName,
+    requested: row.requested,
+    dispatched: row.dispatched,
+    pending: row.pending,
+    sources: row.sources,
+  }));
 }
 
 export function materialRequestExtraItemId(row: MaterialRequestExtraDispatchItem): number {

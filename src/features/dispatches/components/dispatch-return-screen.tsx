@@ -10,6 +10,7 @@ import {
 } from "@/features/dispatches/api/dispatch.api";
 import type { DispatchReturnItem, DispatchReturnType } from "@/features/dispatches/types/dispatch.types";
 import { dispatchReturnWorkerLabel } from "@/features/dispatches/utils/dispatch-return.util";
+import { allocateReturnQuantityAcrossDispatchLines } from "@/features/dispatches/utils/dispatch-line-aggregate.util";
 import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -56,7 +57,7 @@ export function DispatchReturnScreen({ dispatchId }: Props) {
   const [returnData, setReturnData] = React.useState<Awaited<ReturnType<typeof fetchDispatchReturnItems>> | null>(
     null,
   );
-  const [drafts, setDrafts] = React.useState<Record<number, LineDraft>>({});
+  const [drafts, setDrafts] = React.useState<Record<string, LineDraft>>({});
 
   const returnTypeOptions = React.useMemo(
     () => [
@@ -75,9 +76,10 @@ export function DispatchReturnScreen({ dispatchId }: Props) {
         const data = await fetchDispatchReturnItems(dispatchId);
         if (cancelled) return;
         setReturnData(data);
-        const initial: Record<number, LineDraft> = {};
+        const initial: Record<string, LineDraft> = {};
         for (const line of data.lines) {
-          initial[line.line_id] = {
+          const key = line.group_key ?? `line-${line.line_id}`;
+          initial[key] = {
             returnQty: String(line.returnable_quantity),
             returnType: "unused",
           };
@@ -94,10 +96,10 @@ export function DispatchReturnScreen({ dispatchId }: Props) {
     };
   }, [dispatchId, t]);
 
-  function updateDraft(lineId: number, patch: Partial<LineDraft>) {
+  function updateDraft(groupKey: string, patch: Partial<LineDraft>) {
     setDrafts((prev) => ({
       ...prev,
-      [lineId]: { ...prev[lineId], ...patch },
+      [groupKey]: { ...prev[groupKey], ...patch },
     }));
   }
 
@@ -108,18 +110,18 @@ export function DispatchReturnScreen({ dispatchId }: Props) {
   async function handleSubmit() {
     if (!returnData) return;
 
-    const lines = returnData.lines
-      .map((row) => {
-        const draft = drafts[row.line_id];
-        const quantity = Number.parseFloat(draft?.returnQty?.trim() ?? "");
-        if (!Number.isFinite(quantity) || quantity <= 0) return null;
-        return {
-          line_id: row.line_id,
-          quantity: Math.min(quantity, row.returnable_quantity),
-          return_type: draft?.returnType ?? "unused",
-        };
-      })
-      .filter((row): row is { line_id: number; quantity: number; return_type: DispatchReturnType } => row != null);
+    const lines = returnData.lines.flatMap((row) => {
+      const key = row.group_key ?? `line-${row.line_id}`;
+      const draft = drafts[key];
+      const quantity = Number.parseFloat(draft?.returnQty?.trim() ?? "");
+      if (!Number.isFinite(quantity) || quantity <= 0) return [];
+      const sources = row.sources ?? [{ line_id: row.line_id, returnable_quantity: row.returnable_quantity }];
+      return allocateReturnQuantityAcrossDispatchLines(sources, quantity).map((allocated) => ({
+        line_id: allocated.line_id,
+        quantity: allocated.quantity,
+        return_type: draft?.returnType ?? "unused",
+      }));
+    });
 
     if (lines.length === 0) return;
 
@@ -134,7 +136,8 @@ export function DispatchReturnScreen({ dispatchId }: Props) {
   }
 
   const canSubmit = returnData?.lines.some((row) => {
-    const qty = Number.parseFloat(drafts[row.line_id]?.returnQty?.trim() ?? "");
+    const key = row.group_key ?? `line-${row.line_id}`;
+    const qty = Number.parseFloat(drafts[key]?.returnQty?.trim() ?? "");
     return Number.isFinite(qty) && qty > 0;
   });
 
@@ -228,42 +231,39 @@ export function DispatchReturnScreen({ dispatchId }: Props) {
               </p>
             ) : (
               <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-                <table className="w-full min-w-[960px] text-left text-sm">
+                <table className="w-full min-w-[720px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
                       <th className="px-3 py-2">{t("table.materialItem")}</th>
-                      <th className="px-3 py-2">{t("table.jobName")}</th>
-                      <th className={quantityTableHeaderClass}>{t("table.dispatched")}</th>
+                      <th className={quantityTableHeaderClass}>{t("table.extra")}</th>
                       <th className={quantityTableHeaderClass}>{t("return.alreadyReturned")}</th>
-                      <th className={quantityTableHeaderClass}>{t("return.returnable")}</th>
                       <th className={quantityTableHeaderClass}>{t("return.returnQty")}</th>
                       <th className="px-3 py-2">{t("return.returnType")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {returnData.lines.map((row) => {
-                      const draft = drafts[row.line_id] ?? { returnQty: "", returnType: "unused" as const };
+                      const groupKey = row.group_key ?? `line-${row.line_id}`;
+                      const draft = drafts[groupKey] ?? { returnQty: "", returnType: "unused" as const };
                       return (
-                        <tr key={row.line_id} className="border-b border-slate-100 dark:border-slate-800">
+                        <tr key={groupKey} className="border-b border-slate-100 dark:border-slate-800">
                           <td className="px-3 py-3">
                             <p className="font-medium text-slate-900 dark:text-slate-100">{itemLabel(row)}</p>
                             {row.is_extra ? (
                               <span className="mt-1 block text-xs font-medium text-amber-600 dark:text-amber-400">
                                 {t("detail.extraItem")}
                               </span>
+                            ) : row.dispatched_quantity > 0 ? (
+                              <span className="mt-1 block text-xs font-medium text-amber-600 dark:text-amber-400">
+                                {t("return.surplusQty", { qty: row.dispatched_quantity })}
+                              </span>
                             ) : null}
-                          </td>
-                          <td className="px-3 py-3 text-slate-600 dark:text-slate-400">
-                            {row.job_name?.trim() || (row.is_extra ? "—" : "—")}
                           </td>
                           <td className={cn(quantityTableCellClass, "font-medium")}>
                             <QuantityWithUnits value={row.dispatched_quantity} unitsLabel={t("units")} />
                           </td>
                           <td className={cn(quantityTableCellClass, "text-slate-500")}>
                             <QuantityWithUnits value={row.returned_quantity} unitsLabel={t("units")} />
-                          </td>
-                          <td className={cn(quantityTableCellClass, "font-medium")}>
-                            <QuantityWithUnits value={row.returnable_quantity} unitsLabel={t("units")} />
                           </td>
                           <td className={quantityTableInputCellClass}>
                             <input
@@ -274,7 +274,7 @@ export function DispatchReturnScreen({ dispatchId }: Props) {
                               value={draft.returnQty}
                               disabled={saving}
                               className={cn(compactInputClass, "mx-auto w-20 text-center")}
-                              onChange={(e) => updateDraft(row.line_id, { returnQty: e.target.value })}
+                              onChange={(e) => updateDraft(groupKey, { returnQty: e.target.value })}
                             />
                           </td>
                           <td className="px-3 py-3">
@@ -289,7 +289,7 @@ export function DispatchReturnScreen({ dispatchId }: Props) {
                               disabled={saving}
                               className="min-w-[9rem]"
                               onChange={(v) =>
-                                updateDraft(row.line_id, {
+                                updateDraft(groupKey, {
                                   returnType: (v === "faulty" ? "faulty" : "unused") as DispatchReturnType,
                                 })
                               }

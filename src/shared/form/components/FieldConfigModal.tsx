@@ -180,7 +180,7 @@ export default function FieldConfigModal({
         newConfig.api_name = value.trim().replace(/\s+/g, "_").toLowerCase();
       }
       return newConfig;
-    });
+    })
   };
 
 

@@ -11,6 +11,7 @@ import { fetchItemsPage } from "@/features/items/api/item.api";
 import { fetchJob } from "@/features/jobs/api/job.api";
 import type { Job } from "@/features/jobs/types/job.types";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
+import { useMaterialStatusCatalog } from "@/features/material-status/hooks/use-material-status-catalog";
 import {
   createMaterialRequest,
   fetchMaterialRequest,
@@ -32,7 +33,6 @@ import {
   jobClientLabel,
   jobProjectLabel,
 } from "@/features/material-requests/utils/material-request-job-items.util";
-import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import {
@@ -49,7 +49,6 @@ import {
   RequiredMark,
   SurfaceDateInput,
   SurfaceShell,
-  surfaceInputClassName,
   surfaceTextareaClassName,
 } from "@/shared/ui";
 
@@ -80,6 +79,8 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
   const [jobsModalOpen, setJobsModalOpen] = React.useState(false);
   const [applyingJobs, setApplyingJobs] = React.useState(false);
 
+  const { options: statusOptions, loading: statusCatalogLoading } = useMaterialStatusCatalog();
+
   const schema = React.useMemo(
     () =>
       createMaterialRequestFormSchema({
@@ -106,8 +107,8 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
     defaultValues: emptyMaterialRequestFormDefaults(),
   });
 
-  const { fields: jobFields, remove: removeJob } = useFieldArray({ control, name: "jobs" });
-  const { fields: itemFields, remove: removeItem } = useFieldArray({ control, name: "items" });
+  const { fields: jobFields } = useFieldArray({ control, name: "jobs" });
+  const { fields: itemFields } = useFieldArray({ control, name: "items" });
 
   const watchedWorker = useWatch({ control, name: "worker_name" });
   const watchedJobs = useWatch({ control, name: "jobs" }) ?? [];
@@ -171,6 +172,12 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
   }, [watchedWorker, setValue]);
 
   async function hydrateJobsAndItems(jobIds: number[]) {
+    if (jobIds.length === 0) {
+      setSelectedJobsById({});
+      setValue("jobs", [], { shouldDirty: true, shouldValidate: true });
+      setValue("items", [], { shouldDirty: true, shouldValidate: true });
+      return;
+    }
     const jobs = await Promise.all(jobIds.map((id) => fetchJob(id, { silent: true })));
     const byId: Record<number, Job> = {};
     for (const job of jobs) byId[job.id] = job;
@@ -236,32 +243,14 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
   }
 
   function handleRemoveJob(jobId: number) {
-    const index = watchedJobs.findIndex((row) => row.job === String(jobId));
-    if (index >= 0) removeJob(index);
-
-    const itemIndexes = watchedItems
-      .map((row, i) => (row.job === String(jobId) ? i : -1))
-      .filter((i) => i >= 0)
-      .sort((a, b) => b - a);
-    for (const i of itemIndexes) removeItem(i);
-
-    setSelectedJobsById((prev) => {
-      const next = { ...prev };
-      delete next[jobId];
-      return next;
-    });
+    const nextJobIds = selectedJobIds.filter((id) => id !== jobId);
+    void hydrateJobsAndItems(nextJobIds);
   }
 
   function itemDisplayName(itemIdRaw: string): string {
     const id = Number.parseInt(itemIdRaw, 10);
     if (Number.isFinite(id) && itemLabelById[id]) return itemLabelById[id];
     return itemIdRaw ? `#${itemIdRaw}` : "—";
-  }
-
-  function jobDisplayTitle(jobIdRaw: string): string {
-    const id = Number.parseInt(jobIdRaw, 10);
-    const job = Number.isFinite(id) ? selectedJobsById[id] : undefined;
-    return job?.title?.trim() || (jobIdRaw ? `#${jobIdRaw}` : "—");
   }
 
   function formatRequestQtyDisplay(raw: string | undefined): string {
@@ -378,13 +367,26 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
                 </FieldGroup>
 
                 <FieldGroup label={t("fields.status")} htmlFor="mr-status">
-                  <input
-                    id="mr-status"
-                    readOnly
-                    className={cn(surfaceInputClassName, "cursor-default bg-slate-50 dark:bg-slate-900/60")}
-                    disabled={saving}
-                    {...register("status")}
+                  <Controller
+                    control={control}
+                    name="status"
+                    render={({ field }) => (
+                      <CheckmarkSelect
+                        id="mr-status"
+                        portaled
+                        searchable
+                        listLabel={t("fields.status")}
+                        options={statusOptions}
+                        value={field.value}
+                        emptyLabel={t("placeholders.status")}
+                        disabled={saving || statusCatalogLoading || statusOptions.length === 0}
+                        invalid={!!errors.status}
+                        onBlur={field.onBlur}
+                        onChange={field.onChange}
+                      />
+                    )}
                   />
+                  <FieldErrorText>{errors.status?.message}</FieldErrorText>
                 </FieldGroup>
               </div>
             </section>
@@ -468,16 +470,14 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
                 </p>
               ) : (
                 <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-                  <table className="w-full min-w-[720px] text-left text-sm">
+                  <table className="w-full min-w-[480px] text-left text-sm">
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
                         <th className="px-3 py-2">
                           {t("lineItems.itemName")}
                           <RequiredMark />
                         </th>
-                        <th className="px-3 py-2">{t("lineItems.jobName")}</th>
                         <th className="px-3 py-2">{t("lineItems.requestQty")}</th>
-                        <th className="px-3 py-2 w-12" />
                       </tr>
                     </thead>
                     <tbody>
@@ -491,26 +491,10 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
                               <input type="hidden" {...register(`items.${index}.job`)} />
                               <FieldErrorText>{errors.items?.[index]?.item?.message}</FieldErrorText>
                             </td>
-                            <td className="px-3 py-3 text-slate-600 dark:text-slate-400">
-                              {jobDisplayTitle(row?.job ?? "")}
-                              <FieldErrorText>{errors.items?.[index]?.job?.message}</FieldErrorText>
-                            </td>
                             <td className="px-3 py-3 tabular-nums font-medium text-slate-900 dark:text-slate-100">
                               {formatRequestQtyDisplay(row?.quantity)}
                               <input type="hidden" {...register(`items.${index}.quantity`)} />
                               <FieldErrorText>{errors.items?.[index]?.quantity?.message}</FieldErrorText>
-                            </td>
-                            <td className="px-3 py-3 align-top">
-                              <AppButton
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                disabled={saving}
-                                aria-label={t("lineItems.remove")}
-                                onClick={() => removeItem(index)}
-                              >
-                                <Trash2 className="size-4" aria-hidden />
-                              </AppButton>
                             </td>
                           </tr>
                         );

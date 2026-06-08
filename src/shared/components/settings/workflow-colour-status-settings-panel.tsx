@@ -83,7 +83,10 @@ function StatusChip({
   );
 }
 
-export type WorkflowColourStatusMessagesNamespace = "Dashboard.pinStatus" | "Dashboard.jobStatus";
+export type WorkflowColourStatusMessagesNamespace =
+  | "Dashboard.pinStatus"
+  | "Dashboard.jobStatus"
+  | "Dashboard.materialStatus";
 
 export type WorkflowColourStatusSettingsConfig = {
   translationNamespace: WorkflowColourStatusMessagesNamespace;

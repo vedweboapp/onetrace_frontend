@@ -13,12 +13,10 @@ import {
 import type { MaterialRequestDispatchPayload } from "@/features/material-requests/types/material-request-dispatch.types";
 import type { MaterialRequestDetail } from "@/features/material-requests/types/material-request.types";
 import {
-  materialRequestItemDispatchedQty,
-  materialRequestItemPendingQty,
-  materialRequestItemProductName,
-  materialRequestItemRequestedQty,
+  materialRequestDispatchRows,
 } from "@/features/material-requests/utils/material-request-nested-fields.util";
-import { materialRequestLineKey } from "@/features/material-requests/utils/material-request-line-key.util";
+import type { MaterialRequestItemSource } from "@/features/material-requests/utils/material-request-item-aggregate.util";
+import { allocateMaterialRequestDispatchQuantity } from "@/features/material-requests/utils/material-request-item-aggregate.util";
 import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -33,12 +31,14 @@ import {
 import { AppButton, CheckmarkSelect, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
 
 type LineDraft = {
-  line_key: string;
+  key: string;
+  itemId: number;
   materialName: string;
   requested: number;
   alreadyDispatched: number;
   pending: number;
   dispatchQty: string;
+  sources: MaterialRequestItemSource[];
 };
 
 type ExtraDraft = {
@@ -116,19 +116,16 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
         setItemOptions(options);
         setItemLabelById(labels);
         setLines(
-          (row.items ?? []).map((itemRow, index) => {
-            const requested = materialRequestItemRequestedQty(itemRow);
-            const alreadyDispatched = materialRequestItemDispatchedQty(itemRow);
-            const pending = materialRequestItemPendingQty(itemRow);
-            return {
-              line_key: materialRequestLineKey(itemRow, index),
-              materialName: materialRequestItemProductName(itemRow),
-              requested,
-              alreadyDispatched,
-              pending,
-              dispatchQty: pending > 0 ? String(pending) : "",
-            };
-          }),
+          materialRequestDispatchRows(row.items).map((itemRow) => ({
+            key: itemRow.key,
+            itemId: itemRow.itemId,
+            materialName: itemRow.materialName,
+            requested: itemRow.requested,
+            alreadyDispatched: itemRow.dispatched,
+            pending: itemRow.pending,
+            dispatchQty: itemRow.pending > 0 ? String(itemRow.pending) : "",
+            sources: itemRow.sources,
+          })),
         );
       } catch {
         if (!cancelled) setLoadError(t("detailLoadError"));
@@ -143,7 +140,7 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
 
   function updateLineQty(lineKey: string, value: string) {
     setLines((prev) =>
-      prev.map((row) => (row.line_key === lineKey ? { ...row, dispatchQty: value } : row)),
+      prev.map((row) => (row.key === lineKey ? { ...row, dispatchQty: value } : row)),
     );
   }
 
@@ -165,12 +162,11 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
   async function handleSubmit() {
     if (!detail) return;
     const payload: MaterialRequestDispatchPayload = {
-      lines: lines
-        .map((row) => ({
-          line_key: row.line_key,
-          quantity: Number.parseFloat(row.dispatchQty.trim()),
-        }))
-        .filter((row) => Number.isFinite(row.quantity) && row.quantity > 0),
+      lines: lines.flatMap((row) => {
+        const qty = Number.parseFloat(row.dispatchQty.trim());
+        if (!Number.isFinite(qty) || qty <= 0) return [];
+        return allocateMaterialRequestDispatchQuantity(row.sources, qty);
+      }),
       extra_items: extraRows
         .map((row) => ({
           item: Number.parseInt(row.item, 10),
@@ -190,6 +186,20 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
       setSaving(false);
     }
   }
+
+  const usedItemIds = React.useMemo(() => {
+    const ids = new Set<number>(lines.map((row) => row.itemId));
+    for (const row of extraRows) {
+      const id = Number.parseInt(row.item, 10);
+      if (Number.isFinite(id) && id > 0) ids.add(id);
+    }
+    return ids;
+  }, [lines, extraRows]);
+
+  const extraItemOptions = React.useMemo(
+    () => itemOptions.filter((opt) => !usedItemIds.has(Number.parseInt(opt.value, 10))),
+    [itemOptions, usedItemIds],
+  );
 
   const canSubmit =
     lines.some((row) => {
@@ -273,7 +283,7 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
                           row.dispatchQty,
                         );
                         return (
-                          <tr key={row.line_key} className="border-b border-slate-100 dark:border-slate-800">
+                          <tr key={row.key} className="border-b border-slate-100 dark:border-slate-800">
                             <td className="px-3 py-3 font-medium text-slate-900 dark:text-slate-100">
                               {row.materialName}
                             </td>
@@ -291,7 +301,7 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
                               {row.pending.toFixed(0)} {t("lineItems.units")}
                             </td>
                             <td className={quantityTableInputCellClass}>
-                              <div className="inline-flex w-full items-center justify-center gap-1.5">
+                              <div className="flex w-full flex-col items-center gap-1">
                                 <input
                                   type="number"
                                   min={0}
@@ -299,7 +309,7 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
                                   value={row.dispatchQty}
                                   disabled={saving}
                                   className={cn(compactInputClass, "w-20 text-center")}
-                                  onChange={(e) => updateLineQty(row.line_key, e.target.value)}
+                                  onChange={(e) => updateLineQty(row.key, e.target.value)}
                                 />
                                 {surplusPreview ? (
                                   <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
@@ -324,13 +334,13 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
                   <CheckmarkSelect
                     listLabel={t("dispatch.extraItem")}
                     buttonAriaLabel={t("dispatch.extraItem")}
-                    options={itemOptions}
+                    options={extraItemOptions}
                     value={extraDraft.item}
                     emptyLabel={t("placeholders.item")}
                     portaled
                     searchable
                     size="sm"
-                    disabled={saving}
+                    disabled={saving || extraItemOptions.length === 0}
                     onChange={(v) => setExtraDraft((prev) => ({ ...prev, item: v }))}
                   />
                 </div>

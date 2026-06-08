@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
-import { Building2, FolderKanban, Hammer, Home, Layers, ListTodo, Package, SearchX, Tags } from "lucide-react";
+import { Building2, ClipboardList, FolderKanban, Hammer, Home, Layers, ListTodo, Package, SearchX, Tags } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 
 export type DashboardEmptyStateIconName =
@@ -15,6 +15,7 @@ export type DashboardEmptyStateIconName =
   | "compositeItems"
   | "pinStatus"
   | "jobStatus"
+  | "materialStatus"
   | "noResults";
 
 type DashboardEmptyStateProps = {
@@ -44,6 +45,7 @@ export function DashboardEmptyState({
     compositeItems: Package,
     pinStatus: Tags,
     jobStatus: ListTodo,
+    materialStatus: ClipboardList,
     noResults: SearchX,
   };
   const Icon = icon ?? iconByName[iconName];

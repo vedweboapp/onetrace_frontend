@@ -66,6 +66,11 @@ export type DispatchRestockPayload = {
   lines: DispatchRestockLineInput[];
 };
 
+export type DispatchReturnSourceLine = {
+  line_id: number;
+  returnable_quantity: number;
+};
+
 export type DispatchReturnItem = {
   line_id: number;
   item_id: number;
@@ -76,6 +81,8 @@ export type DispatchReturnItem = {
   returned_quantity: number;
   returnable_quantity: number;
   is_extra: boolean;
+  group_key?: string;
+  sources?: DispatchReturnSourceLine[];
 };
 
 export type DispatchReturnItemsData = {
