@@ -34,10 +34,11 @@ type UiMode = "fill" | "view" | "edit";
 type Props = {
   jobId: number;
   formId: number;
+  jobFormId: number;
   formNameHint?: string | null;
 };
 
-export function JobFormFillScreen({ jobId, formId, formNameHint }: Props) {
+export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Props) {
   const t = useTranslations("Dashboard.jobs.forms");
   const router = useRouter();
   const pathname = usePathname();
@@ -133,7 +134,7 @@ export function JobFormFillScreen({ jobId, formId, formNameHint }: Props) {
     }
     try {
       const saved = await submitJobForm(jobId, {
-        job_form_id: formId,
+        job_form_id: jobFormId,
         status: "submitted",
         values,
       });
