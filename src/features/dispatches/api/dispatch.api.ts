@@ -16,9 +16,25 @@ import type {
   DispatchReturnRequest,
   DispatchReturnRequestListFilters,
   DispatchReturnToStockPayload,
+  WorkerReturnDatePreset,
   WorkerReturnMaterialsData,
   WorkerReturnMaterialsFilters,
 } from "../types/dispatch.types";
+function appendDatePresetParams(
+  params: Record<string, string | number>,
+  filters: {
+    date_preset?: WorkerReturnDatePreset;
+    date_from?: string;
+    date_to?: string;
+  },
+) {
+  if (!filters.date_preset) return;
+  params.date_preset = filters.date_preset;
+  if (filters.date_preset === "custom") {
+    if (filters.date_from?.trim()) params.date_from = filters.date_from.trim();
+    if (filters.date_to?.trim()) params.date_to = filters.date_to.trim();
+  }
+}
 
 function assertEnvelopeSuccess(envelope: { success: boolean; message?: string }) {
   if (!envelope.success) {
@@ -70,9 +86,7 @@ export async function fetchWorkerReturnMaterials(
   filters: WorkerReturnMaterialsFilters,
 ): Promise<WorkerReturnMaterialsData> {
   const params: Record<string, string | number> = { worker_name: filters.worker_name };
-  if (filters.date_preset) params.date_preset = filters.date_preset;
-  if (filters.date_from?.trim()) params.date_from = filters.date_from.trim();
-  if (filters.date_to?.trim()) params.date_to = filters.date_to.trim();
+  appendDatePresetParams(params, filters);
   if (filters.dispatch_id != null) params.dispatch_id = filters.dispatch_id;
   if (filters.material_request_id != null) params.material_request_id = filters.material_request_id;
 
@@ -101,10 +115,21 @@ export async function fetchDispatchReturnRequests(
   const params: Record<string, string | number> = {};
   if (filters?.status) params.status = filters.status;
   if (filters?.worker_name != null) params.worker_name = filters.worker_name;
+  if (filters?.search?.trim()) params.search = filters.search.trim();
+  if (filters) appendDatePresetParams(params, filters);
+  if (filters?.material_request_id != null) params.material_request_id = filters.material_request_id;
 
   const { data } = await api.get<ApiEnvelope<DispatchReturnRequest[]>>(
     resolveDispatchRequestUrl(DISPATCH_RETURN_REQUEST_PATHS.list),
     { params },
+  );
+  assertApiSuccess(data);
+  return data.data;
+}
+
+export async function fetchDispatchReturnRequest(id: number): Promise<DispatchReturnRequest> {
+  const { data } = await api.get<ApiEnvelope<DispatchReturnRequest>>(
+    resolveDispatchRequestUrl(DISPATCH_RETURN_REQUEST_PATHS.detail(id)),
   );
   assertApiSuccess(data);
   return data.data;

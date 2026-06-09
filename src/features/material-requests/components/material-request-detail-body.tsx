@@ -7,11 +7,14 @@ import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status
 import { MaterialRequestStatusBadge } from "@/features/material-requests/components/material-request-status-badge";
 import {
   materialRequestExtraItemName,
+  materialRequestItemGroupName,
+  materialRequestItemProductName,
   materialRequestJobProjectName,
   materialRequestJobTitle,
   materialRequestWorkerLabel,
+  nestedId,
 } from "@/features/material-requests/utils/material-request-nested-fields.util";
-import { aggregateMaterialRequestItems } from "@/features/material-requests/utils/material-request-item-aggregate.util";
+import type { MaterialRequestItemSummary } from "@/features/material-requests/types/material-request.types";
 import { DispatchedQuantityCell } from "@/shared/components/quantity/dispatched-quantity-cell";
 import {
   quantityTableCellClass,
@@ -25,6 +28,7 @@ import {
   DetailPagePadding,
   DetailPanelCard,
   DetailSectionCountBadge,
+  detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
@@ -38,6 +42,22 @@ type Props = {
   statusLabel: string;
   statusRow?: Pick<WorkflowColourStatus, "status_name" | "bg_colour" | "text_colour"> | null;
 };
+
+function itemRowsFromDetail(detail: MaterialRequestDetail): MaterialRequestItemSummary[] {
+  if (detail.item_summaries?.length) return detail.item_summaries;
+  return (detail.items ?? []).map((row, index) => ({
+    group_key: `line-${index}`,
+    item_id: nestedId(row.item) ?? 0,
+    item_name: materialRequestItemProductName(row),
+    group_name: materialRequestItemGroupName(row) !== "—" ? materialRequestItemGroupName(row) : null,
+    requested_quantity: row.requested_quantity ?? row.quantity ?? 0,
+    dispatched_quantity: row.dispatched_quantity ?? 0,
+    fulfilled_quantity: row.dispatched_quantity ?? 0,
+    surplus_quantity: 0,
+    pending_quantity: row.pending_quantity ?? 0,
+    restocked_quantity: row.restocked_quantity ?? 0,
+  }));
+}
 
 function pendingTone(pending: number, requested: number): string {
   if (pending <= 0) return "text-slate-500 dark:text-slate-400";
@@ -56,11 +76,12 @@ export function MaterialRequestDetailBody({
   const t = useTranslations("Dashboard.materialRequests");
   const extraItems = detail.extra_dispatch_items ?? [];
   const dispatchIds = detail.dispatch_ids ?? [];
-  const aggregatedItems = aggregateMaterialRequestItems(detail.items);
-  const showRestockedColumn = aggregatedItems.some((row) => row.restocked > 0);
+  const itemRows = itemRowsFromDetail(detail);
+  const showRestockedColumn = itemRows.some((row) => row.restocked_quantity > 0);
 
   return (
-    <DetailPagePadding className="space-y-6">
+    <DetailPagePadding>
+      <div className={detailPageStackClassName}>
       <DetailPanelCard title={t("detail.sectionOverview")}>
         <DetailMetricsGrid className="mb-4 sm:grid-cols-2 lg:grid-cols-3">
           <DetailMetricCard label={t("fields.workerName")}>
@@ -120,9 +141,7 @@ export function MaterialRequestDetailBody({
       <DetailCollapsibleSection
         title={t("detail.sectionItems")}
         badge={
-          aggregatedItems.length > 0 ? (
-            <DetailSectionCountBadge count={aggregatedItems.length} />
-          ) : null
+          itemRows.length > 0 ? <DetailSectionCountBadge count={itemRows.length} /> : null
         }
         toggleAriaLabel={t("sections.toggle")}
       >
@@ -140,38 +159,43 @@ export function MaterialRequestDetailBody({
               </tr>
             </thead>
             <tbody>
-              {aggregatedItems.length === 0 ? (
+              {itemRows.length === 0 ? (
                 <tr>
                   <td colSpan={showRestockedColumn ? 5 : 4} className="px-3 py-6 text-center text-slate-500">
                     {t("lineItems.empty")}
                   </td>
                 </tr>
               ) : (
-                aggregatedItems.map((row) => {
-                  const meta = row.groupName !== "—" ? row.groupName : null;
+                itemRows.map((row) => {
+                  const meta = row.group_name?.trim() ? row.group_name : null;
                   return (
-                    <tr key={row.key} className="border-b border-slate-100 dark:border-slate-800">
+                    <tr key={row.group_key} className="border-b border-slate-100 dark:border-slate-800">
                       <td className="px-3 py-3">
-                        <p className="font-medium text-slate-900 dark:text-slate-100">{row.materialName}</p>
+                        <p className="font-medium text-slate-900 dark:text-slate-100">{row.item_name}</p>
                         {meta ? <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{meta}</p> : null}
                       </td>
                       <td className={cn(quantityTableCellClass, "font-medium")}>
-                        {row.requested.toFixed(0)} {t("lineItems.units")}
+                        {row.requested_quantity.toFixed(0)} {t("lineItems.units")}
                       </td>
                       <td className={quantityTableCellClass}>
                         <DispatchedQuantityCell
-                          fulfilled={row.fulfilled}
-                          surplus={row.surplus}
+                          fulfilled={row.fulfilled_quantity}
+                          surplus={row.surplus_quantity}
                           unitsLabel={t("lineItems.units")}
                         />
                       </td>
-                      <td className={cn(quantityTableCellClass, pendingTone(row.pending, row.requested))}>
-                        {row.pending.toFixed(0)} {t("lineItems.units")}
+                      <td
+                        className={cn(
+                          quantityTableCellClass,
+                          pendingTone(row.pending_quantity, row.requested_quantity),
+                        )}
+                      >
+                        {row.pending_quantity.toFixed(0)} {t("lineItems.units")}
                       </td>
                       {showRestockedColumn ? (
                         <td className={cn(quantityTableCellClass, "text-emerald-700 dark:text-emerald-400")}>
-                          {row.restocked > 0
-                            ? `${row.restocked.toFixed(0)} ${t("lineItems.units")}`
+                          {row.restocked_quantity > 0
+                            ? `${row.restocked_quantity.toFixed(0)} ${t("lineItems.units")}`
                             : `0 ${t("lineItems.units")}`}
                         </td>
                       ) : null}
@@ -238,6 +262,7 @@ export function MaterialRequestDetailBody({
           notModifiedYet: t("detail.notModifiedYet"),
         }}
       />
+      </div>
     </DetailPagePadding>
   );
 }

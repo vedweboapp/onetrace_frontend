@@ -107,7 +107,7 @@ export function buildWorkerReturnMaterials(
   filters: WorkerReturnMaterialsFilters,
   pendingRequests: DispatchReturnRequest[] = [],
 ): WorkerReturnMaterialsData {
-  const preset = filters.date_preset ?? "today";
+  const preset = filters.date_preset ?? "till_today";
   const { date_from, date_to } = resolveWorkerReturnDateRange(
     preset,
     filters.date_from,

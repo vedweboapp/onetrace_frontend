@@ -100,8 +100,16 @@ export type DispatchReturnToStockLineInput = {
   return_type: DispatchReturnType;
 };
 
+export type DispatchReturnToStockGroupInput = {
+  group_key: string;
+  quantity: number;
+  return_type: DispatchReturnType;
+};
+
 export type DispatchReturnToStockPayload = {
-  lines: DispatchReturnToStockLineInput[];
+  lines?: DispatchReturnToStockLineInput[];
+  /** Per grouped row from GET return-items — backend allocates across sources. */
+  groups?: DispatchReturnToStockGroupInput[];
 };
 
 export type DispatchListItem = {
@@ -117,11 +125,26 @@ export type DispatchListItem = {
   created_at?: string;
 };
 
+export type DispatchLineSummary = {
+  group_key: string;
+  item_id: number;
+  item_name: string;
+  is_extra: boolean;
+  requested_quantity: number;
+  pending_quantity: number;
+  dispatched_quantity: number;
+  fulfilled_quantity: number;
+  surplus_quantity: number;
+  restocked_quantity: number;
+};
+
 export type DispatchDetail = DispatchListItem & {
   dispatch_to?: string | null;
   /** User who performed the dispatch (id on submit; name included in API response). */
   dispatched_by?: DispatchUserRef | number | null;
   lines: DispatchLineItem[];
+  /** Aggregated per-product lines — preferred for detail UI. */
+  line_summaries?: DispatchLineSummary[];
   logs?: DispatchLogEntry[];
   notes?: string | null;
   created_by?: DispatchUserRef | number | null;
@@ -145,7 +168,12 @@ export type DispatchListResponse = {
   pagination: DispatchPagination;
 };
 
-export type WorkerReturnDatePreset = "today" | "yesterday" | "custom" | "material_request";
+export type WorkerReturnDatePreset =
+  | "till_today"
+  | "till_yesterday"
+  | "this_week"
+  | "custom"
+  | "material_request";
 
 export type WorkerReturnMaterialsFilters = {
   worker_name: number;
@@ -218,12 +246,25 @@ export type CreateDispatchReturnRequestLineInput = {
   reason?: string;
 };
 
+export type CreateDispatchReturnGroupInput = {
+  group_key: string;
+  quantity: number;
+  return_type: DispatchReturnType;
+  reason?: string;
+};
+
 export type CreateDispatchReturnRequestPayload = {
   worker_name: number;
-  lines: CreateDispatchReturnRequestLineInput[];
+  lines?: CreateDispatchReturnRequestLineInput[];
+  groups?: CreateDispatchReturnGroupInput[];
 };
 
 export type DispatchReturnRequestListFilters = {
   status?: DispatchReturnRequestStatus;
   worker_name?: number;
+  search?: string;
+  date_preset?: WorkerReturnDatePreset;
+  date_from?: string;
+  date_to?: string;
+  material_request_id?: number;
 };

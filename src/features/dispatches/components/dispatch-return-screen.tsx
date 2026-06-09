@@ -10,7 +10,6 @@ import {
 } from "@/features/dispatches/api/dispatch.api";
 import type { DispatchReturnItem, DispatchReturnType } from "@/features/dispatches/types/dispatch.types";
 import { dispatchReturnWorkerLabel } from "@/features/dispatches/utils/dispatch-return.util";
-import { allocateReturnQuantityAcrossDispatchLines } from "@/features/dispatches/utils/dispatch-line-aggregate.util";
 import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -110,24 +109,23 @@ export function DispatchReturnScreen({ dispatchId }: Props) {
   async function handleSubmit() {
     if (!returnData) return;
 
-    const lines = returnData.lines.flatMap((row) => {
+    const groups = returnData.lines.flatMap((row) => {
       const key = row.group_key ?? `line-${row.line_id}`;
       const draft = drafts[key];
       const quantity = Number.parseFloat(draft?.returnQty?.trim() ?? "");
       if (!Number.isFinite(quantity) || quantity <= 0) return [];
-      const sources = row.sources ?? [{ line_id: row.line_id, returnable_quantity: row.returnable_quantity }];
-      return allocateReturnQuantityAcrossDispatchLines(sources, quantity).map((allocated) => ({
-        line_id: allocated.line_id,
-        quantity: allocated.quantity,
+      return [{
+        group_key: key,
+        quantity,
         return_type: draft?.returnType ?? "unused",
-      }));
+      }];
     });
 
-    if (lines.length === 0) return;
+    if (groups.length === 0) return;
 
     setSaving(true);
     try {
-      await returnDispatchToStock(dispatchId, { lines });
+      await returnDispatchToStock(dispatchId, { groups });
       toastSuccess(t("return.successToast"));
       router.replace(`${dispatchHref}?back=${encodeURIComponent(safeBack)}`);
     } finally {

@@ -31,6 +31,20 @@ export type MaterialRequestItemProductRef = {
   dispatched_quantity?: number | null;
 };
 
+export type MaterialRequestItemSummary = {
+  group_key: string;
+  item_id: number;
+  item_name: string;
+  group_name?: string | null;
+  requested_quantity: number;
+  dispatched_quantity: number;
+  fulfilled_quantity: number;
+  surplus_quantity: number;
+  pending_quantity: number;
+  restocked_quantity: number;
+  default_dispatch_quantity?: number;
+};
+
 export type MaterialRequestItemRef = {
   id?: number;
   job?: { id: number; title?: string | null; job_details?: string | null } | number | null;
@@ -84,6 +98,8 @@ export type MaterialRequestDetail = MaterialRequestListItem & {
   created_by?: MaterialRequestUserRef | null;
   /** @deprecated Use GET material-requests/{id}/logs/ */
   timeline?: MaterialRequestTimelineEntry[];
+  /** Aggregated per-product quantities — preferred for detail / dispatch UI. */
+  item_summaries?: MaterialRequestItemSummary[];
   extra_dispatch_items?: MaterialRequestExtraDispatchItem[];
   dispatch_ids?: number[];
   restocked_quantity?: Record<string, number>;
@@ -104,7 +120,8 @@ export type MaterialRequestCreatePayload = {
   requested_date: string;
   status?: string;
   jobs: MaterialRequestJobPayload[];
-  items: MaterialRequestItemPayload[];
+  /** Omitted on create — backend derives items from selected jobs. */
+  items?: MaterialRequestItemPayload[];
   notes?: string;
 };
 

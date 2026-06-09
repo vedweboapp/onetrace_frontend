@@ -5,10 +5,7 @@ export type MaterialRequestFormMessages = {
   worker: string;
   requestedDate: string;
   job: string;
-  item: string;
-  quantity: string;
   atLeastOneJob: string;
-  atLeastOneItem: string;
 };
 
 const optionalPositiveId = (message: string) =>
@@ -24,13 +21,6 @@ export function createMaterialRequestFormSchema(messages: MaterialRequestFormMes
       requested_date: zTrimmedNonEmpty(messages.requestedDate),
       status: z.string(),
       jobs: z.array(z.object({ job: optionalPositiveId(messages.job) })),
-      items: z.array(
-        z.object({
-          job: optionalPositiveId(messages.job),
-          item: optionalPositiveId(messages.item),
-          quantity: z.string().trim(),
-        }),
-      ),
       notes: z.string(),
     })
     .superRefine((data, ctx) => {
@@ -40,39 +30,6 @@ export function createMaterialRequestFormSchema(messages: MaterialRequestFormMes
           code: z.ZodIssueCode.custom,
           path: ["jobs"],
           message: messages.atLeastOneJob,
-        });
-      }
-
-      let validItemCount = 0;
-      data.items.forEach((row, index) => {
-        const itemId = row.item.trim();
-        const qtyRaw = row.quantity.trim();
-        if (!itemId && !qtyRaw) return;
-        if (!/^\d+$/.test(itemId)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["items", index, "item"],
-            message: messages.item,
-          });
-          return;
-        }
-        const qty = Number.parseFloat(qtyRaw);
-        if (!Number.isFinite(qty) || qty <= 0) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["items", index, "quantity"],
-            message: messages.quantity,
-          });
-          return;
-        }
-        validItemCount += 1;
-      });
-
-      if (validItemCount === 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["items"],
-          message: messages.atLeastOneItem,
         });
       }
     });

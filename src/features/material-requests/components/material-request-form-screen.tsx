@@ -7,7 +7,6 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchItemsPage } from "@/features/items/api/item.api";
 import { fetchJob } from "@/features/jobs/api/job.api";
 import type { Job } from "@/features/jobs/types/job.types";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
@@ -28,7 +27,6 @@ import {
   materialRequestToFormDefaults,
 } from "@/features/material-requests/utils/material-request-form-map";
 import {
-  buildFormItemsFromJobs,
   buildFormJobsFromJobIds,
   jobClientLabel,
   jobProjectLabel,
@@ -46,7 +44,6 @@ import {
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
-  RequiredMark,
   SurfaceDateInput,
   SurfaceShell,
   surfaceTextareaClassName,
@@ -74,7 +71,6 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
   const [workerOptions, setWorkerOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [itemLabelById, setItemLabelById] = React.useState<Record<number, string>>({});
   const [selectedJobsById, setSelectedJobsById] = React.useState<Record<number, Job>>({});
   const [jobsModalOpen, setJobsModalOpen] = React.useState(false);
   const [applyingJobs, setApplyingJobs] = React.useState(false);
@@ -87,10 +83,7 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
         worker: t("validation.worker"),
         requestedDate: t("validation.requestedDate"),
         job: t("validation.job"),
-        item: t("validation.item"),
-        quantity: t("validation.quantity"),
         atLeastOneJob: t("validation.atLeastOneJob"),
-        atLeastOneItem: t("validation.atLeastOneItem"),
       }),
     [t],
   );
@@ -108,11 +101,9 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
   });
 
   const { fields: jobFields } = useFieldArray({ control, name: "jobs" });
-  const { fields: itemFields } = useFieldArray({ control, name: "items" });
 
   const watchedWorker = useWatch({ control, name: "worker_name" });
   const watchedJobs = useWatch({ control, name: "jobs" }) ?? [];
-  const watchedItems = useWatch({ control, name: "items" }) ?? [];
 
   const workerId =
     watchedWorker && /^\d+$/.test(watchedWorker) ? Number.parseInt(watchedWorker, 10) : null;
@@ -135,21 +126,12 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const [workers, itemsRes] = await Promise.all([
-          loadTechnicianOptions(),
-          fetchItemsPage(1, 500, { isActive: true }),
-        ]);
+        const workers = await loadTechnicianOptions();
         if (cancelled) return;
         setWorkerOptions(workers);
-        const labels: Record<number, string> = {};
-        for (const item of itemsRes.items) {
-          labels[item.id] = item.name?.trim() || item.sku?.trim() || `#${item.id}`;
-        }
-        setItemLabelById(labels);
       } catch {
         if (!cancelled) {
           setWorkerOptions([]);
-          setItemLabelById({});
         }
       }
     })();
@@ -167,15 +149,13 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
     if (prevWorkerRef.current === watchedWorker) return;
     prevWorkerRef.current = watchedWorker;
     setValue("jobs", []);
-    setValue("items", []);
     setSelectedJobsById({});
   }, [watchedWorker, setValue]);
 
-  async function hydrateJobsAndItems(jobIds: number[]) {
+  async function hydrateJobs(jobIds: number[]) {
     if (jobIds.length === 0) {
       setSelectedJobsById({});
       setValue("jobs", [], { shouldDirty: true, shouldValidate: true });
-      setValue("items", [], { shouldDirty: true, shouldValidate: true });
       return;
     }
     const jobs = await Promise.all(jobIds.map((id) => fetchJob(id, { silent: true })));
@@ -183,7 +163,6 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
     for (const job of jobs) byId[job.id] = job;
     setSelectedJobsById(byId);
     setValue("jobs", buildFormJobsFromJobIds(jobIds), { shouldDirty: true, shouldValidate: true });
-    setValue("items", buildFormItemsFromJobs(jobs), { shouldDirty: true, shouldValidate: true });
   }
 
   React.useEffect(() => {
@@ -211,17 +190,6 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
           setSelectedJobsById(byId);
         }
 
-        setItemLabelById((prev) => {
-          const next = { ...prev };
-          for (const line of row.items ?? []) {
-            const item = line.item;
-            if (item && typeof item === "object" && item.id > 0) {
-              const label = item.name?.trim();
-              if (label) next[item.id] = label;
-            }
-          }
-          return next;
-        });
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
       } finally {
@@ -236,7 +204,7 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
   async function handleJobsModalConfirm(jobIds: number[]) {
     setApplyingJobs(true);
     try {
-      await hydrateJobsAndItems(jobIds);
+      await hydrateJobs(jobIds);
     } finally {
       setApplyingJobs(false);
     }
@@ -244,19 +212,7 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
 
   function handleRemoveJob(jobId: number) {
     const nextJobIds = selectedJobIds.filter((id) => id !== jobId);
-    void hydrateJobsAndItems(nextJobIds);
-  }
-
-  function itemDisplayName(itemIdRaw: string): string {
-    const id = Number.parseInt(itemIdRaw, 10);
-    if (Number.isFinite(id) && itemLabelById[id]) return itemLabelById[id];
-    return itemIdRaw ? `#${itemIdRaw}` : "—";
-  }
-
-  function formatRequestQtyDisplay(raw: string | undefined): string {
-    const n = Number.parseFloat(String(raw ?? "").trim());
-    if (!Number.isFinite(n) || n <= 0) return "—";
-    return Number.isInteger(n) ? String(n) : n.toFixed(2);
+    void hydrateJobs(nextJobIds);
   }
 
   async function submit(values: MaterialRequestFormValues) {
@@ -459,52 +415,7 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
               <FieldErrorText>{errors.jobs?.message}</FieldErrorText>
             </DetailCollapsibleSection>
 
-            <DetailCollapsibleSection
-              title={t("sections.items")}
-              badge={itemFields.length > 0 ? <DetailSectionCountBadge count={itemFields.length} /> : null}
-              toggleAriaLabel={t("sections.toggle")}
-            >
-              {itemFields.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700">
-                  {jobFields.length === 0 ? t("items.emptyNoJobs") : t("items.emptyNoMeta")}
-                </p>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-                  <table className="w-full min-w-[480px] text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
-                        <th className="px-3 py-2">
-                          {t("lineItems.itemName")}
-                          <RequiredMark />
-                        </th>
-                        <th className="px-3 py-2">{t("lineItems.requestQty")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {itemFields.map((field, index) => {
-                        const row = watchedItems[index];
-                        return (
-                          <tr key={field.id} className="border-b border-slate-100 dark:border-slate-800">
-                            <td className="px-3 py-3 font-medium text-slate-900 dark:text-slate-100">
-                              {itemDisplayName(row?.item ?? "")}
-                              <input type="hidden" {...register(`items.${index}.item`)} />
-                              <input type="hidden" {...register(`items.${index}.job`)} />
-                              <FieldErrorText>{errors.items?.[index]?.item?.message}</FieldErrorText>
-                            </td>
-                            <td className="px-3 py-3 tabular-nums font-medium text-slate-900 dark:text-slate-100">
-                              {formatRequestQtyDisplay(row?.quantity)}
-                              <input type="hidden" {...register(`items.${index}.quantity`)} />
-                              <FieldErrorText>{errors.items?.[index]?.quantity?.message}</FieldErrorText>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              <FieldErrorText>{errors.items?.message}</FieldErrorText>
-            </DetailCollapsibleSection>
+          
 
             <FieldGroup label={t("fields.notes")} htmlFor="mr-notes">
               <textarea

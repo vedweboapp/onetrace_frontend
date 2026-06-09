@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Send, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -529,7 +529,6 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                   }
                 }}
               >
-                <Send className="size-4" aria-hidden />
                 {t("actions.send")}
               </AppButton>
             ) : null}
@@ -690,7 +689,6 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                   disabled={saving}
                   onClick={() => append(emptyInvoiceLineItem())}
                 >
-                  <Plus className="size-4" aria-hidden />
                   {t("lineItems.addItem")}
                 </AppButton>
               </div>

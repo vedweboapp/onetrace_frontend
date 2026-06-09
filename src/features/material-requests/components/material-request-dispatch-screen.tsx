@@ -12,11 +12,6 @@ import {
 } from "@/features/material-requests/api/material-request.api";
 import type { MaterialRequestDispatchPayload } from "@/features/material-requests/types/material-request-dispatch.types";
 import type { MaterialRequestDetail } from "@/features/material-requests/types/material-request.types";
-import {
-  materialRequestDispatchRows,
-} from "@/features/material-requests/utils/material-request-nested-fields.util";
-import type { MaterialRequestItemSource } from "@/features/material-requests/utils/material-request-item-aggregate.util";
-import { allocateMaterialRequestDispatchQuantity } from "@/features/material-requests/utils/material-request-item-aggregate.util";
 import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -36,9 +31,10 @@ type LineDraft = {
   materialName: string;
   requested: number;
   alreadyDispatched: number;
+  fulfilled: number;
+  surplus: number;
   pending: number;
   dispatchQty: string;
-  sources: MaterialRequestItemSource[];
 };
 
 type ExtraDraft = {
@@ -52,15 +48,6 @@ type Props = {
 };
 
 const compactInputClass = cn(surfaceInputClassName, "h-9 min-h-9 rounded-md px-2.5 py-1.5 text-sm shadow-sm");
-
-function dispatchSurplusPreview(requested: number, alreadyDispatched: number, dispatchQtyRaw: string): string | null {
-  const dispatchQty = Number.parseFloat(dispatchQtyRaw.trim());
-  if (!Number.isFinite(dispatchQty) || dispatchQty <= 0) return null;
-  const totalAfter = alreadyDispatched + dispatchQty;
-  if (totalAfter <= requested) return null;
-  const surplus = totalAfter - requested;
-  return `+${surplus.toFixed(0)}`;
-}
 
 export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
   const t = useTranslations("Dashboard.materialRequests");
@@ -115,16 +102,23 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
         }
         setItemOptions(options);
         setItemLabelById(labels);
+        const summaries = row.item_summaries ?? [];
         setLines(
-          materialRequestDispatchRows(row.items).map((itemRow) => ({
-            key: itemRow.key,
-            itemId: itemRow.itemId,
-            materialName: itemRow.materialName,
-            requested: itemRow.requested,
-            alreadyDispatched: itemRow.dispatched,
-            pending: itemRow.pending,
-            dispatchQty: itemRow.pending > 0 ? String(itemRow.pending) : "",
-            sources: itemRow.sources,
+          summaries.map((itemRow) => ({
+            key: itemRow.group_key,
+            itemId: itemRow.item_id,
+            materialName: itemRow.item_name,
+            requested: itemRow.requested_quantity,
+            alreadyDispatched: itemRow.dispatched_quantity,
+            fulfilled: itemRow.fulfilled_quantity,
+            surplus: itemRow.surplus_quantity,
+            pending: itemRow.pending_quantity,
+            dispatchQty:
+              itemRow.default_dispatch_quantity != null && itemRow.default_dispatch_quantity > 0
+                ? String(itemRow.default_dispatch_quantity)
+                : itemRow.pending_quantity > 0
+                  ? String(itemRow.pending_quantity)
+                  : "",
           })),
         );
       } catch {
@@ -143,6 +137,7 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
       prev.map((row) => (row.key === lineKey ? { ...row, dispatchQty: value } : row)),
     );
   }
+  
 
   function addExtraRow() {
     const itemId = extraDraft.item.trim();
@@ -165,7 +160,7 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
       lines: lines.flatMap((row) => {
         const qty = Number.parseFloat(row.dispatchQty.trim());
         if (!Number.isFinite(qty) || qty <= 0) return [];
-        return allocateMaterialRequestDispatchQuantity(row.sources, qty);
+        return [{ item_id: row.itemId, quantity: qty }];
       }),
       extra_items: extraRows
         .map((row) => ({
@@ -277,11 +272,9 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
                       </tr>
                     ) : (
                       lines.map((row) => {
-                        const surplusPreview = dispatchSurplusPreview(
-                          row.requested,
-                          row.alreadyDispatched,
-                          row.dispatchQty,
-                        );
+                        const qty = Number.parseFloat(row.dispatchQty.trim());
+                        const dispatchSurplus =
+                          Number.isFinite(qty) && qty > row.pending ? qty - row.pending : 0;
                         return (
                           <tr key={row.key} className="border-b border-slate-100 dark:border-slate-800">
                             <td className="px-3 py-3 font-medium text-slate-900 dark:text-slate-100">
@@ -292,8 +285,8 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
                             </td>
                             <td className={quantityTableCellClass}>
                               <DispatchedQuantityCell
-                                fulfilled={Math.min(row.alreadyDispatched, row.requested)}
-                                surplus={Math.max(0, row.alreadyDispatched - row.requested)}
+                                fulfilled={row.fulfilled}
+                                surplus={row.surplus}
                                 unitsLabel={t("lineItems.units")}
                               />
                             </td>
@@ -311,9 +304,9 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
                                   className={cn(compactInputClass, "w-20 text-center")}
                                   onChange={(e) => updateLineQty(row.key, e.target.value)}
                                 />
-                                {surplusPreview ? (
-                                  <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                                    {surplusPreview} {t("lineItems.units")}
+                                {dispatchSurplus > 0 ? (
+                                  <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold tabular-nums text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                                    +{dispatchSurplus.toFixed(0)} {t("lineItems.units")}
                                   </span>
                                 ) : null}
                               </div>

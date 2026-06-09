@@ -1,12 +1,8 @@
 import type { MaterialRequestCreatePayload, MaterialRequestDetail } from "@/features/material-requests/types/material-request.types";
 import type { MaterialRequestFormValues } from "@/features/material-requests/schemas/material-request-form-schema";
 import {
-  aggregateMaterialRequestFormItems,
-} from "@/features/material-requests/utils/material-request-item-aggregate.util";
-import {
   nestedId,
   normalizeMaterialRequestStatus,
-  materialRequestItemRequestedQty,
 } from "@/features/material-requests/utils/material-request-nested-fields.util";
 import { formatApiDateForHtmlDateInput } from "@/shared/utils/api-date-parse.util";
 
@@ -16,38 +12,22 @@ export function emptyMaterialRequestFormDefaults(): MaterialRequestFormValues {
     requested_date: "",
     status: "draft",
     jobs: [],
-    items: [],
     notes: "",
   };
 }
 
+/** Submit jobs only — backend derives line items from job scope. */
 export function mapMaterialRequestFormToPayload(values: MaterialRequestFormValues): MaterialRequestCreatePayload {
   const jobs = values.jobs
     .map((row) => Number.parseInt(row.job.trim(), 10))
     .filter((id) => Number.isFinite(id) && id > 0)
     .map((job) => ({ job }));
 
-  const defaultJobId = jobs[0]?.job;
-
-  const items = values.items
-    .map((row) => {
-      const jobFromRow = Number.parseInt(row.job.trim(), 10);
-      const job = Number.isFinite(jobFromRow) && jobFromRow > 0 ? jobFromRow : defaultJobId;
-      const item = Number.parseInt(row.item.trim(), 10);
-      const quantity = Number.parseFloat(row.quantity.trim());
-      if (!Number.isFinite(job) || job <= 0) return null;
-      if (!Number.isFinite(item) || item <= 0) return null;
-      if (!Number.isFinite(quantity) || quantity <= 0) return null;
-      return { job, item, quantity };
-    })
-    .filter((row): row is { job: number; item: number; quantity: number } => row != null);
-
   return {
     worker_name: Number.parseInt(values.worker_name.trim(), 10),
     requested_date: values.requested_date.trim(),
     status: values.status.trim() || "draft",
     jobs,
-    items,
     notes: values.notes.trim() || undefined,
   };
 }
@@ -63,23 +43,11 @@ export function materialRequestToFormDefaults(detail: MaterialRequestDetail): Ma
   }
   const jobs = [...jobIdSet].map((id) => ({ job: String(id) }));
 
-  const items =
-    detail.items && detail.items.length > 0
-      ? aggregateMaterialRequestFormItems(
-          detail.items.map((row) => ({
-            job: "",
-            item: String(nestedId(row.item) ?? ""),
-            quantity: String(materialRequestItemRequestedQty(row)),
-          })),
-        )
-      : [];
-
   return {
     worker_name: String(nestedId(detail.worker_name) ?? ""),
     requested_date: formatApiDateForHtmlDateInput(detail.requested_date),
     status: normalizeMaterialRequestStatus(detail.status) || "draft",
     jobs,
-    items,
     notes: detail.notes ?? "",
   };
 }

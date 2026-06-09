@@ -3,10 +3,9 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { DispatchStatusBadge } from "@/features/dispatches/components/dispatch-status-badge";
 import type { DispatchDetail } from "@/features/dispatches/types/dispatch.types";
-import { aggregateDispatchDetailLines } from "@/features/dispatches/utils/dispatch-line-aggregate.util";
-import { dispatchWorkerLabel, normalizeDispatchStatus } from "@/features/dispatches/utils/dispatch-display.util";
+import type { DispatchLineSummary } from "@/features/dispatches/types/dispatch.types";
+import { dispatchWorkerLabel } from "@/features/dispatches/utils/dispatch-display.util";
 import { DispatchedQuantityCell } from "@/shared/components/quantity/dispatched-quantity-cell";
 import {
   quantityTableCellClass,
@@ -20,6 +19,7 @@ import {
   DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
+  detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
 import { cn } from "@/core/utils/http.util";
@@ -29,19 +29,32 @@ type Props = {
   detail: DispatchDetail;
   dateFmt: Intl.DateTimeFormat;
   dueFmt: Intl.DateTimeFormat;
-  statusLabel: string;
 };
 
-export function DispatchDetailBody({ detail, dateFmt, dueFmt, statusLabel }: Props) {
+function lineRowsFromDetail(detail: DispatchDetail): DispatchLineSummary[] {
+  if (detail.line_summaries?.length) return detail.line_summaries;
+  return detail.lines.map((line) => ({
+    group_key: line.is_extra ? `extra:item:${line.item.id}` : `item:${line.item.id}`,
+    item_id: line.item.id,
+    item_name: line.item.name?.trim() || `#${line.item.id}`,
+    is_extra: line.is_extra,
+    requested_quantity: line.requested_quantity,
+    pending_quantity: line.pending_quantity,
+    dispatched_quantity: line.dispatched_quantity,
+    fulfilled_quantity: Math.max(0, line.dispatched_quantity - line.extra_quantity),
+    surplus_quantity: line.extra_quantity,
+    restocked_quantity: line.restocked_quantity,
+  }));
+}
+
+export function DispatchDetailBody({ detail, dateFmt, dueFmt }: Props) {
   const t = useTranslations("Dashboard.dispatches");
-  const aggregatedLines = React.useMemo(() => aggregateDispatchDetailLines(detail.lines), [detail.lines]);
+  const lineRows = React.useMemo(() => lineRowsFromDetail(detail), [detail]);
 
   return (
-    <DetailPagePadding className="space-y-6">
+    <DetailPagePadding>
+      <div className={detailPageStackClassName}>
       <DetailPanelCard title={t("detail.sectionOverview")}>
-        <div className="mb-4 flex justify-end">
-          <DispatchStatusBadge status={detail.status} label={statusLabel} />
-        </div>
         <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-3">
           <DetailMetricCard label={t("fields.dispatchId")}>
             <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">
@@ -72,7 +85,6 @@ export function DispatchDetailBody({ detail, dateFmt, dueFmt, statusLabel }: Pro
               "—"
             )}
           </DetailMetricCard>
-          <DetailMetricCard label={t("fields.jobName")}>{detail.job_name?.trim() || "—"}</DetailMetricCard>
         </DetailMetricsGrid>
       </DetailPanelCard>
 
@@ -88,33 +100,33 @@ export function DispatchDetailBody({ detail, dateFmt, dueFmt, statusLabel }: Pro
               </tr>
             </thead>
             <tbody>
-              {aggregatedLines.length === 0 ? (
+              {lineRows.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-3 py-6 text-center text-slate-500">
                     {t("detail.noItems")}
                   </td>
                 </tr>
               ) : (
-                aggregatedLines.map((row) => (
-                  <tr key={row.key} className="border-b border-slate-100 dark:border-slate-800">
+                lineRows.map((row) => (
+                  <tr key={row.group_key} className="border-b border-slate-100 dark:border-slate-800">
                     <td className="px-3 py-3">
-                      <span className="font-medium text-slate-900 dark:text-slate-100">{row.itemName}</span>
-                      {row.isExtra ? (
+                      <span className="font-medium text-slate-900 dark:text-slate-100">{row.item_name}</span>
+                      {row.is_extra ? (
                         <span className="mt-1 block text-xs font-medium text-amber-600 dark:text-amber-400">
                           {t("detail.extraItem")}
                         </span>
                       ) : null}
                     </td>
                     <td className={cn(quantityTableCellClass, "font-medium")}>
-                      <QuantityWithUnits value={row.requested} unitsLabel={t("units")} />
+                      <QuantityWithUnits value={row.requested_quantity} unitsLabel={t("units")} />
                     </td>
                     <td className={quantityTableCellClass}>
-                      <QuantityWithUnits value={row.pending} unitsLabel={t("units")} />
+                      <QuantityWithUnits value={row.pending_quantity} unitsLabel={t("units")} />
                     </td>
                     <td className={quantityTableCellClass}>
                       <DispatchedQuantityCell
-                        fulfilled={row.fulfilled}
-                        surplus={row.surplus}
+                        fulfilled={row.fulfilled_quantity}
+                        surplus={row.surplus_quantity}
                         unitsLabel={t("units")}
                       />
                     </td>
@@ -141,20 +153,7 @@ export function DispatchDetailBody({ detail, dateFmt, dueFmt, statusLabel }: Pro
           notModifiedYet: t("detail.notModifiedYet"),
         }}
       />
+      </div>
     </DetailPagePadding>
   );
-}
-
-export function dispatchStatusLabel(
-  t: (key: string) => string,
-  status: string | null | undefined,
-): string {
-  const norm = normalizeDispatchStatus(status);
-  if (norm === "dispatched") return t("status.dispatched");
-  if (norm === "delivered") return t("status.delivered");
-  if (norm === "in_transit") return t("status.inTransit");
-  if (norm === "processing") return t("status.processing");
-  if (norm === "draft") return t("status.draft");
-  if (norm === "delayed") return t("status.delayed");
-  return status?.trim() || "—";
 }

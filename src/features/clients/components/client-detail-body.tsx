@@ -27,7 +27,7 @@ export function ClientDetailBody({
   return (
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
-        <DetailPanelCard>
+        <DetailPanelCard title={t("detail.panelOverview")}>
           <DetailMetricsGrid>
             <DetailStatusMetric
               label={t("detail.metaStatus")}

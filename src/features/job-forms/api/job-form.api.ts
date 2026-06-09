@@ -7,7 +7,6 @@ import type {
   SubmitJobFormPayload,
 } from "@/features/job-forms/types/job-form-submission.types";
 import { normalizeProjectFormMetadataResponse } from "@/features/job-forms/utils/job-form-schema.util";
-import { resolveJobFormRequestUrl } from "./job-form-http.util";
 import { JOB_FORM_PATHS } from "./job-form.paths";
 
 export async function fetchJobFormSchema(formId: number) {
@@ -17,7 +16,7 @@ export async function fetchJobFormSchema(formId: number) {
 
 export async function fetchJobSubmittedForms(jobId: number): Promise<JobFormSubmission[]> {
   const { data } = await api.get<ApiEnvelope<JobFormSubmission[]>>(
-    resolveJobFormRequestUrl(JOB_FORM_PATHS.submittedList(jobId)),
+    JOB_FORM_PATHS.submittedList(jobId),
   );
   assertApiSuccess(data);
   return data.data;
@@ -28,7 +27,7 @@ export async function fetchJobSubmittedForm(
   submissionId: number,
 ): Promise<JobFormSubmission> {
   const { data } = await api.get<ApiEnvelope<JobFormSubmission>>(
-    resolveJobFormRequestUrl(JOB_FORM_PATHS.submittedDetail(jobId, submissionId)),
+    JOB_FORM_PATHS.submittedDetail(jobId, submissionId),
   );
   assertApiSuccess(data);
   return data.data;
@@ -39,7 +38,7 @@ export async function submitJobForm(
   payload: SubmitJobFormPayload,
 ): Promise<JobFormSubmission> {
   const { data } = await api.post<ApiEnvelope<JobFormSubmission>>(
-    resolveJobFormRequestUrl(JOB_FORM_PATHS.submit(jobId)),
+    JOB_FORM_PATHS.submit(jobId),
     payload,
   );
   assertApiSuccess(data);

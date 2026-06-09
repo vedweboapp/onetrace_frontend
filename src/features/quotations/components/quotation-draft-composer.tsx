@@ -4,8 +4,8 @@ import * as React from "react";
 import { ChevronDown, Copy, Pencil, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
-import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
+import { fetchItemsPage } from "@/features/items/api/item.api";
+import type { Item } from "@/features/items/types/item.types";
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
 import type { QuotationDraft, QuotationDraftLine, QuotationDraftPlot, QuotationDraftSection } from "@/features/quotations/types/quotation-draft.types";
@@ -140,7 +140,7 @@ function DraftCompositeAddRow({
   onCompositeChange,
   onSave,
   saveDisabled,
-  showNoCompositesMessage,
+  showNoItemsMessage,
   saveLabel,
   onGroupAdd,
   addGroupAriaLabel,
@@ -159,7 +159,7 @@ function DraftCompositeAddRow({
   onCompositeChange: (v: string) => void;
   onSave: () => void;
   saveDisabled: boolean;
-  showNoCompositesMessage: boolean;
+  showNoItemsMessage: boolean;
   saveLabel: string;
   onGroupAdd?: () => void;
   addGroupAriaLabel?: string;
@@ -195,10 +195,10 @@ function DraftCompositeAddRow({
             id={`${idPrefix}-composite`}
             portaled
             searchable
-            listLabel={`${tDraw("chooseComposite")} *`}
+            listLabel={`${t("chooseItem")} *`}
             options={compositeOptions}
             value={compositeId}
-            emptyLabel={tDraw("selectComposite")}
+            emptyLabel={t("selectItem")}
             disabled={compositeOptions.length <= 1 || saving}
             onChange={onCompositeChange}
             onAdd={onCompositeAdd}
@@ -211,8 +211,8 @@ function DraftCompositeAddRow({
           {saveLabel}
         </AppButton>
       </div>
-      {showNoCompositesMessage ? (
-        <p className="text-xs text-slate-500 dark:text-slate-400">{t("noComposites")}</p>
+      {showNoItemsMessage ? (
+        <p className="text-xs text-slate-500 dark:text-slate-400">{t("noItems")}</p>
       ) : null}
     </div>
   );
@@ -251,7 +251,7 @@ export function QuotationDraftComposer({
   const [newSectionName, setNewSectionName] = React.useState("");
   const [rowPick, setRowPick] = React.useState<Record<string, { groupId: string; compositeId: string }>>({});
   const [groups, setGroups] = React.useState<Group[]>([]);
-  const [compositeRows, setCompositeRows] = React.useState<CompositeItem[]>([]);
+  const [itemRows, setItemRows] = React.useState<Item[]>([]);
   const [groupItemsByGroupId, setGroupItemsByGroupId] = React.useState<Record<string, GroupItemRef[]>>({});
   const [openSectionIds, setOpenSectionIds] = React.useState<Set<string>>(() => new Set());
   const [openPlotIds, setOpenPlotIds] = React.useState<Set<string>>(() => new Set());
@@ -279,16 +279,16 @@ export function QuotationDraftComposer({
     (groupId: string): CheckmarkSelectOption[] => {
       if (!groupId) {
         return [
-          { value: "", label: tDraw("selectComposite") },
-          ...compositeRows.map((ci) => ({ value: String(ci.id), label: ci.name })),
+          { value: "", label: t("selectItem") },
+          ...itemRows.map((ci) => ({ value: String(ci.id), label: ci.name })),
         ];
       }
       const entries = groupItemsByGroupId[groupId];
       if (entries === undefined) {
-        return [{ value: "", label: tDraw("selectComposite") }];
+        return [{ value: "", label: t("selectItem") }];
       }
       const itemNameById: Record<number, string> = {};
-      for (const ci of compositeRows) itemNameById[ci.id] = ci.name;
+      for (const ci of itemRows) itemNameById[ci.id] = ci.name;
       const uniqueByItem = new Map<number, { value: string; label: string }>();
       for (const entry of entries) {
         if (uniqueByItem.has(entry.item)) continue;
@@ -297,21 +297,21 @@ export function QuotationDraftComposer({
           label: entry.item_name ?? itemNameById[entry.item] ?? `#${entry.item}`,
         });
       }
-      return [{ value: "", label: tDraw("selectComposite") }, ...Array.from(uniqueByItem.values())];
+      return [{ value: "", label: t("selectItem") }, ...Array.from(uniqueByItem.values())];
     },
-    [compositeRows, groupItemsByGroupId, tDraw],
+    [itemRows, groupItemsByGroupId, t],
   );
 
   const pendingRowKeyRef = React.useRef<string | null>(null);
 
-  const reloadGroupsAndComposites = React.useCallback(async () => {
+  const reloadGroupsAndItems = React.useCallback(async () => {
     try {
-      const [gRes, cRes] = await Promise.all([fetchGroupsPage(1, 500), fetchCompositeItemsPage(1, 500)]);
+      const [gRes, iRes] = await Promise.all([fetchGroupsPage(1, 500), fetchItemsPage(1, 500)]);
       setGroups(gRes.items);
-      setCompositeRows(cRes.items);
+      setItemRows(iRes.items);
     } catch {
       setGroups([]);
-      setCompositeRows([]);
+      setItemRows([]);
     }
   }, []);
 
@@ -349,7 +349,7 @@ export function QuotationDraftComposer({
         .catch(() => {
           setGroupItemsByGroupId((cur) => ({ ...cur, [selectId]: [] }));
         });
-    } else if (selectTarget === "composite-item") {
+    } else if (selectTarget === "item") {
       setRowPick((prev) => {
         const cur = prev[key] ?? { groupId: "", compositeId: "" };
         return { ...prev, [key]: { ...cur, compositeId: selectId } };
@@ -363,8 +363,8 @@ export function QuotationDraftComposer({
     getFormDraft: readOnly ? undefined : getFormDraft,
   });
 
-  const compositeItemQuickCreate = useQuickCreate({
-    kind: "composite-item",
+  const itemQuickCreate = useQuickCreate({
+    kind: "item",
     getFormDraft: readOnly ? undefined : getFormDraft,
   });
 
@@ -378,21 +378,21 @@ export function QuotationDraftComposer({
         : undefined,
       addGroupAriaLabel: groupQuickCreate.addAriaLabel,
       addGroupLabel: groupQuickCreate.addLabel,
-      onCompositeAdd: compositeItemQuickCreate.onAdd
+      onCompositeAdd: itemQuickCreate.onAdd
         ? () => {
             pendingRowKeyRef.current = rowKey;
-            compositeItemQuickCreate.onAdd?.();
+            itemQuickCreate.onAdd?.();
           }
         : undefined,
-      addCompositeAriaLabel: compositeItemQuickCreate.addAriaLabel,
-      addCompositeLabel: compositeItemQuickCreate.addLabel,
+      addCompositeAriaLabel: itemQuickCreate.addAriaLabel,
+      addCompositeLabel: itemQuickCreate.addLabel,
     }),
-    [groupQuickCreate, compositeItemQuickCreate],
+    [groupQuickCreate, itemQuickCreate],
   );
 
   useQuickCreateReturn({
     restoreFormDraft: readOnly ? undefined : restoreFormDraft,
-    onReloadOptions: readOnly ? undefined : reloadGroupsAndComposites,
+    onReloadOptions: readOnly ? undefined : reloadGroupsAndItems,
     onApplySelect: readOnly ? () => {} : applyQuickCreateSelect,
   });
 
@@ -401,15 +401,15 @@ export function QuotationDraftComposer({
     let cancelled = false;
     (async () => {
       try {
-        const [gRes, cRes] = await Promise.all([fetchGroupsPage(1, 500), fetchCompositeItemsPage(1, 500)]);
+        const [gRes, iRes] = await Promise.all([fetchGroupsPage(1, 500), fetchItemsPage(1, 500)]);
         if (!cancelled) {
           setGroups(gRes.items);
-          setCompositeRows(cRes.items);
+          setItemRows(iRes.items);
         }
       } catch {
         if (!cancelled) {
           setGroups([]);
-          setCompositeRows([]);
+          setItemRows([]);
         }
       }
     })();
@@ -802,7 +802,7 @@ export function QuotationDraftComposer({
     const id = Number.parseInt(pickVal, 10);
     if (!Number.isFinite(id) || id <= 0) return;
     const opts = getCompositeOptions(row.groupId);
-    const picked = compositeRows.find((r) => r.id === id);
+    const picked = itemRows.find((r) => r.id === id);
     const label = picked?.name ?? opts.find((o) => o.value === pickVal)?.label ?? `Item ${id}`;
     const unit = picked ? parseMoneyValue(picked.selling_price ?? picked.cost_price) : 0;
     const newLine: QuotationDraftLine = {
@@ -1186,7 +1186,7 @@ export function QuotationDraftComposer({
                       }
                       onSave={() => addCompositeLineForKey(si, null, section.id, null)}
                       saveDisabled={secSaveDisabled}
-                      showNoCompositesMessage={compositeRows.length === 0}
+                      showNoItemsMessage={itemRows.length === 0}
                       saveLabel={t("saveComposite")}
                     />
                   ) : null}
@@ -1256,7 +1256,7 @@ export function QuotationDraftComposer({
                               }
                               onSave={() => addCompositeLineForKey(si, pi, section.id, plot.id)}
                               saveDisabled={plotSaveDisabled}
-                              showNoCompositesMessage={compositeRows.length === 0}
+                              showNoItemsMessage={itemRows.length === 0}
                               {...bindQuickCreateToRow(plotKey)}
                               saveLabel={t("saveComposite")}
                             />

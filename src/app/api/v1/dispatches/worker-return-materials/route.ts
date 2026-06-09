@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     return dispatchMockJsonError("worker_name is required");
   }
 
-  const datePreset = (url.searchParams.get("date_preset") ?? "today") as WorkerReturnDatePreset;
+  const datePreset = (url.searchParams.get("date_preset") ?? "till_today") as WorkerReturnDatePreset;
   const dispatchRaw = url.searchParams.get("dispatch_id");
   const mrRaw = url.searchParams.get("material_request_id");
 
