@@ -1642,6 +1642,34 @@ export default function FormBuilderLayout({
           fieldType={showModal?.type}
           initialConfig={showModal?.config || null}
           onSave={(config: any) => {
+            // Collect all existing fields (excluding the field currently being edited) for duplicate check
+            const existingFields = sections
+              .filter((sec) => !sec.is_deleted)
+              .flatMap((sec) =>
+                sec.fields.filter(
+                  (f) =>
+                    !f.is_deleted &&
+                    !(
+                      sec._uid === showModal?.sectionUid &&
+                      f._uid === showModal?._fieldUid
+                    ),
+                ),
+              )
+              .filter((f) => f.api_name);
+
+            const conflictingField = config.api_name
+              ? existingFields.find((f) => f.api_name === config.api_name)
+              : undefined;
+
+            if (conflictingField) {
+              const displayLabel =
+                conflictingField.field_label || conflictingField.api_name;
+              toastError(
+                `A field with the label "${displayLabel}" already exists. Please use a unique field name.`,
+              );
+              return;
+            }
+
             if (showModal._fieldUid) {
               updateFieldInSection(
                 showModal?.sectionUid,

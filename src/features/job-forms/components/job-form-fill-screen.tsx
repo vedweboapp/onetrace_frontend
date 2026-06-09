@@ -99,11 +99,11 @@ export function JobFormFillScreen({ jobId, formId, formNameHint }: Props) {
 
       const defaults = existing
         ? mapSubmissionValuesToFormDefaults(
-            existing.values,
-            schema.sections,
-            maps.apiNameByFieldId,
-            maps.fieldTypeByFieldId,
-          )
+          existing.values,
+          schema.sections,
+          maps.apiNameByFieldId,
+          maps.fieldTypeByFieldId,
+        )
         : {};
       setDefaultValues(defaults);
     } catch {
@@ -120,7 +120,7 @@ export function JobFormFillScreen({ jobId, formId, formNameHint }: Props) {
   React.useEffect(() => {
     void load();
   }, [load]);
-
+  console.log("form rules", rules);
   const {
     formRef,
     isLoading: submitting,
