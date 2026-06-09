@@ -17,6 +17,7 @@ import {
   jobToFormDefaults,
   mapJobFormToPayload,
 } from "@/features/jobs/utils/job-form-map";
+import { resolveDefaultJobStatusId } from "@/features/jobs/utils/job-default-status.util";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import { formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
@@ -292,6 +293,12 @@ export function JobFormScreen({ mode, jobId }: Props) {
         if (!cancelled) {
           setWorkerOptions(workers);
           setJobStatusOptions(statuses.items.map((s) => ({ value: String(s.id), label: s.status_name })));
+          if (!isEdit) {
+            const defaultStatusId = resolveDefaultJobStatusId(statuses.items);
+            if (defaultStatusId != null) {
+              setValue("job_status", String(defaultStatusId), { shouldDirty: false });
+            }
+          }
         }
       } catch {
         if (!cancelled) {
@@ -303,7 +310,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isEdit, setValue]);
 
   React.useEffect(() => {
     void reloadClients();
