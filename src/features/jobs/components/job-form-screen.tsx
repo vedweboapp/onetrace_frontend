@@ -14,6 +14,7 @@ import { createJob, fetchJob, updateJob } from "@/features/jobs/api/job.api";
 import { createJobFormSchema, type JobFormValues } from "@/features/jobs/schemas/job-form-schema";
 import {
   emptyJobFormDefaults,
+  jobFormSelectOptions,
   jobToFormDefaults,
   mapJobFormToPayload,
 } from "@/features/jobs/utils/job-form-map";
@@ -339,7 +340,11 @@ export function JobFormScreen({ mode, jobId }: Props) {
     (async () => {
       try {
         const forms = await fetchProjectFormsByProject(Number.parseInt(selectedProject, 10), { silent: true });
-        setFormOptions(forms.map((f) => ({ value: String(f.id), label: f.name })));
+        setFormOptions((prev) => {
+          const byValue = new Map(prev.map((opt) => [opt.value, opt]));
+          for (const f of forms) byValue.set(String(f.id), { value: String(f.id), label: f.name });
+          return Array.from(byValue.values());
+        });
       } catch {
         setFormOptions([]);
       }
@@ -407,7 +412,17 @@ export function JobFormScreen({ mode, jobId }: Props) {
       setScreenError(null);
       try {
         const row = await fetchJob(jobId);
-        if (!cancelled) reset(jobToFormDefaults(row));
+        if (!cancelled) {
+          reset(jobToFormDefaults(row));
+          const assignedForms = jobFormSelectOptions(row.forms);
+          if (assignedForms.length > 0) {
+            setFormOptions((prev) => {
+              const byValue = new Map(prev.map((opt) => [opt.value, opt]));
+              for (const opt of assignedForms) byValue.set(opt.value, opt);
+              return Array.from(byValue.values());
+            });
+          }
+        }
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
       } finally {

@@ -4,6 +4,15 @@ import type {
   NormalizedJobFormSchema,
 } from "@/features/job-forms/types/job-form-submission.types";
 
+function coerceFieldId(raw: unknown): number | undefined {
+  if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) return raw;
+  if (typeof raw === "string" && /^\d+$/.test(raw.trim())) {
+    const n = Number.parseInt(raw.trim(), 10);
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  }
+  return undefined;
+}
+
 function normalizeField(raw: Record<string, unknown>, index: number): NormalizedFormField {
   const properties = (raw.properties as Record<string, unknown> | undefined) ?? {};
   const validation = (raw.validation as Record<string, unknown> | undefined) ?? {};
@@ -27,7 +36,7 @@ function normalizeField(raw: Record<string, unknown>, index: number): Normalized
 
   return {
     ...raw,
-    id: typeof raw.id === "number" ? raw.id : undefined,
+    id: coerceFieldId(raw.id),
     api_name: String(raw.api_name ?? raw.name ?? `field_${index}`),
     field_label: String(raw.field_label ?? raw.label ?? raw.api_name ?? `Field ${index + 1}`),
     field_type: String(raw.field_type ?? raw.type ?? "single_line"),

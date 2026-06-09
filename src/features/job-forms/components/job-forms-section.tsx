@@ -1,10 +1,7 @@
 "use client";
 
-import * as React from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { fetchJobSubmittedForms } from "@/features/job-forms/api/job-form.api";
-import type { JobFormSubmission } from "@/features/job-forms/types/job-form-submission.types";
 import type { JobFormRef } from "@/features/jobs/types/job.types";
 import { routes } from "@/shared/config/routes";
 import { cn } from "@/core/utils/http.util";
@@ -15,39 +12,13 @@ type Props = {
   backHref?: string;
 };
 
+function isSubmittedForm(form: JobFormRef): boolean {
+  return typeof form.submitted_form_id === "number" && form.submitted_form_id > 0;
+}
+
 export function JobFormsSection({ jobId, forms, backHref }: Props) {
   const t = useTranslations("Dashboard.jobs.forms");
-  const [submissions, setSubmissions] = React.useState<JobFormSubmission[]>([]);
-  const [loading, setLoading] = React.useState(true);
-
   const jobDetailHref = backHref ?? `${routes.dashboard.jobs}/${jobId}`;
-
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const rows = await fetchJobSubmittedForms(jobId);
-        if (!cancelled) setSubmissions(rows);
-      } catch {
-        if (!cancelled) setSubmissions([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [jobId]);
-
-  const submissionByFormId = React.useMemo(() => {
-    const map = new Map<number, JobFormSubmission>();
-    for (const row of submissions) {
-      const key = row.job_form_id ?? row.form_id;
-      if (key > 0) map.set(key, row);
-    }
-    return map;
-  }, [submissions]);
 
   if (forms.length === 0) return null;
 
@@ -58,10 +29,13 @@ export function JobFormsSection({ jobId, forms, backHref }: Props) {
       </p>
       <ul className="flex flex-wrap gap-2">
         {forms.map((form) => {
-          const submission = submissionByFormId.get(form.project_form_id);
-          const label = form.name?.trim() || `#${form.id}`;
-          console.log("form entry:", form); // check if project_form_id is present    
-          const href = `${routes.dashboard.jobFormFill(jobId, form.project_form_id, form.id)}&name=${encodeURIComponent(label)}&back=${encodeURIComponent(jobDetailHref)}`;
+          const submitted = isSubmittedForm(form);
+          const label = form.name?.trim() || `#${form.project_form_id}`;
+          const hrefBase = `${routes.dashboard.jobFormFill(jobId, form.project_form_id, form.id)}&name=${encodeURIComponent(label)}&back=${encodeURIComponent(jobDetailHref)}`;
+          const href =
+            submitted && form.submitted_form_id
+              ? `${hrefBase}&submissionId=${form.submitted_form_id}`
+              : hrefBase;
 
           return (
             <li key={form.id}>
@@ -74,18 +48,16 @@ export function JobFormsSection({ jobId, forms, backHref }: Props) {
                 )}
               >
                 <span>{label}</span>
-                {!loading ? (
-                  <span
-                    className={cn(
-                      "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                      submission
-                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                        : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-                    )}
-                  >
-                    {submission ? t("statusSubmitted") : t("statusPending")}
-                  </span>
-                ) : null}
+                <span
+                  className={cn(
+                    "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                    submitted
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                      : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+                  )}
+                >
+                  {submitted ? t("statusSubmitted") : t("statusPending")}
+                </span>
               </Link>
             </li>
           );

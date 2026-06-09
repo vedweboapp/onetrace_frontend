@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import {
   fetchJobFormSchema,
-  fetchJobSubmittedForms,
+  loadJobFormSubmission,
   submitJobForm,
 } from "@/features/job-forms/api/job-form.api";
 import type { JobFormSubmission } from "@/features/job-forms/types/job-form-submission.types";
@@ -15,7 +15,6 @@ import {
   buildFieldMaps,
 } from "@/features/job-forms/utils/job-form-schema.util";
 import {
-  enrichSubmissionValues,
   mapFormDataToSubmissionValues,
   mapSubmissionValuesToFormDefaults,
 } from "@/features/job-forms/utils/job-form-values.util";
@@ -59,6 +58,12 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
   const [fieldMaps, setFieldMaps] = React.useState(() => buildFieldMaps([]));
 
   const modeParam = searchParams.get("mode");
+  const submissionIdParam = searchParams.get("submissionId");
+  const submissionIdHint = React.useMemo(() => {
+    const n = Number.parseInt(submissionIdParam ?? "", 10);
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  }, [submissionIdParam]);
+
   const uiMode: UiMode = React.useMemo(() => {
     if (submission && modeParam !== "edit") return "view";
     if (submission && modeParam === "edit") return "edit";
@@ -66,13 +71,18 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
   }, [submission, modeParam]);
 
   const readOnly = uiMode === "view";
-  const rendererKey = `${uiMode}-${submission?.id ?? "new"}`;
+  const rendererKey = `${uiMode}-${submission?.id ?? "new"}-${Object.keys(defaultValues).length}`;
 
-  function formPageQuery(extra?: { mode?: string | null }) {
+  function formPageQuery(extra?: { mode?: string | null; submissionId?: number }) {
     const params = new URLSearchParams();
     params.set("formId", String(formId));
+    if (Number.isFinite(jobFormId) && jobFormId > 0) {
+      params.set("job_form_id", String(jobFormId));
+    }
     params.set("back", safeBack);
     if (formNameHint?.trim()) params.set("name", formNameHint.trim());
+    const sid = extra?.submissionId ?? submission?.id;
+    if (sid != null && sid > 0) params.set("submissionId", String(sid));
     if (extra?.mode) params.set("mode", extra.mode);
     return `${pathname}?${params.toString()}`;
   }
@@ -88,24 +98,16 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
       setSchemaSections(schema.sections);
       setRules(normalizeRules(schema.rules));
 
-      let submittedRows: Awaited<ReturnType<typeof fetchJobSubmittedForms>> = [];
-      try {
-        submittedRows = await fetchJobSubmittedForms(jobId);
-      } catch {
-        submittedRows = [];
-      }
-
-      const existing =
-        submittedRows.find((row) => row.job_form_id === formId || row.form_id === formId) ?? null;
+      const existing = await loadJobFormSubmission(jobId, jobFormId, formId, submissionIdHint);
       setSubmission(existing);
 
       const defaults = existing
         ? mapSubmissionValuesToFormDefaults(
-          existing.values,
-          schema.sections,
-          maps.apiNameByFieldId,
-          maps.fieldTypeByFieldId,
-        )
+            existing.values,
+            schema.sections,
+            maps.apiNameByFieldId,
+            maps.fieldTypeByFieldId,
+          )
         : {};
       setDefaultValues(defaults);
     } catch {
@@ -117,7 +119,7 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
     } finally {
       setLoading(false);
     }
-  }, [formId, formNameHint, jobId, t]);
+  }, [formId, formNameHint, jobFormId, jobId, submissionIdHint, t]);
 
   React.useEffect(() => {
     void load();
@@ -133,33 +135,17 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
       return;
     }
     try {
-      const saved = await submitJobForm(jobId, {
-        job_form_id: jobFormId,
-        status: "submitted",
-        values,
-      });
-      const enriched: JobFormSubmission = {
-        ...saved,
-        form_name: saved.form_name ?? formTitle,
-        values: enrichSubmissionValues(
-          saved.values,
-          fieldMaps.fieldLabelByFieldId,
-          fieldMaps.apiNameByFieldId,
-        ),
-      };
-      setSubmission(enriched);
-      setDefaultValues(
-        mapSubmissionValuesToFormDefaults(
-          enriched.values,
-          schemaSections,
-          fieldMaps.apiNameByFieldId,
-          fieldMaps.fieldTypeByFieldId,
-        ),
+      await submitJobForm(
+        jobId,
+        {
+          job_form_id: jobFormId,
+          status: "submitted",
+          values,
+        },
+        formId,
       );
       toastSuccess(submission ? t("updatedToast") : t("submittedToast"));
-      if (modeParam === "edit") {
-        router.replace(formPageQuery());
-      }
+      router.replace(safeBack);
     } catch {
       toastError(t("submitError"));
     }
