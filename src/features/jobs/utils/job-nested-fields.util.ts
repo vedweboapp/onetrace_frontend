@@ -67,14 +67,37 @@ export function jobSiteLabel(site: Job["site"]): string {
 export function jobFormEntries(job: Pick<Job, "forms">): JobFormRef[] {
   const forms = job.forms;
   if (forms == null) return [];
-  if (typeof forms === "number") return [{ id: forms }];
-  if (Array.isArray(forms)) {
-    return forms.map((entry) => {
-      if (typeof entry === "number") return { id: entry };
-      return { id: entry.id, name: entry.name };
-    });
+
+  if (typeof forms === "number") {
+    return [{ id: forms, project_form_id: forms }];
   }
-  if (typeof forms === "object") return [{ id: forms.id, name: forms.name }];
+
+  if (Array.isArray(forms)) {
+    return forms
+      .map((entry): JobFormRef | null => {
+        if (typeof entry === "number") {
+          return { id: entry, project_form_id: entry };
+        }
+        if (typeof entry === "object" && entry !== null) {
+          return {
+            id: entry.id,
+            name: entry.name,
+            project_form_id: entry.project_form_id ?? entry.id, // use entry.id as fallback
+          };
+        }
+        return null; //explicit null instead of undefined
+      })
+      .filter((e): e is JobFormRef => e !== null); 
+  }
+
+  if (typeof forms === "object") {
+    return [{
+      id: forms.id,
+      name: forms.name,
+      project_form_id: forms.project_form_id ?? forms.id,
+    }];
+  }
+
   return [];
 }
 

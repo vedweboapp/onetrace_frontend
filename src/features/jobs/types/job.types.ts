@@ -43,6 +43,7 @@ export type JobSiteRef = {
 
 export type JobFormRef = {
   id: number;
+  project_form_id: number;
   name?: string;
 };
 
