@@ -3,6 +3,7 @@ export type JobFormSubmissionValue = {
   value: string;
   field_label?: string | null;
   api_name?: string | null;
+  field_type?: string | null;
 };
 
 export type JobFormSubmission = {
@@ -10,12 +11,21 @@ export type JobFormSubmission = {
   job_id: number;
   job_form_id: number;
   form_id: number;
+  project_form_id?: number;
   form_name?: string | null;
   status: string;
   remarks?: string | null;
   values: JobFormSubmissionValue[];
   submitted_at?: string | null;
   modified_at?: string | null;
+};
+
+/** POST /jobs/{id}/submit-form/ summary payload (fetch detail for full values). */
+export type SubmitJobFormSummary = {
+  submission_id: number;
+  job_id: number;
+  project_form_id: number;
+  total_fields?: number;
 };
 
 export type SubmitJobFormPayload = {

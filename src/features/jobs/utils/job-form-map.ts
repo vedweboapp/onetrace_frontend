@@ -45,6 +45,12 @@ function nestedId(value: number | { id: number } | null | undefined): number | u
   return undefined;
 }
 
+function jobFormProjectFormId(entry: JobFormRef | number): string {
+  if (typeof entry === "number" && entry > 0) return String(entry);
+  const projectFormId = entry.project_form_id ?? entry.id;
+  return typeof projectFormId === "number" && projectFormId > 0 ? String(projectFormId) : "";
+}
+
 export function jobFormsToFormIds(forms: Job["forms"]): string[] {
   if (forms == null) return [];
   if (typeof forms === "number" && forms > 0) return [String(forms)];
@@ -52,17 +58,44 @@ export function jobFormsToFormIds(forms: Job["forms"]): string[] {
     return forms
       .map((entry) => {
         if (typeof entry === "number" && entry > 0) return String(entry);
-        if (entry && typeof entry === "object" && typeof (entry as JobFormRef).id === "number") {
-          return String((entry as JobFormRef).id);
-        }
+        if (entry && typeof entry === "object") return jobFormProjectFormId(entry as JobFormRef);
         return "";
       })
       .filter((id) => id.length > 0);
   }
-  if (typeof forms === "object" && typeof forms.id === "number" && forms.id > 0) {
-    return [String(forms.id)];
+  if (typeof forms === "object") {
+    const id = jobFormProjectFormId(forms as JobFormRef);
+    return id ? [id] : [];
   }
   return [];
+}
+
+export function jobFormSelectOptions(forms: Job["forms"]): Array<{ value: string; label: string }> {
+  if (forms == null) return [];
+  const entries: JobFormRef[] = [];
+  if (typeof forms === "number" && forms > 0) {
+    entries.push({ id: forms, project_form_id: forms });
+  } else if (Array.isArray(forms)) {
+    for (const entry of forms) {
+      if (typeof entry === "number" && entry > 0) {
+        entries.push({ id: entry, project_form_id: entry });
+      } else if (entry && typeof entry === "object") {
+        entries.push(entry as JobFormRef);
+      }
+    }
+  } else if (typeof forms === "object") {
+    entries.push(forms as JobFormRef);
+  }
+  return entries
+    .map((entry) => {
+      const value = jobFormProjectFormId(entry);
+      if (!value) return null;
+      return {
+        value,
+        label: entry.name?.trim() || `#${value}`,
+      };
+    })
+    .filter((row): row is { value: string; label: string } => row != null);
 }
 
 export function mapJobFormToPayload(

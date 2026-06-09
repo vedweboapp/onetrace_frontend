@@ -44,7 +44,9 @@ export type JobSiteRef = {
 export type JobFormRef = {
   id: number;
   project_form_id: number;
-  name?: string;
+  name?: string | null;
+  /** Present when this job form has been submitted; use for detail API + status. */
+  submitted_form_id?: number | null;
 };
 
 export type JobQrCodeRef = {
