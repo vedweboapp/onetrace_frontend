@@ -10,13 +10,14 @@ export async function generateMetadata(): Promise<Metadata> {
 
 type PageProps = {
   params: Promise<{ locale: string; id: string }>;
-  searchParams: Promise<{ formId?: string; name?: string }>;
+  searchParams: Promise<{ formId?: string; name?: string; job_form_id?: string }>;
 };
 
 export default async function DashboardJobFormFillPage({ params, searchParams }: PageProps) {
   const { id } = await params;
-  const { formId: rawFormId, name } = await searchParams;
+  const { formId: rawFormId, name, job_form_id: rawJobFormId } = await searchParams;
   const jobId = Number.parseInt(id, 10);
+  const jobFormId = Number.parseInt(rawJobFormId ?? "", 10)
   const formId = Number.parseInt(rawFormId ?? "", 10);
   if (!Number.isFinite(jobId) || jobId <= 0 || !Number.isFinite(formId) || formId <= 0) {
     notFound();
@@ -26,6 +27,7 @@ export default async function DashboardJobFormFillPage({ params, searchParams }:
     <JobFormFillScreen
       jobId={jobId}
       formId={formId}
+      jobFormId={jobFormId}
       formNameHint={typeof name === "string" ? name : null}
     />
   );

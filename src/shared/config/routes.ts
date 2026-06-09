@@ -13,8 +13,8 @@ export const routes = {
     quotations: "/dashboard/quotations",
     invoices: "/dashboard/invoices",
     jobs: "/dashboard/jobs",
-    jobFormFill: (jobId: number | string, formId: number | string) =>
-      `/dashboard/jobs/${jobId}/form?formId=${formId}`,
+    jobFormFill: (jobId: number | string, formId: number | string, job_form_id: number | string) =>
+      `/dashboard/jobs/${jobId}/form?formId=${formId}&job_form_id=${job_form_id}`,
     qrCodes: "/dashboard/qr-codes",
     projects: "/dashboard/projects",
     groups: "/dashboard/groups",

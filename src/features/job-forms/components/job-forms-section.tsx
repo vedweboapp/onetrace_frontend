@@ -58,9 +58,10 @@ export function JobFormsSection({ jobId, forms, backHref }: Props) {
       </p>
       <ul className="flex flex-wrap gap-2">
         {forms.map((form) => {
-          const submission = submissionByFormId.get(form.id);
+          const submission = submissionByFormId.get(form.project_form_id);
           const label = form.name?.trim() || `#${form.id}`;
-          const href = `${routes.dashboard.jobFormFill(jobId, form.id)}&name=${encodeURIComponent(label)}&back=${encodeURIComponent(jobDetailHref)}`;
+          console.log("form entry:", form); // check if project_form_id is present    
+          const href = `${routes.dashboard.jobFormFill(jobId, form.project_form_id, form.id)}&name=${encodeURIComponent(label)}&back=${encodeURIComponent(jobDetailHref)}`;
 
           return (
             <li key={form.id}>
