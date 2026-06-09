@@ -68,12 +68,6 @@ export function DispatchLineDetailPanel({ dispatchId, line, dateFmt, onRestocked
       <div className="space-y-4 text-sm">
         <dl className="grid gap-3 sm:grid-cols-2">
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t("table.jobName")}</dt>
-            <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-              {line.job?.title?.trim() || (line.is_extra ? t("detail.extraItem") : "—")}
-            </dd>
-          </div>
-          <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t("table.workerName")}</dt>
             <dd className="mt-1 font-medium">{dispatchWorkerLabel(line.worker_name)}</dd>
           </div>

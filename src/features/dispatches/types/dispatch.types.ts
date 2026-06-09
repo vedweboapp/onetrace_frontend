@@ -168,7 +168,12 @@ export type DispatchListResponse = {
   pagination: DispatchPagination;
 };
 
-export type WorkerReturnDatePreset = "today" | "yesterday" | "custom" | "material_request";
+export type WorkerReturnDatePreset =
+  | "till_today"
+  | "till_yesterday"
+  | "this_week"
+  | "custom"
+  | "material_request";
 
 export type WorkerReturnMaterialsFilters = {
   worker_name: number;
@@ -257,4 +262,9 @@ export type CreateDispatchReturnRequestPayload = {
 export type DispatchReturnRequestListFilters = {
   status?: DispatchReturnRequestStatus;
   worker_name?: number;
+  search?: string;
+  date_preset?: WorkerReturnDatePreset;
+  date_from?: string;
+  date_to?: string;
+  material_request_id?: number;
 };

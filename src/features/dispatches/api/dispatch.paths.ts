@@ -1,5 +1,6 @@
 export const DISPATCH_RETURN_REQUEST_PATHS = {
   list: "dispatch-return-requests",
+  detail: (id: number) => `dispatch-return-requests/${id}`,
   complete: (id: number) => `dispatch-return-requests/${id}/complete`,
 } as const;
 

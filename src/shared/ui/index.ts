@@ -23,6 +23,8 @@ export type {
 } from "./data-table-pagination-bar";
 export { DetailPanel } from "./detail-panel";
 export type { DetailPanelProps } from "./detail-panel";
+export { DetailActionMenuDropdown } from "./detail-action-menu-dropdown";
+export type { DetailActionMenuDropdownProps, DetailActionMenuItem } from "./detail-action-menu-dropdown";
 export {
   FieldErrorText,
   FieldGroup,

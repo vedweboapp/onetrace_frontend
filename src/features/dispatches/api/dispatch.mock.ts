@@ -19,6 +19,7 @@ import {
   upsertDispatchReturnRequestMock,
   getDispatchReturnRequestMock,
 } from "./dispatch-return-request.mock-store";
+import { filterReturnRequests } from "@/features/dispatches/utils/return-request-list.util";
 import {
   allocateReturnQuantityAcrossSources,
   buildDispatchReturnItems,
@@ -305,17 +306,18 @@ export async function createDispatchReturnRequestMock(
   return request;
 }
 
+export async function fetchDispatchReturnRequestMock(id: number): Promise<DispatchReturnRequest | null> {
+  return getDispatchReturnRequestMock(id);
+}
+
 export async function fetchDispatchReturnRequestsMock(
   filters?: DispatchReturnRequestListFilters,
 ): Promise<DispatchReturnRequest[]> {
-  return listDispatchReturnRequestMocks().filter((row) => {
-    if (filters?.status && row.status !== filters.status) return false;
-    if (filters?.worker_name != null) {
-      const id = typeof row.worker_name === "number" ? row.worker_name : row.worker_name?.id;
-      if (id !== filters.worker_name) return false;
-    }
-    return true;
-  });
+  const resolveMr = (dispatchId: number) => {
+    const detail = getDispatchMockEntity(dispatchId);
+    return detail && detail.material_request_id > 0 ? detail.material_request_id : null;
+  };
+  return filterReturnRequests(listDispatchReturnRequestMocks(), filters ?? {}, resolveMr);
 }
 
 export async function completeDispatchReturnRequestMock(requestId: number): Promise<DispatchReturnRequest> {

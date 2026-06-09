@@ -18,26 +18,40 @@ type MassSelectionApi = {
   selectRowAriaLabel: string;
 };
 
+type MassSelectionColumnOptions<T> = {
+  isRowSelectable?: (row: T) => boolean;
+  /** Rows that can be selected on the current page (for header select-all disabled state). */
+  selectableCount?: number;
+};
+
 /** Table selection column + card leading checkbox for list mass actions. */
 export function massSelectionColumn<T extends { id: number }>(
   mass: MassSelectionApi,
   itemsLength: number,
+  options?: MassSelectionColumnOptions<T>,
 ): {
   tableColumn: EntityTableColumn<T>;
   cardLeading: (row: T) => React.ReactNode;
 } {
   const c = entityCol<T>();
   const { selection, selectAllAriaLabel, selectRowAriaLabel } = mass;
+  const selectableCount = options?.selectableCount ?? itemsLength;
 
-  const checkbox = (row: T) => (
-    <input
-      type="checkbox"
-      className={selection.rowCheckboxClassName}
-      checked={selection.isSelected(row.id)}
-      aria-label={selectRowAriaLabel}
-      onChange={() => selection.toggleRowSelected(row.id)}
-    />
-  );
+  const checkbox = (row: T) => {
+    const selectable = options?.isRowSelectable?.(row) ?? true;
+    return (
+      <input
+        type="checkbox"
+        className={selection.rowCheckboxClassName}
+        checked={selection.isSelected(row.id)}
+        disabled={!selectable}
+        aria-label={selectRowAriaLabel}
+        onChange={() => {
+          if (selectable) selection.toggleRowSelected(row.id);
+        }}
+      />
+    );
+  };
 
   return {
     tableColumn: c.selection(
@@ -48,7 +62,7 @@ export function massSelectionColumn<T extends { id: number }>(
           type="checkbox"
           className={selection.rowCheckboxClassName}
           checked={selection.allMatchingSelected}
-          disabled={selection.selectingAll || itemsLength === 0}
+          disabled={selection.selectingAll || selectableCount === 0}
           aria-label={selectAllAriaLabel}
           onChange={() => void selection.toggleSelectAll()}
         />
