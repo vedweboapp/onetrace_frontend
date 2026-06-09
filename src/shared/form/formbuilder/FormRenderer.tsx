@@ -449,6 +449,36 @@ const FormField: React.FC<{
     );
   }
 
+  // Use Controller for picklist / select so the native <select> is fully
+  // controlled (value prop). The uncontrolled register+defaultValue combo
+  // can silently swallow user changes in React 19.
+  if (["picklist", "select"].includes(normType)) {
+    return (
+      <div className={colSpanClass}>
+        <Controller
+          name={field.api_name}
+          control={control}
+          rules={validations}
+          render={({ field: { onChange, onBlur, value } }) => (
+            <Component
+              label={label}
+              name={field.api_name}
+              value={value ?? ""}
+              onChange={onChange}
+              onBlur={onBlur}
+              errors={getError(field.api_name)}
+              readOnly={isReadOnly}
+              disabled={isDisabled}
+              options={field.options || []}
+              placeholder={field.placeholder}
+              className="w-full"
+            />
+          )}
+        />
+      </div>
+    );
+  }
+
   const commonProps = {
     label: label,
     name: field.api_name,

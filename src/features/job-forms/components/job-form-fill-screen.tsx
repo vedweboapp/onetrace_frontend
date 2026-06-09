@@ -27,6 +27,7 @@ import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
 import { AppButton, SurfaceShell } from "@/shared/ui";
+import normalizeRules from "@/shared/form/utility/normalizerule";
 
 type UiMode = "fill" | "view" | "edit";
 
@@ -84,7 +85,7 @@ export function JobFormFillScreen({ jobId, formId, formNameHint }: Props) {
       setFieldMaps(maps);
       setFormTitle(schema.name?.trim() || formNameHint?.trim() || t("untitledForm"));
       setSchemaSections(schema.sections);
-      setRules((schema.rules ?? []) as FormRule[]);
+      setRules(normalizeRules(schema.rules));
 
       let submittedRows: Awaited<ReturnType<typeof fetchJobSubmittedForms>> = [];
       try {
@@ -99,11 +100,11 @@ export function JobFormFillScreen({ jobId, formId, formNameHint }: Props) {
 
       const defaults = existing
         ? mapSubmissionValuesToFormDefaults(
-            existing.values,
-            schema.sections,
-            maps.apiNameByFieldId,
-            maps.fieldTypeByFieldId,
-          )
+          existing.values,
+          schema.sections,
+          maps.apiNameByFieldId,
+          maps.fieldTypeByFieldId,
+        )
         : {};
       setDefaultValues(defaults);
     } catch {
@@ -120,7 +121,6 @@ export function JobFormFillScreen({ jobId, formId, formNameHint }: Props) {
   React.useEffect(() => {
     void load();
   }, [load]);
-
   const {
     formRef,
     isLoading: submitting,

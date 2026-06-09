@@ -1,4 +1,5 @@
 import type { ProjectPagination } from "./project.types";
+import type { ItemInstallationTypeRef } from "@/features/items/types/item.types";
 
 export type DrawingUserRef = {
   id: number;
@@ -55,7 +56,7 @@ export type DrawingPin = {
     name: string;
     sku: string;
     is_composite: boolean;
-    installation_type?: number | null;
+    installation_type?: number | ItemInstallationTypeRef | null;
   } | null;
   group_detail?: any;
   status_detail?: {

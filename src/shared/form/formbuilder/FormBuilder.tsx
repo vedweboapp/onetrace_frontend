@@ -17,6 +17,7 @@ import {
   parseApiFailurePayload,
   resolveApiErrorUserText,
 } from "@/core/errors/api-error-text";
+import api from "@/core/api/axios";
 import FormRenderer, { FormRendererRef } from "./FormRenderer";
 import FormRuleModal from "./form-rule-modal";
 import RuleTypeModal from "../components/RuleTypeModal";
@@ -47,6 +48,7 @@ interface Section {
   is_subform?: boolean;
   is_deleted?: boolean;
   is_active?: boolean;
+  is_custom?: boolean;
   fields: Field[];
 }
 
@@ -99,11 +101,10 @@ const TopDropZone: React.FC<TopDropZoneProps> = ({ onDrop }) => {
   return (
     <div
       ref={drop as any}
-      className={`h-16 rounded-md p-2 transition-all ${
-        isOver
-          ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40 shadow-md"
-          : "border-dashed border-transparent"
-      }`}
+      className={`h-16 rounded-md p-2 transition-all ${isOver
+        ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40 shadow-md"
+        : "border-dashed border-transparent"
+        }`}
     >
       <div className="text-center h-full text-sm text-gray-500 dark:text-gray-400 mt-6">
         Drop "Add New Section" here to insert at the top
@@ -278,11 +279,10 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
 
         <div
           ref={drop as any}
-          className={`min-h-[150px] bg-white dark:bg-slate-900 rounded-[8px] p-6 transition-all ${
-            section.fields.length === 0
-              ? "flex items-center justify-center border-dotted border-2 border-gray-300 dark:border-slate-600"
-              : ""
-          } ${isOver ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30 shadow-sm" : ""}`}
+          className={`min-h-[150px] bg-white dark:bg-slate-900 rounded-[8px] p-6 transition-all ${section.fields.length === 0
+            ? "flex items-center justify-center border-dotted border-2 border-gray-300 dark:border-slate-600"
+            : ""
+            } ${isOver ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30 shadow-sm" : ""}`}
         >
           {section.fields.length === 0 ? (
             <div className="flex items-center justify-center w-full">
@@ -341,11 +341,10 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
 
       <div
         ref={addDrop as any}
-        className={`h-16 rounded-md p-2 transition-all ${
-          isOverAdd
-            ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40 shadow-md"
-            : "border-dashed border-transparent"
-        }`}
+        className={`h-16 rounded-md p-2 transition-all ${isOverAdd
+          ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40 shadow-md"
+          : "border-dashed border-transparent"
+          }`}
       >
         <div className="text-center h-full text-sm text-gray-500 dark:text-gray-400 mt-6 border-dotted">
           Drop "Add New Section" here to insert below
@@ -420,6 +419,7 @@ export default function FormBuilderLayout({
 
   const [rules, setRules] = useState<FormRule[]>([]);
   const [editingRule, setEditingRule] = useState<FormRule | null>(null);
+  const [deletedRuleIds, setDeletedRuleIds] = useState<{ id: string | number; template_rule_id: string | number | null }[]>([]);
 
   const [activeTab, setActiveTab] = useState<"form" | "preview" | "rules">("form");
   const [previewLayout, setPreviewLayout] = useState<"desktop" | "phone">("desktop");
@@ -439,6 +439,7 @@ export default function FormBuilderLayout({
 
   useEffect(() => {
     const loadSchema = async () => {
+      setDeletedRuleIds([]);
       if (
         (purpose === "edit_layout" || purpose === "edit_project_form") &&
         resolvedLayoutId
@@ -541,6 +542,7 @@ export default function FormBuilderLayout({
                 ...r.logic,
                 condition: r.logic.condition ? normalizeCondition(r.logic.condition) : undefined,
                 id: r.id ?? r.logic.id,
+                template_rule_id: r.template_rule_id ?? r.template_rule ?? null,
               };
               if (r.logic.blocks) {
                 ruleData.blocks = r.logic.blocks.map((b: any) => ({
@@ -554,6 +556,7 @@ export default function FormBuilderLayout({
               ...r,
               _uid: r.uuid || r._uid || `rule-${Date.now()}-${Math.random()}`,
               condition: r.condition ? normalizeCondition(r.condition) : undefined,
+              template_rule_id: r.template_rule_id ?? r.template_rule ?? null,
             };
             if (r.blocks) {
               ruleData.blocks = r.blocks.map((b: any) => ({
@@ -590,6 +593,7 @@ export default function FormBuilderLayout({
                 ...r.logic,
                 condition: r.logic.condition ? normalizeCondition(r.logic.condition) : undefined,
                 id: r.id ?? r.logic.id,
+                template_rule_id: r.template_rule_id ?? r.template_rule ?? null,
               };
               if (r.logic.blocks) {
                 ruleData.blocks = r.logic.blocks.map((b: any) => ({
@@ -603,6 +607,7 @@ export default function FormBuilderLayout({
               ...r,
               _uid: r.uuid || r._uid || `rule-${Date.now()}-${Math.random()}`,
               condition: r.condition ? normalizeCondition(r.condition) : undefined,
+              template_rule_id: r.template_rule_id ?? r.template_rule ?? null,
             };
             if (r.blocks) {
               ruleData.blocks = r.blocks.map((b: any) => ({
@@ -738,16 +743,16 @@ export default function FormBuilderLayout({
       prev.map((sec) =>
         sec._uid === sectionUid
           ? {
-              ...sec,
-              fields: [
-                ...sec.fields,
-                {
-                  _uid: `${Date.now()}`,
-                  order: sec.fields.length,
-                  ...fieldConfig,
-                },
-              ],
-            }
+            ...sec,
+            fields: [
+              ...sec.fields,
+              {
+                _uid: `${Date.now()}`,
+                order: sec.fields.length,
+                ...fieldConfig,
+              },
+            ],
+          }
           : sec,
       ),
     );
@@ -765,11 +770,11 @@ export default function FormBuilderLayout({
       prev.map((sec) =>
         sec._uid === sectionUid
           ? {
-              ...sec,
-              fields: sec.fields.map((f) =>
-                f._uid === fieldUid ? { ...f, ...newConfig } : f,
-              ),
-            }
+            ...sec,
+            fields: sec.fields.map((f) =>
+              f._uid === fieldUid ? { ...f, ...newConfig } : f,
+            ),
+          }
           : sec,
       ),
     );
@@ -823,15 +828,15 @@ export default function FormBuilderLayout({
         prev.map((s) =>
           s._uid === sectionUid
             ? {
-                ...s,
+              ...s,
+              is_active: false,
+              is_deleted: true,
+              fields: (s.fields || []).map((f) => ({
+                ...f,
                 is_active: false,
                 is_deleted: true,
-                fields: (s.fields || []).map((f) => ({
-                  ...f,
-                  is_active: false,
-                  is_deleted: true,
-                })),
-              }
+              })),
+            }
             : s,
         ),
       ),
@@ -861,6 +866,10 @@ export default function FormBuilderLayout({
           field_type: f.field_type,
           sequence: fIdx + 1,
         };
+
+        if (f.is_custom !== undefined) {
+          fieldPayload.is_custom = f.is_custom;
+        }
 
         if (f.placeholder) fieldPayload.placeholder = f.placeholder;
         if (f.helpText) fieldPayload.help_text = f.helpText;
@@ -982,6 +991,7 @@ export default function FormBuilderLayout({
               sequence: sequencePosition,
               column_count: sec.column_count,
               is_subform: !!sec.is_subform,
+              is_custom: sec.is_custom,
               fields: activeFields,
             };
           });
@@ -1152,6 +1162,11 @@ export default function FormBuilderLayout({
           formId &&
           apiHandlers.updateForm
         ) {
+          if (deletedRuleIds.length > 0 && rawPurpose === "edit_project_job_form") {
+            await api.post(`project-forms/${formId}/rules/mass-delete/`, {
+              rule_ids: deletedRuleIds.map((entry) => entry.id),
+            });
+          }
           await apiHandlers.updateForm(formId, finalPayload, handlerCtx);
         }
 
@@ -1198,6 +1213,7 @@ export default function FormBuilderLayout({
       }
 
       setDirty(false);
+      setDeletedRuleIds([]);
 
       let successMessage = t("layoutSavedToast");
       if (purpose === "create_module") {
@@ -1241,13 +1257,13 @@ export default function FormBuilderLayout({
       prev.map((sec) =>
         sec._uid === sectionUid
           ? {
-              ...sec,
-              fields: sec.fields.map((f) =>
-                f._uid === fieldUid
-                  ? { ...f, is_active: false, is_deleted: true }
-                  : f,
-              ),
-            }
+            ...sec,
+            fields: sec.fields.map((f) =>
+              f._uid === fieldUid
+                ? { ...f, is_active: false, is_deleted: true }
+                : f,
+            ),
+          }
           : sec,
       ),
     );
@@ -1312,58 +1328,83 @@ export default function FormBuilderLayout({
   };
 
   const handleDeleteRule = (uid: string) => {
+    const ruleToDelete = rules.find((r) => r._uid === uid);
+    if (ruleToDelete) {
+      const ruleId = ruleToDelete.id ?? ruleToDelete.rule_id;
+      const templateRuleId = (ruleToDelete as any).template_rule_id;
+      const hasValidId = ruleId != null && ruleId !== "";
+      const hasTemplateId = templateRuleId != null && templateRuleId !== "";
+
+      if (hasValidId || hasTemplateId) {
+        setDeletedRuleIds((prev) => {
+          const isDuplicate = prev.some(
+            (entry) =>
+              (hasValidId && entry.id === ruleId) ||
+              (hasTemplateId && entry.template_rule_id === templateRuleId),
+          );
+          if (!isDuplicate) {
+            const newEntry: { id: string | number; template_rule_id: string | number | null } = {
+              id: hasValidId && ruleId != null ? ruleId : "",
+              template_rule_id: templateRuleId ?? null,
+            };
+            return [...prev, newEntry];
+          }
+          return prev;
+        });
+      }
+    }
     setRules((prev) => prev.filter((r) => r._uid !== uid));
     setDirty(true);
   };
 
   return (
-    
+
     <div className="relative flex flex-col h-full">
-       {
-         showRuleTypeModal && (
-           <RuleTypeModal
-             isOpen={showRuleTypeModal}
-             onClose={() => setShowRuleTypeModal(false)}
-             onSelect={(type) => {
-               setShowRuleTypeModal(false);
-               setEditingRule(null);
-               if (type === "advanced") {
-                 setShowAdvancedRuleModal(true);
-               } else {
-                 setShowRuleModal(true);
-               }
-             }}
-           />
-         )
-       }
-       {
-          showRuleModal && (
-            <FormRuleModal
-              initialRule={editingRule}
-              onSave={handleSaveRule}
-              onClose={() => {
-                setShowRuleModal(false);
-                setEditingRule(null);
-              }}
-              fields={ruleFieldOptions}
-              existingRules={rules}
-            />
-          )
-        }
-        {
-          showAdvancedRuleModal && (
-            <FormAdvancedRuleModal
-              initialRule={editingRule}
-              onSave={handleSaveRule}
-              onClose={() => {
-                setShowAdvancedRuleModal(false);
-                setEditingRule(null);
-              }}
-              fields={ruleFieldOptions}
-              existingRules={rules}
-            />
-          )
-        }
+      {
+        showRuleTypeModal && (
+          <RuleTypeModal
+            isOpen={showRuleTypeModal}
+            onClose={() => setShowRuleTypeModal(false)}
+            onSelect={(type) => {
+              setShowRuleTypeModal(false);
+              setEditingRule(null);
+              if (type === "advanced") {
+                setShowAdvancedRuleModal(true);
+              } else {
+                setShowRuleModal(true);
+              }
+            }}
+          />
+        )
+      }
+      {
+        showRuleModal && (
+          <FormRuleModal
+            initialRule={editingRule}
+            onSave={handleSaveRule}
+            onClose={() => {
+              setShowRuleModal(false);
+              setEditingRule(null);
+            }}
+            fields={ruleFieldOptions}
+            existingRules={rules}
+          />
+        )
+      }
+      {
+        showAdvancedRuleModal && (
+          <FormAdvancedRuleModal
+            initialRule={editingRule}
+            onSave={handleSaveRule}
+            onClose={() => {
+              setShowAdvancedRuleModal(false);
+              setEditingRule(null);
+            }}
+            fields={ruleFieldOptions}
+            existingRules={rules}
+          />
+        )
+      }
       {/* Responsive Sub-header (Single Row) */}
       <div
         className="fixed top-14 z-20 flex border-t border-gray-200 dark:border-gray-700 items-center justify-between h-14 px-6 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-gray-700 transition-all duration-300"
@@ -1421,7 +1462,7 @@ export default function FormBuilderLayout({
         className="p-6 transition-all duration-300 pt-10"
         style={{ marginLeft: canvasMarginLeft }}
       >
-       
+
         <div className="mx-auto">
           {activeTab === "form" && (
             <div className="space-y-4">
@@ -1458,11 +1499,10 @@ export default function FormBuilderLayout({
                 <div className="inline-flex rounded-md border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
                   <button
                     type="button"
-                    className={`flex h-9 items-center gap-2 rounded px-3 text-sm transition ${
-                      previewLayout === "desktop"
-                        ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
-                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                    }`}
+                    className={`flex h-9 items-center gap-2 rounded px-3 text-sm transition ${previewLayout === "desktop"
+                      ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                      : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                      }`}
                     onClick={() => setPreviewLayout("desktop")}
                   >
                     <Monitor className="size-4" />
@@ -1470,11 +1510,10 @@ export default function FormBuilderLayout({
                   </button>
                   <button
                     type="button"
-                    className={`flex h-9 items-center gap-2 rounded px-3 text-sm transition ${
-                      previewLayout === "phone"
-                        ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
-                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                    }`}
+                    className={`flex h-9 items-center gap-2 rounded px-3 text-sm transition ${previewLayout === "phone"
+                      ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                      : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                      }`}
                     onClick={() => setPreviewLayout("phone")}
                   >
                     <Smartphone className="size-4" />
@@ -1484,9 +1523,8 @@ export default function FormBuilderLayout({
               </div>
               <div className="flex w-full justify-center">
                 <div
-                  className={`bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm ${
-                    previewLayout === "phone" ? "rounded-[28px] p-4" : "w-full rounded-xl p-8"
-                  }`}
+                  className={`bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm ${previewLayout === "phone" ? "rounded-[28px] p-4" : "w-full rounded-xl p-8"
+                    }`}
                   style={
                     previewLayout === "phone"
                       ? { width: 390, maxWidth: "100%" }
@@ -1557,15 +1595,15 @@ export default function FormBuilderLayout({
                           ) : (
                             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                               <strong>If</strong> {ruleFieldOptions.find(f => f.value === rule.field_api_name)?.label || rule.field_api_name} {rule.condition?.replace(/_/g, ' ') || ''} {rule.value ? (Array.isArray(rule.value) ? rule.value.join(', ') : rule.value) : ''}
-                              <br/>
+                              <br />
                               <strong>Then</strong> {rule.output_fields?.length || 0} action(s) applied.
                             </p>
                           )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-4">
-                          <AppButton 
-                            variant="ghost" 
-                            size="sm" 
+                          <AppButton
+                            variant="ghost"
+                            size="sm"
                             className="p-2"
                             onClick={() => {
                               setEditingRule(rule);
@@ -1578,9 +1616,9 @@ export default function FormBuilderLayout({
                           >
                             <Edit2 className="size-4" />
                           </AppButton>
-                          <AppButton 
-                            variant="ghost" 
-                            size="sm" 
+                          <AppButton
+                            variant="ghost"
+                            size="sm"
                             className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
                             onClick={() => handleDeleteRule(rule._uid)}
                           >
@@ -1602,6 +1640,34 @@ export default function FormBuilderLayout({
           fieldType={showModal?.type}
           initialConfig={showModal?.config || null}
           onSave={(config: any) => {
+            // Collect all existing fields (excluding the field currently being edited) for duplicate check
+            const existingFields = sections
+              .filter((sec) => !sec.is_deleted)
+              .flatMap((sec) =>
+                sec.fields.filter(
+                  (f) =>
+                    !f.is_deleted &&
+                    !(
+                      sec._uid === showModal?.sectionUid &&
+                      f._uid === showModal?._fieldUid
+                    ),
+                ),
+              )
+              .filter((f) => f.api_name);
+
+            const conflictingField = config.api_name
+              ? existingFields.find((f) => f.api_name === config.api_name)
+              : undefined;
+
+            if (conflictingField) {
+              const displayLabel =
+                conflictingField.field_label || conflictingField.api_name;
+              toastError(
+                `A field with the label "${displayLabel}" already exists. Please use a unique field name.`,
+              );
+              return;
+            }
+
             if (showModal._fieldUid) {
               updateFieldInSection(
                 showModal?.sectionUid,

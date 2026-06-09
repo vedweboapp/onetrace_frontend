@@ -1,6 +1,6 @@
 import React from "react";
-import { 
-  Minus, AlignLeft, Mail, Phone, List, Hash, 
+import {
+  Minus, AlignLeft, Mail, Phone, List, Hash,
   Calendar, Clock, ArrowUpDown, DollarSign, Circle,
   Percent, MapPin, CheckSquare, Link, Search,
   Calculator, User, FileUp, Image, BarChart3,
@@ -105,12 +105,12 @@ export const FormFieldsConfig: FieldConfigItem[] = [
     label: "Decimal",
     icon: Circle
   },
-  {
-    key: "percent",
-    type: "percent",
-    label: "Percent",
-    icon: Percent
-  },
+  // {
+  //   key: "percent",
+  //   type: "percent",
+  //   label: "Percent",
+  //   icon: Percent
+  // },
   // {
   //   key: "longInteger",
   //   type: "long_integer",
