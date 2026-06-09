@@ -1343,13 +1343,11 @@ export default function FormBuilderLayout({
               (hasTemplateId && entry.template_rule_id === templateRuleId),
           );
           if (!isDuplicate) {
-            return [
-              ...prev,
-              {
-                id: hasValidId ? ruleId : null,
-                template_rule_id: templateRuleId ?? null,
-              },
-            ];
+            const newEntry: { id: string | number; template_rule_id: string | number | null } = {
+              id: hasValidId && ruleId != null ? ruleId : "",
+              template_rule_id: templateRuleId ?? null,
+            };
+            return [...prev, newEntry];
           }
           return prev;
         });

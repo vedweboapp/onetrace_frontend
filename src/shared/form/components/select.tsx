@@ -18,7 +18,7 @@ type DropdownOption =
 
 type FormDropdownProps =
     SelectHTMLAttributes<HTMLSelectElement> & {
-        label?: string;
+        label?: React.ReactNode;
 
         register?: UseFormRegisterReturn;
 
@@ -49,6 +49,7 @@ const Select = ({
     errors,
     className = "",
     readOnly,
+    // placeholder,
     ...rest
 }: FormDropdownProps) => {
     return (
@@ -111,6 +112,9 @@ const Select = ({
           ${className}
         `}
             >
+                <option value="">
+                    {"Select..."}
+                </option>
                 {options.map((item, index) => {
                     const value =
                         typeof item === "string"
