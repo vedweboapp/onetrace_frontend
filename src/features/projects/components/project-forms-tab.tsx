@@ -384,7 +384,7 @@ export function ProjectFormsTab() {
                       <span className="text-xs text-slate-500 dark:text-slate-400">
                         {row.created_at ? tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) }) : "—"}
                       </span>
-                            {console.log("Row data:", row) || null}
+
                     </div>
                   }
                   onCardClick={() => openEdit(row)}

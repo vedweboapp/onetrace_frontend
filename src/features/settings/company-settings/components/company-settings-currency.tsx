@@ -218,7 +218,7 @@ const CompanySettingsCurrency = ({ initialData, onSaveSuccess }: CompanySettings
             <p className="text-xs text-slate-400 font-medium">Current format</p>
           </div>
           <AppButton
-            vairent="primary"
+            variant="primary"
             onClick={handleOpenCustomize}
             className="px-6 py-2.5 bg-[#0F172A] hover:bg-slate-800 active:scale-[0.98] transition-all text-white text-sm font-semibold rounded-[8px] shadow-sm cursor-pointer animate-none"
           >
