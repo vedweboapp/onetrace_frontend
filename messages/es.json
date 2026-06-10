@@ -148,6 +148,7 @@
     "sidebar": {
       "home": "Inicio",
       "clients": "Clientes",
+      "vendors": "Proveedores",
       "contacts": "Contactos",
       "sites": "Sitios",
       "quotations": "Cotizaciones",
@@ -175,6 +176,7 @@
       "tags": "Etiquetas",
       "projectTypes": "Tipos de proyecto",
       "installationTypes": "Tipos de instalación",
+      "vendorTypes": "Tipos de proveedor",
       "users": "Usuarios",
       "personalProfile": "Perfil personal",
       "projectForms": "Formularios de proyecto",
@@ -185,7 +187,7 @@
       "customization": {
         "label": "Personalización",
         "hubTitle": "Personalización",
-        "hubDescription": "Elige qué configurar: tipos de proyecto, tipos de instalación, estados de pin, estados de trabajo, estados de material y etiquetas.",
+        "hubDescription": "Elige qué configurar: tipos de proyecto, tipos de instalación, tipos de proveedor, estados de pin, estados de trabajo, estados de material y etiquetas.",
         "items": {
           "projectTypes": {
             "title": "Tipos de proyecto",
@@ -194,6 +196,10 @@
           "installationTypes": {
             "title": "Tipos de instalación",
             "description": "Clasifica instalaciones con etiquetas de color."
+          },
+          "vendorTypes": {
+            "title": "Tipos de proveedor",
+            "description": "Categorías de proveedor con etiquetas de color."
           },
           "pinStatus": {
             "title": "Estados de pin",
@@ -667,6 +673,62 @@
       "validationName": "Introduce un nombre de tipo de instalación.",
       "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #DBEAFE)."
     },
+    "vendorTypes": {
+      "metaTitle": "Tipos de proveedor",
+      "title": "Tipos de proveedor",
+      "subtitle": "Define categorías de proveedor con etiquetas de color.",
+      "add": "Añadir",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "filterState": "Estado activo",
+      "table": {
+        "type": "Tipo de proveedor",
+        "status": "Estado del registro",
+        "created": "Creado",
+        "updated": "Última actualización",
+        "actions": "Acciones"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "byUser": "Por {user}"
+      },
+      "emptyTitle": "Aún no hay tipos de proveedor",
+      "emptyDescription": "Crea tu primer tipo de proveedor para clasificar proveedores.",
+      "loadError": "No se pudieron cargar los tipos de proveedor. Inténtalo de nuevo.",
+      "modal": {
+        "createTitle": "Nuevo tipo de proveedor",
+        "editTitle": "Editar tipo de proveedor",
+        "typeName": "Nombre",
+        "bgColour": "Color de fondo",
+        "textColour": "Color del texto",
+        "activeLabel": "Activo",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "deleteConfirmTitle": "¿Eliminar este tipo de proveedor?",
+      "deleteConfirmBody": "Los proveedores que usen este tipo pueden verse afectados. Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar",
+      "pageLabel": "Mostrando {start}-{end} de {total} tipos de proveedor",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "saved": "Tipo de proveedor actualizado",
+      "created": "Tipo de proveedor creado",
+      "deleted": "Tipo de proveedor eliminado",
+      "activatedToast": "Tipo de proveedor activado",
+      "deactivatedToast": "Tipo de proveedor desactivado",
+      "toggleActiveError": "No se pudo actualizar el estado. Inténtalo de nuevo.",
+      "hexPlaceholder": "#000000",
+      "validationName": "Introduce un nombre de tipo de proveedor.",
+      "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #DBEAFE)."
+    },
     "users": {
       "metaTitle": "Usuarios",
       "detailMetaTitle": "Detalle del usuario",
@@ -870,6 +932,107 @@
         "state": "Selecciona un estado o provincia.",
         "city": "Selecciona o escribe una ciudad.",
         "pincode": "Introduce un código postal."
+      }
+    },
+    "vendors": {
+      "metaTitle": "Proveedores",
+      "detailMetaTitle": "Detalle del proveedor",
+      "title": "Proveedores",
+      "subtitle": "Gestiona proveedores y sus ubicaciones.",
+      "loadError": "No se pudieron cargar los proveedores. Inténtalo de nuevo.",
+      "detailLoadError": "No se pudieron cargar los detalles del proveedor. Inténtalo de nuevo.",
+      "createdToast": "Proveedor creado correctamente",
+      "updatedToast": "Proveedor actualizado correctamente",
+      "deletedToast": "Proveedor eliminado",
+      "filterState": "Estado activo",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "activatedToast": "Proveedor activado",
+      "deactivatedToast": "Proveedor desactivado",
+      "toggleActiveError": "No se pudo actualizar el estado. Inténtalo de nuevo.",
+      "pageLabel": "Mostrando {start}-{end} de {total} proveedores",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "deleteConfirmTitle": "¿Eliminar este proveedor?",
+      "deleteConfirmBody": "Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar proveedor",
+      "emptyTitle": "Aún no hay proveedores",
+      "emptyDescription": "Crea tu primer proveedor para gestionar direcciones.",
+      "table": {
+        "name": "Proveedor",
+        "type": "Tipo",
+        "email": "Correo",
+        "phone": "Teléfono",
+        "location": "Ubicación principal",
+        "status": "Estado",
+        "created": "Creado",
+        "actions": "Acciones"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "fields": {
+        "name": "Nombre",
+        "email": "Correo",
+        "phone": "Teléfono",
+        "type": "Tipo de proveedor",
+        "status": "Estado",
+        "addresses": "Direcciones",
+        "addressLine1": "Línea de dirección 1",
+        "addressLine2": "Línea de dirección 2",
+        "country": "País",
+        "stateProvince": "Estado / provincia",
+        "city": "Ciudad",
+        "pincode": "Código postal",
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "createdBy": "Creado por"
+      },
+      "placeholders": {
+        "country": "Seleccionar país",
+        "state": "Seleccionar estado",
+        "city": "Seleccionar ciudad",
+        "type": "Seleccionar tipo de proveedor"
+      },
+      "addresses": {
+        "add": "Añadir dirección",
+        "remove": "Eliminar",
+        "primary": "Principal",
+        "rowLabel": "Dirección {index}"
+      },
+      "detail": {
+        "backAria": "Volver a proveedores",
+        "retry": "Reintentar",
+        "sectionOverview": "Resumen",
+        "sectionMap": "Mapa de ubicaciones",
+        "addressUnavailable": "No hay direcciones registradas.",
+        "notProvided": "No indicado"
+      },
+      "modal": {
+        "cancel": "Cancelar",
+        "save": "Guardar",
+        "saveChanges": "Guardar cambios"
+      },
+      "page": {
+        "createTitle": "Crear proveedor",
+        "createSubtitle": "Añade datos del proveedor y una o más direcciones.",
+        "editTitle": "Editar proveedor",
+        "editSubtitle": "Actualiza datos y direcciones del proveedor."
+      },
+      "validation": {
+        "name": "Introduce el nombre del proveedor.",
+        "email": "Introduce un correo válido.",
+        "phoneInvalid": "Introduce un número de teléfono válido.",
+        "type": "Selecciona un tipo de proveedor.",
+        "addressLine1": "Introduce la línea 1 de la dirección.",
+        "country": "Selecciona un país.",
+        "state": "Selecciona un estado o provincia.",
+        "city": "Selecciona o escribe una ciudad.",
+        "pincode": "Introduce un código postal.",
+        "addressesMin": "Añade al menos una dirección."
       }
     },
     "qrCodes": {

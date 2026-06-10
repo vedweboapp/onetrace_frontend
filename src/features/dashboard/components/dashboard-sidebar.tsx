@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
-import { BookUser, Building2, ClipboardList, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Tag, Truck, UserRound } from "lucide-react";
+import { BookUser, Building2, ClipboardList, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Tag, Truck, UserRound } from "lucide-react";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 
 import { useTranslations } from "next-intl";
@@ -149,6 +149,7 @@ function DashboardMainSidebar({
   const pathname = usePathname();
   const [itemsOpen, setItemsOpen] = React.useState(false);
   const clientsHref = routes.dashboard.clients;
+  const vendorsHref = routes.dashboard.vendors;
   const contactsHref = routes.dashboard.contacts;
   const sitesHref = routes.dashboard.sites;
   const quotationsHref = routes.dashboard.quotations;
@@ -166,6 +167,8 @@ function DashboardMainSidebar({
   const homeActive = pathname === homeHref;
   const clientsActive =
     pathname === clientsHref || pathname.startsWith(`${clientsHref}/`);
+  const vendorsActive =
+    pathname === vendorsHref || pathname.startsWith(`${vendorsHref}/`);
   const contactsActive =
     pathname === contactsHref || pathname.startsWith(`${contactsHref}/`);
   const sitesActive = pathname === sitesHref || pathname.startsWith(`${sitesHref}/`);
@@ -215,6 +218,14 @@ function DashboardMainSidebar({
           active={clientsActive}
           label={t("clients")}
           icon={Building2}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={vendorsHref}
+          active={vendorsActive}
+          label={t("vendors")}
+          icon={Store}
           expanded={expanded}
           resolved={resolved}
         />

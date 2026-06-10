@@ -13,6 +13,7 @@ type Props = {
 };
 
 function isSubmittedForm(form: JobFormRef): boolean {
+  if (typeof form.is_submitted === "boolean") return form.is_submitted;
   return typeof form.submitted_form_id === "number" && form.submitted_form_id > 0;
 }
 
@@ -32,13 +33,14 @@ export function JobFormsSection({ jobId, forms, backHref }: Props) {
           const submitted = isSubmittedForm(form);
           const label = form.name?.trim() || `#${form.project_form_id}`;
           const hrefBase = `${routes.dashboard.jobFormFill(jobId, form.project_form_id, form.id)}&name=${encodeURIComponent(label)}&back=${encodeURIComponent(jobDetailHref)}`;
-          const href =
-            submitted && form.submitted_form_id
-              ? `${hrefBase}&submissionId=${form.submitted_form_id}`
-              : hrefBase;
+          const submissionId =
+            typeof form.submitted_form_id === "number" && form.submitted_form_id > 0
+              ? form.submitted_form_id
+              : null;
+          const href = submitted && submissionId ? `${hrefBase}&submissionId=${submissionId}` : hrefBase;
 
           return (
-            <li key={form.id}>
+            <li key={`${form.id}-${form.project_form_id}`}>
               <Link
                 href={href}
                 className={cn(

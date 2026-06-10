@@ -8,6 +8,7 @@ export const routes = {
   dashboard: {
     root: "/dashboard",
     clients: "/dashboard/clients",
+    vendors: "/dashboard/vendors",
     contacts: "/dashboard/contacts",
     sites: "/dashboard/sites",
     quotations: "/dashboard/quotations",
@@ -30,6 +31,7 @@ export const routes = {
     settingsTags: "/dashboard/settings/tag",
     settingsProjectTypes: "/dashboard/settings/project-type",
     settingsInstallationTypes: "/dashboard/settings/installation-type",
+    settingsVendorTypes: "/dashboard/settings/vendor-type",
     settingsCustomization: "/dashboard/settings/customization",
     settingsUsers: "/dashboard/settings/users",
     settingsPersonalProfile: "/dashboard/settings/personal-profile",

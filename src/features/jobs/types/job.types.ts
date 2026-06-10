@@ -42,11 +42,24 @@ export type JobSiteRef = {
 };
 
 export type JobFormRef = {
+  /** Job form assignment id (`job_form_id` from job detail API). */
   id: number;
   project_form_id: number;
   name?: string | null;
+  is_submitted?: boolean;
   /** Present when this job form has been submitted; use for detail API + status. */
   submitted_form_id?: number | null;
+};
+
+/** Raw job detail `forms` entry (API may use `job_form_id` / `submission_id`). */
+export type JobFormRefApiRow = {
+  id?: number;
+  job_form_id?: number;
+  project_form_id?: number;
+  name?: string | null;
+  is_submitted?: boolean;
+  submitted_form_id?: number | null;
+  submission_id?: number | null;
 };
 
 export type JobQrCodeRef = {
