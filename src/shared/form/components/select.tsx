@@ -106,7 +106,7 @@ const Select = ({
                             : "border-gray-300 dark:border-slate-700"
                         }
                 focus:ring-2
-                focus:ring-blue-500
+                focus:ring-primary
               `
                     }
           ${className}

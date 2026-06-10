@@ -98,8 +98,8 @@ const FIELD_COMPONENTS: Record<string, any> = {
   signature: SignaturePad,
   user: UsersSelect,
   country: CountrySelect,
-  state: StateSelect,
-  city: CitySelect,
+  state: Input,
+  city: Input,
 };
 
 const deepEqual = (a: any, b: any): boolean => {

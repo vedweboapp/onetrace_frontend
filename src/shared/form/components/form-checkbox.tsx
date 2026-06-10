@@ -43,7 +43,7 @@ const FormCheckbox: React.FC<FormCheckboxProps> = ({
           disabled={readOnly}
           onBlur={onBlur}
           onChange={(e) => onChange(e.target.checked)}
-          className="w-5 h-5 accent-blue-600 rounded border-gray-300 dark:border-slate-600 focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed"
+          className="w-5 h-5 accent-primary rounded border-gray-300 dark:border-slate-600 focus:ring-2 focus:ring-primary disabled:cursor-not-allowed"
         />
         {label && (
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
