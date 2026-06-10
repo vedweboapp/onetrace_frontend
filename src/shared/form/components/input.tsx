@@ -7,6 +7,7 @@ import {
     nativeDatePickerHitAreaClassName,
     openNativeDatePicker,
 } from "@/shared/ui/surface-date-input";
+import { surfaceInputClassName, surfaceTextareaClassName } from "@/shared/ui";
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & {
     label?: string;
@@ -92,7 +93,7 @@ const Input = ({
                             : "border-gray-300 dark:border-slate-700"
                         }
                 focus:ring-2
-                focus:ring-primary
+               ${surfaceInputClassName}
                 ${isDateField && !readOnly ? nativeDatePickerHitAreaClassName : ""}
               `
                     }

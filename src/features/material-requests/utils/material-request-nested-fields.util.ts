@@ -43,8 +43,6 @@ export function materialRequestWorkerLabel(
 }
 
 export function materialRequestJobLabel(row: MaterialRequestListItem | MaterialRequestDetail): string {
-  const direct = row.job_name?.trim();
-  if (direct) return direct;
   const jobs = row.jobs ?? [];
   if (jobs.length === 0) return "—";
   const labels = jobs

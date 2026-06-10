@@ -414,12 +414,7 @@ export function MaterialRequestsPanel() {
                       </div>
                     }
                     onCardClick={() => openDetail(row.id)}
-                    menu={
-                      <DataTableRowActionsMenu
-                        menuAriaLabel={tList("openRowActions")}
-                        items={[{ id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row.id) }]}
-                      />
-                    }
+                    menu={null}
                   />
                 );
               })}

@@ -3,6 +3,7 @@
 import React from "react";
 import { FieldError, UseFormRegisterReturn } from "react-hook-form";
 import { currencyList } from "./currency-list";
+import { surfaceSelectClassName } from "@/shared/ui";
 
 interface CurrencySelectProps {
   label?: string;
@@ -46,7 +47,7 @@ const CurrencySelect: React.FC<CurrencySelectProps> = ({
           text-slate-900 dark:text-white
           ${readOnly
             ? `border-none bg-gray-100 dark:bg-slate-800/50 cursor-not-allowed select-none`
-            : `bg-white dark:bg-slate-900 border ${errors ? "border-red-500" : "border-gray-300 dark:border-slate-700"} focus:ring-2 focus:ring-primary`
+            : `bg-white dark:bg-slate-900 border ${errors ? "border-red-500" : "border-gray-300 dark:border-slate-700"} ${surfaceSelectClassName}`
           }
         `}
       >

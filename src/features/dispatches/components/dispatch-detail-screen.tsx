@@ -3,10 +3,7 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { fetchDispatch } from "@/features/dispatches/api/dispatch.api";
-import {
-  DispatchDetailBody,
-  dispatchStatusLabel,
-} from "@/features/dispatches/components/dispatch-detail-body";
+import { DispatchDetailBody } from "@/features/dispatches/components/dispatch-detail-body";
 import type { DispatchDetail } from "@/features/dispatches/types/dispatch.types";
 import { EntityDetailScreen } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
@@ -42,12 +39,7 @@ export function DispatchDetailScreen({ dispatchId }: Props) {
       getTitle={(detail) => detail.dispatch_number}
     >
       {({ detail, dateFmt }) => (
-        <DispatchDetailBody
-          detail={detail}
-          dateFmt={dateFmt}
-          dueFmt={dueFmt}
-          statusLabel={dispatchStatusLabel(t, detail.status)}
-        />
+        <DispatchDetailBody detail={detail} dateFmt={dateFmt} dueFmt={dueFmt} />
       )}
     </EntityDetailScreen>
   );

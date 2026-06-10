@@ -6,8 +6,6 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchDispatchesPage } from "@/features/dispatches/api/dispatch.api";
-import { DispatchStatusBadge } from "@/features/dispatches/components/dispatch-status-badge";
-import { dispatchStatusLabel } from "@/features/dispatches/components/dispatch-detail-body";
 import type { DispatchListItem } from "@/features/dispatches/types/dispatch.types";
 import { dispatchWorkerLabel } from "@/features/dispatches/utils/dispatch-display.util";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
@@ -115,11 +113,7 @@ export function DispatchesPanel() {
     const c = entityCol<DispatchListItem>();
     return [
       c.primary("dispatch_number", t("table.dispatchId"), (r) => r.dispatch_number),
-      c.truncate("job_name", t("table.jobName"), (r) => r.job_name?.trim() || "—"),
       c.date("dispatch_date", t("table.dispatchDate"), (r) => r.dispatch_date, dateFmt),
-      c.custom("status", t("table.status"), (r) => (
-        <DispatchStatusBadge status={r.status} label={dispatchStatusLabel(t, r.status)} />
-      )),
       c.truncate("worker_name", t("table.workerName"), (r) => dispatchWorkerLabel(r.worker_name)),
       c.tabular(
         "total_qty",
@@ -200,8 +194,12 @@ export function DispatchesPanel() {
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
                   title={row.dispatch_number}
-                  subtitle={row.job_name?.trim() || "—"}
-                  meta={<span className="block truncate">{dispatchWorkerLabel(row.worker_name)}</span>}
+                  subtitle={dispatchWorkerLabel(row.worker_name)}
+                  meta={
+                    <span className="block truncate">
+                      {row.material_request_number?.trim() || (row.material_request_id > 0 ? `#${row.material_request_id}` : "—")}
+                    </span>
+                  }
                   footer={
                     <div className="flex w-full flex-wrap items-center justify-between gap-3">
                       <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
@@ -212,7 +210,6 @@ export function DispatchesPanel() {
                         <Package className="size-3.5" aria-hidden />
                         {row.total_qty} {t("units")}
                       </span>
-                      <DispatchStatusBadge status={row.status} label={dispatchStatusLabel(t, row.status)} />
                     </div>
                   }
                   onCardClick={() => openDetail(row.id)}

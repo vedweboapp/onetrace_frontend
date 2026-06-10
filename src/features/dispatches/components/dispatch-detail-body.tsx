@@ -3,10 +3,9 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { DispatchStatusBadge } from "@/features/dispatches/components/dispatch-status-badge";
 import type { DispatchDetail } from "@/features/dispatches/types/dispatch.types";
 import type { DispatchLineSummary } from "@/features/dispatches/types/dispatch.types";
-import { dispatchWorkerLabel, normalizeDispatchStatus } from "@/features/dispatches/utils/dispatch-display.util";
+import { dispatchWorkerLabel } from "@/features/dispatches/utils/dispatch-display.util";
 import { DispatchedQuantityCell } from "@/shared/components/quantity/dispatched-quantity-cell";
 import {
   quantityTableCellClass,
@@ -30,7 +29,6 @@ type Props = {
   detail: DispatchDetail;
   dateFmt: Intl.DateTimeFormat;
   dueFmt: Intl.DateTimeFormat;
-  statusLabel: string;
 };
 
 function lineRowsFromDetail(detail: DispatchDetail): DispatchLineSummary[] {
@@ -49,7 +47,7 @@ function lineRowsFromDetail(detail: DispatchDetail): DispatchLineSummary[] {
   }));
 }
 
-export function DispatchDetailBody({ detail, dateFmt, dueFmt, statusLabel }: Props) {
+export function DispatchDetailBody({ detail, dateFmt, dueFmt }: Props) {
   const t = useTranslations("Dashboard.dispatches");
   const lineRows = React.useMemo(() => lineRowsFromDetail(detail), [detail]);
 
@@ -57,9 +55,6 @@ export function DispatchDetailBody({ detail, dateFmt, dueFmt, statusLabel }: Pro
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
       <DetailPanelCard title={t("detail.sectionOverview")}>
-        <div className="mb-4 flex justify-end">
-          <DispatchStatusBadge status={detail.status} label={statusLabel} />
-        </div>
         <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-3">
           <DetailMetricCard label={t("fields.dispatchId")}>
             <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">
@@ -90,7 +85,6 @@ export function DispatchDetailBody({ detail, dateFmt, dueFmt, statusLabel }: Pro
               "—"
             )}
           </DetailMetricCard>
-          <DetailMetricCard label={t("fields.jobName")}>{detail.job_name?.trim() || "—"}</DetailMetricCard>
         </DetailMetricsGrid>
       </DetailPanelCard>
 
@@ -162,18 +156,4 @@ export function DispatchDetailBody({ detail, dateFmt, dueFmt, statusLabel }: Pro
       </div>
     </DetailPagePadding>
   );
-}
-
-export function dispatchStatusLabel(
-  t: (key: string) => string,
-  status: string | null | undefined,
-): string {
-  const norm = normalizeDispatchStatus(status);
-  if (norm === "dispatched") return t("status.dispatched");
-  if (norm === "delivered") return t("status.delivered");
-  if (norm === "in_transit") return t("status.inTransit");
-  if (norm === "processing") return t("status.processing");
-  if (norm === "draft") return t("status.draft");
-  if (norm === "delayed") return t("status.delayed");
-  return status?.trim() || "—";
 }

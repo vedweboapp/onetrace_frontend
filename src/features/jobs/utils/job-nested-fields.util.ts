@@ -79,10 +79,15 @@ export function jobFormEntries(job: Pick<Job, "forms">): JobFormRef[] {
           return { id: entry, project_form_id: entry };
         }
         if (typeof entry === "object" && entry !== null) {
+          const submittedFormId =
+            typeof entry.submitted_form_id === "number" && entry.submitted_form_id > 0
+              ? entry.submitted_form_id
+              : null;
           return {
             id: entry.id,
             name: entry.name,
-            project_form_id: entry.project_form_id ?? entry.id, // use entry.id as fallback
+            project_form_id: entry.project_form_id ?? entry.id,
+            submitted_form_id: submittedFormId,
           };
         }
         return null; //explicit null instead of undefined
@@ -91,10 +96,15 @@ export function jobFormEntries(job: Pick<Job, "forms">): JobFormRef[] {
   }
 
   if (typeof forms === "object") {
+    const submittedFormId =
+      typeof forms.submitted_form_id === "number" && forms.submitted_form_id > 0
+        ? forms.submitted_form_id
+        : null;
     return [{
       id: forms.id,
       name: forms.name,
       project_form_id: forms.project_form_id ?? forms.id,
+      submitted_form_id: submittedFormId,
     }];
   }
 

@@ -79,6 +79,8 @@ export function DashboardHeader() {
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
   const materialRequestsHref = routes.dashboard.materialRequests;
+  const dispatchesHref = routes.dashboard.dispatches;
+  const returnToStockHref = routes.dashboard.returnToStock;
   const compositeHref = routes.dashboard.compositeItems;
   const personalProfileHref = routes.dashboard.settingsPersonalProfile;
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
@@ -109,6 +111,10 @@ export function DashboardHeader() {
   const groupsActive = pathname === groupsHref || pathname.startsWith(`${groupsHref}/`);
   const materialRequestsActive =
     pathname === materialRequestsHref || pathname.startsWith(`${materialRequestsHref}/`);
+  const dispatchesActive =
+    pathname === dispatchesHref || pathname.startsWith(`${dispatchesHref}/`);
+  const returnToStockActive =
+    pathname === returnToStockHref || pathname.startsWith(`${returnToStockHref}/`);
   const compositeActive =
     pathname === compositeHref || pathname.startsWith(`${compositeHref}/`);
   const personalProfileActive =
@@ -157,7 +163,11 @@ export function DashboardHeader() {
                       ? tNav("groups")
                       : materialRequestsActive
                         ? tNav("materialRequests")
-                        : compositeActive
+                        : dispatchesActive
+                          ? tNav("dispatches")
+                          : returnToStockActive
+                            ? tNav("returnToStock")
+                            : compositeActive
                         ? tNav("compositeItems")
                         : personalProfileActive
                           ? tSettingsNav("personalProfile")

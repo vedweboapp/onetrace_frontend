@@ -1,17 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { Download, Eye, Send } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
-import {
-  exportInvoicePdf,
-  fetchInvoice,
-  previewInvoicePdf,
-  sendInvoice,
-} from "@/features/invoices/api/invoice.api";
+import { fetchInvoice, previewInvoicePdf, sendInvoice } from "@/features/invoices/api/invoice.api";
 import { InvoiceDetailBody } from "@/features/invoices/components/invoice-detail-body";
+import { InvoiceExportDropdown } from "@/features/invoices/components/invoice-export-dropdown";
 import type { InvoiceContactRef, InvoiceDetail } from "@/features/invoices/types/invoice.types";
 import { nestedId, normalizeInvoiceStatus } from "@/features/invoices/utils/invoice-nested-fields.util";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
@@ -36,7 +31,7 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
   );
 
   const [activeTab, setActiveTab] = React.useState<"overview" | "lineItems">("overview");
-  const [exporting, setExporting] = React.useState(false);
+  const [previewing, setPreviewing] = React.useState(false);
   const [sending, setSending] = React.useState(false);
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
   const [contactNames, setContactNames] = React.useState<Record<number, string>>({});
@@ -129,41 +124,21 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
             type="button"
             variant="secondary"
             size="sm"
-            disabled={exporting}
+            loading={previewing}
             onClick={async () => {
-              setExporting(true);
+              setPreviewing(true);
               try {
                 await previewInvoicePdf(detail.id);
               } catch {
                 toastError(t("export.failed"));
               } finally {
-                setExporting(false);
+                setPreviewing(false);
               }
             }}
           >
-            <Eye className="size-4" aria-hidden />
             {t("actions.preview")}
           </AppButton>
-          <AppButton
-            type="button"
-            variant="secondary"
-            size="sm"
-            disabled={exporting}
-            onClick={async () => {
-              setExporting(true);
-              try {
-                await exportInvoicePdf(detail.id, detail.invoice_number);
-                toastSuccess(t("export.success"));
-              } catch {
-                toastError(t("export.failed"));
-              } finally {
-                setExporting(false);
-              }
-            }}
-          >
-            <Download className="size-4" aria-hidden />
-            {t("actions.downloadPdf")}
-          </AppButton>
+          <InvoiceExportDropdown invoiceId={detail.id} invoiceNumber={detail.invoice_number} />
           <AppButton
             type="button"
             variant="secondary"
@@ -181,7 +156,6 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
               }
             }}
           >
-            <Send className="size-4" aria-hidden />
             {t("actions.send")}
           </AppButton>
           <EntityDetailEditButton listBack={listBack} fallbackRoute={routes.dashboard.invoices} label={t("edit")} />

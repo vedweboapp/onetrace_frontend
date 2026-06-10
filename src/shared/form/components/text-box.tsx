@@ -1,5 +1,6 @@
 "use client";
 
+import { surfaceTextareaClassName } from "@/shared/ui";
 import React from "react";
 
 interface TextBoxProps {
@@ -57,7 +58,7 @@ const TextBox: React.FC<TextBoxProps> = ({
                             : "border-gray-300 dark:border-slate-700"
                         } focus:ring-2 focus:ring-blue-500`
                     }
-          ${className}
+          ${className}${surfaceTextareaClassName}
         `}
             />
 

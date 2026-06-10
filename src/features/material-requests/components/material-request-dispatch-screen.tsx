@@ -137,6 +137,7 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
       prev.map((row) => (row.key === lineKey ? { ...row, dispatchQty: value } : row)),
     );
   }
+  
 
   function addExtraRow() {
     const itemId = extraDraft.item.trim();
@@ -270,7 +271,11 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
                         </td>
                       </tr>
                     ) : (
-                      lines.map((row) => (
+                      lines.map((row) => {
+                        const qty = Number.parseFloat(row.dispatchQty.trim());
+                        const dispatchSurplus =
+                          Number.isFinite(qty) && qty > row.pending ? qty - row.pending : 0;
+                        return (
                           <tr key={row.key} className="border-b border-slate-100 dark:border-slate-800">
                             <td className="px-3 py-3 font-medium text-slate-900 dark:text-slate-100">
                               {row.materialName}
@@ -299,10 +304,16 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
                                   className={cn(compactInputClass, "w-20 text-center")}
                                   onChange={(e) => updateLineQty(row.key, e.target.value)}
                                 />
+                                {dispatchSurplus > 0 ? (
+                                  <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold tabular-nums text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                                    +{dispatchSurplus.toFixed(0)} {t("lineItems.units")}
+                                  </span>
+                                ) : null}
                               </div>
                             </td>
                           </tr>
-                      ))
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
