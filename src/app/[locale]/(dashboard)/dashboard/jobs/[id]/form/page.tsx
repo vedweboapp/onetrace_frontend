@@ -17,9 +17,16 @@ export default async function DashboardJobFormFillPage({ params, searchParams }:
   const { id } = await params;
   const { formId: rawFormId, name, job_form_id: rawJobFormId } = await searchParams;
   const jobId = Number.parseInt(id, 10);
-  const jobFormId = Number.parseInt(rawJobFormId ?? "", 10)
+  const jobFormId = Number.parseInt(rawJobFormId ?? "", 10);
   const formId = Number.parseInt(rawFormId ?? "", 10);
-  if (!Number.isFinite(jobId) || jobId <= 0 || !Number.isFinite(formId) || formId <= 0) {
+  if (
+    !Number.isFinite(jobId) ||
+    jobId <= 0 ||
+    !Number.isFinite(formId) ||
+    formId <= 0 ||
+    !Number.isFinite(jobFormId) ||
+    jobFormId <= 0
+  ) {
     notFound();
   }
 

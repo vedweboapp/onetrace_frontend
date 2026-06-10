@@ -116,7 +116,7 @@ function normalizeSubmission(
 ): JobFormSubmission {
   return {
     ...row,
-    id: row.id ?? (row as SubmitJobFormSummary).submission_id,
+    id: row.id > 0 ? row.id : 0,
     job_id: row.job_id ?? jobId,
     job_form_id: row.job_form_id ?? jobFormId,
     form_id: row.form_id ?? row.project_form_id ?? projectFormId,
