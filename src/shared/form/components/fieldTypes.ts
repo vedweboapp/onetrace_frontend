@@ -336,7 +336,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       name: "",
       placeholder: "0.00",
       required: false,
-      currency: "USD",
+      defaultValue: "",
       max: 16,
       markAsPublic: false,
       show_tooltip: false,
@@ -346,8 +346,8 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       { type: "text", label: "Field Label", key: "label", required: true, maxLength: 20 },
       {
         type: "drop-down",
-        label: "Currency Code",
-        key: "currency",
+        label: "Default Currency",
+        key: "defaultValue",
         options: currencyList.map((c) => ({
           value: c.value,
           label: `${c.label} - ${c.value}`,
@@ -384,6 +384,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       required: false,
       decimalPlaces: 2,
       markAsPublic: false,
+      maxLength: 1,
       show_tooltip: false,
       tool_tip: "",
     }),
@@ -402,7 +403,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
           { value: 13, label: "13" }, { value: 14, label: "14" },
           { value: 15, label: "15" }, { value: 16, label: "16" },
         ],
-        key: "max",
+        key: "maxLength",
       },
       {
         type: "drop-down",
