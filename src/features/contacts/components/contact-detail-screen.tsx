@@ -7,25 +7,16 @@ import { fetchContact } from "@/features/contacts/api/contact.api";
 import { ContactDetailBody } from "@/features/contacts/components/contact-detail-body";
 import type { Contact } from "@/features/contacts/types/contact.types";
 import {
+  contactClientName,
+  contactVendorName,
+  getContactType,
+} from "@/features/contacts/utils/contact-nested-fields.util";
+import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
+import {
   EntityDetailEditButton,
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
-
-function contactClientId(detail: Contact): number | null {
-  if (typeof detail.client === "number" && Number.isFinite(detail.client) && detail.client > 0) return detail.client;
-  if (detail.client && typeof detail.client === "object" && Number.isFinite(detail.client.id) && detail.client.id > 0) {
-    return detail.client.id;
-  }
-  return null;
-}
-
-function contactClientName(detail: Contact, clientNames: Record<number, string>): string {
-  if (detail.client && typeof detail.client === "object" && detail.client.name?.trim()) return detail.client.name.trim();
-  const id = contactClientId(detail);
-  if (id && clientNames[id]) return clientNames[id];
-  return id ? `#${id}` : "—";
-}
 
 type Props = {
   contactId: number;
@@ -34,25 +25,44 @@ type Props = {
 export function ContactDetailScreen({ contactId }: Props) {
   const t = useTranslations("Dashboard.contacts");
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
+  const [vendorNames, setVendorNames] = React.useState<Record<number, string>>({});
 
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchClientsPage(1, 500);
+        const [{ items: clients }, { items: vendors }] = await Promise.all([
+          fetchClientsPage(1, 500),
+          fetchVendorsPage(1, 500),
+        ]);
         if (!cancelled) {
-          const mapped: Record<number, string> = {};
-          for (const row of items) mapped[row.id] = row.name;
-          setClientNames(mapped);
+          const clientMapped: Record<number, string> = {};
+          for (const row of clients) clientMapped[row.id] = row.name;
+          const vendorMapped: Record<number, string> = {};
+          for (const row of vendors) vendorMapped[row.id] = row.name;
+          setClientNames(clientMapped);
+          setVendorNames(vendorMapped);
         }
       } catch {
-        if (!cancelled) setClientNames({});
+        if (!cancelled) {
+          setClientNames({});
+          setVendorNames({});
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
   }, []);
+
+  function resolveParentNames(detail: Contact) {
+    const type = getContactType(detail);
+    return {
+      clientName: contactClientName(detail, clientNames),
+      vendorName: contactVendorName(detail, vendorNames),
+      contactType: type,
+    };
+  }
 
   return (
     <EntityDetailScreen
@@ -75,13 +85,17 @@ export function ContactDetailScreen({ contactId }: Props) {
         />
       )}
     >
-      {({ detail, dateFmt }) => (
-        <ContactDetailBody
-          detail={detail}
-          clientName={contactClientName(detail, clientNames)}
-          dateFmt={dateFmt}
-        />
-      )}
+      {({ detail, dateFmt }) => {
+        const { clientName, vendorName } = resolveParentNames(detail);
+        return (
+          <ContactDetailBody
+            detail={detail}
+            clientName={clientName}
+            vendorName={vendorName}
+            dateFmt={dateFmt}
+          />
+        );
+      }}
     </EntityDetailScreen>
   );
 }

@@ -7,7 +7,9 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchAllContactIds, fetchContactsPage, updateContact } from "@/features/contacts/api/contact.api";
-import type { Contact } from "@/features/contacts/types/contact.types";
+import type { Contact, ContactType } from "@/features/contacts/types/contact.types";
+import { contactParentName } from "@/features/contacts/utils/contact-nested-fields.util";
+import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
@@ -28,6 +30,8 @@ import {
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
+  AppTabs,
+  type AppTabItem,
 } from "@/shared/ui";
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
@@ -39,19 +43,8 @@ import {
 } from "@/shared/mass-actions";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 
-function contactClientId(row: Contact): number | null {
-  if (typeof row.client === "number" && Number.isFinite(row.client) && row.client > 0) return row.client;
-  if (row.client && typeof row.client === "object" && Number.isFinite(row.client.id) && row.client.id > 0) {
-    return row.client.id;
-  }
-  return null;
-}
-
-function contactClientName(row: Contact, clientNameById: Record<number, string>): string {
-  if (row.client && typeof row.client === "object" && row.client.name?.trim()) return row.client.name.trim();
-  const id = contactClientId(row);
-  if (id && clientNameById[id]) return clientNameById[id];
-  return id ? `#${id}` : "—";
+function parseContactTypeParam(raw: string | null): ContactType {
+  return raw === "vendor" ? "vendor" : "client";
 }
 
 export function ContactsPanel() {
@@ -80,8 +73,20 @@ export function ContactsPanel() {
   const { page, pageSize, listViewMode, search, isActiveParam, setUrl, setPage, setPageSize, setListViewMode } =
     useListUrlState();
   const isActiveFilter = parseIsActiveParam(isActiveParam) ?? true;
+  const contactTypeParam = searchParams.get("contact_type");
+  const activeContactType = parseContactTypeParam(contactTypeParam);
   const clientParam = searchParams.get("client");
   const clientFilter = clientParam && /^\d+$/.test(clientParam) ? Number.parseInt(clientParam, 10) : undefined;
+  const vendorParam = searchParams.get("vendor");
+  const vendorFilter = vendorParam && /^\d+$/.test(vendorParam) ? Number.parseInt(vendorParam, 10) : undefined;
+
+  const listTabs = React.useMemo<AppTabItem[]>(
+    () => [
+      { id: "client", label: t("tabs.client") },
+      { id: "vendor", label: t("tabs.vendor") },
+    ],
+    [t],
+  );
 
   const [items, setItems] = React.useState<Contact[]>([]);
   const [pagination, setPagination] = React.useState({
@@ -98,9 +103,13 @@ export function ContactsPanel() {
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [vendorOptions, setVendorOptions] = React.useState<{ value: string; label: string }[]>([]);
   const openCreate = React.useCallback(() => {
-    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
-  }, [listHref, pathname, router]);
+    const params = new URLSearchParams();
+    params.set("back", listHref);
+    if (activeContactType === "vendor") params.set("contact_type", "vendor");
+    router.push(`${pathname}/new?${params.toString()}`);
+  }, [activeContactType, listHref, pathname, router]);
 
   const openEdit = React.useCallback(
     (id: number) => {
@@ -115,9 +124,11 @@ export function ContactsPanel() {
     () => ({
       search: search || undefined,
       is_active: isActiveFilter,
-      client: clientFilter,
+      contact_type: activeContactType,
+      client: activeContactType === "client" ? clientFilter : undefined,
+      vendor: activeContactType === "vendor" ? vendorFilter : undefined,
     }),
-    [search, isActiveFilter, clientFilter],
+    [search, isActiveFilter, activeContactType, clientFilter, vendorFilter],
   );
 
   const massUpdateFields = React.useMemo(
@@ -147,7 +158,7 @@ export function ContactsPanel() {
     totalRecords: pagination.total_records,
     pageItems: items,
     fetchAllIds,
-    resetDeps: [pageSize, search, isActiveFilter, clientFilter],
+    resetDeps: [pageSize, search, isActiveFilter, activeContactType, clientFilter, vendorFilter],
     updateFields: massUpdateFields,
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
@@ -164,12 +175,19 @@ export function ContactsPanel() {
     let cancelled = false;
     (async () => {
       try {
-        const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+        const [{ items: clients }, { items: vendors }] = await Promise.all([
+          fetchClientsPage(1, 500, { is_active: true }),
+          fetchVendorsPage(1, 500, { is_active: true }),
+        ]);
         if (!cancelled) {
           setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
+          setVendorOptions(vendors.map((v) => ({ value: String(v.id), label: v.name })));
         }
       } catch {
-        if (!cancelled) setClientOptions([]);
+        if (!cancelled) {
+          setClientOptions([]);
+          setVendorOptions([]);
+        }
       }
     })();
     return () => {
@@ -183,11 +201,7 @@ export function ContactsPanel() {
       setLoading(true);
       setLoadError(null);
       try {
-        const { items: nextItems, pagination: p } = await fetchContactsPage(page, pageSize, {
-          search: search || undefined,
-          is_active: isActiveFilter,
-          client: clientFilter,
-        });
+        const { items: nextItems, pagination: p } = await fetchContactsPage(page, pageSize, listFilters);
         if (!cancelled) {
           setItems(nextItems);
           setPagination(p);
@@ -204,7 +218,7 @@ export function ContactsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, search, isActiveFilter, clientFilter, refreshNonce, t]);
+  }, [page, pageSize, listFilters, refreshNonce, t]);
 
   const clientLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -215,15 +229,36 @@ export function ContactsPanel() {
     return m;
   }, [clientOptions]);
 
-  const hasActiveFilters = hasListActiveFilters({ search, isActiveParam, clientParam });
+  const vendorLabelById = React.useMemo(() => {
+    const m: Record<number, string> = {};
+    for (const o of vendorOptions) {
+      const id = Number.parseInt(o.value, 10);
+      if (Number.isFinite(id)) m[id] = o.label;
+    }
+    return m;
+  }, [vendorOptions]);
+
+  const parentLabels = React.useMemo(
+    () => ({ clientNameById: clientLabelById, vendorNameById: vendorLabelById }),
+    [clientLabelById, vendorLabelById],
+  );
+
+  const parentColumnLabel = activeContactType === "vendor" ? t("table.vendor") : t("table.client");
+
+  const hasActiveFilters = hasListActiveFilters({
+    search,
+    isActiveParam,
+    clientParam: activeContactType === "client" ? clientParam : null,
+    vendorParam: activeContactType === "vendor" ? vendorParam : null,
+    contactTypeParam,
+  });
   const countInactive = React.useCallback(async () => {
     const { pagination: p } = await fetchContactsPage(1, 1, {
-      search: search || undefined,
+      ...listFilters,
       is_active: false,
-      client: clientFilter,
     });
     return p.total_records;
-  }, [search, clientFilter]);
+  }, [listFilters]);
   const { hideListChrome, listLoading, emptyStateKind, filtersActive, switchToInactive } =
     useListActiveInactiveEmptyState({
       loading,
@@ -278,7 +313,7 @@ export function ContactsPanel() {
         { narrow: true },
       ),
       c.primary("name", t("table.name"), (r) => r.name),
-      c.text("client", t("table.client"), (r) => contactClientName(r, clientLabelById)),
+      c.text("parent", parentColumnLabel, (r) => contactParentName(r, parentLabels)),
       c.truncate("email", t("table.email"), (r) => r.email),
       c.phone("phone", t("table.phone"), (r) => r.phone),
       c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive")),
@@ -307,10 +342,35 @@ export function ContactsPanel() {
         />
       )),
     ];
-  }, [t, tList, dateFmt, clientLabelById, togglingId, openEdit, mass, items.length]);
+  }, [t, tList, dateFmt, parentColumnLabel, parentLabels, togglingId, openEdit, mass, items.length]);
+
+  const switchContactType = React.useCallback(
+    (tab: string) => {
+      const nextType = tab === "vendor" ? "vendor" : "client";
+      setUrl(
+        {
+          contact_type: nextType === "client" ? null : nextType,
+          client: null,
+          vendor: null,
+          page: null,
+        },
+        { replace: true },
+      );
+    },
+    [setUrl],
+  );
 
   return (
     <div className="space-y-4">
+      {!hideListChrome ? (
+        <AppTabs
+          tabs={listTabs}
+          value={activeContactType}
+          onValueChange={switchContactType}
+          ariaLabel={t("tabsAria")}
+          panelIdPrefix="contacts-list-tab"
+        />
+      ) : null}
       {!hideListChrome ? (
         <ListPageHeader
           filtersActive={filtersActive}
@@ -330,19 +390,35 @@ export function ContactsPanel() {
                 ariaLabel={tList("searchAria")}
                 className="sm:max-w-sm"
               />
-              <CheckmarkSelect
-                listLabel={t("filterClient")}
-                buttonAriaLabel={t("filterClient")}
-                options={clientOptions}
-                value={clientParam ?? ""}
-                emptyLabel={t("filterAllClients")}
-                portaled
-                searchable
-                clearable
-                clearAriaLabel={tList("clearFilter")}
-                className="w-full min-w-0 sm:w-56"
-                onChange={(v) => setUrl({ client: v || null, page: null }, { replace: true })}
-              />
+              {activeContactType === "vendor" ? (
+                <CheckmarkSelect
+                  listLabel={t("filterVendor")}
+                  buttonAriaLabel={t("filterVendor")}
+                  options={vendorOptions}
+                  value={vendorParam ?? ""}
+                  emptyLabel={t("filterAllVendors")}
+                  portaled
+                  searchable
+                  clearable
+                  clearAriaLabel={tList("clearFilter")}
+                  className="w-full min-w-0 sm:w-56"
+                  onChange={(v) => setUrl({ vendor: v || null, page: null }, { replace: true })}
+                />
+              ) : (
+                <CheckmarkSelect
+                  listLabel={t("filterClient")}
+                  buttonAriaLabel={t("filterClient")}
+                  options={clientOptions}
+                  value={clientParam ?? ""}
+                  emptyLabel={t("filterAllClients")}
+                  portaled
+                  searchable
+                  clearable
+                  clearAriaLabel={tList("clearFilter")}
+                  className="w-full min-w-0 sm:w-56"
+                  onChange={(v) => setUrl({ client: v || null, page: null }, { replace: true })}
+                />
+              )}
               <ListPageActiveFilter
                 activeLabel={t("status.active")}
                 inactiveLabel={t("status.inactive")}
@@ -396,7 +472,10 @@ export function ContactsPanel() {
               action: <AddButton type="button" onClick={openCreate} />,
             }}
             onClearFilters={() =>
-              setUrl({ search: null, is_active: null, client: null, page: null }, { replace: true })
+              setUrl(
+                { search: null, is_active: null, client: null, vendor: null, contact_type: null, page: null },
+                { replace: true },
+              )
             }
             onSwitchToInactive={switchToInactive}
           />
@@ -418,7 +497,7 @@ export function ContactsPanel() {
                     />
                   }
                   title={row.name}
-                  subtitle={contactClientName(row, clientLabelById)}
+                  subtitle={contactParentName(row, parentLabels)}
                   meta={row.email}
                   footer={
                     <div className="flex w-full flex-wrap items-center justify-between gap-3">

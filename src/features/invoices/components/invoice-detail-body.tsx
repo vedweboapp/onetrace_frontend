@@ -123,12 +123,6 @@ function resolveDisplayLines(detail: InvoiceDetail): DisplayLine[] {
   return [];
 }
 
-function resolveSubtotal(detail: InvoiceDetail, lines: DisplayLine[]): number {
-  if (detail.subtotal != null) return parseMoneyValue(detail.subtotal);
-  if (detail.sub_total != null) return parseMoneyValue(detail.sub_total);
-  return lines.reduce((sum, row) => sum + row.total, 0);
-}
-
 export function InvoiceDetailBody({
   detail,
   clientName,
@@ -143,8 +137,6 @@ export function InvoiceDetailBody({
   const billTo = detail.bill_to ?? detail.billing_address;
   const shipTo = detail.ship_to ?? detail.shipping_address;
   const lines = resolveDisplayLines(detail);
-  const subtotal = resolveSubtotal(detail, lines);
-  const taxTotal = parseMoneyValue(detail.tax_total);
   const totalBalance = invoiceTotalAmount(detail);
   const clientNotes =
     detail.client_notes?.trim() || detail.notes_and_terms?.trim() || "";
@@ -205,15 +197,6 @@ export function InvoiceDetailBody({
             </DetailPanelCard>
           ) : null}
 
-          <DetailPanelCard title={t("fields.totalBalance")}>
-            <div className="flex items-center justify-between gap-4">
-              <span className="sr-only">{t("fields.totalBalance")}</span>
-              <span className="text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
-                {formatMoneyDisplay(totalBalance, locale)}
-              </span>
-            </div>
-          </DetailPanelCard>
-
           <DetailSystemMetadataSection
             createdAt={detail.created_at ?? new Date().toISOString()}
             modifiedAt={detail.modified_at}
@@ -240,14 +223,13 @@ export function InvoiceDetailBody({
                     <th className="pb-2 pr-3">{t("lineItems.productName")}</th>
                     <th className="pb-2 pr-3">{t("lineItems.group")}</th>
                     <th className="pb-2 pr-3 text-right">{t("lineItems.qty")}</th>
-                    <th className="pb-2 pr-3 text-right">{t("lineItems.listPrice")}</th>
-                    <th className="pb-2 text-right">{t("lineItems.total")}</th>
+                    <th className="pb-2 text-right">{t("lineItems.listPrice")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {lines.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-6 text-center text-slate-500">
+                      <td colSpan={4} className="py-6 text-center text-slate-500">
                         {t("lineItems.empty")}
                       </td>
                     </tr>
@@ -259,11 +241,8 @@ export function InvoiceDetailBody({
                         </td>
                         <td className="py-3 pr-3 text-slate-600 dark:text-slate-400">{row.groupName}</td>
                         <td className="py-3 pr-3 text-right tabular-nums">{row.qty.toFixed(2)}</td>
-                        <td className="py-3 pr-3 text-right tabular-nums">
+                        <td className="py-3 text-right tabular-nums">
                           {formatMoneyDisplay(row.listPrice, locale)}
-                        </td>
-                        <td className="py-3 text-right tabular-nums font-semibold">
-                          {formatMoneyDisplay(row.total, locale)}
                         </td>
                       </tr>
                     ))
@@ -274,27 +253,10 @@ export function InvoiceDetailBody({
           </DetailPanelCard>
 
           <DetailPanelCard title={t("totals.totalAmount")}>
-            <div className="ml-auto max-w-xs space-y-2 text-sm">
-              <div className="flex justify-between gap-4">
-                <span className="text-slate-600 dark:text-slate-400">{t("totals.subtotal")}</span>
-                <span className="font-medium tabular-nums">{formatMoneyDisplay(subtotal, locale)}</span>
-              </div>
-              {taxTotal > 0 ? (
-                <div className="flex justify-between gap-4">
-                  <span className="text-slate-600 dark:text-slate-400">
-                    {detail.tax_percent != null && String(detail.tax_percent).trim()
-                      ? t("totals.taxWithPercent", { percent: detail.tax_percent })
-                      : t("totals.tax")}
-                  </span>
-                  <span className="font-medium tabular-nums">{formatMoneyDisplay(taxTotal, locale)}</span>
-                </div>
-              ) : null}
-              <div className="flex justify-between gap-4 border-t border-slate-200 pt-2 dark:border-slate-700">
-                <span className="font-semibold text-slate-900 dark:text-slate-100">
-                  {t("fields.totalBalance")}
-                </span>
-                <span className="text-lg font-bold tabular-nums">{formatMoneyDisplay(totalBalance, locale)}</span>
-              </div>
+            <div className="flex items-center justify-end gap-4">
+              <span className="text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
+                {formatMoneyDisplay(totalBalance, locale)}
+              </span>
             </div>
           </DetailPanelCard>
         </>

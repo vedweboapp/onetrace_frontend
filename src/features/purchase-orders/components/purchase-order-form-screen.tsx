@@ -7,19 +7,26 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
-import { createInvoice, fetchInvoice, sendInvoice, updateInvoice } from "@/features/invoices/api/invoice.api";
-import { createInvoiceFormSchema, type InvoiceFormValues } from "@/features/invoices/schemas/invoice-form-schema";
+import {
+  createPurchaseOrder,
+  fetchPurchaseOrder,
+  updatePurchaseOrder,
+} from "@/features/purchase-orders/api/purchase-order.api";
+import {
+  createPurchaseOrderFormSchema,
+  type PurchaseOrderFormValues,
+} from "@/features/purchase-orders/schemas/purchase-order-form-schema";
 import {
   computeFormSubtotal,
-  emptyInvoiceFormDefaults,
-  emptyInvoiceLineItem,
-  invoiceToFormDefaults,
-  mapInvoiceFormToPayload,
-} from "@/features/invoices/utils/invoice-form-map";
+  emptyPurchaseOrderFormDefaults,
+  emptyPurchaseOrderLineItem,
+  mapPurchaseOrderFormToPayload,
+  purchaseOrderToFormDefaults,
+} from "@/features/purchase-orders/utils/purchase-order-form-map";
 import { formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
+import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { AddressPlaceAutocomplete } from "@/shared/components/maps/address-place-autocomplete";
@@ -46,32 +53,32 @@ import {
 
 type Props = {
   mode: "create" | "edit";
-  invoiceId?: number;
+  purchaseOrderId?: number;
 };
 
 type Option = { value: string; label: string };
 
-export function InvoiceFormScreen({ mode, invoiceId }: Props) {
-  const t = useTranslations("Dashboard.invoices");
+export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
+  const t = useTranslations("Dashboard.purchaseOrders");
   const tGroups = useTranslations("Dashboard.groups");
   const tItems = useTranslations("Dashboard.items");
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "invoices");
-  const invoicesListHref = React.useMemo(() => {
-    const needle = routes.dashboard.invoices;
+  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "purchase-orders");
+  const purchaseOrdersListHref = React.useMemo(() => {
+    const needle = routes.dashboard.purchaseOrders;
     const i = pathname.indexOf(needle);
     return i >= 0 ? pathname.slice(0, i + needle.length) : needle;
   }, [pathname]);
-  const listBack = safeBack ?? invoicesListHref;
+  const listBack = safeBack ?? purchaseOrdersListHref;
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
-  const [clientOptions, setClientOptions] = React.useState<Option[]>([]);
+  const [vendorOptions, setVendorOptions] = React.useState<Option[]>([]);
   const [contactOptions, setContactOptions] = React.useState<Option[]>([]);
   const [projectOptions, setProjectOptions] = React.useState<Option[]>([]);
   const [groupOptions, setGroupOptions] = React.useState<Option[]>([]);
@@ -79,13 +86,10 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
   const [itemPriceById, setItemPriceById] = React.useState<Map<number, number>>(new Map());
   const [itemGroupById, setItemGroupById] = React.useState<Map<number, number | null>>(new Map());
   const [groupItemIdsByGroupId, setGroupItemIdsByGroupId] = React.useState<Map<number, Set<number>>>(new Map());
-  const [sending, setSending] = React.useState(false);
-
   const schema = React.useMemo(
     () =>
-      createInvoiceFormSchema({
-        client: t("validation.client"),
-        issueDate: t("validation.issueDate"),
+      createPurchaseOrderFormSchema({
+        vendor: t("validation.vendor"),
         lineDescription: t("validation.lineDescription"),
         lineQuantity: t("validation.lineQuantity"),
         addressLine1: t("validation.addressLine1"),
@@ -104,37 +108,24 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
     getValues,
     handleSubmit,
     formState: { errors },
-  } = useForm<InvoiceFormValues>({
+  } = useForm<PurchaseOrderFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: emptyInvoiceFormDefaults(),
+    defaultValues: emptyPurchaseOrderFormDefaults(),
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: "line_items" });
-  const selectedClient = useWatch({ control, name: "client" });
+  const selectedVendor = useWatch({ control, name: "vendor" });
   const lineItems = useWatch({ control, name: "line_items" }) ?? [];
 
-  const clientId =
-    selectedClient && /^\d+$/.test(selectedClient) ? Number.parseInt(selectedClient, 10) : undefined;
+  const vendorId =
+    selectedVendor && /^\d+$/.test(selectedVendor) ? Number.parseInt(selectedVendor, 10) : undefined;
   const getFormDraft = React.useCallback(() => getValues(), [getValues]);
   const restoreFormDraft = React.useCallback(
     (draft: unknown) => {
-      reset(draft as InvoiceFormValues, { keepDefaultValues: false });
+      reset(draft as PurchaseOrderFormValues, { keepDefaultValues: false });
     },
     [reset],
   );
-  const clientQuickCreate = useQuickCreate({ kind: "client", getFormDraft: !isEdit ? getFormDraft : undefined });
-  const contactQuickCreate = useQuickCreate({
-    kind: "contact",
-    clientId,
-    addDisabled: !clientId,
-    getFormDraft: !isEdit ? getFormDraft : undefined,
-  });
-  const projectQuickCreate = useQuickCreate({
-    kind: "project",
-    clientId,
-    addDisabled: !clientId,
-    getFormDraft: !isEdit ? getFormDraft : undefined,
-  });
   const groupQuickCreate = useQuickCreate({ kind: "group", getFormDraft: !isEdit ? getFormDraft : undefined });
   const itemQuickCreate = useQuickCreate({ kind: "item", getFormDraft: !isEdit ? getFormDraft : undefined });
 
@@ -168,14 +159,16 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
     restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
     onReloadOptions: async () => {
       try {
-        const [clients, projects, groups, items, contacts] = await Promise.all([
-          fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
+        const [vendors, projects, groups, items, contacts] = await Promise.all([
+          fetchVendorsPage(1, 500, { is_active: true }),
           fetchProjectsPage(1, 500, { is_active: true }),
           fetchGroupsPage(1, 500),
           fetchItemsPage(1, 500, { isActive: true }),
-          clientId ? fetchContactsPage(1, 500, { client: clientId, is_active: true }) : Promise.resolve({ items: [] }),
+          vendorId
+            ? fetchContactsPage(1, 500, { vendor: vendorId, contact_type: "vendor", is_active: true })
+            : Promise.resolve({ items: [] }),
         ]);
-        setClientOptions(clients.items.map((c) => ({ value: String(c.id), label: c.name })));
+        setVendorOptions(vendors.items.map((v) => ({ value: String(v.id), label: v.name })));
         setContactOptions(
           contacts.items.map((c) => ({
             value: String(c.id),
@@ -198,7 +191,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
         setItemPriceById(prices);
         setItemGroupById(groupMap);
       } catch {
-        setClientOptions([]);
+        setVendorOptions([]);
         setProjectOptions([]);
         setGroupOptions([]);
         setItemOptions([]);
@@ -206,7 +199,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
     },
     onApplySelect: ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {
-        setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
+        setValue("vendor", selectId, { shouldDirty: true, shouldValidate: true });
         setValue("contact", "", { shouldDirty: true });
         return;
       }
@@ -239,14 +232,14 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const [clients, projects, groups, items] = await Promise.all([
-          fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
+        const [vendors, projects, groups, items] = await Promise.all([
+          fetchVendorsPage(1, 500, { is_active: true }),
           fetchProjectsPage(1, 500, { is_active: true }),
           fetchGroupsPage(1, 500),
           fetchItemsPage(1, 500, { isActive: true }),
         ]);
         if (!cancelled) {
-          setClientOptions(clients.items.map((c) => ({ value: String(c.id), label: c.name })));
+          setVendorOptions(vendors.items.map((v) => ({ value: String(v.id), label: v.name })));
           setProjectOptions(projects.items.map((p) => ({ value: String(p.id), label: p.name })));
           setGroupOptions(groups.items.map((g) => ({ value: String(g.id), label: g.name })));
           const prices = new Map<number, number>();
@@ -268,7 +261,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
         }
       } catch {
         if (!cancelled) {
-          setClientOptions([]);
+          setVendorOptions([]);
           setProjectOptions([]);
           setGroupOptions([]);
           setItemOptions([]);
@@ -281,14 +274,18 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
   }, []);
 
   React.useEffect(() => {
-    if (!clientId || clientId <= 0) {
+    if (!vendorId || vendorId <= 0) {
       setContactOptions([]);
       return;
     }
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchContactsPage(1, 500, { client: clientId, is_active: true });
+        const { items } = await fetchContactsPage(1, 500, {
+          vendor: vendorId,
+          contact_type: "vendor",
+          is_active: true,
+        });
         if (!cancelled) {
           setContactOptions(
             items.map((c) => ({
@@ -304,7 +301,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [clientId]);
+  }, [vendorId]);
 
   React.useEffect(() => {
     const groupIds = Array.from(
@@ -360,14 +357,14 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
   }, [itemGroupById, lineItems, setValue]);
 
   React.useEffect(() => {
-    if (!isEdit || !invoiceId) return;
+    if (!isEdit || !purchaseOrderId) return;
     let cancelled = false;
     (async () => {
       setLoadingExisting(true);
       setScreenError(null);
       try {
-        const row = await fetchInvoice(invoiceId);
-        if (!cancelled) reset(invoiceToFormDefaults(row));
+        const row = await fetchPurchaseOrder(purchaseOrderId);
+        if (!cancelled) reset(purchaseOrderToFormDefaults(row));
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
       } finally {
@@ -377,14 +374,14 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [invoiceId, isEdit, reset, t]);
+  }, [purchaseOrderId, isEdit, reset, t]);
 
-  async function submit(values: InvoiceFormValues) {
-    const payload = mapInvoiceFormToPayload(values);
+  async function submit(values: PurchaseOrderFormValues) {
+    const payload = mapPurchaseOrderFormToPayload(values);
     setSaving(true);
     try {
       const saved =
-        isEdit && invoiceId ? await updateInvoice(invoiceId, payload) : await createInvoice(payload);
+        isEdit && purchaseOrderId ? await updatePurchaseOrder(purchaseOrderId, payload) : await createPurchaseOrder(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       router.replace(`${listBack}?highlight=${saved.id}`);
     } catch {
@@ -465,7 +462,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
             />
           )}
         />
-        <CascadingLocationFields<InvoiceFormValues>
+        <CascadingLocationFields<PurchaseOrderFormValues>
           control={control}
           setValue={setValue}
           countryIsoName={countryIsoName}
@@ -510,32 +507,10 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
         backAriaLabel={t("detail.backAria")}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {isEdit && invoiceId ? (
-              <AppButton
-                type="button"
-                variant="secondary"
-                size="sm"
-                loading={sending}
-                disabled={saving}
-                onClick={async () => {
-                  setSending(true);
-                  try {
-                    await sendInvoice(invoiceId);
-                    toastSuccess(t("send.success"));
-                  } catch {
-                    toastError(t("send.failed"));
-                  } finally {
-                    setSending(false);
-                  }
-                }}
-              >
-                {t("actions.send")}
-              </AppButton>
-            ) : null}
             <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => router.push(listBack)}>
               {t("modal.cancel")}
             </AppButton>
-            <AppButton type="submit" form="invoice-upsert-form" variant="primary" size="sm" loading={saving}>
+            <AppButton type="submit" form="po-upsert-form" variant="primary" size="sm" loading={saving}>
               {t("modal.save")}
             </AppButton>
           </div>
@@ -551,7 +526,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
         ) : screenError ? (
           <p className="p-6 text-sm text-red-600 dark:text-red-400">{screenError}</p>
         ) : (
-          <form id="invoice-upsert-form" className="space-y-10 p-4 sm:p-6" noValidate onSubmit={handleSubmit(submit)}>
+          <form id="po-upsert-form" className="space-y-10 p-4 sm:p-6" noValidate onSubmit={handleSubmit(submit)}>
             <section className="space-y-6 pb-1">
               <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {t("sections.basic")}
@@ -559,29 +534,27 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
               <FormFieldRow cols="2">
                 <Controller
                   control={control}
-                  name="client"
+                  name="vendor"
                   render={({ field }) => (
                     <div>
                       <CheckmarkSelect
-                        id="invoice-client"
-                        label={t("fields.clientName")}
+                        id="po-vendor"
+                        label={t("fields.vendorName")}
                         required
-                        options={clientOptions}
+                        options={vendorOptions}
                         value={field.value}
                         onChange={(v) => {
                           field.onChange(v);
                           setValue("contact", "");
                         }}
-                        emptyLabel={t("placeholders.client")}
+                        emptyLabel={t("placeholders.vendor")}
                         disabled={saving}
-                        invalid={!!errors.client}
-                        listLabel={t("fields.clientName")}
+                        invalid={!!errors.vendor}
+                        listLabel={t("fields.vendorName")}
                         portaled
                         searchable
-                        onAdd={clientQuickCreate.onAdd}
-                        addAriaLabel={clientQuickCreate.addAriaLabel}
                       />
-                      <FieldErrorText>{errors.client?.message}</FieldErrorText>
+                      <FieldErrorText>{errors.vendor?.message}</FieldErrorText>
                     </div>
                   )}
                 />
@@ -591,19 +564,17 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                   render={({ field }) => (
                     <div>
                       <CheckmarkSelect
-                        id="invoice-contact"
+                        id="po-contact"
                         label={t("fields.contactPerson")}
                         options={contactOptions}
                         value={field.value}
                         onChange={field.onChange}
                         emptyLabel={t("placeholders.contact")}
-                        disabled={saving || !clientId}
+                        disabled={saving || !vendorId}
                         listLabel={t("fields.contactPerson")}
                         portaled
                         searchable
                         clearable
-                        onAdd={contactQuickCreate.onAdd}
-                        addAriaLabel={contactQuickCreate.addAriaLabel}
                       />
                     </div>
                   )}
@@ -614,7 +585,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                 name="project"
                 render={({ field }) => (
                   <CheckmarkSelect
-                    id="invoice-project"
+                    id="po-project"
                     label={t("fields.projectName")}
                     options={projectOptions}
                     value={field.value}
@@ -626,8 +597,6 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                     searchable
                     clearable
                     className="h-9"
-                    onAdd={projectQuickCreate.onAdd}
-                    addAriaLabel={projectQuickCreate.addAriaLabel}
                   />
                 )}
               />
@@ -654,15 +623,15 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                 {t("sections.metadata")}
               </h2>
               <FormFieldRow cols="2">
-                <FieldGroup label={t("fields.dueDate")} htmlFor="invoice-due">
-                  <SurfaceDateInput id="invoice-due" type="date" disabled={saving} {...register("due_date")} />
+                <FieldGroup label={t("fields.dueDate")} htmlFor="po-due">
+                  <SurfaceDateInput id="po-due" type="date" disabled={saving} {...register("due_date")} />
                 </FieldGroup>
                 <Controller
                   control={control}
                   name="payment_terms"
                   render={({ field }) => (
                     <CheckmarkSelect
-                      id="invoice-payment-terms"
+                      id="po-payment-terms"
                       label={t("fields.paymentTerms")}
                       options={paymentTermOptions}
                       value={field.value}
@@ -687,7 +656,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                   variant="primary"
                   size="sm"
                   disabled={saving}
-                  onClick={() => append(emptyInvoiceLineItem())}
+                  onClick={() => append(emptyPurchaseOrderLineItem())}
                 >
                   {t("lineItems.addItem")}
                 </AppButton>
@@ -861,18 +830,18 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                 {t("sections.notes")}
               </h2>
               <FormFieldRow cols="2">
-                <FieldGroup label={t("fields.clientNotes")} htmlFor="invoice-client-notes">
+                <FieldGroup label={t("fields.vendorNotes")} htmlFor="po-vendor-notes">
                   <textarea
-                    id="invoice-client-notes"
+                    id="po-vendor-notes"
                     rows={3}
                     className={cn(surfaceTextareaClassName, "min-h-[80px]")}
                     disabled={saving}
-                    {...register("client_notes")}
+                    {...register("vendor_notes")}
                   />
                 </FieldGroup>
-                <FieldGroup label={t("fields.internalNotes")} htmlFor="invoice-internal-notes">
+                <FieldGroup label={t("fields.internalNotes")} htmlFor="po-internal-notes">
                   <textarea
-                    id="invoice-internal-notes"
+                    id="po-internal-notes"
                     rows={3}
                     className={cn(surfaceTextareaClassName, "min-h-[80px]")}
                     disabled={saving}

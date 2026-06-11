@@ -4,6 +4,7 @@ import { DISPATCH_USE_MOCK } from "./src/features/dispatches/api/dispatch.mock.c
 import { MATERIAL_STATUS_USE_MOCK } from "./src/features/material-status/api/material-status.mock.config";
 import { MATERIAL_REQUEST_USE_MOCK } from "./src/features/material-requests/api/material-request.mock.config";
 import { VENDOR_TYPE_USE_MOCK } from "./src/features/vendor-types/api/vendor-type.mock.config";
+import { PURCHASE_ORDER_USE_MOCK } from "./src/features/purchase-orders/api/purchase-order.mock.config";
 import { VENDOR_USE_MOCK } from "./src/features/vendors/api/vendor.mock.config";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
@@ -35,6 +36,7 @@ const nextConfig: NextConfig = {
       MATERIAL_STATUS_USE_MOCK ? "material-status" : null,
       VENDOR_TYPE_USE_MOCK ? "vendor-type" : null,
       VENDOR_USE_MOCK ? "vendors" : null,
+      PURCHASE_ORDER_USE_MOCK ? "purchase-orders" : null,
     ].filter(Boolean) as string[];
     const source =
       mockPrefixes.length > 0

@@ -154,6 +154,7 @@ function DashboardMainSidebar({
   const sitesHref = routes.dashboard.sites;
   const quotationsHref = routes.dashboard.quotations;
   const invoicesHref = routes.dashboard.invoices;
+  const purchaseOrdersHref = routes.dashboard.purchaseOrders;
   const jobsHref = routes.dashboard.jobs;
   const qrCodesHref = routes.dashboard.qrCodes;
   const homeHref = routes.dashboard.root;
@@ -176,6 +177,8 @@ function DashboardMainSidebar({
     pathname === quotationsHref || pathname.startsWith(`${quotationsHref}/`);
   const invoicesActive =
     pathname === invoicesHref || pathname.startsWith(`${invoicesHref}/`);
+  const purchaseOrdersActive =
+    pathname === purchaseOrdersHref || pathname.startsWith(`${purchaseOrdersHref}/`);
   const jobsActive = pathname === jobsHref || pathname.startsWith(`${jobsHref}/`);
   const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
   const projectsActive =
@@ -258,6 +261,14 @@ function DashboardMainSidebar({
           active={invoicesActive}
           label={t("invoices")}
           icon={Receipt}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={purchaseOrdersHref}
+          active={purchaseOrdersActive}
+          label={t("purchaseOrders")}
+          icon={ClipboardList}
           expanded={expanded}
           resolved={resolved}
         />

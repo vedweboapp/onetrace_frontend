@@ -32,6 +32,8 @@ export function hasListActiveFilters(args: {
   isActiveParam?: string | null;
   groupParam?: string | null;
   clientParam?: string | null;
+  vendorParam?: string | null;
+  contactTypeParam?: string | null;
   customerParam?: string | null;
   siteParam?: string | null;
   projectParam?: string | null;
@@ -46,6 +48,8 @@ export function hasListActiveFilters(args: {
   if (args.isActiveParam === "false") return true;
   if (args.groupParam != null && args.groupParam.trim() !== "") return true;
   if (args.clientParam != null && args.clientParam.trim() !== "") return true;
+  if (args.vendorParam != null && args.vendorParam.trim() !== "") return true;
+  if (args.contactTypeParam === "vendor") return true;
   if (args.customerParam != null && args.customerParam.trim() !== "") return true;
   if (args.siteParam != null && args.siteParam.trim() !== "") return true;
   if (args.projectParam != null && args.projectParam.trim() !== "") return true;

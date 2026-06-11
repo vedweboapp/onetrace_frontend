@@ -13,6 +13,7 @@ export const routes = {
     sites: "/dashboard/sites",
     quotations: "/dashboard/quotations",
     invoices: "/dashboard/invoices",
+    purchaseOrders: "/dashboard/purchase-orders",
     jobs: "/dashboard/jobs",
     jobFormFill: (jobId: number | string, formId: number | string, job_form_id: number | string) =>
       `/dashboard/jobs/${jobId}/form?formId=${formId}&job_form_id=${job_form_id}`,

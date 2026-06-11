@@ -153,6 +153,7 @@
       "sites": "Sitios",
       "quotations": "Cotizaciones",
       "invoices": "Facturas",
+      "purchaseOrders": "Órdenes de compra",
       "jobs": "Trabajos",
       "qrCodes": "Códigos QR",
       "projects": "Proyectos",
@@ -1009,7 +1010,15 @@
         "sectionOverview": "Resumen",
         "sectionMap": "Mapa de ubicaciones",
         "addressUnavailable": "No hay direcciones registradas.",
-        "notProvided": "No indicado"
+        "notProvided": "No indicado",
+        "tabsAria": "Secciones del proveedor",
+        "tabs": {
+          "details": "Detalles",
+          "contacts": "Contactos"
+        },
+        "contactsEmptyTitle": "No hay contactos para este proveedor",
+        "contactsEmptyDescription": "Los contactos vinculados a este proveedor aparecerán aquí.",
+        "addContact": "Añadir contacto"
       },
       "modal": {
         "cancel": "Cancelar",
@@ -1100,7 +1109,7 @@
       "metaTitle": "Contactos",
       "detailMetaTitle": "Detalle del contacto",
       "title": "Contactos",
-      "subtitle": "Personas asociadas a clientes. Usa búsqueda y filtros para encontrarlas rápido.",
+      "subtitle": "Personas asociadas a clientes y proveedores. Usa pestañas, búsqueda y filtros para encontrarlas rápido.",
       "add": "Añadir contacto",
       "edit": "Editar contacto",
       "activate": "Activar",
@@ -1115,15 +1124,24 @@
       "createdToast": "Contacto creado correctamente",
       "updatedToast": "Contacto actualizado correctamente",
       "noClientsHint": "Añade al menos un cliente antes de poder crear un contacto.",
+      "noVendorsHint": "Añade al menos un proveedor antes de poder crear un contacto de proveedor.",
+      "tabsAria": "Tipo de contacto",
+      "tabs": {
+        "client": "Cliente",
+        "vendor": "Proveedor"
+      },
       "filterState": "Estado activo",
       "filterClient": "Cliente",
       "filterAllClients": "Todos los clientes",
+      "filterVendor": "Proveedor",
+      "filterAllVendors": "Todos los proveedores",
       "pageLabel": "Mostrando {start}-{end} de {total} contactos",
       "prev": "Anterior",
       "next": "Siguiente",
       "table": {
         "name": "Contacto",
         "client": "Cliente",
+        "vendor": "Proveedor",
         "email": "Correo",
         "phone": "Teléfono",
         "status": "Estado",
@@ -1147,7 +1165,9 @@
       "detailLoadError": "No se pudieron cargar los detalles del contacto. Inténtalo de nuevo.",
       "fields": {
         "name": "Nombre",
+        "contactType": "Tipo de contacto",
         "client": "Cliente",
+        "vendor": "Proveedor",
         "email": "Correo",
         "phone": "Teléfono",
         "addressLine1": "Línea de dirección 1",
@@ -1174,7 +1194,9 @@
         "editSubtitle": "Actualiza los datos del contacto y guarda los cambios."
       },
       "placeholders": {
+        "contactType": "Seleccionar tipo de contacto",
         "client": "Seleccionar cliente",
+        "vendor": "Seleccionar proveedor",
         "country": "Seleccionar país",
         "state": "Seleccionar estado / provincia",
         "city": "Seleccionar o escribir ciudad"
@@ -1183,7 +1205,9 @@
         "name": "Introduce un nombre de contacto.",
         "email": "Introduce un correo válido.",
         "phoneInvalid": "Introduce un número válido con prefijo internacional.",
+        "contactType": "Selecciona un tipo de contacto.",
         "client": "Selecciona un cliente.",
+        "vendor": "Selecciona un proveedor.",
         "addressLine1": "Introduce la línea 1 de la dirección.",
         "country": "Selecciona un país.",
         "state": "Selecciona un estado o provincia.",
@@ -1754,6 +1778,142 @@
         "country": "Selecciona un país.",
         "state": "Selecciona un estado o región.",
         "city": "Introduce o selecciona una ciudad."
+      }
+    },
+    "purchaseOrders": {
+      "metaTitle": "Órdenes de compra",
+      "detailMetaTitle": "Detalle de orden de compra",
+      "title": "Órdenes de compra",
+      "subtitle": "Crea y gestiona órdenes de compra para proveedores y proyectos.",
+      "createPurchaseOrder": "Crear orden de compra",
+      "edit": "Editar",
+      "searchPlaceholder": "Buscar órdenes de compra…",
+      "searchAria": "Buscar órdenes de compra",
+      "emptyTitle": "Aún no hay órdenes de compra",
+      "emptyDescription": "Crea tu primera orden de compra para gestionar compras a proveedores.",
+      "loadError": "No se pudieron cargar las órdenes de compra. Inténtalo de nuevo.",
+      "detailLoadError": "No se pudieron cargar los detalles. Inténtalo de nuevo.",
+      "createdToast": "Orden de compra creada correctamente",
+      "updatedToast": "Orden de compra actualizada correctamente",
+      "createError": "No se pudo crear la orden de compra. Inténtalo de nuevo.",
+      "updateError": "No se pudo actualizar la orden de compra. Inténtalo de nuevo.",
+      "filterStatus": "Estado",
+      "filterAllStatuses": "Todos los estados",
+      "filterVendor": "Proveedor",
+      "filterAllVendors": "Todos los proveedores",
+      "pageLabel": "Mostrando {start} a {end} de {total} resultados",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "status": {
+        "draft": "Borrador",
+        "sent": "Enviada",
+        "approved": "Aprobada",
+        "received": "Recibida",
+        "cancelled": "Cancelada"
+      },
+      "table": {
+        "purchaseOrderNumber": "OC #",
+        "vendorName": "Proveedor",
+        "projectName": "Proyecto",
+        "amount": "Importe",
+        "issueDate": "Fecha de emisión",
+        "status": "Estado"
+      },
+      "card": {
+        "issueDate": "Fecha de emisión",
+        "amount": "Importe"
+      },
+      "tabs": {
+        "overview": "Resumen",
+        "lineItems": "Líneas"
+      },
+      "detail": {
+        "loadingTitle": "Cargando…",
+        "retry": "Reintentar",
+        "backAria": "Volver a órdenes de compra",
+        "sectionOrderDetails": "Detalles de la orden",
+        "sectionLineItems": "Líneas",
+        "sectionSystemMetadata": "Metadatos del sistema",
+        "notModifiedYet": "Sin modificar aún"
+      },
+      "fields": {
+        "vendorName": "Proveedor",
+        "contactPerson": "Contacto",
+        "purchaseOrderNumber": "Número OC",
+        "projectName": "Proyecto",
+        "issueDate": "Fecha de emisión",
+        "dueDate": "Fecha de vencimiento",
+        "paymentTerms": "Condiciones de pago",
+        "status": "Estado",
+        "billTo": "Facturar a",
+        "shipTo": "Enviar a",
+        "addressLine1": "Línea de dirección 1",
+        "addressLine2": "Línea de dirección 2",
+        "city": "Ciudad",
+        "state": "Estado",
+        "zipCode": "Código postal",
+        "country": "País",
+        "vendorNotes": "Notas para el proveedor",
+        "internalNotes": "Notas internas (privadas)",
+        "createdAt": "Creado",
+        "updatedAt": "Actualizado",
+        "createdBy": "Creado por",
+        "modifiedBy": "Modificado por"
+      },
+      "placeholders": {
+        "vendor": "Seleccionar proveedor",
+        "contact": "Seleccionar contacto",
+        "project": "Seleccionar proyecto",
+        "group": "Seleccionar grupo",
+        "country": "Seleccionar país",
+        "state": "Seleccionar estado / provincia",
+        "city": "Seleccionar o escribir ciudad",
+        "paymentTerms": "Seleccionar condiciones de pago"
+      },
+      "paymentTerms": {
+        "net7": "Neto 7 días",
+        "net15": "Neto 15 días",
+        "net30": "Neto 30 días",
+        "net45": "Neto 45 días",
+        "dueOnReceipt": "Al recibir"
+      },
+      "sections": {
+        "basic": "Información básica",
+        "addresses": "Facturar y enviar a",
+        "metadata": "Metadatos",
+        "lineItems": "Líneas",
+        "notes": "Notas"
+      },
+      "lineItems": {
+        "productName": "Producto",
+        "group": "Grupo",
+        "qty": "Cant.",
+        "rate": "Tarifa",
+        "listPrice": "Precio de lista",
+        "addItem": "Añadir línea",
+        "remove": "Eliminar línea",
+        "selectProduct": "Seleccionar producto…",
+        "empty": "No hay líneas en esta orden."
+      },
+      "totals": {
+        "totalAmount": "Importe total"
+      },
+      "page": {
+        "createTitle": "Crear orden de compra",
+        "editTitle": "Editar orden de compra"
+      },
+      "modal": {
+        "cancel": "Cancelar",
+        "save": "Guardar cambios"
+      },
+      "validation": {
+        "vendor": "Selecciona un proveedor.",
+        "lineDescription": "Selecciona un producto para cada línea.",
+        "lineQuantity": "Introduce una cantidad válida.",
+        "addressLine1": "Introduce la línea 1 de la dirección.",
+        "country": "Selecciona un país.",
+        "state": "Selecciona un estado o provincia.",
+        "city": "Selecciona o escribe una ciudad."
       }
     },
     "materialRequests": {
