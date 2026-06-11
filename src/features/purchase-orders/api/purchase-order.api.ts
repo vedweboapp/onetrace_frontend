@@ -41,7 +41,10 @@ export async function fetchPurchaseOrdersPage(
   if (filters?.issue_date?.trim()) params.issue_date = filters.issue_date.trim();
   if (filters?.due_date?.trim()) params.due_date = filters.due_date.trim();
 
-  const { data } = await api.get<PurchaseOrderListResponse>(PURCHASE_ORDER_PATHS.list, { params });
+  const { data } = await api.get<PurchaseOrderListResponse>(
+    resolvePurchaseOrderRequestUrl(PURCHASE_ORDER_PATHS.list),
+    { params },
+  );
   assertEnvelopeSuccess(data);
   return { items: data.data, pagination: data.pagination };
 }
