@@ -357,6 +357,10 @@ export function LoginForm() {
 
         </div>
       </div>
+      <div className="flex items-center justify-center p-4 gap-3">
+        <span className="mt-1.5 text-[14px] text-slate-500">{t("dontHaveAccount")}</span>
+        <Link href={routes.auth.signUp} className="flex items-center "><span className="mt-1.5 text-[14px] hover:underline text-slate-900 font-bold">{t("signUp")}</span></Link>
+      </div>
     </form>
   );
 }

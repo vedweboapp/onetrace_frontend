@@ -74,6 +74,7 @@ export function DashboardHeader() {
   const sitesHref = routes.dashboard.sites;
   const quotationsHref = routes.dashboard.quotations;
   const invoicesHref = routes.dashboard.invoices;
+  const purchaseOrdersHref = routes.dashboard.purchaseOrders;
   const jobsHref = routes.dashboard.jobs;
   const qrCodesHref = routes.dashboard.qrCodes;
   const homeHref = routes.dashboard.root;
@@ -108,6 +109,8 @@ export function DashboardHeader() {
     pathname === quotationsHref || pathname.startsWith(`${quotationsHref}/`);
   const invoicesActive =
     pathname === invoicesHref || pathname.startsWith(`${invoicesHref}/`);
+  const purchaseOrdersActive =
+    pathname === purchaseOrdersHref || pathname.startsWith(`${purchaseOrdersHref}/`);
   const jobsActive = pathname === jobsHref || pathname.startsWith(`${jobsHref}/`);
   const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
   const projectsActive =
@@ -155,7 +158,9 @@ export function DashboardHeader() {
         ? tNav("quotations")
         : invoicesActive
           ? tNav("invoices")
-          : jobsActive
+          : purchaseOrdersActive
+            ? tNav("purchaseOrders")
+            : jobsActive
             ? tNav("jobs")
             : qrCodesActive
               ? tNav("qrCodes")

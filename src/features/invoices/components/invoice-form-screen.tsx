@@ -703,16 +703,12 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                       </th>
                       <th className="px-3 py-2">{t("lineItems.qty")}</th>
                       <th className="px-3 py-2">{t("lineItems.rate")}</th>
-                      <th className="px-3 py-2">{t("lineItems.amount")}</th>
                       <th className="px-3 py-2 w-12" />
                     </tr>
                   </thead>
                   <tbody>
                     {fields.map((field, index) => {
                       const row = lineItems[index];
-                      const qty = parseMoneyValue(row?.quantity);
-                      const rate = parseMoneyValue(row?.rate);
-                      const amount = qty * rate;
                       const filteredItems = itemOptionsForGroup(row?.group ?? "");
                       return (
                         <tr key={field.id} className="border-b border-slate-100 dark:border-slate-800">
@@ -830,11 +826,6 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                               {...register(`line_items.${index}.rate`)}
                             />
                           </td>
-                          <td className="px-3 py-2 align-middle">
-                            <div className="flex h-8 items-center tabular-nums font-medium">
-                              {formatMoneyDisplay(amount, locale)}
-                            </div>
-                          </td>
                           <td className="px-3 py-2 align-top">
                             <AppButton
                               type="button"
@@ -853,13 +844,14 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                   </tbody>
                 </table>
               </div>
-            </section>
-
-            <section className="space-y-4">
-              <div className="ml-auto max-w-xs rounded-xl border border-slate-200 p-3 dark:border-slate-700">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">{t("totals.totalAmount")}</span>
-                  <span className="text-xl font-bold tabular-nums">{formatMoneyDisplay(totalBalance, locale)}</span>
+              <div className="ml-auto max-w-sm rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-900/40">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {t("totals.totalAmount")}
+                  </span>
+                  <span className="text-xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
+                    {formatMoneyDisplay(totalBalance, locale)}
+                  </span>
                 </div>
               </div>
             </section>

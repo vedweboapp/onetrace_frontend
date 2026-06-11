@@ -60,7 +60,9 @@ export function ContactFormModal({
         name: t("validation.name"),
         email: t("validation.email"),
         phoneInvalid: t("validation.phoneInvalid"),
+        contactType: t("validation.contactType"),
         client: t("validation.client"),
+        vendor: t("validation.vendor"),
         addressLine1: t("validation.addressLine1"),
         country: t("validation.country"),
         state: t("validation.state"),
@@ -92,7 +94,12 @@ export function ContactFormModal({
 
   async function submit(values: ContactFormValues) {
     const payload = mapContactFormToPayload(values);
-    if (!Number.isFinite(payload.client) || payload.client <= 0) {
+    if (values.contact_type === "vendor") {
+      if (!Number.isFinite(payload.vendor) || (payload.vendor ?? 0) <= 0) {
+        toastError(t("validation.vendor"));
+        return;
+      }
+    } else if (!Number.isFinite(payload.client) || (payload.client ?? 0) <= 0) {
       toastError(t("validation.client"));
       return;
     }

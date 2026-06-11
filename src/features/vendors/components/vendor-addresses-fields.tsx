@@ -201,7 +201,7 @@ export function VendorAddressesFields({ control, register, setValue, errors, dis
                   city: rowErrors?.city?.message,
                 }}
                 trailingSlot={
-                  <FieldGroup label={t("fields.pincode")} htmlFor={`${idPrefix}-pincode`}>
+                  <FieldGroup label={t("fields.pincode")} htmlFor={`${idPrefix}-pincode`} required>
                     <Controller
                       control={control}
                       name={`addresses.${index}.pincode`}
