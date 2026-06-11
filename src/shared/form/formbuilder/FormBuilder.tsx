@@ -1523,7 +1523,7 @@ export default function FormBuilderLayout({
               </div>
               <div className="flex w-full justify-center">
                 <div
-                  className={`bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm ${previewLayout === "phone" ? "rounded-[28px] p-4" : "w-full rounded-xl p-8"
+                  className={`bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm ${previewLayout === "phone" ? "rounded-sm p-4" : "w-full rounded-sm p-8"
                     }`}
                   style={
                     previewLayout === "phone"

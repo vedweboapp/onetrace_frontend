@@ -8,6 +8,7 @@ import {
     RegisterOptions,
 } from "react-hook-form";
 import { X, File, ChevronDown } from "lucide-react";
+import { surfaceInputClassName } from "@/shared/ui";
 
 interface FileUploaderProps {
     control: Control<FieldValues>;
@@ -275,12 +276,12 @@ const FileUploader: React.FC<FileUploaderProps> = (props) => {
                                     flex items-center justify-between w-full h-[42px] px-3 
                                     bg-white dark:bg-slate-900 border rounded-[8px] 
                                     text-left cursor-pointer transition-all duration-200 outline-none
-                                    hover:border-blue-500 hover:shadow-sm
-                                    focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500
+                                     hover:shadow-sm
+                                     hover:border-[color:var(--dash-accent,#111111)] 
                                     ${(error || fieldError)
-                                        ? "border-red-500 focus:ring-red-500/20 focus:border-red-500"
-                                        : "border-gray-300 dark:border-slate-700"
-                                    }
+                                            ? "border-red-500 focus:ring-red-500/20 focus:border-red-500"
+                                            : "border-gray-300 dark:border-slate-700"
+                                        }
                                 `}
                                 >
                                     <div className="flex items-center gap-2 flex-1 min-w-0">

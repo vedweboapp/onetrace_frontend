@@ -286,7 +286,7 @@ const FormAdvancedRuleModal = ({
       return (
         <input
           type="text"
-          className="bg-gray-100 dark:bg-slate-800 cursor-not-allowed text-transparent w-full p-2.5 border border-gray-300 dark:border-slate-700 rounded-md outline-none"
+          className="bg-gray-100 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] dark:bg-slate-800 cursor-not-allowed text-transparent w-full p-2.5 border border-gray-300 dark:border-slate-700 rounded-md outline-none"
           disabled
           value=""
         />
@@ -303,7 +303,7 @@ const FormAdvancedRuleModal = ({
       return (
         <input
           type="date"
-          className={`w-full p-2.5 border ${errors[`block-${blockIdx}-ruleValue`] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`}
+          className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[`block-${blockIdx}-ruleValue`] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`}
           value={blockValue}
           onChange={(e) => handleBlockChange(blockIdx, { value: e.target.value })}
         />
@@ -314,7 +314,7 @@ const FormAdvancedRuleModal = ({
       return (
         <input
           type="datetime-local"
-          className={`w-full p-2.5 border ${errors[`block-${blockIdx}-ruleValue`] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`}
+          className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[`block-${blockIdx}-ruleValue`] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`}
           value={blockValue}
           onChange={(e) => handleBlockChange(blockIdx, { value: e.target.value })}
         />
@@ -332,7 +332,7 @@ const FormAdvancedRuleModal = ({
           onChange={(val) => handleBlockChange(blockIdx, { value: val || "" })}
           countrySelectComponent={SurfacePhoneCountrySelect}
           numberInputProps={{
-            className: `w-full p-2.5 border ${errors[`block-${blockIdx}-ruleValue`] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`,
+            className: `w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[`block-${blockIdx}-ruleValue`] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`,
           }}
         />
       );
@@ -341,7 +341,7 @@ const FormAdvancedRuleModal = ({
     if (fieldType === "checkbox") {
       return (
         <select
-          className={`w-full p-2.5 border ${errors[`block-${blockIdx}-ruleValue`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+          className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[`block-${blockIdx}-ruleValue`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
           value={blockValue}
           onChange={(e) => handleBlockChange(blockIdx, { value: e.target.value })}
         >
@@ -355,7 +355,7 @@ const FormAdvancedRuleModal = ({
     if (fieldType === "currency") {
       return (
         <select
-          className={`w-full p-2.5 border ${errors[`block-${blockIdx}-ruleValue`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+          className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[`block-${blockIdx}-ruleValue`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
           value={blockValue}
           onChange={(e) => handleBlockChange(blockIdx, { value: e.target.value })}
         >
@@ -391,7 +391,7 @@ const FormAdvancedRuleModal = ({
       } else {
         return (
           <select
-            className={`w-full p-2.5 border ${errors[`block-${blockIdx}-ruleValue`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+            className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[`block-${blockIdx}-ruleValue`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
             value={blockValue}
             onChange={(e) => handleBlockChange(blockIdx, { value: e.target.value })}
           >
@@ -410,7 +410,7 @@ const FormAdvancedRuleModal = ({
       <input
         type="text"
         placeholder={block.condition === "is_any_one_of" || block.condition === "is_none_of" ? "comma, separated, values" : "Enter value"}
-        className={`w-full p-2.5 border ${errors[`block-${blockIdx}-ruleValue`] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`}
+        className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[`block-${blockIdx}-ruleValue`] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`}
         value={blockValue}
         onChange={(e) => handleBlockChange(blockIdx, { value: e.target.value })}
       />
@@ -450,13 +450,13 @@ const FormAdvancedRuleModal = ({
         <div className="min-h-0 flex-1 overflow-y-auto p-6 space-y-6">
           {/* Rule Name */}
           <div className="flex flex-col gap-2 border-b border-gray-200 dark:border-slate-700 pb-4 border-dotted">
-            <label htmlFor="rule-name" className="text-sm font-medium text-slate-900 dark:text-slate-100">
+            <label htmlFor="rule-name" className="text-sm font-medium  dark:text-slate-100">
               Rule Name
             </label>
             <input
               type="text"
               id="rule-name"
-              className={`w-full p-2.5 border ${errors.name ? "border-red-500" : "border-gray-200"} rounded-md dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 outline-none`}
+              className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors.name ? "border-red-500" : "border-gray-200"} rounded-md dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 outline-none`}
               placeholder="Enter Advanced Rule name"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -482,7 +482,7 @@ const FormAdvancedRuleModal = ({
                   className="p-4 border border-gray-200 dark:border-slate-700 rounded-lg bg-slate-50/50 dark:bg-slate-900/50 relative group"
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <span className="font-semibold text-sm text-blue-600 dark:text-blue-400">
+                    <span className="font-semibold text-sm text-[color:var(--dash-accent)]">
                       Rule Block #{idx + 1}
                     </span>
                     {blocks.length > 1 && (
@@ -512,7 +512,7 @@ const FormAdvancedRuleModal = ({
                       {/* IF Section */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center w-full">
                         <select
-                          className={`w-full p-2.5 border ${errors[`block-${idx}-triggerField`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+                          className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[`block-${idx}-triggerField`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
                           value={block.field_api_name}
                           onChange={(e) => handleBlockChange(idx, { field_api_name: e.target.value })}
                         >
@@ -525,7 +525,7 @@ const FormAdvancedRuleModal = ({
                         </select>
 
                         <select
-                          className={`w-full p-2.5 border ${errors[`block-${idx}-condition`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+                          className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[`block-${idx}-condition`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
                           value={block.condition}
                           onChange={(e) => handleBlockChange(idx, { condition: e.target.value as RuleCondition })}
                         >
@@ -557,7 +557,7 @@ const FormAdvancedRuleModal = ({
                           return (
                             <div key={outIdx} className="flex gap-3 items-center">
                               <select
-                                className="w-full p-2.5 border border-gray-300 rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100"
+                                className="w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border border-gray-300 rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100"
                                 value={output.action}
                                 onChange={(e) => handleOutputChange(idx, outIdx, "action", e.target.value)}
                               >
@@ -569,7 +569,7 @@ const FormAdvancedRuleModal = ({
                               </select>
 
                               <select
-                                className={`w-full p-2.5 border ${!output.field_api_name && errors[`block-${idx}-outputs`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+                                className={`w-full p-2.5 border outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] ${!output.field_api_name && errors[`block-${idx}-outputs`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
                                 value={output.field_api_name}
                                 onChange={(e) => handleOutputChange(idx, outIdx, "field_api_name", e.target.value)}
                               >
@@ -597,7 +597,7 @@ const FormAdvancedRuleModal = ({
                         <div className="flex justify-between items-center mt-1">
                           <button
                             type="button"
-                            className="text-blue-600 dark:text-blue-400 text-xs font-medium flex items-center gap-1 hover:underline"
+                            className="text-[color:var(--dash-accent)] dark:text-blue-400 text-xs font-medium flex items-center gap-1 hover:underline"
                             onClick={() => handleAddOutput(idx)}
                           >
                             <Plus className="size-4" /> Add action
@@ -616,7 +616,7 @@ const FormAdvancedRuleModal = ({
 
           <button
             type="button"
-            className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-lg text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-500 dark:hover:border-blue-500 transition-colors flex items-center justify-center gap-2 font-medium"
+            className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-lg text-gray-500 hover:text-[color:var(--dash-accent)]  hover:border-[color:var(--dash-accent)]  transition-colors flex items-center justify-center gap-2 font-medium"
             onClick={handleAddBlock}
           >
             <Plus className="size-5" /> Add Logic Block (IF/THEN)

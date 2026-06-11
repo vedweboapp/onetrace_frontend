@@ -69,6 +69,7 @@ export function DashboardHeader() {
     "U";
 
   const clientsHref = routes.dashboard.clients;
+  const vendorsHref = routes.dashboard.vendors;
   const contactsHref = routes.dashboard.contacts;
   const sitesHref = routes.dashboard.sites;
   const quotationsHref = routes.dashboard.quotations;
@@ -92,11 +93,14 @@ export function DashboardHeader() {
   const tagHref = routes.dashboard.settingsTags;
   const projectTypeHref = routes.dashboard.settingsProjectTypes;
   const installationTypeHref = routes.dashboard.settingsInstallationTypes;
+  const vendorTypeHref = routes.dashboard.settingsVendorTypes;
   const projectFormsHref = routes.dashboard.settingsProjectForms;
   const usersHref = routes.dashboard.settingsUsers;
   const homeActive = pathname === homeHref;
   const clientsActive =
     pathname === clientsHref || pathname.startsWith(`${clientsHref}/`);
+  const vendorsActive =
+    pathname === vendorsHref || pathname.startsWith(`${vendorsHref}/`);
   const contactsActive =
     pathname === contactsHref || pathname.startsWith(`${contactsHref}/`);
   const sitesActive = pathname === sitesHref || pathname.startsWith(`${sitesHref}/`);
@@ -134,6 +138,8 @@ export function DashboardHeader() {
     pathname === projectTypeHref || pathname.startsWith(`${projectTypeHref}/`);
   const installationTypeActive =
     pathname === installationTypeHref || pathname.startsWith(`${installationTypeHref}/`);
+  const vendorTypeActive =
+    pathname === vendorTypeHref || pathname.startsWith(`${vendorTypeHref}/`);
   const projectFormsActive =
     pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
   const customizationHubActive =
@@ -157,6 +163,8 @@ export function DashboardHeader() {
                 ? tNav("sites")
                 : contactsActive
                   ? tNav("contacts")
+                  : vendorsActive
+                    ? tNav("vendors")
                   : clientsActive
                     ? tNav("clients")
                     : groupsActive
@@ -187,6 +195,8 @@ export function DashboardHeader() {
                                       ? tSettingsNav("tags")
                                       : installationTypeActive
                                         ? tSettingsNav("installationTypes")
+                                        : vendorTypeActive
+                                          ? tSettingsNav("vendorTypes")
                                         : projectTypeActive
                                           ? tSettingsNav("projectTypes")
                                           : usersActive

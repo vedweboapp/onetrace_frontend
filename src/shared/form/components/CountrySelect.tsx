@@ -3,6 +3,7 @@
 import React from "react";
 import { Country } from "country-state-city";
 import { FieldError, UseFormRegisterReturn } from "react-hook-form";
+import { surfaceSelectClassName } from "@/shared/ui";
 
 interface CountrySelectProps {
   label?: React.ReactNode;
@@ -11,7 +12,9 @@ interface CountrySelectProps {
   readOnly?: boolean;
   className?: string;
   placeholder?: string;
-  [key: string]: any;
+  countryCode?: string;   
+  stateCode?: string;     
+  defaultValue?: string;  
 }
 
 const CountrySelect = ({
@@ -21,6 +24,9 @@ const CountrySelect = ({
   readOnly,
   className = "",
   placeholder = "Select Country",
+  countryCode,
+  stateCode,
+  defaultValue,
   ...rest
 }: CountrySelectProps) => {
   const countries = Country.getAllCountries();
@@ -35,13 +41,12 @@ const CountrySelect = ({
 
       <select
         {...register}
-        {...rest}
         disabled={readOnly}
         className={`
           rounded-[8px] px-3 py-2 outline-none w-full text-slate-900 dark:text-white
           ${readOnly
             ? "border-none bg-gray-100 dark:bg-slate-800/50 cursor-not-allowed select-none"
-            : `bg-white dark:bg-slate-900 border ${errors ? "border-red-500" : "border-gray-300 dark:border-slate-700"} focus:ring-2 focus:ring-blue-500`
+            : `bg-white dark:bg-slate-900 border ${errors ? "border-red-500" : "border-gray-300 dark:border-slate-700"} ${surfaceSelectClassName}`
           }
         `}
       >

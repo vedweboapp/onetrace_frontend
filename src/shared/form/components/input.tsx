@@ -10,11 +10,13 @@ import {
 import { surfaceInputClassName, surfaceTextareaClassName } from "@/shared/ui";
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & {
-    label?: string;
-    register?: UseFormRegisterReturn;
-    errors?: FieldError;
-    readOnly?: boolean;
-    className?: string;
+   label?: string;
+  register?: UseFormRegisterReturn;
+  errors?: FieldError;
+  readOnly?: boolean;
+  className?: string;
+  countryCode?: string;
+  stateCode?: string;
 };
 
 const extractLabelText = (label?: any) => {
@@ -25,12 +27,14 @@ const extractLabelText = (label?: any) => {
 
 const Input = ({
     label,
-    register,
-    errors,
-    readOnly,
-    className = "",
-    onClick,
-    ...rest
+  register,
+  errors,
+  readOnly,
+  className = "",
+  onClick,
+  countryCode,
+  stateCode,
+  ...rest
 }: InputProps) => {
     const isDateField = isNativeDateInputType(rest.type);
 

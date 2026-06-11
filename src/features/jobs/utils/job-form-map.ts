@@ -46,7 +46,9 @@ function nestedId(value: number | { id: number } | null | undefined): number | u
 }
 
 function jobFormProjectFormId(entry: JobFormRef | number): string {
-  if (typeof entry === "number" && entry > 0) return String(entry);
+  if (typeof entry === "number") {
+    return entry > 0 ? String(entry) : "";
+  }
   const projectFormId = entry.project_form_id ?? entry.id;
   return typeof projectFormId === "number" && projectFormId > 0 ? String(projectFormId) : "";
 }

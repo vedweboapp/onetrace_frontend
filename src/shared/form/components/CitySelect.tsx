@@ -13,7 +13,7 @@ interface CitySelectProps {
   countryCode?: string;
   stateCode?: string;
   placeholder?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 const CitySelect = ({
@@ -25,6 +25,10 @@ const CitySelect = ({
   countryCode,
   stateCode,
   placeholder = "Select City",
+  // Prevent camelCase props like `countryCode`/`stateCode` leaking to the DOM
+  // (React warns when unknown props are spread onto native elements).
+  countryCode: _countryCode,
+  stateCode: _stateCode,
   ...rest
 }: CitySelectProps) => {
   const cities =

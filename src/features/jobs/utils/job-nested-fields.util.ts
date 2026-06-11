@@ -1,4 +1,11 @@
-import type { Job, JobClientRef, JobFormRef, JobProjectRef, JobSiteRef } from "@/features/jobs/types/job.types";
+import type {
+  Job,
+  JobClientRef,
+  JobFormRef,
+  JobFormRefApiRow,
+  JobProjectRef,
+  JobSiteRef,
+} from "@/features/jobs/types/job.types";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import type { UserProfile } from "@/features/users/types/user.types";
 import { jobFormsToFormIds } from "@/features/jobs/utils/job-form-map";
@@ -64,48 +71,64 @@ export function jobSiteLabel(site: Job["site"]): string {
   return id != null ? `#${id}` : "—";
 }
 
+function normalizeJobFormRef(entry: JobFormRefApiRow): JobFormRef | null {
+  const jobFormId =
+    typeof entry.job_form_id === "number" && entry.job_form_id > 0
+      ? entry.job_form_id
+      : typeof entry.id === "number" && entry.id > 0
+        ? entry.id
+        : null;
+  if (jobFormId == null) return null;
+
+  const projectFormId =
+    typeof entry.project_form_id === "number" && entry.project_form_id > 0
+      ? entry.project_form_id
+      : jobFormId;
+
+  const submissionId =
+    typeof entry.submission_id === "number" && entry.submission_id > 0
+      ? entry.submission_id
+      : typeof entry.submitted_form_id === "number" && entry.submitted_form_id > 0
+        ? entry.submitted_form_id
+        : null;
+
+  const isSubmitted =
+    typeof entry.is_submitted === "boolean" ? entry.is_submitted : submissionId != null;
+
+  return {
+    id: jobFormId,
+    name: entry.name,
+    project_form_id: projectFormId,
+    is_submitted: isSubmitted,
+    submitted_form_id: submissionId,
+  };
+}
+
 export function jobFormEntries(job: Pick<Job, "forms">): JobFormRef[] {
   const forms = job.forms;
   if (forms == null) return [];
 
   if (typeof forms === "number") {
-    return [{ id: forms, project_form_id: forms }];
+    return [{ id: forms, project_form_id: forms, is_submitted: false }];
   }
 
   if (Array.isArray(forms)) {
     return forms
       .map((entry): JobFormRef | null => {
         if (typeof entry === "number") {
-          return { id: entry, project_form_id: entry };
+          return { id: entry, project_form_id: entry, is_submitted: false };
         }
         if (typeof entry === "object" && entry !== null) {
-          const submittedFormId =
-            typeof entry.submitted_form_id === "number" && entry.submitted_form_id > 0
-              ? entry.submitted_form_id
-              : null;
-          return {
-            id: entry.id,
-            name: entry.name,
-            project_form_id: entry.project_form_id ?? entry.id,
-            submitted_form_id: submittedFormId,
-          };
+          return normalizeJobFormRef(entry as JobFormRefApiRow);
         }
-        return null; //explicit null instead of undefined
+        return null;
       })
-      .filter((e): e is JobFormRef => e !== null); 
+      .filter((e): e is JobFormRef => e !== null);
   }
 
   if (typeof forms === "object") {
-    const submittedFormId =
-      typeof forms.submitted_form_id === "number" && forms.submitted_form_id > 0
-        ? forms.submitted_form_id
-        : null;
-    return [{
-      id: forms.id,
-      name: forms.name,
-      project_form_id: forms.project_form_id ?? forms.id,
-      submitted_form_id: submittedFormId,
-    }];
+    const normalized = normalizeJobFormRef(forms as JobFormRefApiRow);
+    return normalized ? [normalized] : [];
   }
 
   return [];

@@ -148,6 +148,7 @@
       "sidebar": {
       "home": "Home",
       "clients": "Clients",
+      "vendors": "Vendors",
       "contacts": "Contacts",
       "sites": "Sites",
       "quotations": "Quotations",
@@ -175,6 +176,7 @@
       "tags": "Tags",
       "projectTypes": "Project types",
       "installationTypes": "Installation types",
+      "vendorTypes": "Vendor types",
       "users": "Users",
       "personalProfile": "Personal Profile",
       "companySettings": "Company Settings",
@@ -185,7 +187,7 @@
       "customization": {
         "label": "Customization",
         "hubTitle": "Customization",
-        "hubDescription": "Choose what to configure — project types, installation types, pin statuses, job statuses, material statuses, and tags.",
+        "hubDescription": "Choose what to configure — project types, installation types, vendor types, pin statuses, job statuses, material statuses, and tags.",
         "items": {
           "projectTypes": {
             "title": "Project types",
@@ -194,6 +196,10 @@
           "installationTypes": {
             "title": "Installation types",
             "description": "Classify installations with colored labels."
+          },
+          "vendorTypes": {
+            "title": "Vendor types",
+            "description": "Categories for vendors with colored labels."
           },
           "pinStatus": {
             "title": "Pin statuses",
@@ -667,6 +673,62 @@
       "validationName": "Enter an installation type name.",
       "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
     },
+    "vendorTypes": {
+      "metaTitle": "Vendor types",
+      "title": "Vendor types",
+      "subtitle": "Define vendor categories with colored labels for use across vendors.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "filterState": "Active state",
+      "table": {
+        "type": "Vendor type",
+        "status": "Record status",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "emptyTitle": "No vendor types yet",
+      "emptyDescription": "Create your first vendor type to classify vendors.",
+      "loadError": "Could not load vendor types. Try again.",
+      "modal": {
+        "createTitle": "New vendor type",
+        "editTitle": "Edit vendor type",
+        "typeName": "Name",
+        "bgColour": "Background color",
+        "textColour": "Text color",
+        "activeLabel": "Active",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this vendor type?",
+      "deleteConfirmBody": "Vendors using this type may need to be updated. This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} vendor types",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Vendor type updated",
+      "created": "Vendor type created",
+      "deleted": "Vendor type deleted",
+      "activatedToast": "Vendor type activated",
+      "deactivatedToast": "Vendor type deactivated",
+      "toggleActiveError": "Could not update vendor type status. Try again.",
+      "hexPlaceholder": "#000000",
+      "validationName": "Enter a vendor type name.",
+      "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
+    },
     "users": {
       "metaTitle": "Users",
       "detailMetaTitle": "User details",
@@ -870,6 +932,107 @@
         "state": "Select a state or region.",
         "city": "Enter or select a city.",
         "pincode": "Enter a postal or ZIP code."
+      }
+    },
+    "vendors": {
+      "metaTitle": "Vendors",
+      "detailMetaTitle": "Vendor details",
+      "title": "Vendors",
+      "subtitle": "Manage suppliers and their locations.",
+      "loadError": "Could not load vendors. Try again.",
+      "detailLoadError": "Could not load vendor details. Try again.",
+      "createdToast": "Vendor created successfully",
+      "updatedToast": "Vendor updated successfully",
+      "deletedToast": "Vendor deleted",
+      "filterState": "Active state",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "activatedToast": "Vendor activated",
+      "deactivatedToast": "Vendor deactivated",
+      "toggleActiveError": "Could not update vendor status. Try again.",
+      "pageLabel": "Showing {start}-{end} of {total} vendors",
+      "prev": "Previous",
+      "next": "Next",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteConfirmTitle": "Delete this vendor?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete vendor",
+      "emptyTitle": "No vendors yet",
+      "emptyDescription": "Create your first vendor to manage suppliers and addresses.",
+      "table": {
+        "name": "Vendor",
+        "type": "Type",
+        "email": "Email",
+        "phone": "Phone",
+        "location": "Primary location",
+        "status": "Status",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "fields": {
+        "name": "Name",
+        "email": "Email",
+        "phone": "Phone",
+        "type": "Vendor type",
+        "status": "Status",
+        "addresses": "Addresses",
+        "addressLine1": "Address line 1",
+        "addressLine2": "Address line 2",
+        "country": "Country",
+        "stateProvince": "State / province",
+        "city": "City",
+        "pincode": "Postal / ZIP code",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "createdBy": "Created by"
+      },
+      "placeholders": {
+        "country": "Select country",
+        "state": "Select state",
+        "city": "Select city",
+        "type": "Select vendor type"
+      },
+      "addresses": {
+        "add": "Add address",
+        "remove": "Remove",
+        "primary": "Primary",
+        "rowLabel": "Address {index}"
+      },
+      "detail": {
+        "backAria": "Back to vendors",
+        "retry": "Retry",
+        "sectionOverview": "Overview",
+        "sectionMap": "Locations map",
+        "addressUnavailable": "No addresses on file.",
+        "notProvided": "Not provided"
+      },
+      "modal": {
+        "cancel": "Cancel",
+        "save": "Save",
+        "saveChanges": "Save changes"
+      },
+      "page": {
+        "createTitle": "Create vendor",
+        "createSubtitle": "Add vendor details and one or more addresses.",
+        "editTitle": "Edit vendor",
+        "editSubtitle": "Update vendor details and addresses."
+      },
+      "validation": {
+        "name": "Enter a vendor name.",
+        "email": "Enter a valid email address.",
+        "phoneInvalid": "Enter a valid phone number.",
+        "type": "Select a vendor type.",
+        "addressLine1": "Enter address line 1.",
+        "country": "Select a country.",
+        "state": "Select a state or region.",
+        "city": "Enter or select a city.",
+        "pincode": "Enter a postal or ZIP code.",
+        "addressesMin": "Add at least one address."
       }
     },
     "qrCodes": {

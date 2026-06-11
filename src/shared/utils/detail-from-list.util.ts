@@ -14,6 +14,7 @@ export function buildDetailHrefWithListReturn(detailPath: string, currentListHre
 
 export type DashboardListSection =
   | "clients"
+  | "vendors"
   | "contacts"
   | "sites"
   | "quotations"
