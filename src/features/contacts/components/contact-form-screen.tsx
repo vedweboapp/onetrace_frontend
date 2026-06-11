@@ -4,12 +4,14 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { createContact, fetchContact, updateContact } from "@/features/contacts/api/contact.api";
 import { createContactFormSchema, type ContactFormValues } from "@/features/contacts/schemas/contact-form-schema";
 import { contactToFormDefaults, emptyContactFormDefaults, mapContactFormToPayload } from "@/features/contacts/utils/contact-form-map";
+import type { ContactType } from "@/features/contacts/types/contact.types";
+import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -21,6 +23,8 @@ import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draf
 import {
   buildQuickCreateReturnHref,
   QUICK_CREATE_CLIENT_PARAM,
+  QUICK_CREATE_CONTACT_TYPE_PARAM,
+  QUICK_CREATE_VENDOR_PARAM,
   resolveFormBackUrl,
 } from "@/shared/utils/quick-create-navigation.util";
 import {
@@ -41,6 +45,11 @@ type Props = {
   contactId?: number;
 };
 
+function parseContactTypeParam(raw: string | null): ContactType | null {
+  if (raw === "client" || raw === "vendor") return raw;
+  return null;
+}
+
 export function ContactFormScreen({ mode, contactId }: Props) {
   const t = useTranslations("Dashboard.contacts");
   const router = useRouter();
@@ -53,6 +62,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [vendorOptions, setVendorOptions] = React.useState<{ value: string; label: string }[]>([]);
 
   const schema = React.useMemo(
     () =>
@@ -60,7 +70,9 @@ export function ContactFormScreen({ mode, contactId }: Props) {
         name: t("validation.name"),
         email: t("validation.email"),
         phoneInvalid: t("validation.phoneInvalid"),
+        contactType: t("validation.contactType"),
         client: t("validation.client"),
+        vendor: t("validation.vendor"),
         addressLine1: t("validation.addressLine1"),
         country: t("validation.country"),
         state: t("validation.state"),
@@ -83,6 +95,16 @@ export function ContactFormScreen({ mode, contactId }: Props) {
     defaultValues: emptyContactFormDefaults(),
   });
 
+  const contactType = useWatch({ control, name: "contact_type" }) ?? "client";
+
+  const contactTypeOptions = React.useMemo(
+    () => [
+      { value: "client", label: t("tabs.client") },
+      { value: "vendor", label: t("tabs.vendor") },
+    ],
+    [t],
+  );
+
   const reloadClients = React.useCallback(async () => {
     try {
       const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
@@ -92,9 +114,19 @@ export function ContactFormScreen({ mode, contactId }: Props) {
     }
   }, []);
 
+  const reloadVendors = React.useCallback(async () => {
+    try {
+      const { items: vendors } = await fetchVendorsPage(1, 500, { is_active: true });
+      setVendorOptions(vendors.map((v) => ({ value: String(v.id), label: v.name })));
+    } catch {
+      setVendorOptions([]);
+    }
+  }, []);
+
   React.useEffect(() => {
     void reloadClients();
-  }, [reloadClients]);
+    void reloadVendors();
+  }, [reloadClients, reloadVendors]);
 
   const draftReturnTo = React.useMemo(() => {
     const qs = searchParams.toString();
@@ -116,16 +148,29 @@ export function ContactFormScreen({ mode, contactId }: Props) {
 
   React.useEffect(() => {
     if (isEdit) return;
+    const presetType = parseContactTypeParam(searchParams.get(QUICK_CREATE_CONTACT_TYPE_PARAM));
+    if (presetType) {
+      setValue("contact_type", presetType, { shouldDirty: true, shouldValidate: true });
+    }
     const presetClient = searchParams.get(QUICK_CREATE_CLIENT_PARAM);
-    if (!presetClient || !/^\d+$/.test(presetClient)) return;
-    setValue("client", presetClient, { shouldDirty: true, shouldValidate: true });
+    if (presetClient && /^\d+$/.test(presetClient)) {
+      setValue("client", presetClient, { shouldDirty: true, shouldValidate: true });
+    }
+    const presetVendor = searchParams.get(QUICK_CREATE_VENDOR_PARAM);
+    if (presetVendor && /^\d+$/.test(presetVendor)) {
+      setValue("vendor", presetVendor, { shouldDirty: true, shouldValidate: true });
+    }
   }, [isEdit, searchParams, setValue]);
 
   useQuickCreateReturn({
     restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
-    onReloadOptions: reloadClients,
+    onReloadOptions: async () => {
+      await reloadClients();
+      await reloadVendors();
+    },
     onApplySelect: ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {
+        setValue("contact_type", "client", { shouldDirty: true, shouldValidate: true });
         setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
       }
     },
@@ -153,7 +198,12 @@ export function ContactFormScreen({ mode, contactId }: Props) {
 
   async function submit(values: ContactFormValues) {
     const payload = mapContactFormToPayload(values);
-    if (!Number.isFinite(payload.client) || payload.client <= 0) {
+    if (values.contact_type === "vendor") {
+      if (!Number.isFinite(payload.vendor) || (payload.vendor ?? 0) <= 0) {
+        toastError(t("validation.vendor"));
+        return;
+      }
+    } else if (!Number.isFinite(payload.client) || (payload.client ?? 0) <= 0) {
       toastError(t("validation.client"));
       return;
     }
@@ -168,7 +218,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
     }
   }
 
-  const noClients = clientOptions.length === 0;
+  const noParents = contactType === "vendor" ? vendorOptions.length === 0 : clientOptions.length === 0;
 
   return (
     <div className="pb-12">
@@ -182,7 +232,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
             <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.contacts)}>
               {t("modal.cancel")}
             </AppButton>
-            <AppButton type="submit" form="contact-upsert-screen-form" variant="primary" size="sm" loading={saving} disabled={noClients}>
+            <AppButton type="submit" form="contact-upsert-screen-form" variant="primary" size="sm" loading={saving} disabled={noParents}>
               {isEdit ? t("modal.saveChanges") : t("modal.save")}
             </AppButton>
           </div>
@@ -202,12 +252,85 @@ export function ContactFormScreen({ mode, contactId }: Props) {
         ) : (
           <>
           <form id="contact-upsert-screen-form" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(submit)}>
-            {noClients ? (
+            {noParents ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-                {t("noClientsHint")}
+                {contactType === "vendor" ? t("noVendorsHint") : t("noClientsHint")}
               </p>
             ) : null}
             <FormFieldRow cols="2">
+              <FieldGroup label={t("fields.contactType")} htmlFor="contact-type" required>
+                <Controller
+                  control={control}
+                  name="contact_type"
+                  render={({ field }) => (
+                    <CheckmarkSelect
+                      id="contact-type"
+                      portaled
+                      listLabel={t("fields.contactType")}
+                      options={contactTypeOptions}
+                      value={field.value}
+                      emptyLabel={t("placeholders.contactType")}
+                      disabled={saving}
+                      invalid={!!errors.contact_type}
+                      onBlur={field.onBlur}
+                      onChange={(v) => {
+                        field.onChange(v === "vendor" ? "vendor" : "client");
+                      }}
+                    />
+                  )}
+                />
+                <FieldErrorText>{errors.contact_type?.message}</FieldErrorText>
+              </FieldGroup>
+              {contactType === "vendor" ? (
+                <FieldGroup label={t("fields.vendor")} htmlFor="contact-vendor" required>
+                  <Controller
+                    control={control}
+                    name="vendor"
+                    render={({ field }) => (
+                      <CheckmarkSelect
+                        id="contact-vendor"
+                        portaled
+                        searchable
+                        listLabel={t("fields.vendor")}
+                        options={vendorOptions}
+                        value={field.value}
+                        emptyLabel={t("placeholders.vendor")}
+                        disabled={saving || noParents}
+                        invalid={!!errors.vendor}
+                        onBlur={field.onBlur}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                  <FieldErrorText>{errors.vendor?.message}</FieldErrorText>
+                </FieldGroup>
+              ) : (
+                <FieldGroup label={t("fields.client")} htmlFor="contact-client" required>
+                  <Controller
+                    control={control}
+                    name="client"
+                    render={({ field }) => (
+                      <CheckmarkSelect
+                        id="contact-client"
+                        portaled
+                        searchable
+                        listLabel={t("fields.client")}
+                        options={clientOptions}
+                        value={field.value}
+                        emptyLabel={t("placeholders.client")}
+                        disabled={saving || noParents}
+                        invalid={!!errors.client}
+                        onBlur={field.onBlur}
+                        onChange={field.onChange}
+                        onAdd={clientQuickCreate.onAdd}
+                        addAriaLabel={clientQuickCreate.addAriaLabel}
+                        addLabel={clientQuickCreate.addLabel}
+                      />
+                    )}
+                  />
+                  <FieldErrorText>{errors.client?.message}</FieldErrorText>
+                </FieldGroup>
+              )}
               <FieldGroup label={t("fields.name")} htmlFor="contact-name" required>
                 <input
                   id="contact-name"
@@ -221,31 +344,6 @@ export function ContactFormScreen({ mode, contactId }: Props) {
                   })}
                 />
                 <FieldErrorText id="contact-name-err">{errors.name?.message}</FieldErrorText>
-              </FieldGroup>
-              <FieldGroup label={t("fields.client")} htmlFor="contact-client" required>
-                <Controller
-                  control={control}
-                  name="client"
-                  render={({ field }) => (
-                    <CheckmarkSelect
-                      id="contact-client"
-                      portaled
-                      searchable
-                      listLabel={t("fields.client")}
-                      options={clientOptions}
-                      value={field.value}
-                      emptyLabel={t("placeholders.client")}
-                      disabled={saving || noClients}
-                      invalid={!!errors.client}
-                      onBlur={field.onBlur}
-                      onChange={field.onChange}
-                      onAdd={clientQuickCreate.onAdd}
-                      addAriaLabel={clientQuickCreate.addAriaLabel}
-                      addLabel={clientQuickCreate.addLabel}
-                    />
-                  )}
-                />
-                <FieldErrorText>{errors.client?.message}</FieldErrorText>
               </FieldGroup>
               <FieldGroup label={t("fields.email")} htmlFor="contact-email" required>
                 <input

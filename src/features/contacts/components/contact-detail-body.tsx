@@ -1,7 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import type { Contact } from "@/features/contacts/types/contact.types";
+import {
+  getContactClientId,
+  getContactType,
+  getContactVendorId,
+} from "@/features/contacts/utils/contact-nested-fields.util";
 import { DetailEmailLink, DetailPhoneLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
@@ -12,22 +18,21 @@ import {
   DetailStatusMetric,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
+import { routes } from "@/shared/config/routes";
 
 type Props = {
   detail: Contact;
   clientName?: string;
+  vendorName?: string;
   dateFmt: Intl.DateTimeFormat;
 };
 
-export function ContactDetailBody({ detail, clientName, dateFmt }: Props) {
+export function ContactDetailBody({ detail, clientName, vendorName, dateFmt }: Props) {
   const t = useTranslations("Dashboard.contacts");
   const tMeta = useTranslations("Dashboard.common.detail");
-  const clientId =
-    typeof detail.client === "number"
-      ? detail.client
-      : typeof detail.client?.id === "number"
-        ? detail.client.id
-        : null;
+  const contactType = getContactType(detail);
+  const clientId = getContactClientId(detail);
+  const vendorId = getContactVendorId(detail);
 
   return (
     <DetailPagePadding>
@@ -40,9 +45,36 @@ export function ContactDetailBody({ detail, clientName, dateFmt }: Props) {
               activeLabel={t("status.active")}
               inactiveLabel={t("status.inactive")}
             />
-            <DetailMetricCard label={t("fields.client")}>
-              {clientName ?? (clientId ? `#${clientId}` : "—")}
+            <DetailMetricCard label={t("fields.contactType")}>
+              {contactType === "vendor" ? t("tabs.vendor") : t("tabs.client")}
             </DetailMetricCard>
+            {contactType === "vendor" ? (
+              <DetailMetricCard label={t("fields.vendor")}>
+                {vendorId ? (
+                  <Link
+                    href={`${routes.dashboard.vendors}/${vendorId}`}
+                    className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                  >
+                    {vendorName ?? `#${vendorId}`}
+                  </Link>
+                ) : (
+                  <span>{vendorName ?? "—"}</span>
+                )}
+              </DetailMetricCard>
+            ) : (
+              <DetailMetricCard label={t("fields.client")}>
+                {clientId ? (
+                  <Link
+                    href={`${routes.dashboard.clients}/${clientId}`}
+                    className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                  >
+                    {clientName ?? `#${clientId}`}
+                  </Link>
+                ) : (
+                  <span>{clientName ?? "—"}</span>
+                )}
+              </DetailMetricCard>
+            )}
             <DetailMetricCard label={t("fields.email")}>
               <DetailEmailLink email={detail.email} />
             </DetailMetricCard>

@@ -7,7 +7,9 @@ export type ContactFormMessages = {
   name: string;
   email: string;
   phoneInvalid: string;
+  contactType: string;
   client: string;
+  vendor: string;
   addressLine1: string;
   country: string;
   state: string;
@@ -15,19 +17,24 @@ export type ContactFormMessages = {
   pincode: string;
 };
 
+const parentIdField = (message: string) =>
+  z
+    .string()
+    .trim()
+    .regex(/^\d+$/, message)
+    .refine((s) => Number.parseInt(s, 10) > 0, { message });
+
 export function createContactFormSchema(messages: ContactFormMessages) {
   return z
     .object({
+      contact_type: z.enum(["client", "vendor"], { message: messages.contactType }),
       name: zTrimmedNonEmpty(messages.name),
       email: z.string().trim().email(messages.email),
       phone: z.string().refine((val) => isValidPhoneNumber(val), {
         message: messages.phoneInvalid,
       }),
-      client: z
-        .string()
-        .trim()
-        .regex(/^\d+$/, messages.client)
-        .refine((s) => Number.parseInt(s, 10) > 0, { message: messages.client }),
+      client: z.string(),
+      vendor: z.string(),
       address_line_1: zTrimmedNonEmpty(messages.addressLine1),
       address_line_2: z.string(),
       country_iso: z
@@ -41,6 +48,22 @@ export function createContactFormSchema(messages: ContactFormMessages) {
       pincode: zTrimmedNonEmpty(messages.pincode),
     })
     .superRefine((data, ctx) => {
+      if (data.contact_type === "client") {
+        const parsed = parentIdField(messages.client).safeParse(data.client);
+        if (!parsed.success) {
+          for (const issue of parsed.error.issues) {
+            ctx.addIssue({ ...issue, path: ["client"] });
+          }
+        }
+      } else {
+        const parsed = parentIdField(messages.vendor).safeParse(data.vendor);
+        if (!parsed.success) {
+          for (const issue of parsed.error.issues) {
+            ctx.addIssue({ ...issue, path: ["vendor"] });
+          }
+        }
+      }
+
       const subdivisions = State.getStatesOfCountry(data.country_iso);
       if (subdivisions.length > 0 && !data.state_iso?.trim()) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["state_iso"], message: messages.state });

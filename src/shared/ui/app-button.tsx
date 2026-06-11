@@ -60,7 +60,7 @@ export type AppButtonProps = Omit<
 };
 
 const base = cn(
-  "inline-flex cursor-pointer items-center justify-center transition outline-none",
+  "inline-flex cursor-pointer items-center justify-center gap-1.5 transition outline-none",
   "focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950",
   "data-[disabled]:cursor-not-allowed data-[disabled]:pointer-events-none data-[disabled]:opacity-55",
 );

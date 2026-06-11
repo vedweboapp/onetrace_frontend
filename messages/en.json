@@ -153,6 +153,7 @@
       "sites": "Sites",
       "quotations": "Quotations",
       "invoices": "Invoices",
+      "purchaseOrders": "Purchase orders",
       "jobs": "Jobs",
       "qrCodes": "QR codes",
       "projects": "Projects",
@@ -1009,7 +1010,15 @@
         "sectionOverview": "Overview",
         "sectionMap": "Locations map",
         "addressUnavailable": "No addresses on file.",
-        "notProvided": "Not provided"
+        "notProvided": "Not provided",
+        "tabsAria": "Vendor detail sections",
+        "tabs": {
+          "details": "Details",
+          "contacts": "Contacts"
+        },
+        "contactsEmptyTitle": "No contacts for this vendor",
+        "contactsEmptyDescription": "Contacts linked to this vendor will appear here.",
+        "addContact": "Add contact"
       },
       "modal": {
         "cancel": "Cancel",
@@ -1100,7 +1109,7 @@
       "metaTitle": "Contacts",
       "detailMetaTitle": "Contact details",
       "title": "Contacts",
-      "subtitle": "People associated with clients. Use search and filters to find them quickly.",
+      "subtitle": "People associated with clients and vendors. Use tabs, search, and filters to find them quickly.",
       "add": "Add",
       "edit": "Edit",
       "activate": "Activate",
@@ -1115,15 +1124,24 @@
       "createdToast": "Contact created successfully",
       "updatedToast": "Contact updated successfully",
       "noClientsHint": "Add at least one client before you can create a contact.",
+      "noVendorsHint": "Add at least one vendor before you can create a vendor contact.",
+      "tabsAria": "Contact type",
+      "tabs": {
+        "client": "Client",
+        "vendor": "Vendor"
+      },
       "filterState": "Active state",
       "filterClient": "Client",
       "filterAllClients": "All clients",
+      "filterVendor": "Vendor",
+      "filterAllVendors": "All vendors",
       "pageLabel": "Showing {start}-{end} of {total} contacts",
       "prev": "Previous",
       "next": "Next",
       "table": {
         "name": "Contact",
         "client": "Client",
+        "vendor": "Vendor",
         "email": "Email",
         "phone": "Phone",
         "status": "Status",
@@ -1147,7 +1165,9 @@
       "detailLoadError": "Could not load contact details. Try again.",
       "fields": {
         "name": "Name",
+        "contactType": "Contact type",
         "client": "Client",
+        "vendor": "Vendor",
         "email": "Email",
         "phone": "Phone",
         "addressLine1": "Address line 1",
@@ -1174,7 +1194,9 @@
         "editSubtitle": "Update contact details and save changes."
       },
       "placeholders": {
+        "contactType": "Select contact type",
         "client": "Select client",
+        "vendor": "Select vendor",
         "country": "Select country",
         "state": "Select state / region",
         "city": "Select or type city"
@@ -1183,7 +1205,9 @@
         "name": "Enter a contact name.",
         "email": "Enter a valid email address.",
         "phoneInvalid": "Enter a valid phone number including country code.",
+        "contactType": "Select a contact type.",
         "client": "Select a client.",
+        "vendor": "Select a vendor.",
         "addressLine1": "Enter address line 1.",
         "country": "Select a country.",
         "state": "Select a state or region.",
@@ -1748,6 +1772,142 @@
         "client": "Select a client.",
         "issueDate": "Enter an issue date.",
         "lineDescription": "Enter a description or select a product for each line.",
+        "lineQuantity": "Enter a valid quantity.",
+        "addressLine1": "Enter address line 1.",
+        "country": "Select a country.",
+        "state": "Select a state or region.",
+        "city": "Enter or select a city."
+      }
+    },
+    "purchaseOrders": {
+      "metaTitle": "Purchase orders",
+      "detailMetaTitle": "Purchase order details",
+      "title": "Purchase orders",
+      "subtitle": "Create and track purchase orders for vendors and projects.",
+      "createPurchaseOrder": "Create purchase order",
+      "edit": "Edit",
+      "searchPlaceholder": "Search purchase orders…",
+      "searchAria": "Search purchase orders",
+      "emptyTitle": "No purchase orders yet",
+      "emptyDescription": "Create your first purchase order to track vendor procurement.",
+      "loadError": "Could not load purchase orders. Try again.",
+      "detailLoadError": "Could not load purchase order details. Try again.",
+      "createdToast": "Purchase order created successfully",
+      "updatedToast": "Purchase order updated successfully",
+      "createError": "Could not create the purchase order. Try again.",
+      "updateError": "Could not update the purchase order. Try again.",
+      "filterStatus": "Status",
+      "filterAllStatuses": "All statuses",
+      "filterVendor": "Vendor",
+      "filterAllVendors": "All vendors",
+      "pageLabel": "Showing {start} to {end} of {total} results",
+      "prev": "Previous",
+      "next": "Next",
+      "status": {
+        "draft": "Draft",
+        "sent": "Sent",
+        "approved": "Approved",
+        "received": "Received",
+        "cancelled": "Cancelled"
+      },
+      "table": {
+        "purchaseOrderNumber": "PO #",
+        "vendorName": "Vendor",
+        "projectName": "Project",
+        "amount": "Amount",
+        "issueDate": "Issue date",
+        "status": "Status"
+      },
+      "card": {
+        "issueDate": "Issue date",
+        "amount": "Amount"
+      },
+      "tabs": {
+        "overview": "Overview",
+        "lineItems": "Line items"
+      },
+      "detail": {
+        "loadingTitle": "Loading…",
+        "retry": "Retry",
+        "backAria": "Back to purchase orders list",
+        "sectionOrderDetails": "Purchase order details",
+        "sectionLineItems": "Line items",
+        "sectionSystemMetadata": "System metadata",
+        "notModifiedYet": "Not modified yet"
+      },
+      "fields": {
+        "vendorName": "Vendor",
+        "contactPerson": "Contact",
+        "purchaseOrderNumber": "PO number",
+        "projectName": "Project",
+        "issueDate": "Issue date",
+        "dueDate": "Due date",
+        "paymentTerms": "Payment terms",
+        "status": "Status",
+        "billTo": "Bill to",
+        "shipTo": "Ship to",
+        "addressLine1": "Address line 1",
+        "addressLine2": "Address line 2",
+        "city": "City",
+        "state": "State",
+        "zipCode": "Zip code",
+        "country": "Country",
+        "vendorNotes": "Vendor notes",
+        "internalNotes": "Internal notes (private)",
+        "createdAt": "Created at",
+        "updatedAt": "Updated at",
+        "createdBy": "Created by",
+        "modifiedBy": "Modified by"
+      },
+      "placeholders": {
+        "vendor": "Select vendor",
+        "contact": "Select contact",
+        "project": "Select project",
+        "group": "Select group",
+        "country": "Select country",
+        "state": "Select state / region",
+        "city": "Select or type city",
+        "paymentTerms": "Select payment terms"
+      },
+      "paymentTerms": {
+        "net7": "Net 7 days",
+        "net15": "Net 15 days",
+        "net30": "Net 30 days",
+        "net45": "Net 45 days",
+        "dueOnReceipt": "Due on receipt"
+      },
+      "sections": {
+        "basic": "Basic information",
+        "addresses": "Bill to & ship to",
+        "metadata": "Order metadata",
+        "lineItems": "Line items",
+        "notes": "Notes"
+      },
+      "lineItems": {
+        "productName": "Product name",
+        "group": "Group",
+        "qty": "Qty",
+        "rate": "Rate",
+        "listPrice": "List price",
+        "addItem": "Add item",
+        "remove": "Remove line",
+        "selectProduct": "Select product…",
+        "empty": "No line items on this purchase order."
+      },
+      "totals": {
+        "totalAmount": "Total amount"
+      },
+      "page": {
+        "createTitle": "Create purchase order",
+        "editTitle": "Edit purchase order"
+      },
+      "modal": {
+        "cancel": "Cancel",
+        "save": "Save changes"
+      },
+      "validation": {
+        "vendor": "Select a vendor.",
+        "lineDescription": "Select a product for each line.",
         "lineQuantity": "Enter a valid quantity.",
         "addressLine1": "Enter address line 1.",
         "country": "Select a country.",

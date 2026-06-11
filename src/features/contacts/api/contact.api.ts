@@ -16,7 +16,9 @@ function assertEnvelopeSuccess(envelope: { success: boolean; message?: string })
 export type ContactListFilters = {
   search?: string;
   is_active?: boolean;
+  contact_type?: "client" | "vendor";
   client?: number;
+  vendor?: number;
 };
 
 export async function fetchContactsPage(
@@ -28,8 +30,14 @@ export async function fetchContactsPage(
   const q = filters?.search?.trim();
   if (q) params.search = q;
   if (typeof filters?.is_active === "boolean") params.is_active = String(filters.is_active);
+  if (filters?.contact_type === "client" || filters?.contact_type === "vendor") {
+    params.contact_type = filters.contact_type;
+  }
   if (typeof filters?.client === "number" && Number.isFinite(filters.client) && filters.client > 0) {
     params.client = filters.client;
+  }
+  if (typeof filters?.vendor === "number" && Number.isFinite(filters.vendor) && filters.vendor > 0) {
+    params.vendor = filters.vendor;
   }
 
   const { data } = await api.get<ContactListResponse>(CONTACT_PATHS.list, { params });
