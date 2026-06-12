@@ -47,8 +47,23 @@
       "optional": "(Opcional)",
       "lastName": "Apellido",
       "email": "correo electrónico",
+      "phone": "número de teléfono",
+      "password": "contraseña",
+      "showPassword": "Mostrar contraseña",
+      "hidePassword": "Ocultar contraseña",
       "body": "El registro irá aquí: conecta tu API cuando toque.",
-      "backToLogin": "Volver a iniciar sesión"
+      "backToLogin": "Volver a iniciar sesión",
+      "signUp": "Registrarse",
+      "placeholders": {
+        "firstName": "Ingrese su nombre",
+        "middleName": "Ingrese su segundo nombre",
+        "lastName": "Ingrese su apellido",
+        "email": "Ingrese su correo electrónico",
+        "password": "Cree una contraseña"
+      },
+      "errors": {
+        "passwordRequired": "Password is required."
+      }
     },
     "forgotPassword": {
       "title": "¿Olvidaste la contraseña?",

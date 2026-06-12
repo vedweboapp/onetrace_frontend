@@ -46,9 +46,24 @@
       "middleName": "Middle Name",
       "optional": "(Optional)",
       "email": "Email",
+      "phone":"Phone Number",
+      "password":"Password",
       "lastName": "Last Name",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",  
       "body": "Registration will live here — wire your API next.",
-      "backToLogin": "Back to sign in"
+      "backToLogin": "Back to sign in",
+      "placeholders": {
+        "firstName": "Enter your first name",
+        "middleName": "Enter your middle name",
+        "lastName": "Enter your last name",
+        "email": "Enter your email",
+        "password": "Enter a password"
+      },
+      "signUp":"Sign up",
+      "errors":{
+        "passwordRequired":"Password is required."
+      }
 
     },
     "forgotPassword": {
