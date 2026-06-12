@@ -32,6 +32,8 @@ import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { mergeUrlQueryParam, sanitizeJobsBackHref } from "@/shared/utils/detail-from-list.util";
+import { ensureCheckmarkOption } from "@/shared/utils/checkmark-options.util";
+import { saveQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
 import {
   AppButton,
   CheckmarkSelect,
@@ -170,14 +172,21 @@ export function JobFormScreen({ mode, jobId }: Props) {
     kind: "item",
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
+  const draftReturnTo = React.useMemo(() => {
+    const qs = searchParams.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  }, [pathname, searchParams]);
+
   const openFormsSettings = React.useCallback(() => {
+    saveQuickCreateFormDraft(draftReturnTo, getValues());
     router.push(routes.dashboard.settingsProjectForms);
-  }, [router]);
+  }, [router, draftReturnTo, getValues]);
   const openUsersSettings = React.useCallback(() => {
     const qs = searchParams.toString();
     const current = qs ? `${pathname}?${qs}` : pathname;
+    saveQuickCreateFormDraft(draftReturnTo, getValues());
     router.push(`${routes.dashboard.settingsUsers}/new?back=${encodeURIComponent(current)}`);
-  }, [router, pathname, searchParams]);
+  }, [router, pathname, searchParams, draftReturnTo, getValues]);
   const openJobStatusSettings = React.useCallback(() => {
     router.push(routes.dashboard.settingsJobStatus);
   }, [router]);
@@ -246,7 +255,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
   }, []);
 
   useQuickCreateReturn({
-    restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
+    restoreFormDraft,
     onReloadOptions: async () => {
       await reloadClients();
       await reloadProjects();
@@ -320,19 +329,15 @@ export function JobFormScreen({ mode, jobId }: Props) {
   React.useEffect(() => {
     if (!selectedClient || !/^\d+$/.test(selectedClient)) {
       setProjectOptions([]);
-      setValue("project", "");
-      setValue("site", "");
       return;
     }
     void reloadProjects();
-  }, [selectedClient, setValue, reloadProjects]);
+  }, [selectedClient, reloadProjects]);
 
   React.useEffect(() => {
     if (!selectedProject || !/^\d+$/.test(selectedProject)) {
       setSiteOptions([]);
       setFormOptions([]);
-      setValue("forms", []);
-      setValue("site", "");
       return;
     }
     void reloadSites();
@@ -348,7 +353,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
         setFormOptions([]);
       }
     })();
-  }, [selectedProject, setValue, reloadSites]);
+  }, [selectedProject, reloadSites]);
 
   React.useEffect(() => {
     const groupIds = Array.from(
@@ -751,7 +756,11 @@ export function JobFormScreen({ mode, jobId }: Props) {
                       const qty = parseMoneyValue(row?.quantity);
                       const rate = parseMoneyValue(row?.rate);
                       const amount = qty * rate;
-                      const filteredItems = itemOptionsForGroup(row?.group ?? "");
+                      const filteredItems = ensureCheckmarkOption(
+                        itemOptionsForGroup(row?.group ?? ""),
+                        row?.item ?? "",
+                        row?.item_name,
+                      );
                       return (
                         <tr key={field.id} className="border-b border-slate-100 dark:border-slate-800">
                           <td className="px-3 py-2 align-top">
@@ -762,6 +771,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                                 <CheckmarkSelect
                                   options={groupOptions}
                                   value={groupField.value}
+                                  fallbackLabel={row?.group_name}
                                   onChange={(v) => {
                                     groupField.onChange(v);
                                     setValue(`job_meta_items.${index}.group_name`, v ? (groupLabelById.get(v) ?? "") : "", {
@@ -793,6 +803,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                                   <CheckmarkSelect
                                     options={filteredItems}
                                     value={itemField.value}
+                                    fallbackLabel={row?.item_name}
                                     invalid={!!errors.job_meta_items?.[index]?.item}
                                     onChange={(v) => {
                                       itemField.onChange(v);

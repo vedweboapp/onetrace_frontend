@@ -71,6 +71,8 @@ type Props = {
   addLabel?: string;
   /** Shows a red asterisk after the field label. */
   required?: boolean;
+  /** Label when `value` is set but missing from `options` (e.g. after async reload). */
+  fallbackLabel?: string;
 };
 
 const DROPDOWN_GAP = 4;
@@ -187,6 +189,7 @@ export function CheckmarkSelect({
   addAriaLabel,
   addLabel,
   required,
+  fallbackLabel,
 }: Props) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
@@ -194,7 +197,13 @@ export function CheckmarkSelect({
   const anchorRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
-  const selected = options.find((o) => o.value === value);
+  const resolvedOptions = React.useMemo(() => {
+    const id = value.trim();
+    if (!id || options.some((opt) => opt.value === id)) return options;
+    const label = fallbackLabel?.trim() || id;
+    return [{ value: id, label }, ...options];
+  }, [options, value, fallbackLabel]);
+  const selected = resolvedOptions.find((o) => o.value === value);
   const canClear = Boolean(clearable && !disabled && value.trim() !== "");
   const showAdd = Boolean(onAdd && !disabled);
   // Show add action only in dropdown footer, not on trigger.
@@ -235,9 +244,9 @@ export function CheckmarkSelect({
   const optionY = size === "sm" ? "py-2" : "py-2.5";
   const filteredOptions = React.useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return options;
-    return options.filter((opt) => opt.label.toLowerCase().includes(q));
-  }, [options, search]);
+    if (!q) return resolvedOptions;
+    return resolvedOptions.filter((opt) => opt.label.toLowerCase().includes(q));
+  }, [resolvedOptions, search]);
 
   function renderOptionList(extraStyle: CSSProperties, extraClass?: string) {
     const listMaxHeight = open ? dropdownPlacement.maxHeight : DROPDOWN_PREFERRED_MAX;

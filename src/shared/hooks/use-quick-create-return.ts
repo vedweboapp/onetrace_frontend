@@ -45,7 +45,7 @@ export function useQuickCreateReturn({
     return qs ? `${pathname}?${qs}` : pathname;
   }, [pathname, searchParams]);
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     if (!restoredDraftRef.current && restoreFormDraft) {
       const draft = loadQuickCreateFormDraft(returnToForDraft);
       if (draft != null) {
@@ -54,7 +54,9 @@ export function useQuickCreateReturn({
       }
       restoredDraftRef.current = true;
     }
+  }, [restoreFormDraft, returnToForDraft]);
 
+  React.useEffect(() => {
     if (appliedRef.current) return;
     const selectId = searchParams.get(QUICK_CREATE_SELECT_PARAM);
     const selectTarget = searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM) as QuickCreateKind | null;
@@ -77,7 +79,6 @@ export function useQuickCreateReturn({
     router,
     onApplySelect,
     onReloadOptions,
-    restoreFormDraft,
     returnToForDraft,
   ]);
 }
