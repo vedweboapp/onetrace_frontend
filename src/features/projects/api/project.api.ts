@@ -10,6 +10,7 @@ import type {
   ProjectListResponse,
   ProjectUpdatePayload,
 } from "../types/project.types";
+import type { ProjectJobsHierarchyData, ProjectJobsHierarchyResponse } from "../types/project-jobs.types";
 import type { FormListItem, FormsPagination } from "@/features/forms/types/form.types";
 import {
   parseFormsListResponse,
@@ -82,6 +83,21 @@ export async function patchProject(id: number, body: { is_active: boolean }): Pr
 export async function deleteProject(id: number): Promise<void> {
   const { data } = await api.delete<ApiEnvelope<unknown>>(PROJECT_PATHS.detail(id));
   assertApiSuccess(data);
+}
+
+type ProjectJobsRequestOptions = {
+  silent?: boolean;
+};
+
+export async function fetchProjectJobsHierarchy(
+  projectId: number,
+  options?: ProjectJobsRequestOptions,
+): Promise<ProjectJobsHierarchyData> {
+  const { data } = await api.get<ProjectJobsHierarchyResponse>(PROJECT_PATHS.jobs(projectId), {
+    skipErrorToast: options?.silent === true,
+  });
+  assertEnvelopeSuccess(data);
+  return data.data;
 }
 
 export async function fetchProjectFormsPage(

@@ -8,7 +8,14 @@ import {
   fetchJobFormSchema,
   loadJobFormSubmission,
   submitJobForm,
+  updateJobFormSubmission,
 } from "@/features/job-forms/api/job-form.api";
+import { fetchJob } from "@/features/jobs/api/job.api";
+import {
+  jobChecklistEntries,
+  jobChecklistIsMarked,
+  requiredJobChecklistsComplete,
+} from "@/features/jobs/utils/job-nested-fields.util";
 import type { JobFormSubmission } from "@/features/job-forms/types/job-form-submission.types";
 import {
   applyReadOnlyToSections,
@@ -39,6 +46,7 @@ type Props = {
 
 export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Props) {
   const t = useTranslations("Dashboard.jobs.forms");
+  const tChecklists = useTranslations("Dashboard.jobs.checklists");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -56,6 +64,7 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
   const [defaultValues, setDefaultValues] = React.useState<Record<string, unknown>>({});
   const [submission, setSubmission] = React.useState<JobFormSubmission | null>(null);
   const [fieldMaps, setFieldMaps] = React.useState(() => buildFieldMaps([]));
+  const [checklistBlocked, setChecklistBlocked] = React.useState(false);
 
   const modeParam = searchParams.get("mode");
   const submissionIdParam = searchParams.get("submissionId");
@@ -90,7 +99,20 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
   const load = React.useCallback(async () => {
     setLoading(true);
     setLoadError(null);
+    setChecklistBlocked(false);
     try {
+      if (!submissionIdHint) {
+        const job = await fetchJob(jobId, { silent: true });
+        const checklists = jobChecklistEntries(job);
+        if (
+          checklists.length > 0 &&
+          !requiredJobChecklistsComplete(checklists, { isMarked: jobChecklistIsMarked(job) })
+        ) {
+          setChecklistBlocked(true);
+          return;
+        }
+      }
+
       const schema = await fetchJobFormSchema(formId);
       const maps = buildFieldMaps(schema.sections);
       setFieldMaps(maps);
@@ -134,17 +156,22 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
       toastError(t("validationEmpty"));
       return;
     }
+    const payload = {
+      job_form_id: jobFormId,
+      status: "submitted",
+      values,
+    };
+    const submissionId = submission?.id ?? submissionIdHint;
+    const isEditingExisting =
+      uiMode === "edit" && typeof submissionId === "number" && submissionId > 0;
     try {
-      await submitJobForm(
-        jobId,
-        {
-          job_form_id: jobFormId,
-          status: "submitted",
-          values,
-        },
-        formId,
-      );
-      toastSuccess(submission ? t("updatedToast") : t("submittedToast"));
+      if (isEditingExisting) {
+        await updateJobFormSubmission(jobId, submissionId, payload, formId);
+        toastSuccess(t("updatedToast"));
+      } else {
+        await submitJobForm(jobId, payload, formId);
+        toastSuccess(t("submittedToast"));
+      }
       router.replace(safeBack);
     } catch {
       toastError(t("submitError"));
@@ -173,8 +200,7 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
 
   const displaySections = readOnly ? applyReadOnlyToSections(schemaSections, true) : schemaSections;
 
-  const headerActions =
-    uiMode === "view" ? (
+  const headerActions = checklistBlocked ? null : uiMode === "view" ? (
       <AppButton type="button" variant="secondary" size="sm" onClick={enterEditMode}>
         {t("edit")}
       </AppButton>
@@ -217,6 +243,16 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
           <div className="space-y-3 p-4 sm:p-6">
             <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
             <div className="h-40 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+          </div>
+        ) : checklistBlocked ? (
+          <div className="space-y-3 p-6">
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+              {tChecklists("blockedTitle")}
+            </p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">{tChecklists("blockedBody")}</p>
+            <AppButton type="button" variant="primary" size="sm" onClick={() => router.push(safeBack)}>
+              {tChecklists("backToJob")}
+            </AppButton>
           </div>
         ) : loadError ? (
           <div className="space-y-3 p-6">

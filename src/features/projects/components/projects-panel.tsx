@@ -297,11 +297,16 @@ export function ProjectsPanel() {
       }),
       c.text("start", t("table.start"), (r) => formatDay(r.start_date)),
       c.text("end", t("table.end"), (r) => formatDay(r.end_date)),
-      c.custom(
+      c.truncate(
         "description",
         t("table.description"),
         (r) => (r.description?.trim() ? r.description : "—"),
-        { headerClassName: "min-w-[12rem]", cellClassName: "max-w-[14rem] lg:max-w-xs xl:max-w-md" },
+        {
+          title: (r) => r.description?.trim() || undefined,
+          maxWidth: "lg",
+          headerClassName: "min-w-[8rem]",
+          cellClassName: "max-w-[14rem] lg:max-w-xs xl:max-w-md",
+        },
       ),
       c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive"), {
         responsive: "lg",

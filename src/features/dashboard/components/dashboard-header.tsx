@@ -95,6 +95,7 @@ export function DashboardHeader() {
   const projectTypeHref = routes.dashboard.settingsProjectTypes;
   const installationTypeHref = routes.dashboard.settingsInstallationTypes;
   const vendorTypeHref = routes.dashboard.settingsVendorTypes;
+  const checklistTypeHref = routes.dashboard.settingsChecklistTypes;
   const projectFormsHref = routes.dashboard.settingsProjectForms;
   const usersHref = routes.dashboard.settingsUsers;
   const homeActive = pathname === homeHref;
@@ -143,6 +144,8 @@ export function DashboardHeader() {
     pathname === installationTypeHref || pathname.startsWith(`${installationTypeHref}/`);
   const vendorTypeActive =
     pathname === vendorTypeHref || pathname.startsWith(`${vendorTypeHref}/`);
+  const checklistTypeActive =
+    pathname === checklistTypeHref || pathname.startsWith(`${checklistTypeHref}/`);
   const projectFormsActive =
     pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
   const customizationHubActive =
@@ -202,6 +205,8 @@ export function DashboardHeader() {
                                         ? tSettingsNav("installationTypes")
                                         : vendorTypeActive
                                           ? tSettingsNav("vendorTypes")
+                                          : checklistTypeActive
+                                            ? tSettingsNav("checklistTypes")
                                         : projectTypeActive
                                           ? tSettingsNav("projectTypes")
                                           : usersActive

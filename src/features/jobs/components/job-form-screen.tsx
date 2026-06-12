@@ -31,7 +31,7 @@ import { DetailPageHeader } from "@/shared/components/layout/detail-page-header"
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { mergeUrlQueryParam, sanitizeJobsBackHref } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
   CheckmarkSelect,
@@ -61,13 +61,12 @@ export function JobFormScreen({ mode, jobId }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "jobs");
   const jobsListHref = React.useMemo(() => {
     const needle = routes.dashboard.jobs;
     const i = pathname.indexOf(needle);
     return i >= 0 ? pathname.slice(0, i + needle.length) : needle;
   }, [pathname]);
-  const listBack = safeBack ?? jobsListHref;
+  const listBack = sanitizeJobsBackHref(searchParams.get("back"), jobsListHref);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);
@@ -440,7 +439,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
     try {
       const saved = isEdit && jobId ? await updateJob(jobId, payload) : await createJob(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(`${listBack}?highlight=${saved.id}`);
+      router.replace(mergeUrlQueryParam(listBack, "highlight", String(saved.id)));
     } catch {
       toastError(isEdit ? t("updateError") : t("createError"));
     } finally {

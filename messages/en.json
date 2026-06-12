@@ -178,6 +178,7 @@
       "projectTypes": "Project types",
       "installationTypes": "Installation types",
       "vendorTypes": "Vendor types",
+      "checklistTypes": "Checklist types",
       "users": "Users",
       "personalProfile": "Personal Profile",
       "companySettings": "Company Settings",
@@ -188,7 +189,7 @@
       "customization": {
         "label": "Customization",
         "hubTitle": "Customization",
-        "hubDescription": "Choose what to configure — project types, installation types, vendor types, pin statuses, job statuses, material statuses, and tags.",
+        "hubDescription": "Choose what to configure — project types, installation types, vendor types, checklist types, pin statuses, job statuses, material statuses, and tags.",
         "items": {
           "projectTypes": {
             "title": "Project types",
@@ -201,6 +202,10 @@
           "vendorTypes": {
             "title": "Vendor types",
             "description": "Categories for vendors with colored labels."
+          },
+          "checklistTypes": {
+            "title": "Checklist types",
+            "description": "Checklists for job forms, linked to project types."
           },
           "pinStatus": {
             "title": "Pin statuses",
@@ -673,6 +678,76 @@
       "hexPlaceholder": "#000000",
       "validationName": "Enter an installation type name.",
       "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
+    },
+    "checklistTypes": {
+      "metaTitle": "Checklist types",
+      "title": "Checklist types",
+      "subtitle": "Define checklists for job forms, scoped by project type.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "filterState": "Active state",
+      "filterProjectType": "Project type",
+      "filterProjectTypePlaceholder": "Select project type",
+      "searchPlaceholder": "Search by title or project type…",
+      "reorderHint": "Drag rows or cards to change sequence order.",
+      "sequenceUpdated": "Checklist order updated",
+      "sequenceUpdateError": "Could not update checklist order. Try again.",
+      "table": {
+        "title": "Title",
+        "projectType": "Project type",
+        "sequence": "Sequence",
+        "required": "Required",
+        "status": "Record status",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "required": {
+        "yes": "Required",
+        "no": "Optional"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "emptyTitle": "No checklist types yet",
+      "emptyDescription": "Create your first checklist type for job forms.",
+      "loadError": "Could not load checklist types. Try again.",
+      "modal": {
+        "createTitle": "New checklist type",
+        "editTitle": "Edit checklist type",
+        "title": "Title",
+        "projectType": "Project type",
+        "sequence": "Sequence",
+        "requiredLabel": "Required on job forms",
+        "activeLabel": "Active",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this checklist type?",
+      "deleteConfirmBody": "Job forms using this checklist may need to be updated. This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} checklist types",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Checklist type updated",
+      "created": "Checklist type created",
+      "deleted": "Checklist type deleted",
+      "activatedToast": "Checklist type activated",
+      "deactivatedToast": "Checklist type deactivated",
+      "toggleActiveError": "Could not update checklist type status. Try again.",
+      "validationTitle": "Enter a checklist title.",
+      "validationProjectType": "Select a project type.",
+      "validationSequence": "Enter a valid sequence number (1 or greater)."
     },
     "vendorTypes": {
       "metaTitle": "Vendor types",
@@ -2372,7 +2447,24 @@
         "emptySchema": "This form has no fields yet.",
         "untitledForm": "Form",
         "layoutDesktop": "Desktop",
-        "layoutPhone": "Phone"
+        "layoutPhone": "Phone",
+        "checklistSaveError": "Could not save checklist. Try again."
+      },
+      "checklists": {
+        "sectionTitle": "Checklists",
+        "toggle": "Show or hide checklists",
+        "required": "Required",
+        "sequence": "Seq. {n}",
+        "checkedAt": "Checked {when}",
+        "saveError": "Could not update checklist. Try again.",
+        "gateTitle": "Complete checklist first",
+        "gateBody": "Mark the required items before opening “{form}”.",
+        "gateRequiredHint": "All required checklist items must be checked to continue.",
+        "continueToForm": "Continue to form",
+        "cancel": "Cancel",
+        "blockedTitle": "Checklist required",
+        "blockedBody": "Complete all required checklist items on the job before filling this form.",
+        "backToJob": "Back to job"
       },
       "page": {
         "createTitle": "New job",
@@ -2739,6 +2831,37 @@
           "status": "Status",
           "created": "Created",
           "actions": "Actions"
+        }
+      },
+      "jobsTab": {
+        "title": "Jobs",
+        "subtitle": "Auto jobs are grouped by level and plot. Switch to Manual to view jobs created directly on this project.",
+        "searchPlaceholder": "Search jobs…",
+        "searchAria": "Search project jobs",
+        "loadError": "Could not load project jobs. Try again.",
+        "emptyTitle": "No jobs on this project",
+        "emptyDescription": "Quotation jobs appear under levels and plots. Switch job source to Manual to view manually created jobs.",
+        "emptyManualTitle": "No manual jobs",
+        "emptyManualDescription": "Manually created jobs for this project will appear here.",
+        "emptyQuotationTitle": "No auto jobs",
+        "emptyQuotationDescription": "Auto jobs will appear under each level and plot when available.",
+        "pageLabel": "Showing {start}-{end} of {total} jobs",
+        "filterJobSource": "Job source",
+        "filterAllSources": "All sources",
+        "filterManualSource": "Manual",
+        "filterQuotationSource": "Auto",
+        "filterLevel": "Level",
+        "filterAllLevels": "All levels",
+        "filterPlot": "Plot",
+        "filterAllPlots": "All plots",
+        "manualJobLocation": "Manual / unassigned",
+        "manualJobsSection": "Manual jobs",
+        "selectPlot": "Select all jobs in {plot}",
+        "selectManualJobs": "Select all manual jobs",
+        "jobCount": "{count, plural, one {# job} other {# jobs}}",
+        "plotJobCount": "{count, plural, one {# job} other {# jobs}}",
+        "table": {
+          "location": "Location"
         }
       },
       "detailLoadError": "Could not load project details. Try again.",

@@ -6,9 +6,12 @@ import { Link } from "@/i18n/navigation";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import type { Job } from "@/features/jobs/types/job.types";
 import { JobFormsSection } from "@/features/job-forms/components/job-forms-section";
+import { JobChecklistsSection } from "@/features/jobs/components/job-checklists-section";
 import {
   getJobStatusRow,
   jobAssignedWorkerLabel,
+  jobChecklistEntries,
+  jobChecklistIsMarked,
   jobClientLabel,
   jobFormEntries,
   jobProjectLabel,
@@ -41,10 +44,12 @@ export function JobDetailBody({
   detail,
   dateFmt,
   workerLabel,
+  onChecklistsUpdated,
 }: {
   detail: Job;
   dateFmt: Intl.DateTimeFormat;
   workerLabel?: string;
+  onChecklistsUpdated?: () => void;
 }) {
   const t = useTranslations("Dashboard.jobs");
   const tMeta = useTranslations("Dashboard.common.detail");
@@ -54,6 +59,8 @@ export function JobDetailBody({
   const meta = normalizeJobMeta(detail.job_meta);
   const compositeRows = meta?.composite_items ?? [];
   const formEntries = jobFormEntries(detail);
+  const checklistEntries = jobChecklistEntries(detail);
+  const checklistMarked = jobChecklistIsMarked(detail);
 
   const [compositeNameById, setCompositeNameById] = React.useState<Map<number, string>>(new Map());
 
@@ -152,9 +159,14 @@ export function JobDetailBody({
           <JobFormsSection
             jobId={detail.id}
             forms={formEntries}
+            checklists={checklistEntries}
+            checklistMarked={checklistMarked}
             backHref={`${routes.dashboard.jobs}/${detail.id}`}
+            onChecklistsUpdated={onChecklistsUpdated}
           />
         </DetailPanelCard>
+
+        <JobChecklistsSection checklists={checklistEntries} />
 
         {meta && (meta.total != null || compositeRows.length > 0) ? (
           <DetailPanelCard title={t("detail.sectionWorkScope")}>
