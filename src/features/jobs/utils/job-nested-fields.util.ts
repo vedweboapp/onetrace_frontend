@@ -1,5 +1,9 @@
 import type {
   Job,
+  JobChecklistApiRow,
+  JobChecklistItem,
+  JobChecklistsBlock,
+  JobChecklistUpdateItem,
   JobClientRef,
   JobFormRef,
   JobFormRefApiRow,
@@ -132,6 +136,65 @@ export function jobFormEntries(job: Pick<Job, "forms">): JobFormRef[] {
   }
 
   return [];
+}
+
+function normalizeJobChecklistRow(row: JobChecklistApiRow): JobChecklistItem | null {
+  const id =
+    typeof row.checklist_id === "number" && row.checklist_id > 0
+      ? row.checklist_id
+      : typeof row.id === "number" && row.id > 0
+        ? row.id
+        : null;
+  if (id == null) return null;
+  return {
+    id,
+    title: row.title ?? null,
+    sequence: typeof row.sequence === "number" && Number.isFinite(row.sequence) ? row.sequence : 0,
+    is_required: row.is_required === true,
+    is_checked: row.is_checked === true,
+    checked_at: row.checked_at ?? null,
+  };
+}
+
+function isJobChecklistsBlock(value: Job["checklists"]): value is JobChecklistsBlock {
+  return value != null && typeof value === "object" && !Array.isArray(value) && "items" in value;
+}
+
+function resolveChecklistApiRows(checklists: Job["checklists"]): JobChecklistApiRow[] {
+  if (!checklists) return [];
+  if (Array.isArray(checklists)) return checklists as JobChecklistApiRow[];
+  if (isJobChecklistsBlock(checklists)) return checklists.items ?? [];
+  return [];
+}
+
+export function jobChecklistIsMarked(job: Pick<Job, "checklists">): boolean {
+  const raw = job.checklists;
+  if (isJobChecklistsBlock(raw)) return raw.is_marked === true;
+  return false;
+}
+
+export function jobChecklistEntries(job: Pick<Job, "checklists">): JobChecklistItem[] {
+  const rows = resolveChecklistApiRows(job.checklists);
+  if (rows.length === 0) return [];
+  return rows
+    .map((row) => normalizeJobChecklistRow(row))
+    .filter((row): row is JobChecklistItem => row !== null)
+    .sort((a, b) => a.sequence - b.sequence || a.id - b.id);
+}
+
+export function jobChecklistUpdatePayload(items: JobChecklistItem[]): JobChecklistUpdateItem[] {
+  return items.map((item) => ({
+    checklist_id: item.id,
+    is_checked: item.is_checked,
+  }));
+}
+
+export function requiredJobChecklistsComplete(
+  items: JobChecklistItem[],
+  options?: { isMarked?: boolean },
+): boolean {
+  if (options?.isMarked) return true;
+  return items.every((item) => !item.is_required || item.is_checked);
 }
 
 export function jobFormsSummary(job: Pick<Job, "forms">): string {

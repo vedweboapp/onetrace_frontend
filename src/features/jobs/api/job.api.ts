@@ -6,6 +6,7 @@ import { JOB_PATHS } from "./job.paths";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
 import type {
   Job,
+  JobChecklistUpdateItem,
   JobCreateFromQuotationPayload,
   JobCreatePayload,
   JobListResponse,
@@ -96,6 +97,13 @@ export async function updateJob(id: number, body: JobUpdatePayload): Promise<Job
   const { data } = await api.patch<ApiEnvelope<Job>>(JOB_PATHS.detail(id), body);
   assertApiSuccess(data);
   return data.data;
+}
+
+export async function updateJobChecklists(
+  id: number,
+  checklists: JobChecklistUpdateItem[],
+): Promise<Job> {
+  return updateJob(id, { checklists });
 }
 
 export async function deleteJob(id: number): Promise<void> {

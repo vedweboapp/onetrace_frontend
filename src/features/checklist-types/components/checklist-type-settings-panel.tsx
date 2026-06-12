@@ -1,0 +1,774 @@
+"use client";
+
+import * as React from "react";
+import { GripVertical, Pencil, Power, PowerOff, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
+import { z } from "zod";
+import { cn } from "@/core/utils/http.util";
+import {
+  createChecklistType,
+  deleteChecklistType,
+  fetchChecklistTypesPage,
+  patchChecklistType,
+  updateChecklistType,
+} from "@/features/checklist-types/api/checklist-type.api";
+import type { ChecklistType } from "@/features/checklist-types/types/checklist-type.types";
+import {
+  formatChecklistTypeLabel,
+  projectTypeIdFromChecklistRow,
+  projectTypeLabelFromChecklistRow,
+} from "@/features/checklist-types/utils/checklist-type-display.util";
+import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
+import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
+import { zTrimmedNonEmpty } from "@/shared/form";
+import { ChecklistTypeSortableTable } from "@/features/checklist-types/components/checklist-type-sortable-table";
+import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
+import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import {
+  applySequencesToItems,
+  checklistSequenceUpdates,
+} from "@/features/checklist-types/utils/checklist-type-sequence.util";
+import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
+import { reorderArray } from "@/shared/utils/reorder-array.util";
+import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import {
+  ActiveStatusBadge,
+  AddButton,
+  AppButton,
+  AppModal,
+  CheckmarkSelect,
+  ConfirmDialog,
+  DataTablePaginationBar,
+  ListPageEmptyStates,
+  listPageSurfaceShellClassName,
+  DataTableRowActionsMenu,
+  DetailPanel,
+  FieldGroup,
+  ListPageActiveFilter,
+  ListPageCard,
+  ListPageCardGrid,
+  ListPageCardSkeleton,
+  ListPageHeader,
+  ListPageSearchField,
+  SurfaceShell,
+  surfaceInputClassName,
+} from "@/shared/ui";
+
+const CHECKLIST_DND_TYPE = "application/x-checklist-type-order";
+
+function checklistTypeUserLabel(user: ChecklistType["created_by"]): string {
+  if (!user) return "—";
+  const name = user.username?.trim();
+  if (name) return name;
+  const email = user.email?.trim();
+  if (email) return email;
+  return `#${user.id}`;
+}
+
+function formatOptionalDate(dateFmt: Intl.DateTimeFormat, value: string | null): string {
+  if (!value?.trim()) return "—";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "—" : dateFmt.format(d);
+}
+
+export function ChecklistTypeSettingsPanel() {
+  const t = useTranslations("Dashboard.checklistTypes");
+  const tList = useTranslations("Dashboard.list");
+  const dateFmt = useDashboardDateFormat();
+  const searchParams = useSearchParams();
+  const { page, pageSize, listViewMode, search, isActiveParam, setUrl, setPage, setPageSize, setListViewMode } =
+    useListUrlState();
+  const isActiveFilter = parseIsActiveParam(isActiveParam) ?? true;
+
+  const projectTypeParam = searchParams.get("project_type");
+  const projectTypeFilter =
+    projectTypeParam && /^\d+$/.test(projectTypeParam)
+      ? Number.parseInt(projectTypeParam, 10)
+      : undefined;
+
+  const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
+  const commitSearch = React.useCallback(
+    (q: string) => {
+      const trimmed = q.trim();
+      setUrl({ search: trimmed || null, page: null }, { replace: true });
+    },
+    [setUrl],
+  );
+
+  const [items, setItems] = React.useState<ChecklistType[]>([]);
+  const [pagination, setPagination] = React.useState({
+    total_records: 0,
+    total_pages: 1,
+    current_page: 1,
+    page_size: 20,
+    next: null as string | null,
+    previous: null as string | null,
+  });
+  const [loading, setLoading] = React.useState(true);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [refreshNonce, setRefreshNonce] = React.useState(0);
+  const [detailRow, setDetailRow] = React.useState<ChecklistType | null>(null);
+  const [togglingId, setTogglingId] = React.useState<number | null>(null);
+
+  const [projectTypeOptions, setProjectTypeOptions] = React.useState<{ value: string; label: string }[]>([]);
+
+  const [formOpen, setFormOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState<ChecklistType | null>(null);
+  const [title, setTitle] = React.useState("");
+  const [projectTypeId, setProjectTypeId] = React.useState("");
+  const [isRequired, setIsRequired] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [errors, setErrors] = React.useState<{ title?: string; project_type?: string }>({});
+
+  const [deleteTarget, setDeleteTarget] = React.useState<ChecklistType | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
+  const [reordering, setReordering] = React.useState(false);
+  const [dragFromIndex, setDragFromIndex] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items: projectTypes } = await fetchProjectTypesPage(1, 500, { is_active: true });
+        if (!cancelled) {
+          setProjectTypeOptions(
+            projectTypes.map((pt) => ({
+              value: String(pt.id),
+              label: formatProjectTypeLabel(pt),
+            })),
+          );
+        }
+      } catch {
+        if (!cancelled) setProjectTypeOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const { items: nextItems, pagination: p } = await fetchChecklistTypesPage(page, pageSize, {
+          search: search || undefined,
+          is_active: isActiveFilter,
+          project_type: projectTypeFilter,
+        });
+        if (!cancelled) {
+          setItems(nextItems);
+          setPagination(p);
+        }
+      } catch {
+        if (!cancelled) {
+          setLoadError(t("loadError"));
+          setItems([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [page, pageSize, refreshNonce, search, isActiveFilter, projectTypeFilter, t]);
+
+  const hasActiveFilters = hasListActiveFilters({
+    search,
+    isActiveParam,
+    projectTypeParam,
+  });
+  const countInactive = React.useCallback(async () => {
+    const { pagination: p } = await fetchChecklistTypesPage(1, 1, {
+      search: search || undefined,
+      is_active: false,
+      project_type: projectTypeFilter,
+    });
+    return p.total_records;
+  }, [search, projectTypeFilter]);
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive, switchToInactive } =
+    useListActiveInactiveEmptyState({
+      loading,
+      loadError,
+      itemsLength: items.length,
+      isActiveParam,
+      isActiveFilter,
+      hasActiveFilters,
+      setUrl,
+      countInactive,
+    });
+
+  const openEdit = React.useCallback((row: ChecklistType) => {
+    setDetailRow(null);
+    setEditing(row);
+    setTitle(formatChecklistTypeLabel(row));
+    const ptId = projectTypeIdFromChecklistRow(row);
+    setProjectTypeId(ptId ? String(ptId) : "");
+    setIsRequired(row.is_required);
+    setErrors({});
+    setFormOpen(true);
+  }, []);
+
+  function openCreate() {
+    setDetailRow(null);
+    setEditing(null);
+    setTitle("");
+    setProjectTypeId("");
+    setIsRequired(true);
+    setErrors({});
+    setFormOpen(true);
+  }
+
+  async function handleToggleActive(row: ChecklistType, next: boolean) {
+    setTogglingId(row.id);
+    try {
+      await patchChecklistType(row.id, { is_active: next });
+      toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
+      setRefreshNonce((n) => n + 1);
+    } catch {
+      toastError(t("toggleActiveError"));
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
+  const handleReorder = React.useCallback(
+    async (fromIndex: number, toIndex: number) => {
+      if (reordering || fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+      const prev = items;
+      const reordered = reorderArray(items, fromIndex, toIndex);
+      const withSequences = applySequencesToItems(reordered, page, pageSize);
+      const updates = checklistSequenceUpdates(prev, withSequences);
+      if (updates.length === 0) return;
+
+      setItems(withSequences);
+      setReordering(true);
+      try {
+        await Promise.all(updates.map((u) => patchChecklistType(u.id, { sequence: u.sequence })));
+        toastSuccess(t("sequenceUpdated"));
+        setRefreshNonce((n) => n + 1);
+      } catch {
+        setItems(prev);
+        toastError(t("sequenceUpdateError"));
+      } finally {
+        setReordering(false);
+        setDragFromIndex(null);
+      }
+    },
+    [items, page, pageSize, reordering, t],
+  );
+
+  async function submitForm() {
+    const formSchema = z.object({
+      title: zTrimmedNonEmpty(t("validationTitle")),
+      project_type: z
+        .string()
+        .trim()
+        .min(1, t("validationProjectType"))
+        .refine((v) => /^\d+$/.test(v) && Number.parseInt(v, 10) > 0, t("validationProjectType")),
+    });
+    const parsed = formSchema.safeParse({ title, project_type: projectTypeId });
+    if (!parsed.success) {
+      const nextErrors: { title?: string; project_type?: string } = {};
+      for (const issue of parsed.error.issues) {
+        const field = String(issue.path[0] ?? "");
+        if (field === "title") nextErrors.title = String(issue.message);
+        if (field === "project_type") nextErrors.project_type = String(issue.message);
+      }
+      setErrors(nextErrors);
+      return;
+    }
+
+    setErrors({});
+    const { title: nextTitle, project_type: ptRaw } = parsed.data;
+    const projectType = Number.parseInt(ptRaw, 10);
+    setSaving(true);
+    try {
+      if (editing) {
+        await updateChecklistType(editing.id, {
+          title: nextTitle,
+          project_type: projectType,
+          is_required: isRequired,
+        });
+        toastSuccess(t("saved"));
+      } else {
+        await createChecklistType({
+          title: nextTitle,
+          project_type: projectType,
+          is_required: isRequired,
+        });
+        toastSuccess(t("created"));
+      }
+      setFormOpen(false);
+      if (!editing) setUrl({ page: null });
+      setRefreshNonce((n) => n + 1);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteChecklistType(deleteTarget.id);
+      toastSuccess(t("deleted"));
+      setDeleteTarget(null);
+      setRefreshNonce((n) => n + 1);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const pageRange = getListPageRange(pagination);
+
+  const rowMenuItems = React.useCallback(
+    (row: ChecklistType) => [
+      { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) },
+      {
+        id: "delete",
+        label: t("delete"),
+        icon: Trash2,
+        tone: "danger" as const,
+        onSelect: () => {
+          setDetailRow(null);
+          setDeleteTarget(row);
+        },
+      },
+      row.is_active
+        ? {
+            id: "deactivate",
+            label: t("deactivate"),
+            icon: PowerOff,
+            onSelect: () => void handleToggleActive(row, false),
+            disabled: togglingId === row.id,
+          }
+        : {
+            id: "activate",
+            label: t("activate"),
+            icon: Power,
+            onSelect: () => void handleToggleActive(row, true),
+            disabled: togglingId === row.id,
+          },
+    ],
+    [t, openEdit, togglingId],
+  );
+
+  const formatCreatedCell = React.useCallback(
+    (row: ChecklistType) => (
+      <>
+        <span className="block text-slate-500 dark:text-slate-400">
+          {formatOptionalDate(dateFmt, row.created_at)}
+        </span>
+        {checklistTypeUserLabel(row.created_by) !== "—" ? (
+          <span className="mt-0.5 block text-xs text-slate-400 dark:text-slate-500">
+            {checklistTypeUserLabel(row.created_by)}
+          </span>
+        ) : null}
+      </>
+    ),
+    [dateFmt],
+  );
+
+  return (
+    <div className="space-y-6">
+      {!hideListChrome ? (
+        <ListPageHeader
+          filtersActive={filtersActive}
+          viewMode={listViewMode}
+          onViewModeChange={setListViewMode}
+          tableViewLabel={tList("tableView")}
+          listViewLabel={tList("listView")}
+          action={<AddButton type="button" onClick={openCreate} />}
+          controls={
+            <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <ListPageSearchField
+                value={search}
+                onCommit={commitSearch}
+                placeholder={t("searchPlaceholder")}
+                ariaLabel={tList("searchAria")}
+                className="sm:max-w-sm"
+              />
+              <CheckmarkSelect
+                listLabel={t("filterProjectType")}
+                emptyLabel={t("filterProjectTypePlaceholder")}
+                options={projectTypeOptions}
+                value={projectTypeParam ?? ""}
+                searchable
+                clearable
+                portaled
+                onChange={(v) =>
+                  setUrl({ project_type: v || null, page: null }, { replace: true })
+                }
+              />
+              <ListPageActiveFilter
+                activeLabel={t("status.active")}
+                inactiveLabel={t("status.inactive")}
+                filterLabel={t("filterState")}
+                filterAriaLabel={t("filterState")}
+                isActiveParam={isActiveParam}
+                onChange={(active) =>
+                  setUrl({ is_active: active ? null : "false", page: null }, { replace: true })
+                }
+              />
+            </div>
+          }
+        />
+      ) : null}
+
+      <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
+        {loadError ? (
+          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+        ) : listLoading ? (
+          listViewMode === "list" ? (
+            <div className="p-4 sm:p-6">
+              <ListPageCardGrid>
+                {Array.from({ length: 6 }, (_, i) => (
+                  <ListPageCardSkeleton key={i} />
+                ))}
+              </ListPageCardGrid>
+            </div>
+          ) : (
+            <div className="space-y-2 p-6">
+              <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+            </div>
+          )
+        ) : items.length === 0 ? (
+          <ListPageEmptyStates
+            emptyStateKind={emptyStateKind}
+            onboarding={{
+              iconName: "projects",
+              title: t("emptyTitle"),
+              description: t("emptyDescription"),
+              action: <AddButton type="button" onClick={openCreate} />,
+            }}
+            onClearFilters={() =>
+              setUrl({ search: null, is_active: null, project_type: null, page: null }, { replace: true })
+            }
+            onSwitchToInactive={switchToInactive}
+          />
+        ) : listViewMode === "list" ? (
+          <div className="p-4 sm:p-6">
+            <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">{t("reorderHint")}</p>
+            <ListPageCardGrid>
+              {items.map((row, index) => (
+                <div
+                  key={row.id}
+                  draggable={!reordering && !listLoading}
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData(CHECKLIST_DND_TYPE, String(index));
+                    setDragFromIndex(index);
+                  }}
+                  onDragEnd={() => setDragFromIndex(null)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const raw = e.dataTransfer.getData(CHECKLIST_DND_TYPE);
+                    const from = Number.parseInt(raw, 10);
+                    if (Number.isFinite(from)) void handleReorder(from, index);
+                  }}
+                  className={cn(
+                    "h-full",
+                    dragFromIndex === index && "opacity-50",
+                    reordering && "pointer-events-none",
+                  )}
+                >
+                  <ListPageCard
+                    leading={
+                      <div
+                        className="flex items-center gap-1.5"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        <GripVertical
+                          className="size-4 shrink-0 cursor-grab text-slate-400 active:cursor-grabbing"
+                          aria-hidden
+                        />
+                        <span className="flex size-8 items-center justify-center rounded-lg bg-slate-100 text-sm font-semibold tabular-nums text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                          {row.sequence}
+                        </span>
+                      </div>
+                    }
+                    title={formatChecklistTypeLabel(row)}
+                    meta={
+                      <>
+                        {t("table.projectType")}: {projectTypeLabelFromChecklistRow(row)}
+                      </>
+                    }
+                    description={`${t("detail.createdAt")}: ${formatOptionalDate(dateFmt, row.created_at)}${
+                      checklistTypeUserLabel(row.created_by) !== "—"
+                        ? ` · ${t("detail.byUser", { user: checklistTypeUserLabel(row.created_by) })}`
+                        : ""
+                    } · ${row.is_required ? t("required.yes") : t("required.no")}`}
+                    footer={
+                      <ActiveStatusBadge
+                        active={row.is_active}
+                        label={row.is_active ? t("status.active") : t("status.inactive")}
+                      />
+                    }
+                    onCardClick={() => setDetailRow(row)}
+                    menu={
+                      <DataTableRowActionsMenu menuAriaLabel={tList("openRowActions")} items={rowMenuItems(row)} />
+                    }
+                  />
+                </div>
+              ))}
+            </ListPageCardGrid>
+          </div>
+        ) : (
+          <div className="p-4 sm:p-6">
+            <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">{t("reorderHint")}</p>
+            <ChecklistTypeSortableTable
+              items={items}
+              reordering={reordering}
+              dragFromIndex={dragFromIndex}
+              onDragFromIndexChange={setDragFromIndex}
+              onReorder={(from, to) => void handleReorder(from, to)}
+              onRowClick={(row) => setDetailRow(row)}
+              rowMenuItems={rowMenuItems}
+              formatCreated={formatCreatedCell}
+              labels={{
+                sequence: t("table.sequence"),
+                title: t("table.title"),
+                projectType: t("table.projectType"),
+                required: t("table.required"),
+                requiredYes: t("required.yes"),
+                requiredNo: t("required.no"),
+                status: t("table.status"),
+                active: t("status.active"),
+                inactive: t("status.inactive"),
+                created: t("table.created"),
+                actions: t("table.actions"),
+                openRowActions: tList("openRowActions"),
+              }}
+            />
+          </div>
+        )}
+
+        {!listLoading && !loadError && items.length > 0 ? (
+          <DataTablePaginationBar
+            pagination={pagination}
+            summary={t("pageLabel", { start: pageRange.start, end: pageRange.end, total: pagination.total_records })}
+            prevLabel={t("prev")}
+            nextLabel={t("next")}
+            onPrev={() => setPage(Math.max(1, pagination.current_page - 1))}
+            onNext={() => setPage(pagination.current_page + 1)}
+            onPageSelect={(p) => setPage(p)}
+            pageSizeControl={{
+              label: tList("rowsPerPage"),
+              listLabel: tList("rowsPerPage"),
+              value: pageSize,
+              options: pageSizeOptions,
+              onChange: setPageSize,
+              disabled: listLoading,
+            }}
+          />
+        ) : null}
+      </SurfaceShell>
+
+      <DetailPanel
+        open={detailRow !== null}
+        onClose={() => setDetailRow(null)}
+        title={
+          detailRow ? (
+            <span className="text-base font-semibold text-slate-900 dark:text-slate-100">
+              {formatChecklistTypeLabel(detailRow)}
+            </span>
+          ) : null
+        }
+        subtitle={
+          detailRow ? (
+            <span className="text-sm text-slate-500 dark:text-slate-400">
+              {t("detail.idLabel", { id: detailRow.id })}
+            </span>
+          ) : undefined
+        }
+        footer={
+          detailRow ? (
+            <>
+              <AppButton type="button" variant="secondary" size="sm" onClick={() => setDetailRow(null)}>
+                {t("modal.cancel")}
+              </AppButton>
+              <AppButton
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  const row = detailRow;
+                  setDetailRow(null);
+                  openEdit(row);
+                }}
+              >
+                {t("edit")}
+              </AppButton>
+              <AppButton
+                type="button"
+                variant="danger"
+                size="sm"
+                onClick={() => {
+                  const row = detailRow;
+                  setDetailRow(null);
+                  setDeleteTarget(row);
+                }}
+              >
+                {t("delete")}
+              </AppButton>
+            </>
+          ) : undefined
+        }
+      >
+        {detailRow ? (
+          <div className="space-y-5">
+            <FieldGroup label={t("table.title")}>
+              <p className="text-sm text-slate-800 dark:text-slate-200">{formatChecklistTypeLabel(detailRow)}</p>
+            </FieldGroup>
+            <FieldGroup label={t("table.projectType")}>
+              <p className="text-sm text-slate-800 dark:text-slate-200">
+                {projectTypeLabelFromChecklistRow(detailRow)}
+              </p>
+            </FieldGroup>
+            <FieldGroup label={t("table.sequence")}>
+              <p className="text-sm text-slate-800 dark:text-slate-200">{detailRow.sequence}</p>
+            </FieldGroup>
+            <FieldGroup label={t("table.required")}>
+              <p className="text-sm text-slate-800 dark:text-slate-200">
+                {detailRow.is_required ? t("required.yes") : t("required.no")}
+              </p>
+            </FieldGroup>
+            <FieldGroup label={t("table.status")}>
+              <ActiveStatusBadge
+                active={detailRow.is_active}
+                label={detailRow.is_active ? t("status.active") : t("status.inactive")}
+              />
+            </FieldGroup>
+            <FieldGroup label={t("detail.createdAt")}>
+              <p className="text-sm text-slate-800 dark:text-slate-200">
+                {formatOptionalDate(dateFmt, detailRow.created_at)}
+              </p>
+              {checklistTypeUserLabel(detailRow.created_by) !== "—" ? (
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {t("detail.byUser", { user: checklistTypeUserLabel(detailRow.created_by) })}
+                </p>
+              ) : null}
+            </FieldGroup>
+            <FieldGroup label={t("detail.updatedAt")}>
+              <p className="text-sm text-slate-800 dark:text-slate-200">
+                {formatOptionalDate(dateFmt, detailRow.modified_at)}
+              </p>
+              {checklistTypeUserLabel(detailRow.modified_by) !== "—" ? (
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {t("detail.byUser", { user: checklistTypeUserLabel(detailRow.modified_by) })}
+                </p>
+              ) : null}
+            </FieldGroup>
+          </div>
+        ) : null}
+      </DetailPanel>
+
+      <AppModal
+        open={formOpen}
+        onClose={() => (!saving ? setFormOpen(false) : undefined)}
+        title={editing ? t("modal.editTitle") : t("modal.createTitle")}
+        titleId="checklist-type-form-title"
+        closeOnBackdrop={!saving}
+        isBusy={saving}
+        footer={
+          <>
+            <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => setFormOpen(false)}>
+              {t("modal.cancel")}
+            </AppButton>
+            <AppButton type="button" variant="primary" size="sm" loading={saving} onClick={() => void submitForm()}>
+              {t("modal.save")}
+            </AppButton>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <FieldGroup
+            label={
+              <span>
+                {t("modal.title")} <span className="text-red-500">*</span>
+              </span>
+            }
+            htmlFor="checklist-type-title"
+          >
+            <input
+              id="checklist-type-title"
+              value={title}
+              onChange={(e) => {
+                setTitle(capitalizeFirstLetter(e.target.value));
+                if (errors.title) setErrors((prev) => ({ ...prev, title: undefined }));
+              }}
+              className={cn(
+                surfaceInputClassName,
+                errors.title && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
+              )}
+              autoComplete="off"
+            />
+            {errors.title ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.title}</p> : null}
+          </FieldGroup>
+          <FieldGroup
+            label={
+              <span>
+                {t("modal.projectType")} <span className="text-red-500">*</span>
+              </span>
+            }
+          >
+            <CheckmarkSelect
+              listLabel={t("modal.projectType")}
+              emptyLabel={t("filterProjectTypePlaceholder")}
+              options={projectTypeOptions}
+              value={projectTypeId}
+              searchable
+              clearable
+              portaled
+              onChange={(v) => {
+                setProjectTypeId(v);
+                if (errors.project_type) setErrors((prev) => ({ ...prev, project_type: undefined }));
+              }}
+            />
+            {errors.project_type ? (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.project_type}</p>
+            ) : null}
+          </FieldGroup>
+          <FieldGroup label={t("modal.requiredLabel")} htmlFor="checklist-type-required">
+            <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <input
+                id="checklist-type-required"
+                type="checkbox"
+                className="size-4 rounded border-slate-300"
+                checked={isRequired}
+                disabled={saving}
+                onChange={(e) => setIsRequired(e.target.checked)}
+              />
+              {isRequired ? t("required.yes") : t("required.no")}
+            </label>
+          </FieldGroup>
+        </div>
+      </AppModal>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onClose={() => (!deleting ? setDeleteTarget(null) : undefined)}
+        onConfirm={() => void confirmDelete()}
+        title={t("deleteConfirmTitle")}
+        body={t("deleteConfirmBody")}
+        highlight={deleteTarget ? formatChecklistTypeLabel(deleteTarget) : undefined}
+        confirmLabel={t("confirmDelete")}
+        cancelLabel={t("modal.cancel")}
+        isBusy={deleting}
+      />
+    </div>
+  );
+}

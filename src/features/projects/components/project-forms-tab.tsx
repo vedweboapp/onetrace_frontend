@@ -31,7 +31,7 @@ import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 
 type ViewMode = "list" | "table";
-type ActiveFilter = "" | "true" | "false";
+type ActiveFilter = "true" | "false";
 
 function parseViewParam(value: string | null): ViewMode {
   return value === "table" ? "table" : "list";
@@ -71,7 +71,7 @@ export function ProjectFormsTab() {
   }
 
   const [search, setSearch] = React.useState("");
-  const [activeFilter, setActiveFilter] = React.useState<ActiveFilter>("");
+  const [activeFilter, setActiveFilter] = React.useState<ActiveFilter>("true");
 
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
@@ -117,7 +117,7 @@ export function ProjectFormsTab() {
           pageSize,
           {
             search: search || undefined,
-            is_active: activeFilter === "" ? undefined : activeFilter === "true",
+            is_active: activeFilter === "true",
           }
         );
         if (!cancelled) {
@@ -330,19 +330,18 @@ export function ProjectFormsTab() {
           <CheckmarkSelect
             listLabel={t("filterState")}
             buttonAriaLabel={t("filterState")}
+            emptyLabel={t("status.active")}
             options={[
-              { value: "", label: t("filterAll") },
               { value: "true", label: t("status.active") },
               { value: "false", label: t("status.inactive") },
             ]}
             value={activeFilter}
             onChange={(v) => {
-              setActiveFilter((v || "") as ActiveFilter);
+              setActiveFilter(v === "false" ? "false" : "true");
               setPage(1);
             }}
             className="w-full sm:w-52"
-            clearable
-            clearAriaLabel={tList("clearFilter")}
+            portaled
           />
         </div>
         {viewToggle}

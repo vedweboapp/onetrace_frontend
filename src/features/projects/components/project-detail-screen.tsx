@@ -12,6 +12,7 @@ import { deleteProject, fetchProject } from "@/features/projects/api/project.api
 import { ProjectDetailBody } from "@/features/projects/components/project-detail-body";
 import { ProjectDrawingsTab } from "@/features/projects/components/project-drawings-tab";
 import { ProjectFormsTab } from "@/features/projects/components/project-forms-tab";
+import { ProjectJobsTab } from "@/features/projects/components/project-jobs-tab";
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { projectTypesById } from "@/features/projects/utils/project-type-id.util";
@@ -231,6 +232,8 @@ export function ProjectDetailScreen({ projectId }: Props) {
             <ProjectDrawingsTab projectId={detail.id} />
           ) : detail && activeTab === "forms" ? (
             <ProjectFormsTab />
+          ) : detail && activeTab === "jobs" ? (
+            <ProjectJobsTab projectId={detail.id} />
           ) : detail && activeTab === "Pins" ? (
             <ProjectPinsListTab />
           ) : activeTab !== "details" ? (
