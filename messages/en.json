@@ -41,7 +41,7 @@
       "invalidCredentials": "Invalid email or password. Please try again."
     },
     "signUpForm": {
-      "title": "Create Your account",
+      "title": "Sign Up",
       "firstName": "First Name",
       "middleName": "Middle Name",
       "optional": "(Optional)",
@@ -52,7 +52,9 @@
       "showPassword": "Show password",
       "hidePassword": "Hide password",  
       "body": "Registration will live here — wire your API next.",
-      "backToLogin": "Back to sign in",
+      "backToLogin": "Already have an account?",
+      "sendOtp": "Send OTP",
+      "login": "Login",
       "placeholders": {
         "firstName": "Enter your first name",
         "middleName": "Enter your middle name",
@@ -62,7 +64,9 @@
       },
       "signUp":"Sign up",
       "errors":{
-        "passwordRequired":"Password is required."
+        "passwordRequired":"Password is required.",
+        "firstNameRequired": "First name is required."
+        
       }
 
     },

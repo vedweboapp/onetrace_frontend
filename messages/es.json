@@ -52,8 +52,10 @@
       "showPassword": "Mostrar contraseña",
       "hidePassword": "Ocultar contraseña",
       "body": "El registro irá aquí: conecta tu API cuando toque.",
-      "backToLogin": "Volver a iniciar sesión",
+      "backToLogin": "¿Ya tiene una cuenta?",
       "signUp": "Registrarse",
+      "sendOtp": "Enviar OTP",
+      "login": "acceso",
       "placeholders": {
         "firstName": "Ingrese su nombre",
         "middleName": "Ingrese su segundo nombre",
@@ -62,7 +64,8 @@
         "password": "Cree una contraseña"
       },
       "errors": {
-        "passwordRequired": "Password is required."
+        "passwordRequired": "Password is required.",
+        "firstNameRequired": "First name is required."
       }
     },
     "forgotPassword": {
