@@ -185,6 +185,7 @@
       "companySettings": "Ajustes de la empresa",
       "formBuilder": "Creador de formularios",
       "modules": "Módulos",
+      "integrations": "Integraciones",
       "hint": "Personaliza el tema y el color de acento de este espacio.",
       "customization": {
         "label": "Personalización",
@@ -224,6 +225,25 @@
             "description": "Etiquetas para organizar pins y registros."
           }
         }
+      }
+    },
+    "integrations": {
+      "title": "Integraciones",
+      "description": "Conecta servicios de terceros para sincronizar datos con OneTrace.",
+      "connect": "Conectar",
+      "connectError": "No se pudo iniciar la conexión con Zoho. Inténtalo de nuevo.",
+      "zohoInventory": {
+        "name": "Zoho Inventory"
+      },
+      "zohoCallback": {
+        "title": "Finalizar configuración de Zoho Inventory",
+        "description": "Elige si importar datos existentes de Zoho y completa la conexión.",
+        "pullHistoricalData": "Importar datos históricos",
+        "pullHistoricalDataHint": "Importa registros existentes de Zoho Inventory al crear la conexión.",
+        "finish": "Finalizar integración",
+        "cancel": "Cancelar",
+        "finishError": "No se pudo completar la integración con Zoho. Inténtalo de nuevo.",
+        "missingParams": "Faltan datos de autorización. Inicia la conexión de nuevo desde Integraciones."
       }
     },
     "settingsPersonalProfile": {

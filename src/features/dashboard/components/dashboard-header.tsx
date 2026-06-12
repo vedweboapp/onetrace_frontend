@@ -13,6 +13,7 @@ import {
   Palette,
   PanelLeft,
   PanelLeftClose,
+  Plug,
   Settings,
   ListTodo,
   QrCode,
@@ -98,6 +99,7 @@ export function DashboardHeader() {
   const checklistTypeHref = routes.dashboard.settingsChecklistTypes;
   const projectFormsHref = routes.dashboard.settingsProjectForms;
   const usersHref = routes.dashboard.settingsUsers;
+  const integrationsHref = routes.dashboard.settingsIntegrations;
   const homeActive = pathname === homeHref;
   const clientsActive =
     pathname === clientsHref || pathname.startsWith(`${clientsHref}/`);
@@ -152,6 +154,8 @@ export function DashboardHeader() {
     pathname === customizationHref || pathname.startsWith(`${customizationHref}/`);
   const customizationActive = isCustomizationSettingsPath(pathname);
   const usersActive = pathname === usersHref || pathname.startsWith(`${usersHref}/`);
+  const integrationsActive =
+    pathname === integrationsHref || pathname.startsWith(`${integrationsHref}/`);
 
   const sectionTitle = homeActive
     ? tNav("home")
@@ -211,7 +215,11 @@ export function DashboardHeader() {
                                           ? tSettingsNav("projectTypes")
                                           : usersActive
                                           ? tSettingsNav("users")
-                                          : tNav("home");
+                                          : integrationsActive
+                                            ? tSettingsNav("integrations")
+                                            : projectFormsActive
+                                              ? tSettingsNav("projectForms")
+                                              : tNav("home");
 
   return (
     <header className="flex h-auto shrink-0 flex-col bg-white dark:bg-slate-950">
@@ -359,6 +367,17 @@ export function DashboardHeader() {
             >
               <UserRound className="size-3.5" strokeWidth={1.75} />
               {tSettingsNav("users")}
+            </Link>
+            <Link
+              href={integrationsHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                integrationsActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={integrationsActive ? resolved.navActiveStyle : undefined}
+            >
+              <Plug className="size-3.5" strokeWidth={1.75} />
+              {tSettingsNav("integrations")}
             </Link>
           </>
         ) : (

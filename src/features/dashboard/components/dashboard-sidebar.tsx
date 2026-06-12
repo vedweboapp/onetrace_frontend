@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
-import { BookUser, Building2, ClipboardList, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Tag, Truck, UserRound } from "lucide-react";
+import { BookUser, Building2, ClipboardList, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Tag, Truck, UserRound } from "lucide-react";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 
 import { useTranslations } from "next-intl";
@@ -409,6 +409,7 @@ function DashboardSettingsSidebar({
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
   const modulesHref = routes.dashboard.settingsModules;
   const projectFormsHref = routes.dashboard.settingsProjectForms;
+  const integrationsHref = routes.dashboard.settingsIntegrations;
 
   const customizationActive = isCustomizationSettingsPath(pathname);
 
@@ -420,6 +421,8 @@ function DashboardSettingsSidebar({
     pathname === companySettingsHref || pathname.startsWith(`${companySettingsHref}/`);
   const modulesActive = pathname === modulesHref || pathname.startsWith(`${modulesHref}/`);
   const projectFormsActive = pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
+  const integrationsActive =
+    pathname === integrationsHref || pathname.startsWith(`${integrationsHref}/`);
 
   return (
     <>
@@ -478,6 +481,14 @@ function DashboardSettingsSidebar({
           active={usersActive}
           label={t("users")}
           icon={UserRound}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={integrationsHref}
+          active={integrationsActive}
+          label={t("integrations")}
+          icon={Plug}
           expanded={expanded}
           resolved={resolved}
         />
