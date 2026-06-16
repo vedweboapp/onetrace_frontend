@@ -94,6 +94,7 @@ export function JobDetailScreen({ jobId }: Props) {
                 return id != null ? workerLabelById[id] : undefined;
               })()
             }
+            onChecklistsUpdated={retry}
           />
         ) : null
       }

@@ -31,10 +31,7 @@ export type DashboardListSection =
   | "return-to-stock"
   | "settings/users";
 
-export function sanitizeInternalListBack(
-  raw: string | null | undefined,
-  section: DashboardListSection,
-): string | null {
+function decodeInternalDashboardPath(raw: string | null | undefined): string | null {
   if (!raw) return null;
   let decoded: string;
   try {
@@ -45,7 +42,41 @@ export function sanitizeInternalListBack(
   if (!decoded.startsWith("/") || decoded.startsWith("//")) return null;
   if (decoded.includes("://")) return null;
   if (decoded.includes("..")) return null;
+  return decoded;
+}
+
+export function sanitizeInternalListBack(
+  raw: string | null | undefined,
+  section: DashboardListSection,
+): string | null {
+  const decoded = decodeInternalDashboardPath(raw);
+  if (!decoded) return null;
   const needle = `/dashboard/${section}`;
   if (!decoded.includes(needle)) return null;
   return decoded;
+}
+
+const PROJECT_DETAIL_BACK = /^\/dashboard\/projects\/\d+(\?[^#]*)?$/;
+
+/** Jobs list or project detail (jobs tab) — used when leaving job create/edit/detail. */
+export function sanitizeJobsBackHref(raw: string | null | undefined, fallback: string): string {
+  const fromJobsList = sanitizeInternalListBack(raw, "jobs");
+  if (fromJobsList) return fromJobsList;
+
+  const decoded = decodeInternalDashboardPath(raw);
+  if (!decoded) return fallback;
+
+  const pathAndQuery = decoded.split("#")[0] ?? decoded;
+  if (!PROJECT_DETAIL_BACK.test(pathAndQuery)) return fallback;
+
+  return decoded;
+}
+
+export function buildProjectJobsTabHref(projectPathname: string): string {
+  const qIdx = projectPathname.indexOf("?");
+  const pathOnly = qIdx >= 0 ? projectPathname.slice(0, qIdx) : projectPathname;
+  const params = new URLSearchParams(qIdx >= 0 ? projectPathname.slice(qIdx + 1) : "");
+  params.set("tab", "jobs");
+  const qs = params.toString();
+  return qs ? `${pathOnly}?${qs}` : `${pathOnly}?tab=jobs`;
 }

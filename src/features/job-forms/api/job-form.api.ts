@@ -125,6 +125,25 @@ function normalizeSubmission(
   };
 }
 
+export async function updateJobFormSubmission(
+  jobId: number,
+  submissionId: number,
+  payload: SubmitJobFormPayload,
+  projectFormId?: number,
+): Promise<JobFormSubmission> {
+  const { data } = await api.put<ApiEnvelope<JobFormSubmission>>(
+    JOB_FORM_PATHS.submittedDetail(jobId, submissionId),
+    payload,
+  );
+  assertApiSuccess(data);
+  return normalizeSubmission(
+    normalizeSubmissionRow(data.data),
+    jobId,
+    payload.job_form_id,
+    projectFormId ?? data.data.project_form_id ?? data.data.form_id,
+  );
+}
+
 export async function submitJobForm(
   jobId: number,
   payload: SubmitJobFormPayload,

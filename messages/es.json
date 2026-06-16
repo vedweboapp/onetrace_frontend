@@ -55,6 +55,10 @@
       "backToLogin": "¿Ya tiene una cuenta?",
       "signUp": "Registrarse",
       "sendOtp": "Enviar OTP",
+      "sendingOtp": "Enviando OTP…",
+      "verifyOtp": "Verificar OTP",
+      "verifyingOtp": "Verificando OTP…",
+      "signingUp": "Registrarse...",
       "login": "acceso",
       "placeholders": {
         "firstName": "Ingrese su nombre",
@@ -64,9 +68,20 @@
         "password": "Cree una contraseña"
       },
       "errors": {
-        "passwordRequired": "Password is required.",
-        "firstNameRequired": "First name is required."
-      }
+        "passwordRequired": "La contraseña es obligatoria.",
+        "passwordMinLength": "La contraseña debe tener al menos 8 caracteres.",
+        "firstNameRequired": "El nombre es obligatorio.",
+        "lastNameRequired": "El apellido es obligatorio.",
+        "emailRequired": "El correo electrónico es obligatorio.",
+        "emailInvalid": "Ingresa un correo válido (ej. tu@ejemplo.com).",
+        "otpRequired": "El código de verificación es obligatorio.",
+        "otpLength": "Ingresa el código completo de 6 dígitos."
+      },
+    "toasts": {
+  "signedUp": "Registro completado correctamente",
+  "Sent": "OTP enviado correctamente a su correo electrónico. Por favor, revise su bandeja de entrada.",
+  "verified": "Correo electrónico verificado correctamente."
+}
     },
     "forgotPassword": {
       "title": "¿Olvidaste la contraseña?",
@@ -203,6 +218,7 @@
       "projectTypes": "Tipos de proyecto",
       "installationTypes": "Tipos de instalación",
       "vendorTypes": "Tipos de proveedor",
+      "checklistTypes": "Tipos de lista de verificación",
       "users": "Usuarios",
       "personalProfile": "Perfil personal",
       "projectForms": "Formularios de proyecto",
@@ -213,7 +229,7 @@
       "customization": {
         "label": "Personalización",
         "hubTitle": "Personalización",
-        "hubDescription": "Elige qué configurar: tipos de proyecto, tipos de instalación, tipos de proveedor, estados de pin, estados de trabajo, estados de material y etiquetas.",
+        "hubDescription": "Elige qué configurar: tipos de proyecto, tipos de instalación, tipos de proveedor, tipos de lista de verificación, estados de pin, estados de trabajo, estados de material y etiquetas.",
         "items": {
           "projectTypes": {
             "title": "Tipos de proyecto",
@@ -226,6 +242,10 @@
           "vendorTypes": {
             "title": "Tipos de proveedor",
             "description": "Categorías de proveedor con etiquetas de color."
+          },
+          "checklistTypes": {
+            "title": "Tipos de lista de verificación",
+            "description": "Listas de verificación para formularios de trabajo, vinculadas a tipos de proyecto."
           },
           "pinStatus": {
             "title": "Estados de pin",
@@ -698,6 +718,76 @@
       "hexPlaceholder": "#000000",
       "validationName": "Introduce un nombre de tipo de instalación.",
       "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #DBEAFE)."
+    },
+    "checklistTypes": {
+      "metaTitle": "Tipos de lista de verificación",
+      "title": "Tipos de lista de verificación",
+      "subtitle": "Define listas de verificación para formularios de trabajo, por tipo de proyecto.",
+      "add": "Añadir",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "filterState": "Estado activo",
+      "filterProjectType": "Tipo de proyecto",
+      "filterProjectTypePlaceholder": "Seleccionar tipo de proyecto",
+      "searchPlaceholder": "Buscar por título o tipo de proyecto…",
+      "reorderHint": "Arrastra filas o tarjetas para cambiar el orden.",
+      "sequenceUpdated": "Orden de listas de verificación actualizado",
+      "sequenceUpdateError": "No se pudo actualizar el orden. Inténtalo de nuevo.",
+      "table": {
+        "title": "Título",
+        "projectType": "Tipo de proyecto",
+        "sequence": "Secuencia",
+        "required": "Obligatorio",
+        "status": "Estado del registro",
+        "created": "Creado",
+        "updated": "Última actualización",
+        "actions": "Acciones"
+      },
+      "required": {
+        "yes": "Obligatorio",
+        "no": "Opcional"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "byUser": "Por {user}"
+      },
+      "emptyTitle": "Aún no hay tipos de lista de verificación",
+      "emptyDescription": "Crea tu primer tipo de lista de verificación para formularios de trabajo.",
+      "loadError": "No se pudieron cargar los tipos de lista de verificación. Inténtalo de nuevo.",
+      "modal": {
+        "createTitle": "Nuevo tipo de lista de verificación",
+        "editTitle": "Editar tipo de lista de verificación",
+        "title": "Título",
+        "projectType": "Tipo de proyecto",
+        "sequence": "Secuencia",
+        "requiredLabel": "Obligatorio en formularios de trabajo",
+        "activeLabel": "Activo",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "deleteConfirmTitle": "¿Eliminar este tipo de lista de verificación?",
+      "deleteConfirmBody": "Los formularios de trabajo que usen esta lista pueden verse afectados. Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar",
+      "pageLabel": "Mostrando {start}-{end} de {total} tipos de lista de verificación",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "saved": "Tipo de lista de verificación actualizado",
+      "created": "Tipo de lista de verificación creado",
+      "deleted": "Tipo de lista de verificación eliminado",
+      "activatedToast": "Tipo de lista de verificación activado",
+      "deactivatedToast": "Tipo de lista de verificación desactivado",
+      "toggleActiveError": "No se pudo actualizar el estado. Inténtalo de nuevo.",
+      "validationTitle": "Introduce un título de lista de verificación.",
+      "validationProjectType": "Selecciona un tipo de proyecto.",
+      "validationSequence": "Introduce un número de secuencia válido (1 o mayor)."
     },
     "vendorTypes": {
       "metaTitle": "Tipos de proveedor",
@@ -2397,7 +2487,24 @@
         "emptySchema": "Este formulario aún no tiene campos.",
         "untitledForm": "Formulario",
         "layoutDesktop": "Escritorio",
-        "layoutPhone": "Teléfono"
+        "layoutPhone": "Teléfono",
+        "checklistSaveError": "No se pudo guardar la lista de verificación. Inténtelo de nuevo."
+      },
+      "checklists": {
+        "sectionTitle": "Listas de verificación",
+        "toggle": "Mostrar u ocultar listas de verificación",
+        "required": "Obligatorio",
+        "sequence": "Sec. {n}",
+        "checkedAt": "Marcado {when}",
+        "saveError": "No se pudo actualizar la lista de verificación. Inténtelo de nuevo.",
+        "gateTitle": "Complete la lista de verificación primero",
+        "gateBody": "Marque los ítems obligatorios antes de abrir «{form}».",
+        "gateRequiredHint": "Todos los ítems obligatorios deben estar marcados para continuar.",
+        "continueToForm": "Continuar al formulario",
+        "cancel": "Cancelar",
+        "blockedTitle": "Lista de verificación obligatoria",
+        "blockedBody": "Complete todos los ítems obligatorios del trabajo antes de rellenar este formulario.",
+        "backToJob": "Volver al trabajo"
       },
       "page": {
         "createTitle": "Nuevo trabajo",
@@ -2765,6 +2872,37 @@
           "actions": "Acciones"
         }
       },
+      "jobsTab": {
+        "title": "Trabajos",
+        "subtitle": "Los trabajos automáticos se agrupan por nivel y parcela. Cambia a Manual para ver trabajos creados directamente en este proyecto.",
+        "searchPlaceholder": "Buscar trabajos…",
+        "searchAria": "Buscar trabajos del proyecto",
+        "loadError": "No se pudieron cargar los trabajos del proyecto. Inténtalo de nuevo.",
+        "emptyTitle": "No hay trabajos en este proyecto",
+        "emptyDescription": "Los trabajos de cotización aparecen bajo niveles y parcelas. Cambia el origen a Manual para ver trabajos creados manualmente.",
+        "emptyManualTitle": "No hay trabajos manuales",
+        "emptyManualDescription": "Los trabajos creados manualmente para este proyecto aparecerán aquí.",
+        "emptyQuotationTitle": "No hay trabajos automáticos",
+        "emptyQuotationDescription": "Los trabajos automáticos aparecerán bajo cada nivel y parcela cuando estén disponibles.",
+        "pageLabel": "Mostrando {start}-{end} de {total} trabajos",
+        "filterJobSource": "Origen del trabajo",
+        "filterAllSources": "Todos los orígenes",
+        "filterManualSource": "Manual",
+        "filterQuotationSource": "Auto",
+        "filterLevel": "Nivel",
+        "filterAllLevels": "Todos los niveles",
+        "filterPlot": "Parcela",
+        "filterAllPlots": "Todas las parcelas",
+        "manualJobLocation": "Manual / sin asignar",
+        "manualJobsSection": "Trabajos manuales",
+        "selectPlot": "Seleccionar todos los trabajos en {plot}",
+        "selectManualJobs": "Seleccionar todos los trabajos manuales",
+        "jobCount": "{count, plural, one {# trabajo} other {# trabajos}}",
+        "plotJobCount": "{count, plural, one {# trabajo} other {# trabajos}}",
+        "table": {
+          "location": "Ubicación"
+        }
+      },
       "detailLoadError": "No se pudieron cargar los datos del proyecto. Inténtalo de nuevo.",
       "placeholders": {
         "client": "Seleccionar cliente",
@@ -2808,6 +2946,8 @@
         "endDate": "Elige la fecha de fin.",
         "dateOrder": "La fecha de fin debe ser igual o posterior a la de inicio."
       }
+      
+      
     },
     "groups": {
       "metaTitle": "Grupos",

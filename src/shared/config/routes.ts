@@ -33,6 +33,7 @@ export const routes = {
     settingsProjectTypes: "/dashboard/settings/project-type",
     settingsInstallationTypes: "/dashboard/settings/installation-type",
     settingsVendorTypes: "/dashboard/settings/vendor-type",
+    settingsChecklistTypes: "/dashboard/settings/checklist-type",
     settingsCustomization: "/dashboard/settings/customization",
     settingsUsers: "/dashboard/settings/users",
     settingsPersonalProfile: "/dashboard/settings/personal-profile",
