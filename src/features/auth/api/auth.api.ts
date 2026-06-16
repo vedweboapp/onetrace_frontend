@@ -42,7 +42,24 @@ export type PasswordResetConfirmBody = {
   new_password: string;
   confirm_password: string;
 };
-
+export type sendOtpBody = {
+  email: string;
+  purpose: string;
+}
+export type verifyOtpBody = {
+  email: string;
+  otp: string;
+  purpose: string;
+}
+export type signUpBody = {
+  first_name: string;
+  middle_name?: string;
+  last_name: string;
+  email: string;
+  otp: string;
+  password: string;
+  phone_number: string;
+}
 export { AUTH_API_PATHS };
 
 /**
@@ -89,7 +106,18 @@ export async function requestForgotPasswordOtp(body: ForgotOtpRequestBody): Prom
   const { data } = await api.post<AuthLogoutEnvelope>(AUTH_API_PATHS.forgotOtpRequest, body);
   assertApiSuccess(data);
 }
-
+export async function sendOtp(body: sendOtpBody): Promise<void> {
+  const { data } = await api.post(AUTH_API_PATHS.sendOtp, body);
+  assertApiSuccess(data);
+}
+export async function verifyOtp(body:verifyOtpBody):Promise<void>{
+  const {data} = await api.post(AUTH_API_PATHS.verifyOtp, body);
+  assertApiSuccess(data);
+}
+export async function signUpHandler(body:signUpBody):Promise<void>{
+  const {data} = await api.post(AUTH_API_PATHS.signUp, body);
+  assertApiSuccess(data);
+}
 export async function resetPasswordConfirm(body: PasswordResetConfirmBody): Promise<void> {
   const { data } = await api.post<AuthLogoutEnvelope>(
     AUTH_API_PATHS.passwordResetConfirm,

@@ -3,6 +3,7 @@ import { FIELD_TYPES } from "./fieldTypes";
 import { AppButton as Button } from "@/shared/ui/app-button";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { useDrag, useDrop } from "react-dnd";
+import { surfaceInputClassName, surfaceSelectClassName, surfaceTextareaClassName } from "@/shared/ui";
 
 interface FieldConfigModalProps {
   fieldType: string;
@@ -123,7 +124,7 @@ function DraggableOptionRow({
         value={value}
         onChange={(e) => onChange(index, e.target.value)}
         placeholder="Option label"
-        className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100"
+        className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100"
       />
       <button
         type="button"
@@ -334,7 +335,8 @@ export default function FieldConfigModal({
               onChange={(e) => handleChange(field.key, e.target.value)}
               aria-required={field.required}
               maxLength={field.maxLength || undefined}
-              className={`w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-[8px] bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none ${errors[field.key] ? "border-red-500" : ""}`}
+            className={`${surfaceInputClassName} ${errors[field.key] ? "border-red-500" : ""}`}
+
             />
             {field.maxLength && (
               <p className="text-xs text-gray-400 mt-1 text-right">
@@ -357,7 +359,7 @@ export default function FieldConfigModal({
               value={config[mappedKey] || ""}
               onChange={(e) => handleChange(field.key, e.target.value)}
               rows={3}
-              className={`w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-[8px] bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none ${errors[field.key] ? "border-red-500" : ""}`}
+              className={`${surfaceTextareaClassName} ${errors[field.key] ? "border-red-500" : ""}`}
             />
             {errors[field.key] && (
               <p className="text-red-600 text-sm mt-1">{errors[field.key]}</p>
@@ -377,7 +379,7 @@ export default function FieldConfigModal({
               onChange={(e) =>
                 handleChange(field.key, parseInt(e.target.value) || 0)
               }
-              className={`w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-[8px] bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none ${errors[field.key] ? "border-red-500" : ""}`}
+              className={`${surfaceInputClassName} ${errors[field.key] ? "border-red-500" : ""}`}
             />
             {errors[field.key] && (
               <p className="text-red-600 text-sm mt-1">{errors[field.key]}</p>
@@ -393,7 +395,7 @@ export default function FieldConfigModal({
                 type="checkbox"
                 checked={config[mappedKey] || false}
                 onChange={(e) => handleChange(field.key, e.target.checked)}
-                className="w-4 h-4"
+                className="w-4 h-4 accent-[color:var(--dash-accent,#111111)]"
               />
               <span className="text-sm text-gray-700">{field.label}</span>
               {field.showInfoIcon && <InfoIcon />}
@@ -444,7 +446,7 @@ export default function FieldConfigModal({
                     value={opt.value}
                     checked={config[mappedKey] === opt.value}
                     onChange={() => handleChange(field.key, opt.value)}
-                    className="w-4 h-4 accent-blue-600"
+                    className="w-4 h-4 accent-[color:var(--dash-accent)] border-[color:var(--dashed-accent,#111111)]"
                   />
                   {opt.label}
                 </label>
@@ -467,10 +469,10 @@ export default function FieldConfigModal({
                   : Number(e.target.value);
                 handleChange(field.key, val);
               }}
-              className="border border-gray-300 dark:border-slate-600 rounded-lg p-2 w-full bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none"
+                            className={`${surfaceSelectClassName} ${errors[field.key] ? "border-red-500" : ""}`}
             >
               {field.options?.map((option: any, index: number) => (
-                <option value={option.value} key={index}>
+                <option value={option.value} key={index} className="hover:bg-[color:var(--dash-accent,#111111)]">
                   {option.label}
                 </option>
               ))}
@@ -493,7 +495,7 @@ export default function FieldConfigModal({
               value={validValue}
               onChange={(e) => handleChange(field.key, e.target.value)}
               disabled={options.length === 0}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-[8px] focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 disabled:bg-gray-50 dark:disabled:bg-slate-800 disabled:text-gray-400"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-[8px] focus:ring-2 focus:ring-[color:var(--dash-accent)] outline-none bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 disabled:bg-gray-50 dark:disabled:bg-slate-800 disabled:text-gray-400"
             >
               <option value="">— None —</option>
               {options.map((opt) => (
@@ -544,7 +546,7 @@ export default function FieldConfigModal({
                           : selected.filter((v) => v !== opt);
                         handleChange(field.key, next);
                       }}
-                      className="w-4 h-4"
+                      className="w-4 h-4 accent-[color:var(--dash-accent)]"
                     />
                     {opt}
                   </label>

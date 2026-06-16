@@ -107,7 +107,10 @@ function normalizePlot(p: DrawingPlot): LocalPlot {
     id: p.id,
     name: p.name,
     coordinates: Array.isArray(p.coordinates) ? p.coordinates : [],
-    pins: Array.isArray(p.pins) ? p.pins : [],
+    pins: (Array.isArray(p.pins) ? p.pins : []).map((pin) => ({
+      ...pin,
+      formId: pin.formId ?? (pin as any).project_form ?? null,
+    })),
     plot_border: p.plot_border || defaultColor.border,
     plot_bg: p.plot_bg || defaultColor.bg,
   };
@@ -1171,7 +1174,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
           status: pin.status ?? undefined,
           group: pin.group ?? null,
           item: pin.item ?? null,
-          formId: pin.formId ?? null,
+          project_form: pin.formId ?? null,
           quantity: pin.quantity || 1,
           variation: pin.variation ?? false,
           location: pinLabels.get(pin.id),
@@ -2272,21 +2275,28 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                       {
                         availableForms.length > 0 ? (
                           isPinEditing ? (
-                            <>
-                              <CheckmarkSelect
-                                options={availableForms}
-                                value={isPinEditing ? String(pinEditData.formId ?? "") : String(detailPin?.formId ?? "")}
-                                onChange={(value) => {
-                                  if (isPinEditing) {
-                                    setPinEditData(prev => ({ ...prev, formId: value ? Number(value) : null }));
-                                  }
-                                }}
-                                portaled
-                              />
-                            </>
-                          ) : (<span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            {projectForms?.find(f => f.id === (isPinEditing ? pinEditData.formId : detailPin.formId))?.name || "Select Form"}
-                          </span>)
+                            <select
+                              value={isPinEditing ? String(pinEditData.formId ?? "") : String(detailPin?.formId ?? "")}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (isPinEditing) {
+                                  setPinEditData(prev => ({ ...prev, formId: value ? Number(value) : null }));
+                                }
+                              }}
+                              className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 max-w-[200px] text-slate-900 dark:text-slate-100"
+                            >
+                              <option value="">Select Form</option>
+                              {availableForms.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              {projectForms?.find(f => f.id === (isPinEditing ? pinEditData.formId : detailPin.formId))?.name || "Select Form"}
+                            </span>
+                          )
                         ) : null
                       }
                     </div>

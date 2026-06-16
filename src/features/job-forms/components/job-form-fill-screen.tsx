@@ -59,7 +59,7 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
   const [formTitle, setFormTitle] = React.useState(formNameHint?.trim() || t("untitledForm"));
   const [schemaSections, setSchemaSections] = React.useState<
     ReturnType<typeof applyReadOnlyToSections>
-  >([]);
+  >([]);  
   const [rules, setRules] = React.useState<FormRule[]>([]);
   const [defaultValues, setDefaultValues] = React.useState<Record<string, unknown>>({});
   const [submission, setSubmission] = React.useState<JobFormSubmission | null>(null);
@@ -196,7 +196,7 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
     } else {
       router.push(safeBack);
     }
-  }
+  }  
 
   const displaySections = readOnly ? applyReadOnlyToSections(schemaSections, true) : schemaSections;
 
@@ -276,7 +276,7 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
               </div>
             ) : null}
 
-            <div className="w-full rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8 dark:border-slate-700 dark:bg-slate-900">
+            <div className="w-full rounded-sm border border-gray-200 bg-white p-6 shadow-sm sm:p-8 dark:border-slate-700 dark:bg-slate-900">
               {displaySections.length > 0 ? (
                 <FormRenderer
                   key={rendererKey}

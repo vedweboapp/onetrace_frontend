@@ -1500,7 +1500,7 @@ export default function FormBuilderLayout({
                   <button
                     type="button"
                     className={`flex h-9 items-center gap-2 rounded px-3 text-sm transition ${previewLayout === "desktop"
-                      ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                      ? "bg-[var(--dash-accent)] text-white"
                       : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                       }`}
                     onClick={() => setPreviewLayout("desktop")}
@@ -1511,7 +1511,7 @@ export default function FormBuilderLayout({
                   <button
                     type="button"
                     className={`flex h-9 items-center gap-2 rounded px-3 text-sm transition ${previewLayout === "phone"
-                      ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                      ? "bg-[var(--dash-accent)] text-white "
                       : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                       }`}
                     onClick={() => setPreviewLayout("phone")}
@@ -1523,7 +1523,7 @@ export default function FormBuilderLayout({
               </div>
               <div className="flex w-full justify-center">
                 <div
-                  className={`bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm ${previewLayout === "phone" ? "rounded-[28px] p-4" : "w-full rounded-xl p-8"
+                  className={`bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm ${previewLayout === "phone" ? "rounded-sm p-4" : "w-full rounded-sm p-8"
                     }`}
                   style={
                     previewLayout === "phone"

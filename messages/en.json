@@ -31,6 +31,8 @@
     "resendNow": "Resend now",
     "noAccount": "No account yet?",
     "signUpLink": "Create one",
+    "dontHaveAccount": "Dont have an account ?",
+    "signUp": "Sign up",
     "heroLiveSync": "Live Site Sync",
     "heroTitleLine1": "Next-Generation",
     "heroTitleLine2": "Construction Management",
@@ -38,10 +40,52 @@
     "errors": {
       "invalidCredentials": "Invalid email or password. Please try again."
     },
-    "register": {
-      "title": "Create account",
+    "signUpForm": {
+      "title": "Sign Up",
+      "firstName": "First Name",
+      "middleName": "Middle Name",
+      "optional": "(Optional)",
+      "email": "Email",
+      "phone": "Phone Number",
+      "password": "Password",
+      "lastName": "Last Name",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
       "body": "Registration will live here — wire your API next.",
-      "backToLogin": "Back to sign in"
+      "backToLogin": "Already have an account?",
+      "sendOtp": "Send OTP",
+      "sendingOtp": "Sending OTP…", 
+      "verifyOtp": "Verify OTP",
+      "verifyingOtp": "Verifying OTP…",
+      "signingUp": "Signing Up...",
+      "login": "Login",
+      "placeholders": {
+        "firstName": "Enter your first name",
+        "middleName": "Enter your middle name",
+        "lastName": "Enter your last name",
+        "email": "Enter your email",
+        "password": "Enter a password"
+      },
+      "toast":{
+        "emailSent": "Emial sent successfully",
+        "emailFailed": "Failed to send email."
+      },
+      "signUp": "Sign up",
+      "errors": {
+        "passwordRequired": "Password is required.",
+        "passwordMinLength": "Password must be at least 8 characters.",
+        "firstNameRequired": "First name is required.",
+        "lastNameRequired": "Last name is required.",
+        "emailRequired": "Email address is required.",
+        "emailInvalid": "Enter a valid email address (e.g. you@example.com).",
+        "otpRequired": "Verification code is required.",
+        "otpLength": "Enter the full 6-digit code."
+      },
+      "toasts": {
+        "signedUp": "Successfully signed up",
+        "Sent": "Successfully sent OTP to your email. Please check your inbox.",
+        "verified": "Successfully verified email."
+      }
     },
     "forgotPassword": {
       "title": "Forgot Password?",
@@ -145,7 +189,7 @@
       "openProfileMenu": "Open profile menu",
       "profileMenuLabel": "Account"
     },
-      "sidebar": {
+    "sidebar": {
       "home": "Home",
       "clients": "Clients",
       "vendors": "Vendors",

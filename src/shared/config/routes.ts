@@ -2,7 +2,7 @@ export const routes = {
   home: "/",
   auth: {
     login: "/login",
-    register: "/register",
+    signUp: "/sign-up",
     forgotPassword: "/forgot-password",
   },
   dashboard: {

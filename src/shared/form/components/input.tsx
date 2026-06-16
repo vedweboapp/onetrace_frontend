@@ -3,17 +3,20 @@
 import React, { InputHTMLAttributes } from "react";
 import { FieldError, UseFormRegisterReturn } from "react-hook-form";
 import {
-  isNativeDateInputType,
-  nativeDatePickerHitAreaClassName,
-  openNativeDatePicker,
+    isNativeDateInputType,
+    nativeDatePickerHitAreaClassName,
+    openNativeDatePicker,
 } from "@/shared/ui/surface-date-input";
+import { surfaceInputClassName, surfaceTextareaClassName } from "@/shared/ui";
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & {
-    label?: string;
-    register?: UseFormRegisterReturn;
-    errors?: FieldError;
-    readOnly?: boolean;
-    className?: string;
+   label?: string;
+  register?: UseFormRegisterReturn;
+  errors?: FieldError;
+  readOnly?: boolean;
+  className?: string;
+  countryCode?: string;
+  stateCode?: string;
 };
 
 const extractLabelText = (label?: any) => {
@@ -24,12 +27,14 @@ const extractLabelText = (label?: any) => {
 
 const Input = ({
     label,
-    register,
-    errors,
-    readOnly,
-    className = "",
-    onClick,
-    ...rest
+  register,
+  errors,
+  readOnly,
+  className = "",
+  onClick,
+  countryCode,
+  stateCode,
+  ...rest
 }: InputProps) => {
     const isDateField = isNativeDateInputType(rest.type);
 
@@ -92,7 +97,7 @@ const Input = ({
                             : "border-gray-300 dark:border-slate-700"
                         }
                 focus:ring-2
-                focus:ring-blue-500
+               ${surfaceInputClassName}
                 ${isDateField && !readOnly ? nativeDatePickerHitAreaClassName : ""}
               `
                     }

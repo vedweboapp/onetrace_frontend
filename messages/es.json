@@ -23,6 +23,8 @@
     "otpLabel": "OTP",
     "continue": "Continuar",
     "sendOtp": "Enviar OTP",
+    "dontHaveAccount": "No tengo una cuenta ?",
+    "signUp": "Inscribirse",
     "otpRequired": "Ingresa el OTP de 6 dígitos.",
     "otpSent": "OTP enviado a {email}",
     "otpSendError": "No se pudo enviar el OTP. Inténtalo de nuevo.",
@@ -38,10 +40,48 @@
     "errors": {
       "invalidCredentials": "Correo o contraseña no válidos. Inténtalo de nuevo."
     },
-    "register": {
+    "signUpForm": {
       "title": "Crear cuenta",
+      "firstName": "Nombre",
+      "middleName": "Segundo nombre",
+      "optional": "(Opcional)",
+      "lastName": "Apellido",
+      "email": "correo electrónico",
+      "phone": "número de teléfono",
+      "password": "contraseña",
+      "showPassword": "Mostrar contraseña",
+      "hidePassword": "Ocultar contraseña",
       "body": "El registro irá aquí: conecta tu API cuando toque.",
-      "backToLogin": "Volver a iniciar sesión"
+      "backToLogin": "¿Ya tiene una cuenta?",
+      "signUp": "Registrarse",
+      "sendOtp": "Enviar OTP",
+      "sendingOtp": "Enviando OTP…",
+      "verifyOtp": "Verificar OTP",
+      "verifyingOtp": "Verificando OTP…",
+      "signingUp": "Registrarse...",
+      "login": "acceso",
+      "placeholders": {
+        "firstName": "Ingrese su nombre",
+        "middleName": "Ingrese su segundo nombre",
+        "lastName": "Ingrese su apellido",
+        "email": "Ingrese su correo electrónico",
+        "password": "Cree una contraseña"
+      },
+      "errors": {
+        "passwordRequired": "La contraseña es obligatoria.",
+        "passwordMinLength": "La contraseña debe tener al menos 8 caracteres.",
+        "firstNameRequired": "El nombre es obligatorio.",
+        "lastNameRequired": "El apellido es obligatorio.",
+        "emailRequired": "El correo electrónico es obligatorio.",
+        "emailInvalid": "Ingresa un correo válido (ej. tu@ejemplo.com).",
+        "otpRequired": "El código de verificación es obligatorio.",
+        "otpLength": "Ingresa el código completo de 6 dígitos."
+      },
+    "toasts": {
+  "signedUp": "Registro completado correctamente",
+  "Sent": "OTP enviado correctamente a su correo electrónico. Por favor, revise su bandeja de entrada.",
+  "verified": "Correo electrónico verificado correctamente."
+}
     },
     "forgotPassword": {
       "title": "¿Olvidaste la contraseña?",
@@ -1703,7 +1743,6 @@
         "loadError": "No se pudo cargar este artículo compuesto.",
         "backAria": "Volver al alcance de la cotización",
         "repeatBadge": "Incluido ×{count}",
-      
         "includedTimes": "Veces en la cotización",
         "packagePrice": "Precio del paquete",
         "scopeLineTotal": "Total de línea en la cotización",
@@ -1711,7 +1750,7 @@
         "sectionComponents": "Contenido del paquete",
         "colQtyPerPackage": "Cant. / paquete",
         "colQtyInScope": "Cant.",
-        "colProductName":"Nombre del producto",
+        "colProductName": "Nombre del producto",
         "colUnitPrice": "Precio unitario",
         "colLineTotal": "Total",
         "noComponents": "No hay artículos componentes definidos para este paquete."
@@ -2756,15 +2795,15 @@
           "docs": "Documentos",
           "approvals": "Aprobaciones",
           "pins": "patas"
-        }, 
+        },
         "pinsTableHeaders": {
-        "location": "Ubicación",
-        "drawing": "Plano",
-        "plot": "Parcela",
-        "product": "Producto",
-        "status": "Estado",
-        "createdAt": "Fecha de creación"
-}
+          "location": "Ubicación",
+          "drawing": "Plano",
+          "plot": "Parcela",
+          "product": "Producto",
+          "status": "Estado",
+          "createdAt": "Fecha de creación"
+        }
       },
       "drawings": {
         "title": "Planos",
@@ -2988,6 +3027,8 @@
         "endDate": "Elige la fecha de fin.",
         "dateOrder": "La fecha de fin debe ser igual o posterior a la de inicio."
       }
+      
+      
     },
     "groups": {
       "metaTitle": "Grupos",
