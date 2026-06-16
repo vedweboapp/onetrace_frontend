@@ -1,5 +1,6 @@
 "use client";
 
+import { surfaceSelectClassName } from "@/shared/ui";
 import React, {
     SelectHTMLAttributes,
 } from "react";
@@ -105,8 +106,7 @@ const Select = ({
                             ? "border-red-500"
                             : "border-gray-300 dark:border-slate-700"
                         }
-                focus:ring-2
-                focus:ring-blue-500
+                ${surfaceSelectClassName}
               `
                     }
           ${className}

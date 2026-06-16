@@ -143,5 +143,9 @@ export async function fetchZohoConnection(): Promise<ZohoConnectionDetails> {
     assertApiSuccess(data as ApiEnvelope<ZohoConnectionDetails>);
   }
 
-  return unwrapPayload<ZohoConnectionDetails>(data);
+  const payload = unwrapPayload<ZohoConnectionDetails & { mapping_completed?: boolean }>(data);
+  return {
+    ...payload,
+    mapping_configured: payload.mapping_configured ?? payload.mapping_completed ?? false,
+  };
 }

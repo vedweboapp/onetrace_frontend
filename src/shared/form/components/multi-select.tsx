@@ -78,7 +78,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
             min-h-[42px] w-full rounded-[8px] border px-3 py-1.5 flex flex-wrap gap-2 items-center cursor-pointer transition-all
             ${readOnly ? "bg-gray-100 cursor-not-allowed border-none" : "bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-700"}
             ${errors ? "border-red-500" : "hover:border-gray-400"}
-            ${isOpen ? "ring-2 ring-blue-500 border-blue-500" : ""}
+            ${isOpen ? "ring-2 ring-primary border-primary" : ""}
           `}
         >
           {selectedOptions.length > 0 ? (

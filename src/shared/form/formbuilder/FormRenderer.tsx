@@ -27,6 +27,7 @@ import CitySelect from "../components/CitySelect";
 import RichTextEditor from "../components/rich-text-editor";
 import { FormRule } from "./form-rules.types";
 import { buildFieldRuleState, FieldRuleState } from "./form-rules-engine";
+import { surfaceInputClassName } from "@/shared/ui";
 
 interface Field {
   api_name: string;
@@ -75,7 +76,7 @@ const FIELD_COMPONENTS: Record<string, any> = {
   url: (props: any) => <Input type="url" {...props} />,
   email: (props: any) => <Input type="email" {...props} />,
   date: (props: any) => <Input type="date" {...props} />,
-  datetime: (props: any) => <Input type="datetime-local" {...props} />,
+  datetime: (props: any) => <Input type="datetime-local" {...props} className={`${surfaceInputClassName}`}/>,
   multi_line: TextBox,
   picklist: Select,
   select: Select,
@@ -98,8 +99,8 @@ const FIELD_COMPONENTS: Record<string, any> = {
   signature: SignaturePad,
   user: UsersSelect,
   country: CountrySelect,
-  state: StateSelect,
-  city: CitySelect,
+  state: Input,
+  city: Input,
 };
 
 const deepEqual = (a: any, b: any): boolean => {

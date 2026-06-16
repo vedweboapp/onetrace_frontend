@@ -44,6 +44,7 @@ export type DrawingPin = {
   variation?: boolean;
   location?: number | string;
   formId? : number | null;
+  project_form? : number | null;
 
   /** Optional description shown in the pin details panel. */
   description?: string | null;
@@ -112,6 +113,7 @@ export type DrawingPlotUpsert = {
     item?: number | null;
     quantity?: number;
     location?: number | string;
+    project_form?: number | null;
 
     description?: string | null;
     attachments?: DrawingPinAttachment[] | null;

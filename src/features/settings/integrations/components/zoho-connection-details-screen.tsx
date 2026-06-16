@@ -4,16 +4,19 @@ import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import {
+  connectZohoInventory,
   fetchZohoConnection,
   fetchZohoWebhookSetup,
 } from "@/features/settings/integrations/api/integration.api";
 import { ZOHO_DEFAULT_RESOURCE } from "@/features/settings/integrations/api/integration.paths";
 import { ZohoWebhookGuide } from "@/features/settings/integrations/components/zoho-webhook-guide";
+import { buildZohoFrontendCallbackUrl } from "@/features/settings/integrations/utils/zoho-callback-url.util";
 import type {
   ZohoConnectionDetails,
   ZohoWebhookSetupData,
 } from "@/features/settings/integrations/types/integration.types";
 import { routes } from "@/shared/config/routes";
+import { toastError } from "@/shared/feedback/app-toast";
 import { AppButton, SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 
@@ -34,6 +37,7 @@ function boolLabel(value: boolean, label: (key: "yes" | "no") => string) {
 
 export function ZohoConnectionDetailsScreen() {
   const t = useTranslations("Dashboard.integrations.zohoConnection");
+  const tIntegrations = useTranslations("Dashboard.integrations");
   const locale = useLocale();
   const router = useRouter();
 
@@ -44,6 +48,7 @@ export function ZohoConnectionDetailsScreen() {
   const [webhookLoading, setWebhookLoading] = React.useState(false);
   const [webhookError, setWebhookError] = React.useState<string | null>(null);
   const [webhookSetup, setWebhookSetup] = React.useState<ZohoWebhookSetupData | null>(null);
+  const [reconnecting, setReconnecting] = React.useState(false);
 
   const dateFmt = React.useMemo(
     () =>
@@ -94,6 +99,19 @@ export function ZohoConnectionDetailsScreen() {
     return dateFmt.format(parsed);
   }
 
+  async function handleReconnect() {
+    setReconnecting(true);
+    try {
+      const callbackUrl = buildZohoFrontendCallbackUrl(locale);
+      const result = await connectZohoInventory(callbackUrl);
+      window.location.assign(result.authorization_url!);
+    } catch {
+      toastError(tIntegrations("connectError"));
+    } finally {
+      setReconnecting(false);
+    }
+  }
+
   return (
     <div className="space-y-6 py-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -102,6 +120,16 @@ export function ZohoConnectionDetailsScreen() {
           <p className="mt-1 max-w-3xl text-sm text-slate-600 dark:text-slate-400">{t("description")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <AppButton
+            type="button"
+            variant="secondary"
+            size="sm"
+            loading={reconnecting}
+            disabled={reconnecting}
+            onClick={() => void handleReconnect()}
+          >
+            {t("reconnect")}
+          </AppButton>
           <AppButton
             type="button"
             variant={panel === "webhook" ? "primary" : "secondary"}
@@ -154,8 +182,8 @@ export function ZohoConnectionDetailsScreen() {
                   value={connection.zoho_organization_id || t("notAvailable")}
                 />
                 <DetailRow
-                  label={t("mappingCompleted")}
-                  value={boolLabel(connection.mapping_completed, t)}
+                  label={t("mappingConfigured")}
+                  value={boolLabel(connection.mapping_configured, t)}
                 />
                 <DetailRow label={t("importedRecords")} value={String(connection.imported_records ?? 0)} />
                 <DetailRow

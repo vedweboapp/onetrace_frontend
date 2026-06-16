@@ -66,7 +66,7 @@ const RadioGroup: React.FC<RadioGroupProps> = ({
                   {...register}
                   className="
                     peer appearance-none w-5 h-5 border-2 border-gray-300 dark:border-slate-600 rounded-full
-                    checked:border-blue-500 checked:bg-blue-500 transition-all focus:ring-2 focus:ring-blue-500/20
+                    checked:border-[color:var(--dash-accent)] checked:bg-[color:var(--dash-accent)] transition-all focus:ring-2 focus:ring-blue-500/20
                   "
                 />
                 <div className="absolute w-2 h-2 bg-white rounded-full scale-0 peer-checked:scale-100 transition-transform" />

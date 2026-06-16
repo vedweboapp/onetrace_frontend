@@ -28,12 +28,12 @@ const SignaturePad = React.forwardRef<HTMLDivElement, SignaturePadProps>(
       placeholder = "Sign here...",
       height = 200,
     },
-    ref
+    ref,
   ) => {
     const sigPadRef = useRef<SignatureCanvas | null>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const [isEmpty, setIsEmpty] = useState(!value);
-    
+
     // hasSavedSignature tracks whether we should display a read-only static image of a PREVIOUSLY SAVED signature
     const [hasSavedSignature, setHasSavedSignature] = useState(!!value);
 
@@ -123,8 +123,9 @@ const SignaturePad = React.forwardRef<HTMLDivElement, SignaturePadProps>(
             /* Premium rendered signature image preview */
             <div
               className={`
-                w-full rounded-[8px] border bg-gray-50 dark:bg-slate-900/50 flex flex-col items-center justify-center relative select-none overflow-hidden
-                ${errors ? "border-red-500" : "border-gray-200 dark:border-slate-700"}
+                w-full
+                border bg-gray-50 dark:bg-slate-900/50 flex flex-col items-center justify-center relative select-none overflow-hidden
+                ${errors ? "border-red-500" : "border-gray-200 dark:border-slate-700  rounded-[8px] hover:border-dashed hover:border-[color:var(--dash-accent)] "}
               `}
               style={{ height }}
             >
@@ -149,15 +150,18 @@ const SignaturePad = React.forwardRef<HTMLDivElement, SignaturePadProps>(
             /* Active Drawing Canvas */
             <div
               className={`
-                w-full rounded-[8px] border bg-white dark:bg-slate-900 relative overflow-hidden transition-all duration-200
+                w-full rounded-[8px] border bg-white hover:border-[color:var(--dash-accent)] dark:bg-slate-900 relative overflow-hidden transition-all duration-200
                 ${readOnly ? "bg-gray-50 border-gray-100 cursor-not-allowed" : "border-dashed border-gray-300 dark:border-slate-700"}
-                ${errors ? "border-red-500 ring-1 ring-red-500" : "hover:border-gray-400"}
+                ${errors ? "border-red-500 ring-1 ring-red-500" : ""}
               `}
               style={{ height }}
             >
               {isEmpty && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 pointer-events-none select-none z-0">
-                  <PenTool size={20} className="mb-1 text-gray-300 dark:text-gray-600 animate-pulse" />
+                  <PenTool
+                    size={20}
+                    className="mb-1 text-gray-300 dark:text-gray-600 animate-pulse"
+                  />
                   <span className="text-xs font-medium">{placeholder}</span>
                 </div>
               )}
@@ -165,9 +169,8 @@ const SignaturePad = React.forwardRef<HTMLDivElement, SignaturePadProps>(
               <SignatureCanvas
                 ref={sigPadRef}
                 canvasProps={{
-                  className: `w-full h-full z-10 relative cursor-crosshair ${
-                    readOnly ? "pointer-events-none" : ""
-                  }`,
+                  className: `w-full h-full z-10 relative cursor-crosshair ${readOnly ? "pointer-events-none" : ""
+                    }`,
                 }}
                 onEnd={handleDrawEnd}
               />
@@ -193,7 +196,7 @@ const SignaturePad = React.forwardRef<HTMLDivElement, SignaturePadProps>(
         )}
       </div>
     );
-  }
+  },
 );
 
 SignaturePad.displayName = "SignaturePad";

@@ -8,6 +8,7 @@ import MultiSelect from "../components/multi-select";
 import PhoneInput from "react-phone-number-input";
 import { SurfacePhoneCountrySelect } from "@/shared/ui/surface-phone-country-select";
 import { currencyList } from "../components/currency-list";
+import { surfaceInputClassName } from "@/shared/ui";
 
 /** Full-height drawer below the form builder sub-header (top-14 + h-14 = 7rem). */
 const FORM_BUILDER_SUBHEADER_OFFSET = "top-28";
@@ -186,7 +187,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
       return (
         <input
           type="text"
-          className="bg-gray-100 dark:bg-slate-800 cursor-not-allowed text-transparent w-full p-2.5 border border-gray-300 dark:border-slate-700 rounded-md outline-none"
+          className={`${surfaceInputClassName}`}
           disabled
           value=""
         />
@@ -199,7 +200,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
       return (
         <input
           type="date"
-          className={`w-full p-2.5 border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`}
+          className={`w-full p-2.5 border outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`}
           value={ruleValue}
           onChange={(e) => setRuleValue(e.target.value)}
         />
@@ -210,7 +211,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
       return (
         <input
           type="datetime-local"
-          className={`w-full p-2.5 border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`}
+          className={`w-full outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] p-2.5 border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`}
           value={ruleValue}
           onChange={(e) => setRuleValue(e.target.value)}
         />
@@ -227,7 +228,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
           onChange={(val) => setRuleValue(val || "")}
           countrySelectComponent={SurfacePhoneCountrySelect}
           numberInputProps={{
-            className: `w-full p-2.5 border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`,
+            className: `w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`,
           }}
         />
       );
@@ -236,7 +237,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
     if (fieldType === "checkbox") {
       return (
         <select
-          className={`w-full p-2.5 border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+          className={`w-full p-2.5 border outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
           value={ruleValue}
           onChange={(e) => setRuleValue(e.target.value)}
         >
@@ -250,7 +251,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
     if (fieldType === "currency") {
       return (
         <select
-          className={`w-full p-2.5 border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+          className={`w-full p-2.5 border outline-none focus:ring-[color:var(--dash-accent)] ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
           value={ruleValue}
           onChange={(e) => setRuleValue(e.target.value)}
         >
@@ -286,7 +287,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
       } else {
         return (
           <select
-            className={`w-full p-2.5 border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+            className={`w-full p-2.5 border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} outline-none focus:ring-[color:var(--dash-accent)] rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
             value={ruleValue}
             onChange={(e) => setRuleValue(e.target.value)}
           >
@@ -304,7 +305,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
       <input
         type="text"
         placeholder={condition === "is_any_one_of" || condition === "is_none_of" ? "comma, separated, values" : "Enter value"}
-        className={`w-full p-2.5 border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`}
+        className={`w-full p-2.5 border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-[color:var(--dash-accent)] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`}
         value={ruleValue}
         onChange={(e) => setRuleValue(e.target.value)}
       />
@@ -346,7 +347,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
             <input
               type="text"
               id="rule-name"
-              className={`w-full p-2 border ${errors.name ? 'border-red-500' : 'border-gray-200'} rounded-md dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700`}
+              className={`w-full p-2 border focus:ring-2 outline-none focus:ring-[color:var(--dash-accent)] ${errors.name ? 'border-red-500' : 'border-gray-200'} rounded-md dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700`}
               placeholder="Enter Rule name"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -380,7 +381,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
               <div className="flex flex-col gap-2">
                 <div className="flex gap-3 items-center">
                   <select
-                    className={`w-64 p-2.5 border ${errors.triggerField ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+                    className={`w-64 p-2.5 outline-none border ${errors.triggerField ? 'border-red-500' : 'border-gray-300'} focus:ring-2  focus:ring-[color:var(--dash-accent)] rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
                     value={triggerField}
                     onChange={(e) => setTriggerField(e.target.value)}
                   >
@@ -393,7 +394,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
                   </select>
 
                   <select
-                    className={`w-52 p-2.5 border ${errors.condition ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+                    className={`w-52 p-2.5 border outline-none ${errors.condition ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-[color:var(--dash-accent)] rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
                     value={condition}
                     onChange={(e) => setCondition(e.target.value as RuleCondition)}
                   >
@@ -429,7 +430,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
                     return (
                       <div key={idx} className="flex gap-3 items-center">
                         <select
-                          className="w-52 p-2.5 border border-gray-300 rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100"
+                          className="w-52 p-2.5 border outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border-gray-300 rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100"
                           value={output.action}
                           onChange={(e) => handleOutputChange(idx, "action", e.target.value)}
                         >
@@ -439,7 +440,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
                         </select>
 
                         <select
-                          className={`w-full p-2.5 border ${!output.field_api_name && errors.outputs ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+                          className={`w-full p-2.5 focus:ring-2 outline-none focus:ring-[color:var(--dash-accent)] border ${!output.field_api_name && errors.outputs ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
                           value={output.field_api_name}
                           onChange={(e) => handleOutputChange(idx, "field_api_name", e.target.value)}
                         >
@@ -452,7 +453,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
                         <AppButton
                           type="button"
                           variant="ghost"
-                          className={`text-red-500 p-2 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 ${outputs.length === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          className={`text-red-500 p-2 hover:bg-red-50 hover:text-red-600  dark:hover:bg-red-950/30 ${outputs.length === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
                           onClick={() => handleRemoveOutput(idx)}
                           disabled={outputs.length === 1}
                           aria-label="Remove action"
