@@ -78,6 +78,8 @@ type Props = {
   onAdd?: () => void;
   addAriaLabel?: string;
   addLabel?: string;
+  /** Labels for selected values missing from `options` (e.g. after async reload). */
+  fallbackLabels?: Record<string, string>;
 };
 
 export function MultiCheckSelect({
@@ -98,6 +100,7 @@ export function MultiCheckSelect({
   onAdd,
   addAriaLabel,
   addLabel,
+  fallbackLabels,
 }: Props) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -114,15 +117,25 @@ export function MultiCheckSelect({
   });
 
   const selectedMap = React.useMemo(() => new Set(values), [values]);
+  const resolvedOptions = React.useMemo(() => {
+    const byValue = new Map(options.map((opt) => [opt.value, opt]));
+    for (const raw of values) {
+      const id = raw.trim();
+      if (!id || byValue.has(id)) continue;
+      const label = fallbackLabels?.[id]?.trim() || `#${id}`;
+      byValue.set(id, { value: id, label });
+    }
+    return Array.from(byValue.values());
+  }, [options, values, fallbackLabels]);
   const selectedOptions = React.useMemo(
-    () => options.filter((o) => selectedMap.has(o.value)),
-    [options, selectedMap],
+    () => resolvedOptions.filter((o) => selectedMap.has(o.value)),
+    [resolvedOptions, selectedMap],
   );
   const filteredOptions = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return options;
-    return options.filter((o) => o.label.toLowerCase().includes(q));
-  }, [options, query]);
+    if (!q) return resolvedOptions;
+    return resolvedOptions.filter((o) => o.label.toLowerCase().includes(q));
+  }, [resolvedOptions, query]);
 
   const updatePlacement = React.useCallback(() => {
     const el = triggerRef.current;

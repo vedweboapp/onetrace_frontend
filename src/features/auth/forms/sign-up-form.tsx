@@ -87,7 +87,7 @@ const SignUpForm = () => {
         setEmailSending(false);
       }
     } catch (error) {
-      toastError(t("toasts.Failed"));
+      // toastError(t("toasts.Failed"));
       setOtpSent(false);
       setEmailVerified(false);
       setEmailSending(false);
@@ -108,7 +108,7 @@ const SignUpForm = () => {
         setVerifyingOtp(false);
       }
     } catch (error) {
-      toastError(t("toasts.Failed"));
+      // toastError(t("toasts.Failed"));
       setEmailVerified(false);
       setVerifyingOtp(false);
     }

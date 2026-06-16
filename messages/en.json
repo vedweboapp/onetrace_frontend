@@ -66,6 +66,10 @@
         "email": "Enter your email",
         "password": "Enter a password"
       },
+      "toast":{
+        "emailSent": "Emial sent successfully",
+        "emailFailed": "Failed to send email."
+      },
       "signUp": "Sign up",
       "errors": {
         "passwordRequired": "Password is required.",
@@ -225,6 +229,7 @@
       "formBuilder": "Form Builder",
       "projectForms": "Project forms",
       "modules": "Modules",
+      "integrations": "Integrations",
       "hint": "Customize theme and accent for this workspace.",
       "customization": {
         "label": "Customization",
@@ -264,6 +269,25 @@
             "description": "Tags for organizing pins and records."
           }
         }
+      }
+    },
+    "integrations": {
+      "title": "Integrations",
+      "description": "Connect third-party services to sync data with OneTrace.",
+      "connect": "Connect",
+      "connectError": "Failed to start Zoho connection. Please try again.",
+      "zohoInventory": {
+        "name": "Zoho Inventory"
+      },
+      "zohoCallback": {
+        "title": "Finish Zoho Inventory setup",
+        "description": "Choose whether to import existing Zoho data, then complete the connection.",
+        "pullHistoricalData": "Pull historical data",
+        "pullHistoricalDataHint": "Import existing records from Zoho Inventory when the connection is created.",
+        "finish": "Finish integration",
+        "cancel": "Cancel",
+        "finishError": "Failed to complete Zoho integration. Please try again.",
+        "missingParams": "Missing authorization details. Please start the connection again from Integrations."
       }
     },
     "settingsPersonalProfile": {

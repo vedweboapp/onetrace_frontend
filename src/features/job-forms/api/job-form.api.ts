@@ -132,7 +132,7 @@ export async function updateJobFormSubmission(
   projectFormId?: number,
 ): Promise<JobFormSubmission> {
   const { data } = await api.put<ApiEnvelope<JobFormSubmission>>(
-    JOB_FORM_PATHS.submittedDetail(jobId, submissionId),
+    JOB_FORM_PATHS.submittedUpdate(jobId, submissionId),
     payload,
   );
   assertApiSuccess(data);
