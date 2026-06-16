@@ -6,6 +6,7 @@ import { INTEGRATION_PATHS, ZOHO_DEFAULT_RESOURCE } from "./integration.paths";
 import type {
   ZohoCallbackParams,
   ZohoConnectResponse,
+  ZohoConnectionDetails,
   ZohoKeyMappingData,
   ZohoSaveKeyMappingPayload,
   ZohoSaveKeyMappingResponse,
@@ -131,4 +132,16 @@ export async function fetchZohoWebhookSetup(
   }
 
   return unwrapPayload<ZohoWebhookSetupData>(data);
+}
+
+export async function fetchZohoConnection(): Promise<ZohoConnectionDetails> {
+  const { data } = await api.get<ApiEnvelope<ZohoConnectionDetails> | ZohoConnectionDetails>(
+    INTEGRATION_PATHS.zohoConnection,
+  );
+
+  if (data && typeof data === "object" && "success" in data && data.success === false) {
+    assertApiSuccess(data as ApiEnvelope<ZohoConnectionDetails>);
+  }
+
+  return unwrapPayload<ZohoConnectionDetails>(data);
 }

@@ -3,8 +3,10 @@
 import * as React from "react";
 import { Plug } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { connectZohoInventory } from "@/features/settings/integrations/api/integration.api";
+import { useRouter } from "@/i18n/navigation";
+import { connectZohoInventory, fetchZohoConnection } from "@/features/settings/integrations/api/integration.api";
 import { buildZohoFrontendCallbackUrl } from "@/features/settings/integrations/utils/zoho-callback-url.util";
+import { routes } from "@/shared/config/routes";
 import { toastError } from "@/shared/feedback/app-toast";
 import { AppButton, ListPageCardGrid, SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
@@ -14,7 +16,27 @@ const STATIC_INTEGRATIONS = [{ id: "zoho-inventory", provider: "zoho" as const }
 export function IntegrationsSettingsPanel() {
   const t = useTranslations("Dashboard.integrations");
   const locale = useLocale();
+  const router = useRouter();
   const [connectingId, setConnectingId] = React.useState<string | null>(null);
+  const [zohoConnected, setZohoConnected] = React.useState(false);
+  const [checkingConnection, setCheckingConnection] = React.useState(true);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const connection = await fetchZohoConnection();
+        if (!cancelled) setZohoConnected(connection.connected);
+      } catch {
+        if (!cancelled) setZohoConnected(false);
+      } finally {
+        if (!cancelled) setCheckingConnection(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleConnect(integrationId: string) {
     if (integrationId !== "zoho-inventory") return;
@@ -64,16 +86,28 @@ export function IntegrationsSettingsPanel() {
                     </span>
                   </span>
                 </div>
-                <AppButton
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  loading={connectingId === item.id}
-                  disabled={connectingId != null && connectingId !== item.id}
-                  onClick={() => void handleConnect(item.id)}
-                >
-                  {t("connect")}
-                </AppButton>
+                {zohoConnected ? (
+                  <AppButton
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    disabled={checkingConnection}
+                    onClick={() => router.push(routes.dashboard.settingsZohoConnection)}
+                  >
+                    {t("manage")}
+                  </AppButton>
+                ) : (
+                  <AppButton
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    loading={connectingId === item.id || checkingConnection}
+                    disabled={checkingConnection || (connectingId != null && connectingId !== item.id)}
+                    onClick={() => void handleConnect(item.id)}
+                  >
+                    {t("connect")}
+                  </AppButton>
+                )}
               </div>
             ))}
           </ListPageCardGrid>
