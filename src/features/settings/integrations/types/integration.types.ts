@@ -53,7 +53,7 @@ export type ZohoConnectionDetails = {
   provider: string;
   connection_id: number;
   zoho_organization_id: string;
-  mapping_completed: boolean;
+  mapping_configured: boolean;
   imported_records: number;
   webhook: ZohoConnectionWebhookStatus;
   next_step: string;
