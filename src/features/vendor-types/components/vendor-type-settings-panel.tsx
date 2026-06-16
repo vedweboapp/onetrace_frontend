@@ -138,6 +138,7 @@ export function VendorTypeSettingsPanel() {
     };
   }, [page, pageSize, refreshNonce, search, isActiveFilter, t]);
 
+
   const hasActiveFilters = hasListActiveFilters({ search, isActiveParam });
   const countInactive = React.useCallback(async () => {
     const { pagination: p } = await fetchVendorTypesPage(1, 1, {

@@ -42,6 +42,8 @@ export const routes = {
     settingsProjectForms: "/dashboard/settings/project-type-forms",
     settingsIntegrations: "/dashboard/settings/integrations",
     settingsZohoCallback: "/dashboard/settings/integrations/zoho/callback",
+    settingsZohoKeyMapping: "/dashboard/settings/integrations/zoho/key-mapping",
+    settingsZohoWebhookSetup: "/dashboard/settings/integrations/zoho/webhook-setup",
     projectJobsForms: "/dashboard/projects/[id]/job-forms"
   },
 
