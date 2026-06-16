@@ -281,7 +281,7 @@ const SignUpForm = () => {
           <label className="text-sm font-semibold text-slate-700">
             {t("phone")}
           </label>
-          <SurfacePhoneField name="phone_number" control={control} />
+          <SurfacePhoneField name="phone_number" control={control} id="sign-up-phone_number" label="" />
         </div>
 
         {/* Password */}

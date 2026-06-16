@@ -304,7 +304,7 @@ const PersonalProfileForm = ({
                         label={t("DateOfBirth")}
                         type="date"
                         register={register("date_of_birth")}
-                        errors={errors.dob}
+                        errors={errors.date_of_birth}
                         readOnly={!isEditing}
                     />
                     <Select
