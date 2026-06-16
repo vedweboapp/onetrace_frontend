@@ -2,20 +2,29 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
-import { INTEGRATION_PATHS } from "./integration.paths";
-import type { ZohoCallbackParams, ZohoConnectResponse } from "../types/integration.types";
+import { INTEGRATION_PATHS, ZOHO_DEFAULT_RESOURCE } from "./integration.paths";
+import type {
+  ZohoCallbackParams,
+  ZohoConnectResponse,
+  ZohoKeyMappingData,
+  ZohoSaveKeyMappingPayload,
+  ZohoSaveKeyMappingResponse,
+  ZohoWebhookSetupData,
+} from "../types/integration.types";
+
+function unwrapPayload<T>(raw: unknown): T {
+  if (!raw || typeof raw !== "object") {
+    throw new ApiBusinessError("Invalid response from server");
+  }
+  const envelope = raw as ApiEnvelope<T> & T;
+  if (envelope.success === true && envelope.data && typeof envelope.data === "object") {
+    return envelope.data as T;
+  }
+  return raw as T;
+}
 
 function unwrapZohoConnectPayload(raw: unknown): ZohoConnectResponse {
-  if (!raw || typeof raw !== "object") {
-    throw new ApiBusinessError("Invalid connect response");
-  }
-
-  const envelope = raw as ApiEnvelope<ZohoConnectResponse> & ZohoConnectResponse;
-  if (envelope.success === true && envelope.data && typeof envelope.data === "object") {
-    return envelope.data;
-  }
-
-  return raw as ZohoConnectResponse;
+  return unwrapPayload<ZohoConnectResponse>(raw);
 }
 
 export async function connectZohoInventory(callbackUrl: string): Promise<ZohoConnectResponse> {
@@ -62,4 +71,64 @@ export async function completeZohoIntegration(params: ZohoCallbackParams): Promi
   }
 
   return "Integration completed successfully";
+}
+
+export async function fetchZohoKeyMapping(): Promise<ZohoKeyMappingData> {
+  const { data } = await api.get<ApiEnvelope<ZohoKeyMappingData> | ZohoKeyMappingData>(
+    INTEGRATION_PATHS.zohoKeyMapping,
+  );
+
+  if (data && typeof data === "object" && "success" in data && data.success === false) {
+    assertApiSuccess(data as ApiEnvelope<ZohoKeyMappingData>);
+  }
+
+  const payload = unwrapPayload<ZohoKeyMappingData>(data);
+  return {
+    external_fields: Array.isArray(payload.external_fields) ? payload.external_fields : [],
+    internal_fields: Array.isArray(payload.internal_fields) ? payload.internal_fields : [],
+    existing_mapping: Array.isArray(payload.existing_mapping) ? payload.existing_mapping : [],
+  };
+}
+
+export async function saveZohoKeyMapping(
+  payload: ZohoSaveKeyMappingPayload,
+): Promise<ZohoSaveKeyMappingResponse> {
+  const { data } = await api.post<ApiEnvelope<ZohoSaveKeyMappingResponse> | ZohoSaveKeyMappingResponse>(
+    INTEGRATION_PATHS.zohoKeyMapping,
+    payload,
+  );
+
+  if (data && typeof data === "object" && "success" in data && data.success === false) {
+    assertApiSuccess(data as ApiEnvelope<ZohoSaveKeyMappingResponse>);
+  }
+
+  const raw = data as ZohoSaveKeyMappingResponse & ApiEnvelope<ZohoSaveKeyMappingResponse>;
+  const nested = raw.data && typeof raw.data === "object" ? raw.data : null;
+  return {
+    success: raw.success ?? true,
+    message:
+      (typeof raw.message === "string" ? raw.message : undefined) ??
+      (nested && typeof nested.message === "string" ? nested.message : undefined) ??
+      "Mapping saved",
+    data_synced: Array.isArray(raw.data_synced)
+      ? raw.data_synced
+      : nested && Array.isArray(nested.data_synced)
+        ? nested.data_synced
+        : undefined,
+  };
+}
+
+export async function fetchZohoWebhookSetup(
+  resource: string = ZOHO_DEFAULT_RESOURCE,
+): Promise<ZohoWebhookSetupData> {
+  const { data } = await api.get<ApiEnvelope<ZohoWebhookSetupData> | ZohoWebhookSetupData>(
+    INTEGRATION_PATHS.zohoWebhookSetup,
+    { params: { resource } },
+  );
+
+  if (data && typeof data === "object" && "success" in data && data.success === false) {
+    assertApiSuccess(data as ApiEnvelope<ZohoWebhookSetupData>);
+  }
+
+  return unwrapPayload<ZohoWebhookSetupData>(data);
 }
