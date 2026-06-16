@@ -43,6 +43,22 @@ export type ZohoWebhookSetupData = {
   sample_payload: Record<string, unknown>;
 };
 
+export type ZohoConnectionWebhookStatus = {
+  configured: boolean;
+  last_received_at: string | null;
+};
+
+export type ZohoConnectionDetails = {
+  connected: boolean;
+  provider: string;
+  connection_id: number;
+  zoho_organization_id: string;
+  mapping_completed: boolean;
+  imported_records: number;
+  webhook: ZohoConnectionWebhookStatus;
+  next_step: string;
+};
+
 export type ZohoMappingRow = {
   id: string;
   externalField: string;

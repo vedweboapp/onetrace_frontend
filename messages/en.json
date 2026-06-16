@@ -231,6 +231,7 @@
       "title": "Integrations",
       "description": "Connect third-party services to sync data with OneTrace.",
       "connect": "Connect",
+      "manage": "Manage",
       "connectError": "Failed to start Zoho connection. Please try again.",
       "zohoInventory": {
         "name": "Zoho Inventory"
@@ -279,7 +280,30 @@
         "copy": "Copy",
         "copied": "Copied to clipboard",
         "loadError": "Failed to load webhook setup details. Please try again.",
-        "done": "Back to integrations"
+        "backToConnection": "Back to connection",
+        "done": "Done"
+      },
+      "zohoConnection": {
+        "title": "Zoho Inventory connection",
+        "description": "Review your Zoho connection status and manage sync settings.",
+        "setupWebhook": "Setup custom webhook",
+        "configureMapping": "Configure key mapping",
+        "webhookTitle": "Custom webhook setup",
+        "backToDetails": "Back to details",
+        "backToIntegrations": "Back to integrations",
+        "loadError": "Failed to load connection details. Please try again.",
+        "webhookLoadError": "Failed to load webhook setup details. Please try again.",
+        "connected": "Connected",
+        "provider": "Provider",
+        "connectionId": "Connection ID",
+        "zohoOrganizationId": "Zoho organization ID",
+        "mappingCompleted": "Mapping completed",
+        "importedRecords": "Imported records",
+        "webhookConfigured": "Webhook configured",
+        "webhookLastReceived": "Webhook last received",
+        "notAvailable": "—",
+        "yes": "Yes",
+        "no": "No"
       }
     },
     "settingsPersonalProfile": {

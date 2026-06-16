@@ -133,7 +133,7 @@ export function ZohoKeyMappingScreen() {
           ? t("savedWithSync", { count: syncedCount, message: result.message ?? t("saved") })
           : (result.message ?? t("saved"));
       toastSuccess(message);
-      router.replace(routes.dashboard.settingsZohoWebhookSetup);
+      router.replace(routes.dashboard.settingsZohoConnection);
     } catch {
       toastError(t("saveError"));
     } finally {
@@ -235,7 +235,7 @@ export function ZohoKeyMappingScreen() {
                   variant="secondary"
                   size="sm"
                   disabled={saving}
-                  onClick={() => router.replace(routes.dashboard.settingsIntegrations)}
+                  onClick={() => router.replace(routes.dashboard.settingsZohoConnection)}
                 >
                   {t("cancel")}
                 </AppButton>

@@ -231,6 +231,7 @@
       "title": "Integraciones",
       "description": "Conecta servicios de terceros para sincronizar datos con OneTrace.",
       "connect": "Conectar",
+      "manage": "Administrar",
       "connectError": "No se pudo iniciar la conexión con Zoho. Inténtalo de nuevo.",
       "zohoInventory": {
         "name": "Zoho Inventory"
@@ -279,7 +280,30 @@
         "copy": "Copiar",
         "copied": "Copiado al portapapeles",
         "loadError": "No se pudieron cargar los detalles del webhook. Inténtalo de nuevo.",
-        "done": "Volver a integraciones"
+        "backToConnection": "Volver a la conexión",
+        "done": "Listo"
+      },
+      "zohoConnection": {
+        "title": "Conexión de Zoho Inventory",
+        "description": "Revisa el estado de tu conexión con Zoho y administra la sincronización.",
+        "setupWebhook": "Configurar webhook personalizado",
+        "configureMapping": "Configurar mapeo de claves",
+        "webhookTitle": "Configuración del webhook personalizado",
+        "backToDetails": "Volver a los detalles",
+        "backToIntegrations": "Volver a integraciones",
+        "loadError": "No se pudieron cargar los detalles de la conexión. Inténtalo de nuevo.",
+        "webhookLoadError": "No se pudieron cargar los detalles del webhook. Inténtalo de nuevo.",
+        "connected": "Conectado",
+        "provider": "Proveedor",
+        "connectionId": "ID de conexión",
+        "zohoOrganizationId": "ID de organización Zoho",
+        "mappingCompleted": "Mapeo completado",
+        "importedRecords": "Registros importados",
+        "webhookConfigured": "Webhook configurado",
+        "webhookLastReceived": "Última recepción del webhook",
+        "notAvailable": "—",
+        "yes": "Sí",
+        "no": "No"
       }
     },
     "settingsPersonalProfile": {
