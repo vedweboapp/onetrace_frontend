@@ -10,29 +10,45 @@ export const listMassSelectionRowCheckboxClassName = cn(
   "dark:border-slate-600 dark:bg-slate-900",
 );
 
-type Args = {
-  totalRecords: number;
-  pageItems: Array<{ id: number }>;
-  fetchAllIds: () => Promise<number[]>;
-  /** When filters/page change, selection is cleared */
+function selectablePageIds<T extends { id: number }>(
+  pageItems: T[],
+  isRowSelectable?: (item: T) => boolean,
+): number[] {
+  return pageItems
+    .filter((row) => (isRowSelectable ? isRowSelectable(row) : true))
+    .map((row) => row.id);
+}
+
+type Args<T extends { id: number }> = {
+  pageItems: T[];
+  /** When filters change, selection is cleared. Page changes are not included — selections persist across pages. */
   resetDeps: React.DependencyList;
+  isRowSelectable?: (item: T) => boolean;
+  /** @deprecated Select all applies to the current page only. */
+  totalRecords?: number;
+  /** @deprecated Select all applies to the current page only. */
+  fetchAllIds?: () => Promise<number[]>;
+  /** @deprecated Select all applies to the current page only. */
   onSelectAllError?: () => void;
 };
 
-export function useListMassSelection({
-  totalRecords,
+export function useListMassSelection<T extends { id: number }>({
   pageItems,
-  fetchAllIds,
+  isRowSelectable,
   resetDeps,
-  onSelectAllError,
-}: Args) {
+}: Args<T>) {
   const [selectedIds, setSelectedIds] = React.useState<Set<number>>(() => new Set());
-  const [selectingAll, setSelectingAll] = React.useState(false);
   const selectAllRef = React.useRef<HTMLInputElement>(null);
 
+  const pageSelectableIds = React.useMemo(
+    () => selectablePageIds(pageItems, isRowSelectable),
+    [pageItems, isRowSelectable],
+  );
+
   const selectedCount = selectedIds.size;
-  const allMatchingSelected = totalRecords > 0 && selectedCount === totalRecords;
-  const somePageSelected = pageItems.some((row) => selectedIds.has(row.id));
+  const allMatchingSelected =
+    pageSelectableIds.length > 0 && pageSelectableIds.every((id) => selectedIds.has(id));
+  const somePageSelected = pageSelectableIds.some((id) => selectedIds.has(id));
 
   React.useEffect(() => {
     setSelectedIds(new Set());
@@ -46,20 +62,18 @@ export function useListMassSelection({
   }, [somePageSelected, allMatchingSelected]);
 
   const toggleSelectAll = React.useCallback(async () => {
-    if (allMatchingSelected) {
-      setSelectedIds(new Set());
-      return;
-    }
-    setSelectingAll(true);
-    try {
-      const ids = await fetchAllIds();
-      setSelectedIds(new Set(ids));
-    } catch {
-      onSelectAllError?.();
-    } finally {
-      setSelectingAll(false);
-    }
-  }, [allMatchingSelected, fetchAllIds, onSelectAllError]);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const allPageSelected =
+        pageSelectableIds.length > 0 && pageSelectableIds.every((id) => next.has(id));
+      if (allPageSelected) {
+        for (const id of pageSelectableIds) next.delete(id);
+      } else {
+        for (const id of pageSelectableIds) next.add(id);
+      }
+      return next;
+    });
+  }, [pageSelectableIds]);
 
   const toggleRowSelected = React.useCallback((id: number) => {
     setSelectedIds((prev) => {
@@ -81,7 +95,7 @@ export function useListMassSelection({
     selectedCount,
     allMatchingSelected,
     somePageSelected,
-    selectingAll,
+    selectingAll: false,
     selectAllRef,
     toggleSelectAll,
     toggleRowSelected,
