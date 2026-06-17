@@ -3,6 +3,7 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import type {
   QuotationContactNested,
@@ -11,10 +12,13 @@ import type {
 } from "@/features/quotations/types/quotation.types";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
 import {
+  getQuotationCustomerId,
   getQuotationNestedSite,
+  getQuotationProjectId,
   getQuotationSiteId,
   getQuotationTechnicianEntries,
   quotationCustomerLabel,
+  quotationProjectLabel,
   quotationSiteLabel,
   quotationTagsLabels,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
@@ -39,6 +43,7 @@ import {
   DetailPanelCard,
 } from "@/shared/components/layout/detail-metric-card";
 import { AppTabs } from "@/shared/ui";
+import { routes } from "@/shared/config/routes";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { cn } from "@/core/utils/http.util";
 
@@ -126,10 +131,15 @@ const AddressMiniMap = dynamic(
   },
 );
 
+const detailEntityLinkClassName =
+  "font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline";
+
 type Props = {
   detail: QuotationDetail;
   /** When `customer` is a bare id, resolve the name from your clients cache. */
   customerName?: string;
+  /** When `project` is a bare id, resolve the name from your projects cache. */
+  projectName?: string;
   /** When `site` is a bare id, resolve the label from your sites cache. */
   siteName?: string;
   /** When `tags` are bare ids, resolve display names from your tags cache. */
@@ -143,6 +153,7 @@ type Props = {
 export function QuotationDetailBody({
   detail,
   customerName,
+  projectName,
   siteName,
   tagLookup,
   siteDetail,
@@ -203,6 +214,8 @@ export function QuotationDetailBody({
 
   const tagsLabel = quotationTagsLabels(detail.tags, tagLookup);
   const technicianEntries = React.useMemo(() => getQuotationTechnicianEntries(detail), [detail]);
+  const customerId = getQuotationCustomerId(detail.customer);
+  const projectId = getQuotationProjectId(detail.project);
 
   const dueLabel = formatFlexibleApiDate(detail.due_date, dueFmt);
 
@@ -226,7 +239,22 @@ export function QuotationDetailBody({
         <DetailMetricCard label={t("table.status")}>{quoteStatusLabel(detail.status)}</DetailMetricCard>
         <DetailMetricCard label={t("fields.quoteName")}>{detail.quote_name}</DetailMetricCard>
         <DetailMetricCard label={t("fields.customer")}>
-          {quotationCustomerLabel(detail.customer, customerName ?? null)}
+          {customerId != null ? (
+            <Link href={`${routes.dashboard.clients}/${customerId}`} className={detailEntityLinkClassName}>
+              {quotationCustomerLabel(detail.customer, customerName ?? null)}
+            </Link>
+          ) : (
+            quotationCustomerLabel(detail.customer, customerName ?? null)
+          )}
+        </DetailMetricCard>
+        <DetailMetricCard label={t("fields.project")}>
+          {projectId != null ? (
+            <Link href={`${routes.dashboard.projects}/${projectId}`} className={detailEntityLinkClassName}>
+              {quotationProjectLabel(detail.project, projectName ?? null)}
+            </Link>
+          ) : (
+            quotationProjectLabel(detail.project, projectName ?? null)
+          )}
         </DetailMetricCard>
         <DetailMetricCard label={t("fields.site")}>
           {quotationSiteLabel(detail.site, snap?.site_name?.trim() || siteName?.trim() || null)}

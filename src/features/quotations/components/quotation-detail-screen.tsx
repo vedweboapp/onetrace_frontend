@@ -13,7 +13,9 @@ import {
   getQuotationNestedSite,
   getQuotationSiteId,
   getQuotationCustomerId,
+  getQuotationProjectId,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
+import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { fetchTagsPage } from "@/features/tags/api/tag.api";
 import { fetchSite, fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
@@ -36,6 +38,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
 
   const [creatingJob, setCreatingJob] = React.useState(false);
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
+  const [projectNames, setProjectNames] = React.useState<Record<number, string>>({});
   const [siteNames, setSiteNames] = React.useState<Record<number, string>>({});
   const [tagNames, setTagNames] = React.useState<Record<number, string>>({});
   const [siteDetail, setSiteDetail] = React.useState<Site | null>(null);
@@ -54,6 +57,25 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         }
       } catch {
         if (!cancelled) setClientNames({});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items: projects } = await fetchProjectsPage(1, 500, { is_active: true });
+        if (!cancelled) {
+          const mapped: Record<number, string> = {};
+          for (const row of projects) mapped[row.id] = row.name;
+          setProjectNames(mapped);
+        }
+      } catch {
+        if (!cancelled) setProjectNames({});
       }
     })();
     return () => {
@@ -217,11 +239,13 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     >
       {({ detail, dateFmt }) => {
         const customerIdForLookup = getQuotationCustomerId(detail.customer);
+        const projectIdForLookup = getQuotationProjectId(detail.project);
         const siteIdForLookup = getQuotationSiteId(detail.site);
         return (
           <QuotationDetailBody
             detail={detail}
             customerName={customerIdForLookup != null ? clientNames[customerIdForLookup] : undefined}
+            projectName={projectIdForLookup != null ? projectNames[projectIdForLookup] : undefined}
             siteName={
               detail.site_snapshot?.site_name?.trim() ||
               (siteIdForLookup != null ? siteNames[siteIdForLookup] : undefined)
