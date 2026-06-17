@@ -1284,7 +1284,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       y_coordinate: Number(((point[1] / pageSize.height) * 100).toFixed(6)),
       status: selectedStatus.id,
       variation: showVariations,
-      quantity: defaultQuantityForNewPin(selectedItem?.quantity),
+      quantity: "1",
       group: selectedGroupId ? Number.parseInt(selectedGroupId, 10) : undefined,
       item: selectedCompositeId ? Number.parseInt(selectedCompositeId, 10) : undefined,
       description: "",
