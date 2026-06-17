@@ -22,7 +22,17 @@ export function sanitizeInternalDashboardBack(raw: string | null | undefined): s
   if (!decoded.startsWith("/") || decoded.startsWith("//")) return null;
   if (decoded.includes("://")) return null;
   if (decoded.includes("..")) return null;
-  if (!decoded.includes("/dashboard/")) return null;
+  if (decoded === routes.home) return null;
+  if (
+    decoded === routes.auth.login ||
+    decoded.startsWith(`${routes.auth.login}/`) ||
+    decoded === routes.auth.signUp ||
+    decoded.startsWith(`${routes.auth.signUp}/`) ||
+    decoded === routes.auth.forgotPassword ||
+    decoded.startsWith(`${routes.auth.forgotPassword}/`)
+  ) {
+    return null;
+  }
   return decoded;
 }
 

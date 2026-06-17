@@ -1,8 +1,7 @@
 "use client";
 
-import { usePathname as useNextPathname } from "next/navigation";
 import { useLocale } from "next-intl";
-import { stripLocaleSegmentsFromPathname } from "@/i18n/locale-path";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { cn } from "@/core/utils/http.util";
 
@@ -13,7 +12,8 @@ type LocaleSwitcherProps = {
 
 export function LocaleSwitcher({ className, tone = "default" }: LocaleSwitcherProps) {
   const locale = useLocale();
-  const nextPathname = useNextPathname();
+  const pathname = usePathname();
+  const router = useRouter();
 
   return (
     <label className={cn("flex items-center gap-2 text-sm", className)}>
@@ -23,10 +23,7 @@ export function LocaleSwitcher({ className, tone = "default" }: LocaleSwitcherPr
         onChange={(e) => {
           const nextLocale = e.target.value;
           if (nextLocale === locale) return;
-          const bare = stripLocaleSegmentsFromPathname(nextPathname);
-          const path = bare === "/" ? "" : bare;
-          const suffix = `${window.location.search}${window.location.hash}`;
-          window.location.assign(`/${nextLocale}${path}${suffix}`);
+          router.replace(pathname, { locale: nextLocale });
         }}
         className={cn(
           "h-9 rounded-lg border px-2 text-sm shadow-sm outline-none transition focus-visible:ring-2 focus-visible:ring-slate-200",

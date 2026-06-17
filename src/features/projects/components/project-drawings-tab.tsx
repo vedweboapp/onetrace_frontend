@@ -265,7 +265,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   }, [items]);
 
   function openDrawing(row: Drawing) {
-    router.push(`/dashboard/projects/${projectId}/drawings/${row.id}`);
+    router.push(`/projects/${projectId}/drawings/${row.id}`);
   }
 
   function handleCreated() {

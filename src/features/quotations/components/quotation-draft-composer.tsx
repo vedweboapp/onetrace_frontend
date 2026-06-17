@@ -889,8 +889,8 @@ export function QuotationDraftComposer({
         rows,
       });
       const backHref = buildQuotationScopeReturnHref(pathname);
-      const editMatch = pathname.match(/\/dashboard\/quotations\/(\d+)\/edit$/);
-      const detailMatch = pathname.match(/\/dashboard\/quotations\/(\d+)$/);
+      const editMatch = pathname.match(/\/quotations\/(\d+)\/edit$/);
+      const detailMatch = pathname.match(/\/quotations\/(\d+)$/);
       const context = editMatch
         ? { mode: "edit" as const, quotationId: Number.parseInt(editMatch[1], 10) }
         : detailMatch

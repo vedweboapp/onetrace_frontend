@@ -215,14 +215,14 @@
       "sidebarSubtitle": "Workspace preferences",
       "backToApp": "Projects",
       "appearance": "Appearance",
-      "pinStatus": "Pin statuses",
-      "jobStatus": "Job statuses",
-      "materialStatus": "Material statuses",
+      "pinStatus": "Pin Statuses",
+      "jobStatus": "Job Statuses",
+      "materialStatus": "Material Statuses",
       "tags": "Tags",
-      "projectTypes": "Project types",
-      "installationTypes": "Installation types",
-      "vendorTypes": "Vendor types",
-      "checklistTypes": "Checklist types",
+      "projectTypes": "Project Types",
+      "installationTypes": "Installation Types",
+      "vendorTypes": "Vendor Types",
+      "checklistTypes": "Checklist Types",
       "users": "Users",
       "personalProfile": "Personal Profile",
       "companySettings": "Company Settings",
@@ -234,34 +234,34 @@
       "customization": {
         "label": "Customization",
         "hubTitle": "Customization",
-        "hubDescription": "Choose what to configure — project types, installation types, vendor types, checklist types, pin statuses, job statuses, material statuses, and tags.",
+        "hubDescription": "Choose what to configure — Project Types, Installation Types, Vendor Types, Checklist Types, Pin Statuses, Job Statuses, Material Statuses, and Tags.",
         "items": {
           "projectTypes": {
-            "title": "Project types",
+            "title": "Project Types",
             "description": "Categories for projects with colored labels."
           },
           "installationTypes": {
-            "title": "Installation types",
+            "title": "Installation Types",
             "description": "Classify installations with colored labels."
           },
           "vendorTypes": {
-            "title": "Vendor types",
+            "title": "Vendor Types",
             "description": "Categories for vendors with colored labels."
           },
           "checklistTypes": {
-            "title": "Checklist types",
+            "title": "Checklist Types",
             "description": "Checklists for job forms, linked to project types."
           },
           "pinStatus": {
-            "title": "Pin statuses",
+            "title": "Pin Statuses",
             "description": "Status colors for pins on drawings."
           },
           "jobStatus": {
-            "title": "Job statuses",
+            "title": "Job Statuses",
             "description": "Workflow statuses for jobs."
           },
           "materialStatus": {
-            "title": "Material statuses",
+            "title": "Material Statuses",
             "description": "Workflow statuses for material requests."
           },
           "tags": {
@@ -487,8 +487,8 @@
       }
     },
     "pinStatus": {
-      "metaTitle": "Pin statuses",
-      "title": "Pin statuses",
+      "metaTitle": "Pin Statuses",
+      "title": "Pin Statuses",
       "subtitle": "Create and manage workflow labels for pins. Colors are used when displaying status chips across the app.",
       "add": "Add",
       "edit": "Edit",
@@ -539,8 +539,8 @@
       "validationHex": "Use a valid 6-digit hex color (e.g. #E5E7EB)."
     },
     "jobStatus": {
-      "metaTitle": "Job statuses",
-      "title": "Job statuses",
+      "metaTitle": "Job Statuses",
+      "title": "Job Statuses",
       "subtitle": "Create and manage workflow labels for jobs. Colors are used when displaying status chips across the app.",
       "add": "Add",
       "edit": "Edit",
@@ -591,8 +591,8 @@
       "validationHex": "Use a valid 6-digit hex color (e.g. #E5E7EB)."
     },
     "materialStatus": {
-      "metaTitle": "Material statuses",
-      "title": "Material statuses",
+      "metaTitle": "Material Statuses",
+      "title": "Material Statuses",
       "subtitle": "Create and manage workflow labels for material requests. Colors are used when displaying status chips across the app.",
       "add": "Add",
       "edit": "Edit",
@@ -693,8 +693,8 @@
       "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
     },
     "projectTypes": {
-      "metaTitle": "Project types",
-      "title": "Project types",
+      "metaTitle": "Project Types",
+      "title": "Project Types",
       "subtitle": "Define project categories with colored labels for use across projects.",
       "add": "Add",
       "edit": "Edit",
@@ -749,8 +749,8 @@
       "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
     },
     "installationTypes": {
-      "metaTitle": "Installation types",
-      "title": "Installation types",
+      "metaTitle": "Installation Types",
+      "title": "Installation Types",
       "subtitle": "Define installation categories with colored labels for use across the app.",
       "add": "Add",
       "edit": "Edit",
@@ -805,8 +805,8 @@
       "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
     },
     "checklistTypes": {
-      "metaTitle": "Checklist types",
-      "title": "Checklist types",
+      "metaTitle": "Checklist Types",
+      "title": "Checklist Types",
       "subtitle": "Define checklists for job forms, scoped by project type.",
       "add": "Add",
       "edit": "Edit",
@@ -875,8 +875,8 @@
       "validationSequence": "Enter a valid sequence number (1 or greater)."
     },
     "vendorTypes": {
-      "metaTitle": "Vendor types",
-      "title": "Vendor types",
+      "metaTitle": "Vendor Types",
+      "title": "Vendor Types",
       "subtitle": "Define vendor categories with colored labels for use across vendors.",
       "add": "Add",
       "edit": "Edit",

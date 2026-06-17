@@ -12,13 +12,11 @@ import { fetchProjectsPage, fetchProjectJobsHierarchy } from "@/features/project
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { ProjectJobHierarchyJob } from "@/features/projects/types/project-jobs.types";
 import {
-  collectJobIdsFromFilteredHierarchy,
   collectProjectJobLevelOptions,
   collectProjectJobPlotOptions,
   countFilteredProjectJobs,
   DEFAULT_PROJECT_JOBS_SOURCE,
   filterProjectJobsHierarchy,
-  flattenFilteredProjectJobs,
   plotSelectionState,
   togglePlotJobSelection,
   type ProjectJobsSourceFilter,
@@ -36,6 +34,8 @@ import {
 import { routes } from "@/shared/config/routes";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
+import { jobAssignedWorkerLabel } from "@/features/jobs/utils/job-nested-fields.util";
 import {
   CheckmarkSelect,
   ConfirmDialog,
@@ -53,9 +53,9 @@ type Props = {
   projectId: number;
 };
 
-/** Shared column layout: checkbox | title | description | status | start | end | actions */
+/** Shared column layout: checkbox | title | description | assigned worker | status | start | end | actions */
 const JOB_TABLE_GRID =
-  "grid w-full max-w-full grid-cols-[1.125rem_minmax(0,1.1fr)_minmax(0,1fr)_7.5rem_6.5rem_6.5rem_2.25rem] items-center gap-x-3 sm:gap-x-4";
+  "grid w-full max-w-full grid-cols-[1.125rem_minmax(0,1.1fr)_minmax(0,1fr)_7.5rem_7.5rem_6.5rem_6.5rem_2.25rem] items-center gap-x-3 sm:gap-x-4";
 
 function TruncatedCell({
   children,
@@ -120,6 +120,7 @@ type JobRowProps = {
   onEdit: () => void;
   onDelete: () => void;
   statusChip: React.ReactNode;
+  workerLabel: React.ReactNode;
   selectAriaLabel: string;
   rowClassName?: string;
   tJobs: ReturnType<typeof useTranslations<"Dashboard.jobs">>;
@@ -135,6 +136,7 @@ function ProjectJobRow({
   onEdit,
   onDelete,
   statusChip,
+  workerLabel,
   selectAriaLabel,
   rowClassName,
   tJobs,
@@ -178,6 +180,7 @@ function ProjectJobRow({
       >
         {job.description?.trim() || "—"}
       </TruncatedCell>
+      <TruncatedCell className="text-xs text-slate-600 dark:text-slate-400">{workerLabel}</TruncatedCell>
       <div className="min-w-0 overflow-hidden">{statusChip}</div>
       <TruncatedCell className="text-xs tabular-nums text-slate-600 dark:text-slate-400">
         {formatFlexibleApiDate(job.start_date, dateFmt)}
@@ -214,6 +217,7 @@ function ProjectJobTableHeader({ tJobs }: JobTableHeaderProps) {
       <span aria-hidden />
       <span>{tJobs("table.title")}</span>
       <span>{tJobs("fields.description")}</span>
+      <span>{tJobs("fields.assignedWorker")}</span>
       <span>{tJobs("table.jobStatus")}</span>
       <span>{tJobs("table.start")}</span>
       <span>{tJobs("table.end")}</span>
@@ -237,6 +241,7 @@ type PlotJobsBlockProps = {
   onEditJob: (job: ProjectJobHierarchyJob) => void;
   onDeleteJob: (job: ProjectJobHierarchyJob) => void;
   statusChipForJob: (job: ProjectJobHierarchyJob) => React.ReactNode;
+  workerLabelById: Record<number, string>;
   selectRowAria: string;
   tJobs: JobRowProps["tJobs"];
   tList: JobRowProps["tList"];
@@ -258,6 +263,7 @@ function PlotJobsBlock({
   onEditJob,
   onDeleteJob,
   statusChipForJob,
+  workerLabelById,
   selectRowAria,
   tJobs,
   tList,
@@ -292,6 +298,7 @@ function PlotJobsBlock({
               onEdit={() => onEditJob(job)}
               onDelete={() => onDeleteJob(job)}
               statusChip={statusChipForJob(job)}
+              workerLabel={jobAssignedWorkerLabel(job, workerLabelById)}
               selectAriaLabel={selectRowAria}
               rowClassName={highlightClassName(job.id)}
               tJobs={tJobs}
@@ -351,6 +358,15 @@ export function ProjectJobsTab({ projectId }: Props) {
     Record<number, { status_name: string; bg_colour: string; text_colour: string }>
   >({});
 
+  const workerLabelById = React.useMemo(() => {
+    const m: Record<number, string> = {};
+    for (const o of workerOptions) {
+      const id = Number.parseInt(o.value, 10);
+      if (Number.isFinite(id)) m[id] = o.label;
+    }
+    return m;
+  }, [workerOptions]);
+
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deletingJob, setDeletingJob] = React.useState<ProjectJobHierarchyJob | null>(null);
   const [deleting, setDeleting] = React.useState(false);
@@ -369,11 +385,6 @@ export function ProjectJobsTab({ projectId }: Props) {
   const filteredHierarchy = React.useMemo(
     () => (hierarchy ? filterProjectJobsHierarchy(hierarchy, listFilters) : { levels: [], manual_jobs: [] }),
     [hierarchy, listFilters],
-  );
-
-  const visibleJobs = React.useMemo(
-    () => flattenFilteredProjectJobs(filteredHierarchy).map((job) => ({ id: job.id })),
-    [filteredHierarchy],
   );
 
   const totalJobs = React.useMemo(() => countFilteredProjectJobs(filteredHierarchy), [filteredHierarchy]);
@@ -422,30 +433,14 @@ export function ProjectJobsTab({ projectId }: Props) {
     [workerOptions, jobStatusOptions, massClientOptions, massProjectOptions, massSiteOptions, massFormOptions, tJobs],
   );
 
-  const fetchAllIds = React.useCallback(
-    async () => collectJobIdsFromFilteredHierarchy(filteredHierarchy),
-    [filteredHierarchy],
-  );
-
   const [selectedIds, setSelectedIds] = React.useState<Set<number>>(() => new Set());
-  const [selectingAll, setSelectingAll] = React.useState(false);
-  const selectAllRef = React.useRef<HTMLInputElement>(null);
   const checkboxClassName = listMassSelectionRowCheckboxClassName;
-
   const selectedCount = selectedIds.size;
-  const allMatchingSelected = totalJobs > 0 && selectedCount === totalJobs;
-  const someVisibleSelected = visibleJobs.some((row) => selectedIds.has(row.id));
   const selectedIdsList = React.useMemo(() => [...selectedIds], [selectedIds]);
 
   React.useEffect(() => {
     setSelectedIds(new Set());
   }, [search, jobStatusFilter, jobSourceFilter, levelFilter, plotFilter]);
-
-  React.useEffect(() => {
-    if (selectAllRef.current) {
-      selectAllRef.current.indeterminate = someVisibleSelected && !allMatchingSelected;
-    }
-  }, [someVisibleSelected, allMatchingSelected]);
 
   const handleMassSuccess = React.useCallback(() => {
     toastSuccess(tMass("success"));
@@ -466,22 +461,6 @@ export function ProjectJobsTab({ projectId }: Props) {
     });
   }, []);
 
-  const handleToggleSelectAll = React.useCallback(async () => {
-    if (allMatchingSelected) {
-      setSelectedIds(new Set());
-      return;
-    }
-    setSelectingAll(true);
-    try {
-      const ids = await fetchAllIds();
-      setSelectedIds(new Set(ids));
-    } catch {
-      toastError(tMass("selectAllError"));
-    } finally {
-      setSelectingAll(false);
-    }
-  }, [allMatchingSelected, fetchAllIds, tMass]);
-
   const commitSearch = React.useCallback((q: string) => {
     setSearch(q.trim());
   }, []);
@@ -490,7 +469,8 @@ export function ProjectJobsTab({ projectId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const [statuses, clients, projects, sites, forms] = await Promise.all([
+        const [workers, statuses, clients, projects, sites, forms] = await Promise.all([
+          loadTechnicianOptions(),
           fetchJobStatusesPage(1, 500),
           fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
           fetchProjectsPage(1, 500, { is_active: true }),
@@ -508,7 +488,7 @@ export function ProjectJobsTab({ projectId }: Props) {
               label: f.name?.trim() || `#${f.id}`,
             })),
           );
-          setWorkerOptions([]);
+          setWorkerOptions(workers);
           const byId: Record<number, { status_name: string; bg_colour: string; text_colour: string }> = {};
           for (const s of statuses.items) {
             byId[s.id] = {
@@ -727,23 +707,6 @@ export function ProjectJobsTab({ projectId }: Props) {
           />
         ) : (
           <div className="space-y-8 px-4 py-4 sm:px-6 sm:py-6">
-            {totalJobs > 0 ? (
-              <div className="flex items-center gap-3 rounded-lg border border-slate-200/80 bg-slate-50/60 px-4 py-2.5 dark:border-slate-800 dark:bg-slate-900/40">
-                <input
-                  ref={selectAllRef}
-                  type="checkbox"
-                  className={checkboxClassName}
-                  checked={allMatchingSelected}
-                  disabled={selectingAll || totalJobs === 0}
-                  aria-label={tMass("selectAll")}
-                  onChange={() => void handleToggleSelectAll()}
-                />
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {t("jobCount", { count: totalJobs })}
-                </span>
-              </div>
-            ) : null}
-
             {filteredHierarchy.levels.map((level) => (
               <section key={level.id} className="space-y-4">
                 <div className="flex items-center gap-2">
@@ -773,6 +736,7 @@ export function ProjectJobsTab({ projectId }: Props) {
                         setDeleteOpen(true);
                       }}
                       statusChipForJob={statusChipForJob}
+                      workerLabelById={workerLabelById}
                       selectRowAria={tMass("selectRow")}
                       tJobs={tJobs}
                       tList={tList}
@@ -803,6 +767,7 @@ export function ProjectJobsTab({ projectId }: Props) {
                     setDeleteOpen(true);
                   }}
                   statusChipForJob={statusChipForJob}
+                  workerLabelById={workerLabelById}
                   selectRowAria={tMass("selectRow")}
                   tJobs={tJobs}
                   tList={tList}
