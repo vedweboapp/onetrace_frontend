@@ -18,6 +18,7 @@ import {
 } from "@/shared/ui";
 import { useUrlParams } from "@/shared/hooks/use-url-params";
 import { useRouter } from "@/i18n/navigation";
+import { routes } from "@/shared/config/routes";
 import { getModulesList } from "../api/modules.api";
 
 interface ModuleItem {
@@ -116,7 +117,7 @@ const ModulesDetails = () => {
                     ariaLabel="Search module"
                     className="max-w-[280px]"
                 />
-                <AppButton variant="primary" size="sm" onClick={() => route.push(`/dashboard/settings/modules/create?purpose=create_module`)}>
+                <AppButton variant="primary" size="sm" onClick={() => route.push(`${routes.dashboard.settingsModules}/create?purpose=create_module`)}>
                     Create New Module
                 </AppButton>
             </div>
@@ -162,7 +163,7 @@ const ModulesDetails = () => {
                                         const lastModified = row.updated_at || row.updatedAt || row.created_at || row.lastModified || "";
 
                                         return (
-                                            <DataTableRow key={id} onClick={() => route.push(`/dashboard/settings/modules/${id}/layout`)}>
+                                            <DataTableRow key={id} onClick={() => route.push(`${routes.dashboard.settingsModules}/${id}/layout`)}>
                                                 <DataTableTd className="font-semibold text-slate-800 dark:text-slate-100">
                                                     {displayName}
                                                 </DataTableTd>

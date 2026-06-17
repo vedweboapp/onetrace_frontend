@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
+import { routes } from "@/shared/config/routes";
 import { getLayoutMetadata, updateLayoutStatus } from "../api/layout-api";
 import {
     DataTable,
@@ -123,7 +124,7 @@ const LayoutDetails = () => {
                     className="max-w-[400px]"
                 />
 
-                <AppButton variant="primary" onClick={() => route.push(`/dashboard/settings/modules/${moduleId}/layout/create?purpose=create_layout`)}>
+                <AppButton variant="primary" onClick={() => route.push(`${routes.dashboard.settingsModules}/${moduleId}/layout/create?purpose=create_layout`)}>
                     Create New Layout
                 </AppButton>
             </div>
@@ -157,7 +158,7 @@ const LayoutDetails = () => {
 
                                     return (
                                         <DataTableRow key={row.id || idx} clickable={true}>
-                                            <DataTableTd className="font-semibold text-slate-800 dark:text-slate-100" onClick={() => route.push(`/dashboard/settings/modules/${moduleId}/layout/edit?layout_id=${row.id}&purpose=edit_layout`)}>
+                                            <DataTableTd className="font-semibold text-slate-800 dark:text-slate-100" onClick={() => route.push(`${routes.dashboard.settingsModules}/${moduleId}/layout/edit?layout_id=${row.id}&purpose=edit_layout`)}>
                                                 {layoutName}
                                             </DataTableTd>
                                             <DataTableTd>

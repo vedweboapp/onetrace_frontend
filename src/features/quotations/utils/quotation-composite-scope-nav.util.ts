@@ -18,10 +18,10 @@ export function buildQuotationCompositeScopeHref(
   const { compositeItemId, repeatCount, sectionLabel, plotLabel, backHref } = params;
   const base =
     context.mode === "new"
-      ? `/dashboard/quotations/new/composite/${compositeItemId}`
+      ? `/quotations/new/composite/${compositeItemId}`
       : context.mode === "edit"
-        ? `/dashboard/quotations/${context.quotationId}/edit/composite/${compositeItemId}`
-        : `/dashboard/quotations/${context.quotationId}/composite/${compositeItemId}`;
+        ? `/quotations/${context.quotationId}/edit/composite/${compositeItemId}`
+        : `/quotations/${context.quotationId}/composite/${compositeItemId}`;
 
   const q = new URLSearchParams();
   if (repeatCount > 1) q.set("repeat", String(repeatCount));

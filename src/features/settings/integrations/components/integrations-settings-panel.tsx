@@ -42,7 +42,7 @@ export function IntegrationsSettingsPanel() {
     if (integrationId !== "zoho-inventory") return;
     setConnectingId(integrationId);
     try {
-      const callbackUrl = buildZohoFrontendCallbackUrl(locale);
+      const callbackUrl = buildZohoFrontendCallbackUrl();
       const result = await connectZohoInventory(callbackUrl);
       window.location.assign(result.authorization_url!);
     } catch {

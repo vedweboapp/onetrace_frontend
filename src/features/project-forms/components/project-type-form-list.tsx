@@ -24,6 +24,7 @@ import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { DashboardAppBrand } from "@/features/dashboard/components/dashboard-app-brand";
+import { routes } from "@/shared/config/routes";
 
 interface FormListItem {
     id: number | string;
@@ -243,7 +244,7 @@ const ProjectTypeFormList = () => {
         if (!selectedProjectTypeId || !selectedInstallationTypeId) return;
         setProjectTypeModalOpen(false);
         router.push(
-            `/dashboard/settings/project-type-forms/${selectedProjectTypeId}/create?purpose=create_project_form&installation_type_id=${selectedInstallationTypeId}`,
+            `${routes.dashboard.settingsProjectForms}/${selectedProjectTypeId}/create?purpose=create_project_form&installation_type_id=${selectedInstallationTypeId}`,
         );
     }, [router, selectedProjectTypeId, selectedInstallationTypeId]);
 
@@ -342,7 +343,7 @@ const ProjectTypeFormList = () => {
                                         key={row.id}
                                         onClick={() =>
                                             router.push(
-                                                `/dashboard/settings/project-type-forms/create?purpose=edit_project_form&layout_id=${row.id}`,
+                                                `${routes.dashboard.settingsProjectForms}/create?purpose=edit_project_form&layout_id=${row.id}`,
                                             )
                                         }
                                         className="cursor-pointer border-b border-slate-100 hover:bg-slate-50/50 dark:border-slate-800 dark:hover:bg-slate-900/30"

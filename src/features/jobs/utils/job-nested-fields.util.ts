@@ -14,7 +14,7 @@ import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status
 import type { UserProfile } from "@/features/users/types/user.types";
 import { jobFormsToFormIds } from "@/features/jobs/utils/job-form-map";
 
-export function getJobAssignedWorkerId(job: Pick<Job, "assigned_worker">): number | null {
+export function getJobAssignedWorkerId(job: { assigned_worker?: Job["assigned_worker"] }): number | null {
   const w = job.assigned_worker;
   if (typeof w === "number" && Number.isFinite(w)) return w;
   if (w && typeof w === "object" && typeof w.id === "number") return w.id;
@@ -22,7 +22,7 @@ export function getJobAssignedWorkerId(job: Pick<Job, "assigned_worker">): numbe
 }
 
 export function jobAssignedWorkerLabel(
-  job: Pick<Job, "assigned_worker">,
+  job: { assigned_worker?: Job["assigned_worker"] },
   userLabelById?: Record<number, string>,
 ): string {
   const w = job.assigned_worker;
