@@ -13,6 +13,7 @@ import { ProjectDetailBody } from "@/features/projects/components/project-detail
 import { ProjectDrawingsTab } from "@/features/projects/components/project-drawings-tab";
 import { ProjectFormsTab } from "@/features/projects/components/project-forms-tab";
 import { ProjectJobsTab } from "@/features/projects/components/project-jobs-tab";
+import { ProjectQuotationsTab } from "@/features/projects/components/project-quotations-tab";
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { projectTypesById } from "@/features/projects/utils/project-type-id.util";
@@ -62,6 +63,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
       { id: "forms", label: t("detail.tabs.forms") },
       { id: "drawings", label: t("detail.tabs.drawings") },
       { id: "jobs", label: t("detail.tabs.jobs") },
+      { id: "quotations", label: t("detail.tabs.quotations") },
       { id: "jobsheets", label: t("detail.tabs.jobsheets") },
       { id: "docs", label: t("detail.tabs.docs") },
       { id: "approvals", label: t("detail.tabs.approvals") },
@@ -234,6 +236,8 @@ export function ProjectDetailScreen({ projectId }: Props) {
             <ProjectFormsTab />
           ) : detail && activeTab === "jobs" ? (
             <ProjectJobsTab projectId={detail.id} />
+          ) : detail && activeTab === "quotations" ? (
+            <ProjectQuotationsTab projectId={detail.id} />
           ) : detail && activeTab === "Pins" ? (
             <ProjectPinsListTab />
           ) : activeTab !== "details" ? (

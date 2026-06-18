@@ -2794,6 +2794,7 @@
           "drawings": "Planos",
           "jobsheets": "Hojas de trabajo",
           "jobs": "Trabajos",
+          "quotations": "Cotizaciones",
           "docs": "Documentos",
           "approvals": "Aprobaciones",
           "pins": "patas"
@@ -2985,6 +2986,18 @@
         "table": {
           "location": "Ubicación"
         }
+      },
+      "quotationsTab": {
+        "title": "Cotizaciones",
+        "subtitle": "Todas las cotizaciones asociadas a este proyecto.",
+        "searchPlaceholder": "Buscar cotizaciones…",
+        "searchAria": "Buscar cotizaciones del proyecto",
+        "loadError": "No se pudieron cargar las cotizaciones del proyecto. Inténtalo de nuevo.",
+        "emptyTitle": "No hay cotizaciones en este proyecto",
+        "emptyDescription": "Las cotizaciones vinculadas a este proyecto aparecerán aquí.",
+        "pageLabel": "Mostrando {start}-{end} de {total} cotizaciones",
+        "prev": "Anterior",
+        "next": "Siguiente"
       },
       "detailLoadError": "No se pudieron cargar los datos del proyecto. Inténtalo de nuevo.",
       "placeholders": {

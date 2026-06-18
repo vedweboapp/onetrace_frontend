@@ -2799,6 +2799,7 @@
           "drawings": "Drawings",
           "jobsheets": "Job Sheets",
           "jobs": "Jobs",
+          "quotations": "Quotations",
           "docs": "Docs",
           "approvals": "Approvals",
           "pins": "Pins"
@@ -2990,6 +2991,18 @@
         "table": {
           "location": "Location"
         }
+      },
+      "quotationsTab": {
+        "title": "Quotations",
+        "subtitle": "All quotations associated with this project.",
+        "searchPlaceholder": "Search quotations…",
+        "searchAria": "Search project quotations",
+        "loadError": "Could not load project quotations. Try again.",
+        "emptyTitle": "No quotations on this project",
+        "emptyDescription": "Quotations linked to this project will appear here.",
+        "pageLabel": "Showing {start}-{end} of {total} quotations",
+        "prev": "Previous",
+        "next": "Next"
       },
       "detailLoadError": "Could not load project details. Try again.",
       "placeholders": {
