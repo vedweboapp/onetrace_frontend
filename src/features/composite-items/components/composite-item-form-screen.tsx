@@ -44,7 +44,7 @@ type Props = {
   itemId?: number;
 };
 
-type ComponentRow = { id: string; child_item: string; quantity: string };
+type ComponentRow = { id: string; dbId?: number; child_item: string; quantity: string };
 
 function nextRowId(): string {
   return `comp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -85,6 +85,19 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
   const [cost, setCost] = React.useState("0");
   const [sell, setSell] = React.useState("0");
   const [rows, setRows] = React.useState<ComponentRow[]>([{ id: nextRowId(), child_item: "", quantity: "1" }]);
+  const [deletedComponents, setDeletedComponents] = React.useState<
+    { id: number; child_item: number; quantity: number; is_deleted: true }[]
+  >([]);
+  const initialValuesRef = React.useRef<{
+    name: string;
+    sku: string;
+    quantity: number;
+    cost_price: number;
+    selling_price: number;
+    installation_type: number | null;
+    components: { id?: number; child_item: number; quantity: number }[];
+  } | null>(null);
+
   const [installationType, setInstallationType] = React.useState("");
   const [installationTypeOptions, setInstallationTypeOptions] = React.useState<CheckmarkSelectOption[]>([]);
   const [installationTypesError, setInstallationTypesError] = React.useState<string | null>(null);
@@ -150,6 +163,69 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
 
+  const updateRowChildItem = React.useCallback((rowId: string, value: string) => {
+    setRows((prev) => {
+      return prev.map((x) => {
+        if (x.id !== rowId) return x;
+
+        const oldChildItemId = toNumberOrNull(x.child_item);
+        if (x.dbId && oldChildItemId != null) {
+          setDeletedComponents((del) => {
+            if (del.some((d) => d.id === x.dbId)) return del;
+            return [
+              ...del,
+              {
+                id: x.dbId!,
+                child_item: oldChildItemId,
+                quantity: toNumberOrNull(x.quantity) ?? 1,
+                is_deleted: true,
+              },
+            ];
+          });
+        }
+
+        const newChildItemId = toNumberOrNull(value);
+        let newDbId: number | undefined = undefined;
+        if (newChildItemId != null) {
+          const initialMatch = initialValuesRef.current?.components.find(
+            (c) => c.child_item === newChildItemId,
+          );
+          if (initialMatch) {
+            newDbId = initialMatch.id;
+            setDeletedComponents((del) => del.filter((d) => d.id !== initialMatch.id));
+          }
+        }
+
+        return { ...x, child_item: value, dbId: newDbId };
+      });
+    });
+  }, []);
+
+  const removeRow = React.useCallback((rowId: string) => {
+    setRows((prev) => {
+      const rowToRemove = prev.find((r) => r.id === rowId);
+      if (rowToRemove && rowToRemove.dbId) {
+        const cid = toNumberOrNull(rowToRemove.child_item);
+        const q = toNumberOrNull(rowToRemove.quantity) ?? 1;
+        if (cid != null) {
+          setDeletedComponents((del) => {
+            if (del.some((d) => d.id === rowToRemove.dbId)) return del;
+            return [
+              ...del,
+              {
+                id: rowToRemove.dbId!,
+                child_item: cid,
+                quantity: q,
+                is_deleted: true,
+              },
+            ];
+          });
+        }
+      }
+      return normalizeRows(prev.filter((x) => x.id !== rowId));
+    });
+  }, []);
+
   useQuickCreateReturn({
     restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
     onReloadOptions: reloadItems,
@@ -157,14 +233,71 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
       if (selectTarget !== "item") return;
       const rowId = pendingItemRowRef.current;
       if (rowId) {
-        setRows((prev) => prev.map((x) => (x.id === rowId ? { ...x, child_item: selectId } : x)));
+        setRows((prev) => {
+          return prev.map((x) => {
+            if (x.id !== rowId) return x;
+
+            const oldChildItemId = toNumberOrNull(x.child_item);
+            if (x.dbId && oldChildItemId != null) {
+              setDeletedComponents((del) => {
+                if (del.some((d) => d.id === x.dbId)) return del;
+                return [
+                  ...del,
+                  {
+                    id: x.dbId!,
+                    child_item: oldChildItemId,
+                    quantity: toNumberOrNull(x.quantity) ?? 1,
+                    is_deleted: true,
+                  },
+                ];
+              });
+            }
+
+            const newChildItemId = toNumberOrNull(selectId);
+            let newDbId: number | undefined = undefined;
+            if (newChildItemId != null) {
+              const initialMatch = initialValuesRef.current?.components.find(
+                (c) => c.child_item === newChildItemId,
+              );
+              if (initialMatch) {
+                newDbId = initialMatch.id;
+                setDeletedComponents((del) => del.filter((d) => d.id !== initialMatch.id));
+              }
+            }
+
+            return { ...x, child_item: selectId, dbId: newDbId };
+          });
+        });
       } else {
         setRows((prev) => {
           const emptyIdx = prev.findIndex((r) => !r.child_item.trim());
           if (emptyIdx >= 0) {
-            return prev.map((x, i) => (i === emptyIdx ? { ...x, child_item: selectId } : x));
+            const newChildItemId = toNumberOrNull(selectId);
+            let newDbId: number | undefined = undefined;
+            if (newChildItemId != null) {
+              const initialMatch = initialValuesRef.current?.components.find(
+                (c) => c.child_item === newChildItemId,
+              );
+              if (initialMatch) {
+                newDbId = initialMatch.id;
+                setDeletedComponents((del) => del.filter((d) => d.id !== initialMatch.id));
+              }
+            }
+            return prev.map((x, i) => (i === emptyIdx ? { ...x, child_item: selectId, dbId: newDbId } : x));
           }
-          return [...prev, { id: nextRowId(), child_item: selectId, quantity: "1" }];
+          const newId = nextRowId();
+          const newChildItemId = toNumberOrNull(selectId);
+          let newDbId: number | undefined = undefined;
+          if (newChildItemId != null) {
+            const initialMatch = initialValuesRef.current?.components.find(
+              (c) => c.child_item === newChildItemId,
+            );
+            if (initialMatch) {
+              newDbId = initialMatch.id;
+              setDeletedComponents((del) => del.filter((d) => d.id !== initialMatch.id));
+            }
+          }
+          return [...prev, { id: newId, child_item: selectId, quantity: "1", dbId: newDbId }];
         });
       }
       pendingItemRowRef.current = null;
@@ -231,9 +364,28 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
           const comps = item.components ?? [];
           setRows(
             comps.length > 0
-              ? comps.map((c) => ({ id: nextRowId(), child_item: String(c.child_item), quantity: String(c.quantity) }))
+              ? comps.map((c) => ({
+                  id: nextRowId(),
+                  dbId: c.id,
+                  child_item: String(c.child_item),
+                  quantity: String(c.quantity),
+                }))
               : [{ id: nextRowId(), child_item: "", quantity: "1" }],
           );
+          setDeletedComponents([]);
+          initialValuesRef.current = {
+            name: item.name ?? "",
+            sku: String(item.sku ?? ""),
+            quantity: Number(item.quantity ?? 0),
+            cost_price: Number(item.cost_price ?? 0),
+            selling_price: Number(item.selling_price ?? 0),
+            installation_type: installationTypeId != null ? installationTypeId : null,
+            components: comps.map((c) => ({
+              id: c.id,
+              child_item: Number(c.child_item),
+              quantity: Number(c.quantity),
+            })),
+          };
           setNameTouched(false);
           setSkuTouched(false);
           setComponentsTouched(false);
@@ -254,8 +406,23 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     return next;
   }
 
-  function buildComponents(): ItemComponentRef[] | null {
-    const out: ItemComponentRef[] = [];
+  function areComponentsEqual(
+    initial: { id?: number; child_item: number; quantity: number }[],
+    currentActive: (ItemComponentRef & { id?: number })[],
+    deleted: { id?: number; child_item: number; quantity: number; is_deleted?: boolean }[]
+  ): boolean {
+    if (deleted.length > 0) return false;
+    if (initial.length !== currentActive.length) return false;
+    for (const c of currentActive) {
+      const initMatch = initial.find((i) => i.child_item === c.child_item);
+      if (!initMatch) return false;
+      if (initMatch.quantity !== c.quantity) return false;
+    }
+    return true;
+  }
+
+  function buildComponents(): (ItemComponentRef & { id?: number })[] | null {
+    const out: (ItemComponentRef & { id?: number })[] = [];
     const seen = new Set<number>();
     for (const r of rows) {
       const cid = toNumberOrNull(r.child_item);
@@ -264,9 +431,13 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
       if (cid == null || q == null || q <= 0) return null;
       if (seen.has(cid)) return null;
       seen.add(cid);
-      out.push({ child_item: cid, quantity: q });
+      const compObj: any = { child_item: cid, quantity: q };
+      if (r.dbId != null) {
+        compObj.id = r.dbId;
+      }
+      out.push(compObj);
     }
-    return out.length > 0 ? out : null;
+    return out;
   }
 
   async function submit(e: React.FormEvent) {
@@ -293,26 +464,48 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
 
     setSubmitting(true);
     try {
-      const saved =
-        isEdit && itemId
-          ? await updateCompositeItem(itemId, {
-              name: name.trim(),
-              sku: sku.trim(),
-              quantity: qtyN,
-              cost_price: costN,
-              selling_price: sellN,
-              components: comps,
-              ...installationTypePayload,
-            })
-          : await createCompositeItem({
-              name: name.trim(),
-              sku: sku.trim(),
-              quantity: qtyN,
-              cost_price: costN,
-              selling_price: sellN,
-              components: comps,
-              ...installationTypePayload,
-            });
+      let saved: any;
+      if (isEdit && itemId) {
+        if (!initialValuesRef.current) {
+          throw new Error("Initial values not loaded");
+        }
+        const init = initialValuesRef.current;
+        const payload: any = {};
+        if (name.trim() !== init.name) payload.name = name.trim();
+        if (sku.trim() !== init.sku) payload.sku = sku.trim();
+        if (qtyN !== init.quantity) payload.quantity = qtyN;
+        if (costN !== init.cost_price) payload.cost_price = costN;
+        if (sellN !== init.selling_price) payload.selling_price = sellN;
+
+        const currentInstType = toNumberOrNull(installationType);
+        if (currentInstType !== init.installation_type) {
+          payload.installation_type = currentInstType;
+        }
+
+        const compsEqual = areComponentsEqual(init.components, comps, deletedComponents);
+        if (!compsEqual) {
+          payload.components = [...comps, ...deletedComponents];
+        }
+
+        if (Object.keys(payload).length === 0) {
+          toastSuccess(tModal("updatedToast"));
+          router.replace(`${safeBack}?highlight=${itemId}`);
+          return;
+        }
+
+        saved = await updateCompositeItem(itemId, payload);
+      } else {
+        saved = await createCompositeItem({
+          name: name.trim(),
+          sku: sku.trim(),
+          quantity: qtyN,
+          cost_price: costN,
+          selling_price: sellN,
+          components: comps,
+          ...installationTypePayload,
+        });
+      }
+
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
       const crossBack = sanitizeInternalDashboardBack(searchParams.get("back"));
@@ -420,7 +613,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                         listLabel={tModal("childItem")}
                         buttonAriaLabel={tModal("childItem")}
                         value={r.child_item}
-                        onChange={(v) => setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, child_item: v } : x)))}
+                        onChange={(v) => updateRowChildItem(r.id, v)}
                         options={itemOptionsForRow(r.id)}
                         emptyLabel={tModal("childItemPlaceholder")}
                         disabled={submitting || noItems}
@@ -444,7 +637,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                       <input type="number" min={1} inputMode="numeric" value={r.quantity} onChange={(e) => setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, quantity: e.target.value } : x)))} disabled={submitting} className={surfaceInputClassName} />
                     </div>
                     <div className="flex gap-2 sm:justify-end">
-                      <AppButton type="button" variant="secondary" size="sm" onClick={() => setRows((prev) => normalizeRows(prev.filter((x) => x.id !== r.id)))} disabled={submitting || rows.length <= 1}>{tModal("removeComponent")}</AppButton>
+                      <AppButton type="button" variant="secondary" size="sm" onClick={() => removeRow(r.id)} disabled={submitting || rows.length <= 1}>{tModal("removeComponent")}</AppButton>
                       {idx === rows.length - 1 ? <AppButton type="button" variant="secondary" size="sm" onClick={() => setRows((prev) => [...prev, { id: nextRowId(), child_item: "", quantity: "1" }])} disabled={submitting}>{tModal("addComponent")}</AppButton> : null}
                     </div>
                   </div>

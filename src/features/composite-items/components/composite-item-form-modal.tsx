@@ -37,7 +37,7 @@ type Props = {
   onSaved: () => void;
 };
 
-type ComponentRow = { id: string; child_item: string; quantity: string };
+type ComponentRow = { id: string; dbId?: number; child_item: string; quantity: string };
 
 function nextRowId(): string {
   return `comp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -75,8 +75,21 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
   const [rows, setRows] = React.useState<ComponentRow[]>(() => {
     const comps = mode === "edit" && item?.components ? item.components : [];
     if (!comps || comps.length === 0) return [{ id: nextRowId(), child_item: "", quantity: "1" }];
-    return comps.map((c) => ({ id: nextRowId(), child_item: String(c.child_item), quantity: String(c.quantity) }));
+    return comps.map((c) => ({ id: nextRowId(), dbId: c.id, child_item: String(c.child_item), quantity: String(c.quantity) }));
   });
+  const [deletedComponents, setDeletedComponents] = React.useState<
+    { id: number; child_item: number; quantity: number; is_deleted: true }[]
+  >([]);
+  const initialValuesRef = React.useRef<{
+    name: string;
+    sku: string;
+    quantity: number;
+    cost_price: number;
+    selling_price: number;
+    installation_type: number | null;
+    components: { id?: number; child_item: number; quantity: number }[];
+  } | null>(null);
+
   const [installationType, setInstallationType] = React.useState(() => {
     if (mode !== "edit" || !item) return "";
     const id = getInstallationTypeId(item.installation_type);
@@ -115,6 +128,69 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
         : undefined,
   });
 
+  const updateRowChildItem = React.useCallback((rowId: string, value: string) => {
+    setRows((prev) => {
+      return prev.map((x) => {
+        if (x.id !== rowId) return x;
+
+        const oldChildItemId = toNumberOrNull(x.child_item);
+        if (x.dbId && oldChildItemId != null) {
+          setDeletedComponents((del) => {
+            if (del.some((d) => d.id === x.dbId)) return del;
+            return [
+              ...del,
+              {
+                id: x.dbId!,
+                child_item: oldChildItemId,
+                quantity: toNumberOrNull(x.quantity) ?? 1,
+                is_deleted: true,
+              },
+            ];
+          });
+        }
+
+        const newChildItemId = toNumberOrNull(value);
+        let newDbId: number | undefined = undefined;
+        if (newChildItemId != null) {
+          const initialMatch = initialValuesRef.current?.components.find(
+            (c) => c.child_item === newChildItemId,
+          );
+          if (initialMatch) {
+            newDbId = initialMatch.id;
+            setDeletedComponents((del) => del.filter((d) => d.id !== initialMatch.id));
+          }
+        }
+
+        return { ...x, child_item: value, dbId: newDbId };
+      });
+    });
+  }, []);
+
+  const removeRow = React.useCallback((rowId: string) => {
+    setRows((prev) => {
+      const rowToRemove = prev.find((r) => r.id === rowId);
+      if (rowToRemove && rowToRemove.dbId) {
+        const cid = toNumberOrNull(rowToRemove.child_item);
+        const q = toNumberOrNull(rowToRemove.quantity) ?? 1;
+        if (cid != null) {
+          setDeletedComponents((del) => {
+            if (del.some((d) => d.id === rowToRemove.dbId)) return del;
+            return [
+              ...del,
+              {
+                id: rowToRemove.dbId!,
+                child_item: cid,
+                quantity: q,
+                is_deleted: true,
+              },
+            ];
+          });
+        }
+      }
+      return normalizeRows(prev.filter((x) => x.id !== rowId));
+    });
+  }, []);
+
   const itemOptionsForRow = React.useCallback(
     (rowId: string) =>
       checkmarkOptionsExcludingUsed(
@@ -138,9 +214,28 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
       const comps = item.components ?? [];
       setRows(
         comps.length > 0
-          ? comps.map((c) => ({ id: nextRowId(), child_item: String(c.child_item), quantity: String(c.quantity) }))
+          ? comps.map((c) => ({
+              id: nextRowId(),
+              dbId: c.id,
+              child_item: String(c.child_item),
+              quantity: String(c.quantity),
+            }))
           : [{ id: nextRowId(), child_item: "", quantity: "1" }],
       );
+      setDeletedComponents([]);
+      initialValuesRef.current = {
+        name: item.name ?? "",
+        sku: String(item.sku ?? ""),
+        quantity: Number(item.quantity ?? 0),
+        cost_price: Number(item.cost_price ?? 0),
+        selling_price: Number(item.selling_price ?? 0),
+        installation_type: installationTypeId != null ? installationTypeId : null,
+        components: comps.map((c) => ({
+          id: c.id,
+          child_item: Number(c.child_item),
+          quantity: Number(c.quantity),
+        })),
+      };
     } else {
       setName("");
       setSku("");
@@ -149,6 +244,8 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
       setSell("0");
       setInstallationType("");
       setRows([{ id: nextRowId(), child_item: "", quantity: "1" }]);
+      setDeletedComponents([]);
+      initialValuesRef.current = null;
     }
     setNameTouched(false);
     setSkuTouched(false);
@@ -191,8 +288,23 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
     return next;
   }
 
-  function buildComponents(): ItemComponentRef[] | null {
-    const out: ItemComponentRef[] = [];
+  function areComponentsEqual(
+    initial: { id?: number; child_item: number; quantity: number }[],
+    currentActive: (ItemComponentRef & { id?: number })[],
+    deleted: { id?: number; child_item: number; quantity: number; is_deleted?: boolean }[]
+  ): boolean {
+    if (deleted.length > 0) return false;
+    if (initial.length !== currentActive.length) return false;
+    for (const c of currentActive) {
+      const initMatch = initial.find((i) => i.child_item === c.child_item);
+      if (!initMatch) return false;
+      if (initMatch.quantity !== c.quantity) return false;
+    }
+    return true;
+  }
+
+  function buildComponents(): (ItemComponentRef & { id?: number })[] | null {
+    const out: (ItemComponentRef & { id?: number })[] = [];
     const seen = new Set<number>();
     for (const r of rows) {
       const cid = toNumberOrNull(r.child_item);
@@ -201,9 +313,13 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
       if (cid == null || q == null || q <= 0) return null;
       if (seen.has(cid)) return null;
       seen.add(cid);
-      out.push({ child_item: cid, quantity: q });
+      const compObj: any = { child_item: cid, quantity: q };
+      if (r.dbId != null) {
+        compObj.id = r.dbId;
+      }
+      out.push(compObj);
     }
-    return out.length > 0 ? out : null;
+    return out;
   }
 
   async function submit(e: React.FormEvent) {
@@ -231,15 +347,35 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
     setSubmitting(true);
     try {
       if (mode === "edit" && item) {
-        await updateCompositeItem(item.id, {
-          name: name.trim(),
-          sku: sku.trim(),
-          quantity: qtyN,
-          cost_price: costN,
-          selling_price: sellN,
-          components: comps,
-          ...installationTypePayload,
-        });
+        if (!initialValuesRef.current) {
+          throw new Error("Initial values not loaded");
+        }
+        const init = initialValuesRef.current;
+        const payload: any = {};
+        if (name.trim() !== init.name) payload.name = name.trim();
+        if (sku.trim() !== init.sku) payload.sku = sku.trim();
+        if (qtyN !== init.quantity) payload.quantity = qtyN;
+        if (costN !== init.cost_price) payload.cost_price = costN;
+        if (sellN !== init.selling_price) payload.selling_price = sellN;
+
+        const currentInstType = toNumberOrNull(installationType);
+        if (currentInstType !== init.installation_type) {
+          payload.installation_type = currentInstType;
+        }
+
+        const compsEqual = areComponentsEqual(init.components, comps, deletedComponents);
+        if (!compsEqual) {
+          payload.components = [...comps, ...deletedComponents];
+        }
+
+        if (Object.keys(payload).length === 0) {
+          toastSuccess(t("updatedToast"));
+          onSaved();
+          onClose();
+          return;
+        }
+
+        await updateCompositeItem(item.id, payload);
         toastSuccess(t("updatedToast"));
       } else {
         await createCompositeItem({
@@ -424,7 +560,7 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
                     buttonAriaLabel={t("childItem")}
                     value={r.child_item}
                     onChange={(v) => {
-                      setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, child_item: v } : x)));
+                      updateRowChildItem(r.id, v);
                     }}
                     options={itemOptionsForRow(r.id)}
                     emptyLabel={t("childItemPlaceholder")}
@@ -466,7 +602,7 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
                     type="button"
                     variant="secondary"
                     size="sm"
-                    onClick={() => setRows((prev) => normalizeRows(prev.filter((x) => x.id !== r.id)))}
+                    onClick={() => removeRow(r.id)}
                     disabled={submitting || rows.length <= 1}
                   >
                     {t("removeComponent")}

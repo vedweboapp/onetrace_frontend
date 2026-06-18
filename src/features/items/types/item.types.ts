@@ -7,8 +7,10 @@ export type ItemUserRef = {
 };
 
 export type ItemComponentRef = {
+  id?: number;
   child_item: number;
   quantity: number;
+  is_deleted?: boolean;
 };
 
 /** Expanded installation type on item read responses. */
