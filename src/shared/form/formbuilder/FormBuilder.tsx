@@ -9,6 +9,7 @@ import { DataTableRowActionsMenu } from "@/shared/ui/data-table-row-actions-menu
 import { AppButton, AppButton as Button } from "@/shared/ui/app-button";
 import { useFormStore } from "@/features/form-builder/store/form-builder.store";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
+import { routes } from "@/shared/config/routes";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { AppTabs } from "@/shared/ui/app-tabs";
 import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
@@ -1233,15 +1234,16 @@ export default function FormBuilderLayout({
       toastSuccess(successMessage);
 
       if (purpose === "create_project_form" && savedFormId && !isClose) {
-        const locale = params?.locale || "en";
-        router.push(`/${locale}/dashboard/settings/project-type-forms/create?purpose=edit_project_form&layout_id=${savedFormId}`);
+        router.push(
+          `${routes.dashboard.settingsProjectForms}/create?purpose=edit_project_form&layout_id=${savedFormId}`,
+        );
       } else if (isClose) {
         if (purpose === "create_module") {
-          router.push("/dashboard/settings/modules");
+          router.push(routes.dashboard.settingsModules);
         } else if (purpose === "create_project_form") {
           router.back();
         } else if (purpose === "create_layout" || purpose === "edit_layout") {
-          router.push(`/dashboard/settings/modules/${targetModule}/layout`);
+          router.push(`${routes.dashboard.settingsModules}/${targetModule}/layout`);
         } else {
           router.back();
         }

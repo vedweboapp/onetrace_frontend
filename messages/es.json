@@ -211,14 +211,14 @@
       "sidebarSubtitle": "Preferencias del espacio",
       "backToApp": "Proyectos",
       "appearance": "Apariencia",
-      "pinStatus": "Estados de pin",
-      "jobStatus": "Estados de trabajo",
-      "materialStatus": "Estados de material",
+      "pinStatus": "Estados de Pin",
+      "jobStatus": "Estados de Trabajo",
+      "materialStatus": "Estados de Material",
       "tags": "Etiquetas",
-      "projectTypes": "Tipos de proyecto",
-      "installationTypes": "Tipos de instalación",
-      "vendorTypes": "Tipos de proveedor",
-      "checklistTypes": "Tipos de lista de verificación",
+      "projectTypes": "Tipos de Proyecto",
+      "installationTypes": "Tipos de Instalación",
+      "vendorTypes": "Tipos de Proveedor",
+      "checklistTypes": "Tipos de Lista de Verificación",
       "users": "Usuarios",
       "personalProfile": "Perfil personal",
       "projectForms": "Formularios de proyecto",
@@ -230,34 +230,34 @@
       "customization": {
         "label": "Personalización",
         "hubTitle": "Personalización",
-        "hubDescription": "Elige qué configurar: tipos de proyecto, tipos de instalación, tipos de proveedor, tipos de lista de verificación, estados de pin, estados de trabajo, estados de material y etiquetas.",
+        "hubDescription": "Elige qué configurar: Tipos de Proyecto, Tipos de Instalación, Tipos de Proveedor, Tipos de Lista de Verificación, Estados de Pin, Estados de Trabajo, Estados de Material y Etiquetas.",
         "items": {
           "projectTypes": {
-            "title": "Tipos de proyecto",
+            "title": "Tipos de Proyecto",
             "description": "Categorías de proyecto con etiquetas de color."
           },
           "installationTypes": {
-            "title": "Tipos de instalación",
+            "title": "Tipos de Instalación",
             "description": "Clasifica instalaciones con etiquetas de color."
           },
           "vendorTypes": {
-            "title": "Tipos de proveedor",
+            "title": "Tipos de Proveedor",
             "description": "Categorías de proveedor con etiquetas de color."
           },
           "checklistTypes": {
-            "title": "Tipos de lista de verificación",
+            "title": "Tipos de Lista de Verificación",
             "description": "Listas de verificación para formularios de trabajo, vinculadas a tipos de proyecto."
           },
           "pinStatus": {
-            "title": "Estados de pin",
+            "title": "Estados de Pin",
             "description": "Colores de estado para pins en planos."
           },
           "jobStatus": {
-            "title": "Estados de trabajo",
+            "title": "Estados de Trabajo",
             "description": "Estados de flujo para trabajos."
           },
           "materialStatus": {
-            "title": "Estados de material",
+            "title": "Estados de Material",
             "description": "Estados de flujo para solicitudes de material."
           },
           "tags": {
@@ -484,8 +484,8 @@
       }
     },
     "pinStatus": {
-      "metaTitle": "Estados de pin",
-      "title": "Estados de pin",
+      "metaTitle": "Estados de Pin",
+      "title": "Estados de Pin",
       "subtitle": "Crea y gestiona las etiquetas de flujo para los pins. Los colores se usan en las pastillas de estado en toda la app.",
       "add": "Añadir estado",
       "edit": "Editar",
@@ -536,8 +536,8 @@
       "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #E5E7EB)."
     },
     "jobStatus": {
-      "metaTitle": "Estados de trabajo",
-      "title": "Estados de trabajo",
+      "metaTitle": "Estados de Trabajo",
+      "title": "Estados de Trabajo",
       "subtitle": "Crea y gestiona etiquetas de flujo para trabajos. Los colores se usan en las pastillas de estado en toda la app.",
       "add": "Añadir",
       "edit": "Editar",
@@ -588,8 +588,8 @@
       "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #E5E7EB)."
     },
     "materialStatus": {
-      "metaTitle": "Estados de material",
-      "title": "Estados de material",
+      "metaTitle": "Estados de Material",
+      "title": "Estados de Material",
       "subtitle": "Crea y gestiona etiquetas de flujo para solicitudes de material. Los colores se usan en las pastillas de estado en toda la app.",
       "add": "Añadir",
       "edit": "Editar",
@@ -690,8 +690,8 @@
       "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #DBEAFE)."
     },
     "projectTypes": {
-      "metaTitle": "Tipos de proyecto",
-      "title": "Tipos de proyecto",
+      "metaTitle": "Tipos de Proyecto",
+      "title": "Tipos de Proyecto",
       "subtitle": "Define categorías de proyecto con etiquetas de color para usar en proyectos.",
       "add": "Añadir",
       "edit": "Editar",
@@ -746,8 +746,8 @@
       "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #DBEAFE)."
     },
     "installationTypes": {
-      "metaTitle": "Tipos de instalación",
-      "title": "Tipos de instalación",
+      "metaTitle": "Tipos de Instalación",
+      "title": "Tipos de Instalación",
       "subtitle": "Define categorías de instalación con etiquetas de color.",
       "add": "Añadir",
       "edit": "Editar",
@@ -802,8 +802,8 @@
       "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #DBEAFE)."
     },
     "checklistTypes": {
-      "metaTitle": "Tipos de lista de verificación",
-      "title": "Tipos de lista de verificación",
+      "metaTitle": "Tipos de Lista de Verificación",
+      "title": "Tipos de Lista de Verificación",
       "subtitle": "Define listas de verificación para formularios de trabajo, por tipo de proyecto.",
       "add": "Añadir",
       "edit": "Editar",
@@ -872,8 +872,8 @@
       "validationSequence": "Introduce un número de secuencia válido (1 o mayor)."
     },
     "vendorTypes": {
-      "metaTitle": "Tipos de proveedor",
-      "title": "Tipos de proveedor",
+      "metaTitle": "Tipos de Proveedor",
+      "title": "Tipos de Proveedor",
       "subtitle": "Define categorías de proveedor con etiquetas de color.",
       "add": "Añadir",
       "edit": "Editar",

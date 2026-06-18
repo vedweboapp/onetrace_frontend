@@ -289,7 +289,12 @@ export function MassActionBar({ selectedIds, config, updateFields, disabled, onS
           size="sm"
           loading={busy}
           disabled={!canApply || disabled || busy}
-          className="shrink-0"
+          className={cn(
+            "shrink-0",
+            "bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)]",
+            "hover:brightness-110 active:brightness-[0.93]",
+            "data-[disabled]:bg-[color:var(--dash-accent,#111111)] data-[disabled]:text-[color:var(--dash-on-accent,#ffffff)] data-[disabled]:opacity-45",
+          )}
           onClick={handleApply}
         >
           {t("apply")}

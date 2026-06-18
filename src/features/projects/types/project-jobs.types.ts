@@ -8,6 +8,17 @@ export type ProjectJobHierarchyJob = {
   title: string;
   description: string | null;
   job_source: string;
+  /** Present in some backends so we can show assigned worker + support filtering/updates. */
+  assigned_worker?:
+    | number
+    | {
+        id: number;
+        name?: string;
+        first_name?: string;
+        last_name?: string;
+        username?: string;
+        email?: string;
+      };
   status: ProjectJobHierarchyStatus | null;
   start_date: string | null;
   completed_at: string | null;

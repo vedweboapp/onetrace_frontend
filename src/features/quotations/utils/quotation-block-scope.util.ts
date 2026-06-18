@@ -22,7 +22,7 @@ export function stripLocalePathPrefix(path: string): string {
   return path;
 }
 
-const QUOTATION_SCOPE_PRICING_PATH = /^\/dashboard\/quotations(?:\/new|\/\d+(?:\/edit)?)$/;
+const QUOTATION_SCOPE_PRICING_PATH = /^\/quotations(?:\/new|\/\d+(?:\/edit)?)$/;
 
 /** Locale-free return URL for quotation Scope & Pricing (not the quotations list). */
 export function sanitizeQuotationScopePricingBack(decoded: string): string | null {
@@ -152,10 +152,10 @@ export function buildQuotationBlockScopeHref(
 ): string {
   const base =
     context.mode === "new"
-      ? "/dashboard/quotations/new/block"
+      ? "/quotations/new/block"
       : context.mode === "edit"
-        ? `/dashboard/quotations/${context.quotationId}/edit/block`
-        : `/dashboard/quotations/${context.quotationId}/block`;
+        ? `/quotations/${context.quotationId}/edit/block`
+        : `/quotations/${context.quotationId}/block`;
 
   const q = new URLSearchParams();
   q.set("block", params.blockKey);

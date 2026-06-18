@@ -246,19 +246,9 @@ export function ReturnToStockPanel() {
 
   const pageRange = getListPageRange(pagination);
 
-  const pendingCount = React.useMemo(
-    () => allItems.filter((row) => row.status === "pending").length,
-    [allItems],
-  );
-
-  const fetchAllIds = React.useCallback(async () => {
-    return allItems.filter((row) => row.status === "pending").map((row) => row.id);
-  }, [allItems]);
-
   const massSelection = useListMassSelection({
-    totalRecords: pendingCount,
     pageItems: items,
-    fetchAllIds,
+    isRowSelectable: (row) => row.status === "pending",
     resetDeps: [
       pageSize,
       search,

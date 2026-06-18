@@ -180,7 +180,7 @@ export function ProjectFormsTab() {
   }, [assignOpen, projectId, t]);
 
   const openEdit = React.useCallback((row: FormListItem) => {
-    router.push(`/dashboard/projects/${projectId}/job-forms?purpose=edit_project_job_form&layout_id=${row.id}`);
+    router.push(`/projects/${projectId}/job-forms?purpose=edit_project_job_form&layout_id=${row.id}`);
   }, [projectId, router]);
 
   const openCreate = () => {

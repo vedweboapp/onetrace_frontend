@@ -29,6 +29,30 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_API_URL: nextPublicApiUrl,
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: googleMapsKey,
   },
+  async redirects() {
+    return [
+      {
+        source: "/:locale(en|es)/dashboard/:path*",
+        destination: "/:path*",
+        permanent: true,
+      },
+      {
+        source: "/:locale(en|es)/dashboard",
+        destination: "/home",
+        permanent: true,
+      },
+      {
+        source: "/dashboard/:path*",
+        destination: "/:path*",
+        permanent: true,
+      },
+      {
+        source: "/dashboard",
+        destination: "/home",
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     const mockPrefixes = [
       MATERIAL_REQUEST_USE_MOCK ? "material-requests" : null,

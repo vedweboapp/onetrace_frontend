@@ -51,12 +51,12 @@ export function sanitizeInternalListBack(
 ): string | null {
   const decoded = decodeInternalDashboardPath(raw);
   if (!decoded) return null;
-  const needle = `/dashboard/${section}`;
+  const needle = `/${section}`;
   if (!decoded.includes(needle)) return null;
   return decoded;
 }
 
-const PROJECT_DETAIL_BACK = /^\/dashboard\/projects\/\d+(\?[^#]*)?$/;
+const PROJECT_DETAIL_BACK = /^\/projects\/\d+(\?[^#]*)?$/;
 
 /** Jobs list or project detail (jobs tab) — used when leaving job create/edit/detail. */
 export function sanitizeJobsBackHref(raw: string | null | undefined, fallback: string): string {
