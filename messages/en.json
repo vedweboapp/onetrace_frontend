@@ -2515,6 +2515,7 @@
         "jobStatus": "Job status",
         "assignedWorker": "Assigned worker",
         "start": "Start",
+        "serialNo": "Job No.",
         "end": "End",
         "recordStatus": "Record",
         "actions": "Actions"

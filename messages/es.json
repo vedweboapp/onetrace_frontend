@@ -2512,6 +2512,7 @@
         "assignedWorker": "Técnico asignado",
         "start": "Inicio",
         "end": "Fin",
+        "serialNo": "Número de serie",
         "recordStatus": "Registro",
         "actions": "Acciones"
       },

@@ -165,6 +165,7 @@ export type Job = {
   deleted_at: string | null;
   is_deleted: boolean;
   title: string;
+  job_serial_number: string | null;
   description: string | null;
   assigned_worker: number | JobAssignedWorkerRef;
   job_pin_status?: string | null;
