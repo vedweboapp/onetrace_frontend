@@ -689,9 +689,14 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const compositeItemInstallationType = React.useMemo(() => {
     if (!detailPin) return "";
     const currentItemId = isPinEditing ? pinEditData.item : detailPin.item;
-    const selectedItem = items.find((i) => i.id === currentItemId);
-    return selectedItem?.installation_type != null ? String(selectedItem.installation_type) : "";
-  }, [detailPin, isPinEditing, pinEditData.item, items]);
+    const selectedItem = items.find((i) => i.id === currentItemId) || (isPinEditing ? pinEditData.item_detail : detailPin.item_detail);
+    if (!selectedItem) return "";
+    const instType = selectedItem.installation_type;
+    if (instType && typeof instType === "object") {
+      return instType.id != null ? String(instType.id) : "";
+    }
+    return instType != null ? String(instType) : "";
+  }, [detailPin, isPinEditing, pinEditData.item, pinEditData.item_detail, items]);
 
   const availableForms = React.useMemo(() => {
     return filterForms(compositeItemInstallationType);
@@ -1284,7 +1289,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       y_coordinate: Number(((point[1] / pageSize.height) * 100).toFixed(6)),
       status: selectedStatus.id,
       variation: showVariations,
-      quantity: "1",
+      quantity: 1,
       group: selectedGroupId ? Number.parseInt(selectedGroupId, 10) : undefined,
       item: selectedCompositeId ? Number.parseInt(selectedCompositeId, 10) : undefined,
       description: "",

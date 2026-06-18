@@ -12,12 +12,15 @@ interface FormBuilderFormProps {
     apiHandlers?: FormBuilderApiHandlers;
     /** Project-type route id; forwarded to handlers via HandlerContext. */
     projectTypeId?: string;
+    /** Close Route */
+    BackUrl: string;
 }
 
 const FormBuilderForm = ({
     activeModule = "untitled module",
     apiHandlers,
     projectTypeId,
+    BackUrl
 }: FormBuilderFormProps) => {
     return (
         <div>
@@ -26,6 +29,7 @@ const FormBuilderForm = ({
                     activeModule={activeModule}
                     apiHandlers={apiHandlers}
                     projectTypeId={projectTypeId}
+                    BackUrl={BackUrl}
                 />
             </DndProvider>
         </div>

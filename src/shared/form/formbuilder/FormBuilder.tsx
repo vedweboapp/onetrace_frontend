@@ -360,6 +360,7 @@ interface FormBuilderLayoutProps {
   /** Injectable API handlers — when provided for a specific purpose, the builder
    *  delegates create/update/rules calls to these instead of the default store. */
   apiHandlers?: FormBuilderApiHandlers;
+  BackUrl: string;
   /** The project-type route id; forwarded to handlers via HandlerContext. */
   projectTypeId?: string;
 }
@@ -368,6 +369,7 @@ export default function FormBuilderLayout({
   activeModule,
   layoutId,
   apiHandlers,
+  BackUrl,
   projectTypeId,
 }: FormBuilderLayoutProps) {
   const t = useTranslations("Dashboard.settingsFormBuilder");
@@ -1439,7 +1441,7 @@ export default function FormBuilderLayout({
         </div>
 
         <div className="flex items-center gap-3">
-          <Button variant="secondary" onClick={() => router.back()}>
+          <Button variant="secondary" onClick={() => router.push(BackUrl)}>
             Close
           </Button>
           <Button

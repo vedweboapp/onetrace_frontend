@@ -26,6 +26,7 @@ const ProjectJobFormsDetails = () => {
         activeModule="project-form"
         apiHandlers={projectJobFormHandlers}
         projectTypeId={projectId}
+        BackUrl={`/dashboard/projects/${projectId}`}
       />
     </div>
   );

@@ -6,6 +6,15 @@ export type JobFormSubmissionValue = {
   field_type?: string | null;
 };
 
+export type JobFormSubmissionFile = {
+  id: number;
+  field_id: number;
+  field_label?: string | null;
+  api_name?: string | null;
+  field_type?: string | null;
+  file_url: string;
+};
+
 export type JobFormSubmission = {
   id: number;
   job_id: number;
@@ -16,6 +25,7 @@ export type JobFormSubmission = {
   status: string;
   remarks?: string | null;
   values: JobFormSubmissionValue[];
+  files?: JobFormSubmissionFile[];
   submitted_at?: string | null;
   modified_at?: string | null;
 };

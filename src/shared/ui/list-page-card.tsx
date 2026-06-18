@@ -27,6 +27,7 @@ type ListPageCardProps = {
   menu: ReactNode;
   className?: string;
   dataListRowId?: number;
+  installationType?: ReactNode;
 };
 
 export function ListPageCard({
@@ -35,6 +36,7 @@ export function ListPageCard({
   subtitle,
   meta,
   description,
+  installationType,
   footer,
   onCardClick,
   menu,
@@ -81,13 +83,24 @@ export function ListPageCard({
           {menu}
         </div>
       </div>
-      {subtitle ? (
+      <div className="w-full flex items-center justify-between">
+        <div>
+          {subtitle ? (
         <p className="mt-1.5 text-sm font-medium text-slate-600 dark:text-slate-400">{subtitle}</p>
       ) : null}
       {meta ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">{meta}</p> : null}
       {description ? (
         <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{description}</p>
       ) : null}
+        </div>
+        <div>
+          {installationType}
+        </div>
+        <div>
+
+        </div>
+      </div>
+    
       {footer ? (
         <div
           className="mt-auto border-t border-slate-100 pt-3 dark:border-slate-800/80"

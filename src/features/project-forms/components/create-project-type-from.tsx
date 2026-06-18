@@ -4,6 +4,7 @@ import FormBuilderForm from '@/features/form-builder/components/form-builder-for
 import React from 'react'
 import { useParams } from "next/navigation";
 import { projectFormHandlers } from "../api/project-form.handlers";
+import { routes } from '@/shared/config/routes';
 
 export const CreateProjectTypeForm = () => {
     const { id } = useParams<{ id: string }>();
@@ -14,6 +15,7 @@ export const CreateProjectTypeForm = () => {
                 activeModule="project-form"
                 apiHandlers={projectFormHandlers}
                 projectTypeId={id}
+                BackUrl={routes.dashboard.settingsProjectForms}
             />
         </div>
     )

@@ -162,8 +162,8 @@ export function ProjectFormsTab() {
             ? project.form_ids
             : Array.isArray(project.forms)
               ? project.forms
-                  .map((form) => (typeof form === "number" ? form : form?.id))
-                  .filter((id): id is number => Number.isFinite(id) && id > 0)
+                .map((form) => (typeof form === "number" ? form : form?.id))
+                .filter((id): id is number => Number.isFinite(id) && id > 0)
               : [];
           setSelectedFormIds(assignedIds.map(String));
           setAssignFormOptions(forms.map((form) => ({ value: String(form.id), label: form.name })));
@@ -373,7 +373,22 @@ export function ProjectFormsTab() {
                 <ListPageCard
                   key={row.id}
                   title={row.name}
-                  // subtitle={projectTypeLabel(row.project_type)}
+                  subtitle={
+                    <span>
+                      Project Type:{" "}
+                      <span className="text-slate-500 dark:text-slate-400">
+                        {projectTypeLabel(row.project_type)}
+                      </span>
+                    </span>
+                  }
+                  installationType={
+                    <span>
+                      Installation Type:{" "}
+                      <span className="text-slate-500 dark:text-slate-400">
+                        {row.installation_type?.installation_type || "—"}
+                      </span>
+                    </span>
+                  }
                   footer={
                     <div className="flex w-full flex-wrap items-center justify-between gap-3">
                       <ActiveStatusBadge
@@ -387,7 +402,7 @@ export function ProjectFormsTab() {
                     </div>
                   }
                   onCardClick={() => openEdit(row)}
-            
+
                   menu={
                     <DataTableRowActionsMenu
                       menuAriaLabel={tList("openRowActions")}

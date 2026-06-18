@@ -28,6 +28,7 @@ import RichTextEditor from "../components/rich-text-editor";
 import { FormRule } from "./form-rules.types";
 import { buildFieldRuleState, FieldRuleState } from "./form-rules-engine";
 import { surfaceInputClassName } from "@/shared/ui";
+import { signatureDataUrlToFileSync } from "@/shared/utils/signature-to-file.util";
 
 interface Field {
   api_name: string;
@@ -500,6 +501,13 @@ const FormField: React.FC<{
   );
 };
 
+const FILE_FIELD_TYPES = new Set(["signature", "file_upload", "image_upload"]);
+
+function dataUrlToFile(val: unknown, fieldApiName: string): File | unknown {
+  if (typeof val !== "string" || !val.startsWith("data:")) return val;
+  return signatureDataUrlToFileSync(val, `${fieldApiName}`) ?? val;
+}
+
 const sanitizeOutput = (data: any, schema: Section[]) => {
   if (!Array.isArray(schema)) return data;
   const sanitized = { ...data };
@@ -520,10 +528,12 @@ const sanitizeOutput = (data: any, schema: Section[]) => {
           section.fields?.forEach((field) => {
             let val = row[field.api_name];
             if (val === undefined || val === null) return;
-            
+
             const normType = getNormalizedType(field.field_type);
             if (normType === "number" && val !== "") {
               val = Number(val);
+            } else if (FILE_FIELD_TYPES.has(normType)) {
+              val = dataUrlToFile(val, field.api_name);
             }
             sanitizedValues[field.api_name] = val;
             if (val !== "" && val !== null && val !== undefined) {
@@ -542,7 +552,12 @@ const sanitizeOutput = (data: any, schema: Section[]) => {
         const val = data[field.api_name];
         if (val === undefined || val === null || val === "") return;
         const normType = getNormalizedType(field.field_type);
-        if (normType === "number") sanitized[field.api_name] = Number(val);
+        if (normType === "number") {
+          sanitized[field.api_name] = Number(val);
+        } else if (FILE_FIELD_TYPES.has(normType)) {
+          // Auto-convert base64 data URLs (signature / file_upload / image_upload) to binary File
+          sanitized[field.api_name] = dataUrlToFile(val, field.api_name);
+        }
       });
     }
   });

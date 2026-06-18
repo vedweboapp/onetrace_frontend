@@ -54,7 +54,7 @@
       "body": "Registration will live here — wire your API next.",
       "backToLogin": "Already have an account?",
       "sendOtp": "Send OTP",
-      "sendingOtp": "Sending OTP…", 
+      "sendingOtp": "Sending OTP…",
       "verifyOtp": "Verify OTP",
       "verifyingOtp": "Verifying OTP…",
       "signingUp": "Signing Up...",
@@ -66,7 +66,7 @@
         "email": "Enter your email",
         "password": "Enter a password"
       },
-      "toast":{
+      "toast": {
         "emailSent": "Emial sent successfully",
         "emailFailed": "Failed to send email."
       },
@@ -328,22 +328,23 @@
         "done": "Done"
       },
       "zohoConnection": {
-        "title": "Zoho Inventory connection",
+        "title": "Zoho Inventory",
         "description": "Review your Zoho connection status and manage sync settings.",
         "setupWebhook": "Setup custom webhook",
-        "configureMapping": "Configure key mapping",
-        "reconnect": "Re-connect",
+        "configureMapping": "Configuration",
+        "reconnect": "Connect",
         "webhookTitle": "Custom webhook setup",
         "backToDetails": "Back to details",
         "backToIntegrations": "Back to integrations",
         "loadError": "Failed to load connection details. Please try again.",
         "webhookLoadError": "Failed to load webhook setup details. Please try again.",
         "connected": "Connected",
+        "status": "Status",
         "provider": "Provider",
         "connectionId": "Connection ID",
         "zohoOrganizationId": "Zoho organization ID",
         "mappingConfigured": "Mapping configured",
-        "importedRecords": "Imported records",
+        "importedRecords": "Historical records",
         "webhookConfigured": "Webhook configured",
         "webhookLastReceived": "Webhook last received",
         "notAvailable": "—",

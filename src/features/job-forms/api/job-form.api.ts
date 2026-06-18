@@ -4,7 +4,6 @@ import { assertApiSuccess } from "@/core/types/api.types";
 import { getProjectJobForm } from "@/features/projects/api/project-job-form.api";
 import type {
   JobFormSubmission,
-  SubmitJobFormPayload,
   SubmitJobFormSummary,
 } from "@/features/job-forms/types/job-form-submission.types";
 import { normalizeProjectFormMetadataResponse } from "@/features/job-forms/utils/job-form-schema.util";
@@ -22,6 +21,7 @@ function normalizeSubmissionRow(
     ...row,
     id: row.id ?? row.submission_id ?? 0,
     values: Array.isArray(row.values) ? row.values : [],
+    files: Array.isArray(row.files) ? row.files : [],
   };
 }
 
@@ -122,56 +122,61 @@ function normalizeSubmission(
     form_id: row.form_id ?? row.project_form_id ?? projectFormId,
     project_form_id: row.project_form_id ?? row.form_id ?? projectFormId,
     values: row.values ?? [],
+    files: row.files ?? [],
   };
 }
 
 export async function updateJobFormSubmission(
   jobId: number,
   submissionId: number,
-  payload: SubmitJobFormPayload,
+  formData: FormData,
   projectFormId?: number,
 ): Promise<JobFormSubmission> {
-  const { data } = await api.put<ApiEnvelope<JobFormSubmission>>(
+  const { data } = await api.patch<ApiEnvelope<JobFormSubmission>>(
     JOB_FORM_PATHS.submittedUpdate(jobId, submissionId),
-    payload,
+    formData,
   );
   assertApiSuccess(data);
+  // Extract job_form_id from the job_form_id field inside FormData
+  const jobFormId = Number(formData.get("job_form_id")) || 0;
   return normalizeSubmission(
     normalizeSubmissionRow(data.data),
     jobId,
-    payload.job_form_id,
+    jobFormId,
     projectFormId ?? data.data.project_form_id ?? data.data.form_id,
   );
 }
 
 export async function submitJobForm(
   jobId: number,
-  payload: SubmitJobFormPayload,
+  formData: FormData,
   projectFormId?: number,
 ): Promise<JobFormSubmission> {
   const { data } = await api.post<ApiEnvelope<JobFormSubmission | SubmitJobFormSummary>>(
     JOB_FORM_PATHS.submit(jobId),
-    payload,
+    formData,
   );
   assertApiSuccess(data);
   const body = data.data;
+  // Extract job_form_id from the job_form_id field inside FormData
+  const jobFormId = Number(formData.get("job_form_id")) || 0;
   if (isSubmitSummary(body)) {
     try {
       const detail = await fetchJobSubmittedForm(jobId, body.submission_id);
       return normalizeSubmission(
         detail,
         jobId,
-        payload.job_form_id,
+        jobFormId,
         projectFormId ?? body.project_form_id,
       );
     } catch {
       return {
         id: body.submission_id,
         job_id: body.job_id,
-        job_form_id: payload.job_form_id,
+        job_form_id: jobFormId,
         form_id: body.project_form_id,
         project_form_id: body.project_form_id,
-        status: payload.status ?? "submitted",
+        status: "submitted",
         values: [],
       };
     }
@@ -179,7 +184,7 @@ export async function submitJobForm(
   return normalizeSubmission(
     body,
     jobId,
-    payload.job_form_id,
+    jobFormId,
     projectFormId ?? body.project_form_id ?? body.form_id,
   );
 }

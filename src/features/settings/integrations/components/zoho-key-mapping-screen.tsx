@@ -4,11 +4,9 @@ import * as React from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import {
-  fetchZohoKeyMapping,
-  saveZohoKeyMapping,
-} from "@/features/settings/integrations/api/integration.api";
+import { useSearchParams } from "next/navigation";
 import { ZOHO_DEFAULT_RESOURCE } from "@/features/settings/integrations/api/integration.paths";
+import { fetchZohoKeyMapping, saveZohoKeyMapping } from "@/features/settings/integrations/api/integration.api";
 import type { ZohoMappingRow } from "@/features/settings/integrations/types/integration.types";
 import {
   existingMappingToRows,
@@ -20,6 +18,9 @@ import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { AppButton, CheckmarkSelect, SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
+import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+
+
 
 function HistoricalDataToggle({
   checked,
@@ -36,6 +37,7 @@ function HistoricalDataToggle({
 }) {
   return (
     <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-900/50">
+      
       <div className="min-w-0">
         <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{label}</p>
         <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">{hint}</p>
@@ -66,6 +68,7 @@ function HistoricalDataToggle({
 
 export function ZohoKeyMappingScreen() {
   const t = useTranslations("Dashboard.integrations.zohoKeyMapping");
+  const tConnection = useTranslations("Dashboard.integrations.zohoConnection");
   const router = useRouter();
 
   const [loading, setLoading] = React.useState(true);
@@ -75,7 +78,27 @@ export function ZohoKeyMappingScreen() {
   const [rows, setRows] = React.useState<ZohoMappingRow[]>([]);
   const [externalOptions, setExternalOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [internalOptions, setInternalOptions] = React.useState<{ value: string; label: string }[]>([]);
-
+  const searchParams = useSearchParams();
+  const safeBack = React.useMemo(() => {
+    const raw = searchParams.get("back");
+    if (raw) {
+      try {
+        const decoded = decodeURIComponent(raw);
+        if (
+          decoded.startsWith("/") &&
+          !decoded.startsWith("//") &&
+          !decoded.includes("://") &&
+          !decoded.includes("..") &&
+          decoded.includes("/dashboard/")
+        ) {
+          return decoded;
+        }
+      } catch {
+        // ignore malformed
+      }
+    }
+    return routes.dashboard.settingsZohoConnection;
+  }, [searchParams]);
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -143,10 +166,12 @@ export function ZohoKeyMappingScreen() {
 
   return (
     <div className="space-y-6 py-6">
-      <div>
-        <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t("title")}</h1>
-        <p className="mt-1 max-w-3xl text-sm text-slate-600 dark:text-slate-400">{t("description")}</p>
-      </div>
+      <DetailPageHeader
+        title={t("title")}
+        subtitle={t("description")}
+        backHref={safeBack}
+        backAriaLabel={tConnection("backToDetails")}
+      />
 
       <SurfaceShell className="rounded-xl">
         <div className="space-y-6 p-4 sm:p-6">

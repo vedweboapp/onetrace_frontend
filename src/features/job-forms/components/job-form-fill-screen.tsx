@@ -22,7 +22,7 @@ import {
   buildFieldMaps,
 } from "@/features/job-forms/utils/job-form-schema.util";
 import {
-  mapFormDataToSubmissionValues,
+  buildJobFormSubmissionFormData,
   mapSubmissionValuesToFormDefaults,
 } from "@/features/job-forms/utils/job-form-values.util";
 import FormRenderer, { type FormRendererRef } from "@/shared/form/formbuilder/FormRenderer";
@@ -129,6 +129,7 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
             schema.sections,
             maps.apiNameByFieldId,
             maps.fieldTypeByFieldId,
+            existing.files,
           )
         : {};
       setDefaultValues(defaults);
@@ -151,32 +152,39 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
     isLoading: submitting,
     handleSubmit: handleFormSubmit,
   } = useFormHandler<Record<string, unknown>, FormRendererRef>(async (data) => {
-    const values = mapFormDataToSubmissionValues(data, schemaSections);
-    if (values.length === 0) {
-      toastError(t("validationEmpty"));
-      return;
+    const fd = buildJobFormSubmissionFormData(
+      jobFormId,
+      data,
+      schemaSections,
+      { status: "submitted", defaultValues },
+    );
+
+    // Validate that at least one value is present
+    const valuesJson = fd.get("values");
+    if (valuesJson) {
+      const parsed = JSON.parse(valuesJson as string) as unknown[];
+      if (parsed.length === 0 && !Array.from(fd.keys()).some((k) => !["job_form_id", "status", "values", "remarks"].includes(k))) {
+        toastError(t("validationEmpty"));
+        return;
+      }
     }
-    const payload = {
-      job_form_id: jobFormId,
-      status: "submitted",
-      values,
-    };
+
     const submissionId = submission?.id ?? submissionIdHint;
     const isEditingExisting =
       uiMode === "edit" && typeof submissionId === "number" && submissionId > 0;
     try {
       if (isEditingExisting) {
-        await updateJobFormSubmission(jobId, submissionId, payload, formId);
+        await updateJobFormSubmission(jobId, submissionId, fd, formId);
         toastSuccess(t("updatedToast"));
       } else {
-        await submitJobForm(jobId, payload, formId);
+        await submitJobForm(jobId, fd, formId);
         toastSuccess(t("submittedToast"));
       }
       router.replace(safeBack);
     } catch {
       toastError(t("submitError"));
     }
-  });
+  }, { changesOnly: true });
 
   function enterEditMode() {
     router.push(formPageQuery({ mode: "edit" }));
@@ -191,6 +199,7 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
           schemaSections,
           fieldMaps.apiNameByFieldId,
           fieldMaps.fieldTypeByFieldId,
+          submission.files,
         ),
       );
     } else {

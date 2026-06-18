@@ -24,6 +24,7 @@ const nextPublicApiUrl =
 const googleMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["ineffectual-stephania-immemorially.ngrok-free.dev"],
   env: {
     NEXT_PUBLIC_API_URL: nextPublicApiUrl,
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: googleMapsKey,

@@ -19,12 +19,13 @@ import { routes } from "@/shared/config/routes";
 import { toastError } from "@/shared/feedback/app-toast";
 import { AppButton, SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
+import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 
 type Panel = "details" | "webhook";
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1 border-b border-slate-100 py-3 last:border-0 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-1 border-none border-slate-100 py-3 last:border-0 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
       <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</dt>
       <dd className="text-sm font-semibold text-slate-900 dark:text-slate-100">{value}</dd>
     </div>
@@ -114,11 +115,17 @@ export function ZohoConnectionDetailsScreen() {
 
   return (
     <div className="space-y-6 py-6">
+      <DetailPageHeader
+        title={t("title")}
+        subtitle={t("description")}
+        backHref={routes.dashboard.settingsIntegrations}
+        backAriaLabel={t("backToIntegrations")}
+      />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+        {/* <div>
           <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t("title")}</h1>
           <p className="mt-1 max-w-3xl text-sm text-slate-600 dark:text-slate-400">{t("description")}</p>
-        </div>
+        </div> */}
         <div className="flex flex-wrap gap-2">
           <AppButton
             type="button"
@@ -149,8 +156,8 @@ export function ZohoConnectionDetailsScreen() {
         </div>
       </div>
 
-      <SurfaceShell className="rounded-xl">
-        <div className="space-y-6 p-4 sm:p-6">
+      <SurfaceShell className="rounded-xl w-full sm:w-1/2">
+        <div className="w-full space-y-6 p-4 sm:p-6">
           {loading ? (
             <div className="space-y-3">
               <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
@@ -174,9 +181,11 @@ export function ZohoConnectionDetailsScreen() {
               ) : null}
 
               <dl>
-                <DetailRow label={t("connected")} value={boolLabel(connection.connected, t)} />
                 <DetailRow label={t("provider")} value={connection.provider || t("notAvailable")} />
-                <DetailRow label={t("connectionId")} value={String(connection.connection_id)} />
+                <DetailRow
+                  label={t("connectionId")}
+                  value={`#${String(connection.connection_id)}`}
+                />
                 <DetailRow
                   label={t("zohoOrganizationId")}
                   value={connection.zoho_organization_id || t("notAvailable")}
@@ -186,14 +195,15 @@ export function ZohoConnectionDetailsScreen() {
                   value={boolLabel(connection.mapping_configured, t)}
                 />
                 <DetailRow label={t("importedRecords")} value={String(connection.imported_records ?? 0)} />
-                <DetailRow
+                {/* <DetailRow
                   label={t("webhookConfigured")}
                   value={boolLabel(connection.webhook?.configured ?? false, t)}
                 />
                 <DetailRow
                   label={t("webhookLastReceived")}
                   value={formatWebhookLastReceived(connection.webhook?.last_received_at)}
-                />
+                /> */}
+                <DetailRow label={t("status")} value={boolLabel(connection.connected, t)} />
               </dl>
             </>
           ) : connection && panel === "webhook" ? (
@@ -225,13 +235,7 @@ export function ZohoConnectionDetailsScreen() {
             </>
           ) : null}
 
-          <div className="flex justify-end border-t border-slate-200 pt-4 dark:border-slate-700">
-            <Link href={routes.dashboard.settingsIntegrations}>
-              <AppButton type="button" variant="secondary" size="sm">
-                {t("backToIntegrations")}
-              </AppButton>
-            </Link>
-          </div>
+
         </div>
       </SurfaceShell>
     </div>

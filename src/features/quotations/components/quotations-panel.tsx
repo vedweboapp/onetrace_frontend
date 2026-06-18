@@ -444,7 +444,7 @@ export function QuotationsPanel() {
         ),
         { narrow: true },
       ),
-      c.primary("quote", t("table.quote"), (r) => r.quote_name),
+      c.primary("quote", t("table.quote"), (r) => r.quotation_serial_number),
       c.truncate("customer", t("table.customer"), (r) => customerDisplay(r), {
         title: (r) => customerDisplay(r),
       }),

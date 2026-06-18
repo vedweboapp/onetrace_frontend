@@ -1,10 +1,14 @@
+"use client";
+
 import FormBuilderForm from '@/features/form-builder/components/form-builder-form'
 import React from 'react'
+import { useParams } from 'next/navigation'
 
 const EditLayoutForm = () => {
+    const { id } = useParams<{ id: string }>()
     return (
         <div>
-            <FormBuilderForm />
+            <FormBuilderForm BackUrl={`/dashboard/settings/modules/${id}`} />
         </div>
     )
 }
