@@ -120,11 +120,7 @@ export function SiteFormModal({
     }
   }
 
-  const [localClientOptions, setLocalClientOptions] = React.useState(clientOptions);
-  React.useEffect(() => {
-    setLocalClientOptions(clientOptions);
-  }, [clientOptions]);
-
+  const localClientOptions = clientOptions;
   const noClients = !lockClient && localClientOptions.length === 0;
   const lockedClientLabel =
     lockClient && initialClientId
@@ -243,7 +239,6 @@ export function SiteFormModal({
               control={control}
               errors={errors}
               disabled={saving}
-              clientOptions={localClientOptions}
               pendingContactRowRef={pendingContactRowRef}
             />
           }

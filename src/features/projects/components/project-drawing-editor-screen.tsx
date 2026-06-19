@@ -763,7 +763,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         }
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detailPin?.id, isPinEditing, compositeItemInstallationType, pinEditData.formId, updatePinFormId]);
 
   function requestClose() {
@@ -1550,7 +1550,12 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       >
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-semibold text-slate-900 dark:text-slate-50">{drawingName || t("title")}</h1>
+              <input
+              type="text"
+              className="border-0 border-b border-transparent outline-none focus:border-b-blue-500 truncate text-lg font-semibold text-slate-900 dark:text-slate-50"
+              value={drawingName || t("title")}
+              onChange={(e) => setDrawingName(e.target.value)}
+            />
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
           </div>
 

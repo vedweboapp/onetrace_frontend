@@ -457,19 +457,19 @@ export function QuotationsPanel() {
       c.text("status", t("table.status"), (r) => quoteStatusLabel(r.status)),
       c.tabular("due", t("table.due"), (r) => formatFlexibleApiDate(r.due_date, dueFmt)),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
-      c.actions("actions", tList("openRowActions"), (row) => (
-        <DataTableRowActionsMenu
-          menuAriaLabel={tList("openRowActions")}
-          items={[
-            {
-              id: "edit",
-              label: t("edit"),
-              icon: Pencil,
-              onSelect: () => openEdit(row.id),
-            },
-          ]}
-        />
-      )),
+      // c.actions("actions", tList("openRowActions"), (row) => (
+      //   <DataTableRowActionsMenu
+      //     menuAriaLabel={tList("openRowActions")}
+      //     items={[
+      //       {
+      //         id: "edit",
+      //         label: t("edit"),
+      //         icon: Pencil,
+      //         onSelect: () => openEdit(row.id),
+      //       },
+      //     ]}
+      //   />
+      // )),
     ];
   }, [t, tList, dateFmt, dueFmt, clientLabelById, siteLabelById, tagLabelById, quoteStatusLabel, mass, items.length]);
 

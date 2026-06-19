@@ -162,7 +162,7 @@ export type QuotationListItem = {
   created_by: QuotationUserRef | null;
   modified_by: QuotationUserRef | null;
   created_at: string;
-  quotation_serial_number:string;
+  quotation_serial_number: string;
   modified_at: string | null;
   deleted_at: string | null;
   is_deleted: boolean;
@@ -199,6 +199,7 @@ export type QuotationDetail = QuotationListItem & {
   quote_sections?: QuotationQuoteSection[];
   grand_total?: number | null;
   site_snapshot?: QuotationSiteSnapshot | null;
+  sites?: Array<{ id: number; site_name: string }>;
 };
 
 export type QuotationPagination = {

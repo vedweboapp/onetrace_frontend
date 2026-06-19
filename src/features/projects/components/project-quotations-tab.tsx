@@ -16,15 +16,24 @@ import {
   quotationTagsLabels,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
 import type { Tag } from "@/features/tags/types/tag.types";
-import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { entityCol } from "@/shared/components/entity";
+import type { EntityTableColumn } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
+import { cn } from "@/core/utils/http.util";
 import {
+  DataTable,
+  DataTableBody,
+  DataTableHead,
   ListPageSearchField,
   ListPageEmptyStates,
   DataTablePaginationBar,
+  DataTableRow,
+  DataTableScroll,
+  DataTableTd,
+  DataTableTh,
 } from "@/shared/ui";
 import { routes } from "@/shared/config/routes";
 
@@ -32,10 +41,52 @@ type Props = {
   projectId: number;
 };
 
+const TRUNCATE_MAX = {
+  sm: "max-w-[14rem]",
+  md: "max-w-[16rem]",
+  lg: "max-w-[20rem]",
+} as const;
+
+function quotationTableCellClassName(column: EntityTableColumn<QuotationListItem>): string | undefined {
+  switch (column.variant) {
+    case "primary":
+      return "font-semibold text-slate-900 dark:text-slate-100";
+    case "truncate": {
+      const max = column.maxWidth ? TRUNCATE_MAX[column.maxWidth] : TRUNCATE_MAX.sm;
+      return cn(max, "truncate");
+    }
+    case "tabular":
+    case "date":
+      return "tabular-nums";
+    default:
+      return undefined;
+  }
+}
+
+function renderQuotationTableCell(column: EntityTableColumn<QuotationListItem>, row: QuotationListItem) {
+  switch (column.variant) {
+    case "primary":
+    case "text":
+    case "tabular":
+      return column.value(row);
+    case "truncate": {
+      const title = column.title?.(row);
+      return (
+        <span className="block truncate" title={title}>
+          {column.value(row)}
+        </span>
+      );
+    }
+    case "date":
+      return column.dateFmt.format(new Date(column.value(row)));
+    default:
+      return null;
+  }
+}
+
 export function ProjectQuotationsTab({ projectId }: Props) {
   const t = useTranslations("Dashboard.projects.quotationsTab");
   const tQuotations = useTranslations("Dashboard.quotations");
-  const tList = useTranslations("Dashboard.list");
   const dateFmt = useDashboardDateFormat();
   const dueFmt = useDashboardDateFormat({ dateOnly: true });
   const router = useRouter();
@@ -252,16 +303,45 @@ export function ProjectQuotationsTab({ projectId }: Props) {
             }}
           />
         ) : (
-          <EntityDataTable
-            columns={tableColumns}
-            rows={items}
-            onRowClick={(row) => openDetail(row.id)}
-            getRowClassName={(row) => highlightClassName(row.id)}
-          />
+          <DataTableScroll>
+            <DataTable>
+              <DataTableHead>
+                <tr>
+                  {tableColumns.map((col) => (
+                    <DataTableTh key={col.id} narrow={col.narrow} className={col.headerClassName}>
+                      {col.headerSrOnly ? <span className="sr-only">{col.header}</span> : col.header}
+                    </DataTableTh>
+                  ))}
+                </tr>
+              </DataTableHead>
+              <DataTableBody>
+                {items.map((row) => (
+                  <DataTableRow
+                    key={row.id}
+                    data-list-row-id={row.id}
+                    className={highlightClassName(row.id)}
+                    clickable
+                    onClick={() => openDetail(row.id)}
+                  >
+                    {tableColumns.map((col) => (
+                      <DataTableTd
+                        key={col.id}
+                        narrow={col.narrow}
+                        className={cn(quotationTableCellClassName(col), col.cellClassName)}
+                      >
+                        {renderQuotationTableCell(col, row)}
+                      </DataTableTd>
+                    ))}
+                  </DataTableRow>
+                ))}
+              </DataTableBody>
+            </DataTable>
+          </DataTableScroll>
         )}
 
         {!loading && !loadError && items.length > 0 ? (
           <DataTablePaginationBar
+            className="bg-white dark:bg-slate-950"
             pagination={pagination}
             summary={t("pageLabel", {
               start: Math.min((page - 1) * pageSize + 1, pagination.total_records),

@@ -339,7 +339,7 @@ export function JobsPanel() {
         { narrow: true },
       ),
       c.custom("Serial No.", t("table.serialNo"), (r) => r.job_serial_number),
-      c.primary("title", t("table.title"), (r) => r.title),
+      // c.primary("title", t("table.title"), (r) => r.title),
       c.custom("jobStatus", t("table.jobStatus"), (r) => statusChipForRow(r)),
       c.truncate("worker", t("table.assignedWorker"), (r) =>
         jobAssignedWorkerLabel(r, workerLabelById),

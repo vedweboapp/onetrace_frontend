@@ -94,7 +94,10 @@ export function SiteFormScreen({ mode, siteId }: Props) {
   }, []);
 
   React.useEffect(() => {
-    void reloadClients();
+    const timer = window.setTimeout(() => {
+      void reloadClients();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [reloadClients]);
 
   const draftReturnTo = React.useMemo(() => {
@@ -142,7 +145,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
           if (emptyIdx >= 0) {
             setValue(`contacts.${emptyIdx}.contact`, selectId, { shouldDirty: true, shouldValidate: true });
           } else {
-            setValue("contacts", [...current, { title: "site_contact", contact: selectId }], {
+            setValue("contacts", [...current, { title: "", contact: selectId }], {
               shouldDirty: true,
               shouldValidate: true,
             });
@@ -183,8 +186,14 @@ export function SiteFormScreen({ mode, siteId }: Props) {
     try {
       const saved = isEdit && siteId ? await updateSite(siteId, payload) : await createSite(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
-      router.replace(buildQuickCreateReturnHref(safeBack, saved.id, "site"));
+      const id = saved?.id 
+      console.log("the id from the backend is",id,"also if is edit true", isEdit)
+      if(id){
+       router.push(`/sites/${id}`)
+       if(!isEdit){
+         clearQuickCreateFormDraft(draftReturnTo);
+       }
+      }
     } finally {
       setSaving(false);
     }
@@ -300,7 +309,6 @@ export function SiteFormScreen({ mode, siteId }: Props) {
                   control={control}
                   errors={errors}
                   disabled={saving}
-                  clientOptions={clientOptions}
                   pendingContactRowRef={pendingContactRowRef}
                   contactsRefreshKey={contactsRefreshKey}
                   getFormDraft={!isEdit ? getFormDraft : undefined}

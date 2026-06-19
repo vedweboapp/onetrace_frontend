@@ -9,14 +9,12 @@ import { SITE_CONTACT_PERSON_TITLES } from "@/features/sites/constants/site-cont
 import type { SiteFormValues } from "@/features/sites/schemas/site-form-schema";
 import { cn } from "@/core/utils/http.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
-import type { QuickCreateClientOption } from "@/shared/types/quick-create.types";
 import { AppButton, CheckmarkSelect, FieldErrorText, FieldGroup } from "@/shared/ui";
 
 type Props = {
   control: Control<SiteFormValues>;
   errors: FieldErrors<SiteFormValues>;
   disabled?: boolean;
-  clientOptions: QuickCreateClientOption[];
   pendingContactRowRef: React.MutableRefObject<number | null>;
   contactsRefreshKey?: number;
   getFormDraft?: () => unknown;
@@ -26,7 +24,6 @@ export function SiteContactPersonsFields({
   control,
   errors,
   disabled,
-  clientOptions,
   pendingContactRowRef,
   contactsRefreshKey = 0,
   getFormDraft,
@@ -66,12 +63,28 @@ export function SiteContactPersonsFields({
   });
 
   const titleOptions = React.useMemo(
-    () =>
-      SITE_CONTACT_PERSON_TITLES.map((value) => ({
+    () => [
+      {
+        value: "",
+        label: t("contactPerson.titlePlaceholder"),
+      },
+      ...SITE_CONTACT_PERSON_TITLES.map((value) => ({
         value,
         label: t(`contactPerson.titles.${value}`),
       })),
+    ],
     [t],
+  );
+
+  const contactSelectOptions = React.useMemo(
+    () => [
+      {
+        value: "",
+        label: t("contactPerson.contactPlaceholder"),
+      },
+      ...contactOptions,
+    ],
+    [contactOptions, t],
   );
 
   React.useEffect(() => {
@@ -107,7 +120,7 @@ export function SiteContactPersonsFields({
           variant="secondary"
           size="sm"
           disabled={!canAdd || loadingContacts}
-          onClick={() => append({ title: "site_contact", contact: "" })}
+          onClick={() => append({ title: "", contact: "" })}
         >
           <Plus className="size-4" aria-hidden />
           {t("contactPerson.add")}
@@ -168,7 +181,7 @@ export function SiteContactPersonsFields({
                       portaled
                       searchable
                       listLabel={t("contactPerson.contactLabel")}
-                      options={contactOptions}
+                      options={contactSelectOptions}
                       value={contactField.value}
                       emptyLabel={
                         loadingContacts

@@ -77,11 +77,11 @@
         "otpRequired": "El código de verificación es obligatorio.",
         "otpLength": "Ingresa el código completo de 6 dígitos."
       },
-    "toasts": {
-  "signedUp": "Registro completado correctamente",
-  "Sent": "OTP enviado correctamente a su correo electrónico. Por favor, revise su bandeja de entrada.",
-  "verified": "Correo electrónico verificado correctamente."
-}
+      "toasts": {
+        "signedUp": "Registro completado correctamente",
+        "Sent": "OTP enviado correctamente a su correo electrónico. Por favor, revise su bandeja de entrada.",
+        "verified": "Correo electrónico verificado correctamente."
+      }
     },
     "forgotPassword": {
       "title": "¿Olvidaste la contraseña?",
@@ -198,9 +198,9 @@
       "qrCodes": "Códigos QR",
       "projects": "Proyectos",
       "groups": "Grupos",
-      "materialRequests": "Solicitud de material",
+      "materialRequests": "Solicitud de Material",
       "dispatches": "Envíos",
-      "returnToStock": "Devolver al inventario",
+      "returnToStock": "Devoluciones",
       "products": "Productos",
       "items": "Ítems",
       "itemsPlain": "Ítems",
@@ -2976,6 +2976,8 @@
         "filterLevel": "Nivel",
         "filterAllLevels": "Todos los niveles",
         "filterPlot": "Parcela",
+        "selectAll": "Seleccionar todo",
+        "deselectAll": "Deseleccionar todo",
         "filterAllPlots": "Todas las parcelas",
         "manualJobLocation": "Manual / sin asignar",
         "manualJobsSection": "Trabajos manuales",
@@ -3042,8 +3044,6 @@
         "endDate": "Elige la fecha de fin.",
         "dateOrder": "La fecha de fin debe ser igual o posterior a la de inicio."
       }
-      
-      
     },
     "groups": {
       "metaTitle": "Grupos",

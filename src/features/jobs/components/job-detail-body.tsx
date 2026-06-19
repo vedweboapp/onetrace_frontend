@@ -111,9 +111,9 @@ export function JobDetailBody({
             <DetailMetricCard label={t("fields.assignedWorker")}>
               {workerLabel ?? jobAssignedWorkerLabel(detail)}
             </DetailMetricCard>
-            <DetailMetricCard label={t("fields.jobId")}>
+            {/* <DetailMetricCard label={t("fields.jobId")}>
               <span className="tabular-nums">{detail.id}</span>
-            </DetailMetricCard>
+            </DetailMetricCard> */}
           </DetailMetricsGrid>
         </DetailPanelCard>
 
@@ -170,45 +170,37 @@ export function JobDetailBody({
 
         {meta && (meta.total != null || compositeRows.length > 0) ? (
           <DetailPanelCard title={t("detail.sectionWorkScope")}>
-            <DetailMetricsGrid className="sm:grid-cols-2">
-              {meta.total != null && Number.isFinite(meta.total) ? (
-                <DetailMetricCard label={t("fields.scopeTotal")}>
-                  <span className="tabular-nums font-semibold text-[color:var(--dash-accent)]">
-                    {formatMoneyDisplay(meta.total, loc)}
-                  </span>
-                </DetailMetricCard>
-              ) : null}
-            </DetailMetricsGrid>
+           
             {compositeRows.length > 0 ? (
               <div className="mt-3">
                 <DetailLinkedTable
                   columns={[
                     { id: "name", header: t("detail.colCompositeItem"), widthClass: "w-[34%]" },
                     { id: "qty", header: t("fields.compositeQuantity"), narrow: true, align: "right", widthClass: "w-[14%]" },
-                    { id: "unit", header: t("detail.colUnitPrice"), narrow: true, align: "right", widthClass: "w-[18%]" },
-                    { id: "line", header: t("detail.colLineTotal"), narrow: true, align: "right", widthClass: "w-[18%]" },
+                    // { id: "unit", header: t("detail.colUnitPrice"), narrow: true, align: "right", widthClass: "w-[18%]" },
+                    // { id: "line", header: t("detail.colLineTotal"), narrow: true, align: "right", widthClass: "w-[18%]" },
                   ]}
                 >
                   {compositeRows.map((row, index) => {
-                    const unit =
-                      row.amount != null &&
-                      Number.isFinite(row.amount) &&
-                      row.quantity > 0
-                        ? row.amount / row.quantity
-                        : typeof row.selling_price === "number" && Number.isFinite(row.selling_price)
-                          ? row.selling_price
-                          : row.item &&
-                              typeof row.item === "object" &&
-                              typeof row.item.selling_price === "number" &&
-                              Number.isFinite(row.item.selling_price)
-                            ? row.item.selling_price
-                            : 0;
-                    const lineTotal =
-                      row.amount != null && Number.isFinite(row.amount)
-                        ? row.amount
-                        : unit > 0
-                          ? unit * row.quantity
-                          : 0;
+                    // const unit =
+                    //   row.amount != null &&
+                    //   Number.isFinite(row.amount) &&
+                    //   row.quantity > 0
+                    //     ? row.amount / row.quantity
+                    //     : typeof row.selling_price === "number" && Number.isFinite(row.selling_price)
+                    //       ? row.selling_price
+                    //       : row.item &&
+                    //           typeof row.item === "object" &&
+                    //           typeof row.item.selling_price === "number" &&
+                    //           Number.isFinite(row.item.selling_price)
+                    //         ? row.item.selling_price
+                    //         : 0;
+                    // const lineTotal =
+                    //   row.amount != null && Number.isFinite(row.amount)
+                    //     ? row.amount
+                    //     : unit > 0
+                    //       ? unit * row.quantity
+                    //       : 0;
                     const itemId = compositeItemId(row);
                     const name =
                       row.name?.trim() ||
@@ -239,7 +231,7 @@ export function JobDetailBody({
                         >
                           {row.quantity}
                         </DetailLinkedTableTd>
-                        <DetailLinkedTableTd
+                        {/* <DetailLinkedTableTd
                           narrow
                           className={detailLinkedTableCellClassName({ align: "right", narrow: true, cellClassName: "tabular-nums" })}
                         >
@@ -254,7 +246,7 @@ export function JobDetailBody({
                           })}
                         >
                           {lineTotal > 0 ? formatMoneyDisplay(lineTotal, loc) : "—"}
-                        </DetailLinkedTableTd>
+                        </DetailLinkedTableTd> */}
                       </DetailLinkedTableRow>
                     );
                   })}
@@ -292,11 +284,11 @@ export function JobDetailBody({
             <DetailMetricCard label={t("fields.endDate")}>
               {formatFlexibleApiDate(detail.end_date, dateFmt)}
             </DetailMetricCard>
-            <DetailMetricCard label={t("fields.completedAt")}>
+            {/* <DetailMetricCard label={t("fields.completedAt")}>
               {detail.completed_at
                 ? formatFlexibleApiDate(detail.completed_at, dateFmt)
                 : t("detail.notCompleted")}
-            </DetailMetricCard>
+            </DetailMetricCard> */}
             {detail.job_pin_status ? (
               <DetailMetricCard label={t("fields.pinStatus")}>
                 <span className="capitalize">{detail.job_pin_status}</span>

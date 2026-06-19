@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { Power, PowerOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { getSiteContactPersonContactId, normalizeSiteContactPersonsFromApi } from "@/features/sites/utils/site-contact-person.util";
-import { fetchSite } from "@/features/sites/api/site.api";
+import { fetchSite, patchSite } from "@/features/sites/api/site.api";
 import { SiteDetailBody } from "@/features/sites/components/site-detail-body";
 import type { Site } from "@/features/sites/types/site.types";
 import {
@@ -13,6 +14,8 @@ import {
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
+import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { AppButton } from "@/shared/ui";
 
 function siteClientId(site: Site): number | null {
   if (typeof site.client === "number" && Number.isFinite(site.client) && site.client > 0) return site.client;
@@ -47,8 +50,10 @@ function SiteDetailBodyWithContacts({
 
   React.useEffect(() => {
     if (!clientId) {
-      setContactNameById({});
-      return;
+      const timer = window.setTimeout(() => {
+        setContactNameById({});
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
     const rows = normalizeSiteContactPersonsFromApi(detail);
     const needsFetch = rows.some((row) => {
@@ -62,8 +67,10 @@ function SiteDetailBodyWithContacts({
           fromRows[row.contact.id] = row.contact.name.trim();
         }
       }
-      setContactNameById(fromRows);
-      return;
+      const timer = window.setTimeout(() => {
+        setContactNameById(fromRows);
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
     let cancelled = false;
     (async () => {
@@ -98,6 +105,7 @@ function SiteDetailBodyWithContacts({
 export function SiteDetailScreen({ siteId }: Props) {
   const t = useTranslations("Dashboard.sites");
   const [clientNameById, setClientNameById] = React.useState<Record<number, string>>({});
+  const [togglingActive, setTogglingActive] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -131,12 +139,41 @@ export function SiteDetailScreen({ siteId }: Props) {
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),
       }}
-      actions={({ listBack }) => (
-        <EntityDetailEditButton
-          label={t("detail.editWithIcon")}
-          listBack={listBack}
-          fallbackRoute={routes.dashboard.sites}
-        />
+      actions={({ detail, listBack, retry }) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <AppButton
+            type="button"
+            variant="secondary"
+            size="sm"
+            loading={togglingActive}
+            disabled={togglingActive}
+            onClick={async () => {
+              const next = !detail.is_active;
+              setTogglingActive(true);
+              try {
+                await patchSite(detail.id, { is_active: next });
+                toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
+                retry();
+              } catch {
+                toastError(t("toggleActiveError"));
+              } finally {
+                setTogglingActive(false);
+              }
+            }}
+          >
+            {detail.is_active ? (
+              <PowerOff className="size-4" aria-hidden />
+            ) : (
+              <Power className="size-4" aria-hidden />
+            )}
+            {detail.is_active ? t("deactivate") : t("activate")}
+          </AppButton>
+          <EntityDetailEditButton
+            label={t("detail.editWithIcon")}
+            listBack={listBack}
+            fallbackRoute={routes.dashboard.sites}
+          />
+        </div>
       )}
     >
       {({ detail, dateFmt }) => (
