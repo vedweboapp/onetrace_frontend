@@ -313,7 +313,7 @@
         "step2": "Crea un webhook nuevo y pega la URL, el método y las cabeceras de esta página.",
         "step3": "Configura la acción según el recurso indicado abajo y guarda el webhook.",
         "method": "Método HTTP",
-        "resourceAction": "Acción del recurso",
+        "resourceAction": "Acción",
         "webhookUri": "URL del webhook",
         "header": "Cabecera: {name}",
         "samplePayload": "Carga útil de ejemplo",

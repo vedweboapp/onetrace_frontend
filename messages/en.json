@@ -317,7 +317,7 @@
         "step2": "Create a new webhook and paste the URL, method, and header values from this page.",
         "step3": "Set the action to match the resource action below and save the webhook.",
         "method": "HTTP method",
-        "resourceAction": "Resource action",
+        "resourceAction": "Action",
         "webhookUri": "Webhook URL",
         "header": "Header: {name}",
         "samplePayload": "Sample payload",

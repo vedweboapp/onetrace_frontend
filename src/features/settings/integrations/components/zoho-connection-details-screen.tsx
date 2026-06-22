@@ -178,7 +178,7 @@ export function ZohoConnectionDetailsScreen() {
               ) : null}
 
               <dl className="divide-y divide-slate-100 dark:divide-slate-800">
-                <DetailRow label={t("provider")} value={connection.provider || t("notAvailable")} />
+                {/* <DetailRow label={t("provider")} value={connection.provider || t("notAvailable")} /> */}
                 <DetailRow
                   label={t("connectionId")}
                   value={`#${String(connection.connection_id)}`}
