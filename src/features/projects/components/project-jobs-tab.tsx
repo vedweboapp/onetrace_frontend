@@ -1,4 +1,4 @@
-"use client";
+  "use client";
 
 import * as React from "react";
 import { Check, CheckCheck, Layers, Pencil, Plus, Trash2 } from "lucide-react";
@@ -174,7 +174,7 @@ function ProjectJobRow({
         }}
       />
       <TruncatedCell title={job.title} className="font-medium text-slate-900 dark:text-slate-100">
-        {job.title}
+        {job.job_serial_number ?? job.title}
       </TruncatedCell>
       <TruncatedCell
         title={job.description?.trim() || undefined}

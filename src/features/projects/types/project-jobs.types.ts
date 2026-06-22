@@ -6,6 +6,7 @@ export type ProjectJobHierarchyStatus = {
 export type ProjectJobHierarchyJob = {
   id: number;
   title: string;
+  job_serial_number?: string;
   description: string | null;
   job_source: string;
   /** Present in some backends so we can show assigned worker + support filtering/updates. */

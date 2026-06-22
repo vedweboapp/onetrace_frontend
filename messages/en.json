@@ -2517,7 +2517,7 @@
         "jobStatus": "Job status",
         "assignedWorker": "Assigned worker",
         "start": "Start",
-        "serialNo": "Job No.",
+        "serialNo": "Job",
         "end": "End",
         "recordStatus": "Record",
         "actions": "Actions"
@@ -2801,7 +2801,7 @@
           "drawings": "Drawings",
           "jobsheets": "Job Sheets",
           "jobs": "Jobs",
-          "quotations": "Quotations",
+          "quotations": "Quotes",
           "docs": "Docs",
           "approvals": "Approvals",
           "pins": "Pins"
