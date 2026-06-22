@@ -345,7 +345,8 @@
         "webhookLastReceived": "Última recepción del webhook",
         "notAvailable": "—",
         "yes": "Sí",
-        "no": "No"
+        "no": "No",
+        "disconnected": "Desconectado"
       }
     },
     "settingsPersonalProfile": {

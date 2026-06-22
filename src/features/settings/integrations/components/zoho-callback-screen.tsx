@@ -61,7 +61,7 @@ export function ZohoCallbackScreen() {
                 <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t("title")}</h1>
                 <p className="text-sm text-slate-600 dark:text-slate-400">{t("description")}</p>
               </div>
-              <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-900/50">
+              {/* <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-900/50">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                     {t("pullHistoricalData")}
@@ -92,7 +92,7 @@ export function ZohoCallbackScreen() {
                     )}
                   />
                 </button>
-              </div>
+              </div> */}
 
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <AppButton

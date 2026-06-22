@@ -69,7 +69,7 @@ export function ZohoConnectionDetailsScreen() {
     },
     {
       key:"configure",
-      label:"Configure"
+      label:"Configuration"
     },
     {
       key: "webhook",
@@ -130,7 +130,7 @@ export function ZohoConnectionDetailsScreen() {
   }
 
   return (
-    <div className="space-y-6 py-6">
+    <div className="space-y-6 ">
       <DetailPageHeader
         title={t("title")}
         subtitle={t("description")}
@@ -205,7 +205,7 @@ export function ZohoConnectionDetailsScreen() {
                           aria-hidden="true"
                         />
                         <span className="font-semibold">
-                          {connection.connected ? t("connected") : t("no")}
+                          {connection.connected ? t("connected") : t("disconnected")}
                         </span>
                       </div>
                       <AppButton

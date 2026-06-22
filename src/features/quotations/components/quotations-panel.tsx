@@ -448,9 +448,9 @@ export function QuotationsPanel() {
       c.truncate("customer", t("table.customer"), (r) => customerDisplay(r), {
         title: (r) => customerDisplay(r),
       }),
-      c.truncate("site", t("table.site"), (r) => siteDisplay(r), {
-        title: (r) => siteDisplay(r),
-      }),
+      // c.truncate("site", t("table.site"), (r) => siteDisplay(r), {
+      //   title: (r) => siteDisplay(r),
+      // }),
       c.truncate("tags", t("table.tags"), (r) => tagsDisplay(r), {
         title: (r) => tagsDisplay(r),
       }),
