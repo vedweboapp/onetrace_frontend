@@ -49,10 +49,7 @@ export function ZohoCallbackScreen() {
 
   return (
     <div className="mx-auto w-full max-w-lg space-y-6 py-6">
-      <div>
-        <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t("title")}</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{t("description")}</p>
-      </div>
+
 
       <SurfaceShell className="rounded-xl">
         <div className="space-y-6 p-4 sm:p-6">
@@ -60,6 +57,10 @@ export function ZohoCallbackScreen() {
             <p className="text-sm text-red-600 dark:text-red-400">{t("missingParams")}</p>
           ) : (
             <>
+              <div className="space-y-1">
+                <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t("title")}</h1>
+                <p className="text-sm text-slate-600 dark:text-slate-400">{t("description")}</p>
+              </div>
               <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-900/50">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">

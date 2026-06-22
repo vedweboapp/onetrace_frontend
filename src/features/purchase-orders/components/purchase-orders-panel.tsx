@@ -216,12 +216,12 @@ export function PurchaseOrdersPanel() {
       c.custom("status", t("table.status"), (r) => (
         <PurchaseOrderStatusBadge status={r.status} label={statusLabel(r.status)} />
       )),
-      c.actions("actions", tList("openRowActions"), (row) => (
-        <DataTableRowActionsMenu
-          menuAriaLabel={tList("openRowActions")}
-          items={[{ id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row.id) }]}
-        />
-      )),
+      // c.actions("actions", tList("openRowActions"), (row) => (
+      //   <DataTableRowActionsMenu
+      //     menuAriaLabel={tList("openRowActions")}
+      //     items={[{ id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row.id) }]}
+      //   />
+      // )),
     ];
   }, [t, tList, dateFmt, locale, vendorLabelById, statusLabel, openEdit]);
 

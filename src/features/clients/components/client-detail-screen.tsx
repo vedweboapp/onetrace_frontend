@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { Power, PowerOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
-import { fetchClient } from "@/features/clients/api/client.api";
+import { fetchClient, updateClient } from "@/features/clients/api/client.api";
 import { ClientContactsTab } from "@/features/clients/components/client-contacts-tab";
 import { ClientDetailBody } from "@/features/clients/components/client-detail-body";
 import { ClientSitesTab } from "@/features/clients/components/client-sites-tab";
@@ -15,7 +16,8 @@ import {
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
-import { AppTabs, type AppTabItem } from "@/shared/ui";
+import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
 
 type Props = {
   clientId: number;
@@ -26,6 +28,7 @@ export function ClientDetailScreen({ clientId }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [togglingActive, setTogglingActive] = React.useState(false);
   const detailTabs = React.useMemo<AppTabItem[]>(
     () => [
       { id: "details", label: t("detail.tabs.details") },
@@ -45,6 +48,7 @@ export function ClientDetailScreen({ clientId }: Props) {
   React.useEffect(() => {
     const tab = searchParams.get("tab");
     if (!tab || !allowedDetailTabIds.has(tab)) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveTab(tab);
     const p = new URLSearchParams(searchParams.toString());
     p.delete("tab");
@@ -83,12 +87,41 @@ export function ClientDetailScreen({ clientId }: Props) {
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"
         />
       }
-      actions={({ listBack }) => (
-        <EntityDetailEditButton
-          label={t("detail.editWithIcon")}
-          listBack={listBack}
-          fallbackRoute={routes.dashboard.clients}
-        />
+      actions={({ detail, listBack, retry }) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <AppButton
+            type="button"
+            variant="secondary"
+            size="sm"
+            loading={togglingActive}
+            disabled={togglingActive}
+            onClick={async () => {
+              const next = !detail.is_active;
+              setTogglingActive(true);
+              try {
+                await updateClient(detail.id, { is_active: next });
+                toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
+                retry();
+              } catch {
+                toastError(t("toggleActiveError"));
+              } finally {
+                setTogglingActive(false);
+              }
+            }}
+          >
+            {detail.is_active ? (
+              <PowerOff className="size-4" aria-hidden />
+            ) : (
+              <Power className="size-4" aria-hidden />
+            )}
+            {detail.is_active ? t("deactivate") : t("activate")}
+          </AppButton>
+          <EntityDetailEditButton
+            label={t("detail.editWithIcon")}
+            listBack={listBack}
+            fallbackRoute={routes.dashboard.clients}
+          />
+        </div>
       )}
 
 

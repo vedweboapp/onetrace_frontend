@@ -12,7 +12,7 @@ import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { AppButton, CheckmarkSelect, FieldErrorText, FieldGroup } from "@/shared/ui";
 
 type Props = {
-  control: Control<SiteFormValues>;
+  control: Control<SiteFormValues, any, any>;
   errors: FieldErrors<SiteFormValues>;
   disabled?: boolean;
   pendingContactRowRef: React.MutableRefObject<number | null>;

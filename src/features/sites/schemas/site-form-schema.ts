@@ -43,7 +43,7 @@ export function createSiteFormSchema(messages: SiteFormMessages) {
           title: z
             .string()
             .trim()
-            .refine(isSiteContactPersonTitle, { message: messages.contactPersonTitle }),
+            .refine((val) => ["site_contact", "finance", "emergency"].includes(val), { message: messages.contactPersonTitle }),
           contact: z
             .string()
             .trim()

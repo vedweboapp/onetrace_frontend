@@ -199,9 +199,9 @@ export function VendorsPanel() {
       c.custom("location", t("table.location"), (row) => vendorAddressSummary(vendorPrimaryAddress(row))),
       c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive")),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
-      c.actions("actions", t("table.actions"), (row) => (
-        <DataTableRowActionsMenu menuAriaLabel={tList("openRowActions")} items={rowMenuItems(row)} />
-      )),
+      // c.actions("actions", t("table.actions"), (row) => (
+      //   <DataTableRowActionsMenu menuAriaLabel={tList("openRowActions")} items={rowMenuItems(row)} />
+      // )),
     ];
   }, [t, tList, dateFmt, rowMenuItems]);
 

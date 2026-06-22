@@ -256,12 +256,12 @@ export function MaterialRequestsPanel() {
           statusRow={statusRowFor(r.status)}
         />
       )),
-      c.actions("actions", tList("openRowActions"), (row) => (
-        <DataTableRowActionsMenu
-          menuAriaLabel={tList("openRowActions")}
-          items={[{ id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row.id) }]}
-        />
-      )),
+      // c.actions("actions", tList("openRowActions"), (row) => (
+      //   <DataTableRowActionsMenu
+      //     menuAriaLabel={tList("openRowActions")}
+      //     items={[{ id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row.id) }]}
+      //   />
+      // )),
     ];
   }, [t, tList, dateFmt, workerLabelById, statusLabel, statusRowFor, openEdit, massSel.tableColumn]);
 

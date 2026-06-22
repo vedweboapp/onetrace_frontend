@@ -28,7 +28,7 @@ const SiteLocationMapPicker = dynamic(
 );
 
 type Props = {
-  control: Control<SiteFormValues>;
+  control: Control<SiteFormValues, any, any>;
   register: UseFormRegister<SiteFormValues>;
   setValue: UseFormSetValue<SiteFormValues>;
   errors: FieldErrors<SiteFormValues>;
@@ -126,7 +126,7 @@ export function SiteLocationFields({
     <div className="space-y-6">
       <AddressLineAutocompleteFields
         idPrefix="site"
-        control={control}
+        control={control as any}
         setValue={setValue}
         withCoordinates
         rowCols="2"
@@ -144,7 +144,7 @@ export function SiteLocationFields({
 
       <AddressLocationFields
         idPrefix="site"
-        control={control}
+        control={control as any}
         register={register}
         setValue={setValue}
         disabled={disabled}

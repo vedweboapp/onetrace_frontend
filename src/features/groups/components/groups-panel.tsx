@@ -229,34 +229,34 @@ export function GroupsPanel() {
         cellClassName: "text-slate-600 dark:text-slate-400",
       }),
     
-      c.actions(
-        "actions",
-        t("table.actions"),
-        (row) => (
-          <DataTableRowActionsMenu
-            menuAriaLabel={tList("openRowActions")}
-            items={[
-              {
-                id: "edit",
-                label: t("edit"),
-                icon: Pencil,
-                onSelect: () => void openEdit(row),
-              },
-              {
-                id: "delete",
-                label: t("delete"),
-                icon: Trash2,
-                tone: "danger",
-                onSelect: () => {
-                  setDeletingGroup(row);
-                  setDeleteOpen(true);
-                },
-              },
-            ]}
-          />
-        ),
-        { headerSrOnly: false },
-      ),
+      // c.actions(
+      //   "actions",
+      //   t("table.actions"),
+      //   (row) => (
+      //     <DataTableRowActionsMenu
+      //       menuAriaLabel={tList("openRowActions")}
+      //       items={[
+      //         {
+      //           id: "edit",
+      //           label: t("edit"),
+      //           icon: Pencil,
+      //           onSelect: () => void openEdit(row),
+      //         },
+      //         {
+      //           id: "delete",
+      //           label: t("delete"),
+      //           icon: Trash2,
+      //           tone: "danger",
+      //           onSelect: () => {
+      //             setDeletingGroup(row);
+      //             setDeleteOpen(true);
+      //           },
+      //         },
+      //       ]}
+      //     />
+      //   ),
+      //   { headerSrOnly: false },
+      // ),
     ];
   }, [compositeById, t, tList, dateFmt, massSel.tableColumn]);
 

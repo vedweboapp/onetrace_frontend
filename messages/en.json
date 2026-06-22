@@ -281,8 +281,8 @@
         "name": "Zoho Inventory"
       },
       "zohoCallback": {
-        "title": "Finish Zoho Inventory setup",
-        "description": "Choose whether to import existing Zoho data, then complete the connection.",
+        "title": "Integration Completed.",
+        "description": "Zoho Inventory is now linked with Red5,To Finish click on Finish integration",
         "pullHistoricalData": "Pull historical data",
         "pullHistoricalDataHint": "Import existing records from Zoho Inventory when the connection is created.",
         "finish": "Finish integration",

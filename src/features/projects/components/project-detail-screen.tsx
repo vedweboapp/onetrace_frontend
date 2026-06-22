@@ -7,8 +7,9 @@ import { useSearchParams } from "next/navigation";
 import { fetchClient } from "@/features/clients/api/client.api";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import type { ProjectType } from "@/features/project-types/types/project-type.types";
+import { Power, PowerOff } from "lucide-react";
 import { createQuotationFromProject } from "@/features/quotations/api/quotation.api";
-import { deleteProject, fetchProject } from "@/features/projects/api/project.api";
+import { deleteProject, fetchProject, patchProject } from "@/features/projects/api/project.api";
 import { ProjectDetailBody } from "@/features/projects/components/project-detail-body";
 import { ProjectDrawingsTab } from "@/features/projects/components/project-drawings-tab";
 import { ProjectFormsTab } from "@/features/projects/components/project-forms-tab";
@@ -56,6 +57,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
   const [deleting, setDeleting] = React.useState(false);
   const [quoting, setQuoting] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("details");
+  const [togglingActive, setTogglingActive] = React.useState(false);
 
   const detailTabs = React.useMemo<AppTabItem[]>(
     () => [
@@ -76,6 +78,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
   React.useEffect(() => {
     const tab = searchParams.get("tab");
     if (!tab || !allowedDetailTabIds.has(tab)) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveTab(tab);
     const p = new URLSearchParams(searchParams.toString());
     p.delete("tab");
@@ -173,8 +176,35 @@ export function ProjectDetailScreen({ projectId }: Props) {
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"
         />
       }
-      actions={({ detail, listBack }) => (
-        <div className="flex flex-wrap gap-2">
+      actions={({ detail, listBack, retry }) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <AppButton
+            type="button"
+            variant="secondary"
+            size="sm"
+            loading={togglingActive}
+            disabled={togglingActive}
+            onClick={async () => {
+              const next = !detail.is_active;
+              setTogglingActive(true);
+              try {
+                await patchProject(detail.id, { is_active: next });
+                toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
+                retry();
+              } catch {
+                toastError(t("toggleActiveError"));
+              } finally {
+                setTogglingActive(false);
+              }
+            }}
+          >
+            {detail.is_active ? (
+              <PowerOff className="size-4" aria-hidden />
+            ) : (
+              <Power className="size-4" aria-hidden />
+            )}
+            {detail.is_active ? t("deactivate") : t("activate")}
+          </AppButton>
           <AppButton
             type="button"
             variant="secondary"
