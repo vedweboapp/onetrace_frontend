@@ -39,7 +39,7 @@ export function ZohoCallbackScreen() {
         pullHistoricalData,
       });
       toastSuccess(message);
-      router.replace(routes.dashboard.settingsZohoKeyMapping);
+      router.replace(`${routes.dashboard.settingsZohoConnection}?tab=configuration`);
     } catch {
       toastError(t("finishError"));
     } finally {
