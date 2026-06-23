@@ -294,7 +294,7 @@
         "title": "Map Zoho Inventory fields",
         "description": "Match Zoho item fields to your OneTrace item fields before syncing data.",
         "externalField": "Zoho field",
-        "internalField": "OneTrace field",
+        "internalField": "SimHo field",
         "selectExternal": "Select Zoho field",
         "selectInternal": "Select OneTrace field",
         "addRow": "Add mapping",

@@ -1552,6 +1552,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
           <div className="min-w-0">
               <input
               type="text"
+              disabled
               className="border-0 border-b border-transparent outline-none focus:border-b-blue-500 truncate text-lg font-semibold text-slate-900 dark:text-slate-50"
               value={drawingName || t("title")}
               onChange={(e) => setDrawingName(e.target.value)}

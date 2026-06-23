@@ -12,14 +12,32 @@ export type ZohoCallbackParams = {
 };
 
 export type ZohoFieldMapping = {
-  external_field: string;
   internal_field: string;
+  inetrnal_field?: string;
+  internal_field_label: string | null;
+  external_field: string;
+  external_field_label: string | null;
+};
+
+export type ZohoFieldSchema = {
+  field: string;
+  label: string;
+  type: string;
+  required?: boolean;
+};
+
+export type ZohoExistingMapping = {
+  internal_field?: string;
+  inetrnal_field?: string;
+  internal_field_label: string | null;
+  external_field: string;
+  external_field_label: string | null;
 };
 
 export type ZohoKeyMappingData = {
-  external_fields: string[];
-  internal_fields: string[];
-  existing_mapping: Record<string, string>[];
+  external_fields: ZohoFieldSchema[];
+  internal_fields: ZohoFieldSchema[];
+  existing_mapping: ZohoExistingMapping[];
 };
 
 export type ZohoSaveKeyMappingPayload = {
@@ -55,7 +73,11 @@ export type ZohoConnectionDetails = {
   zoho_organization_id: string;
   mapping_configured: boolean;
   imported_records: number;
+  synced_records?: number;
+  last_history_sync?: string | null;
   webhook: ZohoConnectionWebhookStatus;
+  connection_created_at?: string;
+  connection_created_by?: string;
   next_step: string;
 };
 

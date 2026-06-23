@@ -290,7 +290,7 @@
         "title": "Mapear campos de Zoho Inventory",
         "description": "Relaciona los campos de artículos de Zoho con los campos de artículos de OneTrace antes de sincronizar.",
         "externalField": "Campo Zoho",
-        "internalField": "Campo OneTrace",
+        "internalField": "Campo SimHo",
         "selectExternal": "Seleccionar campo Zoho",
         "selectInternal": "Seleccionar campo OneTrace",
         "addRow": "Añadir mapeo",
