@@ -77,6 +77,7 @@ export async function completeZohoIntegration(params: ZohoCallbackParams): Promi
 export async function fetchZohoKeyMapping(): Promise<ZohoKeyMappingData> {
   const { data } = await api.get<ApiEnvelope<ZohoKeyMappingData> | ZohoKeyMappingData>(
     INTEGRATION_PATHS.zohoKeyMapping,
+    { params: { module: "items" } },
   );
 
   if (data && typeof data === "object" && "success" in data && data.success === false) {
