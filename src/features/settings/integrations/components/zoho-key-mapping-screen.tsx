@@ -7,12 +7,13 @@ import { useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import { ZOHO_DEFAULT_RESOURCE } from "@/features/settings/integrations/api/integration.paths";
 import { fetchZohoKeyMapping, saveZohoKeyMapping } from "@/features/settings/integrations/api/integration.api";
-import type { ZohoMappingRow } from "@/features/settings/integrations/types/integration.types";
+import type { ZohoMappingRow, ZohoFieldSchema } from "@/features/settings/integrations/types/integration.types";
 import {
   existingMappingToRows,
   nextZohoMappingRowId,
   rowsToMappings,
   toSelectOptions,
+  sortInternalFields,
 } from "@/features/settings/integrations/utils/zoho-key-mapping.util";
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
@@ -37,7 +38,7 @@ function HistoricalDataToggle({
 }) {
   return (
     <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-900/50">
-      
+
       <div className="min-w-0">
         <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{label}</p>
         <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">{hint}</p>
@@ -66,6 +67,20 @@ function HistoricalDataToggle({
   );
 }
 
+function areTypesCompatible(typeA: string | undefined, typeB: string | undefined): boolean {
+  if (!typeA || !typeB) return true;
+  const normA = typeA.toLowerCase();
+  const normB = typeB.toLowerCase();
+  if (normA === normB) return true;
+  if ((normA === "string" || normA === "text") && (normB === "string" || normB === "text")) {
+    return true;
+  }
+  if ((normA === "number" || normA === "decimal") && (normB === "number" || normB === "decimal")) {
+    return true;
+  }
+  return false;
+}
+
 export type ZohoKeyMappingFormProps = {
   onSaveSuccess?: () => void;
   onCancel?: () => void;
@@ -85,6 +100,8 @@ export function ZohoKeyMappingForm({
   const [saving, setSaving] = React.useState(false);
   const [pullHistoricalData, setPullHistoricalData] = React.useState(true);
   const [rows, setRows] = React.useState<ZohoMappingRow[]>([]);
+  const [externalFields, setExternalFields] = React.useState<ZohoFieldSchema[]>([]);
+  const [internalFields, setInternalFields] = React.useState<ZohoFieldSchema[]>([]);
   const [externalOptions, setExternalOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [internalOptions, setInternalOptions] = React.useState<{ value: string; label: string }[]>([]);
 
@@ -96,8 +113,11 @@ export function ZohoKeyMappingForm({
       try {
         const data = await fetchZohoKeyMapping();
         if (cancelled) return;
+        const sortedInternalFields = sortInternalFields(data.internal_fields);
+        setExternalFields(data.external_fields);
+        setInternalFields(sortedInternalFields);
         setExternalOptions(toSelectOptions(data.external_fields));
-        setInternalOptions(toSelectOptions(data.internal_fields));
+        setInternalOptions(toSelectOptions(sortedInternalFields));
         setRows(existingMappingToRows(data.existing_mapping));
       } catch {
         if (!cancelled) setLoadError(t("loadError"));
@@ -115,7 +135,7 @@ export function ZohoKeyMappingForm({
   }
 
   function addRow() {
-    setRows((prev) => [...prev, { id: nextZohoMappingRowId(), externalField: "", internalField: "" }]);
+    setRows((prev) => [...prev, { id: nextZohoMappingRowId(), internalField: "", externalField: "" }]);
   }
 
   function removeRow(rowId: string) {
@@ -126,7 +146,7 @@ export function ZohoKeyMappingForm({
   }
 
   async function handleSave() {
-    const mappings = rowsToMappings(rows);
+    const mappings = rowsToMappings(rows, internalOptions, externalOptions);
     if (mappings.length === 0) {
       toastError(t("mappingRequired"));
       return;
@@ -181,54 +201,88 @@ export function ZohoKeyMappingForm({
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
-                  <th className="px-3 py-2">{t("externalField")}</th>
                   <th className="px-3 py-2">{t("internalField")}</th>
+                  <th className="px-3 py-2">{t("externalField")}</th>
                   <th className="w-12 px-3 py-2" />
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className="border-b border-slate-100 dark:border-slate-800">
-                    <td className="px-3 py-2 align-top">
-                      <CheckmarkSelect
-                        options={externalOptions}
-                        value={row.externalField}
-                        onChange={(value) => updateRow(row.id, { externalField: value })}
-                        emptyLabel={t("selectExternal")}
-                        listLabel={t("externalField")}
-                        portaled
-                        searchable
-                        size="sm"
-                        disabled={saving}
-                      />
-                    </td>
-                    <td className="px-3 py-2 align-top">
-                      <CheckmarkSelect
-                        options={internalOptions}
-                        value={row.internalField}
-                        onChange={(value) => updateRow(row.id, { internalField: value })}
-                        emptyLabel={t("selectInternal")}
-                        listLabel={t("internalField")}
-                        portaled
-                        searchable
-                        size="sm"
-                        disabled={saving}
-                      />
-                    </td>
-                    <td className="px-3 py-2 align-top">
-                      <AppButton
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={saving}
-                        aria-label={t("removeRow")}
-                        onClick={() => removeRow(row.id)}
-                      >
-                        <Trash2 className="size-4 text-red-600" aria-hidden />
-                      </AppButton>
-                    </td>
-                  </tr>
-                ))}
+                {rows.map((row) => {
+                  const currentSimhoField = internalFields.find((f) => f.field === row.internalField);
+                  const currentSimhoType = currentSimhoField?.type;
+
+                  const currentZohoField = externalFields.find((f) => f.field === row.externalField);
+                  const currentZohoType = currentZohoField?.type;
+
+                  const filteredInternalOptions = internalOptions.filter((opt) => {
+                    const isSelectedInOtherRow = rows.some((r) => r.id !== row.id && r.internalField === opt.value);
+                    if (isSelectedInOtherRow) return false;
+
+                    if (currentZohoType) {
+                      const optField = internalFields.find((f) => f.field === opt.value);
+                      if (optField && !areTypesCompatible(optField.type, currentZohoType)) {
+                        return false;
+                      }
+                    }
+                    return true;
+                  });
+
+                  const filteredExternalOptions = externalOptions.filter((opt) => {
+                    const isSelectedInOtherRow = rows.some((r) => r.id !== row.id && r.externalField === opt.value);
+                    if (isSelectedInOtherRow) return false;
+
+                    if (currentSimhoType) {
+                      const optField = externalFields.find((f) => f.field === opt.value);
+                      if (optField && !areTypesCompatible(optField.type, currentSimhoType)) {
+                        return false;
+                      }
+                    }
+                    return true;
+                  });
+
+                  return (
+                    <tr key={row.id} className="border-b border-slate-100 dark:border-slate-800">
+                      <td className="px-3 py-2 align-top">
+                        <CheckmarkSelect
+                          options={filteredInternalOptions}
+                          value={row.internalField}
+                          onChange={(value) => updateRow(row.id, { internalField: value })}
+                          emptyLabel={t("selectInternal")}
+                          listLabel={t("internalField")}
+                          portaled
+                          searchable
+                          size="sm"
+                          disabled={saving}
+                        />
+                      </td>
+                      <td className="px-3 py-2 align-top">
+                        <CheckmarkSelect
+                          options={filteredExternalOptions}
+                          value={row.externalField}
+                          onChange={(value) => updateRow(row.id, { externalField: value })}
+                          emptyLabel={t("selectExternal")}
+                          listLabel={t("externalField")}
+                          portaled
+                          searchable
+                          size="sm"
+                          disabled={saving}
+                        />
+                      </td>
+                      <td className="px-3 py-2 align-top">
+                        <AppButton
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={saving}
+                          aria-label={t("removeRow")}
+                          onClick={() => removeRow(row.id)}
+                        >
+                          <Trash2 className="size-4 text-red-600" aria-hidden />
+                        </AppButton>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

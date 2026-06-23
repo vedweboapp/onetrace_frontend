@@ -54,10 +54,10 @@ export function ZohoConnectionDetailsScreen() {
     tabParam === "configure" || tabParam === "configuration"
       ? "configure"
       : tabParam === "webhook"
-      ? "webhook"
-      : tabParam === "help"
-      ? "help"
-      : "help";
+        ? "webhook"
+        : tabParam === "help"
+          ? "help"
+          : "help";
 
   const [activeTab, setActiveTab] = React.useState<"help" | "configure" | "webhook">(initialTab);
   const [loading, setLoading] = React.useState(true);
@@ -83,8 +83,8 @@ export function ZohoConnectionDetailsScreen() {
       label: "Help"
     },
     {
-      key:"configure",
-      label:"Configuration"
+      key: "configure",
+      label: "Configuration"
     },
     {
       key: "webhook",
@@ -219,11 +219,14 @@ export function ZohoConnectionDetailsScreen() {
           </div>
         </SurfaceShell>
       ) : activeTab === "configure" && connection ? (
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start w-full">
+        <div className="flex flex-col gap-4  w-full">
           {/* Left card: Connection Status / Details (30%) */}
-          <SurfaceShell className="rounded-xl w-full lg:w-[30%]">
+          <div className="w-full lg:w-[40%]">
+            <span className="font-semibold text-slate-900 dark:text-slate-100">Connection Details</span>
+          </div>
+          <SurfaceShell className="rounded-xl w-full lg:w-[40%]">
             <div className="w-full space-y-6 p-4 sm:p-6">
-              {connection.next_step ? (
+              {/* {connection.next_step ? (
                 <div
                   className={cn(
                     "rounded-xl border px-4 py-3 text-sm font-medium mb-4",
@@ -234,7 +237,7 @@ export function ZohoConnectionDetailsScreen() {
                 >
                   {connection.next_step}
                 </div>
-              ) : null}
+              ) : null} */}
 
               <dl className="divide-y divide-slate-100 dark:divide-slate-800">
                 {/* <DetailRow label={t("provider")} value={connection.provider || t("notAvailable")} /> */}
@@ -250,7 +253,11 @@ export function ZohoConnectionDetailsScreen() {
                   label={t("mappingConfigured")}
                   value={boolLabel(connection.mapping_configured, t)}
                 />
-                <DetailRow label={t("importedRecords")} value={String(connection.imported_records ?? 0)} />
+                <DetailRow label={t("importedRecords")} value={String(connection.synced_records ?? 0)} />
+                <DetailRow label="Last history sync" value={connection.last_history_sync ? new Date(connection.last_history_sync).toLocaleString() : "Never"} />
+                <DetailRow label="Last webhook sync " value={connection?.webhook?.last_received_at ? new Date(connection.webhook.last_received_at).toLocaleString() : "Never"} />
+                <DetailRow label="Connection established" value={new Date(connection.connection_created_at ?? 0).toLocaleString()} />
+                <DetailRow label="Connected by" value={connection.connection_created_by} />
                 <DetailRow
                   label={t("status")}
                   value={
@@ -286,12 +293,15 @@ export function ZohoConnectionDetailsScreen() {
           </SurfaceShell>
 
           {/* Right card: Key Mapping Form (70%) */}
+          <div className="w-full lg:w-[70%]">
+            <span className="font-semibold text-slate-900 dark:text-slate-100">
+              {tKeyMapping("title")}
+            </span>
+          </div>
           <SurfaceShell className="rounded-xl w-full lg:w-[70%]">
             <div className="w-full space-y-6 p-4 sm:p-6">
               <div>
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {tKeyMapping("title")}
-                </h3>
+
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   {tKeyMapping("description")}
                 </p>
