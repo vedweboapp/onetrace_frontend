@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
 import { cn } from "@/core/utils/http.util";
@@ -9,7 +8,7 @@ import { createTag, deleteTag, fetchTagsPage, updateTag } from "@/features/tags/
 import type { Tag } from "@/features/tags/types/tag.types";
 import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
-import { toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
@@ -20,10 +19,10 @@ import {
   AddButton, AppButton,
   AppModal,
   ConfirmDialog,
+  ActiveStatusBadge,
   DataTablePaginationBar,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
-  DataTableRowActionsMenu,
   DetailPanel,
   FieldGroup,
   ListPageCard,
@@ -120,6 +119,7 @@ export function TagSettingsPanel() {
 
   const [deleteTarget, setDeleteTarget] = React.useState<Tag | null>(null);
   const [deleting, setDeleting] = React.useState(false);
+  const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -219,6 +219,20 @@ export function TagSettingsPanel() {
     }
   }
 
+  async function handleToggleActive(row: Tag, next: boolean) {
+    setTogglingId(row.id);
+    try {
+      await updateTag(row.id, { is_active: next });
+      toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
+      setDetailRow((prev) => (prev?.id === row.id ? { ...prev, is_active: next } : prev));
+      setRefreshNonce((n) => n + 1);
+    } catch {
+      toastError(t("toggleActiveError"));
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
   const hasActiveFilters = hasListActiveFilters({ search });
   const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
     loading,
@@ -258,26 +272,8 @@ export function TagSettingsPanel() {
         ),
         { responsive: "md" },
       ),
-      c.actions("actions", t("table.actions"), (row) => (
-        <DataTableRowActionsMenu
-          menuAriaLabel={tList("openRowActions")}
-          items={[
-            { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) },
-            {
-              id: "delete",
-              label: t("delete"),
-              icon: Trash2,
-              tone: "danger",
-              onSelect: () => {
-                setDetailRow(null);
-                setDeleteTarget(row);
-              },
-            },
-          ]}
-        />
-      )),
     ];
-  }, [t, tList, dateFmt, openEdit]);
+  }, [t, dateFmt]);
 
   return (
     <div className="space-y-6">
@@ -335,7 +331,6 @@ export function TagSettingsPanel() {
                   meta={<>{t("detail.updatedAt")}: {dateFmt.format(new Date(row.modified_at))}{tagUserLabel(row.modified_by) !== "—" ? ` · ${tagUserLabel(row.modified_by)}` : ""}</>}
                   description={`${t("detail.createdAt")}: ${dateFmt.format(new Date(row.created_at))}${tagUserLabel(row.created_by) !== "—" ? ` · ${t("detail.byUser", { user: tagUserLabel(row.created_by) })}` : ""} · ${bgHex(row).toUpperCase()} / ${textHex(row).toUpperCase()}`}
                   onCardClick={() => setDetailRow(row)}
-                  menu={<DataTableRowActionsMenu menuAriaLabel={tList("openRowActions")} items={[{ id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) }, { id: "delete", label: t("delete"), icon: Trash2, tone: "danger", onSelect: () => { setDetailRow(null); setDeleteTarget(row); } }]} />}
                 />
               ))}
             </ListPageCardGrid>
@@ -363,7 +358,49 @@ export function TagSettingsPanel() {
         onClose={() => setDetailRow(null)}
         title={detailRow ? <TagChip row={detailRow} className="text-base font-semibold" /> : null}
         subtitle={detailRow ? <span className="text-sm text-slate-500 dark:text-slate-400">{detailRow.uuid ? `${t("detail.idLabel", { id: detailRow.id })} · ${detailRow.uuid}` : t("detail.idLabel", { id: detailRow.id })}</span> : undefined}
-        footer={detailRow ? <><AppButton type="button" variant="secondary" size="sm" onClick={() => setDetailRow(null)}>{t("modal.cancel")}</AppButton><AppButton type="button" variant="secondary" size="sm" onClick={() => { const row = detailRow; setDetailRow(null); openEdit(row); }}>{t("edit")}</AppButton><AppButton type="button" variant="danger" size="sm" onClick={() => { const row = detailRow; setDetailRow(null); setDeleteTarget(row); }}>{t("delete")}</AppButton></> : undefined}
+        footer={
+          detailRow ? (
+            <>
+              <AppButton type="button" variant="secondary" size="sm" onClick={() => setDetailRow(null)}>
+                {t("modal.cancel")}
+              </AppButton>
+              <AppButton
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  const row = detailRow;
+                  setDetailRow(null);
+                  openEdit(row);
+                }}
+              >
+                {t("edit")}
+              </AppButton>
+              <AppButton
+                type="button"
+                variant="secondary"
+                size="sm"
+                loading={togglingId === detailRow.id}
+                disabled={togglingId === detailRow.id}
+                onClick={() => void handleToggleActive(detailRow, detailRow.is_active !== true)}
+              >
+                {detailRow.is_active === true ? t("deactivate") : t("activate")}
+              </AppButton>
+              <AppButton
+                type="button"
+                variant="danger"
+                size="sm"
+                onClick={() => {
+                  const row = detailRow;
+                  setDetailRow(null);
+                  setDeleteTarget(row);
+                }}
+              >
+                {t("delete")}
+              </AppButton>
+            </>
+          ) : undefined
+        }
       >
         {detailRow ? (
           <div className="space-y-5">
@@ -375,7 +412,12 @@ export function TagSettingsPanel() {
             ) : null}
             <FieldGroup label={t("modal.bgColour")}><div className="flex items-center gap-3"><span className="size-8 shrink-0 rounded-none border border-slate-200 dark:border-slate-600" style={{ backgroundColor: bgHex(detailRow) }} aria-hidden /><p className="font-mono text-sm text-slate-700 dark:text-slate-200">{bgHex(detailRow).toUpperCase()}</p></div></FieldGroup>
             <FieldGroup label={t("modal.textColour")}><div className="flex items-center gap-3"><span className="flex size-8 shrink-0 items-center justify-center rounded-none border border-slate-200 text-xs font-bold dark:border-slate-600" style={{ backgroundColor: bgHex(detailRow), color: textHex(detailRow) }} aria-hidden>Aa</span><p className="font-mono text-sm text-slate-700 dark:text-slate-200">{textHex(detailRow).toUpperCase()}</p></div></FieldGroup>
-            <FieldGroup label="Active"><p className="text-sm text-slate-800 dark:text-slate-200">{detailRow.is_active ? "Yes" : "No"}</p></FieldGroup>
+            <FieldGroup label={t("status.active")}>
+              <ActiveStatusBadge
+                active={detailRow.is_active === true}
+                label={detailRow.is_active ? t("status.active") : t("status.inactive")}
+              />
+            </FieldGroup>
             <FieldGroup label="Organization"><p className="text-sm text-slate-800 dark:text-slate-200">{detailRow.organization ?? "—"}</p></FieldGroup>
             <FieldGroup label={t("detail.createdAt")}><p className="text-sm text-slate-800 dark:text-slate-200">{dateFmt.format(new Date(detailRow.created_at))}</p>{tagUserLabel(detailRow.created_by) !== "—" ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("detail.byUser", { user: tagUserLabel(detailRow.created_by) })}</p> : null}</FieldGroup>
             <FieldGroup label={t("detail.updatedAt")}><p className="text-sm text-slate-800 dark:text-slate-200">{dateFmt.format(new Date(detailRow.modified_at))}</p>{tagUserLabel(detailRow.modified_by) !== "—" ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("detail.byUser", { user: tagUserLabel(detailRow.modified_by) })}</p> : null}</FieldGroup>

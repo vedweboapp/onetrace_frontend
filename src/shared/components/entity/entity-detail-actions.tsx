@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { useDashboardActions } from "@/shared/ui/dashboard-action-buttons";
 import { DeleteButton, EditButton } from "@/shared/ui/dashboard-action-buttons";
 
@@ -21,7 +22,7 @@ export function EntityDetailEditButton({ label, listBack, fallbackRoute, classNa
     <EditButton
       className={className}
       onClick={() =>
-        router.push(`${pathname}/edit?back=${encodeURIComponent(listBack || fallbackRoute)}`)
+        router.push(buildPathWithStoredBack(`${pathname}/edit`, listBack || fallbackRoute))
       }
     >
       {label ?? t("edit")}

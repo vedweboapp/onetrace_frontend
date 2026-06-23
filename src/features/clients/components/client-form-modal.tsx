@@ -3,6 +3,7 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { useForm } from "react-hook-form";
 import { createClient, updateClient } from "@/features/clients/api/client.api";
 import { createClientFormSchema, type ClientFormValues } from "@/features/clients/schemas/client-form-schema";
@@ -14,6 +15,8 @@ import {
 } from "@/features/clients/utils/client-form-map";
 import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
+import { routes } from "@/shared/config/routes";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
@@ -41,6 +44,7 @@ type Props = {
 
 export function ClientFormModal({ open, onClose, mode, client, onSaved, onCreated }: Props) {
   const t = useTranslations("Dashboard.clients");
+  const router = useRouter();
   const [saving, setSaving] = React.useState(false);
 
   const schema = React.useMemo(
@@ -83,13 +87,17 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved, onCreate
       if (mode === "edit" && client) {
         await updateClient(client.id, payload);
         toastSuccess(t("updatedToast"));
+        onSaved();
+        onClose();
+        router.push(buildEntityDetailHrefAfterSave(routes.dashboard.clients, client.id, routes.dashboard.clients));
       } else {
         const created = await createClient(payload);
         toastSuccess(t("createdToast"));
         onCreated?.(created);
+        onSaved();
+        onClose();
+        router.push(buildEntityDetailHrefAfterSave(routes.dashboard.clients, created.id, routes.dashboard.clients));
       }
-      onSaved();
-      onClose();
     } finally {
       setSaving(false);
     }

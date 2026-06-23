@@ -16,6 +16,7 @@ import {
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
+import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { AppButton, AppTabs } from "@/shared/ui";
 
 type Props = {
@@ -101,7 +102,7 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
             variant="primary"
             size="sm"
             onClick={() =>
-              router.push(`${pathname}/dispatch?back=${encodeURIComponent(listBack)}`)
+              router.push(buildPathWithStoredBack(`${pathname}/dispatch`, listBack))
             }
           >
             {t("actions.dispatch")}

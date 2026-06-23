@@ -1,9 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import type { QrCode } from "@/features/qr-codes/types/qr-code.types";
-import { DetailSystemMetadataSection } from "@/shared/components/entity";
 import {
   DetailMetricCard,
   DetailMetricsGrid,
@@ -57,12 +56,12 @@ export function QrCodeDetailBody({ detail, dateFmt }: Props) {
           <DetailMetricsGrid>
             <DetailMetricCard label={t("detail.assignedJob")}>
               {detail.assigned_to_id != null && detail.assigned_to_id > 0 ? (
-                <Link
+                <DetailEntityLink
                   href={`${routes.dashboard.jobs}/${detail.assigned_to_id}`}
                   className="text-sm font-medium text-[color:var(--dash-accent)] hover:underline"
                 >
                   {t("detail.viewJob", { id: detail.assigned_to_id })}
-                </Link>
+                </DetailEntityLink>
               ) : (
                 <span className="text-sm text-slate-600 dark:text-slate-400">{t("detail.notAssigned")}</span>
               )}

@@ -62,13 +62,11 @@ export type JobMassUpdateLabels = {
   site: string;
   forms: string;
   jobStatus: string;
-  assignedWorker: string;
   startDate: string;
 };
 
 export function buildJobMassUpdateFields(
   options: {
-    workerOptions: CheckmarkSelectOption[];
     jobStatusOptions: CheckmarkSelectOption[];
     clientOptions: CheckmarkSelectOption[];
     projectOptions: CheckmarkSelectOption[];
@@ -76,23 +74,28 @@ export function buildJobMassUpdateFields(
     formOptions: CheckmarkSelectOption[];
   },
   labels: JobMassUpdateLabels,
+  opts?: { includeForms?: boolean },
 ): MassUpdateFieldDef[] {
-  return [
+  const fields: MassUpdateFieldDef[] = [
     textField("title", labels.title),
     textareaField("description", labels.description),
     selectField("client", labels.client, options.clientOptions, "number"),
     selectField("project", labels.project, options.projectOptions, "number"),
     selectField("site", labels.site, options.siteOptions, "number"),
-    selectField("forms", labels.forms, options.formOptions, "number"),
+  ];
+  if (opts?.includeForms !== false) {
+    fields.push(selectField("forms", labels.forms, options.formOptions, "number"));
+  }
+  fields.push(
     selectField("job_status", labels.jobStatus, options.jobStatusOptions, "number"),
-    selectField("assigned_worker", labels.assignedWorker, options.workerOptions, "number"),
     {
       name: "start_date",
       label: labels.startDate,
       valueType: "datetime",
       valueFormat: "datetime-iso",
     },
-  ];
+  );
+  return fields;
 }
 
 export type ClientMassUpdateLabels = {

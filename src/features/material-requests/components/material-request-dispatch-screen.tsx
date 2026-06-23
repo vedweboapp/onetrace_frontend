@@ -17,6 +17,7 @@ import { toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
+import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { DispatchedQuantityCell } from "@/shared/components/quantity/dispatched-quantity-cell";
 import {
   quantityTableCellClass,
@@ -176,7 +177,7 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
     try {
       await dispatchMaterialRequest(detail.id, detail, payload, itemLabelById);
       toastSuccess(t("dispatch.successToast"));
-      router.replace(`${detailHref}?back=${encodeURIComponent(listHref)}`);
+      router.replace(buildPathWithStoredBack(detailHref, listHref));
     } finally {
       setSaving(false);
     }

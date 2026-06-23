@@ -2,12 +2,11 @@
 "use client";
 
 import * as React from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
 import type { createWorkflowColourStatusApi } from "@/shared/api/create-workflow-colour-status.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
-import { toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { cn } from "@/core/utils/http.util";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -17,11 +16,11 @@ import {
   AddButton, AppButton,
   AppModal,
   ConfirmDialog,
+  ActiveStatusBadge,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
   type DashboardEmptyStateIconName,
   DataTablePaginationBar,
-  DataTableRowActionsMenu,
   DetailPanel,
   FieldGroup,
   ListPageCard,
@@ -141,6 +140,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
 
   const [deleteTarget, setDeleteTarget] = React.useState<WorkflowColourStatus | null>(null);
   const [deleting, setDeleting] = React.useState(false);
+  const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
   const openEdit = React.useCallback((row: WorkflowColourStatus) => {
     setDetailRow(null);
@@ -253,6 +253,20 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
     }
   }
 
+  async function handleToggleActive(row: WorkflowColourStatus, next: boolean) {
+    setTogglingId(row.id);
+    try {
+      await api.update(row.id, { is_active: next });
+      toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
+      setDetailRow((prev) => (prev?.id === row.id ? { ...prev, is_active: next } : prev));
+      setRefreshNonce((n) => n + 1);
+    } catch {
+      toastError(t("toggleActiveError"));
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
   const hasActiveFilters = hasListActiveFilters({ search });
   const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
     loading,
@@ -270,31 +284,8 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
         title: (row) => statusUserLabel(row.created_by),
       }),
       c.date("createdAt", t("table.createdAt"), (row) => row.created_at, dateFmt),
-      c.actions("actions", t("table.actions"), (row) => (
-        <DataTableRowActionsMenu
-          menuAriaLabel={tList("openRowActions")}
-          items={[
-            {
-              id: "edit",
-              label: t("edit"),
-              icon: Pencil,
-              onSelect: () => openEdit(row),
-            },
-            {
-              id: "delete",
-              label: t("delete"),
-              icon: Trash2,
-              tone: "danger",
-              onSelect: () => {
-                setDetailRow(null);
-                setDeleteTarget(row);
-              },
-            },
-          ]}
-        />
-      )),
     ];
-  }, [t, tList, dateFmt, openEdit]);
+  }, [t, dateFmt]);
 
   return (
     <div className="space-y-6">
@@ -365,29 +356,6 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
                     </>
                   }
                   onCardClick={() => setDetailRow(row)}
-                  menu={
-                    <DataTableRowActionsMenu
-                      menuAriaLabel={tList("openRowActions")}
-                      items={[
-                        {
-                          id: "edit",
-                          label: t("edit"),
-                          icon: Pencil,
-                          onSelect: () => openEdit(row),
-                        },
-                        {
-                          id: "delete",
-                          label: t("delete"),
-                          icon: Trash2,
-                          tone: "danger",
-                          onSelect: () => {
-                            setDetailRow(null);
-                            setDeleteTarget(row);
-                          },
-                        },
-                      ]}
-                    />
-                  }
                 />
               ))}
             </ListPageCardGrid>
@@ -452,6 +420,16 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
               </AppButton>
               <AppButton
                 type="button"
+                variant="secondary"
+                size="sm"
+                loading={togglingId === detailRow.id}
+                disabled={togglingId === detailRow.id}
+                onClick={() => void handleToggleActive(detailRow, detailRow.is_active !== true)}
+              >
+                {detailRow.is_active === true ? t("deactivate") : t("activate")}
+              </AppButton>
+              <AppButton
+                type="button"
                 variant="danger"
                 size="sm"
                 onClick={() => {
@@ -468,6 +446,12 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
       >
         {detailRow ? (
           <div className="space-y-5">
+            <FieldGroup label={t("table.status")}>
+              <ActiveStatusBadge
+                active={detailRow.is_active === true}
+                label={detailRow.is_active === true ? t("status.active") : t("status.inactive")}
+              />
+            </FieldGroup>
             <FieldGroup label={t("modal.bgColour")}>
               <div className="flex items-center gap-3">
                 <span

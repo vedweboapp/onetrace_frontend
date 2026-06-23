@@ -198,7 +198,7 @@
       "qrCodes": "Códigos QR",
       "projects": "Proyectos",
       "groups": "Grupos",
-      "materialRequests": "Solicitud de Material",
+      "materialRequests": "Solicitudes de Material",
       "dispatches": "Envíos",
       "returnToStock": "Devoluciones",
       "products": "Productos",
@@ -491,6 +491,8 @@
       "add": "Añadir estado",
       "edit": "Editar",
       "delete": "Eliminar",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
       "table": {
         "type": "Tipo",
         "kindPin": "Pin",
@@ -532,6 +534,13 @@
       "saved": "Estado actualizado",
       "created": "Estado creado",
       "deleted": "Estado eliminado",
+      "activatedToast": "Estado de pin activado",
+      "deactivatedToast": "Estado de pin desactivado",
+      "toggleActiveError": "No se pudo actualizar el estado del pin. Inténtalo de nuevo.",
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
       "hexPlaceholder": "#000000",
       "validationName": "Introduce un nombre de estado.",
       "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #E5E7EB)."
@@ -543,6 +552,8 @@
       "add": "Añadir",
       "edit": "Editar",
       "delete": "Eliminar",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
       "table": {
         "type": "Tipo",
         "kindPin": "Pin",
@@ -584,6 +595,13 @@
       "saved": "Estado actualizado",
       "created": "Estado creado",
       "deleted": "Estado eliminado",
+      "activatedToast": "Estado de trabajo activado",
+      "deactivatedToast": "Estado de trabajo desactivado",
+      "toggleActiveError": "No se pudo actualizar el estado del trabajo. Inténtalo de nuevo.",
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
       "hexPlaceholder": "#000000",
       "validationName": "Introduce un nombre de estado.",
       "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #E5E7EB)."
@@ -595,6 +613,8 @@
       "add": "Añadir",
       "edit": "Editar",
       "delete": "Eliminar",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
       "table": {
         "type": "Tipo",
         "kindPin": "Pin",
@@ -636,6 +656,13 @@
       "saved": "Estado actualizado",
       "created": "Estado creado",
       "deleted": "Estado eliminado",
+      "activatedToast": "Estado de material activado",
+      "deactivatedToast": "Estado de material desactivado",
+      "toggleActiveError": "No se pudo actualizar el estado del material. Inténtalo de nuevo.",
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
       "hexPlaceholder": "#000000",
       "validationName": "Introduce un nombre de estado.",
       "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #E5E7EB)."
@@ -647,6 +674,8 @@
       "add": "Añadir etiqueta",
       "edit": "Editar",
       "delete": "Eliminar",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
       "filterState": "Estado activo",
       "filterAll": "Todos",
       "table": {
@@ -686,6 +715,9 @@
       "saved": "Etiqueta actualizada",
       "created": "Etiqueta creada",
       "deleted": "Etiqueta eliminada",
+      "activatedToast": "Etiqueta activada",
+      "deactivatedToast": "Etiqueta desactivada",
+      "toggleActiveError": "No se pudo actualizar el estado de la etiqueta. Inténtalo de nuevo.",
       "hexPlaceholder": "#000000",
       "validationName": "Introduce un nombre de etiqueta.",
       "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #DBEAFE)."
@@ -1765,6 +1797,7 @@
         "project": "Proyecto",
         "primaryContact": "Contacto principal",
         "additionalContact": "Contacto adicional",
+        "additionalContacts": "Contactos adicionales",
         "siteContact": "Contacto del sitio",
         "orderNumber": "Número de pedido",
         "dueDate": "Fecha límite",
@@ -1779,6 +1812,13 @@
         "createdAt": "Creado",
         "updatedAt": "Última actualización",
         "createdBy": "Creado por"
+      },
+      "additionalContacts": {
+        "add": "Añadir contacto adicional",
+        "remove": "Eliminar contacto adicional",
+        "empty": "Aún no hay contactos adicionales.",
+        "selectClientFirst": "Selecciona un cliente primero para añadir contactos adicionales.",
+        "rowLabel": "Contacto adicional {number}"
       },
       "modal": {
         "createTitle": "Nueva cotización",
@@ -1798,7 +1838,9 @@
       "formTabs": {
         "aria": "Secciones de la cotización",
         "project": "Proyecto y datos",
-        "pricing": "Alcance y precios"
+        "pricing": "Alcance y precios",
+        "prevToProject": "Anterior: Proyecto y datos",
+        "nextToPricing": "Siguiente: Alcance y precios"
       },
       "validation": {
         "quoteName": "Introduce un nombre para la cotización.",
@@ -2495,6 +2537,7 @@
         "error": "No se pudieron asignar los trabajos. Inténtelo de nuevo.",
         "pickWorker": "Seleccionar técnico"
       },
+      "massAssignWorker": "Asignar técnico",
       "activate": "Activar",
       "deactivate": "Desactivar",
       "activatedToast": "Trabajo activado",

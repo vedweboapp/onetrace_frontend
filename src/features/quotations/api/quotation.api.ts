@@ -14,6 +14,24 @@ import type {
   WorkspaceUserRow,
 } from "../types/quotation.types";
 
+function normalizeQuotationWriteBody(body: QuotationCreatePayload): QuotationCreatePayload {
+  const raw = body.additional_customer_contact as unknown;
+  let additional_customer_contact: number[] = [];
+  if (Array.isArray(raw)) {
+    const seen = new Set<number>();
+    for (const item of raw) {
+      const id = typeof item === "number" ? item : Number.parseInt(String(item), 10);
+      if (Number.isFinite(id) && id > 0 && !seen.has(id)) {
+        seen.add(id);
+        additional_customer_contact.push(id);
+      }
+    }
+  } else if (typeof raw === "number" && raw > 0) {
+    additional_customer_contact = [raw];
+  }
+  return { ...body, additional_customer_contact };
+}
+
 function assertEnvelopeSuccess(envelope: { success: boolean; message?: string }) {
   if (!envelope.success) {
     const msg = typeof envelope.message === "string" ? envelope.message : "Request failed";
@@ -63,7 +81,8 @@ export async function fetchQuotation(id: number): Promise<QuotationDetail> {
 }
 
 export async function createQuotation(body: QuotationCreatePayload): Promise<QuotationDetail> {
-  const { data } = await api.post<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.list, body);
+  const payload = normalizeQuotationWriteBody(body);
+  const { data } = await api.post<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.list, payload);
   assertApiSuccess(data);
   return data.data;
 }
@@ -79,7 +98,8 @@ export async function createQuotationFromProject(projectId: number): Promise<Quo
 }
 
 export async function updateQuotation(id: number, body: QuotationCreatePayload): Promise<QuotationDetail> {
-  const { data } = await api.patch<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.detail(id), body);
+  const payload = normalizeQuotationWriteBody(body);
+  const { data } = await api.patch<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.detail(id), payload);
   assertApiSuccess(data);
   return data.data;
 }

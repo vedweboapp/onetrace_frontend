@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { createClient, fetchClient, updateClient } from "@/features/clients/api/client.api";
 import { createClientFormSchema, type ClientFormValues } from "@/features/clients/schemas/client-form-schema";
 import {
@@ -17,7 +18,8 @@ import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { resolveFormBackUrl, buildQuickCreateReturnHref } from "@/shared/utils/quick-create-navigation.util";
+import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
@@ -46,7 +48,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
     const i = pathname.indexOf(needle);
     return i >= 0 ? pathname.slice(0, i + needle.length) : needle;
   }, [pathname]);
-  const safeBack = resolveFormBackUrl(searchParams.get("back"), "clients", clientsListHref);
+  const safeBack = useFormBackUrl("clients", clientsListHref);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);
@@ -106,11 +108,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
     try {
       const saved = isEdit && clientId ? await updateClient(clientId, payload) : await createClient(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      if (isEdit) {
-        router.replace(`${safeBack}?highlight=${saved.id}`);
-      } else {
-        router.replace(buildQuickCreateReturnHref(safeBack, saved.id, "client"));
-      }
+      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.clients, saved.id, safeBack));
     } finally {
       setSaving(false);
     }

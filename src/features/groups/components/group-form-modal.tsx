@@ -2,11 +2,14 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { createGroup, updateGroup } from "@/features/groups/api/group.api";
 import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { routes } from "@/shared/config/routes";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { usePathname } from "@/i18n/navigation";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
@@ -44,6 +47,7 @@ function toNumberOrNull(raw: string): number | null {
 
 export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
   const t = useTranslations("Dashboard.groups.modal");
+  const router = useRouter();
   const pathname = usePathname();
   const pendingCompositeRowRef = React.useRef<string | null>(null);
 
@@ -151,15 +155,14 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
 
     setSubmitting(true);
     try {
-      if (mode === "edit" && group) {
-        await updateGroup(group.id, { name: name.trim(), items: compositeItems });
-        toastSuccess(t("updatedToast"));
-      } else {
-        await createGroup({ name: name.trim(), items: compositeItems });
-        toastSuccess(t("createdToast"));
-      }
+      const saved =
+        mode === "edit" && group
+          ? await updateGroup(group.id, { name: name.trim(), items: compositeItems })
+          : await createGroup({ name: name.trim(), items: compositeItems });
+      toastSuccess(mode === "edit" ? t("updatedToast") : t("createdToast"));
       onSaved();
       onClose();
+      router.push(buildEntityDetailHrefAfterSave(routes.dashboard.groups, saved.id, routes.dashboard.groups));
     } catch {
       
     } finally {

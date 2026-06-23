@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import type { Job } from "@/features/jobs/types/job.types";
 import { JobFormsSection } from "@/features/job-forms/components/job-forms-section";
@@ -22,7 +21,7 @@ import {
   resolveJobMetaCompositeItemId,
 } from "@/features/jobs/utils/job-meta-payload.util";
 import { formatMoneyDisplay } from "@/features/quotations/utils/quotation-level-pricing.util";
-import { DetailSystemMetadataSection } from "@/shared/components/entity";
+import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
 import {
   DetailLinkedTable,
@@ -121,36 +120,36 @@ export function JobDetailBody({
           <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-3">
             <DetailMetricCard label={t("fields.client")}>
               {clientId != null ? (
-                <Link
+                <DetailEntityLink
                   href={`${routes.dashboard.clients}/${clientId}`}
                   className="font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                 >
                   {jobClientLabel(detail.client)}
-                </Link>
+                </DetailEntityLink>
               ) : (
                 "—"
               )}
             </DetailMetricCard>
             <DetailMetricCard label={t("fields.project")}>
               {projectId != null ? (
-                <Link
+                <DetailEntityLink
                   href={`${routes.dashboard.projects}/${projectId}`}
                   className="font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                 >
                   {jobProjectLabel(detail.project)}
-                </Link>
+                </DetailEntityLink>
               ) : (
                 "—"
               )}
             </DetailMetricCard>
             <DetailMetricCard label={t("fields.site")}>
               {siteId != null ? (
-                <Link
+                <DetailEntityLink
                   href={`${routes.dashboard.sites}/${siteId}`}
                   className="font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                 >
                   {jobSiteLabel(detail.site)}
-                </Link>
+                </DetailEntityLink>
               ) : (
                 "—"
               )}
@@ -215,12 +214,12 @@ export function JobDetailBody({
                           })}
                         >
                           {itemId != null ? (
-                            <Link
+                            <DetailEntityLink
                               href={`${routes.dashboard.items}/${itemId}`}
                               className="text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                             >
                               {name}
-                            </Link>
+                            </DetailEntityLink>
                           ) : (
                             name
                           )}
@@ -282,13 +281,10 @@ export function JobDetailBody({
               {formatFlexibleApiDate(detail.start_date, dateFmt)}
             </DetailMetricCard>
             <DetailMetricCard label={t("fields.endDate")}>
-              {formatFlexibleApiDate(detail.end_date, dateFmt)}
-            </DetailMetricCard>
-            {/* <DetailMetricCard label={t("fields.completedAt")}>
               {detail.completed_at
                 ? formatFlexibleApiDate(detail.completed_at, dateFmt)
                 : t("detail.notCompleted")}
-            </DetailMetricCard> */}
+            </DetailMetricCard>
             {detail.job_pin_status ? (
               <DetailMetricCard label={t("fields.pinStatus")}>
                 <span className="capitalize">{detail.job_pin_status}</span>

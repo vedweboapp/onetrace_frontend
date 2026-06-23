@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
-import type { DispatchDetail } from "@/features/dispatches/types/dispatch.types";
-import type { DispatchLineSummary } from "@/features/dispatches/types/dispatch.types";
+import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
+import { DetailUserAttribution, normalizeDetailAuditUser } from "@/shared/components/entity/entity-detail-fields";
+import type { DispatchDetail, DispatchLineSummary } from "@/features/dispatches/types/dispatch.types";
 import { dispatchWorkerLabel } from "@/features/dispatches/utils/dispatch-display.util";
 import { DispatchedQuantityCell } from "@/shared/components/quantity/dispatched-quantity-cell";
 import {
@@ -12,8 +12,6 @@ import {
   quantityTableHeaderClass,
   QuantityWithUnits,
 } from "@/shared/components/quantity/quantity-table-columns";
-import { DetailSystemMetadataSection } from "@/shared/components/entity";
-import { DetailUserAttribution, normalizeDetailAuditUser } from "@/shared/components/entity/entity-detail-fields";
 import {
   DetailMetricCard,
   DetailMetricsGrid,
@@ -75,12 +73,12 @@ export function DispatchDetailBody({ detail, dateFmt, dueFmt }: Props) {
           </DetailMetricCard>
           <DetailMetricCard label={t("fields.materialRequest")}>
             {detail.material_request_id > 0 ? (
-              <Link
+              <DetailEntityLink
                 href={`${routes.dashboard.materialRequests}/${detail.material_request_id}`}
                 className="font-semibold text-slate-900 underline-offset-2 hover:underline dark:text-slate-100"
               >
                 {detail.material_request_number?.trim() || `#${detail.material_request_id}`}
-              </Link>
+              </DetailEntityLink>
             ) : (
               "—"
             )}

@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchRoles, fetchUserProfile, inviteUser, updateUserProfile } from "@/features/users/api/user.api";
 import { createUserFormSchema, type UserFormValues } from "@/features/users/schemas/user-form-schema";
 import { emptyUserFormDefaults, mapInviteUserFormToPayload, mapUserFormToUpdatePayload, userToFormDefaults } from "@/features/users/utils/user-form-map";
@@ -13,7 +14,7 @@ import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { sanitizeInternalListBack, buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
@@ -31,7 +32,7 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
   const t = useTranslations("Dashboard.users");
   const router = useRouter();
   const searchParams = useSearchParams();
-  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "settings/users");
+  const safeBack = useFormBackUrl("settings/users", routes.dashboard.settingsUsers);
   const isEdit = mode === "edit";
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
@@ -101,14 +102,16 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
   async function submit(values: UserFormValues) {
     setSaving(true);
     try {
+      const listBack = safeBack ?? routes.dashboard.settingsUsers;
       if (isEdit && userId) {
         await updateUserProfile(userId, mapUserFormToUpdatePayload(values));
         toastSuccess(t("updatedToast"));
+        router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.settingsUsers, userId, listBack));
       } else {
-        await inviteUser(mapInviteUserFormToPayload(values));
+        const created = await inviteUser(mapInviteUserFormToPayload(values));
         toastSuccess(t("createdToast"));
+        router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.settingsUsers, created.id, listBack));
       }
-      router.replace(safeBack ?? routes.dashboard.settingsUsers);
     } catch {
       toastError(t("saveError"));
     } finally {

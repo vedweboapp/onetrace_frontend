@@ -2,13 +2,12 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import type { Group } from "@/features/groups/types/group.types";
 import { moneyDisplay } from "@/features/groups/utils/group-linked-item-display.util";
 import { routes } from "@/shared/config/routes";
-import { DetailSystemMetadataSection } from "@/shared/components/entity";
 import {
   DetailLinkedTable,
   DetailLinkedTableRow,
@@ -116,12 +115,12 @@ export function GroupDetailBody({
                         cellClassName: "font-medium text-slate-900 dark:text-slate-100",
                       })}
                     >
-                      <Link
+                      <DetailEntityLink
                         href={`${routes.dashboard.compositeItems}/${entry.item}`}
                         className="block truncate text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                       >
                         {formatLinkedItemLabel(displayName, entry.abbreviation)}
-                      </Link>
+                      </DetailEntityLink>
                     </DetailLinkedTableTd>
                     <DetailLinkedTableTd
                       narrow

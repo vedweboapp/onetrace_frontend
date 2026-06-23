@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchVendorTypesPage } from "@/features/vendor-types/api/vendor-type.api";
 import { createVendor, fetchVendor, updateVendor } from "@/features/vendors/api/vendor.api";
 import { VendorAddressesFields } from "@/features/vendors/components/vendor-addresses-fields";
@@ -19,6 +20,7 @@ import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
@@ -47,7 +49,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
     const i = pathname.indexOf(needle);
     return i >= 0 ? pathname.slice(0, i + needle.length) : needle;
   }, [pathname]);
-  const safeBack = resolveFormBackUrl(searchParams.get("back"), "vendors", listHref);
+  const safeBack = useFormBackUrl("vendors", listHref);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);
@@ -127,7 +129,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
     try {
       const saved = isEdit && vendorId ? await updateVendor(vendorId, payload) : await createVendor(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(`${safeBack}?highlight=${saved.id}`);
+      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.vendors, saved.id, safeBack));
     } finally {
       setSaving(false);
     }

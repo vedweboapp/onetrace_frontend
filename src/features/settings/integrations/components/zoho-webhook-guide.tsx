@@ -83,7 +83,7 @@ export function ZohoWebhookGuide({ setup }: { setup: ZohoWebhookSetupData }) {
         />
         <CopyField
           label={t("resourceAction")}
-          value={setup.resource_action}
+          value={setup.module_action}
           copyLabel={t("copy")}
           copiedMessage={t("copied")}
         />
