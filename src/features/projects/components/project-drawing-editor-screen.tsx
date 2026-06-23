@@ -9,6 +9,7 @@ import { fetchDrawingDetail, updateDrawingPlots } from "@/features/projects/api/
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
+import { resolveDefaultPinStatus } from "@/features/pin-status/utils/pin-default-status.util";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
 import type { PinStatus } from "@/features/pin-status/types/pin-status.types";
@@ -366,7 +367,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [statuses, setStatuses] = React.useState<PinStatus[]>([]);
   const [selectedGroupId, setSelectedGroupId] = React.useState<string>("");
   const [selectedCompositeId, setSelectedCompositeId] = React.useState<string>("");
-  const [selectedStatusId, setSelectedStatusId] = React.useState<string>("");
   const [selectedGroupItems, setSelectedGroupItems] = React.useState<GroupItemRef[] | null>(null);
   const [groupItemAbbrevByKey, setGroupItemAbbrevByKey] = React.useState<Record<string, string>>({});
   const fetchedGroupAbbrevRef = React.useRef<Set<number>>(new Set());
@@ -460,6 +460,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     return m;
   }, [statuses]);
 
+  const defaultPinStatus = React.useMemo(() => resolveDefaultPinStatus(statuses), [statuses]);
+
   const loadAllData = React.useCallback(async () => {
     try {
       const results = await Promise.allSettled([
@@ -496,9 +498,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
       // 4. Pin Statuses
       if (results[3].status === "fulfilled") {
-        const statusItems = results[3].value.items;
-        setStatuses(statusItems);
-        setSelectedStatusId((prev) => prev || (statusItems[0] ? String(statusItems[0].id) : ""));
+        setStatuses(results[3].value.items);
       }
       //5.forms  lists
       if (results[4].status === "fulfilled") {
@@ -1276,7 +1276,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       return;
     }
 
-    const selectedStatus = statuses.find((s) => String(s.id) === selectedStatusId);
+    const selectedStatus = defaultPinStatus;
     if (!selectedStatus) {
       toastError(t("statusRequired"));
       return;
@@ -1954,7 +1954,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               // Pre-populate dropdowns for editing
                               setSelectedGroupId(pin.group ? String(pin.group) : "");
                               setSelectedCompositeId(pin.item ? String(pin.item) : "");
-                              setSelectedStatusId(pin.status ? String(pin.status) : "");
 
                               setIsPinEditing(false);
                             }}
