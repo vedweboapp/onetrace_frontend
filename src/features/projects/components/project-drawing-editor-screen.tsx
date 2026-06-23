@@ -1284,6 +1284,18 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
     const selectedItem = items.find(i => String(i.id) === selectedCompositeId);
 
+    let autoFormId: number | null = null;
+    if (selectedItem) {
+      const instType = selectedItem.installation_type;
+      const instTypeId = instType && typeof instType === "object" ? instType.id : instType;
+      if (instTypeId != null) {
+        const forms = filterForms(String(instTypeId));
+        if (forms.length === 1 && forms[0]?.value) {
+          autoFormId = Number(forms[0].value);
+        }
+      }
+    }
+
     const nextPin = {
       x_coordinate: Number(((point[0] / pageSize.width) * 100).toFixed(6)),
       y_coordinate: Number(((point[1] / pageSize.height) * 100).toFixed(6)),
@@ -1292,6 +1304,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       quantity: 1,
       group: selectedGroupId ? Number.parseInt(selectedGroupId, 10) : undefined,
       item: selectedCompositeId ? Number.parseInt(selectedCompositeId, 10) : undefined,
+      formId: autoFormId ?? null,
       description: "",
       attachments: [],
       status_detail: {
