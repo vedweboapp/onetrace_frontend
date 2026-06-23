@@ -24,7 +24,7 @@ import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
+import { buildProjectDetailTabHref, mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { AppButton } from "@/shared/ui";
 
 type Props = {
@@ -193,6 +193,11 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     try {
       const job = await createJobFromQuotation(quotationId);
       toastSuccess(t("detail.createJobToast"));
+      const projectId = detailForSite ? getQuotationProjectId(detailForSite.project) : null;
+      if (projectId != null) {
+        router.push(buildProjectDetailTabHref(projectId, "jobs", job.id));
+        return;
+      }
       router.push(mergeUrlQueryParam(routes.dashboard.jobs, "highlight", String(job.id)));
     } catch {
       toastError(t("detail.createJobError"));

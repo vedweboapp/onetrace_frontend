@@ -49,7 +49,7 @@ import {
   buildQuotationMassUpdateFields,
   useEntityListMassActions,
 } from "@/shared/mass-actions";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
@@ -115,12 +115,12 @@ export function QuotationsPanel() {
   const [massTagOptions, setMassTagOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [massUserOptions, setMassUserOptions] = React.useState<{ value: string; label: string }[]>([]);
   const openCreate = React.useCallback(() => {
-    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
+    router.push(buildPathWithStoredBack(`${pathname}/new`, listHref));
   }, [listHref, pathname, router]);
 
   const openEdit = React.useCallback(
     (id: number) => {
-      router.push(`${pathname}/${id}/edit?back=${encodeURIComponent(listHref)}`);
+      router.push(buildPathWithStoredBack(`${pathname}/${id}/edit`, listHref));
     },
     [listHref, pathname, router],
   );
@@ -448,9 +448,9 @@ export function QuotationsPanel() {
       c.truncate("customer", t("table.customer"), (r) => customerDisplay(r), {
         title: (r) => customerDisplay(r),
       }),
-      c.truncate("site", t("table.site"), (r) => siteDisplay(r), {
-        title: (r) => siteDisplay(r),
-      }),
+      // c.truncate("site", t("table.site"), (r) => siteDisplay(r), {
+      //   title: (r) => siteDisplay(r),
+      // }),
       c.truncate("tags", t("table.tags"), (r) => tagsDisplay(r), {
         title: (r) => tagsDisplay(r),
       }),

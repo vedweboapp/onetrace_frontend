@@ -2,13 +2,12 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { InstallationTypeChip } from "@/features/installation-types/components/installation-type-chip";
 import type { Item } from "@/features/items/types/item.types";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import { resolveInstallationTypeChipData } from "@/features/items/utils/item-installation-type.util";
 import { routes } from "@/shared/config/routes";
-import { DetailSystemMetadataSection } from "@/shared/components/entity";
 import {
   DetailLinkedTable,
   DetailLinkedTableRow,
@@ -100,12 +99,12 @@ export function ItemDetailBody({
             ) : null}
             {groupId ? (
               <DetailMetricCard label={t("detail.group")}>
-                <Link
+                <DetailEntityLink
                   href={`${routes.dashboard.groups}/${groupId}`}
                   className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                 >
                   #{groupId}
-                </Link>
+                </DetailEntityLink>
               </DetailMetricCard>
             ) : null}
           </DetailMetricsGrid>
@@ -133,12 +132,12 @@ export function ItemDetailBody({
                           cellClassName: "font-medium text-slate-900 dark:text-slate-100",
                         })}
                       >
-                        <Link
+                        <DetailEntityLink
                           href={`${routes.dashboard.items}/${component.child_item}`}
                           className="block truncate text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                         >
                           {child?.name ?? `${t("detail.componentItem")} #${component.child_item}`}
-                        </Link>
+                        </DetailEntityLink>
                       </DetailLinkedTableTd>
                       <DetailLinkedTableTd
                         narrow

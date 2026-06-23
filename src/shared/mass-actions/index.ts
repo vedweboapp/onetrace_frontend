@@ -2,6 +2,7 @@ export type {
   MassActionConfig,
   MassActionKind,
   MassActionPaths,
+  MassDirectUpdateAction,
   MassExportFormat,
   MassIdsPayload,
   MassUpdateFieldDef,

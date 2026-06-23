@@ -35,7 +35,7 @@ import {
   ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 
@@ -120,11 +120,11 @@ export function VendorsPanel() {
   }, [page, pageSize, search, isActiveFilter, refreshNonce, t]);
 
   function openCreate() {
-    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
+    router.push(buildPathWithStoredBack(`${pathname}/new`, listHref));
   }
 
   function openEdit(row: Vendor) {
-    router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`);
+    router.push(buildPathWithStoredBack(`${pathname}/${row.id}/edit`, listHref));
   }
 
   async function confirmDelete() {

@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import type { Site } from "@/features/sites/types/site.types";
 import {
   formatSiteContactPersonContactLabel,
@@ -15,7 +15,6 @@ import {
   DetailPageMapLayout,
   detailMapFillClassName,
 } from "@/shared/components/layout/detail-page-map-layout";
-import { DetailSystemMetadataSection } from "@/shared/components/entity";
 import {
   DetailMetricCard,
   DetailMetricsGrid,
@@ -92,12 +91,12 @@ export function SiteDetailBody({
             />
             <DetailMetricCard label={t("fields.client")}>
               {clientId ? (
-                <Link
+                <DetailEntityLink
                   href={`${routes.dashboard.clients}/${clientId}`}
                   className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                 >
                   {clientName ?? `#${clientId}`}
-                </Link>
+                </DetailEntityLink>
               ) : (
                 <span>{clientName ?? "—"}</span>
               )}
@@ -122,12 +121,12 @@ export function SiteDetailBody({
                       {t(`contactPerson.titles.${row.title}`)}
                     </span>
                     {contactId ? (
-                      <Link
+                      <DetailEntityLink
                         href={`${routes.dashboard.contacts}/${contactId}`}
                         className="text-sm font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                       >
                         {contactLabel}
-                      </Link>
+                      </DetailEntityLink>
                     ) : (
                       <span className="text-sm text-slate-600 dark:text-slate-400">{contactLabel}</span>
                     )}

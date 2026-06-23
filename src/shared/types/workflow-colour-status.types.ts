@@ -42,4 +42,6 @@ export type WorkflowColourStatusCreatePayload = {
   text_colour: string;
 };
 
-export type WorkflowColourStatusUpdatePayload = Partial<WorkflowColourStatusCreatePayload>;
+export type WorkflowColourStatusUpdatePayload = Partial<WorkflowColourStatusCreatePayload> & {
+  is_active?: boolean;
+};

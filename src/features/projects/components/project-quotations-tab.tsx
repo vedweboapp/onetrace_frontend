@@ -237,9 +237,9 @@ export function ProjectQuotationsTab({ projectId }: Props) {
       c.truncate("customer", tQuotations("table.customer"), (r) => customerDisplay(r), {
         title: (r) => customerDisplay(r),
       }),
-      c.truncate("site", tQuotations("table.site"), (r) => siteDisplay(r), {
-        title: (r) => siteDisplay(r),
-      }),
+      // c.truncate("site", tQuotations("table.site"), (r) => siteDisplay(r), {
+      //   title: (r) => siteDisplay(r),
+      // }),
       c.truncate("tags", tQuotations("table.tags"), (r) => tagsDisplay(r), {
         title: (r) => tagsDisplay(r),
       }),

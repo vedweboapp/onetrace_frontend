@@ -1,6 +1,7 @@
 import type { QuotationCreatePayload, QuotationDetail } from "@/features/quotations/types/quotation.types";
 import type { QuotationFormValues } from "@/features/quotations/schemas/quotation-form-schema";
 import {
+  getQuotationAdditionalContactIds,
   getQuotationContactId,
   getQuotationCustomerId,
   getQuotationLevelIds,
@@ -34,6 +35,26 @@ function parseTags(raw: string): number[] {
   return out;
 }
 
+function parseAdditionalContactIds(rows: QuotationFormValues["additional_customer_contacts"] | undefined): number[] {
+  const out: number[] = [];
+  const seen = new Set<number>();
+  for (const row of rows ?? []) {
+    const id = parseOptionalId(row.contact);
+    if (id != null && !seen.has(id)) {
+      seen.add(id);
+      out.push(id);
+    }
+  }
+  return out;
+}
+
+/** Ensures manual create/update payloads always send `additional_customer_contact` as id list. */
+export function quotationAdditionalContactIdsForApi(
+  rows: QuotationFormValues["additional_customer_contacts"] | undefined,
+): number[] {
+  return parseAdditionalContactIds(rows);
+}
+
 export function mapQuotationFormToPayload(values: QuotationFormValues): QuotationCreatePayload {
   const due = values.due_date.trim();
   const orderNum = values.order_number.trim();
@@ -44,7 +65,7 @@ export function mapQuotationFormToPayload(values: QuotationFormValues): Quotatio
     site: Number.parseInt(values.site, 10),
     quote_name: capitalizeFirstLetter(values.quote_name.trim()),
     primary_customer_contact: parseOptionalId(values.primary_customer_contact),
-    additional_customer_contact: parseOptionalId(values.additional_customer_contact),
+    additional_customer_contact: quotationAdditionalContactIdsForApi(values.additional_customer_contacts),
     tags: Array.isArray(values.tag_ids) && values.tag_ids.length > 0 ? values.tag_ids : parseTags(values.tags_raw),
     order_number: orderNum || null,
     due_date: due || null,
@@ -65,7 +86,7 @@ export function emptyQuotationFormDefaults(): QuotationFormValues {
     site: "",
     project: "",
     primary_customer_contact: "",
-    additional_customer_contact: "",
+    additional_customer_contacts: [],
     site_contact: "",
     tags_raw: "",
     tag_ids: [],
@@ -94,7 +115,9 @@ export function mapQuotationDetailToFormDefaults(detail: QuotationDetail): Quota
     site: asIdString(getQuotationSiteId(detail.site)),
     project: asIdString(getQuotationProjectId(detail.project)),
     primary_customer_contact: asIdString(getQuotationContactId(detail.primary_customer_contact)),
-    additional_customer_contact: asIdString(getQuotationContactId(detail.additional_customer_contact)),
+    additional_customer_contacts: getQuotationAdditionalContactIds(detail.additional_customer_contact).map((id) => ({
+      contact: String(id),
+    })),
     site_contact: asIdString(
       typeof detail.site_snapshot?.site_contact === "number"
         ? detail.site_snapshot.site_contact

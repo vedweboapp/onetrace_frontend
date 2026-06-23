@@ -1,3 +1,5 @@
+import { routes } from "@/shared/config/routes";
+
 export function mergeUrlQueryParam(pathWithOptionalQuery: string, key: string, value: string): string {
   const qIdx = pathWithOptionalQuery.indexOf("?");
   const pathOnly = qIdx >= 0 ? pathWithOptionalQuery.slice(0, qIdx) : pathWithOptionalQuery;
@@ -7,10 +9,59 @@ export function mergeUrlQueryParam(pathWithOptionalQuery: string, key: string, v
   return s ? `${pathOnly}?${s}` : pathOnly;
 }
 
+const BACK_HREF_STORAGE_PREFIX = "onetrace:back:";
+
+function pathKeyForBackStorage(path: string): string {
+  const withoutHash = path.split("#")[0] ?? path;
+  const withoutQuery = withoutHash.split("?")[0] ?? withoutHash;
+  return `${BACK_HREF_STORAGE_PREFIX}${withoutQuery}`;
+}
+
+/** Persists return URL for a destination path (session-only; not shown in the address bar). */
+export function storeBackHrefForPath(destinationPath: string, backHref: string): void {
+  if (typeof window === "undefined") return;
+  const safe = backHref.trim();
+  if (!safe) return;
+  try {
+    sessionStorage.setItem(pathKeyForBackStorage(destinationPath), safe);
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+export function readBackHrefForPath(destinationPath: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return sessionStorage.getItem(pathKeyForBackStorage(destinationPath));
+  } catch {
+    return null;
+  }
+}
+
+/** Navigate to `destinationPath` and remember `backHref` for the back button (clean URL). */
+export function buildPathWithStoredBack(destinationPath: string, backHref: string): string {
+  storeBackHrefForPath(destinationPath, backHref);
+  return destinationPath.split("?")[0]?.split("#")[0] ?? destinationPath;
+}
+
 export function buildDetailHrefWithListReturn(detailPath: string, currentListHref: string, entityId: number): string {
   const backTarget = mergeUrlQueryParam(currentListHref, "highlight", String(entityId));
-  return `${detailPath}?back=${encodeURIComponent(backTarget)}`;
+  return buildPathWithStoredBack(detailPath, backTarget);
 }
+
+/** After create/update, open the entity detail page; back button returns to the list (or prior URL). */
+export function buildEntityDetailHrefAfterSave(
+  entityListPath: string,
+  entityId: number,
+  listBackHref?: string | null,
+): string {
+  const detailPath = `${entityListPath}/${entityId}`;
+  const listBack = (listBackHref?.trim() || entityListPath).split("#")[0] ?? entityListPath;
+  return buildPathWithStoredBack(detailPath, listBack);
+}
+
+/** @deprecated Use {@link buildPathWithStoredBack} */
+export const buildFormHrefWithBack = buildPathWithStoredBack;
 
 export type DashboardListSection =
   | "clients"
@@ -67,8 +118,9 @@ export function sanitizeJobsBackHref(raw: string | null | undefined, fallback: s
   if (!decoded) return fallback;
 
   const pathAndQuery = decoded.split("#")[0] ?? decoded;
-  if (!PROJECT_DETAIL_BACK.test(pathAndQuery)) return fallback;
+  if (PROJECT_DETAIL_BACK.test(pathAndQuery)) return decoded;
 
+  // Any other valid in-app path (e.g. another entity detail page).
   return decoded;
 }
 
@@ -79,4 +131,17 @@ export function buildProjectJobsTabHref(projectPathname: string): string {
   params.set("tab", "jobs");
   const qs = params.toString();
   return qs ? `${pathOnly}?${qs}` : `${pathOnly}?tab=jobs`;
+}
+
+/** Project detail with a specific tab (and optional row highlight after create). */
+export function buildProjectDetailTabHref(
+  projectId: number,
+  tab: string,
+  highlightId?: number,
+): string {
+  let href = mergeUrlQueryParam(`${routes.dashboard.projects}/${projectId}`, "tab", tab);
+  if (highlightId != null && highlightId > 0) {
+    href = mergeUrlQueryParam(href, "highlight", String(highlightId));
+  }
+  return href;
 }

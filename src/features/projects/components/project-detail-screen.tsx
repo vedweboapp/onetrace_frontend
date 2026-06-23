@@ -7,7 +7,6 @@ import { useSearchParams } from "next/navigation";
 import { fetchClient } from "@/features/clients/api/client.api";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import type { ProjectType } from "@/features/project-types/types/project-type.types";
-import { Power, PowerOff } from "lucide-react";
 import { createQuotationFromProject } from "@/features/quotations/api/quotation.api";
 import { deleteProject, fetchProject, patchProject } from "@/features/projects/api/project.api";
 import { ProjectDetailBody } from "@/features/projects/components/project-detail-body";
@@ -27,7 +26,7 @@ import {
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
+import { buildProjectDetailTabHref } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
   AppTabs,
@@ -144,7 +143,8 @@ export function ProjectDetailScreen({ projectId }: Props) {
     try {
       const q = await createQuotationFromProject(projectId);
       toastSuccess(t("detail.quoteFromProjectToast"));
-      router.push(mergeUrlQueryParam(routes.dashboard.quotations, "highlight", String(q.id)));
+      setActiveTab("quotations");
+      router.push(buildProjectDetailTabHref(projectId, "quotations", q.id));
     } catch {
       toastError(t("detail.quoteFromProjectError"));
     } finally {
@@ -198,11 +198,6 @@ export function ProjectDetailScreen({ projectId }: Props) {
               }
             }}
           >
-            {detail.is_active ? (
-              <PowerOff className="size-4" aria-hidden />
-            ) : (
-              <Power className="size-4" aria-hidden />
-            )}
             {detail.is_active ? t("deactivate") : t("activate")}
           </AppButton>
           <AppButton

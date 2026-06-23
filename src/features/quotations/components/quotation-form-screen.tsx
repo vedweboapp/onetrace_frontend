@@ -15,6 +15,7 @@ import {
   fetchQuotation,
   updateQuotation,
 } from "@/features/quotations/api/quotation.api";
+import { QuotationAdditionalContactsFields } from "@/features/quotations/components/quotation-additional-contacts-fields";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
 import { useQuotationDraftState } from "@/features/quotations/hooks/use-quotation-draft-state";
 import type { ProjectLevelForQuotation, QuotationDetail } from "@/features/quotations/types/quotation.types";
@@ -53,7 +54,8 @@ import { DetailPageHeader } from "@/shared/components/layout/detail-page-header"
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
-import { mergeUrlQueryParam, sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
+import { useQuotationFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
@@ -91,14 +93,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const safeBack = React.useMemo(() => {
-    const raw = searchParams.get("back");
-    return (
-      sanitizeInternalListBack(raw, "quotations") ??
-      sanitizeInternalListBack(raw, "projects") ??
-      routes.dashboard.quotations
-    );
-  }, [searchParams]);
+  const safeBack = useQuotationFormBackUrl();
   const isEdit = mode === "edit";
 
   const createFromProjectId = React.useMemo(() => {
@@ -152,6 +147,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   } = useForm<QuotationFormValues>({
     resolver: zodResolver(schema),
     defaultValues: emptyQuotationFormDefaults(),
+    shouldUnregister: false,
   });
 
   const getFormDraft = React.useCallback(() => getValues(), [getValues]);
@@ -222,9 +218,10 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     addDisabled: saving || !customerId,
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
+  const pendingAdditionalContactRowRef = React.useRef<number | null>(null);
   const openUsersSettings = React.useCallback(() => {
     const current = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : routes.dashboard.quotations;
-    router.push(`${routes.dashboard.settingsUsers}/new?back=${encodeURIComponent(current)}`);
+    router.push(buildPathWithStoredBack(`${routes.dashboard.settingsUsers}/new`, current));
   }, [router]);
   const openTagsSettings = React.useCallback(() => {
     router.push(routes.dashboard.settingsTags);
@@ -516,7 +513,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         setValue("project", "", { shouldDirty: true, shouldValidate: true });
         setValue("site", "", { shouldDirty: true, shouldValidate: true });
         setValue("primary_customer_contact", "", { shouldDirty: true });
-        setValue("additional_customer_contact", "", { shouldDirty: true });
+        setValue("additional_customer_contacts", [], { shouldDirty: true });
         setValue("site_contact", "", { shouldDirty: true });
         return;
       }
@@ -531,7 +528,16 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         return;
       }
       if (selectTarget === "contact") {
-        setValue("primary_customer_contact", selectId, { shouldDirty: true, shouldValidate: true });
+        const rowIdx = pendingAdditionalContactRowRef.current;
+        if (rowIdx != null) {
+          setValue(`additional_customer_contacts.${rowIdx}.contact`, selectId, {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
+          pendingAdditionalContactRowRef.current = null;
+        } else {
+          setValue("primary_customer_contact", selectId, { shouldDirty: true, shouldValidate: true });
+        }
       }
     },
   });
@@ -611,7 +617,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       const payload = applyQuotationSiteSnapshot(merged, selectedSiteForMap, parseOptionalId(values.site_contact));
       const saved = isEdit && quotationId ? await updateQuotation(quotationId, payload) : await createQuotation(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(mergeUrlQueryParam(safeBack, "highlight", String(saved.id)));
+      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.quotations, saved.id, safeBack));
     } catch {
       toastError(t("saveError"));
     } finally {
@@ -724,7 +730,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                         setValue("project", "");
                         setValue("site", "");
                         setValue("primary_customer_contact", "");
-                        setValue("additional_customer_contact", "");
+                        setValue("additional_customer_contacts", []);
                         setValue("site_contact", "");
                       }}
                     />
@@ -811,36 +817,29 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                   )}
                 />
               </FieldGroup>
-              <FieldGroup label={t("fields.additionalContact")} htmlFor="quotation-additional-contact">
-                <Controller
-                  control={control}
-                  name="additional_customer_contact"
-                  render={({ field }) => (
-                    <CheckmarkSelect
-                      id="quotation-additional-contact"
-                      portaled
-                      searchable
-                      listLabel={t("fields.additionalContact")}
-                      options={contactOptions}
-                      value={field.value}
-                      emptyLabel={t("placeholders.contactOptional")}
-                      disabled={saving || !customerId}
-                      onBlur={field.onBlur}
-                      onAdd={contactQuickCreate.onAdd}
-                      addAriaLabel={contactQuickCreate.addAriaLabel}
-                      addLabel={contactQuickCreate.addLabel}
-                      onChange={field.onChange}
-                    />
-                  )}
-                />
-              </FieldGroup>
-              <FieldGroup label={t("fields.orderNumber")} htmlFor="quotation-order">
-                <input id="quotation-order" className={surfaceInputClassName} {...register("order_number")} />
-              </FieldGroup>
               <FieldGroup label={t("fields.dueDate")} htmlFor="quotation-due">
                 <SurfaceDateInput id="quotation-due" type="date" {...register("due_date")} />
               </FieldGroup>
             </FormFieldRow>
+            <QuotationAdditionalContactsFields
+              control={control}
+              contactOptions={contactOptions}
+              customerId={customerId}
+              disabled={saving}
+              onAddContact={contactQuickCreate.onAdd}
+              addAriaLabel={contactQuickCreate.addAriaLabel}
+              addLabel={contactQuickCreate.addLabel}
+              onRequestAddContact={(rowIndex) => {
+                pendingAdditionalContactRowRef.current = rowIndex;
+              }}
+            />
+            {isEdit ? (
+              <FormFieldRow cols="2">
+                <FieldGroup label={t("fields.orderNumber")} htmlFor="quotation-order">
+                  <input id="quotation-order" className={surfaceInputClassName} {...register("order_number")} />
+                </FieldGroup>
+              </FormFieldRow>
+            ) : null}
             <FormFieldRow cols="2">
               <FieldGroup label={t("fields.salesperson")} htmlFor="quotation-sales">
                 <Controller

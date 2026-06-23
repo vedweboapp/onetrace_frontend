@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Power, PowerOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
@@ -161,11 +160,6 @@ export function SiteDetailScreen({ siteId }: Props) {
               }
             }}
           >
-            {detail.is_active ? (
-              <PowerOff className="size-4" aria-hidden />
-            ) : (
-              <Power className="size-4" aria-hidden />
-            )}
             {detail.is_active ? t("deactivate") : t("activate")}
           </AppButton>
           <EntityDetailEditButton

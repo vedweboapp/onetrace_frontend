@@ -1,14 +1,18 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
 import type { Contact } from "@/features/contacts/types/contact.types";
 import {
   getContactClientId,
   getContactType,
   getContactVendorId,
 } from "@/features/contacts/utils/contact-nested-fields.util";
-import { DetailEmailLink, DetailPhoneLink, DetailSystemMetadataSection } from "@/shared/components/entity";
+import {
+  DetailEmailLink,
+  DetailEntityLink,
+  DetailPhoneLink,
+  DetailSystemMetadataSection,
+} from "@/shared/components/entity";
 import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
   DetailMetricCard,
@@ -51,12 +55,12 @@ export function ContactDetailBody({ detail, clientName, vendorName, dateFmt }: P
             {contactType === "vendor" ? (
               <DetailMetricCard label={t("fields.vendor")}>
                 {vendorId ? (
-                  <Link
+                  <DetailEntityLink
                     href={`${routes.dashboard.vendors}/${vendorId}`}
                     className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                   >
                     {vendorName ?? `#${vendorId}`}
-                  </Link>
+                  </DetailEntityLink>
                 ) : (
                   <span>{vendorName ?? "—"}</span>
                 )}
@@ -64,12 +68,12 @@ export function ContactDetailBody({ detail, clientName, vendorName, dateFmt }: P
             ) : (
               <DetailMetricCard label={t("fields.client")}>
                 {clientId ? (
-                  <Link
+                  <DetailEntityLink
                     href={`${routes.dashboard.clients}/${clientId}`}
                     className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                   >
                     {clientName ?? `#${clientId}`}
-                  </Link>
+                  </DetailEntityLink>
                 ) : (
                   <span>{clientName ?? "—"}</span>
                 )}

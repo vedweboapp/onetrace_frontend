@@ -102,6 +102,44 @@ export function getQuotationContactId(
   return null;
 }
 
+export type QuotationContactEntry =
+  | { kind: "contact"; contact: QuotationContactNested }
+  | { kind: "id"; id: number };
+
+/** Resolves `additional_customer_contact` from the API (single value or list) into display entries. */
+export function getQuotationAdditionalContactEntries(
+  contacts: QuotationListItem["additional_customer_contact"] | undefined | null,
+): QuotationContactEntry[] {
+  if (contacts == null) return [];
+  if (Array.isArray(contacts)) {
+    const out: QuotationContactEntry[] = [];
+    for (const item of contacts) {
+      if (typeof item === "number" && item > 0) {
+        out.push({ kind: "id", id: item });
+        continue;
+      }
+      if (isRecord(item) && typeof item.id === "number" && item.id > 0) {
+        out.push({ kind: "contact", contact: item as QuotationContactNested });
+      }
+    }
+    return out;
+  }
+  const id = getQuotationContactId(contacts);
+  if (id != null) return [{ kind: "id", id }];
+  if (isRecord(contacts)) {
+    return [{ kind: "contact", contact: contacts as QuotationContactNested }];
+  }
+  return [];
+}
+
+export function getQuotationAdditionalContactIds(
+  contacts: QuotationListItem["additional_customer_contact"] | undefined | null,
+): number[] {
+  return getQuotationAdditionalContactEntries(contacts).map((entry) =>
+    entry.kind === "id" ? entry.id : entry.contact.id,
+  );
+}
+
 export function quotationContactLabel(contact: number | QuotationContactNested | null | undefined): string {
   if (contact == null) return "—";
   if (typeof contact === "number") return `#${contact}`;

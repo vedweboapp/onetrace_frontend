@@ -2,12 +2,15 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import {
   createCompositeItem,
   updateCompositeItem,
 } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { routes } from "@/shared/config/routes";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
 import { cn } from "@/core/utils/http.util";
 import type { ItemComponentRef } from "@/features/items/types/item.types";
@@ -58,6 +61,7 @@ function installationTypeIdPayload(value: string): { installation_type?: number 
 
 export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
   const t = useTranslations("Dashboard.compositeItems.modal");
+  const router = useRouter();
   const pathname = usePathname();
   const pendingItemRowRef = React.useRef<string | null>(null);
 
@@ -372,13 +376,17 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
           toastSuccess(t("updatedToast"));
           onSaved();
           onClose();
+          router.push(buildEntityDetailHrefAfterSave(routes.dashboard.compositeItems, item.id, routes.dashboard.compositeItems));
           return;
         }
 
         await updateCompositeItem(item.id, payload);
         toastSuccess(t("updatedToast"));
+        onSaved();
+        onClose();
+        router.push(buildEntityDetailHrefAfterSave(routes.dashboard.compositeItems, item.id, routes.dashboard.compositeItems));
       } else {
-        await createCompositeItem({
+        const created = await createCompositeItem({
           name: name.trim(),
           sku: sku.trim(),
           quantity: qtyN,
@@ -388,9 +396,10 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
           ...installationTypePayload,
         });
         toastSuccess(t("createdToast"));
+        onSaved();
+        onClose();
+        router.push(buildEntityDetailHrefAfterSave(routes.dashboard.compositeItems, created.id, routes.dashboard.compositeItems));
       }
-      onSaved();
-      onClose();
     } catch {
       /* axios interceptor toast */
     } finally {

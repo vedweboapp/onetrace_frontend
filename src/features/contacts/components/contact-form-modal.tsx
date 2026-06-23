@@ -3,6 +3,7 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { createContact } from "@/features/contacts/api/contact.api";
 import type { Contact } from "@/features/contacts/types/contact.types";
@@ -13,6 +14,8 @@ import {
 } from "@/features/contacts/utils/contact-form-map";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { routes } from "@/shared/config/routes";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import {
@@ -52,6 +55,7 @@ export function ContactFormModal({
   lockClient = false,
 }: Props) {
   const t = useTranslations("Dashboard.contacts");
+  const router = useRouter();
   const [saving, setSaving] = React.useState(false);
 
   const schema = React.useMemo(
@@ -110,6 +114,7 @@ export function ContactFormModal({
       onCreated?.(created);
       onSaved();
       onClose();
+      router.push(buildEntityDetailHrefAfterSave(routes.dashboard.contacts, created.id, routes.dashboard.contacts));
     } finally {
       setSaving(false);
     }

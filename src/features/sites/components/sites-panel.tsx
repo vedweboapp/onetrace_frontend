@@ -37,7 +37,7 @@ import {
   ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 
@@ -282,7 +282,7 @@ export function SitesPanel() {
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
           action={
-            <AppButton type="button" variant="primary" size="sm" onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)}>
+            <AppButton type="button" variant="primary" size="sm" onClick={() => router.push(buildPathWithStoredBack(`${pathname}/new`, listHref))}>
               {t("add")}
             </AppButton>
           }
@@ -351,7 +351,7 @@ export function SitesPanel() {
               action: (
                 <AddButton
                   type="button"
-                  onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)}
+                  onClick={() => router.push(buildPathWithStoredBack(`${pathname}/new`, listHref))}
                 />
               ),
             }}
@@ -386,7 +386,7 @@ export function SitesPanel() {
                     <DataTableRowActionsMenu
                       menuAriaLabel={tList("openRowActions")}
                       items={[
-                        { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`) },
+                        { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => router.push(buildPathWithStoredBack(`${pathname}/${row.id}/edit`, listHref)) },
                         { id: "delete", label: t("delete"), icon: Trash2, tone: "danger", onSelect: () => { setDeletingSite(row); setDeleteOpen(true); } },
                         row.is_active
                           ? {

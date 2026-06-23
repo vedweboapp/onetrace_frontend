@@ -53,7 +53,7 @@ const DrawingBottomToolbar = ({
         )}>
             <div className="flex flex-wrap items-center justify-center gap-3 rounded-2xl bg-white px-3 py-2 shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
                 <div className="flex items-center gap-2">
-                    <CheckmarkSelect
+                    {/* <CheckmarkSelect
                         listLabel={`${t("choosePlot")} *`}
                         options={plots.map((p) => ({ value: String(p.id), label: p.name }))}
                         value={selectedPlotId}
@@ -61,7 +61,7 @@ const DrawingBottomToolbar = ({
                         emptyLabel={t("choosePlot")}
                         side="top"
                         searchable
-                    />
+                    /> */}
 
                     <CheckmarkSelect
                         listLabel={`${t("chooseGroup")} *`}

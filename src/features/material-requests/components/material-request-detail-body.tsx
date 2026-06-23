@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { DetailEntityLink } from "@/shared/components/entity";
 import type { MaterialRequestDetail } from "@/features/material-requests/types/material-request.types";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import { MaterialRequestStatusBadge } from "@/features/material-requests/components/material-request-status-badge";
@@ -101,12 +101,12 @@ export function MaterialRequestDetailBody({
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {dispatchIds.map((dispatchId) => (
               <li key={dispatchId} className="py-3 first:pt-0 last:pb-0">
-                <Link
+                <DetailEntityLink
                   href={`${routes.dashboard.dispatches}/${dispatchId}`}
                   className="font-semibold text-slate-900 underline-offset-2 hover:underline dark:text-slate-100"
                 >
                   {t("detail.dispatchLink", { id: `DSP-${String(dispatchId).padStart(5, "0")}` })}
-                </Link>
+                </DetailEntityLink>
               </li>
             ))}
           </ul>

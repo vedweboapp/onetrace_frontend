@@ -39,7 +39,7 @@ import {
   ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
@@ -116,12 +116,12 @@ export function PurchaseOrdersPanel() {
   );
 
   const openCreate = React.useCallback(() => {
-    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
+    router.push(buildPathWithStoredBack(`${pathname}/new`, listHref));
   }, [listHref, pathname, router]);
 
   const openEdit = React.useCallback(
     (id: number) => {
-      router.push(`${pathname}/${id}/edit?back=${encodeURIComponent(listHref)}`);
+      router.push(buildPathWithStoredBack(`${pathname}/${id}/edit`, listHref));
     },
     [listHref, pathname, router],
   );

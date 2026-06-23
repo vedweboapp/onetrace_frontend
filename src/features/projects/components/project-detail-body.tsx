@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { ProjectTypeChip } from "@/features/project-types/components/project-type-chip";
 import type { ProjectType } from "@/features/project-types/types/project-type.types";
 import type { Project } from "@/features/projects/types/project.types";
@@ -9,7 +9,6 @@ import { getProjectClientId } from "@/features/projects/utils/project-client-id.
 import { resolveProjectTypeChipData } from "@/features/projects/utils/project-type-id.util";
 import { routes } from "@/shared/config/routes";
 import { DetailFormattedAddress, hasDetailAddress } from "@/shared/components/layout/detail-formatted-address";
-import { DetailSystemMetadataSection } from "@/shared/components/entity";
 import {
   DetailMetricCard,
   DetailMetricsGrid,
@@ -87,12 +86,12 @@ export function ProjectDetailBody({
             </DetailMetricCard>
             <DetailMetricCard label={t("fields.client")}>
               {clientId ? (
-                <Link
+                <DetailEntityLink
                   href={`${routes.dashboard.clients}/${clientId}`}
                   className="break-words text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                 >
                   {clientName ?? `#${clientId}`}
-                </Link>
+                </DetailEntityLink>
               ) : (
                 <span className="break-words text-slate-700 dark:text-slate-200">{clientName ?? "—"}</span>
               )}
@@ -136,12 +135,12 @@ export function ProjectDetailBody({
             <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {siteRows.map((row) => (
                 <li key={row.id} className="min-w-0 border-t border-slate-200/80 pt-3 first:border-t-0 first:pt-0 dark:border-slate-800">
-                  <Link
+                  <DetailEntityLink
                     href={`${routes.dashboard.sites}/${row.id}`}
                     className="block min-w-0 font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                   >
                     <span className="break-words">{row.label}</span>
-                  </Link>
+                  </DetailEntityLink>
                   {typeof row.isActive === "boolean" ? (
                     <div className="mt-2">
                       <ActiveStatusBadge

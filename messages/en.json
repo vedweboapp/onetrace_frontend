@@ -202,7 +202,7 @@
       "qrCodes": "QR codes",
       "projects": "Projects",
       "groups": "Groups",
-      "materialRequests": "Material Request",
+      "materialRequests": "Material Requests",
       "dispatches": "Dispatches",
       "returnToStock": "Returns",
       "products": "Products",
@@ -317,7 +317,7 @@
         "step2": "Create a new webhook and paste the URL, method, and header values from this page.",
         "step3": "Set the action to match the resource action below and save the webhook.",
         "method": "HTTP method",
-        "resourceAction": "Resource action",
+        "resourceAction": "Action",
         "webhookUri": "Webhook URL",
         "header": "Header: {name}",
         "samplePayload": "Sample payload",
@@ -349,7 +349,9 @@
         "webhookLastReceived": "Webhook last received",
         "notAvailable": "—",
         "yes": "Yes",
-        "no": "No"
+        "no": "No",
+        "disconnected": "Disconnected"
+
       }
     },
     "settingsPersonalProfile": {
@@ -494,6 +496,8 @@
       "add": "Add",
       "edit": "Edit",
       "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
       "table": {
         "type": "Type",
         "kindPin": "Pin",
@@ -535,6 +539,13 @@
       "saved": "Status updated",
       "created": "Status created",
       "deleted": "Status deleted",
+      "activatedToast": "Pin status activated",
+      "deactivatedToast": "Pin status deactivated",
+      "toggleActiveError": "Could not update pin status. Try again.",
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
       "hexPlaceholder": "#000000",
       "validationName": "Enter a status name.",
       "validationHex": "Use a valid 6-digit hex color (e.g. #E5E7EB)."
@@ -546,6 +557,8 @@
       "add": "Add",
       "edit": "Edit",
       "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
       "table": {
         "type": "Type",
         "kindPin": "Pin",
@@ -587,6 +600,13 @@
       "saved": "Status updated",
       "created": "Status created",
       "deleted": "Status deleted",
+      "activatedToast": "Job status activated",
+      "deactivatedToast": "Job status deactivated",
+      "toggleActiveError": "Could not update job status. Try again.",
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
       "hexPlaceholder": "#000000",
       "validationName": "Enter a status name.",
       "validationHex": "Use a valid 6-digit hex color (e.g. #E5E7EB)."
@@ -598,6 +618,8 @@
       "add": "Add",
       "edit": "Edit",
       "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
       "table": {
         "type": "Type",
         "kindPin": "Pin",
@@ -639,6 +661,13 @@
       "saved": "Status updated",
       "created": "Status created",
       "deleted": "Status deleted",
+      "activatedToast": "Material status activated",
+      "deactivatedToast": "Material status deactivated",
+      "toggleActiveError": "Could not update material status. Try again.",
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
       "hexPlaceholder": "#000000",
       "validationName": "Enter a status name.",
       "validationHex": "Use a valid 6-digit hex color (e.g. #E5E7EB)."
@@ -650,6 +679,8 @@
       "add": "Add",
       "edit": "Edit",
       "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
       "filterState": "Active state",
       "filterAll": "All",
       "table": {
@@ -689,6 +720,9 @@
       "saved": "Tag updated",
       "created": "Tag created",
       "deleted": "Tag deleted",
+      "activatedToast": "Tag activated",
+      "deactivatedToast": "Tag deactivated",
+      "toggleActiveError": "Could not update tag status. Try again.",
       "hexPlaceholder": "#000000",
       "validationName": "Enter a tag name.",
       "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
@@ -1768,6 +1802,7 @@
         "project": "Project",
         "primaryContact": "Primary contact",
         "additionalContact": "Additional contact",
+        "additionalContacts": "Additional contacts",
         "siteContact": "Site contact",
         "orderNumber": "Order number",
         "dueDate": "Due date",
@@ -1782,6 +1817,13 @@
         "createdAt": "Created",
         "updatedAt": "Last updated",
         "createdBy": "Created by"
+      },
+      "additionalContacts": {
+        "add": "Add additional contact",
+        "remove": "Remove additional contact",
+        "empty": "No additional contacts added yet.",
+        "selectClientFirst": "Select a client first to add additional contacts.",
+        "rowLabel": "Additional contact {number}"
       },
       "modal": {
         "createTitle": "New quotation",
@@ -2498,6 +2540,7 @@
         "error": "Could not assign jobs. Try again.",
         "pickWorker": "Select a technician"
       },
+      "massAssignWorker": "Assign worker",
       "activate": "Activate",
       "deactivate": "Deactivate",
       "activatedToast": "Job activated",
@@ -2515,7 +2558,7 @@
         "jobStatus": "Job status",
         "assignedWorker": "Assigned worker",
         "start": "Start",
-        "serialNo": "Job No.",
+        "serialNo": "Job",
         "end": "End",
         "recordStatus": "Record",
         "actions": "Actions"
@@ -2799,7 +2842,7 @@
           "drawings": "Drawings",
           "jobsheets": "Job Sheets",
           "jobs": "Jobs",
-          "quotations": "Quotations",
+          "quotations": "Quotes",
           "docs": "Docs",
           "approvals": "Approvals",
           "pins": "Pins"

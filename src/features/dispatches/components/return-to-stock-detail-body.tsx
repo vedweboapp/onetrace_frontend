@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { DetailEntityLink } from "@/shared/components/entity";
 import { ReturnRequestStatusBadge } from "@/features/dispatches/components/return-request-status-badge";
 import type { DispatchReturnRequest } from "@/features/dispatches/types/dispatch.types";
 import { dispatchReturnWorkerLabel } from "@/features/dispatches/utils/dispatch-return.util";
@@ -80,12 +80,12 @@ export function ReturnToStockDetailBody({ detail, dueFmt }: Props) {
                       {line.item_name?.trim() || `#${line.item_id}`}
                     </td>
                     <td className="px-3 py-3">
-                      <Link
+                      <DetailEntityLink
                         href={`${routes.dashboard.dispatches}/${line.dispatch_id}`}
                         className="font-medium text-slate-800 underline-offset-2 hover:underline dark:text-slate-200"
                       >
                         {line.dispatch_number}
-                      </Link>
+                      </DetailEntityLink>
                     </td>
                     <td className={quantityTableCellClass}>
                       <QuantityWithUnits value={line.quantity} unitsLabel={t("units")} />

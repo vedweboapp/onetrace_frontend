@@ -2,10 +2,13 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/core/utils/http.util";
 import { createItem, updateItem } from "@/features/items/api/item.api";
 import type { Item } from "@/features/items/types/item.types";
 import { toastSuccess } from "@/shared/feedback/app-toast";
+import { routes } from "@/shared/config/routes";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { AppButton, AppModal, FieldLabel, fieldErrorTextClassName, surfaceInputClassName } from "@/shared/ui";
 
@@ -26,6 +29,7 @@ function numOrNull(raw: string): number | null {
 
 export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
   const t = useTranslations("Dashboard.items.modal");
+  const router = useRouter();
 
   const nameId = React.useId();
   const skuId = React.useId();
@@ -87,8 +91,11 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
           selling_price: sellN,
         });
         toastSuccess(t("updatedToast"));
+        onSaved();
+        onClose();
+        router.push(buildEntityDetailHrefAfterSave(routes.dashboard.items, item.id, routes.dashboard.items));
       } else {
-        await createItem({
+        const created = await createItem({
           name: nameTrim,
           sku: skuTrim,
           is_composite: false,
@@ -97,9 +104,10 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
           selling_price: sellN,
         });
         toastSuccess(t("createdToast"));
+        onSaved();
+        onClose();
+        router.push(buildEntityDetailHrefAfterSave(routes.dashboard.items, created.id, routes.dashboard.items));
       }
-      onSaved();
-      onClose();
     } catch {
       /* axios interceptor snackbar */
     } finally {

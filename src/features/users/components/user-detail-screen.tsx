@@ -3,7 +3,6 @@
 import * as React from "react";
 import { Mail, Phone, User } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchUserProfile } from "@/features/users/api/user.api";
 import type { UserProfile } from "@/features/users/types/user.types";
@@ -18,7 +17,8 @@ import {
 } from "@/shared/components/layout/detail-metric-card";
 import { EntityDetailLoadingSkeleton } from "@/shared/components/entity";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { useEntityDetailBack } from "@/shared/hooks/use-entity-detail-back";
+import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { AppButton, EditButton, SurfaceShell } from "@/shared/ui";
 
 function userRoleLabel(row: UserProfile | null): string {
@@ -33,11 +33,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const safeBack = sanitizeInternalListBack(
-    searchParams.get("back"),
-    "settings/users",
-  );
+  const safeBack = useEntityDetailBack("settings/users", routes.dashboard.settingsUsers);
   const [detail, setDetail] = React.useState<UserProfile | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -122,7 +118,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
             <EditButton
               onClick={() =>
                 router.push(
-                  `${pathname}/edit?back=${encodeURIComponent(safeBack ?? routes.dashboard.settingsUsers)}`,
+                  buildPathWithStoredBack(`${pathname}/edit`, safeBack ?? routes.dashboard.settingsUsers),
                 )
               }
             />

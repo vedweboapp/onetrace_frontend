@@ -3,16 +3,21 @@ import { DashboardAuthGuard } from "@/features/dashboard/components/dashboard-au
 import { DashboardChromeSlot } from "@/features/dashboard/components/dashboard-chrome-slot";
 import { DashboardHeader } from "@/features/dashboard/components/dashboard-header";
 import { DashboardSidebar } from "@/features/dashboard/components/dashboard-sidebar";
+import { NavigationBackTracker } from "@/shared/components/navigation/navigation-back-tracker";
 import {
   dashboardMainGutterClassName,
   dashboardPageContainerClassName,
 } from "@/shared/config/dashboard-shell";
 import { cn } from "@/core/utils/http.util";
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <DashboardAuthGuard>
+      <Suspense fallback={null}>
+        <NavigationBackTracker />
+      </Suspense>
       <DashboardAppearanceScope
         className={cn(
           "flex h-dvh min-h-0 overflow-hidden bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100",

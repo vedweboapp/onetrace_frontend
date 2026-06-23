@@ -33,7 +33,7 @@ import {
   AppTabs,
   type AppTabItem,
 } from "@/shared/ui";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import {
@@ -113,7 +113,7 @@ export function ContactsPanel() {
 
   const openEdit = React.useCallback(
     (id: number) => {
-      router.push(`${pathname}/${id}/edit?back=${encodeURIComponent(listHref)}`);
+      router.push(buildPathWithStoredBack(`${pathname}/${id}/edit`, listHref));
     },
     [listHref, pathname, router],
   );

@@ -7,7 +7,7 @@ import {
   formatChecklistTypeLabel,
   projectTypeLabelFromChecklistRow,
 } from "@/features/checklist-types/utils/checklist-type-display.util";
-import { ActiveStatusBadge, DataTableRowActionsMenu } from "@/shared/ui";
+import { ActiveStatusBadge } from "@/shared/ui";
 import {
   DataTable,
   DataTableBody,
@@ -21,8 +21,6 @@ import { cn } from "@/core/utils/http.util";
 
 const CHECKLIST_DND_TYPE = "application/x-checklist-type-order";
 
-type RowMenuItem = React.ComponentProps<typeof DataTableRowActionsMenu>["items"][number];
-
 type Props = {
   items: ChecklistType[];
   reordering: boolean;
@@ -30,7 +28,6 @@ type Props = {
   onDragFromIndexChange: (index: number | null) => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
   onRowClick: (row: ChecklistType) => void;
-  rowMenuItems: (row: ChecklistType) => RowMenuItem[];
   labels: {
     sequence: string;
     title: string;
@@ -42,8 +39,6 @@ type Props = {
     active: string;
     inactive: string;
     created: string;
-    actions: string;
-    openRowActions: string;
   };
   formatCreated: (row: ChecklistType) => React.ReactNode;
 };
@@ -55,7 +50,6 @@ export function ChecklistTypeSortableTable({
   onDragFromIndexChange,
   onReorder,
   onRowClick,
-  rowMenuItems,
   labels,
   formatCreated,
 }: Props) {
@@ -64,7 +58,7 @@ export function ChecklistTypeSortableTable({
       <DataTable>
         <DataTableHead>
           <tr>
-            <DataTableTh narrow className="w-16">
+            <DataTableTh narrow>
               <span className="sr-only">{labels.sequence}</span>
             </DataTableTh>
             <DataTableTh>{labels.title}</DataTableTh>
@@ -72,9 +66,6 @@ export function ChecklistTypeSortableTable({
             <DataTableTh>{labels.required}</DataTableTh>
             <DataTableTh>{labels.status}</DataTableTh>
             <DataTableTh className="hidden lg:table-cell">{labels.created}</DataTableTh>
-            <DataTableTh narrow>
-              <span className="sr-only">{labels.actions}</span>
-            </DataTableTh>
           </tr>
         </DataTableHead>
         <DataTableBody>
@@ -138,15 +129,6 @@ export function ChecklistTypeSortableTable({
                 />
               </DataTableTd>
               <DataTableTd className="hidden lg:table-cell">{formatCreated(row)}</DataTableTd>
-              <DataTableTd
-                narrow
-                onPointerDown={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-                onKeyDown={(e) => e.stopPropagation()}
-              >
-                <DataTableRowActionsMenu menuAriaLabel={labels.openRowActions} items={rowMenuItems(row)} />
-              </DataTableTd>
             </DataTableRow>
           ))}
         </DataTableBody>

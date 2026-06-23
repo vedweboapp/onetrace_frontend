@@ -1,7 +1,7 @@
 import type { ContactType } from "@/features/contacts/types/contact.types";
 import { routes } from "@/shared/config/routes";
 import type { QuickCreateKind } from "@/shared/types/quick-create.types";
-import { mergeUrlQueryParam, sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { mergeUrlQueryParam, readBackHrefForPath, sanitizeInternalListBack, storeBackHrefForPath } from "@/shared/utils/detail-from-list.util";
 import type { DashboardListSection } from "@/shared/utils/detail-from-list.util";
 
 export const QUICK_CREATE_SELECT_PARAM = "select";
@@ -40,8 +40,10 @@ export function resolveFormBackUrl(
   rawBack: string | null | undefined,
   listSection: DashboardListSection,
   fallback: string,
+  currentPath?: string | null,
 ): string {
-  return sanitizeInternalListBack(rawBack, listSection) ?? sanitizeInternalDashboardBack(rawBack) ?? fallback;
+  const raw = (currentPath ? readBackHrefForPath(currentPath) : null) ?? rawBack;
+  return sanitizeInternalListBack(raw, listSection) ?? sanitizeInternalDashboardBack(raw) ?? fallback;
 }
 
 export function getQuickCreateNewPath(kind: QuickCreateKind): string {
@@ -69,8 +71,9 @@ export function buildQuickCreateNavigateHref(
   kind: QuickCreateKind,
   args: { returnTo: string; clientId?: number; vendorId?: number; contactType?: ContactType },
 ): string {
+  const path = getQuickCreateNewPath(kind);
+  storeBackHrefForPath(path, args.returnTo);
   const params = new URLSearchParams();
-  params.set("back", args.returnTo);
   params.set(QUICK_CREATE_SELECT_TARGET_PARAM, kind);
   if (args.clientId != null && args.clientId > 0) {
     params.set(QUICK_CREATE_CLIENT_PARAM, String(args.clientId));
@@ -81,7 +84,7 @@ export function buildQuickCreateNavigateHref(
   if (args.contactType === "client" || args.contactType === "vendor") {
     params.set(QUICK_CREATE_CONTACT_TYPE_PARAM, args.contactType);
   }
-  return `${getQuickCreateNewPath(kind)}?${params.toString()}`;
+  return params.toString() ? `${path}?${params.toString()}` : path;
 }
 
 export function buildQuickCreateReturnHref(back: string, createdId: number, selectTarget: QuickCreateKind): string {

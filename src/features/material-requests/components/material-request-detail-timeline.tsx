@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { DetailEntityLink } from "@/shared/components/entity";
 import { fetchMaterialRequestLogs } from "@/features/material-requests/api/material-request.api";
 import type { MaterialRequestLogEntry } from "@/features/material-requests/types/material-request.types";
 import { DetailPagePadding, DetailPanelCard } from "@/shared/components/layout/detail-metric-card";
@@ -73,12 +73,12 @@ export function MaterialRequestDetailTimeline({ materialRequestId, dateFmt }: Pr
                     </span>
                   ) : null}
                   {entry.dispatch_id != null && entry.dispatch_id > 0 ? (
-                    <Link
+                    <DetailEntityLink
                       href={`${routes.dashboard.dispatches}/${entry.dispatch_id}`}
                       className="text-xs font-semibold text-slate-900 underline-offset-2 hover:underline dark:text-slate-100"
                     >
                       {t("logs.viewDispatch")}
-                    </Link>
+                    </DetailEntityLink>
                   ) : null}
                 </div>
               </li>

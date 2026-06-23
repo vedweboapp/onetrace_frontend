@@ -36,7 +36,7 @@ import {
   SurfaceShell,
 } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import {
@@ -238,11 +238,11 @@ export function ProjectsPanel() {
   const massSel = React.useMemo(() => massSelectionColumn(mass, items.length), [mass, items.length]);
 
   function openCreate() {
-    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
+    router.push(buildPathWithStoredBack(`${pathname}/new`, listHref));
   }
 
   function openEdit(row: Project) {
-    router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`);
+    router.push(buildPathWithStoredBack(`${pathname}/${row.id}/edit`, listHref));
   }
 
   async function handleToggleActive(row: Project, next: boolean) {

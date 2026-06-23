@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Power, PowerOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -125,11 +124,6 @@ export function VendorDetailScreen({ vendorId }: Props) {
               }
             }}
           >
-            {detail.is_active ? (
-              <PowerOff className="size-4" aria-hidden />
-            ) : (
-              <Power className="size-4" aria-hidden />
-            )}
             {detail.is_active ? t("deactivate") : t("activate")}
           </AppButton>
           <EntityDetailDeleteEditActions

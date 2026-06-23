@@ -51,19 +51,35 @@ export function getJobStatusRow(job: Pick<Job, "job_status">): WorkflowColourSta
   return null;
 }
 
-export function jobClientLabel(client: Job["client"]): string {
+export function getJobClientId(client: Job["client"]): number | null {
+  if (typeof client === "number" && Number.isFinite(client) && client > 0) return client;
+  if (client && typeof client === "object" && typeof client.id === "number" && client.id > 0) return client.id;
+  return null;
+}
+
+export function getJobProjectId(project: Job["project"]): number | null {
+  if (typeof project === "number" && Number.isFinite(project) && project > 0) return project;
+  if (project && typeof project === "object" && typeof project.id === "number" && project.id > 0) return project.id;
+  return null;
+}
+
+export function jobClientLabel(client: Job["client"], lookupName?: string | null): string {
   if (client && typeof client === "object" && typeof client.name === "string" && client.name.trim()) {
     return client.name.trim();
   }
-  const id = typeof client === "number" ? client : (client as JobClientRef | undefined)?.id;
+  const fromLookup = lookupName?.trim();
+  if (fromLookup) return fromLookup;
+  const id = getJobClientId(client);
   return id != null ? `#${id}` : "—";
 }
 
-export function jobProjectLabel(project: Job["project"]): string {
+export function jobProjectLabel(project: Job["project"], lookupName?: string | null): string {
   if (project && typeof project === "object" && typeof project.name === "string" && project.name.trim()) {
     return project.name.trim();
   }
-  const id = typeof project === "number" ? project : (project as JobProjectRef | undefined)?.id;
+  const fromLookup = lookupName?.trim();
+  if (fromLookup) return fromLookup;
+  const id = getJobProjectId(project);
   return id != null ? `#${id}` : "—";
 }
 
