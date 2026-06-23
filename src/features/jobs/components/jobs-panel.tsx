@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { fetchFormsPage } from "@/features/forms/api/forms.api";
+import { fetchProjectFormsByProject } from "@/features/forms/api/forms.api";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
 import { deleteJob, fetchAllJobIds, fetchJobsPage } from "@/features/jobs/api/job.api";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
@@ -166,17 +166,19 @@ export function JobsPanel() {
     }
   }, [items]);
 
-  const includeFormsInMassUpdate = React.useMemo(() => {
-    if (mass.selectedCount === 0) return false;
+  const sharedMassUpdateProjectId = React.useMemo(() => {
+    if (mass.selectedCount === 0) return null;
     const projectIds = new Set<number | null>();
     for (const id of mass.selection.selectedIds) {
-      if (!jobProjectByIdRef.current.has(id)) return false;
+      if (!jobProjectByIdRef.current.has(id)) return null;
       projectIds.add(jobProjectByIdRef.current.get(id) ?? null);
     }
-    if (projectIds.size !== 1) return false;
+    if (projectIds.size !== 1) return null;
     const only = [...projectIds][0];
-    return only != null && only > 0;
+    return only != null && only > 0 ? only : null;
   }, [mass.selectedCount, mass.selection.selectedIds, items]);
+
+  const includeFormsInMassUpdate = sharedMassUpdateProjectId != null;
 
   const massUpdateFields = React.useMemo(
     () =>
@@ -266,13 +268,12 @@ export function JobsPanel() {
     let cancelled = false;
     (async () => {
       try {
-        const [workers, statuses, clients, projects, sites, forms] = await Promise.all([
+        const [workers, statuses, clients, projects, sites] = await Promise.all([
           loadTechnicianOptions(),
           fetchJobStatusesPage(1, 500),
           fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
           fetchProjectsPage(1, 500, { is_active: true }),
           fetchSitesPage(1, 500, { is_active: true }),
-          fetchFormsPage(1, 500, undefined, { silent: true }),
         ]);
         if (!cancelled) {
           setWorkerOptions(workers);
@@ -280,12 +281,6 @@ export function JobsPanel() {
           setMassClientOptions(clients.items.map((c) => ({ value: String(c.id), label: c.name })));
           setMassProjectOptions(projects.items.map((p) => ({ value: String(p.id), label: p.name })));
           setMassSiteOptions(sites.items.map((s) => ({ value: String(s.id), label: s.site_name })));
-          setMassFormOptions(
-            forms.items.map((f) => ({
-              value: String(f.id),
-              label: f.name?.trim() || `#${f.id}`,
-            })),
-          );
           const byId: Record<number, { status_name: string; bg_colour: string; text_colour: string }> = {};
           for (const s of statuses.items) {
             byId[s.id] = {
@@ -312,6 +307,32 @@ export function JobsPanel() {
       cancelled = true;
     };
   }, []);
+
+  React.useEffect(() => {
+    if (!sharedMassUpdateProjectId) {
+      setMassFormOptions([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const forms = await fetchProjectFormsByProject(sharedMassUpdateProjectId, { silent: true });
+        if (!cancelled) {
+          setMassFormOptions(
+            forms.map((f) => ({
+              value: String(f.id),
+              label: f.name?.trim() || `#${f.id}`,
+            })),
+          );
+        }
+      } catch {
+        if (!cancelled) setMassFormOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sharedMassUpdateProjectId]);
 
   React.useEffect(() => {
     let cancelled = false;

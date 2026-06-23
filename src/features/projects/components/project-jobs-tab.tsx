@@ -5,7 +5,7 @@ import { Check, CheckCheck, Layers, Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { fetchFormsPage } from "@/features/forms/api/forms.api";
+import { fetchProjectFormsByProject } from "@/features/forms/api/forms.api";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
 import { deleteJob } from "@/features/jobs/api/job.api";
 import { fetchProjectsPage, fetchProjectJobsHierarchy } from "@/features/projects/api/project.api";
@@ -503,7 +503,7 @@ export function ProjectJobsTab({ projectId }: Props) {
           fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
           fetchProjectsPage(1, 500, { is_active: true }),
           fetchSitesPage(1, 500, { is_active: true }),
-          fetchFormsPage(1, 500, undefined, { silent: true }),
+          fetchProjectFormsByProject(projectId, { silent: true }),
         ]);
         if (!cancelled) {
           setJobStatusOptions(statuses.items.map((s) => ({ value: String(s.id), label: s.status_name })));
@@ -511,7 +511,7 @@ export function ProjectJobsTab({ projectId }: Props) {
           setMassProjectOptions(projects.items.map((p) => ({ value: String(p.id), label: p.name })));
           setMassSiteOptions(sites.items.map((s) => ({ value: String(s.id), label: s.site_name })));
           setMassFormOptions(
-            forms.items.map((f) => ({
+            forms.map((f) => ({
               value: String(f.id),
               label: f.name?.trim() || `#${f.id}`,
             })),
@@ -542,7 +542,7 @@ export function ProjectJobsTab({ projectId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [projectId]);
 
   React.useEffect(() => {
     let cancelled = false;

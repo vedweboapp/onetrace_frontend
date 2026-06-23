@@ -26,7 +26,7 @@ import {
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { buildProjectDetailTabHref } from "@/shared/utils/detail-from-list.util";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
   AppTabs,
@@ -143,8 +143,13 @@ export function ProjectDetailScreen({ projectId }: Props) {
     try {
       const q = await createQuotationFromProject(projectId);
       toastSuccess(t("detail.quoteFromProjectToast"));
-      setActiveTab("quotations");
-      router.push(buildProjectDetailTabHref(projectId, "quotations", q.id));
+      router.push(
+        buildEntityDetailHrefAfterSave(
+          routes.dashboard.quotations,
+          q.id,
+          `${routes.dashboard.projects}/${projectId}`,
+        ),
+      );
     } catch {
       toastError(t("detail.quoteFromProjectError"));
     } finally {
