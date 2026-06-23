@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
+import { Power, PowerOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { fetchContact } from "@/features/contacts/api/contact.api";
+import { fetchContact, updateContact } from "@/features/contacts/api/contact.api";
 import { ContactDetailBody } from "@/features/contacts/components/contact-detail-body";
 import type { Contact } from "@/features/contacts/types/contact.types";
 import {
@@ -17,6 +18,8 @@ import {
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
+import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { AppButton } from "@/shared/ui";
 
 type Props = {
   contactId: number;
@@ -26,6 +29,7 @@ export function ContactDetailScreen({ contactId }: Props) {
   const t = useTranslations("Dashboard.contacts");
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
   const [vendorNames, setVendorNames] = React.useState<Record<number, string>>({});
+  const [togglingActive, setTogglingActive] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -77,12 +81,41 @@ export function ContactDetailScreen({ contactId }: Props) {
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),
       }}
-      actions={({ listBack }) => (
-        <EntityDetailEditButton
-          label={t("edit")}
-          listBack={listBack}
-          fallbackRoute={routes.dashboard.contacts}
-        />
+      actions={({ detail, listBack, retry }) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <AppButton
+            type="button"
+            variant="secondary"
+            size="sm"
+            loading={togglingActive}
+            disabled={togglingActive}
+            onClick={async () => {
+              const next = !detail.is_active;
+              setTogglingActive(true);
+              try {
+                await updateContact(detail.id, { is_active: next });
+                toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
+                retry();
+              } catch {
+                toastError(t("toggleActiveError"));
+              } finally {
+                setTogglingActive(false);
+              }
+            }}
+          >
+            {detail.is_active ? (
+              <PowerOff className="size-4" aria-hidden />
+            ) : (
+              <Power className="size-4" aria-hidden />
+            )}
+            {detail.is_active ? t("deactivate") : t("activate")}
+          </AppButton>
+          <EntityDetailEditButton
+            label={t("edit")}
+            listBack={listBack}
+            fallbackRoute={routes.dashboard.contacts}
+          />
+        </div>
       )}
     >
       {({ detail, dateFmt }) => {

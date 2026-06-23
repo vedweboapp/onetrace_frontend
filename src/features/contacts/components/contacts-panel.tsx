@@ -318,29 +318,29 @@ export function ContactsPanel() {
       c.phone("phone", t("table.phone"), (r) => r.phone),
       c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive")),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
-      c.actions("actions", t("table.actions"), (row) => (
-        <DataTableRowActionsMenu
-          menuAriaLabel={tList("openRowActions")}
-          items={[
-            { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row.id) },
-            row.is_active
-              ? {
-                  id: "deactivate",
-                  label: t("deactivate"),
-                  icon: PowerOff,
-                  onSelect: () => void handleToggleActive(row, false),
-                  disabled: togglingId === row.id,
-                }
-              : {
-                  id: "activate",
-                  label: t("activate"),
-                  icon: Power,
-                  onSelect: () => void handleToggleActive(row, true),
-                  disabled: togglingId === row.id,
-                },
-          ]}
-        />
-      )),
+      // c.actions("actions", t("table.actions"), (row) => (
+      //   <DataTableRowActionsMenu
+      //     menuAriaLabel={tList("openRowActions")}
+      //     items={[
+      //       { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row.id) },
+      //       row.is_active
+      //         ? {
+      //             id: "deactivate",
+      //             label: t("deactivate"),
+      //             icon: PowerOff,
+      //             onSelect: () => void handleToggleActive(row, false),
+      //             disabled: togglingId === row.id,
+      //           }
+      //         : {
+      //             id: "activate",
+      //             label: t("activate"),
+      //             icon: Power,
+      //             onSelect: () => void handleToggleActive(row, true),
+      //             disabled: togglingId === row.id,
+      //           },
+      //     ]}
+      //   />
+      // )),
     ];
   }, [t, tList, dateFmt, parentColumnLabel, parentLabels, togglingId, openEdit, mass, items.length]);
 

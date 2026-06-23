@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { Link, useRouter } from "@/i18n/navigation";
 import {
   connectZohoInventory,
@@ -10,6 +11,7 @@ import {
 } from "@/features/settings/integrations/api/integration.api";
 import { ZOHO_DEFAULT_RESOURCE } from "@/features/settings/integrations/api/integration.paths";
 import { ZohoWebhookGuide } from "@/features/settings/integrations/components/zoho-webhook-guide";
+import { ZohoKeyMappingForm } from "@/features/settings/integrations/components/zoho-key-mapping-screen";
 import { buildZohoFrontendCallbackUrl } from "@/features/settings/integrations/utils/zoho-callback-url.util";
 import type {
   ZohoConnectionDetails,
@@ -17,11 +19,14 @@ import type {
 } from "@/features/settings/integrations/types/integration.types";
 import { routes } from "@/shared/config/routes";
 import { toastError } from "@/shared/feedback/app-toast";
-import { AppButton, SurfaceShell } from "@/shared/ui";
+import { AppButton, AppTabs, SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 
-type Panel = "details" | "webhook";
+type TabsType = {
+  key: string,
+  label: string
+}
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -39,10 +44,22 @@ function boolLabel(value: boolean, label: (key: "yes" | "no") => string) {
 export function ZohoConnectionDetailsScreen() {
   const t = useTranslations("Dashboard.integrations.zohoConnection");
   const tIntegrations = useTranslations("Dashboard.integrations");
+  const tKeyMapping = useTranslations("Dashboard.integrations.zohoKeyMapping");
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const [panel, setPanel] = React.useState<Panel>("details");
+  const tabParam = searchParams.get("tab")?.toLowerCase();
+  const initialTab =
+    tabParam === "configure" || tabParam === "configuration"
+      ? "configure"
+      : tabParam === "webhook"
+      ? "webhook"
+      : tabParam === "help"
+      ? "help"
+      : "help";
+
+  const [activeTab, setActiveTab] = React.useState<"help" | "configure" | "webhook">(initialTab);
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [connection, setConnection] = React.useState<ZohoConnectionDetails | null>(null);
@@ -50,6 +67,7 @@ export function ZohoConnectionDetailsScreen() {
   const [webhookError, setWebhookError] = React.useState<string | null>(null);
   const [webhookSetup, setWebhookSetup] = React.useState<ZohoWebhookSetupData | null>(null);
   const [reconnecting, setReconnecting] = React.useState(false);
+  const [mappingResetNonce, setMappingResetNonce] = React.useState(0);
 
   const dateFmt = React.useMemo(
     () =>
@@ -59,7 +77,20 @@ export function ZohoConnectionDetailsScreen() {
       }),
     [locale],
   );
-
+  const tabs: TabsType[] = [
+    {
+      key: "help",
+      label: "Help"
+    },
+    {
+      key:"configure",
+      label:"Configuration"
+    },
+    {
+      key: "webhook",
+      label: "Webhooks"
+    }
+  ]
   const loadConnection = React.useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -78,8 +109,7 @@ export function ZohoConnectionDetailsScreen() {
     void loadConnection();
   }, [loadConnection]);
 
-  async function openWebhookPanel() {
-    setPanel("webhook");
+  const loadWebhook = React.useCallback(async () => {
     if (webhookSetup || webhookLoading) return;
     setWebhookLoading(true);
     setWebhookError(null);
@@ -91,7 +121,13 @@ export function ZohoConnectionDetailsScreen() {
     } finally {
       setWebhookLoading(false);
     }
-  }
+  }, [webhookSetup, webhookLoading, t]);
+
+  React.useEffect(() => {
+    if (activeTab === "webhook") {
+      void loadWebhook();
+    }
+  }, [activeTab, loadWebhook]);
 
   function formatWebhookLastReceived(value: string | null | undefined) {
     if (!value?.trim()) return t("notAvailable");
@@ -114,63 +150,83 @@ export function ZohoConnectionDetailsScreen() {
   }
 
   return (
-    <div className="space-y-6 py-6">
+    <div className="space-y-6 ">
       <DetailPageHeader
         title={t("title")}
         subtitle={t("description")}
         backHref={routes.dashboard.settingsIntegrations}
         backAriaLabel={t("backToIntegrations")}
       />
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        {/* <div>
-          <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t("title")}</h1>
-          <p className="mt-1 max-w-3xl text-sm text-slate-600 dark:text-slate-400">{t("description")}</p>
-        </div> */}
-        <div className="flex flex-wrap gap-2">
-          <AppButton
-            type="button"
-            variant="secondary"
-            size="sm"
-            loading={reconnecting}
-            disabled={reconnecting}
-            onClick={() => void handleReconnect()}
-          >
-            {t("reconnect")}
-          </AppButton>
-          <AppButton
-            type="button"
-            variant={panel === "webhook" ? "primary" : "secondary"}
-            size="sm"
-            onClick={() => void openWebhookPanel()}
-          >
-            {t("setupWebhook")}
-          </AppButton>
-          <AppButton
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => router.push(routes.dashboard.settingsZohoKeyMapping)}
-          >
-            {t("configureMapping")}
-          </AppButton>
-        </div>
-      </div>
 
-      <SurfaceShell className="rounded-xl w-full sm:w-1/2">
-        <div className="w-full space-y-6 p-4 sm:p-6">
-          {loading ? (
+      <AppTabs
+        tabs={tabs.map((tab) => ({ id: tab.key, label: tab.label }))}
+        value={activeTab}
+        onValueChange={(tabId) => {
+          setActiveTab(tabId as "help" | "configure" | "webhook");
+        }}
+        ariaLabel="Zoho connection tabs"
+        panelIdPrefix="zoho-connection-tab"
+      />
+
+      {loading ? (
+        <SurfaceShell className="rounded-xl w-full">
+          <div className="w-full space-y-6 p-4 sm:p-6">
             <div className="space-y-3">
               <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
               <div className="h-24 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
             </div>
-          ) : loadError ? (
+          </div>
+        </SurfaceShell>
+      ) : loadError ? (
+        <SurfaceShell className="rounded-xl w-full">
+          <div className="w-full space-y-6 p-4 sm:p-6">
             <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>
-          ) : connection && panel === "details" ? (
-            <>
+          </div>
+        </SurfaceShell>
+      ) : activeTab === "help" ? (
+        <SurfaceShell className="rounded-xl w-full sm:w-1/2">
+          <div className="w-full space-y-6 p-4 sm:p-6">
+            <p className="text-sm text-slate-500 dark:text-slate-400">We are working on it</p>
+          </div>
+        </SurfaceShell>
+      ) : activeTab === "webhook" && connection ? (
+        <SurfaceShell className="rounded-xl w-full">
+          <div className="w-full space-y-6 p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-4 dark:border-slate-700">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("webhookTitle")}</h2>
+              <AppButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setActiveTab("configure");
+                  void loadConnection();
+                }}
+              >
+                {t("backToDetails")}
+              </AppButton>
+            </div>
+            {webhookLoading ? (
+              <div className="space-y-3">
+                <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+                <div className="h-24 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              </div>
+            ) : webhookError ? (
+              <p className="text-sm text-red-600 dark:text-red-400">{webhookError}</p>
+            ) : webhookSetup ? (
+              <ZohoWebhookGuide setup={webhookSetup} />
+            ) : null}
+          </div>
+        </SurfaceShell>
+      ) : activeTab === "configure" && connection ? (
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start w-full">
+          {/* Left card: Connection Status / Details (30%) */}
+          <SurfaceShell className="rounded-xl w-full lg:w-[30%]">
+            <div className="w-full space-y-6 p-4 sm:p-6">
               {connection.next_step ? (
                 <div
                   className={cn(
-                    "rounded-xl border px-4 py-3 text-sm font-medium",
+                    "rounded-xl border px-4 py-3 text-sm font-medium mb-4",
                     connection.connected
                       ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-100"
                       : "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-200",
@@ -180,8 +236,8 @@ export function ZohoConnectionDetailsScreen() {
                 </div>
               ) : null}
 
-              <dl>
-                <DetailRow label={t("provider")} value={connection.provider || t("notAvailable")} />
+              <dl className="divide-y divide-slate-100 dark:divide-slate-800">
+                {/* <DetailRow label={t("provider")} value={connection.provider || t("notAvailable")} /> */}
                 <DetailRow
                   label={t("connectionId")}
                   value={`#${String(connection.connection_id)}`}
@@ -195,49 +251,63 @@ export function ZohoConnectionDetailsScreen() {
                   value={boolLabel(connection.mapping_configured, t)}
                 />
                 <DetailRow label={t("importedRecords")} value={String(connection.imported_records ?? 0)} />
-                {/* <DetailRow
-                  label={t("webhookConfigured")}
-                  value={boolLabel(connection.webhook?.configured ?? false, t)}
-                />
                 <DetailRow
-                  label={t("webhookLastReceived")}
-                  value={formatWebhookLastReceived(connection.webhook?.last_received_at)}
-                /> */}
-                <DetailRow label={t("status")} value={boolLabel(connection.connected, t)} />
+                  label={t("status")}
+                  value={
+                    <div className="flex flex-col gap-2 items-start xl:flex-row xl:items-center xl:gap-3">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={cn(
+                            "inline-block size-2 rounded-full",
+                            connection.connected ? "bg-emerald-500" : "bg-red-500",
+                          )}
+                          aria-hidden="true"
+                        />
+                        <span className="font-semibold text-xs xl:text-sm">
+                          {connection.connected ? t("connected") : t("disconnected")}
+                        </span>
+                      </div>
+                      <AppButton
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="h-7 py-1 text-xs px-2"
+                        loading={reconnecting}
+                        disabled={reconnecting}
+                        onClick={() => void handleReconnect()}
+                      >
+                        {t("reconnect")}
+                      </AppButton>
+                    </div>
+                  }
+                />
               </dl>
-            </>
-          ) : connection && panel === "webhook" ? (
-            <>
-              <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-4 dark:border-slate-700">
-                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("webhookTitle")}</h2>
-                <AppButton
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setPanel("details");
-                    void loadConnection();
-                  }}
-                >
-                  {t("backToDetails")}
-                </AppButton>
+            </div>
+          </SurfaceShell>
+
+          {/* Right card: Key Mapping Form (70%) */}
+          <SurfaceShell className="rounded-xl w-full lg:w-[70%]">
+            <div className="w-full space-y-6 p-4 sm:p-6">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {tKeyMapping("title")}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {tKeyMapping("description")}
+                </p>
               </div>
-              {webhookLoading ? (
-                <div className="space-y-3">
-                  <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-                  <div className="h-24 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-                </div>
-              ) : webhookError ? (
-                <p className="text-sm text-red-600 dark:text-red-400">{webhookError}</p>
-              ) : webhookSetup ? (
-                <ZohoWebhookGuide setup={webhookSetup} />
-              ) : null}
-            </>
-          ) : null}
-
-
+              <ZohoKeyMappingForm
+                key={mappingResetNonce}
+                showCancelButton={true}
+                onCancel={() => setMappingResetNonce((n) => n + 1)}
+                onSaveSuccess={() => {
+                  void loadConnection();
+                }}
+              />
+            </div>
+          </SurfaceShell>
         </div>
-      </SurfaceShell>
+      ) : null}
     </div>
   );
 }

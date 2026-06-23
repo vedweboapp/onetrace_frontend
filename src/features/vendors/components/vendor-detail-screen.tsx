@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { Power, PowerOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { EntityContactsTab } from "@/features/contacts/components/entity-contacts-tab";
-import { deleteVendor, fetchVendor } from "@/features/vendors/api/vendor.api";
+import { deleteVendor, fetchVendor, updateVendor } from "@/features/vendors/api/vendor.api";
 import { VendorDetailBody } from "@/features/vendors/components/vendor-detail-body";
 import type { Vendor } from "@/features/vendors/types/vendor.types";
 import {
@@ -16,7 +17,7 @@ import {
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
-import { AppTabs, ConfirmDialog, type AppTabItem } from "@/shared/ui";
+import { AppButton, AppTabs, ConfirmDialog, type AppTabItem } from "@/shared/ui";
 
 type Props = {
   vendorId: number;
@@ -30,6 +31,7 @@ export function VendorDetailScreen({ vendorId }: Props) {
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const [detailForDelete, setDetailForDelete] = React.useState<Vendor | null>(null);
+  const [togglingActive, setTogglingActive] = React.useState(false);
 
   const detailTabs = React.useMemo<AppTabItem[]>(
     () => [
@@ -49,6 +51,7 @@ export function VendorDetailScreen({ vendorId }: Props) {
   React.useEffect(() => {
     const tab = searchParams.get("tab");
     if (!tab || !allowedDetailTabIds.has(tab)) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveTab(tab);
     const p = new URLSearchParams(searchParams.toString());
     p.delete("tab");
@@ -100,17 +103,46 @@ export function VendorDetailScreen({ vendorId }: Props) {
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"
         />
       }
-      actions={({ detail, listBack }) => (
-        <EntityDetailDeleteEditActions
-          deleteLabel={t("delete")}
-          onDelete={() => {
-            setDetailForDelete(detail);
-            setDeleteOpen(true);
-          }}
-          label={t("edit")}
-          listBack={listBack}
-          fallbackRoute={routes.dashboard.vendors}
-        />
+      actions={({ detail, listBack, retry }) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <AppButton
+            type="button"
+            variant="secondary"
+            size="sm"
+            loading={togglingActive}
+            disabled={togglingActive}
+            onClick={async () => {
+              const next = !detail.is_active;
+              setTogglingActive(true);
+              try {
+                await updateVendor(detail.id, { is_active: next });
+                toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
+                retry();
+              } catch {
+                toastError(t("toggleActiveError"));
+              } finally {
+                setTogglingActive(false);
+              }
+            }}
+          >
+            {detail.is_active ? (
+              <PowerOff className="size-4" aria-hidden />
+            ) : (
+              <Power className="size-4" aria-hidden />
+            )}
+            {detail.is_active ? t("deactivate") : t("activate")}
+          </AppButton>
+          <EntityDetailDeleteEditActions
+            deleteLabel={t("delete")}
+            onDelete={() => {
+              setDetailForDelete(detail);
+              setDeleteOpen(true);
+            }}
+            label={t("edit")}
+            listBack={listBack}
+            fallbackRoute={routes.dashboard.vendors}
+          />
+        </div>
       )}
       footer={
         <ConfirmDialog

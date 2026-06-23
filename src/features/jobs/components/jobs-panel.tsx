@@ -350,31 +350,31 @@ export function JobsPanel() {
         { narrow: true },
       ),
       c.custom("Serial No.", t("table.serialNo"), (r) => r.job_serial_number),
-      c.primary("title", t("table.title"), (r) => r.title),
+      // c.primary("title", t("table.title"), (r) => r.title),
       c.custom("jobStatus", t("table.jobStatus"), (r) => statusChipForRow(r)),
       c.truncate("worker", t("table.assignedWorker"), (r) =>
         jobAssignedWorkerLabel(r, workerLabelById),
       ),
       c.tabular("start", t("table.start"), (r) => formatFlexibleApiDate(r.start_date, dateFmt)),
       c.tabular("end", t("table.end"), (r) => formatFlexibleApiDate(r.end_date, dateFmt)),
-      c.actions("actions", t("table.actions"), (row) => (
-        <DataTableRowActionsMenu
-          menuAriaLabel={tList("openRowActions")}
-          items={[
-            { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) },
-            {
-              id: "delete",
-              label: t("delete"),
-              icon: Trash2,
-              tone: "danger",
-              onSelect: () => {
-                setDeletingJob(row);
-                setDeleteOpen(true);
-              },
-            },
-          ]}
-        />
-      )),
+      // c.actions("actions", t("table.actions"), (row) => (
+      //   <DataTableRowActionsMenu
+      //     menuAriaLabel={tList("openRowActions")}
+      //     items={[
+      //       { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) },
+      //       {
+      //         id: "delete",
+      //         label: t("delete"),
+      //         icon: Trash2,
+      //         tone: "danger",
+      //         onSelect: () => {
+      //           setDeletingJob(row);
+      //           setDeleteOpen(true);
+      //         },
+      //       },
+      //     ]}
+      //   />
+      // )),
     ];
   }, [
     t,

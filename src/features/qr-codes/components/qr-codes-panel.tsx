@@ -252,23 +252,23 @@ export function QrCodesPanel() {
         return Number.isNaN(d.getTime()) ? r.last_scanned_at : dateFmt.format(d);
       }),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
-      c.actions("actions", t("table.actions"), (row) => (
-        <DataTableRowActionsMenu
-          menuAriaLabel={tList("openRowActions")}
-          items={[
-            {
-              id: "delete",
-              label: t("delete"),
-              icon: Trash2,
-              tone: "danger",
-              onSelect: () => {
-                setDeletingRow(row);
-                setDeleteOpen(true);
-              },
-            },
-          ]}
-        />
-      )),
+      // c.actions("actions", t("table.actions"), (row) => (
+      //   <DataTableRowActionsMenu
+      //     menuAriaLabel={tList("openRowActions")}
+      //     items={[
+      //       {
+      //         id: "delete",
+      //         label: t("delete"),
+      //         icon: Trash2,
+      //         tone: "danger",
+      //         onSelect: () => {
+      //           setDeletingRow(row);
+      //           setDeleteOpen(true);
+      //         },
+      //       },
+      //     ]}
+      //   />
+      // )),
     ];
   }, [t, tList, dateFmt, massSel.tableColumn]);
 

@@ -1,7 +1,7 @@
-"use client";
+  "use client";
 
 import * as React from "react";
-import { Layers, Pencil, Trash2 } from "lucide-react";
+import { Check, CheckCheck, Layers, Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
@@ -42,6 +42,8 @@ import {
   ListPageEmptyStates,
   DataTableRowActionsMenu,
   ListPageSearchField,
+  AddButton,
+  AppButton,
 } from "@/shared/ui";
 import {
   buildDetailHrefWithListReturn,
@@ -172,7 +174,7 @@ function ProjectJobRow({
         }}
       />
       <TruncatedCell title={job.title} className="font-medium text-slate-900 dark:text-slate-100">
-        {job.title}
+        {job.job_serial_number ?? job.title}
       </TruncatedCell>
       <TruncatedCell
         title={job.description?.trim() || undefined}
@@ -354,6 +356,7 @@ export function ProjectJobsTab({ projectId }: Props) {
   const [massSiteOptions, setMassSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [massFormOptions, setMassFormOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [workerOptions, setWorkerOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [allSelected, setAllSelected] = React.useState(false)
   const [statusById, setStatusById] = React.useState<
     Record<number, { status_name: string; bg_colour: string; text_colour: string }>
   >({});
@@ -458,6 +461,17 @@ export function ProjectJobsTab({ projectId }: Props) {
     setSelectedIds(new Set());
     setRefreshNonce((n) => n + 1);
   }, [tMass]);
+  const selectAllJobs = () => {
+    const jobs = hierarchy?.levels?.flatMap((level) => level.plots.flatMap((plot) => plot.jobs.map((job) => job.id)))
+    if (!jobs) return
+    if (jobs.length === selectedIds.size) {
+      setAllSelected(false)
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(jobs))
+      setAllSelected(true)
+    }
+  }
 
   const handleTogglePlot = React.useCallback((jobIds: number[]) => {
     setSelectedIds((prev) => togglePlotJobSelection(jobIds, prev));
@@ -678,6 +692,18 @@ export function ProjectJobsTab({ projectId }: Props) {
               className="w-full min-w-0 sm:w-44"
               onChange={(v) => setPlotFilter(v ? Number.parseInt(v, 10) : undefined)}
             />
+            <AppButton
+              variant="primary"
+              size="lg"
+              // disabled={selectedIds.size == 0}
+              onClick={selectAllJobs}
+            >
+              <span>
+                {
+                  allSelected ? t("deselectAll") : t("selectAll")
+                }
+              </span>
+            </AppButton>
           </>
         ) : null}
       </div>

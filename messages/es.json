@@ -77,11 +77,11 @@
         "otpRequired": "El código de verificación es obligatorio.",
         "otpLength": "Ingresa el código completo de 6 dígitos."
       },
-    "toasts": {
-  "signedUp": "Registro completado correctamente",
-  "Sent": "OTP enviado correctamente a su correo electrónico. Por favor, revise su bandeja de entrada.",
-  "verified": "Correo electrónico verificado correctamente."
-}
+      "toasts": {
+        "signedUp": "Registro completado correctamente",
+        "Sent": "OTP enviado correctamente a su correo electrónico. Por favor, revise su bandeja de entrada.",
+        "verified": "Correo electrónico verificado correctamente."
+      }
     },
     "forgotPassword": {
       "title": "¿Olvidaste la contraseña?",
@@ -198,9 +198,9 @@
       "qrCodes": "Códigos QR",
       "projects": "Proyectos",
       "groups": "Grupos",
-      "materialRequests": "Solicitud de material",
+      "materialRequests": "Solicitud de Material",
       "dispatches": "Envíos",
-      "returnToStock": "Devolver al inventario",
+      "returnToStock": "Devoluciones",
       "products": "Productos",
       "items": "Ítems",
       "itemsPlain": "Ítems",
@@ -277,8 +277,8 @@
         "name": "Zoho Inventory"
       },
       "zohoCallback": {
-        "title": "Finalizar configuración de Zoho Inventory",
-        "description": "Elige si importar datos existentes de Zoho y completa la conexión.",
+        "title": "Integración completada.",
+        "description": "Zoho Inventory ahora está vinculado con Red5, para finalizar, haga clic en Finalizar integración.",
         "pullHistoricalData": "Importar datos históricos",
         "pullHistoricalDataHint": "Importa registros existentes de Zoho Inventory al crear la conexión.",
         "finish": "Finalizar integración",
@@ -313,7 +313,7 @@
         "step2": "Crea un webhook nuevo y pega la URL, el método y las cabeceras de esta página.",
         "step3": "Configura la acción según el recurso indicado abajo y guarda el webhook.",
         "method": "Método HTTP",
-        "resourceAction": "Acción del recurso",
+        "resourceAction": "Acción",
         "webhookUri": "URL del webhook",
         "header": "Cabecera: {name}",
         "samplePayload": "Carga útil de ejemplo",
@@ -345,7 +345,8 @@
         "webhookLastReceived": "Última recepción del webhook",
         "notAvailable": "—",
         "yes": "Sí",
-        "no": "No"
+        "no": "No",
+        "disconnected": "Desconectado"
       }
     },
     "settingsPersonalProfile": {
@@ -2521,7 +2522,7 @@
         "assignedWorker": "Técnico asignado",
         "start": "Inicio",
         "end": "Fin",
-        "serialNo": "Número de serie",
+        "serialNo": "Serie",
         "recordStatus": "Registro",
         "actions": "Acciones"
       },
@@ -2803,6 +2804,7 @@
           "drawings": "Planos",
           "jobsheets": "Hojas de trabajo",
           "jobs": "Trabajos",
+          "quotations": "Cotizaciones",
           "docs": "Documentos",
           "approvals": "Aprobaciones",
           "pins": "patas"
@@ -2984,6 +2986,8 @@
         "filterLevel": "Nivel",
         "filterAllLevels": "Todos los niveles",
         "filterPlot": "Parcela",
+        "selectAll": "Seleccionar todo",
+        "deselectAll": "Deseleccionar todo",
         "filterAllPlots": "Todas las parcelas",
         "manualJobLocation": "Manual / sin asignar",
         "manualJobsSection": "Trabajos manuales",
@@ -2994,6 +2998,18 @@
         "table": {
           "location": "Ubicación"
         }
+      },
+      "quotationsTab": {
+        "title": "Cotizaciones",
+        "subtitle": "Todas las cotizaciones asociadas a este proyecto.",
+        "searchPlaceholder": "Buscar cotizaciones…",
+        "searchAria": "Buscar cotizaciones del proyecto",
+        "loadError": "No se pudieron cargar las cotizaciones del proyecto. Inténtalo de nuevo.",
+        "emptyTitle": "No hay cotizaciones en este proyecto",
+        "emptyDescription": "Las cotizaciones vinculadas a este proyecto aparecerán aquí.",
+        "pageLabel": "Mostrando {start}-{end} de {total} cotizaciones",
+        "prev": "Anterior",
+        "next": "Siguiente"
       },
       "detailLoadError": "No se pudieron cargar los datos del proyecto. Inténtalo de nuevo.",
       "placeholders": {
@@ -3038,8 +3054,6 @@
         "endDate": "Elige la fecha de fin.",
         "dateOrder": "La fecha de fin debe ser igual o posterior a la de inicio."
       }
-      
-      
     },
     "groups": {
       "metaTitle": "Grupos",

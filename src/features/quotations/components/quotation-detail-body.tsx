@@ -93,9 +93,9 @@ function QuotationDetailPeopleSection({
         <DetailMetricCard label={t("fields.salesperson")}>
           <DetailUserAttribution user={quotationAssigneeToAudit(detail.salesperson)} />
         </DetailMetricCard>
-        <DetailMetricCard label={t("fields.projectManager")}>
+        {/* <DetailMetricCard label={t("fields.projectManager")}>
           <DetailUserAttribution user={quotationAssigneeToAudit(detail.project_manager)} />
-        </DetailMetricCard>
+        </DetailMetricCard> */}
         <DetailMetricCard label={t("fields.primaryContact")}>
           <DetailUserAttribution user={quotationContactToAudit(detail.primary_customer_contact)} />
         </DetailMetricCard>
@@ -117,7 +117,7 @@ function QuotationDetailPeopleSection({
             </div>
           )}
         </DetailMetricCard>
-        <DetailMetricCard label={t("fields.technicians")} className="sm:col-span-2">
+        {/* <DetailMetricCard label={t("fields.technicians")} className="sm:col-span-2">
           {technicianEntries.length === 0 ? (
             <span className="text-sm font-normal text-slate-500 dark:text-slate-400">—</span>
           ) : (
@@ -134,7 +134,7 @@ function QuotationDetailPeopleSection({
               )}
             </div>
           )}
-        </DetailMetricCard>
+        </DetailMetricCard> */}
       </DetailMetricsGrid>
     </DetailPanelCard>
   );
@@ -258,7 +258,7 @@ export function QuotationDetailBody({
 
   const overviewCard = (
     <DetailPanelCard title={t("detail.sectionOverview")}>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <DetailMetricCard label={t("table.status")}>{quoteStatusLabel(detail.status)}</DetailMetricCard>
         <DetailMetricCard label={t("fields.quoteName")}>{detail.quote_name}</DetailMetricCard>
         <DetailMetricCard label={t("fields.customer")}>
@@ -279,13 +279,22 @@ export function QuotationDetailBody({
             quotationProjectLabel(detail.project, projectName ?? null)
           )}
         </DetailMetricCard>
+
         <DetailMetricCard label={t("fields.site")}>
-          {quotationSiteLabel(detail.site, snap?.site_name?.trim() || siteName?.trim() || null)}
+          {
+            detail?.sites?.map((site: any, key: any) => {
+              return (
+                <Link href={`${routes.dashboard.sites}/${site.id}`} key={key} className={cn("mr-2",detailEntityLinkClassName)}>
+                  {site.site_name}
+                </Link>
+              );
+            })
+          }
         </DetailMetricCard>
         <DetailMetricCard label={t("fields.tags")}>{tagsLabel}</DetailMetricCard>
         <DetailMetricCard label={t("fields.orderNumber")}>{detail.order_number?.trim() || "—"}</DetailMetricCard>
         <DetailMetricCard label={t("fields.dueDate")}>{dueLabel}</DetailMetricCard>
-        </div>
+      </div>
     </DetailPanelCard>
   );
 
@@ -450,44 +459,39 @@ export function QuotationDetailBody({
           mapTitle={t("detail.sectionMap")}
           map={siteLocationSplit?.map ?? null}
         >
-            {overviewCard}
-            {descriptionCard}
+          {overviewCard}
+          {descriptionCard}
 
-            {showMapColumn ? (
-              <DetailPanelCard title={t("detail.sectionSiteAddress")}>
-                {siteLocationSplit?.address ?? (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{t("mapNoStructuredAddress")}</p>
-                )}
-                <What3WordsInline
-                  value={siteWhat3Words}
-                  label={t("fields.what3words")}
-                  className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800"
-                />
-              </DetailPanelCard>
-            ) : null}
+          {showMapColumn ? (
+            <DetailPanelCard title={t("detail.sectionSiteAddress")}>
+              {siteLocationSplit?.address ?? (
+                <p className="text-sm text-slate-500 dark:text-slate-400">{t("mapNoStructuredAddress")}</p>
+              )}
+              <What3WordsInline
+                value={siteWhat3Words}
+                label={t("fields.what3words")}
+                className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800"
+              />
+            </DetailPanelCard>
+          ) : null}
 
-            <QuotationDetailPeopleSection
-              detail={detail}
-              technicianEntries={technicianEntries}
-              additionalContactEntries={additionalContactEntries}
-              t={t}
-            />
+          <QuotationDetailPeopleSection detail={detail} technicianEntries={technicianEntries} t={t} />
 
-            <DetailSystemMetadataSection
-              createdAt={detail.created_at}
-              modifiedAt={modifiedAt}
-              dateFmt={dateFmt}
-              createdBy={detail.created_by}
-              modifiedBy={detail.modified_by}
-              labels={{
-                sectionTitle: tMeta("systemMetadata"),
-                createdAt: t("fields.createdAt"),
-                updatedAt: t("fields.updatedAt"),
-                createdBy: t("fields.createdBy"),
-                modifiedBy: tMeta("modifiedBy"),
-                notModifiedYet: tMeta("notModifiedYet"),
-              }}
-            />
+          <DetailSystemMetadataSection
+            createdAt={detail.created_at}
+            modifiedAt={modifiedAt}
+            dateFmt={dateFmt}
+            createdBy={detail.created_by}
+            modifiedBy={detail.modified_by}
+            labels={{
+              sectionTitle: tMeta("systemMetadata"),
+              createdAt: t("fields.createdAt"),
+              updatedAt: t("fields.updatedAt"),
+              createdBy: t("fields.createdBy"),
+              modifiedBy: tMeta("modifiedBy"),
+              notModifiedYet: tMeta("notModifiedYet"),
+            }}
+          />
         </DetailPageMapLayout>
       </div>
 
@@ -501,7 +505,7 @@ export function QuotationDetailBody({
           {viewDraft ? (
             <QuotationDraftComposer
               draft={viewDraft}
-              onDraftChange={() => {}}
+              onDraftChange={() => { }}
               saving={false}
               canShow
               readOnly

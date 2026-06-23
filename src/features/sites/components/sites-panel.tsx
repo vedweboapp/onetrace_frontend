@@ -268,44 +268,7 @@ export function SitesPanel() {
       c.truncate("what3words", t("table.what3words"), (r) => r.what3words?.trim() || "—", { maxWidth: "sm", responsive: "md" }),
       c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive")),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
-      c.actions("actions", t("table.actions"), (row) => (
-        <DataTableRowActionsMenu
-          menuAriaLabel={tList("openRowActions")}
-          items={[
-            {
-              id: "edit",
-              label: t("edit"),
-              icon: Pencil,
-              onSelect: () => router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`),
-            },
-            {
-              id: "delete",
-              label: t("delete"),
-              icon: Trash2,
-              tone: "danger",
-              onSelect: () => {
-                setDeletingSite(row);
-                setDeleteOpen(true);
-              },
-            },
-            row.is_active
-              ? {
-                  id: "deactivate",
-                  label: t("deactivate"),
-                  icon: PowerOff,
-                  onSelect: () => void handleToggleActive(row, false),
-                  disabled: togglingId === row.id,
-                }
-              : {
-                  id: "activate",
-                  label: t("activate"),
-                  icon: Power,
-                  onSelect: () => void handleToggleActive(row, true),
-                  disabled: togglingId === row.id,
-                },
-          ]}
-        />
-      )),
+
     ];
   }, [t, tList, dateFmt, clientLabelById, togglingId, listHref, pathname, router, mass, items.length]);
 

@@ -311,39 +311,39 @@ export function ProjectsPanel() {
       c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive"), {
         responsive: "lg",
       }),
-      c.actions("actions", t("table.actions"), (row) => (
-        <DataTableRowActionsMenu
-          menuAriaLabel={tList("openRowActions")}
-          items={[
-            { id: "edit", label: t("detail.edit"), icon: Pencil, onSelect: () => openEdit(row) },
-            {
-              id: "delete",
-              label: t("delete"),
-              icon: Trash2,
-              tone: "danger",
-              onSelect: () => {
-                setDeletingProject(row);
-                setDeleteOpen(true);
-              },
-            },
-            row.is_active
-              ? {
-                  id: "deactivate",
-                  label: t("deactivate"),
-                  icon: PowerOff,
-                  onSelect: () => void handleToggleActive(row, false),
-                  disabled: togglingId === row.id,
-                }
-              : {
-                  id: "activate",
-                  label: t("activate"),
-                  icon: Power,
-                  onSelect: () => void handleToggleActive(row, true),
-                  disabled: togglingId === row.id,
-                },
-          ]}
-        />
-      )),
+      // c.actions("actions", t("table.actions"), (row) => (
+      //   <DataTableRowActionsMenu
+      //     menuAriaLabel={tList("openRowActions")}
+      //     items={[
+      //       { id: "edit", label: t("detail.edit"), icon: Pencil, onSelect: () => openEdit(row) },
+      //       {
+      //         id: "delete",
+      //         label: t("delete"),
+      //         icon: Trash2,
+      //         tone: "danger",
+      //         onSelect: () => {
+      //           setDeletingProject(row);
+      //           setDeleteOpen(true);
+      //         },
+      //       },
+      //       row.is_active
+      //         ? {
+      //             id: "deactivate",
+      //             label: t("deactivate"),
+      //             icon: PowerOff,
+      //             onSelect: () => void handleToggleActive(row, false),
+      //             disabled: togglingId === row.id,
+      //           }
+      //         : {
+      //             id: "activate",
+      //             label: t("activate"),
+      //             icon: Power,
+      //             onSelect: () => void handleToggleActive(row, true),
+      //             disabled: togglingId === row.id,
+      //           },
+      //     ]}
+      //   />
+      // )),
     ];
   }, [t, tList, clientLabelById, projectTypeById, togglingId, massSel.tableColumn]);
 

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { City, State } from "country-state-city";
-import { SITE_CONTACT_PERSON_TITLES } from "@/features/sites/constants/site-contact-person.constants";
+import { isSiteContactPersonTitle } from "@/features/sites/utils/site-contact-person.util";
 import { zTrimmedNonEmpty } from "@/shared/form";
 
 export type SiteFormMessages = {
@@ -40,7 +40,10 @@ export function createSiteFormSchema(messages: SiteFormMessages) {
       longitude: z.string(),
       contacts: z.array(
         z.object({
-          title: z.enum(SITE_CONTACT_PERSON_TITLES, { message: messages.contactPersonTitle }),
+          title: z
+            .string()
+            .trim()
+            .refine((val) => ["site_contact", "finance", "emergency"].includes(val), { message: messages.contactPersonTitle }),
           contact: z
             .string()
             .trim()

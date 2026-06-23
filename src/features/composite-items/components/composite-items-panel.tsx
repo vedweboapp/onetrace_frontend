@@ -275,29 +275,29 @@ export function CompositeItemsPanel() {
         responsive: "lg",
         cellClassName: "text-slate-600 dark:text-slate-400",
       }),
-      c.actions("actions", t("table.actions"), (row) => (
-        <DataTableRowActionsMenu
-          menuAriaLabel={tList("openRowActions")}
-          items={[
-            {
-              id: "edit",
-              label: t("edit"),
-              icon: Pencil,
-              onSelect: () => openEdit(row),
-            },
-            {
-              id: "delete",
-              label: t("delete"),
-              icon: Trash2,
-              tone: "danger",
-              onSelect: () => {
-                setDeletingItem(row);
-                setDeleteOpen(true);
-              },
-            },
-          ]}
-        />
-      )),
+      // c.actions("actions", t("table.actions"), (row) => (
+      //   <DataTableRowActionsMenu
+      //     menuAriaLabel={tList("openRowActions")}
+      //     items={[
+      //       {
+      //         id: "edit",
+      //         label: t("edit"),
+      //         icon: Pencil,
+      //         onSelect: () => openEdit(row),
+      //       },
+      //       {
+      //         id: "delete",
+      //         label: t("delete"),
+      //         icon: Trash2,
+      //         tone: "danger",
+      //         onSelect: () => {
+      //           setDeletingItem(row);
+      //           setDeleteOpen(true);
+      //         },
+      //       },
+      //     ]}
+      //   />
+      // )),
     ];
   }, [t, tList, dateFmt, massSel.tableColumn]);
 

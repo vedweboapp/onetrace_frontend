@@ -195,16 +195,16 @@
       "vendors": "Vendors",
       "contacts": "Contacts",
       "sites": "Sites",
-      "quotations": "Quote",
+      "quotations": "Quotes",
       "invoices": "Invoices",
       "purchaseOrders": "Purchase orders",
       "jobs": "Jobs",
       "qrCodes": "QR codes",
       "projects": "Projects",
       "groups": "Groups",
-      "materialRequests": "Material request",
+      "materialRequests": "Material Request",
       "dispatches": "Dispatches",
-      "returnToStock": "Return to stock",
+      "returnToStock": "Returns",
       "products": "Products",
       "items": "Items",
       "itemsPlain": "Items",
@@ -281,8 +281,8 @@
         "name": "Zoho Inventory"
       },
       "zohoCallback": {
-        "title": "Finish Zoho Inventory setup",
-        "description": "Choose whether to import existing Zoho data, then complete the connection.",
+        "title": "Integration Completed.",
+        "description": "Zoho Inventory is now linked with Red5,To Finish click on Finish integration",
         "pullHistoricalData": "Pull historical data",
         "pullHistoricalDataHint": "Import existing records from Zoho Inventory when the connection is created.",
         "finish": "Finish integration",
@@ -317,7 +317,7 @@
         "step2": "Create a new webhook and paste the URL, method, and header values from this page.",
         "step3": "Set the action to match the resource action below and save the webhook.",
         "method": "HTTP method",
-        "resourceAction": "Resource action",
+        "resourceAction": "Action",
         "webhookUri": "Webhook URL",
         "header": "Header: {name}",
         "samplePayload": "Sample payload",
@@ -349,7 +349,9 @@
         "webhookLastReceived": "Webhook last received",
         "notAvailable": "—",
         "yes": "Yes",
-        "no": "No"
+        "no": "No",
+        "disconnected": "Disconnected"
+
       }
     },
     "settingsPersonalProfile": {
@@ -2524,7 +2526,7 @@
         "jobStatus": "Job status",
         "assignedWorker": "Assigned worker",
         "start": "Start",
-        "serialNo": "Job No.",
+        "serialNo": "Job",
         "end": "End",
         "recordStatus": "Record",
         "actions": "Actions"
@@ -2808,6 +2810,7 @@
           "drawings": "Drawings",
           "jobsheets": "Job Sheets",
           "jobs": "Jobs",
+          "quotations": "Quotes",
           "docs": "Docs",
           "approvals": "Approvals",
           "pins": "Pins"
@@ -2986,6 +2989,8 @@
         "filterAllSources": "All sources",
         "filterManualSource": "Manual",
         "filterQuotationSource": "Auto",
+        "selectAll": "Select All",
+        "deselectAll":"Deselect All",
         "filterLevel": "Level",
         "filterAllLevels": "All levels",
         "filterPlot": "Plot",
@@ -2999,6 +3004,18 @@
         "table": {
           "location": "Location"
         }
+      },
+      "quotationsTab": {
+        "title": "Quotations",
+        "subtitle": "All quotations associated with this project.",
+        "searchPlaceholder": "Search quotations…",
+        "searchAria": "Search project quotations",
+        "loadError": "Could not load project quotations. Try again.",
+        "emptyTitle": "No quotations on this project",
+        "emptyDescription": "Quotations linked to this project will appear here.",
+        "pageLabel": "Showing {start}-{end} of {total} quotations",
+        "prev": "Previous",
+        "next": "Next"
       },
       "detailLoadError": "Could not load project details. Try again.",
       "placeholders": {

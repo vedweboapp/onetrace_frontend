@@ -35,9 +35,7 @@ export function ClientDetailBody({
               activeLabel={t("status.active")}
               inactiveLabel={t("status.inactive")}
             />
-            <DetailMetricCard label={t("detail.metaClientId")}>
-              <span className="tabular-nums">{detail.id}</span>
-            </DetailMetricCard>
+          
             <DetailMetricCard label={t("fields.email")}>
               <DetailEmailLink email={detail.email} />
             </DetailMetricCard>
