@@ -20,8 +20,8 @@ import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.ut
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import {
-  buildQuickCreateReturnHref,
   QUICK_CREATE_CLIENT_PARAM,
   QUICK_CREATE_CONTACT_TYPE_PARAM,
   QUICK_CREATE_VENDOR_PARAM,
@@ -212,7 +212,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
       const saved = isEdit && contactId ? await updateContact(contactId, payload) : await createContact(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
-      router.replace(buildQuickCreateReturnHref(safeBack, saved.id, "contact"));
+      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.contacts, saved.id, safeBack));
     } finally {
       setSaving(false);
     }

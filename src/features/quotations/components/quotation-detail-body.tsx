@@ -12,6 +12,7 @@ import type {
 } from "@/features/quotations/types/quotation.types";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
 import {
+  getQuotationAdditionalContactEntries,
   getQuotationCustomerId,
   getQuotationNestedSite,
   getQuotationProjectId,
@@ -73,14 +74,17 @@ function quotationContactToAudit(
 }
 
 type TechnicianEntry = ReturnType<typeof getQuotationTechnicianEntries>[number];
+type AdditionalContactEntry = ReturnType<typeof getQuotationAdditionalContactEntries>[number];
 
 function QuotationDetailPeopleSection({
   detail,
   technicianEntries,
+  additionalContactEntries,
   t,
 }: {
   detail: QuotationDetail;
   technicianEntries: TechnicianEntry[];
+  additionalContactEntries: AdditionalContactEntry[];
   t: ReturnType<typeof useTranslations<"Dashboard.quotations">>;
 }) {
   return (
@@ -95,8 +99,23 @@ function QuotationDetailPeopleSection({
         <DetailMetricCard label={t("fields.primaryContact")}>
           <DetailUserAttribution user={quotationContactToAudit(detail.primary_customer_contact)} />
         </DetailMetricCard>
-        <DetailMetricCard label={t("fields.additionalContact")}>
-          <DetailUserAttribution user={quotationContactToAudit(detail.additional_customer_contact)} />
+        <DetailMetricCard label={t("fields.additionalContacts")} className="sm:col-span-2">
+          {additionalContactEntries.length === 0 ? (
+            <span className="text-sm font-normal text-slate-500 dark:text-slate-400">—</span>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {additionalContactEntries.map((entry, index) =>
+                entry.kind === "id" ? (
+                  <DetailUserAttribution key={`addl-id-${entry.id}-${index}`} user={{ id: entry.id }} />
+                ) : (
+                  <DetailUserAttribution
+                    key={`addl-${entry.contact.id}-${index}`}
+                    user={quotationContactToAudit(entry.contact)}
+                  />
+                ),
+              )}
+            </div>
+          )}
         </DetailMetricCard>
         <DetailMetricCard label={t("fields.technicians")} className="sm:col-span-2">
           {technicianEntries.length === 0 ? (
@@ -214,6 +233,10 @@ export function QuotationDetailBody({
 
   const tagsLabel = quotationTagsLabels(detail.tags, tagLookup);
   const technicianEntries = React.useMemo(() => getQuotationTechnicianEntries(detail), [detail]);
+  const additionalContactEntries = React.useMemo(
+    () => getQuotationAdditionalContactEntries(detail.additional_customer_contact),
+    [detail.additional_customer_contact],
+  );
   const customerId = getQuotationCustomerId(detail.customer);
   const projectId = getQuotationProjectId(detail.project);
 
@@ -443,7 +466,12 @@ export function QuotationDetailBody({
               </DetailPanelCard>
             ) : null}
 
-            <QuotationDetailPeopleSection detail={detail} technicianEntries={technicianEntries} t={t} />
+            <QuotationDetailPeopleSection
+              detail={detail}
+              technicianEntries={technicianEntries}
+              additionalContactEntries={additionalContactEntries}
+              t={t}
+            />
 
             <DetailSystemMetadataSection
               createdAt={detail.created_at}

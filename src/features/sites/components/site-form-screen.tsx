@@ -20,8 +20,8 @@ import { SiteLocationFields } from "@/features/sites/components/site-location-fi
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import {
-  buildQuickCreateReturnHref,
   QUICK_CREATE_CLIENT_PARAM,
   resolveFormBackUrl,
 } from "@/shared/utils/quick-create-navigation.util";
@@ -184,7 +184,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
       const saved = isEdit && siteId ? await updateSite(siteId, payload) : await createSite(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
-      router.replace(buildQuickCreateReturnHref(safeBack, saved.id, "site"));
+      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.sites, saved.id, safeBack));
     } finally {
       setSaving(false);
     }

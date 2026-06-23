@@ -19,6 +19,7 @@ import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
@@ -127,7 +128,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
     try {
       const saved = isEdit && vendorId ? await updateVendor(vendorId, payload) : await createVendor(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(`${safeBack}?highlight=${saved.id}`);
+      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.vendors, saved.id, safeBack));
     } finally {
       setSaving(false);
     }

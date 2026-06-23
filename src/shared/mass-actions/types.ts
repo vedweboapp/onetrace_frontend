@@ -20,6 +20,15 @@ export type MassUpdateFieldDef = {
   valueFormat?: MassUpdateFieldValueFormat;
 };
 
+/** Top-level bulk action that maps to a single mass-update field (e.g. assign worker on jobs). */
+export type MassDirectUpdateAction = {
+  id: string;
+  label: string;
+  fieldName: string;
+  options: CheckmarkSelectOption[];
+  valueCoerce?: MassUpdateFieldDef["valueCoerce"];
+};
+
 export type MassActionPaths = {
   massUpdate: string;
   massDelete: string;

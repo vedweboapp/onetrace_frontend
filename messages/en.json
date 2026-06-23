@@ -1768,6 +1768,7 @@
         "project": "Project",
         "primaryContact": "Primary contact",
         "additionalContact": "Additional contact",
+        "additionalContacts": "Additional contacts",
         "siteContact": "Site contact",
         "orderNumber": "Order number",
         "dueDate": "Due date",
@@ -1782,6 +1783,13 @@
         "createdAt": "Created",
         "updatedAt": "Last updated",
         "createdBy": "Created by"
+      },
+      "additionalContacts": {
+        "add": "Add additional contact",
+        "remove": "Remove additional contact",
+        "empty": "No additional contacts added yet.",
+        "selectClientFirst": "Select a client first to add additional contacts.",
+        "rowLabel": "Additional contact {number}"
       },
       "modal": {
         "createTitle": "New quotation",
@@ -2498,6 +2506,7 @@
         "error": "Could not assign jobs. Try again.",
         "pickWorker": "Select a technician"
       },
+      "massAssignWorker": "Assign worker",
       "activate": "Activate",
       "deactivate": "Deactivate",
       "activatedToast": "Job activated",

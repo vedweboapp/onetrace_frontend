@@ -18,6 +18,7 @@ import {
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import {
@@ -131,13 +132,17 @@ export function ProjectFormModal({
       if (mode === "edit" && project) {
         await updateProject(project.id, payload);
         toastSuccess(t("updatedToast"));
+        onSaved();
+        onClose();
+        router.push(buildEntityDetailHrefAfterSave(routes.dashboard.projects, project.id, routes.dashboard.projects));
       } else {
         const created = await createProject(payload);
         toastSuccess(t("createdToast"));
         onCreated?.(created);
+        onSaved();
+        onClose();
+        router.push(buildEntityDetailHrefAfterSave(routes.dashboard.projects, created.id, routes.dashboard.projects));
       }
-      onSaved();
-      onClose();
     } finally {
       setSaving(false);
     }

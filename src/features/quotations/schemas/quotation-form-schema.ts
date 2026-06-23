@@ -22,7 +22,11 @@ export function createQuotationFormSchema(messages: QuotationFormMessages) {
     site: idString(messages.site),
     project: idString(messages.project),
     primary_customer_contact: z.string(),
-    additional_customer_contact: z.string(),
+    additional_customer_contacts: z.array(
+      z.object({
+        contact: z.string(),
+      }),
+    ),
     site_contact: z.string(),
     tags_raw: z.string(),
     tag_ids: z.array(z.number()),

@@ -13,7 +13,7 @@ import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { sanitizeInternalListBack, buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
@@ -101,14 +101,16 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
   async function submit(values: UserFormValues) {
     setSaving(true);
     try {
+      const listBack = safeBack ?? routes.dashboard.settingsUsers;
       if (isEdit && userId) {
         await updateUserProfile(userId, mapUserFormToUpdatePayload(values));
         toastSuccess(t("updatedToast"));
+        router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.settingsUsers, userId, listBack));
       } else {
-        await inviteUser(mapInviteUserFormToPayload(values));
+        const created = await inviteUser(mapInviteUserFormToPayload(values));
         toastSuccess(t("createdToast"));
+        router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.settingsUsers, created.id, listBack));
       }
-      router.replace(safeBack ?? routes.dashboard.settingsUsers);
     } catch {
       toastError(t("saveError"));
     } finally {

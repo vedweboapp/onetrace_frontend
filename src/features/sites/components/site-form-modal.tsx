@@ -3,6 +3,7 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { createSite, updateSite } from "@/features/sites/api/site.api";
 import { createSiteFormSchema, type SiteFormValues } from "@/features/sites/schemas/site-form-schema";
@@ -14,6 +15,8 @@ import {
 } from "@/features/sites/utils/site-form-map";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { routes } from "@/shared/config/routes";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { SiteContactPersonsFields } from "@/features/sites/components/site-contact-persons-fields";
 import { SiteLocationFields } from "@/features/sites/components/site-location-fields";
@@ -56,6 +59,7 @@ export function SiteFormModal({
   lockClient = false,
 }: Props) {
   const t = useTranslations("Dashboard.sites");
+  const router = useRouter();
   const [saving, setSaving] = React.useState(false);
 
   const schema = React.useMemo(
@@ -108,13 +112,17 @@ export function SiteFormModal({
       if (mode === "edit" && site) {
         await updateSite(site.id, payload);
         toastSuccess(t("updatedToast"));
+        onSaved();
+        onClose();
+        router.push(buildEntityDetailHrefAfterSave(routes.dashboard.sites, site.id, routes.dashboard.sites));
       } else {
         const created = await createSite(payload);
         toastSuccess(t("createdToast"));
         onCreated?.(created);
+        onSaved();
+        onClose();
+        router.push(buildEntityDetailHrefAfterSave(routes.dashboard.sites, created.id, routes.dashboard.sites));
       }
-      onSaved();
-      onClose();
     } finally {
       setSaving(false);
     }

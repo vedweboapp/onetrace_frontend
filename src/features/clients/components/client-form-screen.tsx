@@ -17,7 +17,8 @@ import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { resolveFormBackUrl, buildQuickCreateReturnHref } from "@/shared/utils/quick-create-navigation.util";
+import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
@@ -106,11 +107,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
     try {
       const saved = isEdit && clientId ? await updateClient(clientId, payload) : await createClient(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      if (isEdit) {
-        router.replace(`${safeBack}?highlight=${saved.id}`);
-      } else {
-        router.replace(buildQuickCreateReturnHref(safeBack, saved.id, "client"));
-      }
+      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.clients, saved.id, safeBack));
     } finally {
       setSaving(false);
     }

@@ -14,10 +14,9 @@ import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import {
-  buildQuickCreateReturnHref,
   resolveFormBackUrl,
-  sanitizeInternalDashboardBack,
 } from "@/shared/utils/quick-create-navigation.util";
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
@@ -226,12 +225,7 @@ export function GroupFormScreen({ mode, groupId }: Props) {
           : await createGroup({ name: name.trim(), items: compositeItems });
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
-      const crossBack = sanitizeInternalDashboardBack(searchParams.get("back"));
-      if (!isEdit && crossBack) {
-        router.replace(buildQuickCreateReturnHref(crossBack, saved.id, "group"));
-      } else {
-        router.replace(`${safeBack}?highlight=${saved.id}`);
-      }
+      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.groups, saved.id, safeBack));
     } catch {
       toastError(t("loadError"));
     } finally {

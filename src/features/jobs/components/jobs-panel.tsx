@@ -133,7 +133,6 @@ export function JobsPanel() {
     () =>
       buildJobMassUpdateFields(
         {
-          workerOptions,
           jobStatusOptions,
           clientOptions: massClientOptions,
           projectOptions: massProjectOptions,
@@ -148,11 +147,23 @@ export function JobsPanel() {
           site: t("fields.site"),
           forms: t("fields.forms"),
           jobStatus: t("fields.jobStatus"),
-          assignedWorker: t("fields.assignedWorker"),
           startDate: t("fields.startDate"),
         },
       ),
-    [workerOptions, jobStatusOptions, massClientOptions, massProjectOptions, massSiteOptions, massFormOptions, t],
+    [jobStatusOptions, massClientOptions, massProjectOptions, massSiteOptions, massFormOptions, t],
+  );
+
+  const jobDirectUpdateActions = React.useMemo(
+    () => [
+      {
+        id: "assign-worker",
+        label: t("massAssignWorker"),
+        fieldName: "assigned_worker",
+        options: workerOptions,
+        valueCoerce: "number" as const,
+      },
+    ],
+    [t, workerOptions],
   );
 
   const fetchAllIds = React.useCallback(
@@ -444,6 +455,7 @@ export function JobsPanel() {
           selectedIds={mass.selectedIds}
           config={mass.config}
           updateFields={mass.updateFields}
+          directUpdateActions={jobDirectUpdateActions}
           onSuccess={mass.handleMassSuccess}
         />
       ) : null}

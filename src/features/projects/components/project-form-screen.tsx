@@ -26,8 +26,8 @@ import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.ut
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import {
-  buildQuickCreateReturnHref,
   QUICK_CREATE_CLIENT_PARAM,
   resolveFormBackUrl,
 } from "@/shared/utils/quick-create-navigation.util";
@@ -256,7 +256,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       const saved = isEdit && projectId ? await updateProject(projectId, payload) : await createProject(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
-      router.replace(buildQuickCreateReturnHref(safeBack, saved.id, "project"));
+      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.projects, saved.id, safeBack));
     } finally {
       setSaving(false);
     }

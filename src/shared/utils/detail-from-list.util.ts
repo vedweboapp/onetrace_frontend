@@ -12,6 +12,16 @@ export function buildDetailHrefWithListReturn(detailPath: string, currentListHre
   return `${detailPath}?back=${encodeURIComponent(backTarget)}`;
 }
 
+/** After create/update, open the entity detail page; back button returns to the list (or prior `back` URL). */
+export function buildEntityDetailHrefAfterSave(
+  entityListPath: string,
+  entityId: number,
+  listBackHref?: string | null,
+): string {
+  const listBack = (listBackHref?.trim() || entityListPath).split("#")[0] ?? entityListPath;
+  return `${entityListPath}/${entityId}?back=${encodeURIComponent(listBack)}`;
+}
+
 export type DashboardListSection =
   | "clients"
   | "vendors"

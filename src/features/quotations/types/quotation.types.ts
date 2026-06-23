@@ -139,7 +139,7 @@ export type QuotationCreatePayload = {
   site: number;
   quote_name: string;
   primary_customer_contact?: number | null;
-  additional_customer_contact?: number | null;
+  additional_customer_contact?: number[] | null;
   tags: number[];
   order_number?: string | null;
   due_date?: string | null;
@@ -171,7 +171,11 @@ export type QuotationListItem = {
   cost_centre?: number | null;
   quote_name: string;
   primary_customer_contact: number | null | QuotationContactNested;
-  additional_customer_contact: number | null | QuotationContactNested;
+  additional_customer_contact:
+    | number
+    | QuotationContactNested
+    | Array<number | QuotationContactNested>
+    | null;
   site_contact: number | null | QuotationContactNested;
   tags?: Array<number | QuotationTagNested>;
   order_number: string | null;

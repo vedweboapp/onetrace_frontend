@@ -1764,6 +1764,7 @@
         "project": "Proyecto",
         "primaryContact": "Contacto principal",
         "additionalContact": "Contacto adicional",
+        "additionalContacts": "Contactos adicionales",
         "siteContact": "Contacto del sitio",
         "orderNumber": "Número de pedido",
         "dueDate": "Fecha límite",
@@ -1778,6 +1779,13 @@
         "createdAt": "Creado",
         "updatedAt": "Última actualización",
         "createdBy": "Creado por"
+      },
+      "additionalContacts": {
+        "add": "Añadir contacto adicional",
+        "remove": "Eliminar contacto adicional",
+        "empty": "Aún no hay contactos adicionales.",
+        "selectClientFirst": "Selecciona un cliente primero para añadir contactos adicionales.",
+        "rowLabel": "Contacto adicional {number}"
       },
       "modal": {
         "createTitle": "Nueva cotización",
@@ -2494,6 +2502,7 @@
         "error": "No se pudieron asignar los trabajos. Inténtelo de nuevo.",
         "pickWorker": "Seleccionar técnico"
       },
+      "massAssignWorker": "Asignar técnico",
       "activate": "Activar",
       "deactivate": "Desactivar",
       "activatedToast": "Trabajo activado",

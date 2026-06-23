@@ -62,13 +62,11 @@ export type JobMassUpdateLabels = {
   site: string;
   forms: string;
   jobStatus: string;
-  assignedWorker: string;
   startDate: string;
 };
 
 export function buildJobMassUpdateFields(
   options: {
-    workerOptions: CheckmarkSelectOption[];
     jobStatusOptions: CheckmarkSelectOption[];
     clientOptions: CheckmarkSelectOption[];
     projectOptions: CheckmarkSelectOption[];
@@ -85,7 +83,6 @@ export function buildJobMassUpdateFields(
     selectField("site", labels.site, options.siteOptions, "number"),
     selectField("forms", labels.forms, options.formOptions, "number"),
     selectField("job_status", labels.jobStatus, options.jobStatusOptions, "number"),
-    selectField("assigned_worker", labels.assignedWorker, options.workerOptions, "number"),
     {
       name: "start_date",
       label: labels.startDate,

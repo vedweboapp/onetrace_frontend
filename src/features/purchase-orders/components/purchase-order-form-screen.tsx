@@ -36,7 +36,7 @@ import { DetailPageHeader } from "@/shared/components/layout/detail-page-header"
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { buildEntityDetailHrefAfterSave, sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
   CascadingLocationFields,
@@ -383,7 +383,7 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
       const saved =
         isEdit && purchaseOrderId ? await updatePurchaseOrder(purchaseOrderId, payload) : await createPurchaseOrder(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(`${listBack}?highlight=${saved.id}`);
+      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.purchaseOrders, saved.id, listBack));
     } catch {
       toastError(isEdit ? t("updateError") : t("createError"));
     } finally {

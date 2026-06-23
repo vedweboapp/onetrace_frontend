@@ -9,10 +9,9 @@ import { createItem, fetchItem, updateItem } from "@/features/items/api/item.api
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import {
-  buildQuickCreateReturnHref,
   resolveFormBackUrl,
-  sanitizeInternalDashboardBack,
 } from "@/shared/utils/quick-create-navigation.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { AppButton, FieldLabel, fieldErrorTextClassName, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
@@ -116,12 +115,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
               selling_price: sellN,
             });
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
-      const crossBack = sanitizeInternalDashboardBack(searchParams.get("back"));
-      if (!isEdit && crossBack) {
-        router.replace(buildQuickCreateReturnHref(crossBack, saved.id, "item"));
-      } else {
-        router.replace(`${safeBack}?highlight=${saved.id}`);
-      }
+      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.items, saved.id, safeBack));
     } catch {
       toastError(t("loadError"));
     } finally {

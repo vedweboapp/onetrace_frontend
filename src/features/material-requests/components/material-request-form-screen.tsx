@@ -38,6 +38,7 @@ import {
   DetailSectionCountBadge,
 } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
 import {
   AppButton,
@@ -224,11 +225,7 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
           ? await updateMaterialRequest(materialRequestId, payload)
           : await createMaterialRequest(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      if (isEdit) {
-        router.replace(`${safeBack}/${saved.id}?back=${encodeURIComponent(safeBack)}`);
-      } else {
-        router.replace(safeBack);
-      }
+      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.materialRequests, saved.id, safeBack));
     } finally {
       setSaving(false);
     }

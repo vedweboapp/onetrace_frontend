@@ -411,7 +411,6 @@ export function ProjectJobsTab({ projectId }: Props) {
     () =>
       buildJobMassUpdateFields(
         {
-          workerOptions,
           jobStatusOptions,
           clientOptions: massClientOptions,
           projectOptions: massProjectOptions,
@@ -426,11 +425,23 @@ export function ProjectJobsTab({ projectId }: Props) {
           site: tJobs("fields.site"),
           forms: tJobs("fields.forms"),
           jobStatus: tJobs("fields.jobStatus"),
-          assignedWorker: tJobs("fields.assignedWorker"),
           startDate: tJobs("fields.startDate"),
         },
       ),
-    [workerOptions, jobStatusOptions, massClientOptions, massProjectOptions, massSiteOptions, massFormOptions, tJobs],
+    [jobStatusOptions, massClientOptions, massProjectOptions, massSiteOptions, massFormOptions, tJobs],
+  );
+
+  const jobDirectUpdateActions = React.useMemo(
+    () => [
+      {
+        id: "assign-worker",
+        label: tJobs("massAssignWorker"),
+        fieldName: "assigned_worker",
+        options: workerOptions,
+        valueCoerce: "number" as const,
+      },
+    ],
+    [tJobs, workerOptions],
   );
 
   const [selectedIds, setSelectedIds] = React.useState<Set<number>>(() => new Set());
@@ -677,6 +688,7 @@ export function ProjectJobsTab({ projectId }: Props) {
             selectedIds={selectedIdsList}
             config={massConfig}
             updateFields={massUpdateFields}
+            directUpdateActions={jobDirectUpdateActions}
             onSuccess={handleMassSuccess}
           />
         </div>

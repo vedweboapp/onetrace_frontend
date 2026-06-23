@@ -31,7 +31,7 @@ import { DetailPageHeader } from "@/shared/components/layout/detail-page-header"
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
-import { mergeUrlQueryParam, sanitizeJobsBackHref } from "@/shared/utils/detail-from-list.util";
+import { buildEntityDetailHrefAfterSave, sanitizeJobsBackHref } from "@/shared/utils/detail-from-list.util";
 import { ensureCheckmarkOption } from "@/shared/utils/checkmark-options.util";
 import { saveQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
 import {
@@ -444,7 +444,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
     try {
       const saved = isEdit && jobId ? await updateJob(jobId, payload) : await createJob(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(mergeUrlQueryParam(listBack, "highlight", String(saved.id)));
+      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.jobs, saved.id, listBack));
     } catch {
       toastError(isEdit ? t("updateError") : t("createError"));
     } finally {
