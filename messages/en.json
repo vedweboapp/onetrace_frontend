@@ -1843,7 +1843,9 @@
       "formTabs": {
         "aria": "Quotation sections",
         "project": "Project & details",
-        "pricing": "Scope & pricing"
+        "pricing": "Scope & pricing",
+        "prevToProject": "Previous: Project & details",
+        "nextToPricing": "Next: Scope & pricing"
       },
       "validation": {
         "quoteName": "Enter a quotation name.",

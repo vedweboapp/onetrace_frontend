@@ -4,6 +4,7 @@ import * as React from "react";
 import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
 import { DetailEntityLink } from "@/shared/components/entity";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import type {
   QuotationContactNested,
@@ -37,6 +38,7 @@ import {
   detailMapFillClassName,
   detailMapViewportClassName,
 } from "@/shared/components/layout/detail-page-map-layout";
+import { DetailTabStepNav } from "@/shared/components/layout/detail-tab-step-nav";
 import {
   DetailMetricCard,
   DetailMetricsGrid,
@@ -183,9 +185,26 @@ export function QuotationDetailBody({
   const t = useTranslations("Dashboard.quotations");
   const tMeta = useTranslations("Dashboard.common.detail");
   const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [detailTab, setDetailTab] = React.useState<"project" | "pricing">(() =>
     searchParams.get("tab") === "pricing" ? "pricing" : "project",
+  );
+
+  const goToTab = React.useCallback(
+    (tab: "project" | "pricing") => {
+      setDetailTab(tab);
+      const params = new URLSearchParams(searchParams.toString());
+      if (tab === "pricing") params.set("tab", "pricing");
+      else params.delete("tab");
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    },
+    [pathname, router, searchParams],
   );
 
   React.useEffect(() => {
@@ -443,7 +462,7 @@ export function QuotationDetailBody({
           { id: "pricing", label: t("formTabs.pricing") },
         ]}
         value={detailTab}
-        onValueChange={(id) => setDetailTab(id === "pricing" ? "pricing" : "project")}
+        onValueChange={(id) => goToTab(id === "pricing" ? "pricing" : "project")}
         ariaLabel={t("formTabs.aria")}
         panelIdPrefix="quotation-detail"
         className="mb-1"
@@ -498,6 +517,7 @@ export function QuotationDetailBody({
             }}
           />
         </DetailPageMapLayout>
+        <DetailTabStepNav onNext={() => goToTab("pricing")} nextLabel={t("formTabs.nextToPricing")} />
       </div>
 
       <div
@@ -519,6 +539,7 @@ export function QuotationDetailBody({
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("page.editQuoteScopeEmpty")}</p>
           )}
         </DetailPanelCard>
+        <DetailTabStepNav onPrev={() => goToTab("project")} prevLabel={t("formTabs.prevToProject")} />
       </div>
     </DetailPagePadding>
   );

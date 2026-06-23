@@ -281,13 +281,10 @@ export function JobDetailBody({
               {formatFlexibleApiDate(detail.start_date, dateFmt)}
             </DetailMetricCard>
             <DetailMetricCard label={t("fields.endDate")}>
-              {formatFlexibleApiDate(detail.end_date, dateFmt)}
-            </DetailMetricCard>
-            {/* <DetailMetricCard label={t("fields.completedAt")}>
               {detail.completed_at
                 ? formatFlexibleApiDate(detail.completed_at, dateFmt)
                 : t("detail.notCompleted")}
-            </DetailMetricCard> */}
+            </DetailMetricCard>
             {detail.job_pin_status ? (
               <DetailMetricCard label={t("fields.pinStatus")}>
                 <span className="capitalize">{detail.job_pin_status}</span>
