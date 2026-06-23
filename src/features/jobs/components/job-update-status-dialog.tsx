@@ -4,7 +4,6 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
-import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
 import { AppButton, AppModal, CheckmarkSelect } from "@/shared/ui";
 
 type Props = {
@@ -54,8 +53,6 @@ export function JobUpdateStatusDialog({
     [statuses],
   );
 
-  const selectedRow = statuses.find((s) => String(s.id) === selected) ?? null;
-
   function handleConfirm() {
     const id = Number.parseInt(selected, 10);
     if (!Number.isFinite(id) || id <= 0) return;
@@ -100,11 +97,6 @@ export function JobUpdateStatusDialog({
         listLabel={t("fields.jobStatus")}
         portaled
       />
-      {selectedRow ? (
-        <div className="mt-3">
-          <WorkflowColourStatusChip row={selectedRow} />
-        </div>
-      ) : null}
     </AppModal>
   );
 }

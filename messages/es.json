@@ -1838,7 +1838,9 @@
       "formTabs": {
         "aria": "Secciones de la cotización",
         "project": "Proyecto y datos",
-        "pricing": "Alcance y precios"
+        "pricing": "Alcance y precios",
+        "prevToProject": "Anterior: Proyecto y datos",
+        "nextToPricing": "Siguiente: Alcance y precios"
       },
       "validation": {
         "quoteName": "Introduce un nombre para la cotización.",
