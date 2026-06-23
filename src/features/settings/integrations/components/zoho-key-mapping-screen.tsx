@@ -7,7 +7,7 @@ import { useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import { ZOHO_DEFAULT_RESOURCE } from "@/features/settings/integrations/api/integration.paths";
 import { fetchZohoKeyMapping, saveZohoKeyMapping } from "@/features/settings/integrations/api/integration.api";
-import type { ZohoMappingRow } from "@/features/settings/integrations/types/integration.types";
+import type { ZohoMappingRow, ZohoFieldSchema } from "@/features/settings/integrations/types/integration.types";
 import {
   existingMappingToRows,
   nextZohoMappingRowId,
@@ -67,6 +67,20 @@ function HistoricalDataToggle({
   );
 }
 
+function areTypesCompatible(typeA: string | undefined, typeB: string | undefined): boolean {
+  if (!typeA || !typeB) return true;
+  const normA = typeA.toLowerCase();
+  const normB = typeB.toLowerCase();
+  if (normA === normB) return true;
+  if ((normA === "string" || normA === "text") && (normB === "string" || normB === "text")) {
+    return true;
+  }
+  if ((normA === "number" || normA === "decimal") && (normB === "number" || normB === "decimal")) {
+    return true;
+  }
+  return false;
+}
+
 export type ZohoKeyMappingFormProps = {
   onSaveSuccess?: () => void;
   onCancel?: () => void;
@@ -86,6 +100,8 @@ export function ZohoKeyMappingForm({
   const [saving, setSaving] = React.useState(false);
   const [pullHistoricalData, setPullHistoricalData] = React.useState(true);
   const [rows, setRows] = React.useState<ZohoMappingRow[]>([]);
+  const [externalFields, setExternalFields] = React.useState<ZohoFieldSchema[]>([]);
+  const [internalFields, setInternalFields] = React.useState<ZohoFieldSchema[]>([]);
   const [externalOptions, setExternalOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [internalOptions, setInternalOptions] = React.useState<{ value: string; label: string }[]>([]);
 
@@ -98,6 +114,8 @@ export function ZohoKeyMappingForm({
         const data = await fetchZohoKeyMapping();
         if (cancelled) return;
         const sortedInternalFields = sortInternalFields(data.internal_fields);
+        setExternalFields(data.external_fields);
+        setInternalFields(sortedInternalFields);
         setExternalOptions(toSelectOptions(data.external_fields));
         setInternalOptions(toSelectOptions(sortedInternalFields));
         setRows(existingMappingToRows(data.existing_mapping));
@@ -190,12 +208,36 @@ export function ZohoKeyMappingForm({
               </thead>
               <tbody>
                 {rows.map((row) => {
+                  const currentSimhoField = internalFields.find((f) => f.field === row.internalField);
+                  const currentSimhoType = currentSimhoField?.type;
+
+                  const currentZohoField = externalFields.find((f) => f.field === row.externalField);
+                  const currentZohoType = currentZohoField?.type;
+
                   const filteredInternalOptions = internalOptions.filter((opt) => {
-                    return opt.value === row.internalField || !rows.some((r) => r.id !== row.id && r.internalField === opt.value);
+                    const isSelectedInOtherRow = rows.some((r) => r.id !== row.id && r.internalField === opt.value);
+                    if (isSelectedInOtherRow) return false;
+
+                    if (currentZohoType) {
+                      const optField = internalFields.find((f) => f.field === opt.value);
+                      if (optField && !areTypesCompatible(optField.type, currentZohoType)) {
+                        return false;
+                      }
+                    }
+                    return true;
                   });
 
                   const filteredExternalOptions = externalOptions.filter((opt) => {
-                    return opt.value === row.externalField || !rows.some((r) => r.id !== row.id && r.externalField === opt.value);
+                    const isSelectedInOtherRow = rows.some((r) => r.id !== row.id && r.externalField === opt.value);
+                    if (isSelectedInOtherRow) return false;
+
+                    if (currentSimhoType) {
+                      const optField = externalFields.find((f) => f.field === opt.value);
+                      if (optField && !areTypesCompatible(optField.type, currentSimhoType)) {
+                        return false;
+                      }
+                    }
+                    return true;
                   });
 
                   return (
