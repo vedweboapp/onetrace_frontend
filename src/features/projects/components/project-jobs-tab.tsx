@@ -47,6 +47,7 @@ import {
 } from "@/shared/ui";
 import {
   buildDetailHrefWithListReturn,
+  buildPathWithStoredBack,
   buildProjectJobsTabHref,
 } from "@/shared/utils/detail-from-list.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
@@ -149,6 +150,7 @@ function ProjectJobRow({
     <div
       role="button"
       tabIndex={0}
+      data-list-row-id={job.id}
       className={cn(
         JOB_TABLE_ROW_CLASS,
         "cursor-pointer hover:bg-slate-50/90 dark:hover:bg-slate-800/30",
@@ -410,11 +412,28 @@ export function ProjectJobsTab({ projectId }: Props) {
     [t],
   );
 
+  const jobDirectUpdateActions = React.useMemo(
+    () => [
+      {
+        id: "assign-worker",
+        label: tJobs("massAssignWorker"),
+        fieldName: "assigned_worker",
+        options: workerOptions,
+        valueCoerce: "number" as const,
+      },
+    ],
+    [tJobs, workerOptions],
+  );
+
+  const [selectedIds, setSelectedIds] = React.useState<Set<number>>(() => new Set());
+  const checkboxClassName = listMassSelectionRowCheckboxClassName;
+  const selectedCount = selectedIds.size;
+  const selectedIdsList = React.useMemo(() => [...selectedIds], [selectedIds]);
+
   const massUpdateFields = React.useMemo(
     () =>
       buildJobMassUpdateFields(
         {
-          workerOptions,
           jobStatusOptions,
           clientOptions: massClientOptions,
           projectOptions: massProjectOptions,
@@ -429,17 +448,12 @@ export function ProjectJobsTab({ projectId }: Props) {
           site: tJobs("fields.site"),
           forms: tJobs("fields.forms"),
           jobStatus: tJobs("fields.jobStatus"),
-          assignedWorker: tJobs("fields.assignedWorker"),
           startDate: tJobs("fields.startDate"),
         },
+        { includeForms: selectedCount > 0 },
       ),
-    [workerOptions, jobStatusOptions, massClientOptions, massProjectOptions, massSiteOptions, massFormOptions, tJobs],
+    [jobStatusOptions, massClientOptions, massProjectOptions, massSiteOptions, massFormOptions, selectedCount, tJobs],
   );
-
-  const [selectedIds, setSelectedIds] = React.useState<Set<number>>(() => new Set());
-  const checkboxClassName = listMassSelectionRowCheckboxClassName;
-  const selectedCount = selectedIds.size;
-  const selectedIdsList = React.useMemo(() => [...selectedIds], [selectedIds]);
 
   React.useEffect(() => {
     setSelectedIds(new Set());
@@ -553,7 +567,7 @@ export function ProjectJobsTab({ projectId }: Props) {
   }, [projectId, refreshNonce, t]);
 
   function openEdit(job: ProjectJobHierarchyJob) {
-    router.push(`${routes.dashboard.jobs}/${job.id}/edit?back=${encodeURIComponent(listBack)}`);
+    router.push(buildPathWithStoredBack(`${routes.dashboard.jobs}/${job.id}/edit`, listBack));
   }
 
   async function confirmDelete() {
@@ -703,6 +717,7 @@ export function ProjectJobsTab({ projectId }: Props) {
             selectedIds={selectedIdsList}
             config={massConfig}
             updateFields={massUpdateFields}
+            directUpdateActions={jobDirectUpdateActions}
             onSuccess={handleMassSuccess}
           />
         </div>

@@ -7,7 +7,7 @@
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { Link } from "@/i18n/navigation";
+import { DetailEntityLink, EntityDetailLoadingSkeleton } from "@/shared/components/entity";
 import { fetchCompositeItem } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import { fetchItemsPage } from "@/features/items/api/item.api";
@@ -15,7 +15,6 @@ import type { Item } from "@/features/items/types/item.types";
 import { parseCompositeScopeRepeat } from "@/features/quotations/utils/quotation-composite-scope-nav.util";
 import { loadQuotationScopePinDetails } from "@/features/quotations/utils/quotation-composite-scope-pins.util";
 import { formatMoneyDisplay } from "@/features/quotations/utils/quotation-level-pricing.util";
-import { EntityDetailLoadingSkeleton } from "@/shared/components/entity";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import {
   DetailLinkedTable,
@@ -319,12 +318,12 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
                 </DetailMetricCard>
               </DetailMetricsGrid>
               <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                <Link
+                <DetailEntityLink
                   href={`${routes.dashboard.compositeItems}/${detail.id}`}
                   className="font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                 >
                   {t("openCatalogItem")}
-                </Link>
+                </DetailEntityLink>
               </p>
             </DetailPanelCard>
 
@@ -354,12 +353,12 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
                             cellClassName: "font-medium text-slate-900 dark:text-slate-100",
                           })}
                         >
-                          <Link
+                          <DetailEntityLink
                             href={`${routes.dashboard.items}/${component.child_item}`}
                             className="block truncate text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                           >
                             {child?.name ?? `${tItems("detail.componentItem")} #${component.child_item}`}
-                          </Link>
+                          </DetailEntityLink>
                         </DetailLinkedTableTd>
                         <DetailLinkedTableTd
                           narrow

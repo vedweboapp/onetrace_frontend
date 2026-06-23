@@ -31,7 +31,8 @@ import { DetailPageHeader } from "@/shared/components/layout/detail-page-header"
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
-import { mergeUrlQueryParam, sanitizeJobsBackHref } from "@/shared/utils/detail-from-list.util";
+import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack, sanitizeJobsBackHref } from "@/shared/utils/detail-from-list.util";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { ensureCheckmarkOption } from "@/shared/utils/checkmark-options.util";
 import { saveQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
 import {
@@ -68,7 +69,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
     const i = pathname.indexOf(needle);
     return i >= 0 ? pathname.slice(0, i + needle.length) : needle;
   }, [pathname]);
-  const listBack = sanitizeJobsBackHref(searchParams.get("back"), jobsListHref);
+  const listBack = useFormBackUrl("jobs", jobsListHref);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);
@@ -185,7 +186,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
     const qs = searchParams.toString();
     const current = qs ? `${pathname}?${qs}` : pathname;
     saveQuickCreateFormDraft(draftReturnTo, getValues());
-    router.push(`${routes.dashboard.settingsUsers}/new?back=${encodeURIComponent(current)}`);
+    router.push(buildPathWithStoredBack(`${routes.dashboard.settingsUsers}/new`, current));
   }, [router, pathname, searchParams, draftReturnTo, getValues]);
   const openJobStatusSettings = React.useCallback(() => {
     router.push(routes.dashboard.settingsJobStatus);
@@ -444,7 +445,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
     try {
       const saved = isEdit && jobId ? await updateJob(jobId, payload) : await createJob(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(mergeUrlQueryParam(listBack, "highlight", String(saved.id)));
+      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.jobs, saved.id, listBack));
     } catch {
       toastError(isEdit ? t("updateError") : t("createError"));
     } finally {

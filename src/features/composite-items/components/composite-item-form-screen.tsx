@@ -4,6 +4,7 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import {
   createCompositeItem,
   fetchCompositeItem,
@@ -22,10 +23,9 @@ import { DetailPageHeader } from "@/shared/components/layout/detail-page-header"
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import {
-  buildQuickCreateReturnHref,
   resolveFormBackUrl,
-  sanitizeInternalDashboardBack,
 } from "@/shared/utils/quick-create-navigation.util";
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
@@ -69,7 +69,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safeBack = resolveFormBackUrl(searchParams.get("back"), "composite-items", routes.dashboard.compositeItems);
+  const safeBack = useFormBackUrl("composite-items", routes.dashboard.compositeItems);
   const isEdit = mode === "edit";
   const pendingItemRowRef = React.useRef<string | null>(null);
 
@@ -489,7 +489,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
 
         if (Object.keys(payload).length === 0) {
           toastSuccess(tModal("updatedToast"));
-          router.replace(`${safeBack}?highlight=${itemId}`);
+          router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.compositeItems, itemId, safeBack));
           return;
         }
 
@@ -508,12 +508,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
 
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
-      const crossBack = sanitizeInternalDashboardBack(searchParams.get("back"));
-      if (!isEdit && crossBack) {
-        router.replace(buildQuickCreateReturnHref(crossBack, saved.id, "composite-item"));
-      } else {
-        router.replace(`${safeBack}?highlight=${saved.id}`);
-      }
+      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.compositeItems, saved.id, safeBack));
     } catch {
       toastError(t("loadError"));
     } finally {

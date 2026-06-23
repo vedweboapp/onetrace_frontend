@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
@@ -29,7 +30,7 @@ import { DetailPageHeader } from "@/shared/components/layout/detail-page-header"
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { buildEntityDetailHrefAfterSave, sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
   CascadingLocationFields,
@@ -59,7 +60,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "invoices");
+  const safeBack = useFormBackUrl("invoices", routes.dashboard.invoices);
   const invoicesListHref = React.useMemo(() => {
     const needle = routes.dashboard.invoices;
     const i = pathname.indexOf(needle);
@@ -386,7 +387,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
       const saved =
         isEdit && invoiceId ? await updateInvoice(invoiceId, payload) : await createInvoice(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(`${listBack}?highlight=${saved.id}`);
+      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.invoices, saved.id, listBack));
     } catch {
       toastError(isEdit ? t("updateError") : t("createError"));
     } finally {

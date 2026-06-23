@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
@@ -26,8 +27,8 @@ import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.ut
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import {
-  buildQuickCreateReturnHref,
   QUICK_CREATE_CLIENT_PARAM,
   resolveFormBackUrl,
 } from "@/shared/utils/quick-create-navigation.util";
@@ -53,7 +54,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safeBack = resolveFormBackUrl(searchParams.get("back"), "projects", routes.dashboard.projects);
+  const safeBack = useFormBackUrl("projects", routes.dashboard.projects);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);
@@ -256,7 +257,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       const saved = isEdit && projectId ? await updateProject(projectId, payload) : await createProject(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
-      router.replace(buildQuickCreateReturnHref(safeBack, saved.id, "project"));
+      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.projects, saved.id, safeBack));
     } finally {
       setSaving(false);
     }

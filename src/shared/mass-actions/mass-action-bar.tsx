@@ -12,12 +12,16 @@ import {
 } from "@/shared/ui";
 import { createMassActionClient } from "./mass-action.api";
 import { buildMassExportPayload, buildMassIdsPayload, buildMassUpdatePayload } from "./mass-action.util";
-import type { MassActionConfig, MassActionKind, MassExportFormat, MassUpdateFieldDef } from "./types";
+import type { MassActionConfig, MassActionKind, MassDirectUpdateAction, MassExportFormat, MassUpdateFieldDef } from "./types";
+
+type BarAction = MassActionKind | string;
 
 type Props = {
   selectedIds: number[];
   config: MassActionConfig;
   updateFields: MassUpdateFieldDef[];
+  /** Shown in the action dropdown after export; each runs mass-update for one field. */
+  directUpdateActions?: MassDirectUpdateAction[];
   disabled?: boolean;
   onSuccess: () => void;
 };
@@ -41,11 +45,18 @@ const massBarFieldClass = cn(
 const massBarSelectSlot = "w-[8.75rem] shrink-0 sm:w-[9.25rem]";
 const massBarValueSlot = "w-[8.75rem] shrink-0 sm:w-[9.25rem]";
 
-export function MassActionBar({ selectedIds, config, updateFields, disabled, onSuccess }: Props) {
+export function MassActionBar({
+  selectedIds,
+  config,
+  updateFields,
+  directUpdateActions,
+  disabled,
+  onSuccess,
+}: Props) {
   const t = useTranslations("Dashboard.massActions");
   const client = React.useMemo(() => createMassActionClient(config), [config]);
 
-  const [action, setAction] = React.useState<MassActionKind | "">("");
+  const [action, setAction] = React.useState<BarAction>("");
   const [fieldName, setFieldName] = React.useState("");
   const [fieldValue, setFieldValue] = React.useState("");
   const [exportFormat, setExportFormat] = React.useState<MassExportFormat | "">("");
@@ -62,19 +73,24 @@ export function MassActionBar({ selectedIds, config, updateFields, disabled, onS
     [updateFields],
   );
 
-  const actionOptions = React.useMemo(
-    () =>
-      ACTION_OPTIONS.map((opt) => ({
-        value: opt.value,
-        label:
-          opt.value === "mass-update"
-            ? t("actions.massUpdate")
-            : opt.value === "mass-delete"
-              ? t("actions.massDelete")
-              : t("actions.massExport"),
-      })),
-    [t],
+  const selectedDirectAction = React.useMemo(
+    () => directUpdateActions?.find((a) => a.id === action) ?? null,
+    [action, directUpdateActions],
   );
+
+  const actionOptions = React.useMemo(() => {
+    const standard = ACTION_OPTIONS.map((opt) => ({
+      value: opt.value,
+      label:
+        opt.value === "mass-update"
+          ? t("actions.massUpdate")
+          : opt.value === "mass-delete"
+            ? t("actions.massDelete")
+            : t("actions.massExport"),
+    }));
+    const direct = (directUpdateActions ?? []).map((a) => ({ value: a.id, label: a.label }));
+    return [...standard, ...direct];
+  }, [t, directUpdateActions]);
 
   const exportFormatOptions = React.useMemo(
     () => [
@@ -94,12 +110,20 @@ export function MassActionBar({ selectedIds, config, updateFields, disabled, onS
     setFieldValue("");
   }, [fieldName]);
 
+  React.useEffect(() => {
+    if (fieldName && !updateFields.some((f) => f.name === fieldName)) {
+      setFieldName("");
+      setFieldValue("");
+    }
+  }, [fieldName, updateFields]);
+
   const canApply =
     selectedIds.length > 0 &&
     action !== "" &&
     (action === "mass-delete" ||
       (action === "mass-export" && exportFormat !== "") ||
-      (action === "mass-update" && fieldName.trim() !== "" && fieldValue.trim() !== ""));
+      (action === "mass-update" && fieldName.trim() !== "" && fieldValue.trim() !== "") ||
+      (selectedDirectAction != null && fieldValue.trim() !== ""));
 
   async function runMassDelete() {
     setBusy(true);
@@ -147,6 +171,28 @@ export function MassActionBar({ selectedIds, config, updateFields, disabled, onS
     }
   }
 
+  async function runDirectUpdate(direct: MassDirectUpdateAction) {
+    if (!fieldValue.trim()) return;
+    setBusy(true);
+    try {
+      const fieldDef: MassUpdateFieldDef = {
+        name: direct.fieldName,
+        label: direct.label,
+        valueType: "select",
+        options: direct.options,
+        valueCoerce: direct.valueCoerce ?? "number",
+      };
+      const body = buildMassUpdatePayload(config, selectedIds, direct.fieldName, fieldValue, [fieldDef]);
+      await client.massUpdate(body);
+      setAction("");
+      onSuccess();
+    } catch {
+      /* axios interceptor */
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function handleApply() {
     if (!canApply || busy) return;
     if (action === "mass-delete") {
@@ -157,6 +203,10 @@ export function MassActionBar({ selectedIds, config, updateFields, disabled, onS
       void runMassExport();
       return;
     }
+    if (selectedDirectAction) {
+      void runDirectUpdate(selectedDirectAction);
+      return;
+    }
     void runMassUpdate();
   }
 
@@ -164,17 +214,26 @@ export function MassActionBar({ selectedIds, config, updateFields, disabled, onS
 
   const showUpdateFields = action === "mass-update";
   const showExportFormat = action === "mass-export";
+  const showDirectUpdateField = selectedDirectAction != null;
+
+  const applyButtonClassName = cn(
+    "shrink-0",
+    "bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)]",
+    "hover:brightness-110 active:brightness-[0.93]",
+    "data-[disabled]:bg-[color:var(--dash-accent,#111111)] data-[disabled]:text-[color:var(--dash-on-accent,#ffffff)] data-[disabled]:opacity-45",
+  );
 
   return (
     <>
       <div
         className={cn(
-          "flex flex-nowrap items-center gap-2 overflow-x-auto rounded-lg border border-slate-200/90 bg-white px-3 py-2 shadow-sm",
+          "overflow-hidden rounded-lg border border-slate-200/90 bg-white shadow-sm",
           "dark:border-slate-700/90 dark:bg-slate-900/90",
         )}
         role="region"
         aria-label={t("bulkBarAria")}
       >
+        <div className="flex flex-nowrap items-center gap-2 overflow-x-auto px-3 py-2">
         <span className="shrink-0 whitespace-nowrap rounded-md bg-[color:var(--dash-accent,#111)]/10 px-2 py-1 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-100">
           {t("selectedCount", { count: selectedIds.length })}
         </span>
@@ -193,8 +252,25 @@ export function MassActionBar({ selectedIds, config, updateFields, disabled, onS
           clearable
           size="sm"
           className={massBarSelectSlot}
-          onChange={(v) => setAction((v as MassActionKind) || "")}
+          onChange={(v) => setAction(v || "")}
         />
+
+        {showDirectUpdateField ? (
+          <CheckmarkSelect
+            listLabel={t("valueLabel")}
+            buttonAriaLabel={t("valueLabel")}
+            options={selectedDirectAction.options}
+            value={fieldValue}
+            emptyLabel={t("pickValue")}
+            disabled={disabled || busy}
+            portaled
+            searchable
+            clearable
+            size="sm"
+            className={massBarSelectSlot}
+            onChange={setFieldValue}
+          />
+        ) : null}
 
         {showExportFormat ? (
           <CheckmarkSelect
@@ -289,16 +365,12 @@ export function MassActionBar({ selectedIds, config, updateFields, disabled, onS
           size="sm"
           loading={busy}
           disabled={!canApply || disabled || busy}
-          className={cn(
-            "shrink-0",
-            "bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)]",
-            "hover:brightness-110 active:brightness-[0.93]",
-            "data-[disabled]:bg-[color:var(--dash-accent,#111111)] data-[disabled]:text-[color:var(--dash-on-accent,#ffffff)] data-[disabled]:opacity-45",
-          )}
+          className={applyButtonClassName}
           onClick={handleApply}
         >
           {t("apply")}
         </AppButton>
+        </div>
       </div>
 
       <ConfirmDialog

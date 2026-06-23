@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Pencil, Power, PowerOff, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
 import { cn } from "@/core/utils/http.util";
@@ -32,7 +31,6 @@ import {
   DataTablePaginationBar,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
-  DataTableRowActionsMenu,
   DetailPanel,
   FieldGroup,
   ListPageActiveFilter,
@@ -185,6 +183,7 @@ export function ProjectTypeSettingsPanel() {
     try {
       await updateProjectType(row.id, { is_active: next });
       toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
+      setDetailRow((prev) => (prev?.id === row.id ? { ...prev, is_active: next } : prev));
       setRefreshNonce((n) => n + 1);
     } catch {
       toastError(t("toggleActiveError"));
@@ -246,38 +245,6 @@ export function ProjectTypeSettingsPanel() {
 
   const pageRange = getListPageRange(pagination);
 
-  const rowMenuItems = React.useCallback(
-    (row: ProjectType) => [
-      { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) },
-      {
-        id: "delete",
-        label: t("delete"),
-        icon: Trash2,
-        tone: "danger" as const,
-        onSelect: () => {
-          setDetailRow(null);
-          setDeleteTarget(row);
-        },
-      },
-      row.is_active
-        ? {
-            id: "deactivate",
-            label: t("deactivate"),
-            icon: PowerOff,
-            onSelect: () => void handleToggleActive(row, false),
-            disabled: togglingId === row.id,
-          }
-        : {
-            id: "activate",
-            label: t("activate"),
-            icon: Power,
-            onSelect: () => void handleToggleActive(row, true),
-            disabled: togglingId === row.id,
-          },
-    ],
-    [t, openEdit, togglingId],
-  );
-
   const tableColumns = React.useMemo(() => {
     const c = entityCol<ProjectType>();
     return [
@@ -313,11 +280,8 @@ export function ProjectTypeSettingsPanel() {
         ),
         { responsive: "md" },
       ),
-      c.actions("actions", t("table.actions"), (row) => (
-        <DataTableRowActionsMenu menuAriaLabel={tList("openRowActions")} items={rowMenuItems(row)} />
-      )),
     ];
-  }, [t, tList, dateFmt, rowMenuItems]);
+  }, [t, dateFmt]);
 
   return (
     <div className="space-y-6">
@@ -413,7 +377,6 @@ export function ProjectTypeSettingsPanel() {
                     />
                   }
                   onCardClick={() => setDetailRow(row)}
-                  menu={<DataTableRowActionsMenu menuAriaLabel={tList("openRowActions")} items={rowMenuItems(row)} />}
                 />
               ))}
             </ListPageCardGrid>
@@ -471,6 +434,16 @@ export function ProjectTypeSettingsPanel() {
                 }}
               >
                 {t("edit")}
+              </AppButton>
+              <AppButton
+                type="button"
+                variant="secondary"
+                size="sm"
+                loading={togglingId === detailRow.id}
+                disabled={togglingId === detailRow.id}
+                onClick={() => void handleToggleActive(detailRow, !detailRow.is_active)}
+              >
+                {detailRow.is_active ? t("deactivate") : t("activate")}
               </AppButton>
               <AppButton
                 type="button"

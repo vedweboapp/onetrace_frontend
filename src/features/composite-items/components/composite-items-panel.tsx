@@ -36,7 +36,7 @@ import {
   SurfaceShell,
 } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import {
@@ -216,11 +216,11 @@ export function CompositeItemsPanel() {
   }, [page, pageSize, search, refreshNonce, t]);
 
   function openCreate() {
-    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
+    router.push(buildPathWithStoredBack(`${pathname}/new`, listHref));
   }
 
   function openEdit(row: CompositeItem) {
-    router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`);
+    router.push(buildPathWithStoredBack(`${pathname}/${row.id}/edit`, listHref));
   }
 
   function handleSaved() {

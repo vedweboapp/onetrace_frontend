@@ -8,6 +8,7 @@ import { useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { createQuotation, fetchProjectLevelRowsForQuotation, fetchWorkspaceUsers } from "@/features/quotations/api/quotation.api";
+import { QuotationAdditionalContactsFields } from "@/features/quotations/components/quotation-additional-contacts-fields";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
 import { useQuotationDraftState } from "@/features/quotations/hooks/use-quotation-draft-state";
 import type { ProjectLevelForQuotation } from "@/features/quotations/types/quotation.types";
@@ -30,6 +31,7 @@ import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { routes } from "@/shared/config/routes";
+import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
   AppModal,
@@ -85,6 +87,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     useForm<QuotationFormValues>({
       resolver: zodResolver(schema),
       defaultValues: emptyQuotationFormDefaults(),
+      shouldUnregister: false,
     });
 
   const quoteNameRegister = register("quote_name");
@@ -256,9 +259,10 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     clientId: customerId,
     addDisabled: saving || !customerId,
   });
+  const pendingAdditionalContactRowRef = React.useRef<number | null>(null);
   const openUsersSettings = React.useCallback(() => {
     const current = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : routes.dashboard.quotations;
-    router.push(`${routes.dashboard.settingsUsers}/new?back=${encodeURIComponent(current)}`);
+    router.push(buildPathWithStoredBack(`${routes.dashboard.settingsUsers}/new`, current));
   }, [router]);
 
   React.useEffect(() => {
@@ -300,10 +304,11 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
         selectedSiteForPayload,
         parseOptionalId(values.site_contact),
       );
-      await createQuotation(payload);
+      const saved = await createQuotation(payload);
       toastSuccess(t("createdToast"));
       onSaved();
       onClose();
+      router.push(buildEntityDetailHrefAfterSave(routes.dashboard.quotations, saved.id, routes.dashboard.quotations));
     } catch {
       toastError(t("saveError"));
     } finally {
@@ -414,7 +419,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                     setValue("site", "");
                     setValue("project", "");
                     setValue("primary_customer_contact", "");
-                    setValue("additional_customer_contact", "");
+                    setValue("additional_customer_contacts", []);
                     setValue("site_contact", "");
                   }}
                 />
@@ -501,28 +506,25 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
               )}
             />
           </FieldGroup>
-          <FieldGroup label={t("fields.additionalContact")} htmlFor="quotation-additional-contact">
-            <Controller
-              control={control}
-              name="additional_customer_contact"
-              render={({ field }) => (
-                <CheckmarkSelect
-                  id="quotation-additional-contact"
-                  portaled
-                  listLabel={t("fields.additionalContact")}
-                  options={contactOptions}
-                  value={field.value}
-                  emptyLabel={t("placeholders.contactOptional")}
-                  disabled={saving || !customerId}
-                  onBlur={field.onBlur}
-                  onAdd={contactQuickCreate.onAdd}
-                  addAriaLabel={contactQuickCreate.addAriaLabel}
-                  addLabel={contactQuickCreate.addLabel}
-                  onChange={field.onChange}
-                />
-              )}
-            />
+          <FieldGroup label={t("fields.dueDate")} htmlFor="quotation-due">
+            <SurfaceDateInput id="quotation-due" type="date" {...register("due_date")} />
           </FieldGroup>
+        </FormFieldRow>
+
+        <QuotationAdditionalContactsFields
+          control={control}
+          contactOptions={contactOptions}
+          customerId={customerId}
+          disabled={saving}
+          onAddContact={contactQuickCreate.onAdd}
+          addAriaLabel={contactQuickCreate.addAriaLabel}
+          addLabel={contactQuickCreate.addLabel}
+          onRequestAddContact={(rowIndex) => {
+            pendingAdditionalContactRowRef.current = rowIndex;
+          }}
+        />
+
+        <FormFieldRow cols="2">
           <FieldGroup label={t("fields.siteContact")} htmlFor="quotation-site-contact">
             <Controller
               control={control}
@@ -544,12 +546,6 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                 />
               )}
             />
-          </FieldGroup>
-          <FieldGroup label={t("fields.orderNumber")} htmlFor="quotation-order">
-            <input id="quotation-order" className={surfaceInputClassName} {...register("order_number")} />
-          </FieldGroup>
-          <FieldGroup label={t("fields.dueDate")} htmlFor="quotation-due">
-            <SurfaceDateInput id="quotation-due" type="date" {...register("due_date")} />
           </FieldGroup>
         </FormFieldRow>
 
