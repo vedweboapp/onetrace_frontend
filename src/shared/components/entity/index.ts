@@ -1,3 +1,4 @@
+export { DetailEntityLink } from "./detail-entity-link";
 export { EntityDetailScreen } from "./entity-detail-screen";
 export type {
   EntityDetailScreenLabels,

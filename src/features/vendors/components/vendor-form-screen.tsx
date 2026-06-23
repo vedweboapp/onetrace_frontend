@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchVendorTypesPage } from "@/features/vendor-types/api/vendor-type.api";
 import { createVendor, fetchVendor, updateVendor } from "@/features/vendors/api/vendor.api";
 import { VendorAddressesFields } from "@/features/vendors/components/vendor-addresses-fields";
@@ -48,7 +49,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
     const i = pathname.indexOf(needle);
     return i >= 0 ? pathname.slice(0, i + needle.length) : needle;
   }, [pathname]);
-  const safeBack = resolveFormBackUrl(searchParams.get("back"), "vendors", listHref);
+  const safeBack = useFormBackUrl("vendors", listHref);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);

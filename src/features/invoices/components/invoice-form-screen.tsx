@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
@@ -59,7 +60,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "invoices");
+  const safeBack = useFormBackUrl("invoices", routes.dashboard.invoices);
   const invoicesListHref = React.useMemo(() => {
     const needle = routes.dashboard.invoices;
     const i = pathname.indexOf(needle);

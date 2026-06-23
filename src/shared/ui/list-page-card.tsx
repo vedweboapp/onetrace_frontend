@@ -24,7 +24,7 @@ type ListPageCardProps = {
   description?: string;
   footer?: ReactNode;
   onCardClick?: () => void;
-  menu: ReactNode;
+  menu?: ReactNode;
   className?: string;
   dataListRowId?: number;
   installationType?: ReactNode;
@@ -79,9 +79,11 @@ export function ListPageCard({
             {title}
           </div>
         </div>
-        <div className="shrink-0" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-          {menu}
-        </div>
+        {menu ? (
+          <div className="shrink-0" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+            {menu}
+          </div>
+        ) : null}
       </div>
       <div className="w-full flex items-center justify-between">
         <div>

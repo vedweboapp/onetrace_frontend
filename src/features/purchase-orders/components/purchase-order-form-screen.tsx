@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import {
@@ -66,7 +67,7 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "purchase-orders");
+  const safeBack = useFormBackUrl("purchase-orders", routes.dashboard.purchaseOrders);
   const purchaseOrdersListHref = React.useMemo(() => {
     const needle = routes.dashboard.purchaseOrders;
     const i = pathname.indexOf(needle);

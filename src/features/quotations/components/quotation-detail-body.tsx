@@ -3,7 +3,7 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { DetailEntityLink } from "@/shared/components/entity";
 import { useSearchParams } from "next/navigation";
 import type {
   QuotationContactNested,
@@ -79,12 +79,12 @@ type AdditionalContactEntry = ReturnType<typeof getQuotationAdditionalContactEnt
 function QuotationDetailPeopleSection({
   detail,
   technicianEntries,
-  additionalContactEntries,
+  additionalContactEntries = [],
   t,
 }: {
   detail: QuotationDetail;
   technicianEntries: TechnicianEntry[];
-  additionalContactEntries: AdditionalContactEntry[];
+  additionalContactEntries?: AdditionalContactEntry[];
   t: ReturnType<typeof useTranslations<"Dashboard.quotations">>;
 }) {
   return (
@@ -263,18 +263,18 @@ export function QuotationDetailBody({
         <DetailMetricCard label={t("fields.quoteName")}>{detail.quote_name}</DetailMetricCard>
         <DetailMetricCard label={t("fields.customer")}>
           {customerId != null ? (
-            <Link href={`${routes.dashboard.clients}/${customerId}`} className={detailEntityLinkClassName}>
+            <DetailEntityLink href={`${routes.dashboard.clients}/${customerId}`} className={detailEntityLinkClassName}>
               {quotationCustomerLabel(detail.customer, customerName ?? null)}
-            </Link>
+            </DetailEntityLink>
           ) : (
             quotationCustomerLabel(detail.customer, customerName ?? null)
           )}
         </DetailMetricCard>
         <DetailMetricCard label={t("fields.project")}>
           {projectId != null ? (
-            <Link href={`${routes.dashboard.projects}/${projectId}`} className={detailEntityLinkClassName}>
+            <DetailEntityLink href={`${routes.dashboard.projects}/${projectId}`} className={detailEntityLinkClassName}>
               {quotationProjectLabel(detail.project, projectName ?? null)}
-            </Link>
+            </DetailEntityLink>
           ) : (
             quotationProjectLabel(detail.project, projectName ?? null)
           )}
@@ -284,9 +284,9 @@ export function QuotationDetailBody({
           {
             detail?.sites?.map((site: any, key: any) => {
               return (
-                <Link href={`${routes.dashboard.sites}/${site.id}`} key={key} className={cn("mr-2",detailEntityLinkClassName)}>
+                <DetailEntityLink href={`${routes.dashboard.sites}/${site.id}`} key={key} className={cn("mr-2",detailEntityLinkClassName)}>
                   {site.site_name}
-                </Link>
+                </DetailEntityLink>
               );
             })
           }
@@ -475,7 +475,12 @@ export function QuotationDetailBody({
             </DetailPanelCard>
           ) : null}
 
-          <QuotationDetailPeopleSection detail={detail} technicianEntries={technicianEntries} t={t} />
+          <QuotationDetailPeopleSection
+            detail={detail}
+            technicianEntries={technicianEntries}
+            additionalContactEntries={additionalContactEntries}
+            t={t}
+          />
 
           <DetailSystemMetadataSection
             createdAt={detail.created_at}

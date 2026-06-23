@@ -3,7 +3,8 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
+import { DetailEntityLink } from "@/shared/components/entity";
 import {
   fetchDispatchReturnItems,
   returnDispatchToStock,
@@ -15,6 +16,7 @@ import { toastSuccess } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
+import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import {
   quantityTableCellClass,
   quantityTableHeaderClass,
@@ -127,7 +129,7 @@ export function DispatchReturnScreen({ dispatchId }: Props) {
     try {
       await returnDispatchToStock(dispatchId, { groups });
       toastSuccess(t("return.successToast"));
-      router.replace(`${dispatchHref}?back=${encodeURIComponent(safeBack)}`);
+      router.replace(buildPathWithStoredBack(dispatchHref, safeBack));
     } finally {
       setSaving(false);
     }
@@ -205,12 +207,12 @@ export function DispatchReturnScreen({ dispatchId }: Props) {
                   </dt>
                   <dd className="mt-1">
                     {returnData.material_request_id > 0 ? (
-                      <Link
+                      <DetailEntityLink
                         href={`${routes.dashboard.materialRequests}/${returnData.material_request_id}`}
                         className="font-semibold text-slate-900 underline-offset-2 hover:underline dark:text-slate-100"
                       >
                         {returnData.material_request_number?.trim() || `#${returnData.material_request_id}`}
-                      </Link>
+                      </DetailEntityLink>
                     ) : (
                       "—"
                     )}

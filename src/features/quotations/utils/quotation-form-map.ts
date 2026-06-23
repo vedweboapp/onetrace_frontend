@@ -35,10 +35,10 @@ function parseTags(raw: string): number[] {
   return out;
 }
 
-function parseAdditionalContactIds(rows: QuotationFormValues["additional_customer_contacts"]): number[] {
+function parseAdditionalContactIds(rows: QuotationFormValues["additional_customer_contacts"] | undefined): number[] {
   const out: number[] = [];
   const seen = new Set<number>();
-  for (const row of rows) {
+  for (const row of rows ?? []) {
     const id = parseOptionalId(row.contact);
     if (id != null && !seen.has(id)) {
       seen.add(id);
@@ -46,6 +46,13 @@ function parseAdditionalContactIds(rows: QuotationFormValues["additional_custome
     }
   }
   return out;
+}
+
+/** Ensures manual create/update payloads always send `additional_customer_contact` as id list. */
+export function quotationAdditionalContactIdsForApi(
+  rows: QuotationFormValues["additional_customer_contacts"] | undefined,
+): number[] {
+  return parseAdditionalContactIds(rows);
 }
 
 export function mapQuotationFormToPayload(values: QuotationFormValues): QuotationCreatePayload {
@@ -58,7 +65,7 @@ export function mapQuotationFormToPayload(values: QuotationFormValues): Quotatio
     site: Number.parseInt(values.site, 10),
     quote_name: capitalizeFirstLetter(values.quote_name.trim()),
     primary_customer_contact: parseOptionalId(values.primary_customer_contact),
-    additional_customer_contact: parseAdditionalContactIds(values.additional_customer_contacts),
+    additional_customer_contact: quotationAdditionalContactIdsForApi(values.additional_customer_contacts),
     tags: Array.isArray(values.tag_ids) && values.tag_ids.length > 0 ? values.tag_ids : parseTags(values.tags_raw),
     order_number: orderNum || null,
     due_date: due || null,

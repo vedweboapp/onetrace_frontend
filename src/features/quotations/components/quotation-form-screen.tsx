@@ -54,7 +54,8 @@ import { DetailPageHeader } from "@/shared/components/layout/detail-page-header"
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
-import { buildEntityDetailHrefAfterSave, sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
+import { useQuotationFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
@@ -92,14 +93,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const safeBack = React.useMemo(() => {
-    const raw = searchParams.get("back");
-    return (
-      sanitizeInternalListBack(raw, "quotations") ??
-      sanitizeInternalListBack(raw, "projects") ??
-      routes.dashboard.quotations
-    );
-  }, [searchParams]);
+  const safeBack = useQuotationFormBackUrl();
   const isEdit = mode === "edit";
 
   const createFromProjectId = React.useMemo(() => {
@@ -153,6 +147,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   } = useForm<QuotationFormValues>({
     resolver: zodResolver(schema),
     defaultValues: emptyQuotationFormDefaults(),
+    shouldUnregister: false,
   });
 
   const getFormDraft = React.useCallback(() => getValues(), [getValues]);
@@ -226,7 +221,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const pendingAdditionalContactRowRef = React.useRef<number | null>(null);
   const openUsersSettings = React.useCallback(() => {
     const current = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : routes.dashboard.quotations;
-    router.push(`${routes.dashboard.settingsUsers}/new?back=${encodeURIComponent(current)}`);
+    router.push(buildPathWithStoredBack(`${routes.dashboard.settingsUsers}/new`, current));
   }, [router]);
   const openTagsSettings = React.useCallback(() => {
     router.push(routes.dashboard.settingsTags);

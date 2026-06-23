@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { createClient, fetchClient, updateClient } from "@/features/clients/api/client.api";
 import { createClientFormSchema, type ClientFormValues } from "@/features/clients/schemas/client-form-schema";
 import {
@@ -47,7 +48,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
     const i = pathname.indexOf(needle);
     return i >= 0 ? pathname.slice(0, i + needle.length) : needle;
   }, [pathname]);
-  const safeBack = resolveFormBackUrl(searchParams.get("back"), "clients", clientsListHref);
+  const safeBack = useFormBackUrl("clients", clientsListHref);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);

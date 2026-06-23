@@ -110,6 +110,13 @@ export function MassActionBar({
     setFieldValue("");
   }, [fieldName]);
 
+  React.useEffect(() => {
+    if (fieldName && !updateFields.some((f) => f.name === fieldName)) {
+      setFieldName("");
+      setFieldValue("");
+    }
+  }, [fieldName, updateFields]);
+
   const canApply =
     selectedIds.length > 0 &&
     action !== "" &&

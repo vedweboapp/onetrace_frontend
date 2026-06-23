@@ -4,6 +4,7 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import {
   createCompositeItem,
   fetchCompositeItem,
@@ -68,7 +69,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safeBack = resolveFormBackUrl(searchParams.get("back"), "composite-items", routes.dashboard.compositeItems);
+  const safeBack = useFormBackUrl("composite-items", routes.dashboard.compositeItems);
   const isEdit = mode === "edit";
   const pendingItemRowRef = React.useRef<string | null>(null);
 

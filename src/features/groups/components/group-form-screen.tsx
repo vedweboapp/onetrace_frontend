@@ -4,6 +4,7 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { createGroup, fetchGroup, updateGroup } from "@/features/groups/api/group.api";
 import type { GroupItemRef } from "@/features/groups/types/group.types";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
@@ -54,7 +55,7 @@ export function GroupFormScreen({ mode, groupId }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safeBack = resolveFormBackUrl(searchParams.get("back"), "groups", routes.dashboard.groups);
+  const safeBack = useFormBackUrl("groups", routes.dashboard.groups);
   const isEdit = mode === "edit";
   const pendingCompositeRowRef = React.useRef<string | null>(null);
 

@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchJob } from "@/features/jobs/api/job.api";
 import type { Job } from "@/features/jobs/types/job.types";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
@@ -65,7 +66,7 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
     const i = pathname.indexOf(needle);
     return i >= 0 ? pathname.slice(0, i + needle.length) : needle;
   }, [pathname]);
-  const safeBack = resolveFormBackUrl(searchParams.get("back"), "material-requests", listHref);
+  const safeBack = useFormBackUrl("material-requests", listHref);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);

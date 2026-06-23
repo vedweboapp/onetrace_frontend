@@ -27,7 +27,7 @@ import {
   SurfaceShell,
 } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 
@@ -132,7 +132,7 @@ export function UsersPanel() {
               id: "edit",
               label: t("edit"),
               icon: Pencil,
-              onSelect: () => router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`),
+              onSelect: () => router.push(buildPathWithStoredBack(`${pathname}/${row.id}/edit`, listHref)),
             },
           ]}
         />
@@ -154,7 +154,7 @@ export function UsersPanel() {
               type="button"
               variant="primary"
               size="sm"
-              onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)}
+              onClick={() => router.push(buildPathWithStoredBack(`${pathname}/new`, listHref))}
              
             >
               {t("invite")}
@@ -189,7 +189,7 @@ export function UsersPanel() {
               action: (
                 <AddButton
                   type="button"
-                  onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)}
+                  onClick={() => router.push(buildPathWithStoredBack(`${pathname}/new`, listHref))}
                 />
               ),
             }}
@@ -209,7 +209,7 @@ export function UsersPanel() {
                   description={`${t("fields.inviteStatus")}: ${row.user_detail.invite_status ?? "—"}`}
                   footer={<span className="text-xs text-slate-500 dark:text-slate-400">{tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}</span>}
                   onCardClick={() => openDetail(row.id)}
-                  menu={<DataTableRowActionsMenu menuAriaLabel={tList("openRowActions")} items={[{ id: "edit", label: t("edit"), icon: Pencil, onSelect: () => router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`) }]} />}
+                  menu={<DataTableRowActionsMenu menuAriaLabel={tList("openRowActions")} items={[{ id: "edit", label: t("edit"), icon: Pencil, onSelect: () => router.push(buildPathWithStoredBack(`${pathname}/${row.id}/edit`, listHref)) }]} />}
                 />
               ))}
             </ListPageCardGrid>

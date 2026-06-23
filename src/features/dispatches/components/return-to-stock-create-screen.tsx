@@ -3,7 +3,8 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { Link, useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/navigation";
+import { DetailEntityLink } from "@/shared/components/entity";
 import {
   createDispatchReturnRequest,
   fetchDispatchesPage,
@@ -404,12 +405,12 @@ export function ReturnToStockCreateScreen({
                               {t("return.sourceExtra")}
                             </span>
                           ) : row.material_request_id != null && row.material_request_id > 0 ? (
-                            <Link
+                            <DetailEntityLink
                               href={`${routes.dashboard.materialRequests}/${row.material_request_id}`}
                               className="font-medium text-slate-800 underline-offset-2 hover:underline dark:text-slate-200"
                             >
                               {row.material_request_number?.trim() || `#${row.material_request_id}`}
-                            </Link>
+                            </DetailEntityLink>
                           ) : (
                             "—"
                           )}

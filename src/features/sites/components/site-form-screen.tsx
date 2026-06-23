@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { createSite, fetchSite, updateSite } from "@/features/sites/api/site.api";
 import { createSiteFormSchema, type SiteFormValues } from "@/features/sites/schemas/site-form-schema";
@@ -45,7 +46,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safeBack = resolveFormBackUrl(searchParams.get("back"), "sites", routes.dashboard.sites);
+  const safeBack = useFormBackUrl("sites", routes.dashboard.sites);
   const isEdit = mode === "edit";
   const pendingContactRowRef = React.useRef<number | null>(null);
 

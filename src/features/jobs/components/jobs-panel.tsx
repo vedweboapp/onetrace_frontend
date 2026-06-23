@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Calendar, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -13,17 +13,20 @@ import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Job } from "@/features/jobs/types/job.types";
 import {
+  getJobClientId,
+  getJobProjectId,
   getJobStatusId,
   getJobStatusRow,
   jobAssignedWorkerLabel,
+  jobClientLabel,
+  jobProjectLabel,
 } from "@/features/jobs/utils/job-nested-fields.util";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
-import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
-import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
   MassActionBar,
   buildJobMassUpdateFields,
@@ -44,8 +47,7 @@ import {
   ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
-import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
@@ -53,7 +55,6 @@ import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 export function JobsPanel() {
   const t = useTranslations("Dashboard.jobs");
   const tList = useTranslations("Dashboard.list");
-  const dateFmt = useDashboardDateFormat();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -129,6 +130,54 @@ export function JobsPanel() {
     [search, jobStatusFilter, assignedWorkerFilter],
   );
 
+  const fetchAllIds = React.useCallback(
+    () => fetchAllJobIds(listFilters, { silent: true }),
+    [listFilters],
+  );
+
+  const jobDirectUpdateActions = React.useMemo(
+    () => [
+      {
+        id: "assign-worker",
+        label: t("massAssignWorker"),
+        fieldName: "assigned_worker",
+        options: workerOptions,
+        valueCoerce: "number" as const,
+      },
+    ],
+    [t, workerOptions],
+  );
+
+  const mass = useEntityListMassActions({
+    resource: "jobs",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search, jobStatusFilter, assignedWorkerFilter],
+    updateFields: [],
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
+  const jobProjectByIdRef = React.useRef<Map<number, number | null>>(new Map());
+
+  React.useEffect(() => {
+    for (const job of items) {
+      jobProjectByIdRef.current.set(job.id, getJobProjectId(job.project));
+    }
+  }, [items]);
+
+  const includeFormsInMassUpdate = React.useMemo(() => {
+    if (mass.selectedCount === 0) return false;
+    const projectIds = new Set<number | null>();
+    for (const id of mass.selection.selectedIds) {
+      if (!jobProjectByIdRef.current.has(id)) return false;
+      projectIds.add(jobProjectByIdRef.current.get(id) ?? null);
+    }
+    if (projectIds.size !== 1) return false;
+    const only = [...projectIds][0];
+    return only != null && only > 0;
+  }, [mass.selectedCount, mass.selection.selectedIds, items]);
+
   const massUpdateFields = React.useMemo(
     () =>
       buildJobMassUpdateFields(
@@ -149,37 +198,18 @@ export function JobsPanel() {
           jobStatus: t("fields.jobStatus"),
           startDate: t("fields.startDate"),
         },
+        { includeForms: includeFormsInMassUpdate },
       ),
-    [jobStatusOptions, massClientOptions, massProjectOptions, massSiteOptions, massFormOptions, t],
-  );
-
-  const jobDirectUpdateActions = React.useMemo(
-    () => [
-      {
-        id: "assign-worker",
-        label: t("massAssignWorker"),
-        fieldName: "assigned_worker",
-        options: workerOptions,
-        valueCoerce: "number" as const,
-      },
+    [
+      jobStatusOptions,
+      massClientOptions,
+      massProjectOptions,
+      massSiteOptions,
+      massFormOptions,
+      includeFormsInMassUpdate,
+      t,
     ],
-    [t, workerOptions],
   );
-
-  const fetchAllIds = React.useCallback(
-    () => fetchAllJobIds(listFilters, { silent: true }),
-    [listFilters],
-  );
-
-  const mass = useEntityListMassActions({
-    resource: "jobs",
-    totalRecords: pagination.total_records,
-    pageItems: items,
-    fetchAllIds,
-    resetDeps: [pageSize, search, jobStatusFilter, assignedWorkerFilter],
-    updateFields: massUpdateFields,
-    onApplied: () => setRefreshNonce((n) => n + 1),
-  });
 
   const workerLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -189,6 +219,40 @@ export function JobsPanel() {
     }
     return m;
   }, [workerOptions]);
+
+  const clientLabelById = React.useMemo(() => {
+    const m: Record<number, string> = {};
+    for (const o of massClientOptions) {
+      const id = Number.parseInt(o.value, 10);
+      if (Number.isFinite(id)) m[id] = o.label;
+    }
+    return m;
+  }, [massClientOptions]);
+
+  const projectLabelById = React.useMemo(() => {
+    const m: Record<number, string> = {};
+    for (const o of massProjectOptions) {
+      const id = Number.parseInt(o.value, 10);
+      if (Number.isFinite(id)) m[id] = o.label;
+    }
+    return m;
+  }, [massProjectOptions]);
+
+  const jobClientDisplay = React.useCallback(
+    (row: Job) => {
+      const id = getJobClientId(row.client);
+      return jobClientLabel(row.client, id != null ? clientLabelById[id] : undefined);
+    },
+    [clientLabelById],
+  );
+
+  const jobProjectDisplay = React.useCallback(
+    (row: Job) => {
+      const id = getJobProjectId(row.project);
+      return jobProjectLabel(row.project, id != null ? projectLabelById[id] : undefined);
+    },
+    [projectLabelById],
+  );
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -287,11 +351,11 @@ export function JobsPanel() {
   ]);
 
   function openCreate() {
-    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
+    router.push(buildPathWithStoredBack(`${pathname}/new`, listHref));
   }
 
   function openEdit(row: Job) {
-    router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`);
+    router.push(buildPathWithStoredBack(`${pathname}/${row.id}/edit`, listHref));
   }
 
   async function confirmDelete() {
@@ -355,8 +419,12 @@ export function JobsPanel() {
       c.truncate("worker", t("table.assignedWorker"), (r) =>
         jobAssignedWorkerLabel(r, workerLabelById),
       ),
-      c.tabular("start", t("table.start"), (r) => formatFlexibleApiDate(r.start_date, dateFmt)),
-      c.tabular("end", t("table.end"), (r) => formatFlexibleApiDate(r.end_date, dateFmt)),
+      c.truncate("client", t("fields.client"), (r) => jobClientDisplay(r), {
+        title: (r) => jobClientDisplay(r),
+      }),
+      c.truncate("project", t("fields.project"), (r) => jobProjectDisplay(r), {
+        title: (r) => jobProjectDisplay(r),
+      }),
       // c.actions("actions", t("table.actions"), (row) => (
       //   <DataTableRowActionsMenu
       //     menuAriaLabel={tList("openRowActions")}
@@ -378,9 +446,9 @@ export function JobsPanel() {
     ];
   }, [
     t,
-    tList,
-    dateFmt,
     workerLabelById,
+    jobClientDisplay,
+    jobProjectDisplay,
     statusById,
     mass,
   ]);
@@ -454,7 +522,7 @@ export function JobsPanel() {
         <MassActionBar
           selectedIds={mass.selectedIds}
           config={mass.config}
-          updateFields={mass.updateFields}
+          updateFields={massUpdateFields}
           directUpdateActions={jobDirectUpdateActions}
           onSuccess={mass.handleMassSuccess}
         />
@@ -508,14 +576,9 @@ export function JobsPanel() {
                   }
                   title={row.title}
                   subtitle={jobAssignedWorkerLabel(row, workerLabelById)}
+                  meta={`${jobClientDisplay(row)} · ${jobProjectDisplay(row)}`}
                   footer={
-                    <div className="flex w-full flex-wrap items-center justify-between gap-3">
-                      <div className="flex min-w-0 flex-wrap items-center gap-2">{statusChipForRow(row)}</div>
-                      <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-                        <Calendar className="size-3.5 shrink-0" aria-hidden />
-                        {formatFlexibleApiDate(row.start_date, dateFmt)}
-                      </span>
-                    </div>
+                    <div className="flex w-full flex-wrap items-center gap-2">{statusChipForRow(row)}</div>
                   }
                   onCardClick={() => openJobDetail(row.id)}
                   menu={

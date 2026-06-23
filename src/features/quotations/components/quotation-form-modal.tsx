@@ -31,7 +31,7 @@ import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { routes } from "@/shared/config/routes";
-import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
+import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
   AppModal,
@@ -87,6 +87,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     useForm<QuotationFormValues>({
       resolver: zodResolver(schema),
       defaultValues: emptyQuotationFormDefaults(),
+      shouldUnregister: false,
     });
 
   const quoteNameRegister = register("quote_name");
@@ -261,7 +262,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
   const pendingAdditionalContactRowRef = React.useRef<number | null>(null);
   const openUsersSettings = React.useCallback(() => {
     const current = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : routes.dashboard.quotations;
-    router.push(`${routes.dashboard.settingsUsers}/new?back=${encodeURIComponent(current)}`);
+    router.push(buildPathWithStoredBack(`${routes.dashboard.settingsUsers}/new`, current));
   }, [router]);
 
   React.useEffect(() => {

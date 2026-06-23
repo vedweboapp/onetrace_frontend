@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchRoles, fetchUserProfile, inviteUser, updateUserProfile } from "@/features/users/api/user.api";
 import { createUserFormSchema, type UserFormValues } from "@/features/users/schemas/user-form-schema";
 import { emptyUserFormDefaults, mapInviteUserFormToPayload, mapUserFormToUpdatePayload, userToFormDefaults } from "@/features/users/utils/user-form-map";
@@ -31,7 +32,7 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
   const t = useTranslations("Dashboard.users");
   const router = useRouter();
   const searchParams = useSearchParams();
-  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "settings/users");
+  const safeBack = useFormBackUrl("settings/users", routes.dashboard.settingsUsers);
   const isEdit = mode === "edit";
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);

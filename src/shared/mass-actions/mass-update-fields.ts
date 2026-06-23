@@ -74,14 +74,19 @@ export function buildJobMassUpdateFields(
     formOptions: CheckmarkSelectOption[];
   },
   labels: JobMassUpdateLabels,
+  opts?: { includeForms?: boolean },
 ): MassUpdateFieldDef[] {
-  return [
+  const fields: MassUpdateFieldDef[] = [
     textField("title", labels.title),
     textareaField("description", labels.description),
     selectField("client", labels.client, options.clientOptions, "number"),
     selectField("project", labels.project, options.projectOptions, "number"),
     selectField("site", labels.site, options.siteOptions, "number"),
-    selectField("forms", labels.forms, options.formOptions, "number"),
+  ];
+  if (opts?.includeForms !== false) {
+    fields.push(selectField("forms", labels.forms, options.formOptions, "number"));
+  }
+  fields.push(
     selectField("job_status", labels.jobStatus, options.jobStatusOptions, "number"),
     {
       name: "start_date",
@@ -89,7 +94,8 @@ export function buildJobMassUpdateFields(
       valueType: "datetime",
       valueFormat: "datetime-iso",
     },
-  ];
+  );
+  return fields;
 }
 
 export type ClientMassUpdateLabels = {
