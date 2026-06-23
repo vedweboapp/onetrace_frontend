@@ -57,7 +57,7 @@ export type ZohoWebhookSetupData = {
   header: Record<string, string>;
   method: string;
   resource: string;
-  resource_action: string;
+  module_action: string;
   sample_payload: Record<string, unknown>;
 };
 
