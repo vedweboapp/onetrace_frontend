@@ -709,13 +709,10 @@ export function JobFormScreen({ mode, jobId }: Props) {
             </section>
 
             <section className="space-y-6">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {t("sections.jobMeta")}
-              </h2>
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   {t("sections.jobMeta")}
-                </h3>
+                </h2>
                 <AppButton
                   type="button"
                   variant="primary"
