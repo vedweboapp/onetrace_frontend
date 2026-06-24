@@ -7,7 +7,7 @@ import { useRouter } from "@/i18n/navigation";
 import { connectZohoInventory, fetchZohoConnection } from "@/features/settings/integrations/api/integration.api";
 import { buildZohoFrontendCallbackUrl } from "@/features/settings/integrations/utils/zoho-callback-url.util";
 import { routes } from "@/shared/config/routes";
-import { toastError } from "@/shared/feedback/app-toast";
+import { toastError, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton, ListPageCardGrid, SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 
@@ -45,8 +45,8 @@ export function IntegrationsSettingsPanel() {
       const callbackUrl = buildZohoFrontendCallbackUrl();
       const result = await connectZohoInventory(callbackUrl);
       window.location.assign(result.authorization_url!);
-    } catch {
-      toastError(t("connectError"));
+    } catch (error) {
+      toastApiError(error, t("connectError"));
     } finally {
       setConnectingId(null);
     }

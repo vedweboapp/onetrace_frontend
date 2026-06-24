@@ -49,7 +49,7 @@ import type { Tag } from "@/features/tags/types/tag.types";
 import { fetchRoles, fetchUsersPage } from "@/features/users/api/user.api";
 import type { UserProfile } from "@/features/users/types/user.types";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
@@ -618,8 +618,8 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       const saved = isEdit && quotationId ? await updateQuotation(quotationId, payload) : await createQuotation(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.quotations, saved.id, safeBack));
-    } catch {
-      toastError(t("saveError"));
+    } catch (error) {
+      toastApiError(error, t("saveError"));
     } finally {
       setSaving(false);
     }

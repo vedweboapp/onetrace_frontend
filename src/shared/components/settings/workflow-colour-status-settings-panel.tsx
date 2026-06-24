@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { z } from "zod";
 import type { createWorkflowColourStatusApi } from "@/shared/api/create-workflow-colour-status.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { cn } from "@/core/utils/http.util";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -165,9 +165,9 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -260,8 +260,8 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
       toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
       setDetailRow((prev) => (prev?.id === row.id ? { ...prev, is_active: next } : prev));
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("toggleActiveError"));
+    } catch (error) {
+      toastApiError(error, t("toggleActiveError"));
     } finally {
       setTogglingId(null);
     }

@@ -23,7 +23,7 @@ import {
   EntityDetailLoadingSkeleton,
   EntityDetailScreen,
 } from "@/shared/components/entity";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
@@ -131,8 +131,8 @@ export function ProjectDetailScreen({ projectId }: Props) {
       toastSuccess(t("deletedToast"));
       setDeleteOpen(false);
       router.push(routes.dashboard.projects);
-    } catch {
-      toastError(t("deleteError"));
+    } catch (error) {
+      toastApiError(error, t("deleteError"));
     } finally {
       setDeleting(false);
     }
@@ -150,8 +150,8 @@ export function ProjectDetailScreen({ projectId }: Props) {
           `${routes.dashboard.projects}/${projectId}`,
         ),
       );
-    } catch {
-      toastError(t("detail.quoteFromProjectError"));
+    } catch (error) {
+      toastApiError(error, t("detail.quoteFromProjectError"));
     } finally {
       setQuoting(false);
     }
@@ -197,8 +197,8 @@ export function ProjectDetailScreen({ projectId }: Props) {
                 await patchProject(detail.id, { is_active: next });
                 toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
                 retry();
-              } catch {
-                toastError(t("toggleActiveError"));
+              } catch (error) {
+                toastApiError(error, t("toggleActiveError"));
               } finally {
                 setTogglingActive(false);
               }

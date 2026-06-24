@@ -11,7 +11,7 @@ import type { InvoiceContactRef, InvoiceDetail } from "@/features/invoices/types
 import { nestedId, normalizeInvoiceStatus } from "@/features/invoices/utils/invoice-nested-fields.util";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton, AppTabs } from "@/shared/ui";
 
 type Props = {
@@ -129,8 +129,8 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
               setPreviewing(true);
               try {
                 await previewInvoicePdf(detail.id);
-              } catch {
-                toastError(t("export.failed"));
+              } catch (error) {
+                toastApiError(error, t("export.failed"));
               } finally {
                 setPreviewing(false);
               }
@@ -149,8 +149,8 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
               try {
                 await sendInvoice(detail.id);
                 toastSuccess(t("send.success"));
-              } catch {
-                toastError(t("send.failed"));
+              } catch (error) {
+                toastApiError(error, t("send.failed"));
               } finally {
                 setSending(false);
               }

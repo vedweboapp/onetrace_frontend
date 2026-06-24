@@ -4,7 +4,7 @@ import * as React from "react";
 import { Copy } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ZohoWebhookSetupData } from "@/features/settings/integrations/types/integration.types";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 
@@ -12,8 +12,8 @@ async function copyText(value: string, successMessage: string) {
   try {
     await navigator.clipboard.writeText(value);
     toastSuccess(successMessage);
-  } catch {
-    toastError("Could not copy to clipboard");
+  } catch (error) {
+    toastApiError(error, "Could not copy to clipboard");
   }
 }
 

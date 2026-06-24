@@ -22,7 +22,7 @@ import {
   resolvePinMarkerAbbreviation,
 } from "@/features/projects/utils/drawing-pin-display.util";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
 import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { AppButton, CheckmarkSelect, ConfirmDialog, DetailPanel, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
@@ -504,8 +504,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       if (results[4].status === "fulfilled") {
         setProjectForms(results[4].value.items);
       }
-    } catch {
-      toastError(t("loadError"));
+    } catch (error) {
+      toastApiError(error, t("loadError"));
     }
   }, [drawingId, projectId, t]);
 
@@ -1401,8 +1401,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       toastSuccess(t("savedAll"));
       // Refresh all data from API after successful save
       await loadAllData();
-    } catch {
-      toastError(t("saveAllError"));
+    } catch (error) {
+      toastApiError(error, t("saveAllError"));
     } finally {
       setSavingAll(false);
     }

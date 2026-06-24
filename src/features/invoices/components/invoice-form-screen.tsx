@@ -25,7 +25,7 @@ import { fetchItemsPage } from "@/features/items/api/item.api";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { AddressPlaceAutocomplete } from "@/shared/components/maps/address-place-autocomplete";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
@@ -388,8 +388,8 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
         isEdit && invoiceId ? await updateInvoice(invoiceId, payload) : await createInvoice(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.invoices, saved.id, listBack));
-    } catch {
-      toastError(isEdit ? t("updateError") : t("createError"));
+    } catch (error) {
+      toastApiError(error, isEdit ? t("updateError") : t("createError"));
     } finally {
       setSaving(false);
     }
@@ -523,8 +523,8 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                   try {
                     await sendInvoice(invoiceId);
                     toastSuccess(t("send.success"));
-                  } catch {
-                    toastError(t("send.failed"));
+                  } catch (error) {
+                    toastApiError(error, t("send.failed"));
                   } finally {
                     setSending(false);
                   }

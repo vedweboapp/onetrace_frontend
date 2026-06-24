@@ -4,7 +4,7 @@ import * as React from "react";
 import { FileText } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { exportInvoicePdf } from "@/features/invoices/api/invoice.api";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailActionMenuDropdown } from "@/shared/ui/detail-action-menu-dropdown";
 
 type Props = {
@@ -25,9 +25,8 @@ export function InvoiceExportDropdown({ invoiceId, invoiceNumber }: Props) {
           try {
             await exportInvoicePdf(invoiceId, invoiceNumber);
             toastSuccess(t("success"));
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : t("failed");
-            toastError(msg);
+          } catch (error) {
+            toastApiError(error, t("failed"));
           }
         },
       },

@@ -18,7 +18,7 @@ import type {
   ZohoWebhookSetupData,
 } from "@/features/settings/integrations/types/integration.types";
 import { routes } from "@/shared/config/routes";
-import { toastError } from "@/shared/feedback/app-toast";
+import { toastError, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { AppButton, AppTabs, SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -97,8 +97,8 @@ export function ZohoConnectionDetailsScreen() {
     try {
       const data = await fetchZohoConnection();
       setConnection(data);
-    } catch {
-      setLoadError(t("loadError"));
+    } catch (error) {
+      setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
       setConnection(null);
     } finally {
       setLoading(false);
@@ -142,8 +142,8 @@ export function ZohoConnectionDetailsScreen() {
       const callbackUrl = buildZohoFrontendCallbackUrl();
       const result = await connectZohoInventory(callbackUrl);
       window.location.assign(result.authorization_url!);
-    } catch {
-      toastError(tIntegrations("connectError"));
+    } catch (error) {
+      toastApiError(error, tIntegrations("connectError"));
     } finally {
       setReconnecting(false);
     }

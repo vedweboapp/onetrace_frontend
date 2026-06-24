@@ -13,7 +13,7 @@ import {
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton } from "@/shared/ui";
 
 function siteClientId(site: Site): number | null {
@@ -153,8 +153,8 @@ export function SiteDetailScreen({ siteId }: Props) {
                 await patchSite(detail.id, { is_active: next });
                 toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
                 retry();
-              } catch {
-                toastError(t("toggleActiveError"));
+              } catch (error) {
+                toastApiError(error, t("toggleActiveError"));
               } finally {
                 setTogglingActive(false);
               }

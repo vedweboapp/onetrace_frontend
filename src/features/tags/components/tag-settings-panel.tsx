@@ -8,7 +8,7 @@ import { createTag, deleteTag, fetchTagsPage, updateTag } from "@/features/tags/
 import type { Tag } from "@/features/tags/types/tag.types";
 import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
@@ -134,9 +134,9 @@ export function TagSettingsPanel() {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -226,8 +226,8 @@ export function TagSettingsPanel() {
       toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
       setDetailRow((prev) => (prev?.id === row.id ? { ...prev, is_active: next } : prev));
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("toggleActiveError"));
+    } catch (error) {
+      toastApiError(error, t("toggleActiveError"));
     } finally {
       setTogglingId(null);
     }

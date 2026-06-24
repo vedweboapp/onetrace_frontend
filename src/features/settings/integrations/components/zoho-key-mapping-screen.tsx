@@ -16,7 +16,7 @@ import {
   sortInternalFields,
 } from "@/features/settings/integrations/utils/zoho-key-mapping.util";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { AppButton, CheckmarkSelect, SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -119,8 +119,8 @@ export function ZohoKeyMappingForm({
         setExternalOptions(toSelectOptions(data.external_fields));
         setInternalOptions(toSelectOptions(sortedInternalFields));
         setRows(existingMappingToRows(data.existing_mapping));
-      } catch {
-        if (!cancelled) setLoadError(t("loadError"));
+      } catch (error) {
+        if (!cancelled) setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -170,8 +170,8 @@ export function ZohoKeyMappingForm({
       } else {
         router.replace(routes.dashboard.settingsZohoConnection);
       }
-    } catch {
-      toastError(t("saveError"));
+    } catch (error) {
+      toastApiError(error, t("saveError"));
     } finally {
       setSaving(false);
     }

@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
@@ -26,8 +28,8 @@ export function ZohoWebhookSetupScreen() {
       try {
         const data = await fetchZohoWebhookSetup(ZOHO_DEFAULT_RESOURCE);
         if (!cancelled) setSetup(data);
-      } catch {
-        if (!cancelled) setLoadError(t("loadError"));
+      } catch (error) {
+        if (!cancelled) setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
       } finally {
         if (!cancelled) setLoading(false);
       }

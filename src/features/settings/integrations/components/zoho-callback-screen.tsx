@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
 import { completeZohoIntegration } from "@/features/settings/integrations/api/integration.api";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton, SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 
@@ -40,8 +40,8 @@ export function ZohoCallbackScreen() {
       });
       toastSuccess(message);
       router.replace(`${routes.dashboard.settingsZohoConnection}?tab=configuration`);
-    } catch {
-      toastError(t("finishError"));
+    } catch (error) {
+      toastApiError(error, t("finishError"));
     } finally {
       setSubmitting(false);
     }

@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+
 import * as React from "react";
 import { Calendar, Pencil, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -172,7 +174,7 @@ export function QuotationsPanel() {
             }),
           );
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setClientOptions([]);
           setMassSiteOptions([]);
@@ -197,7 +199,7 @@ export function QuotationsPanel() {
           is_active: true,
         });
         if (!cancelled) setSiteRows(items);
-      } catch {
+      } catch (error) {
         if (!cancelled) setSiteRows([]);
       }
     })();
@@ -212,7 +214,7 @@ export function QuotationsPanel() {
       try {
         const { items } = await fetchProjectsPage(1, 500, { is_active: true });
         if (!cancelled) setProjectRows(items);
-      } catch {
+      } catch (error) {
         if (!cancelled) setProjectRows([]);
       }
     })();
@@ -234,7 +236,7 @@ export function QuotationsPanel() {
           }
           setTagLabelById(mapped);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) setTagLabelById({});
       }
     })();
@@ -260,9 +262,9 @@ export function QuotationsPanel() {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {

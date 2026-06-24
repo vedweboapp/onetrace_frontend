@@ -11,7 +11,7 @@ import {
   requiredJobChecklistsComplete,
 } from "@/features/jobs/utils/job-nested-fields.util";
 import { routes } from "@/shared/config/routes";
-import { toastError } from "@/shared/feedback/app-toast";
+import { toastError, toastApiError } from "@/shared/feedback/app-toast";
 import { cn } from "@/core/utils/http.util";
 
 type Props = {
@@ -90,8 +90,8 @@ export function JobFormsSection({
       setGateOpen(false);
       router.push(pendingHref);
       setPendingHref(null);
-    } catch {
-      toastError(t("checklistSaveError"));
+    } catch (error) {
+      toastApiError(error, t("checklistSaveError"));
     } finally {
       setGateSaving(false);
     }

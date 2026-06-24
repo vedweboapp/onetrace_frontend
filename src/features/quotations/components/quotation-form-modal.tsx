@@ -27,7 +27,7 @@ import type { Project } from "@/features/projects/types/project.types";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { routes } from "@/shared/config/routes";
@@ -309,8 +309,8 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
       onSaved();
       onClose();
       router.push(buildEntityDetailHrefAfterSave(routes.dashboard.quotations, saved.id, routes.dashboard.quotations));
-    } catch {
-      toastError(t("saveError"));
+    } catch (error) {
+      toastApiError(error, t("saveError"));
     } finally {
       setSaving(false);
     }
