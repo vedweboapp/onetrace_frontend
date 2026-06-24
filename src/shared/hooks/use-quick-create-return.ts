@@ -8,10 +8,7 @@ import {
   QUICK_CREATE_SELECT_PARAM,
   QUICK_CREATE_SELECT_TARGET_PARAM,
 } from "@/shared/utils/quick-create-navigation.util";
-import {
-  clearQuickCreateFormDraft,
-  loadQuickCreateFormDraft,
-} from "@/shared/utils/quick-create-form-draft.util";
+import { loadQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
 
 export type QuickCreateSelectApplied = {
   selectTarget: QuickCreateKind;
@@ -35,7 +32,6 @@ export function useQuickCreateReturn({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const appliedRef = React.useRef(false);
-  const restoredDraftRef = React.useRef(false);
 
   const returnToForDraft = React.useMemo(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -46,13 +42,10 @@ export function useQuickCreateReturn({
   }, [pathname, searchParams]);
 
   React.useLayoutEffect(() => {
-    if (!restoredDraftRef.current && restoreFormDraft) {
-      const draft = loadQuickCreateFormDraft(returnToForDraft);
-      if (draft != null) {
-        restoreFormDraft(draft);
-        clearQuickCreateFormDraft(returnToForDraft);
-      }
-      restoredDraftRef.current = true;
+    if (!restoreFormDraft) return;
+    const draft = loadQuickCreateFormDraft(returnToForDraft);
+    if (draft != null) {
+      restoreFormDraft(draft);
     }
   }, [restoreFormDraft, returnToForDraft]);
 

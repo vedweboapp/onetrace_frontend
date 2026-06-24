@@ -78,7 +78,13 @@ export function AddressLineAutocompleteFields<T extends FieldValues>({
             label={labels.addressLine1}
             required
             value={field.value ?? ""}
-            onChange={field.onChange}
+            onChange={(value) => {
+              setValue("address_line_1" as never, value as never, {
+                shouldDirty: true,
+                shouldTouch: true,
+                shouldValidate: true,
+              });
+            }}
             onBlur={field.onBlur}
             countryIso={countryIso}
             contextCity={searchContext.city}
@@ -103,7 +109,13 @@ export function AddressLineAutocompleteFields<T extends FieldValues>({
               className={cn(surfaceInputClassName, errors?.address_line_2 && "border-red-500 dark:border-red-500")}
               disabled={disabled}
               value={field.value ?? ""}
-              onChange={field.onChange}
+              onChange={(e) => {
+                setValue("address_line_2" as never, e.target.value as never, {
+                  shouldDirty: true,
+                  shouldTouch: true,
+                  shouldValidate: true,
+                });
+              }}
               onBlur={field.onBlur}
             />
             <FieldErrorText>{errors?.address_line_2}</FieldErrorText>
@@ -161,18 +173,32 @@ export function AddressLocationFields<T extends FieldValues>({
         city: errors?.city,
       }}
       trailingSlot={
-        <FieldGroup label={labels.pincode} htmlFor={`${idPrefix}-pincode`} required>
-          <input
-            id={`${idPrefix}-pincode`}
-            autoComplete="postal-code"
-            aria-invalid={errors?.pincode ? true : undefined}
-            aria-describedby={errors?.pincode ? `${idPrefix}-pincode-err` : undefined}
-            className={cn(surfaceInputClassName, errors?.pincode && "border-red-500 dark:border-red-500")}
-            disabled={disabled}
-            {...register("pincode" as never)}
-          />
-          <FieldErrorText id={`${idPrefix}-pincode-err`}>{errors?.pincode}</FieldErrorText>
-        </FieldGroup>
+        <Controller
+          control={control}
+          name={"pincode" as never}
+          render={({ field }) => (
+            <FieldGroup label={labels.pincode} htmlFor={`${idPrefix}-pincode`} required>
+              <input
+                id={`${idPrefix}-pincode`}
+                autoComplete="postal-code"
+                aria-invalid={errors?.pincode ? true : undefined}
+                aria-describedby={errors?.pincode ? `${idPrefix}-pincode-err` : undefined}
+                className={cn(surfaceInputClassName, errors?.pincode && "border-red-500 dark:border-red-500")}
+                disabled={disabled}
+                value={typeof field.value === "string" ? field.value : ""}
+                onBlur={field.onBlur}
+                onChange={(e) => {
+                  setValue("pincode" as never, e.target.value as never, {
+                    shouldDirty: true,
+                    shouldTouch: true,
+                    shouldValidate: true,
+                  });
+                }}
+              />
+              <FieldErrorText id={`${idPrefix}-pincode-err`}>{errors?.pincode}</FieldErrorText>
+            </FieldGroup>
+          )}
+        />
       }
     />
   );
