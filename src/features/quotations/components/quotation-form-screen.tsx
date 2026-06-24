@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import dynamic from "next/dynamic";
@@ -881,6 +881,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       values={field.value ?? []}
                       onChange={field.onChange}
                       onBlur={field.onBlur}
+                      closeOnSelect
                       disabled={saving || !projectId || siteOptions.length === 0}
                       placeholder={t("placeholders.site")}
                       listLabel={t("fields.sites")}

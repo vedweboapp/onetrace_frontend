@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { fetchZohoWebhookSetup } from "@/features/settings/integrations/api/integration.api";
 import { ZOHO_DEFAULT_RESOURCE } from "@/features/settings/integrations/api/integration.paths";
 import { ZohoWebhookGuide } from "@/features/settings/integrations/components/zoho-webhook-guide";
+import { buildZohoConnectionTabUrl } from "@/features/settings/integrations/utils/zoho-callback-url.util";
 import type { ZohoWebhookSetupData } from "@/features/settings/integrations/types/integration.types";
 import { routes } from "@/shared/config/routes";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -59,7 +60,7 @@ export function ZohoWebhookSetupScreen() {
           ) : loadError ? (
             <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>
           ) : setup ? (
-            <ZohoWebhookGuide setup={setup} />
+            <ZohoWebhookGuide setup={setup} configureMappingHref={buildZohoConnectionTabUrl("configure")} />
           ) : null}
         </div>
       </SurfaceShell>

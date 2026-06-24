@@ -322,6 +322,12 @@
         "headerTitle": "Cabecera",
         "header": "Cabecera: {name}",
         "samplePayload": "Carga útil de ejemplo",
+        "samplePayloadHint": "Envía este JSON desde Zoho. Las claves obligatorias se indican abajo — no incluyas un campo required en la carga útil.",
+        "samplePayloadJson": "JSON a enviar",
+        "requiredHighlightLegend": "Los nombres de campo resaltados son obligatorios en la carga del webhook.",
+        "mappingNoteTitle": "¿Necesitas más campos?",
+        "mappingNoteBody": "Primero asigna más campos de Zoho en Configuración → {mappingTitle}. Los campos asignados aparecerán aquí en la carga de ejemplo.",
+        "mappingNoteLink": "Abrir asignación de campos",
         "copy": "Copiar",
         "copied": "Copiado al portapapeles",
         "loadError": "No se pudieron cargar los detalles del webhook. Inténtalo de nuevo.",
@@ -354,6 +360,43 @@
         "yes": "Sí",
         "no": "No",
         "disconnected": "Desconectado"
+      },
+      "zohoIntegrationGuide": {
+        "title": "Cómo integrar Zoho Inventory con tu cuenta SimHo",
+        "intro": "Sigue estos pasos para conectar Zoho Inventory, autorizar el acceso y configurar el mapeo de campos para que los registros se sincronicen en SimHo.",
+        "stepLabel": "Paso {number}",
+        "mappingNote": "Nota — El mapeo de campos facilita la sincronización de datos desde Zoho Inventory a tu cuenta SimHo. No se puede sincronizar ningún registro si el mapeo no se guarda.",
+        "steps": {
+          "connect": {
+            "title": "Haz clic en Conectar",
+            "body": "Desde Configuración → Integraciones, abre Zoho Inventory y haz clic en Conectar para iniciar la integración.",
+            "imageAlt": "Tarjeta de integración de Zoho Inventory con botón Conectar"
+          },
+          "authenticate": {
+            "title": "Autentícate con tu cuenta de Zoho Inventory",
+            "body": "Inicia sesión con la cuenta de Zoho que tenga acceso a la organización de Zoho Inventory que deseas conectar.",
+            "imageAlt": "Pantalla de inicio de sesión de Zoho"
+          },
+          "allow": {
+            "title": "Permite el acceso de la plataforma y haz clic en Aceptar",
+            "body": "Revisa los permisos solicitados, confirma el acceso para la plataforma y haz clic en Aceptar para continuar.",
+            "imageAlt": "Pantalla de consentimiento de permisos de Zoho con botón Aceptar"
+          },
+          "success": {
+            "title": "Integración exitosa — haz clic en Finalizar configuración",
+            "body": "Cuando se complete la integración, haz clic en Finalizar configuración para continuar a la pantalla de mapeo de campos.",
+            "imageAlt": "Diálogo de integración completada con botón Finalizar integración"
+          },
+          "mapping": {
+            "title": "Configura el mapeo de campos y guarda",
+            "body": "Selecciona los campos de SimHo y los campos correspondientes de Zoho. Desactiva Importar registros históricos si no deseas sincronizar todos los registros existentes de Zoho Inventory para el módulo respectivo. Luego haz clic en Guardar mapeo.",
+            "imageAlt": "Pantalla de mapeo de campos con pares SimHo y Zoho"
+          }
+        },
+        "finish": {
+          "title": "Finalizar",
+          "body": "Has integrado Zoho Inventory con tu cuenta SimHo correctamente. Si importaste datos históricos, revisa el módulo correspondiente para ver los registros sincronizados. De lo contrario, solo aparecerán los registros nuevos creados después de guardar el mapeo."
+        }
       }
     },
     "settingsPersonalProfile": {
