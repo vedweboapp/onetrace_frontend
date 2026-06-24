@@ -22,6 +22,7 @@ import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/sha
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { routes } from "@/shared/config/routes";
 import {
   ActiveStatusBadge,
   AddButton,
@@ -67,6 +68,7 @@ function projectTypeUserLabel(user: ProjectType["created_by"]): string {
 export function ProjectTypeSettingsPanel() {
   const t = useTranslations("Dashboard.projectTypes");
   const tList = useTranslations("Dashboard.list");
+  const tCustomization = useTranslations("Dashboard.settingsNav.customization");
   const dateFmt = useDashboardDateFormat();
   const { page, pageSize, listViewMode, search, isActiveParam, setUrl, setPage, setPageSize, setListViewMode } =
     useListUrlState();
@@ -287,6 +289,10 @@ export function ProjectTypeSettingsPanel() {
     <div className="space-y-6">
       {!hideListChrome ? (
         <ListPageHeader
+          title={t("title")}
+          description={t("subtitle")}
+          backHref={routes.dashboard.settingsCustomization}
+          backAriaLabel={tCustomization("backToHub")}
           filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}

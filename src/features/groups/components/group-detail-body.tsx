@@ -76,9 +76,6 @@ export function GroupDetailBody({
               activeLabel={t("statusActive")}
               inactiveLabel={t("statusInactive")}
             />
-            <DetailMetricCard label={t("detail.metaGroupId")}>
-              <span className="tabular-nums">#{detail.id}</span>
-            </DetailMetricCard>
             <DetailMetricCard label={t("table.itemCount")}>
               <span className="tabular-nums">{linkedItems.length}</span>
             </DetailMetricCard>
@@ -105,7 +102,7 @@ export function GroupDetailBody({
             >
               {linkedItems.map((entry, index) => {
                 const composite = compositeById.get(entry.item);
-                const displayName = entry.item_name ?? composite?.name ?? `#${entry.item}`;
+                const displayName = entry.item_name ?? composite?.name ?? "—";
                 const componentCount = composite?.components?.length ?? 0;
                 return (
                   <DetailLinkedTableRow key={`${entry.id ?? index}-${entry.item}`} index={index}>

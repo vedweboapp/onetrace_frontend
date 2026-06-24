@@ -59,7 +59,7 @@ export function ContactDetailBody({ detail, clientName, vendorName, dateFmt }: P
                     href={`${routes.dashboard.vendors}/${vendorId}`}
                     className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                   >
-                    {vendorName ?? `#${vendorId}`}
+                    {vendorName ?? "—"}
                   </DetailEntityLink>
                 ) : (
                   <span>{vendorName ?? "—"}</span>
@@ -72,7 +72,7 @@ export function ContactDetailBody({ detail, clientName, vendorName, dateFmt }: P
                     href={`${routes.dashboard.clients}/${clientId}`}
                     className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                   >
-                    {clientName ?? `#${clientId}`}
+                    {clientName ?? "—"}
                   </DetailEntityLink>
                 ) : (
                   <span>{clientName ?? "—"}</span>

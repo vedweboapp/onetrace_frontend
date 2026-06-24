@@ -8,6 +8,9 @@ import { cn } from "@/core/utils/http.util";
 import { FieldErrorText, FieldLabel } from "./field-primitives";
 import { SurfacePhoneCountrySelect } from "./surface-phone-country-select";
 
+/** Default calling code for phone fields across the app (+1 United States). */
+export const DEFAULT_PHONE_COUNTRY: Country = "US";
+
 export type SurfacePhoneFieldProps<TFieldValues extends FieldValues> = {
   control: Control<TFieldValues>;
   name: FieldPath<TFieldValues>;
@@ -33,7 +36,7 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
   disabled,
   error,
   describedBy,
-  defaultCountry = "IN",
+  defaultCountry = DEFAULT_PHONE_COUNTRY,
   placeholder,
   className,
   limitMaxLength = true,
