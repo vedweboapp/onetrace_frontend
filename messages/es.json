@@ -284,6 +284,7 @@
         "finish": "Finalizar integración",
         "cancel": "Cancelar",
         "finishError": "No se pudo completar la integración con Zoho. Inténtalo de nuevo.",
+        "connectionFailed": "La conexión falló. Inténtalo de nuevo.",
         "missingParams": "Faltan datos de autorización. Inicia la conexión de nuevo desde Integraciones."
       },
       "zohoKeyMapping": {
@@ -318,6 +319,7 @@
         "method": "Método HTTP",
         "resourceAction": "Acción",
         "webhookUri": "URL del webhook",
+        "headerTitle": "Cabecera",
         "header": "Cabecera: {name}",
         "samplePayload": "Carga útil de ejemplo",
         "copy": "Copiar",
