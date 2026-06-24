@@ -1,5 +1,5 @@
-import { ZohoCallbackScreen } from "@/features/settings/integrations/components/zoho-callback-screen";
+import { ZohoCallbackRedirect } from "@/features/settings/integrations/components/zoho-callback-redirect";
 
 export default function ZohoIntegrationCallbackPage() {
-  return <ZohoCallbackScreen />;
+  return <ZohoCallbackRedirect />;
 }
