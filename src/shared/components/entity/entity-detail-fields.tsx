@@ -69,7 +69,6 @@ function detailUserDisplayName(user: DetailAuditUser): string {
   if (username) return username;
   if (email) return email;
   if (phone) return phone;
-  if (user.id) return `#${user.id}`;
   return "—";
 }
 

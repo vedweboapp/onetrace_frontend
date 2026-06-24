@@ -231,6 +231,7 @@
         "label": "Personalización",
         "hubTitle": "Personalización",
         "hubDescription": "Elige qué configurar: Tipos de Proyecto, Tipos de Instalación, Tipos de Proveedor, Tipos de Lista de Verificación, Estados de Pin, Estados de Trabajo, Estados de Material y Etiquetas.",
+        "backToHub": "Volver a personalización",
         "items": {
           "projectTypes": {
             "title": "Tipos de Proyecto",
@@ -324,7 +325,7 @@
         "samplePayload": "Carga útil de ejemplo",
         "samplePayloadHint": "Envía este JSON desde Zoho. Las claves obligatorias se indican abajo — no incluyas un campo required en la carga útil.",
         "samplePayloadJson": "JSON a enviar",
-        "requiredHighlightLegend": "Los nombres de campo resaltados son obligatorios en la carga del webhook.",
+        "requiredHighlightLegend": "indica campos obligatorios en la carga del webhook.",
         "mappingNoteTitle": "¿Necesitas más campos?",
         "mappingNoteBody": "Primero asigna más campos de Zoho en Configuración → {mappingTitle}. Los campos asignados aparecerán aquí en la carga de ejemplo.",
         "mappingNoteLink": "Abrir asignación de campos",
@@ -1376,7 +1377,7 @@
         "sectionQr": "Código QR",
         "assignedJob": "Trabajo asignado",
         "notAssigned": "Sin asignar",
-        "viewJob": "Ver trabajo #{id}",
+        "viewJob": "Ver trabajo asignado",
         "recordId": "ID de registro"
       },
       "fields": {
@@ -2264,7 +2265,7 @@
         "sectionLogs": "Registro de actividad",
         "sectionActivityTimeline": "Cronología de actividad",
         "sectionDispatches": "Envíos",
-        "dispatchLink": "Ver envío #{id}",
+        "dispatchLink": "Ver envío",
         "sectionOverview": "Resumen",
         "sectionJobs": "Trabajos",
         "sectionItems": "Ítems",
@@ -2412,7 +2413,7 @@
         "view": "Ver detalle"
       },
       "table": {
-        "dispatchId": "ID envío",
+        "dispatchId": "Número de envío",
         "jobName": "Trabajo",
         "dispatchDate": "Fecha",
         "status": "Estado",
@@ -2524,7 +2525,7 @@
         "delayed": "Retrasado"
       },
       "fields": {
-        "dispatchId": "ID envío",
+        "dispatchId": "Número de envío",
         "dispatchTo": "Enviar a",
         "dispatchedBy": "Enviado por",
         "dispatchDate": "Fecha de envío",

@@ -87,7 +87,7 @@ export function DispatchLineDetailScreen({ dispatchId, lineId }: Props) {
     setLine(match);
   }
 
-  const title = line?.item.name?.trim() || (line ? `#${line.item.id}` : t("detail.lineTitle"));
+  const title = line?.item.name?.trim() || t("detail.lineTitle");
 
   return (
     <div className="pb-12">

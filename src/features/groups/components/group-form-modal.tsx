@@ -45,6 +45,8 @@ function toNumberOrNull(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+const COMPOSITE_ROW_GRID = "grid grid-cols-1 gap-2 sm:grid-cols-[1fr_180px_auto]";
+
 export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
   const t = useTranslations("Dashboard.groups.modal");
   const router = useRouter();
@@ -218,14 +220,20 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
           {compositeLoadError ? (
             <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">{compositeLoadError}</p>
           ) : null}
-          <div className="mt-2 space-y-2">
-            {rows.map((row, idx) => (
-              <div key={row.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_180px_auto] sm:items-end">
-                <div>
-                  <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    {t("compositeItem")}
-                    <span className="ml-1 text-red-500">*</span>
-                  </span>
+          <div className="mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
+            <div
+              className={`border-b border-slate-100 bg-slate-50/95 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/95 ${COMPOSITE_ROW_GRID}`}
+            >
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                {t("compositeItem")}
+                <span className="ml-1 text-red-500">*</span>
+              </span>
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t("abbreviation")}</span>
+              <span className="hidden sm:block" aria-hidden />
+            </div>
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {rows.map((row, idx) => (
+                <div key={row.id} className={`px-3 py-2 ${COMPOSITE_ROW_GRID} sm:items-center`}>
                   <CheckmarkSelect
                     listLabel={t("compositeItem")}
                     buttonAriaLabel={t("compositeItem")}
@@ -250,11 +258,6 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
                     addAriaLabel={compositeQuickCreate.addAriaLabel}
                     addLabel={compositeQuickCreate.addLabel}
                   />
-                </div>
-                <div>
-                  <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    {t("abbreviation")}
-                  </span>
                   <input
                     type="text"
                     autoComplete="off"
@@ -267,31 +270,31 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
                     placeholder={t("abbreviationPlaceholder")}
                     className={surfaceInputClassName}
                   />
-                </div>
-                <div className="flex gap-2 sm:justify-end">
-                  <AppButton
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    disabled={submitting || rows.length <= 1}
-                    onClick={() => setRows((prev) => normalizeRows(prev.filter((x) => x.id !== row.id)))}
-                  >
-                    {t("removeCompositeItem")}
-                  </AppButton>
-                  {idx === rows.length - 1 ? (
+                  <div className="flex gap-2 sm:justify-end">
                     <AppButton
                       type="button"
                       variant="secondary"
                       size="sm"
-                      disabled={submitting}
-                      onClick={() => setRows((prev) => [...prev, { id: nextRowId(), item: "", abbreviation: "" }])}
+                      disabled={submitting || rows.length <= 1}
+                      onClick={() => setRows((prev) => normalizeRows(prev.filter((x) => x.id !== row.id)))}
                     >
-                      {t("addCompositeItem")}
+                      {t("removeCompositeItem")}
                     </AppButton>
-                  ) : null}
+                    {idx === rows.length - 1 ? (
+                      <AppButton
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={submitting}
+                        onClick={() => setRows((prev) => [...prev, { id: nextRowId(), item: "", abbreviation: "" }])}
+                      >
+                        {t("addCompositeItem")}
+                      </AppButton>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
           {itemsInvalid ? <p className={fieldErrorTextClassName}>{t("atLeastOneCompositeItemError")}</p> : null}
           <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t("compositeItemsHint")}</p>

@@ -28,7 +28,7 @@ function siteClientName(site: Site, clientNameById: Record<number, string>): str
   if (site.client && typeof site.client === "object" && site.client.name?.trim()) return site.client.name.trim();
   const id = siteClientId(site);
   if (id && clientNameById[id]) return clientNameById[id];
-  return id ? `#${id}` : "—";
+  return "—";
 }
 
 type Props = {
@@ -78,7 +78,7 @@ function SiteDetailBodyWithContacts({
         if (!cancelled) {
           const mapped: Record<number, string> = {};
           for (const c of items) {
-            mapped[c.id] = c.name?.trim() || c.email?.trim() || `#${c.id}`;
+            mapped[c.id] = c.name?.trim() || c.email?.trim() || "—";
           }
           setContactNameById(mapped);
         }

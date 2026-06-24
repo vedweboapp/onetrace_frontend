@@ -34,7 +34,7 @@ function lineRowsFromDetail(detail: DispatchDetail): DispatchLineSummary[] {
   return detail.lines.map((line) => ({
     group_key: line.is_extra ? `extra:item:${line.item.id}` : `item:${line.item.id}`,
     item_id: line.item.id,
-    item_name: line.item.name?.trim() || `#${line.item.id}`,
+    item_name: line.item.name?.trim() || "—",
     is_extra: line.is_extra,
     requested_quantity: line.requested_quantity,
     pending_quantity: line.pending_quantity,
@@ -77,7 +77,7 @@ export function DispatchDetailBody({ detail, dateFmt, dueFmt }: Props) {
                 href={`${routes.dashboard.materialRequests}/${detail.material_request_id}`}
                 className="font-semibold text-slate-900 underline-offset-2 hover:underline dark:text-slate-100"
               >
-                {detail.material_request_number?.trim() || `#${detail.material_request_id}`}
+                {detail.material_request_number?.trim() || t("fields.materialRequest")}
               </DetailEntityLink>
             ) : (
               "—"
