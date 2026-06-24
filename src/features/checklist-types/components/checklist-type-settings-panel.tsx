@@ -23,7 +23,7 @@ import { fetchProjectTypesPage } from "@/features/project-types/api/project-type
 import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
 import { zTrimmedNonEmpty } from "@/shared/form";
 import { ChecklistTypeSortableTable } from "@/features/checklist-types/components/checklist-type-sortable-table";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
@@ -141,7 +141,7 @@ export function ChecklistTypeSettingsPanel() {
             })),
           );
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) setProjectTypeOptions([]);
       }
     })();
@@ -165,9 +165,9 @@ export function ChecklistTypeSettingsPanel() {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -232,8 +232,8 @@ export function ChecklistTypeSettingsPanel() {
       toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
       setDetailRow((prev) => (prev?.id === row.id ? { ...prev, is_active: next } : prev));
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("toggleActiveError"));
+    } catch (error) {
+      toastApiError(error, t("toggleActiveError"));
     } finally {
       setTogglingId(null);
     }
@@ -254,9 +254,9 @@ export function ChecklistTypeSettingsPanel() {
         await Promise.all(updates.map((u) => patchChecklistType(u.id, { sequence: u.sequence })));
         toastSuccess(t("sequenceUpdated"));
         setRefreshNonce((n) => n + 1);
-      } catch {
+      } catch (error) {
         setItems(prev);
-        toastError(t("sequenceUpdateError"));
+        toastApiError(error, t("sequenceUpdateError"));
       } finally {
         setReordering(false);
         setDragFromIndex(null);

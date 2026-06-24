@@ -14,7 +14,7 @@ import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.u
 import { buildQuickCreateNavigateHref } from "@/shared/utils/quick-create-navigation.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
-import { AddButton, DashboardEmptyState, DataTablePaginationBar, ListPageSearchField } from "@/shared/ui";
+import { AddButton, DataTablePaginationBar, ListPageEmptyStates, ListPageSearchField } from "@/shared/ui";
 
 function siteAddressSummary(site: Site): string {
   const parts = [site.address_line_1, site.city, site.state].map((s) => s?.trim()).filter(Boolean);
@@ -131,10 +131,19 @@ export function ClientSitesTab({ clientId }: Props) {
     </AddButton>
   );
 
+  const hasActiveFilters = search.trim() !== "";
+  const emptyStateKind = React.useMemo(() => {
+    if (loading || loadError || items.length > 0) return "none" as const;
+    if (hasActiveFilters) return "filtered" as const;
+    return "onboarding" as const;
+  }, [loading, loadError, items.length, hasActiveFilters]);
+
+  const hideListChrome = emptyStateKind === "onboarding";
+
   return (
-    <>
-      <div className="flex flex-col gap-4 p-4 sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      {!hideListChrome ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/90 px-4 py-4 sm:px-6 dark:border-slate-800">
           <ListPageSearchField
             value={search}
             onCommit={commitSearch}
@@ -142,51 +151,59 @@ export function ClientSitesTab({ clientId }: Props) {
             ariaLabel={tList("searchAria")}
             className="max-w-md min-w-0 flex-1"
           />
-          {addSiteButton}
+          {items.length > 0 ? addSiteButton : null}
         </div>
+      ) : null}
 
-        {loadError ? (
-          <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        ) : loading ? (
-          <EntityDetailLoadingSkeleton />
-        ) : items.length === 0 ? (
-          <DashboardEmptyState
-            iconName="noResults"
-            title={search.trim() ? tList("noResultsTitle") : t("detail.sitesEmptyTitle")}
-            description={search.trim() ? tList("noResultsDescription") : t("detail.sitesEmptyDescription")}
-            action={search.trim() ? undefined : addSiteButton}
+      {loadError ? (
+        <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+      ) : loading ? (
+        <EntityDetailLoadingSkeleton />
+      ) : items.length === 0 ? (
+        <ListPageEmptyStates
+          emptyStateKind={emptyStateKind}
+          compact
+          onboarding={{
+            iconName: "projects",
+            title: t("detail.sitesEmptyTitle"),
+            description: t("detail.sitesEmptyDescription"),
+            action: addSiteButton,
+            compact: true,
+          }}
+          onClearFilters={() => {
+            setSearch("");
+            setPage(1);
+          }}
+        />
+      ) : (
+        <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
+          <EntityDataTable columns={columns} rows={items} onRowClick={(row) => openSiteDetail(row.id)} />
+          <DataTablePaginationBar
+            pagination={pagination}
+            summary={tSites("pageLabel", {
+              start: pageRange.start,
+              end: pageRange.end,
+              total: pagination.total_records,
+            })}
+            prevLabel={tSites("prev")}
+            nextLabel={tSites("next")}
+            onPrev={() => setPage(Math.max(1, pagination.current_page - 1))}
+            onNext={() => setPage(pagination.current_page + 1)}
+            onPageSelect={(p) => setPage(p)}
+            pageSizeControl={{
+              label: tList("rowsPerPage"),
+              listLabel: tList("rowsPerPage"),
+              value: pageSize,
+              options: pageSizeOptions,
+              onChange: (size) => {
+                setPageSize(size);
+                setPage(1);
+              },
+              disabled: loading,
+            }}
           />
-        ) : (
-          <>
-            <EntityDataTable columns={columns} rows={items} onRowClick={(row) => openSiteDetail(row.id)} />
-
-            <DataTablePaginationBar
-              pagination={pagination}
-              summary={tSites("pageLabel", {
-                start: pageRange.start,
-                end: pageRange.end,
-                total: pagination.total_records,
-              })}
-              prevLabel={tSites("prev")}
-              nextLabel={tSites("next")}
-              onPrev={() => setPage(Math.max(1, pagination.current_page - 1))}
-              onNext={() => setPage(pagination.current_page + 1)}
-              onPageSelect={(p) => setPage(p)}
-              pageSizeControl={{
-                label: tList("rowsPerPage"),
-                listLabel: tList("rowsPerPage"),
-                value: pageSize,
-                options: pageSizeOptions,
-                onChange: (size) => {
-                  setPageSize(size);
-                  setPage(1);
-                },
-                disabled: loading,
-              }}
-            />
-          </>
-        )}
-      </div>
-    </>
+        </div>
+      )}
+    </div>
   );
 }

@@ -12,7 +12,7 @@ import {
 import type { DispatchReturnItem, DispatchReturnType } from "@/features/dispatches/types/dispatch.types";
 import { dispatchReturnWorkerLabel } from "@/features/dispatches/utils/dispatch-return.util";
 import { cn } from "@/core/utils/http.util";
-import { toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
@@ -86,8 +86,8 @@ export function DispatchReturnScreen({ dispatchId }: Props) {
           };
         }
         setDrafts(initial);
-      } catch {
-        if (!cancelled) setLoadError(t("return.loadError"));
+      } catch (error) {
+        if (!cancelled) setLoadError(getApiErrorDisplayMessage(error, t("return.loadError")));
       } finally {
         if (!cancelled) setLoading(false);
       }

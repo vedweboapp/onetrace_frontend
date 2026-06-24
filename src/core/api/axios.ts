@@ -14,6 +14,7 @@ import {
   parseApiFailurePayload,
   resolveApiErrorUserText,
 } from "@/core/errors/api-error-text";
+import { markApiErrorToasted } from "@/core/errors/api-error-toast.util";
 import { AuthRefreshEnvelope } from "@/features/auth/types/auth.types";
 import { navigateToLoginIfBrowser } from "@/features/auth/utils/auth-redirect.util";
 
@@ -104,6 +105,7 @@ api.interceptors.response.use(
     }
     const payload = parseApiFailurePayload(error);
     toastError(resolveApiErrorUserText(payload));
+    markApiErrorToasted(error);
     return Promise.reject(error);
   },
 );
@@ -179,6 +181,12 @@ api.interceptors.request.use((config) => {
   } else {
     delete config.headers.Authorization;
   }
+
+  const method = (config.method ?? "get").toLowerCase();
+  if (method === "get" && config.skipErrorToast === undefined) {
+    config.skipErrorToast = true;
+  }
+
   return config;
 });
 

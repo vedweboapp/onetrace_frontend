@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -147,7 +149,7 @@ export function ProjectQuotationsTab({ projectId }: Props) {
           }
           setTagLabelById(mapped);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setClientOptions([]);
           setSiteOptions([]);
@@ -174,9 +176,9 @@ export function ProjectQuotationsTab({ projectId }: Props) {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {

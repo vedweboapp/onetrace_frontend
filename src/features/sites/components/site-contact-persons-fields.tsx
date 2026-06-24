@@ -7,6 +7,7 @@ import { Controller, useFieldArray, useWatch, type Control, type FieldErrors } f
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { SITE_CONTACT_PERSON_TITLES } from "@/features/sites/constants/site-contact-person.constants";
 import type { SiteFormValues } from "@/features/sites/schemas/site-form-schema";
+import { siteContactPersonPairKey } from "@/features/sites/utils/site-contact-person.util";
 import { cn } from "@/core/utils/http.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { AppButton, CheckmarkSelect, FieldErrorText, FieldGroup } from "@/shared/ui";
@@ -30,6 +31,7 @@ export function SiteContactPersonsFields({
 }: Props) {
   const t = useTranslations("Dashboard.sites");
   const clientValue = useWatch({ control, name: "client" });
+  const contactRows = useWatch({ control, name: "contacts" }) ?? [];
   const clientId =
     clientValue && /^\d+$/.test(clientValue) ? Number.parseInt(clientValue, 10) : undefined;
 
@@ -85,6 +87,54 @@ export function SiteContactPersonsFields({
       ...contactOptions,
     ],
     [contactOptions, t],
+  );
+
+  const usedPairs = React.useMemo(() => {
+    const pairs = new Set<string>();
+    for (const row of contactRows) {
+      const title = row?.title?.trim() ?? "";
+      const contact = row?.contact?.trim() ?? "";
+      if (title && contact) pairs.add(siteContactPersonPairKey(title, contact));
+    }
+    return pairs;
+  }, [contactRows]);
+
+  const titleOptionsForRow = React.useCallback(
+    (index: number) => {
+      const currentContact = contactRows[index]?.contact?.trim() ?? "";
+      if (!currentContact) return titleOptions;
+
+      return titleOptions.filter((opt) => {
+        if (!opt.value) return true;
+        const key = siteContactPersonPairKey(opt.value, currentContact);
+        const currentKey =
+          contactRows[index]?.title?.trim() && currentContact
+            ? siteContactPersonPairKey(contactRows[index]!.title!, currentContact)
+            : null;
+        if (currentKey === key) return true;
+        return !usedPairs.has(key);
+      });
+    },
+    [contactRows, titleOptions, usedPairs],
+  );
+
+  const contactOptionsForRow = React.useCallback(
+    (index: number) => {
+      const currentTitle = contactRows[index]?.title?.trim() ?? "";
+      if (!currentTitle) return contactSelectOptions;
+
+      return contactSelectOptions.filter((opt) => {
+        if (!opt.value) return true;
+        const key = siteContactPersonPairKey(currentTitle, opt.value);
+        const currentKey =
+          currentTitle && contactRows[index]?.contact?.trim()
+            ? siteContactPersonPairKey(currentTitle, contactRows[index]!.contact!)
+            : null;
+        if (currentKey === key) return true;
+        return !usedPairs.has(key);
+      });
+    },
+    [contactRows, contactSelectOptions, usedPairs],
   );
 
   React.useEffect(() => {
@@ -158,7 +208,7 @@ export function SiteContactPersonsFields({
                       id={`site-cp-title-${index}`}
                       portaled
                       listLabel={t("contactPerson.titleLabel")}
-                      options={titleOptions}
+                      options={titleOptionsForRow(index)}
                       value={titleField.value}
                       emptyLabel={t("contactPerson.titlePlaceholder")}
                       disabled={disabled}
@@ -181,7 +231,7 @@ export function SiteContactPersonsFields({
                       portaled
                       searchable
                       listLabel={t("contactPerson.contactLabel")}
-                      options={contactSelectOptions}
+                      options={contactOptionsForRow(index)}
                       value={contactField.value}
                       emptyLabel={
                         loadingContacts

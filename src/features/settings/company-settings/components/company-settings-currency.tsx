@@ -4,9 +4,8 @@ import React, { useState } from "react";
 import { Eye, X } from "lucide-react";
 import { currencyList } from "@/shared/form/components/currency-list";
 import { updateOrganizationDetails } from "../api/company-settings.api";
-import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { useTranslations } from "next-intl";
-import { parseApiFailurePayload, resolveApiErrorUserText } from "@/core/errors/api-error-text";
 import { OrganizationDetails } from "../types/types";
 import {
   buildDirtyOrganizationPatch,
@@ -162,7 +161,7 @@ const CompanySettingsCurrency = ({ initialData, onSaveSuccess }: CompanySettings
       onSaveSuccess?.(updated);
     } catch (error) {
       console.error("Failed to save organization currency:", error);
-      toastError(resolveApiErrorUserText(parseApiFailurePayload(error)));
+      toastApiError(error);
     } finally {
       setIsSaving(false);
     }

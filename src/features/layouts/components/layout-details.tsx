@@ -18,9 +18,8 @@ import {
     AppButton,
     ListPageSearchField
 } from "@/shared/ui";
-import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { useTranslations } from "next-intl";
-import { parseApiFailurePayload, resolveApiErrorUserText } from "@/core/errors/api-error-text";
 import { ArrowLeft } from "lucide-react";
 
 const LayoutDetails = () => {
@@ -77,7 +76,7 @@ const LayoutDetails = () => {
             toastSuccess(t("statusUpdatedToast"));
         } catch (err) {
             console.error("Failed to update layout status", err);
-            toastError(resolveApiErrorUserText(parseApiFailurePayload(err)));
+            toastApiError(err);
         }
     }
     if (loading) {

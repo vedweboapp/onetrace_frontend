@@ -14,7 +14,7 @@ import {
   groupLinkedItemsSummaryText,
 } from "@/features/groups/utils/group-linked-item-display.util";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
-import { toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
@@ -139,9 +139,9 @@ export function GroupsPanel() {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -160,7 +160,7 @@ export function GroupsPanel() {
         const { items: composites } = await fetchCompositeItemsPage(1, 500);
         if (cancelled) return;
         setCompositeById(new Map(composites.map((it) => [it.id, it])));
-      } catch {
+      } catch (error) {
         if (!cancelled) setCompositeById(new Map());
       }
     })();

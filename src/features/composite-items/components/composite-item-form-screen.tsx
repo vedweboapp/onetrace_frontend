@@ -18,7 +18,7 @@ import { cn } from "@/core/utils/http.util";
 import type { ItemComponentRef } from "@/features/items/types/item.types";
 import type { Item } from "@/features/items/types/item.types";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
@@ -509,8 +509,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.compositeItems, saved.id, safeBack));
-    } catch {
-      toastError(t("loadError"));
+    } catch (error) {
+      toastApiError(error, t("loadError"));
     } finally {
       setSubmitting(false);
     }

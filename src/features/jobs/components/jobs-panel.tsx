@@ -50,7 +50,7 @@ import {
 import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 
 export function JobsPanel() {
   const t = useTranslations("Dashboard.jobs");
@@ -291,7 +291,7 @@ export function JobsPanel() {
           }
           setStatusById(byId);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setWorkerOptions([]);
           setJobStatusOptions([]);
@@ -325,7 +325,7 @@ export function JobsPanel() {
             })),
           );
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) setMassFormOptions([]);
       }
     })();
@@ -349,9 +349,9 @@ export function JobsPanel() {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -388,8 +388,8 @@ export function JobsPanel() {
       setDeleteOpen(false);
       setDeletingJob(null);
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("deleteError"));
+    } catch (error) {
+      toastApiError(error, t("deleteError"));
     } finally {
       setDeleting(false);
     }

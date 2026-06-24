@@ -49,8 +49,9 @@ import type { Tag } from "@/features/tags/types/tag.types";
 import { fetchRoles, fetchUsersPage } from "@/features/users/api/user.api";
 import type { UserProfile } from "@/features/users/types/user.types";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+import { DetailTabStepNav } from "@/shared/components/layout/detail-tab-step-nav";
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
@@ -618,8 +619,8 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       const saved = isEdit && quotationId ? await updateQuotation(quotationId, payload) : await createQuotation(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.quotations, saved.id, safeBack));
-    } catch {
-      toastError(t("saveError"));
+    } catch (error) {
+      toastApiError(error, t("saveError"));
     } finally {
       setSaving(false);
     }
@@ -998,6 +999,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
               </aside>
             ) : null}
             </div>
+            <DetailTabStepNav onNext={() => setFormTab("pricing")} nextLabel={t("formTabs.nextToPricing")} />
             </div>
             <div
               role="tabpanel"
@@ -1017,6 +1019,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                   canShow={canShowLevels}
                 />
               </div>
+              <DetailTabStepNav onPrev={() => setFormTab("project")} prevLabel={t("formTabs.prevToProject")} />
             </div>
           </form>
         )}
