@@ -288,6 +288,7 @@
         "finish": "Finish integration",
         "cancel": "Cancel",
         "finishError": "Failed to complete Zoho integration. Please try again.",
+        "connectionFailed": "Connection failed. Please try again.",
         "missingParams": "Missing authorization details. Please start the connection again from Integrations."
       },
       "zohoKeyMapping": {
@@ -322,6 +323,7 @@
         "method": "HTTP method",
         "resourceAction": "Action",
         "webhookUri": "Webhook URL",
+        "headerTitle": "Header",
         "header": "Header: {name}",
         "samplePayload": "Sample payload",
         "copy": "Copy",

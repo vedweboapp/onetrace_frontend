@@ -77,11 +77,11 @@ function FieldTypeBadge({ type }: { type?: string }) {
 }
 
 const MAPPING_ROW_GRID =
-  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)_2.75rem] lg:items-center";
+  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)_2.75rem] lg:items-start";
 
 function MappingArrow() {
   return (
-    <div className="flex items-center justify-center lg:justify-center">
+    <div className="flex items-center justify-center lg:mt-6 lg:justify-center">
       <span
         className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500"
         aria-hidden
@@ -223,18 +223,6 @@ export function ZohoKeyMappingForm({
       ) : (
         <>
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
-            <div
-              className={cn(
-                "hidden border-b border-slate-200 bg-slate-50/80 px-4 py-3 text-xs font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400 lg:grid",
-                MAPPING_ROW_GRID,
-              )}
-            >
-              <span className="min-w-0 truncate">{t("internalField")}</span>
-              <span className="sr-only">{t("mapsTo")}</span>
-              <span className="min-w-0 truncate">{t("externalField")}</span>
-              <span className="sr-only">{t("removeRow")}</span>
-            </div>
-
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {rows.map((row) => {
                 const currentSimhoField = internalFields.find((f) => f.field === row.internalField);
@@ -272,7 +260,7 @@ export function ZohoKeyMappingForm({
                 return (
                   <div key={row.id} className={cn("px-4 py-4", MAPPING_ROW_GRID)}>
                     <div className="min-w-0 space-y-2">
-                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400 lg:sr-only">
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
                         {t("internalField")}
                       </p>
                       <CheckmarkSelect
@@ -293,7 +281,7 @@ export function ZohoKeyMappingForm({
                     <MappingArrow />
 
                     <div className="min-w-0 space-y-2">
-                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400 lg:sr-only">
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
                         {t("externalField")}
                       </p>
                       <CheckmarkSelect
@@ -311,7 +299,7 @@ export function ZohoKeyMappingForm({
                       <FieldTypeBadge type={currentZohoType} />
                     </div>
 
-                    <div className="flex justify-end lg:justify-center">
+                    <div className="flex justify-end lg:mt-6 lg:justify-center">
                       <AppButton
                         type="button"
                         variant="ghost"

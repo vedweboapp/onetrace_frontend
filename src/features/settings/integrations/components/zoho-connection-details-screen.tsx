@@ -12,7 +12,12 @@ import {
 import { ZOHO_DEFAULT_RESOURCE } from "@/features/settings/integrations/api/integration.paths";
 import { ZohoWebhookGuide } from "@/features/settings/integrations/components/zoho-webhook-guide";
 import { ZohoKeyMappingForm } from "@/features/settings/integrations/components/zoho-key-mapping-screen";
-import { buildZohoFrontendCallbackUrl } from "@/features/settings/integrations/utils/zoho-callback-url.util";
+import { ZohoCallbackFinishModal } from "@/features/settings/integrations/components/zoho-callback-finish-modal";
+import {
+  buildZohoConnectionTabUrl,
+  buildZohoFrontendCallbackUrl,
+  readZohoOAuthCallbackParams,
+} from "@/features/settings/integrations/utils/zoho-callback-url.util";
 import type {
   ZohoConnectionDetails,
   ZohoWebhookSetupData,
@@ -51,14 +56,20 @@ export function ZohoConnectionDetailsScreen() {
   const searchParams = useSearchParams();
 
   const tabParam = searchParams.get("tab")?.toLowerCase();
+  const oauthParams = readZohoOAuthCallbackParams(searchParams);
+  const hasOAuthCallback =
+    Boolean(oauthParams.code || oauthParams.state || oauthParams.accountsServer);
+
   const initialTab =
-    tabParam === "configure" || tabParam === "configuration"
-      ? "configure"
-      : tabParam === "webhook"
-        ? "webhook"
-        : tabParam === "help"
-          ? "help"
-          : "help";
+    hasOAuthCallback
+      ? "help"
+      : tabParam === "configure" || tabParam === "configuration"
+        ? "configure"
+        : tabParam === "webhook"
+          ? "webhook"
+          : tabParam === "help"
+            ? "help"
+            : "help";
 
   const [activeTab, setActiveTab] = React.useState<"help" | "configure" | "webhook">(initialTab);
   const [loading, setLoading] = React.useState(true);
@@ -150,8 +161,34 @@ export function ZohoConnectionDetailsScreen() {
     }
   }
 
+  React.useEffect(() => {
+    if (hasOAuthCallback) {
+      setActiveTab("help");
+    }
+  }, [hasOAuthCallback]);
+
+  function clearOAuthCallbackUrl(tab: "help" | "configure" | "webhook" = "help") {
+    router.replace(buildZohoConnectionTabUrl(tab), { scroll: false });
+  }
+
+  function handleOAuthSuccess() {
+    setActiveTab("configure");
+    clearOAuthCallbackUrl("configure");
+    void loadConnection();
+  }
+
+  function handleOAuthCancel() {
+    clearOAuthCallbackUrl("help");
+  }
+
   return (
-    <div className="space-y-6 ">
+    <>
+      <div
+        className={cn(
+          "space-y-6",
+          hasOAuthCallback && "pointer-events-none select-none blur-[2px] opacity-60",
+        )}
+      >
       <DetailPageHeader
         title={t("title")}
         subtitle={t("description")}
@@ -288,6 +325,16 @@ export function ZohoConnectionDetailsScreen() {
           </SurfaceShell>
         </div>
       ) : null}
-    </div>
+      </div>
+
+      <ZohoCallbackFinishModal
+        open={hasOAuthCallback}
+        code={oauthParams.code}
+        state={oauthParams.state}
+        accountsServer={oauthParams.accountsServer}
+        onCancel={handleOAuthCancel}
+        onSuccess={handleOAuthSuccess}
+      />
+    </>
   );
 }
