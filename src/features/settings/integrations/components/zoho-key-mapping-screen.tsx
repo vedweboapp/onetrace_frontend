@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { ArrowRight, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
@@ -63,6 +63,31 @@ function HistoricalDataToggle({
           )}
         />
       </button>
+    </div>
+  );
+}
+
+function FieldTypeBadge({ type }: { type?: string }) {
+  if (!type?.trim()) return null;
+  return (
+    <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+      {type}
+    </span>
+  );
+}
+
+const MAPPING_ROW_GRID =
+  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)_2.75rem] lg:items-center";
+
+function MappingArrow() {
+  return (
+    <div className="flex items-center justify-center lg:justify-center">
+      <span
+        className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500"
+        aria-hidden
+      >
+        <ArrowRight className="size-4" />
+      </span>
     </div>
   );
 }
@@ -197,94 +222,112 @@ export function ZohoKeyMappingForm({
         <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
-                  <th className="px-3 py-2">{t("internalField")}</th>
-                  <th className="px-3 py-2">{t("externalField")}</th>
-                  <th className="w-12 px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => {
-                  const currentSimhoField = internalFields.find((f) => f.field === row.internalField);
-                  const currentSimhoType = currentSimhoField?.type;
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
+            <div
+              className={cn(
+                "hidden border-b border-slate-200 bg-slate-50/80 px-4 py-3 text-xs font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400 lg:grid",
+                MAPPING_ROW_GRID,
+              )}
+            >
+              <span className="min-w-0 truncate">{t("internalField")}</span>
+              <span className="sr-only">{t("mapsTo")}</span>
+              <span className="min-w-0 truncate">{t("externalField")}</span>
+              <span className="sr-only">{t("removeRow")}</span>
+            </div>
 
-                  const currentZohoField = externalFields.find((f) => f.field === row.externalField);
-                  const currentZohoType = currentZohoField?.type;
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {rows.map((row) => {
+                const currentSimhoField = internalFields.find((f) => f.field === row.internalField);
+                const currentSimhoType = currentSimhoField?.type;
 
-                  const filteredInternalOptions = internalOptions.filter((opt) => {
-                    const isSelectedInOtherRow = rows.some((r) => r.id !== row.id && r.internalField === opt.value);
-                    if (isSelectedInOtherRow) return false;
+                const currentZohoField = externalFields.find((f) => f.field === row.externalField);
+                const currentZohoType = currentZohoField?.type;
 
-                    if (currentZohoType) {
-                      const optField = internalFields.find((f) => f.field === opt.value);
-                      if (optField && !areTypesCompatible(optField.type, currentZohoType)) {
-                        return false;
-                      }
+                const filteredInternalOptions = internalOptions.filter((opt) => {
+                  const isSelectedInOtherRow = rows.some((r) => r.id !== row.id && r.internalField === opt.value);
+                  if (isSelectedInOtherRow) return false;
+
+                  if (currentZohoType) {
+                    const optField = internalFields.find((f) => f.field === opt.value);
+                    if (optField && !areTypesCompatible(optField.type, currentZohoType)) {
+                      return false;
                     }
-                    return true;
-                  });
+                  }
+                  return true;
+                });
 
-                  const filteredExternalOptions = externalOptions.filter((opt) => {
-                    const isSelectedInOtherRow = rows.some((r) => r.id !== row.id && r.externalField === opt.value);
-                    if (isSelectedInOtherRow) return false;
+                const filteredExternalOptions = externalOptions.filter((opt) => {
+                  const isSelectedInOtherRow = rows.some((r) => r.id !== row.id && r.externalField === opt.value);
+                  if (isSelectedInOtherRow) return false;
 
-                    if (currentSimhoType) {
-                      const optField = externalFields.find((f) => f.field === opt.value);
-                      if (optField && !areTypesCompatible(optField.type, currentSimhoType)) {
-                        return false;
-                      }
+                  if (currentSimhoType) {
+                    const optField = externalFields.find((f) => f.field === opt.value);
+                    if (optField && !areTypesCompatible(optField.type, currentSimhoType)) {
+                      return false;
                     }
-                    return true;
-                  });
+                  }
+                  return true;
+                });
 
-                  return (
-                    <tr key={row.id} className="border-b border-slate-100 dark:border-slate-800">
-                      <td className="px-3 py-2 align-top">
-                        <CheckmarkSelect
-                          options={filteredInternalOptions}
-                          value={row.internalField}
-                          onChange={(value) => updateRow(row.id, { internalField: value })}
-                          emptyLabel={t("selectInternal")}
-                          listLabel={t("internalField")}
-                          portaled
-                          searchable
-                          size="sm"
-                          disabled={saving}
-                        />
-                      </td>
-                      <td className="px-3 py-2 align-top">
-                        <CheckmarkSelect
-                          options={filteredExternalOptions}
-                          value={row.externalField}
-                          onChange={(value) => updateRow(row.id, { externalField: value })}
-                          emptyLabel={t("selectExternal")}
-                          listLabel={t("externalField")}
-                          portaled
-                          searchable
-                          size="sm"
-                          disabled={saving}
-                        />
-                      </td>
-                      <td className="px-3 py-2 align-top">
-                        <AppButton
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          disabled={saving}
-                          aria-label={t("removeRow")}
-                          onClick={() => removeRow(row.id)}
-                        >
-                          <Trash2 className="size-4 text-red-600" aria-hidden />
-                        </AppButton>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                return (
+                  <div key={row.id} className={cn("px-4 py-4", MAPPING_ROW_GRID)}>
+                    <div className="min-w-0 space-y-2">
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400 lg:sr-only">
+                        {t("internalField")}
+                      </p>
+                      <CheckmarkSelect
+                        className="w-full min-w-0"
+                        options={filteredInternalOptions}
+                        value={row.internalField}
+                        onChange={(value) => updateRow(row.id, { internalField: value })}
+                        emptyLabel={t("selectInternal")}
+                        listLabel={t("internalField")}
+                        portaled
+                        searchable
+                        size="sm"
+                        disabled={saving}
+                      />
+                      <FieldTypeBadge type={currentSimhoType} />
+                    </div>
+
+                    <MappingArrow />
+
+                    <div className="min-w-0 space-y-2">
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400 lg:sr-only">
+                        {t("externalField")}
+                      </p>
+                      <CheckmarkSelect
+                        className="w-full min-w-0"
+                        options={filteredExternalOptions}
+                        value={row.externalField}
+                        onChange={(value) => updateRow(row.id, { externalField: value })}
+                        emptyLabel={t("selectExternal")}
+                        listLabel={t("externalField")}
+                        portaled
+                        searchable
+                        size="sm"
+                        disabled={saving}
+                      />
+                      <FieldTypeBadge type={currentZohoType} />
+                    </div>
+
+                    <div className="flex justify-end lg:justify-center">
+                      <AppButton
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="size-9 shrink-0 p-0 text-slate-500 hover:text-red-600 dark:hover:text-red-400"
+                        disabled={saving}
+                        aria-label={t("removeRow")}
+                        onClick={() => removeRow(row.id)}
+                      >
+                        <Trash2 className="size-4" aria-hidden />
+                      </AppButton>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={addRow}>

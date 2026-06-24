@@ -181,8 +181,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"
         />
       }
-      actions={({ detail, listBack, retry }) =>
-        activeTab === "details" ? (
+      actions={({ detail, listBack, retry }) => (
         <div className="flex flex-wrap items-center gap-2">
           <AppButton
             type="button"
@@ -223,8 +222,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
             fallbackRoute={routes.dashboard.projects}
           />
         </div>
-        ) : null
-      }
+      )}
       footer={
         <ConfirmDialog
           open={deleteOpen}

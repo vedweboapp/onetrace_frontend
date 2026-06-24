@@ -12,6 +12,7 @@ export type ListPageOnboardingEmptyProps = {
   title: string;
   description: string;
   action: React.ReactNode;
+  compact?: boolean;
 };
 
 export type ListPageEmptyStatesProps = {
@@ -19,6 +20,7 @@ export type ListPageEmptyStatesProps = {
   onboarding: ListPageOnboardingEmptyProps;
   onClearFilters: () => void;
   onSwitchToInactive?: () => void;
+  compact?: boolean;
 };
 
 export function listPageSurfaceShellClassName(hideListChrome: boolean): string {
@@ -31,6 +33,7 @@ export function ListPageEmptyStates({
   onboarding,
   onClearFilters,
   onSwitchToInactive,
+  compact = false,
 }: ListPageEmptyStatesProps) {
   const tList = useTranslations("Dashboard.list");
 
@@ -44,6 +47,7 @@ export function ListPageEmptyStates({
         title={onboarding.title}
         description={onboarding.description}
         action={onboarding.action}
+        compact={onboarding.compact ?? compact}
       />
     );
   }
@@ -59,6 +63,7 @@ export function ListPageEmptyStates({
             {tList("viewInactive")}
           </AppButton>
         }
+        compact={compact}
       />
     );
   }
@@ -73,6 +78,7 @@ export function ListPageEmptyStates({
           {tList("clearFilters")}
         </AppButton>
       }
+      compact={compact}
     />
   );
 }

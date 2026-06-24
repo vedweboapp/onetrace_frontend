@@ -14,7 +14,7 @@ import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.u
 import { buildQuickCreateNavigateHref } from "@/shared/utils/quick-create-navigation.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
-import { AddButton, DashboardEmptyState, DataTablePaginationBar, ListPageSearchField } from "@/shared/ui";
+import { AddButton, DataTablePaginationBar, ListPageEmptyStates, ListPageSearchField } from "@/shared/ui";
 
 type Props = {
   entityType: ContactType;
@@ -142,32 +142,52 @@ export function EntityContactsTab({ entityType, entityId }: Props) {
     </AddButton>
   );
 
+  const hasActiveFilters = search.trim() !== "";
+  const emptyStateKind = React.useMemo(() => {
+    if (loading || loadError || items.length > 0) return "none" as const;
+    if (hasActiveFilters) return "filtered" as const;
+    return "onboarding" as const;
+  }, [loading, loadError, items.length, hasActiveFilters]);
+
+  const hideListChrome = emptyStateKind === "onboarding";
+
   return (
-    <div className="flex flex-col gap-4 p-4 sm:p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <ListPageSearchField
-          value={search}
-          onCommit={commitSearch}
-          placeholder={tList("searchPlaceholder")}
-          ariaLabel={tList("searchAria")}
-          className="max-w-md min-w-0 flex-1"
-        />
-        {addContactButton}
-      </div>
+    <div>
+      {!hideListChrome ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/90 px-4 py-4 sm:px-6 dark:border-slate-800">
+          <ListPageSearchField
+            value={search}
+            onCommit={commitSearch}
+            placeholder={tList("searchPlaceholder")}
+            ariaLabel={tList("searchAria")}
+            className="max-w-md min-w-0 flex-1"
+          />
+          {items.length > 0 ? addContactButton : null}
+        </div>
+      ) : null}
 
       {loadError ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>
+        <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
       ) : loading ? (
         <EntityDetailLoadingSkeleton />
       ) : items.length === 0 ? (
-        <DashboardEmptyState
-          iconName="noResults"
-          title={search.trim() ? tList("noResultsTitle") : t("detail.contactsEmptyTitle")}
-          description={search.trim() ? tList("noResultsDescription") : t("detail.contactsEmptyDescription")}
-          action={search.trim() ? undefined : addContactButton}
+        <ListPageEmptyStates
+          emptyStateKind={emptyStateKind}
+          compact
+          onboarding={{
+            iconName: "clients",
+            title: t("detail.contactsEmptyTitle"),
+            description: t("detail.contactsEmptyDescription"),
+            action: addContactButton,
+            compact: true,
+          }}
+          onClearFilters={() => {
+            setSearch("");
+            setPage(1);
+          }}
         />
       ) : (
-        <>
+        <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
           <EntityDataTable columns={columns} rows={items} onRowClick={(row) => openContactDetail(row.id)} />
           <DataTablePaginationBar
             pagination={pagination}
@@ -193,7 +213,7 @@ export function EntityContactsTab({ entityType, entityId }: Props) {
               disabled: loading,
             }}
           />
-        </>
+        </div>
       )}
     </div>
   );

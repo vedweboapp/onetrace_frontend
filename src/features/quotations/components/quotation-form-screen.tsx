@@ -51,6 +51,7 @@ import type { UserProfile } from "@/features/users/types/user.types";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+import { DetailTabStepNav } from "@/shared/components/layout/detail-tab-step-nav";
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
@@ -998,6 +999,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
               </aside>
             ) : null}
             </div>
+            <DetailTabStepNav onNext={() => setFormTab("pricing")} nextLabel={t("formTabs.nextToPricing")} />
             </div>
             <div
               role="tabpanel"
@@ -1017,6 +1019,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                   canShow={canShowLevels}
                 />
               </div>
+              <DetailTabStepNav onPrev={() => setFormTab("project")} prevLabel={t("formTabs.prevToProject")} />
             </div>
           </form>
         )}
