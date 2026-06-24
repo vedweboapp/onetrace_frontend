@@ -80,6 +80,8 @@ type Props = {
   addLabel?: string;
   /** Labels for selected values missing from `options` (e.g. after async reload). */
   fallbackLabels?: Record<string, string>;
+  /** Close the panel after the user checks an option (adds a value). */
+  closeOnSelect?: boolean;
 };
 
 export function MultiCheckSelect({
@@ -101,6 +103,7 @@ export function MultiCheckSelect({
   addAriaLabel,
   addLabel,
   fallbackLabels,
+  closeOnSelect = false,
 }: Props) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -176,8 +179,10 @@ export function MultiCheckSelect({
   }, [open]);
 
   function toggleOne(value: string) {
-    if (selectedMap.has(value)) onChange(values.filter((v) => v !== value));
-    else onChange([...values, value]);
+    const isAdding = !selectedMap.has(value);
+    if (isAdding) onChange([...values, value]);
+    else onChange(values.filter((v) => v !== value));
+    if (closeOnSelect && isAdding) setOpen(false);
   }
 
   const triggerClass = cn(

@@ -67,21 +67,12 @@ function HistoricalDataToggle({
   );
 }
 
-function FieldTypeBadge({ type }: { type?: string }) {
-  if (!type?.trim()) return null;
-  return (
-    <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-      {type}
-    </span>
-  );
-}
-
 const MAPPING_ROW_GRID =
   "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)_2.75rem] lg:items-start";
 
 function MappingArrow() {
   return (
-    <div className="flex items-center justify-center lg:mt-6 lg:justify-center">
+    <div className="flex items-center justify-center lg:justify-center">
       <span
         className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500"
         aria-hidden
@@ -223,6 +214,17 @@ export function ZohoKeyMappingForm({
       ) : (
         <>
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
+            <div
+              className={cn(
+                "sticky top-0 z-10 border-b border-slate-100 bg-slate-50/95 px-4 py-3 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/95",
+                MAPPING_ROW_GRID,
+              )}
+            >
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t("internalField")}</p>
+              <span className="hidden lg:block" aria-hidden />
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t("externalField")}</p>
+              <span className="hidden lg:block" aria-hidden />
+            </div>
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {rows.map((row) => {
                 const currentSimhoField = internalFields.find((f) => f.field === row.internalField);
@@ -258,11 +260,8 @@ export function ZohoKeyMappingForm({
                 });
 
                 return (
-                  <div key={row.id} className={cn("px-4 py-4", MAPPING_ROW_GRID)}>
-                    <div className="min-w-0 space-y-2">
-                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                        {t("internalField")}
-                      </p>
+                  <div key={row.id} className={cn("px-4 py-4", MAPPING_ROW_GRID, "lg:items-center")}>
+                    <div className="min-w-0">
                       <CheckmarkSelect
                         className="w-full min-w-0"
                         options={filteredInternalOptions}
@@ -275,15 +274,11 @@ export function ZohoKeyMappingForm({
                         size="sm"
                         disabled={saving}
                       />
-                      <FieldTypeBadge type={currentSimhoType} />
                     </div>
 
                     <MappingArrow />
 
-                    <div className="min-w-0 space-y-2">
-                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                        {t("externalField")}
-                      </p>
+                    <div className="min-w-0">
                       <CheckmarkSelect
                         className="w-full min-w-0"
                         options={filteredExternalOptions}
@@ -296,10 +291,9 @@ export function ZohoKeyMappingForm({
                         size="sm"
                         disabled={saving}
                       />
-                      <FieldTypeBadge type={currentZohoType} />
                     </div>
 
-                    <div className="flex justify-end lg:mt-6 lg:justify-center">
+                    <div className="flex justify-end lg:justify-center">
                       <AppButton
                         type="button"
                         variant="ghost"

@@ -11,13 +11,10 @@ import {
 } from "@/features/settings/integrations/api/integration.api";
 import { ZOHO_DEFAULT_RESOURCE } from "@/features/settings/integrations/api/integration.paths";
 import { ZohoWebhookGuide } from "@/features/settings/integrations/components/zoho-webhook-guide";
+import { ZohoIntegrationGuide } from "@/features/settings/integrations/components/zoho-integration-guide";
 import { ZohoKeyMappingForm } from "@/features/settings/integrations/components/zoho-key-mapping-screen";
 import { ZohoCallbackFinishModal } from "@/features/settings/integrations/components/zoho-callback-finish-modal";
-import {
-  buildZohoConnectionTabUrl,
-  buildZohoFrontendCallbackUrl,
-  readZohoOAuthCallbackParams,
-} from "@/features/settings/integrations/utils/zoho-callback-url.util";
+import { buildZohoConnectionTabUrl, buildZohoFrontendCallbackUrl, readZohoOAuthCallbackParams } from "@/features/settings/integrations/utils/zoho-callback-url.util";
 import type {
   ZohoConnectionDetails,
   ZohoWebhookSetupData,
@@ -121,8 +118,7 @@ export function ZohoConnectionDetailsScreen() {
     void loadConnection();
   }, [loadConnection]);
 
-  const loadWebhook = React.useCallback(async () => {
-    if (webhookSetup || webhookLoading) return;
+  const refetchWebhookSetup = React.useCallback(async () => {
     setWebhookLoading(true);
     setWebhookError(null);
     try {
@@ -133,13 +129,13 @@ export function ZohoConnectionDetailsScreen() {
     } finally {
       setWebhookLoading(false);
     }
-  }, [webhookSetup, webhookLoading, t]);
+  }, [t]);
 
   React.useEffect(() => {
-    if (activeTab === "webhook") {
-      void loadWebhook();
+    if (activeTab === "webhook" && !webhookSetup && !webhookLoading) {
+      void refetchWebhookSetup();
     }
-  }, [activeTab, loadWebhook]);
+  }, [activeTab, webhookSetup, webhookLoading, refetchWebhookSetup]);
 
   function formatWebhookLastReceived(value: string | null | undefined) {
     if (!value?.trim()) return t("notAvailable");
@@ -222,9 +218,9 @@ export function ZohoConnectionDetailsScreen() {
           </div>
         </SurfaceShell>
       ) : activeTab === "help" ? (
-        <SurfaceShell className="rounded-xl w-full sm:w-1/2">
+        <SurfaceShell className="w-full rounded-xl">
           <div className="w-full space-y-6 p-4 sm:p-6">
-            <p className="text-sm text-slate-500 dark:text-slate-400">We are working on it</p>
+            <ZohoIntegrationGuide />
           </div>
         </SurfaceShell>
       ) : activeTab === "webhook" && connection ? (
@@ -243,7 +239,7 @@ export function ZohoConnectionDetailsScreen() {
             ) : webhookError ? (
               <p className="text-sm text-red-600 dark:text-red-400">{webhookError}</p>
             ) : webhookSetup ? (
-              <ZohoWebhookGuide setup={webhookSetup} />
+              <ZohoWebhookGuide setup={webhookSetup} configureMappingHref={buildZohoConnectionTabUrl("configure")} />
             ) : null}
           </div>
         </SurfaceShell>
@@ -319,6 +315,7 @@ export function ZohoConnectionDetailsScreen() {
                 onCancel={() => setMappingResetNonce((n) => n + 1)}
                 onSaveSuccess={() => {
                   void loadConnection();
+                  void refetchWebhookSetup();
                 }}
               />
             </div>
