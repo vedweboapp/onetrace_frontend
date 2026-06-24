@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import dynamic from "next/dynamic";
@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useForm, useWatch } from "react-hook-form";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter, usePathname } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import {
@@ -19,7 +19,8 @@ import { QuotationAdditionalContactsFields } from "@/features/quotations/compone
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
 import { useQuotationDraftState } from "@/features/quotations/hooks/use-quotation-draft-state";
 import type { ProjectLevelForQuotation, QuotationDetail } from "@/features/quotations/types/quotation.types";
-import { applyQuotationSiteSnapshot, mergeQuotationDraftIntoPayload } from "@/features/quotations/utils/quotation-draft-payload.util";
+import type { QuotationDraft } from "@/features/quotations/types/quotation-draft.types";
+import { mergeQuotationDraftIntoPayload } from "@/features/quotations/utils/quotation-draft-payload.util";
 import {
   createQuotationFormSchema,
   type QuotationFormValues,
@@ -35,15 +36,15 @@ import {
   getQuotationNestedSite,
   getQuotationProjectId,
   getQuotationSiteId,
+  getQuotationSiteIds,
   quotationNestedSiteToSite,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
+import { siteToAddressMapPoint } from "@/features/quotations/utils/quotation-site-map.util";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
-import { DetailFormattedAddress, hasDetailAddress } from "@/shared/components/layout/detail-formatted-address";
-import { What3WordsInline } from "@/shared/components/layout/what3words-inline";
 import { fetchTagsPage } from "@/features/tags/api/tag.api";
 import type { Tag } from "@/features/tags/types/tag.types";
 import { fetchRoles, fetchUsersPage } from "@/features/users/api/user.api";
@@ -51,11 +52,19 @@ import type { UserProfile } from "@/features/users/types/user.types";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+import {
+  detailMapFillClassName,
+  detailMapViewportClassName,
+} from "@/shared/components/layout/detail-page-map-layout";
 import { DetailTabStepNav } from "@/shared/components/layout/detail-tab-step-nav";
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
+import {
+  clearQuickCreateFormDraft,
+  saveQuickCreateFormDraft,
+} from "@/shared/utils/quick-create-form-draft.util";
 import { useQuotationFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
@@ -72,8 +81,8 @@ import {
   surfaceTextareaClassName,
 } from "@/shared/ui";
 
-const AddressMiniMap = dynamic(
-  () => import("@/shared/components/maps/address-mini-map").then((m) => m.AddressMiniMap),
+const AddressMultiMiniMap = dynamic(
+  () => import("@/shared/components/maps/address-multi-mini-map").then((m) => m.AddressMultiMiniMap),
   {
     ssr: false,
     loading: () => (
@@ -89,10 +98,28 @@ type Props = {
 
 type Option = { value: string; label: string };
 
+type QuotationFormDraftBundle = {
+  values: QuotationFormValues;
+  quoteDraft?: QuotationDraft | null;
+  formTab?: "project" | "pricing";
+};
+
+function isQuotationFormDraftBundle(draft: unknown): draft is QuotationFormDraftBundle {
+  return !!draft && typeof draft === "object" && "values" in draft;
+}
+
+function parseFormIdField(raw: string | undefined): number | undefined {
+  const s = raw?.trim() ?? "";
+  if (!s || !/^\d+$/.test(s)) return undefined;
+  const n = Number.parseInt(s, 10);
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
 export function QuotationFormScreen({ mode, quotationId }: Props) {
   const t = useTranslations("Dashboard.quotations");
   const locale = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const safeBack = useQuotationFormBackUrl();
   const isEdit = mode === "edit";
@@ -122,6 +149,17 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     searchParams.get("tab") === "pricing" ? "pricing" : "project",
   );
 
+  const draftReturnTo = React.useMemo(() => {
+    const qs = searchParams.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  }, [pathname, searchParams]);
+
+  const quoteDraftSnapshotRef = React.useRef<QuotationDraft | null>(null);
+  const formTabSnapshotRef = React.useRef<"project" | "pricing">("project");
+  const setQuoteDraftRef = React.useRef<React.Dispatch<React.SetStateAction<QuotationDraft | null>> | null>(null);
+  const preventQuoteDraftSeedRef = React.useRef(false);
+  const skipPresetFromUrlRef = React.useRef(false);
+
   React.useEffect(() => {
     setFormTab(searchParams.get("tab") === "pricing" ? "pricing" : "project");
   }, [mode, quotationId, searchParams]);
@@ -131,7 +169,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       createQuotationFormSchema({
         quoteName: t("validation.quoteName"),
         customer: t("validation.customer"),
-        site: t("validation.site"),
+        sites: t("validation.sites"),
         project: t("validation.project"),
       }),
     [t],
@@ -151,9 +189,26 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     shouldUnregister: false,
   });
 
-  const getFormDraft = React.useCallback(() => getValues(), [getValues]);
+  const getFormDraft = React.useCallback(
+    () => ({
+      values: getValues(),
+      quoteDraft: quoteDraftSnapshotRef.current,
+      formTab: formTabSnapshotRef.current,
+    }),
+    [getValues],
+  );
   const restoreFormDraft = React.useCallback(
     (draft: unknown) => {
+      skipPresetFromUrlRef.current = true;
+      if (isQuotationFormDraftBundle(draft)) {
+        reset(draft.values, { keepDefaultValues: false });
+        if (draft.formTab) setFormTab(draft.formTab);
+        if (draft.quoteDraft !== undefined) {
+          preventQuoteDraftSeedRef.current = true;
+          setQuoteDraftRef.current?.(draft.quoteDraft);
+        }
+        return;
+      }
       reset(draft as QuotationFormValues, { keepDefaultValues: false });
     },
     [reset],
@@ -184,7 +239,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
 
   const customerIdStr = useWatch({ control, name: "customer" });
   const projectIdStr = useWatch({ control, name: "project" });
-  const siteStr = useWatch({ control, name: "site" });
+  const sitesStr = useWatch({ control, name: "sites" });
   const customerId =
     customerIdStr && /^\d+$/.test(customerIdStr.trim())
       ? Number.parseInt(customerIdStr.trim(), 10)
@@ -196,6 +251,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
 
   const clientQuickCreate = useQuickCreate({
     kind: "client",
+    returnTo: draftReturnTo,
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
 
@@ -203,6 +259,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     kind: "project",
     clientId: customerId,
     addDisabled: saving || !customerId,
+    returnTo: draftReturnTo,
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
 
@@ -210,6 +267,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     kind: "site",
     clientId: customerId,
     addDisabled: saving || !customerId,
+    returnTo: draftReturnTo,
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
 
@@ -217,13 +275,15 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     kind: "contact",
     clientId: customerId,
     addDisabled: saving || !customerId,
+    returnTo: draftReturnTo,
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
   const pendingAdditionalContactRowRef = React.useRef<number | null>(null);
   const openUsersSettings = React.useCallback(() => {
     const current = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : routes.dashboard.quotations;
+    if (!isEdit) saveQuickCreateFormDraft(draftReturnTo, getFormDraft());
     router.push(buildPathWithStoredBack(`${routes.dashboard.settingsUsers}/new`, current));
-  }, [router]);
+  }, [router, isEdit, draftReturnTo, getFormDraft]);
   const openTagsSettings = React.useCallback(() => {
     router.push(routes.dashboard.settingsTags);
   }, [router]);
@@ -235,7 +295,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   }, [createFromProjectId]);
 
   React.useEffect(() => {
-    if (isEdit || !createFromProjectId) return;
+    if (isEdit || !createFromProjectId || skipPresetFromUrlRef.current) return;
     if (appliedFromProjectIdRef.current === createFromProjectId) return;
     if (projectRows.length === 0) return;
     const row = projectRows.find((p) => p.id === createFromProjectId);
@@ -404,7 +464,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         if (pid != null && String(pid) === selectedProject) return;
       }
       setValue("project", "", { shouldDirty: true, shouldValidate: true });
-      setValue("site", "", { shouldDirty: true, shouldValidate: true });
+      setValue("sites", [], { shouldDirty: true, shouldValidate: true });
     }
   }, [projectRows, customerId, getValues, setValue, isEdit, existingDetail]);
 
@@ -443,105 +503,77 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
 
   const siteOptions = React.useMemo<Option[]>(() => {
     const base = siteRows.map((s) => ({ value: String(s.id), label: s.site_name }));
-    const sid = existingDetail ? getQuotationSiteId(existingDetail.site) : null;
-    const nested = existingDetail ? getQuotationNestedSite(existingDetail.site) : null;
-    if (isEdit && sid != null) {
-      const exists = base.some((o) => o.value === String(sid));
-      if (!exists) {
-        const label = nested?.site_name?.trim() || `Site #${sid}`;
-        return [{ value: String(sid), label }, ...base];
-      }
+    if (!isEdit || !existingDetail) return base;
+    const extraIds = getQuotationSiteIds(existingDetail);
+    const merged = [...base];
+    for (const sid of extraIds) {
+      if (merged.some((o) => o.value === String(sid))) continue;
+      const fromList = existingDetail.sites?.find((row) => row.id === sid);
+      const nested =
+        getQuotationSiteId(existingDetail.site) === sid
+          ? getQuotationNestedSite(existingDetail.site)
+          : null;
+      const label = fromList?.site_name?.trim() || nested?.site_name?.trim() || `Site #${sid}`;
+      merged.unshift({ value: String(sid), label });
     }
-    return base;
+    return merged;
   }, [siteRows, isEdit, existingDetail]);
 
-  const selectedSiteForMap = React.useMemo(() => {
-    const raw = siteStr?.trim();
-    if (!raw || !/^\d+$/.test(raw)) return null;
-    const id = Number.parseInt(raw, 10);
-    const fromRows = siteRows.find((s) => s.id === id) ?? null;
-    if (fromRows) return fromRows;
+  const selectedSitesForMap = React.useMemo(() => {
+    const ids = (sitesStr ?? [])
+      .map((raw) => Number.parseInt(String(raw).trim(), 10))
+      .filter((id) => Number.isFinite(id) && id > 0);
+    if (ids.length === 0) return [];
+
     const clientIdForSnapshot =
       customerId != null && customerId > 0
         ? customerId
         : existingDetail
           ? getQuotationCustomerId(existingDetail.customer) ?? 0
           : 0;
-    if (isEdit && existingDetail && getQuotationSiteId(existingDetail.site) === id && clientIdForSnapshot > 0) {
-      const nested = getQuotationNestedSite(existingDetail.site);
-      if (nested) return quotationNestedSiteToSite(nested, clientIdForSnapshot);
-    }
-    return null;
-  }, [siteStr, siteRows, isEdit, existingDetail, customerId]);
+
+    return ids
+      .map((id) => {
+        const fromRows = siteRows.find((s) => s.id === id) ?? null;
+        if (fromRows) return fromRows;
+        if (isEdit && existingDetail && getQuotationSiteId(existingDetail.site) === id && clientIdForSnapshot > 0) {
+          const nested = getQuotationNestedSite(existingDetail.site);
+          if (nested) return quotationNestedSiteToSite(nested, clientIdForSnapshot);
+        }
+        const fromSnapshots = [
+          ...(existingDetail?.site_snapshots ?? []),
+          ...(existingDetail?.site_snapshot ? [existingDetail.site_snapshot] : []),
+        ];
+        const snap = fromSnapshots.find((row) => row.id === id);
+        if (snap && clientIdForSnapshot > 0) {
+          return quotationNestedSiteToSite(snap, clientIdForSnapshot);
+        }
+        return null;
+      })
+      .filter((row): row is Site => row != null);
+  }, [sitesStr, siteRows, isEdit, existingDetail, customerId]);
+
+  const selectedSiteMapPoints = React.useMemo(
+    () => selectedSitesForMap.map((site) => siteToAddressMapPoint(site)),
+    [selectedSitesForMap],
+  );
 
   React.useEffect(() => {
     if (!projectId || projectId <= 0) return;
-    if (siteStr?.trim()) return;
+    if ((sitesStr ?? []).length > 0) return;
     if (siteOptions.length !== 1) return;
-    setValue("site", siteOptions[0].value, { shouldValidate: true, shouldDirty: true });
-  }, [projectId, siteStr, siteOptions, setValue]);
+    setValue("sites", [siteOptions[0].value], { shouldValidate: true, shouldDirty: true });
+  }, [projectId, sitesStr, siteOptions, setValue]);
 
   React.useEffect(() => {
-    const selectedSite = getValues("site");
-    if (!selectedSite) return;
-    const stillExists = siteOptions.some((s) => s.value === selectedSite);
-    if (!stillExists) {
-      setValue("site", "", { shouldDirty: true, shouldValidate: true });
+    const selectedSites = getValues("sites") ?? [];
+    if (selectedSites.length === 0) return;
+    const valid = new Set(siteOptions.map((s) => s.value));
+    const next = selectedSites.filter((id) => valid.has(id));
+    if (next.length !== selectedSites.length) {
+      setValue("sites", next, { shouldDirty: true, shouldValidate: true });
     }
   }, [siteOptions, getValues, setValue]);
-
-  useQuickCreateReturn({
-    restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
-    onReloadOptions: async () => {
-      const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
-      setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
-      if (customerId && customerId > 0) {
-        const [projects, contacts] = await Promise.all([
-          fetchProjectsPage(1, 500, { client: customerId, is_active: true }),
-          fetchContactsPage(1, 500, { client: customerId, is_active: true }),
-        ]);
-        setProjectRows(projects.items);
-        setContactOptions(contacts.items.map((c) => ({ value: String(c.id), label: c.name })));
-      }
-      if (projectId && projectId > 0) {
-        const { items } = await fetchSitesPage(1, 500, { project: projectId, is_active: true });
-        setSiteRows(items);
-      }
-    },
-    onApplySelect: ({ selectTarget, selectId }) => {
-      if (selectTarget === "client") {
-        setValue("customer", selectId, { shouldDirty: true, shouldValidate: true });
-        setValue("project", "", { shouldDirty: true, shouldValidate: true });
-        setValue("site", "", { shouldDirty: true, shouldValidate: true });
-        setValue("primary_customer_contact", "", { shouldDirty: true });
-        setValue("additional_customer_contacts", [], { shouldDirty: true });
-        setValue("site_contact", "", { shouldDirty: true });
-        return;
-      }
-      if (selectTarget === "project") {
-        setValue("project", selectId, { shouldDirty: true, shouldValidate: true });
-        setValue("site", "", { shouldDirty: true, shouldValidate: true });
-        setValue("site_contact", "", { shouldDirty: true });
-        return;
-      }
-      if (selectTarget === "site") {
-        setValue("site", selectId, { shouldDirty: true, shouldValidate: true });
-        return;
-      }
-      if (selectTarget === "contact") {
-        const rowIdx = pendingAdditionalContactRowRef.current;
-        if (rowIdx != null) {
-          setValue(`additional_customer_contacts.${rowIdx}.contact`, selectId, {
-            shouldDirty: true,
-            shouldValidate: true,
-          });
-          pendingAdditionalContactRowRef.current = null;
-        } else {
-          setValue("primary_customer_contact", selectId, { shouldDirty: true, shouldValidate: true });
-        }
-      }
-    },
-  });
 
   const projectOptions = React.useMemo<Option[]>(() => {
     const base = projectRows.map((p) => ({ value: String(p.id), label: p.name }));
@@ -579,7 +611,76 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   }, [isEdit, existingDetail]);
 
   const draftEnabled = !isEdit || !!existingDetail;
-  const [quoteDraft, setQuoteDraft] = useQuotationDraftState(draftEnabled, projectId, sortedLevelRows, editDraftSeed);
+  const [quoteDraft, setQuoteDraft] = useQuotationDraftState(
+    draftEnabled,
+    projectId,
+    sortedLevelRows,
+    editDraftSeed,
+    { preventAutoSeedRef: preventQuoteDraftSeedRef },
+  );
+
+  setQuoteDraftRef.current = setQuoteDraft;
+  quoteDraftSnapshotRef.current = quoteDraft;
+  formTabSnapshotRef.current = formTab;
+
+  useQuickCreateReturn({
+    restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
+    onReloadOptions: async () => {
+      const values = getValues();
+      const reloadCustomerId = parseFormIdField(values.customer);
+      const reloadProjectId = parseFormIdField(values.project);
+      const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+      setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
+      if (reloadCustomerId) {
+        const [projects, contacts] = await Promise.all([
+          fetchProjectsPage(1, 500, { client: reloadCustomerId, is_active: true }),
+          fetchContactsPage(1, 500, { client: reloadCustomerId, is_active: true }),
+        ]);
+        setProjectRows(projects.items);
+        setContactOptions(contacts.items.map((c) => ({ value: String(c.id), label: c.name })));
+      }
+      if (reloadProjectId) {
+        const { items } = await fetchSitesPage(1, 500, { project: reloadProjectId, is_active: true });
+        setSiteRows(items);
+      }
+    },
+    onApplySelect: ({ selectTarget, selectId }) => {
+      if (selectTarget === "client") {
+        setValue("customer", selectId, { shouldDirty: true, shouldValidate: true });
+        setValue("project", "", { shouldDirty: true, shouldValidate: true });
+        setValue("sites", [], { shouldDirty: true, shouldValidate: true });
+        setValue("primary_customer_contact", "", { shouldDirty: true });
+        setValue("additional_customer_contacts", [], { shouldDirty: true });
+        setValue("site_contact", "", { shouldDirty: true });
+        return;
+      }
+      if (selectTarget === "project") {
+        setValue("project", selectId, { shouldDirty: true, shouldValidate: true });
+        setValue("sites", [], { shouldDirty: true, shouldValidate: true });
+        setValue("site_contact", "", { shouldDirty: true });
+        return;
+      }
+      if (selectTarget === "site") {
+        const current = getValues("sites") ?? [];
+        if (!current.includes(selectId)) {
+          setValue("sites", [...current, selectId], { shouldDirty: true, shouldValidate: true });
+        }
+        return;
+      }
+      if (selectTarget === "contact") {
+        const rowIdx = pendingAdditionalContactRowRef.current;
+        if (rowIdx != null) {
+          setValue(`additional_customer_contacts.${rowIdx}.contact`, selectId, {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
+          pendingAdditionalContactRowRef.current = null;
+        } else {
+          setValue("primary_customer_contact", selectId, { shouldDirty: true, shouldValidate: true });
+        }
+      }
+    },
+  });
 
   const noClients = clientOptions.length === 0;
   const noProjects = !customerId || projectOptions.length === 0;
@@ -615,9 +716,10 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
           grand_total: Number.isFinite(computedGrand) ? computedGrand : null,
         };
       }
-      const payload = applyQuotationSiteSnapshot(merged, selectedSiteForMap, parseOptionalId(values.site_contact));
+      const payload = merged;
       const saved = isEdit && quotationId ? await updateQuotation(quotationId, payload) : await createQuotation(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
+      if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.quotations, saved.id, safeBack));
     } catch (error) {
       toastApiError(error, t("saveError"));
@@ -687,11 +789,11 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
             >
             <div
               className={cn(
-                selectedSiteForMap &&
-                  "grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch lg:gap-8",
+                selectedSitesForMap.length > 0 &&
+                  "grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start lg:gap-8",
               )}
             >
-            <div className={cn("min-w-0 space-y-6", selectedSiteForMap && "lg:min-h-0")}>
+            <div className="min-w-0 space-y-6">
             <FormFieldRow cols="2">
               <FieldGroup label={t("fields.quoteName")} htmlFor="quotation-name" required>
                 <input
@@ -729,7 +831,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       onChange={(v) => {
                         field.onChange(v);
                         setValue("project", "");
-                        setValue("site", "");
+                        setValue("sites", []);
                         setValue("primary_customer_contact", "");
                         setValue("additional_customer_contacts", []);
                         setValue("site_contact", "");
@@ -760,7 +862,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       addLabel={projectQuickCreate.addLabel}
                       onChange={(v) => {
                         field.onChange(v);
-                        setValue("site", "");
+                        setValue("sites", []);
                         setValue("site_contact", "");
                       }}
                     />
@@ -768,30 +870,27 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                 />
                 <FieldErrorText>{errors.project?.message}</FieldErrorText>
               </FieldGroup>
-              <FieldGroup label={t("fields.site")} htmlFor="quotation-site" required>
+              <FieldGroup label={t("fields.sites")} htmlFor="quotation-sites" required>
                 <Controller
                   control={control}
-                  name="site"
+                  name="sites"
                   render={({ field }) => (
-                    <CheckmarkSelect
-                      id="quotation-site"
-                      portaled
-                      searchable
-                      listLabel={t("fields.site")}
+                    <MultiCheckSelect
+                      id="quotation-sites"
                       options={siteOptions}
-                      value={field.value}
-                      emptyLabel={t("placeholders.site")}
-                      disabled={saving || !projectId || siteOptions.length === 0}
-                      invalid={!!errors.site}
+                      values={field.value ?? []}
+                      onChange={field.onChange}
                       onBlur={field.onBlur}
+                      disabled={saving || !projectId || siteOptions.length === 0}
+                      placeholder={t("placeholders.site")}
+                      listLabel={t("fields.sites")}
                       onAdd={siteQuickCreate.onAdd}
                       addAriaLabel={siteQuickCreate.addAriaLabel}
                       addLabel={siteQuickCreate.addLabel}
-                      onChange={field.onChange}
                     />
                   )}
                 />
-                <FieldErrorText>{errors.site?.message}</FieldErrorText>
+                <FieldErrorText>{errors.sites?.message}</FieldErrorText>
               </FieldGroup>
             </FormFieldRow>
             <FormFieldRow cols="2">
@@ -889,6 +988,29 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                 />
               </FieldGroup>
             </FormFieldRow>
+            </div>
+            {selectedSitesForMap.length > 0 ? (
+            <aside className="min-w-0 lg:sticky lg:top-4 lg:self-start">
+              <div
+                className={cn(
+                  detailMapViewportClassName,
+                  "w-full overflow-hidden rounded-xl border border-slate-200/90 dark:border-slate-800",
+                )}
+              >
+                <AddressMultiMiniMap
+                  points={selectedSiteMapPoints}
+                  className={detailMapFillClassName}
+                  mapClassName="h-full min-h-0"
+                />
+              </div>
+            </aside>
+            ) : null}
+            <div
+              className={cn(
+                "min-w-0 space-y-6",
+                selectedSitesForMap.length > 0 && "lg:col-span-2",
+              )}
+            >
             <FormFieldRow cols="2">
               <FieldGroup label={t("fields.tags")} htmlFor="quotation-tags">
                 <Controller
@@ -954,50 +1076,6 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
               />
             </FieldGroup>
             </div>
-            {selectedSiteForMap ? (
-              <aside className="flex min-h-0 min-w-0 flex-col gap-4 rounded-xl border border-slate-200/90 bg-slate-50/40 p-4 dark:border-slate-800 dark:bg-slate-950/30 lg:h-full">
-                <div className="shrink-0 space-y-4">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("selectedSiteMapTitle")}</p>
-                  {hasDetailAddress({
-                    line1: selectedSiteForMap.address_line_1,
-                    line2: selectedSiteForMap.address_line_2,
-                    city: selectedSiteForMap.city,
-                    state: selectedSiteForMap.state,
-                    pincode: selectedSiteForMap.pincode,
-                    country: selectedSiteForMap.country,
-                  }) ? (
-                    <DetailFormattedAddress
-                      line1={selectedSiteForMap.address_line_1}
-                      line2={selectedSiteForMap.address_line_2}
-                      city={selectedSiteForMap.city}
-                      state={selectedSiteForMap.state}
-                      pincode={selectedSiteForMap.pincode}
-                      country={selectedSiteForMap.country}
-                      emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">—</p>}
-                    />
-                  ) : (
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{t("mapNoStructuredAddress")}</p>
-                  )}
-                  <What3WordsInline
-                    value={selectedSiteForMap.what3words}
-                    label={t("fields.what3words")}
-                    className="mt-3"
-                  />
-                </div>
-                <AddressMiniMap
-                  addressParts={{
-                    line1: selectedSiteForMap.address_line_1,
-                    line2: selectedSiteForMap.address_line_2,
-                    city: selectedSiteForMap.city,
-                    state: selectedSiteForMap.state,
-                    pincode: selectedSiteForMap.pincode,
-                    country: selectedSiteForMap.country,
-                  }}
-                  className="flex min-h-[200px] flex-1 flex-col"
-                  mapClassName="min-h-0 flex-1"
-                />
-              </aside>
-            ) : null}
             </div>
             <DetailTabStepNav onNext={() => setFormTab("pricing")} nextLabel={t("formTabs.nextToPricing")} />
             </div>

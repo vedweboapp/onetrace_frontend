@@ -1,5 +1,6 @@
 import type {
   QuotationContactNested,
+  QuotationDetail,
   QuotationListItem,
   QuotationProjectRef,
   QuotationSiteNested,
@@ -39,6 +40,58 @@ export function getQuotationSiteId(site: QuotationListItem["site"] | undefined |
   if (typeof site === "number" && Number.isFinite(site) && site > 0) return site;
   if (isRecord(site) && typeof site.id === "number" && site.id > 0) return site.id;
   return null;
+}
+
+export function getQuotationSiteIds(
+  detail: Pick<QuotationDetail, "sites" | "site"> | undefined | null,
+): number[] {
+  if (!detail) return [];
+  if (Array.isArray(detail.sites) && detail.sites.length > 0) {
+    const out: number[] = [];
+    const seen = new Set<number>();
+    for (const row of detail.sites) {
+      if (typeof row?.id === "number" && row.id > 0 && !seen.has(row.id)) {
+        seen.add(row.id);
+        out.push(row.id);
+      }
+    }
+    if (out.length > 0) return out;
+  }
+  const single = getQuotationSiteId(detail.site);
+  return single != null ? [single] : [];
+}
+
+export type QuotationSiteListRow = { id: number; label: string };
+
+export function quotationSiteListRows(
+  detail: Pick<QuotationDetail, "sites" | "site"> | undefined | null,
+  siteNames?: Record<number, string>,
+): QuotationSiteListRow[] {
+  if (!detail) return [];
+  if (Array.isArray(detail.sites) && detail.sites.length > 0) {
+    return detail.sites.map((row) => ({
+      id: row.id,
+      label: row.site_name?.trim() || siteNames?.[row.id] || `#${row.id}`,
+    }));
+  }
+  const nested = getQuotationNestedSite(detail.site);
+  const id = getQuotationSiteId(detail.site);
+  if (id == null) return [];
+  return [
+    {
+      id,
+      label: nested?.site_name?.trim() || siteNames?.[id] || `#${id}`,
+    },
+  ];
+}
+
+export function quotationSitesLabel(
+  detail: Pick<QuotationDetail, "sites" | "site"> | undefined | null,
+  siteNames?: Record<number, string>,
+): string {
+  const rows = quotationSiteListRows(detail, siteNames);
+  if (rows.length === 0) return "—";
+  return rows.map((row) => row.label).join(", ");
 }
 
 export function quotationSiteLabel(site: QuotationListItem["site"] | undefined | null, lookupName?: string | null): string {

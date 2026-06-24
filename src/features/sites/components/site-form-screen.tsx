@@ -83,6 +83,8 @@ export function SiteFormScreen({ mode, siteId }: Props) {
     formState: { errors },
   } = useForm<SiteFormValues>({
     resolver: zodResolver(schema),
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: emptySiteFormDefaults(),
   });
 
@@ -279,7 +281,11 @@ export function SiteFormScreen({ mode, siteId }: Props) {
                           invalid={!!errors.client}
                           onBlur={field.onBlur}
                           onChange={(v) => {
-                            field.onChange(v);
+                            setValue("client", v, {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            });
                             setValue("contacts", [], { shouldDirty: true, shouldValidate: true });
                           }}
                           onAdd={clientQuickCreate.onAdd}
