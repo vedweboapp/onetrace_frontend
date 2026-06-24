@@ -10,16 +10,14 @@ import { QuotationDetailBody } from "@/features/quotations/components/quotation-
 import { QuotationExportDropdown } from "@/features/quotations/components/quotation-export-dropdown";
 import type { QuotationDetail } from "@/features/quotations/types/quotation.types";
 import {
-  getQuotationNestedSite,
-  getQuotationSiteId,
   getQuotationCustomerId,
   getQuotationProjectId,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { fetchTagsPage } from "@/features/tags/api/tag.api";
-import { fetchSite, fetchSitesPage } from "@/features/sites/api/site.api";
+import { resolveQuotationSiteDetails } from "@/features/quotations/utils/quotation-site-details.util";
+import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
-import { hasDetailAddress } from "@/shared/components/layout/detail-formatted-address";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
@@ -41,8 +39,8 @@ export function QuotationDetailScreen({ quotationId }: Props) {
   const [projectNames, setProjectNames] = React.useState<Record<number, string>>({});
   const [siteNames, setSiteNames] = React.useState<Record<number, string>>({});
   const [tagNames, setTagNames] = React.useState<Record<number, string>>({});
-  const [siteDetail, setSiteDetail] = React.useState<Site | null>(null);
-  const [siteDetailLoading, setSiteDetailLoading] = React.useState(false);
+  const [siteDetails, setSiteDetails] = React.useState<Site[]>([]);
+  const [siteDetailsLoading, setSiteDetailsLoading] = React.useState(false);
   const [detailForSite, setDetailForSite] = React.useState<QuotationDetail | null>(null);
 
   React.useEffect(() => {
@@ -126,63 +124,25 @@ export function QuotationDetailScreen({ quotationId }: Props) {
 
   React.useEffect(() => {
     if (!detailForSite) {
-      setSiteDetail(null);
-      setSiteDetailLoading(false);
+      setSiteDetails([]);
+      setSiteDetailsLoading(false);
       return;
     }
 
     let cancelled = false;
-    const snap = detailForSite.site_snapshot;
-    const snapshotAddressUsable =
-      !!snap &&
-      hasDetailAddress({
-        line1: snap.address_line_1,
-        line2: snap.address_line_2,
-        city: snap.city,
-        state: snap.state,
-        pincode: snap.pincode,
-        country: snap.country,
-      });
-    const nestedSite = getQuotationNestedSite(detailForSite.site);
-    const nestedSiteAddressUsable =
-      !!nestedSite &&
-      hasDetailAddress({
-        line1: nestedSite.address_line_1,
-        line2: nestedSite.address_line_2,
-        city: nestedSite.city,
-        state: nestedSite.state,
-        pincode: nestedSite.pincode,
-        country: nestedSite.country,
-      });
-    if (snapshotAddressUsable || nestedSiteAddressUsable) {
-      setSiteDetail(null);
-      setSiteDetailLoading(false);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    const siteId = detailForSite.site != null ? getQuotationSiteId(detailForSite.site) : null;
-    if (siteId == null || !Number.isFinite(siteId)) {
-      setSiteDetail(null);
-      setSiteDetailLoading(false);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    setSiteDetailLoading(true);
-    setSiteDetail(null);
+    setSiteDetailsLoading(true);
+    setSiteDetails([]);
     void (async () => {
       try {
-        const row = await fetchSite(siteId);
-        if (!cancelled) setSiteDetail(row);
+        const rows = await resolveQuotationSiteDetails(detailForSite);
+        if (!cancelled) setSiteDetails(rows);
       } catch {
-        if (!cancelled) setSiteDetail(null);
+        if (!cancelled) setSiteDetails([]);
       } finally {
-        if (!cancelled) setSiteDetailLoading(false);
+        if (!cancelled) setSiteDetailsLoading(false);
       }
     })();
+
     return () => {
       cancelled = true;
     };
@@ -245,19 +205,15 @@ export function QuotationDetailScreen({ quotationId }: Props) {
       {({ detail, dateFmt }) => {
         const customerIdForLookup = getQuotationCustomerId(detail.customer);
         const projectIdForLookup = getQuotationProjectId(detail.project);
-        const siteIdForLookup = getQuotationSiteId(detail.site);
         return (
           <QuotationDetailBody
             detail={detail}
             customerName={customerIdForLookup != null ? clientNames[customerIdForLookup] : undefined}
             projectName={projectIdForLookup != null ? projectNames[projectIdForLookup] : undefined}
-            siteName={
-              detail.site_snapshot?.site_name?.trim() ||
-              (siteIdForLookup != null ? siteNames[siteIdForLookup] : undefined)
-            }
+            siteNames={siteNames}
             tagLookup={tagNames}
-            siteDetail={siteDetail}
-            siteDetailLoading={siteDetailLoading}
+            siteDetails={siteDetails}
+            siteDetailsLoading={siteDetailsLoading}
             dateFmt={dateFmt}
             dueFmt={dueFmt}
           />

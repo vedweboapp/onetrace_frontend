@@ -93,21 +93,36 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
   const stateRequired = showStateSelect && Boolean(countryIso);
   const cityRequired = showCitySelect;
 
+  const setLocationField = React.useCallback(
+    <TName extends FieldPath<TFieldValues>>(
+      name: TName,
+      value: PathValue<TFieldValues, TName>,
+      options?: { validate?: boolean },
+    ) => {
+      setValue(name, value, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: options?.validate ?? true,
+      });
+    },
+    [setValue],
+  );
+
   React.useEffect(() => {
     if (!countryIso) return;
     const subs = State.getStatesOfCountry(countryIso);
     if (subs.length === 0) {
-      setValue(stateIsoName, "" as PathValue<TFieldValues, typeof stateIsoName>);
-      setValue(cityName, "" as PathValue<TFieldValues, typeof cityName>);
+      setLocationField(stateIsoName, "" as PathValue<TFieldValues, typeof stateIsoName>);
+      setLocationField(cityName, "" as PathValue<TFieldValues, typeof cityName>);
     }
-  }, [countryIso, cityName, stateIsoName, setValue]);
+  }, [countryIso, cityName, stateIsoName, setLocationField]);
 
   React.useEffect(() => {
     if (!(countryIso && stateIso)) return;
     if (City.getCitiesOfState(countryIso, stateIso).length === 0) {
-      setValue(cityName, "" as PathValue<TFieldValues, typeof cityName>);
+      setLocationField(cityName, "" as PathValue<TFieldValues, typeof cityName>);
     }
-  }, [countryIso, stateIso, cityName, setValue]);
+  }, [countryIso, stateIso, cityName, setLocationField]);
 
   return (
     <div className={cn("space-y-4", rowClassName)}>
@@ -136,10 +151,13 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
                 onChange={(next) => {
                   const prev = ((field.value as string | undefined) ?? "") as string;
                   if (next !== prev) {
-                    setValue(stateIsoName, "" as PathValue<TFieldValues, typeof stateIsoName>);
-                    setValue(cityName, "" as PathValue<TFieldValues, typeof cityName>);
+                    setLocationField(stateIsoName, "" as PathValue<TFieldValues, typeof stateIsoName>);
+                    setLocationField(cityName, "" as PathValue<TFieldValues, typeof cityName>);
                   }
-                  field.onChange(next as typeof field.value);
+                  setLocationField(
+                    countryIsoName,
+                    next as PathValue<TFieldValues, typeof countryIsoName>,
+                  );
                 }}
               />
             )}
@@ -172,9 +190,12 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
                   onChange={(next) => {
                     const prev = ((field.value as string | undefined) ?? "") as string;
                     if (next !== prev) {
-                      setValue(cityName, "" as PathValue<TFieldValues, typeof cityName>);
+                      setLocationField(cityName, "" as PathValue<TFieldValues, typeof cityName>);
                     }
-                    field.onChange(next as typeof field.value);
+                    setLocationField(
+                      stateIsoName,
+                      next as PathValue<TFieldValues, typeof stateIsoName>,
+                    );
                   }}
                 />
               )}
@@ -210,7 +231,9 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
                     disabled={disabled || !stateIso}
                     invalid={!!errors?.city}
                     onBlur={field.onBlur}
-                    onChange={(v) => field.onChange(v)}
+                    onChange={(v) => {
+                      setLocationField(cityName, v as PathValue<TFieldValues, typeof cityName>);
+                    }}
                   />
                 )}
               />

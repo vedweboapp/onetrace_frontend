@@ -44,22 +44,30 @@ export function applyPlaceSuggestionToForm<T extends FieldValues>(
   const { line = "1", withCoordinates = false } = options;
 
   if (line === "1" || line === "reverse") {
+    const set = (name: Path<T>, value: PathValue<T, Path<T>>) => {
+      setValue(name, value, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+    };
+
     if (place.line1) {
-      setValue("address_line_1" as Path<T>, place.line1 as PathValue<T, Path<T>>, { shouldValidate: true });
+      set("address_line_1" as Path<T>, place.line1 as PathValue<T, Path<T>>);
     }
     if (place.line2) {
-      setValue("address_line_2" as Path<T>, place.line2 as PathValue<T, Path<T>>);
+      set("address_line_2" as Path<T>, place.line2 as PathValue<T, Path<T>>);
     }
     if (place.countryIso) {
-      setValue("country_iso" as Path<T>, place.countryIso as PathValue<T, Path<T>>, { shouldValidate: true });
+      set("country_iso" as Path<T>, place.countryIso as PathValue<T, Path<T>>);
     }
-    setValue("state_iso" as Path<T>, place.stateIso as PathValue<T, Path<T>>, { shouldValidate: true });
-    setValue("city" as Path<T>, place.city as PathValue<T, Path<T>>, { shouldValidate: true });
+    set("state_iso" as Path<T>, place.stateIso as PathValue<T, Path<T>>);
+    set("city" as Path<T>, place.city as PathValue<T, Path<T>>);
     if (place.pincode) {
-      setValue("pincode" as Path<T>, place.pincode as PathValue<T, Path<T>>, { shouldValidate: true });
+      set("pincode" as Path<T>, place.pincode as PathValue<T, Path<T>>);
     }
   } else if (place.line2) {
-    setValue("address_line_2" as Path<T>, place.line2 as PathValue<T, Path<T>>);
+    setValue("address_line_2" as Path<T>, place.line2 as PathValue<T, Path<T>>, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
   }
 
   if (withCoordinates) {

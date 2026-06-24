@@ -12,14 +12,14 @@ import Select from "../components/select";
 import TextBox from "../components/text-box";
 import { FormPhoneInput } from "../components/phone-input";
 import SubForm from "../components/Subform";
-import CurrencySelect from "../components/CurrencySelect";
+import CurrencyField, { getFieldCurrencyDefault } from "../components/CurrencyField";
 import FileUploader from "../components/file-uploader";
 import MultiSelect from "../components/multi-select";
 import RadioGroup from "../components/radio-group";
 import FormCheckbox from "../components/form-checkbox";
 import SignaturePad from "../components/signature-pad";
 import UsersSelect from "../components/users-select";
-import ProfilePictureUploader from "../../components/profile-picture-uploader";
+import ImageUploadField from "../components/image-upload-field";
 import { Country } from "country-state-city";
 import CountrySelect from "../components/CountrySelect";
 import StateSelect from "../components/StateSelect";
@@ -29,6 +29,7 @@ import { FormRule } from "./form-rules.types";
 import { buildFieldRuleState, FieldRuleState } from "./form-rules-engine";
 import { surfaceInputClassName } from "@/shared/ui";
 import { signatureDataUrlToFileSync } from "@/shared/utils/signature-to-file.util";
+import { cn } from "@/core/utils/http.util";
 
 interface Field {
   api_name: string;
@@ -84,18 +85,72 @@ const FIELD_COMPONENTS: Record<string, any> = {
   radio: RadioGroup,
   checkbox: FormCheckbox,
   phone: FormPhoneInput,
-  currency: CurrencySelect,
+  currency: CurrencyField,
   file_upload: FileUploader,
-  image_upload: (props: any) => (
-    <div className="flex flex-col gap-2">
-      {props.label && <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{props.label}</span>}
-      <ProfilePictureUploader 
-        image={props.value} 
-        setImage={(val: any) => props.onChange(val)} 
-        readOnly={props.readOnly}
-      />
-    </div>
-  ),
+  image_upload: (props: any) => {
+    const images = Array.isArray(props.value)
+      ? props.value.filter(Boolean)
+      : props.value
+        ? [props.value]
+        : [];
+
+    const allowedTypes = props.allowedTypes as string[] | undefined;
+
+    const commitImage = (next: unknown) => {
+      props.onChange(next);
+    };
+
+    const updateImageAt = (index: number, next: unknown) => {
+      if (images.length <= 1) {
+        commitImage(next);
+        return;
+      }
+      const nextImages = [...images];
+      if (next == null) {
+        nextImages.splice(index, 1);
+      } else {
+        nextImages[index] = next;
+      }
+      if (nextImages.length === 0) {
+        commitImage(null);
+      } else if (nextImages.length === 1) {
+        commitImage(nextImages[0]);
+      } else {
+        commitImage(nextImages);
+      }
+    };
+
+    if (images.length > 1) {
+      return (
+        <div className="flex flex-col gap-2">
+          {props.label ? <div>{props.label}</div> : null}
+          <div className="flex flex-wrap gap-3">
+            {images.map((image: string, index: number) => (
+              <ImageUploadField
+                key={`${String(image)}-${index}`}
+                image={image}
+                setImage={(val) => updateImageAt(index, val)}
+                readOnly={props.readOnly}
+                allowedTypes={allowedTypes}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-2">
+        {props.label ? <div>{props.label}</div> : null}
+        <ImageUploadField
+          image={images[0] ?? props.value ?? null}
+          setImage={commitImage}
+          readOnly={props.readOnly}
+          allowedTypes={allowedTypes}
+        />
+      </div>
+    );
+  },
   multi_select: MultiSelect,
   signature: SignaturePad,
   user: UsersSelect,
@@ -256,7 +311,12 @@ const FormField: React.FC<{
   }
 
   const validations: any = { ...field.validations };
-  if (field.required === true || field.required === "true") {
+  const fieldIsRequired =
+    field.required === true ||
+    field.required === "true" ||
+    field.properties?.is_required === true;
+
+  if (fieldIsRequired) {
     if (!validations.required) {
       validations.required = `${field.field_label || "This field"} is required`;
     }
@@ -329,9 +389,11 @@ const FormField: React.FC<{
         ? "md:col-span-3"
         : "md:col-span-1";
 
+  const fieldShellClass = cn(colSpanClass, isRequired && "border-l-2 border-l-red-500 pl-3");
+
   if (normType === "phone" || normType === "mobile") {
     return (
-      <div className={colSpanClass}>
+      <div className={fieldShellClass}>
         <FormPhoneInput
           feildName={label}
           name={field.api_name}
@@ -364,7 +426,7 @@ const FormField: React.FC<{
       field.defaultValue === "true";
 
     return (
-      <div className={colSpanClass}>
+      <div className={fieldShellClass}>
         <Controller
           name={field.api_name}
           control={control}
@@ -391,7 +453,7 @@ const FormField: React.FC<{
     const richTextValidations = buildRichTextValidations(validations, field);
 
     return (
-      <div className={colSpanClass}>
+      <div className={fieldShellClass}>
         <Controller
           name={field.api_name}
           control={control}
@@ -414,18 +476,33 @@ const FormField: React.FC<{
   }
 
   // Use Controller for complex components
-  if (["file_upload", "image_upload", "multi_select", "signature", "user"].includes(normType)) {
+  if (["file_upload", "image_upload", "multi_select", "signature", "user", "currency"].includes(normType)) {
+    const currencyDefault = buildCurrencyFieldDefault(field);
     return (
-      <div className={colSpanClass}>
+      <div className={fieldShellClass}>
         <Controller
           name={field.api_name}
           control={control}
           rules={validations}
+          defaultValue={
+            normType === "currency"
+              ? currencyDefault
+              : normType === "multi_select" || normType === "user"
+                ? []
+                : undefined
+          }
           render={({ field: { onChange, value } }) => (
             <Component
-              label={field.field_label}
+              label={label}
               name={field.api_name}
-              value={value ?? (normType === "multi_select" || normType === "user" ? [] : "")}
+              value={
+                normType === "currency"
+                  ? resolveCurrencyFieldValue(value, field)
+                  : value ??
+                    (normType === "multi_select" || normType === "user"
+                      ? []
+                      : "")
+              }
               onChange={onChange}
               control={control} // For FileUploader
               errors={getError(field.api_name)}
@@ -434,6 +511,7 @@ const FormField: React.FC<{
               options={field.options || []}
               placeholder={field.placeholder}
               properties={field.properties}
+              defaultCurrency={normType === "currency" ? getFieldCurrencyDefault(field as Record<string, unknown>) : undefined}
               allowedTypes={
                 field.allowedTypes ??
                 field.properties?.validation_rules?.allowedTypes ??
@@ -456,7 +534,7 @@ const FormField: React.FC<{
   // can silently swallow user changes in React 19.
   if (["picklist", "select"].includes(normType)) {
     return (
-      <div className={colSpanClass}>
+      <div className={fieldShellClass}>
         <Controller
           name={field.api_name}
           control={control}
@@ -495,13 +573,36 @@ const FormField: React.FC<{
   };
 
   return (
-    <div className={colSpanClass}>
+    <div className={fieldShellClass}>
       <Component {...commonProps} options={field.options || []} />
     </div>
   );
 };
 
 const FILE_FIELD_TYPES = new Set(["signature", "file_upload", "image_upload"]);
+
+function buildCurrencyFieldDefault(field: Field): { amount: string; currency: string } {
+  const currency = getFieldCurrencyDefault(field as Record<string, unknown>);
+  return { amount: "", currency };
+}
+
+function resolveCurrencyFieldValue(
+  value: unknown,
+  field: Field,
+): { amount: string; currency: string } {
+  const fallback = buildCurrencyFieldDefault(field);
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const current = value as { amount?: unknown; currency?: unknown };
+    return {
+      amount: current.amount != null ? String(current.amount) : "",
+      currency: String(current.currency ?? "").trim() || fallback.currency,
+    };
+  }
+  if (typeof value === "string" && value.trim()) {
+    return { amount: "", currency: value.trim() };
+  }
+  return fallback;
+}
 
 function dataUrlToFile(val: unknown, fieldApiName: string): File | unknown {
   if (typeof val !== "string" || !val.startsWith("data:")) return val;
@@ -597,6 +698,8 @@ const buildDefaultValuesFromSchema = (
           f.defaultValue !== ""
             ? f.defaultValue
             : null;
+      } else if (normType === "currency") {
+        formData[f.api_name] = buildCurrencyFieldDefault(f);
       } else if (
         ["multi_select", "file_upload", "user"].includes(normType)
       ) {
@@ -666,6 +769,8 @@ const mapDataToFormFields = (data: any, schema: Section[], defaultValues = {}) =
               formData[f.api_name] = normType === "country" ? getCountryISO(val) : val;
             }
           }
+        } else if (normType === "currency") {
+          formData[f.api_name] = buildCurrencyFieldDefault(f);
         } else if ((defaultValues as any)[f.api_name] !== undefined) {
           formData[f.api_name] = (defaultValues as any)[f.api_name];
         } else if (normType === "checkbox") {

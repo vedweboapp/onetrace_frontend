@@ -1,3 +1,4 @@
+import { stripLocaleSegmentsFromPathname } from "@/i18n/locale-path";
 import {
   QUICK_CREATE_SELECT_PARAM,
   QUICK_CREATE_SELECT_TARGET_PARAM,
@@ -13,7 +14,7 @@ type StoredDraft = {
 /** Stable key for the page the user returns to (strips quick-create selection params). */
 export function buildQuickCreateDraftKey(returnTo: string): string {
   const qIndex = returnTo.indexOf("?");
-  const path = qIndex >= 0 ? returnTo.slice(0, qIndex) : returnTo;
+  const path = stripLocaleSegmentsFromPathname(qIndex >= 0 ? returnTo.slice(0, qIndex) : returnTo);
   const qs = qIndex >= 0 ? returnTo.slice(qIndex + 1) : "";
   const params = new URLSearchParams(qs);
   params.delete(QUICK_CREATE_SELECT_PARAM);

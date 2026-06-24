@@ -7,7 +7,7 @@ import {
   getQuotationLevelIds,
   getQuotationOptionalUserId,
   getQuotationProjectId,
-  getQuotationSiteId,
+  getQuotationSiteIds,
   getQuotationTagIds,
   getQuotationTechnicianIds,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
@@ -59,10 +59,13 @@ export function mapQuotationFormToPayload(values: QuotationFormValues): Quotatio
   const due = values.due_date.trim();
   const orderNum = values.order_number.trim();
   const desc = values.description.trim();
+  const sites = (values.sites ?? [])
+    .map((raw) => Number.parseInt(raw, 10))
+    .filter((id) => Number.isFinite(id) && id > 0);
 
   return {
     customer: Number.parseInt(values.customer, 10),
-    site: Number.parseInt(values.site, 10),
+    sites,
     quote_name: capitalizeFirstLetter(values.quote_name.trim()),
     primary_customer_contact: parseOptionalId(values.primary_customer_contact),
     additional_customer_contact: quotationAdditionalContactIdsForApi(values.additional_customer_contacts),
@@ -83,7 +86,7 @@ export function emptyQuotationFormDefaults(): QuotationFormValues {
   return {
     quote_name: "",
     customer: "",
-    site: "",
+    sites: [],
     project: "",
     primary_customer_contact: "",
     additional_customer_contacts: [],
@@ -112,7 +115,7 @@ export function mapQuotationDetailToFormDefaults(detail: QuotationDetail): Quota
   return {
     quote_name: detail.quote_name ?? "",
     customer: asIdString(getQuotationCustomerId(detail.customer)),
-    site: asIdString(getQuotationSiteId(detail.site)),
+    sites: getQuotationSiteIds(detail).map(String),
     project: asIdString(getQuotationProjectId(detail.project)),
     primary_customer_contact: asIdString(getQuotationContactId(detail.primary_customer_contact)),
     additional_customer_contacts: getQuotationAdditionalContactIds(detail.additional_customer_contact).map((id) => ({

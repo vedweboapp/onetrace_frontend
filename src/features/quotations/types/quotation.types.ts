@@ -136,7 +136,7 @@ export type QuotationSiteSnapshot = {
 
 export type QuotationCreatePayload = {
   customer: number;
-  site: number;
+  sites: number[];
   quote_name: string;
   primary_customer_contact?: number | null;
   /** Contact ids selected as additional customer contacts, e.g. `[5, 6, 7]`. */
@@ -154,8 +154,6 @@ export type QuotationCreatePayload = {
   /** Optional: full section/plot/pin ordering and totals for quotation scope. */
   quote_sections?: QuotationQuoteSection[];
   grand_total?: number | null;
-  /** Nested snapshot of the selected site (address + `site_contact` at submission time). */
-  site_snapshot?: QuotationSiteSnapshot | null;
 };
 
 export type QuotationListItem = {
@@ -204,6 +202,7 @@ export type QuotationDetail = QuotationListItem & {
   quote_sections?: QuotationQuoteSection[];
   grand_total?: number | null;
   site_snapshot?: QuotationSiteSnapshot | null;
+  site_snapshots?: QuotationSiteSnapshot[];
   sites?: Array<{ id: number; site_name: string }>;
 };
 

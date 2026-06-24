@@ -96,7 +96,7 @@ export const FormFieldsConfig: FieldConfigItem[] = [
   {
     key: "currency",
     type: "currency",
-    label: "Currency",
+    label: "Amount",
     icon: DollarSign
   },
   {
@@ -233,7 +233,7 @@ export const AutoNumberButton: React.FC<{ onClick?: () => void }> = ({ onClick }
 );
 
 export const CurrencyButton: React.FC<{ onClick?: () => void }> = ({ onClick }) => (
-  <FieldButton icon={DollarSign} label="Currency" onClick={onClick} />
+  <FieldButton icon={DollarSign} label="Amount" onClick={onClick} />
 );
 
 export const DecimalButton: React.FC<{ onClick?: () => void }> = ({ onClick }) => (

@@ -1,8 +1,115 @@
 import type {
   JobFormSubmissionFile,
   JobFormSubmissionValue,
+  NormalizedFormField,
   NormalizedFormSection,
 } from "@/features/job-forms/types/job-form-submission.types";
+import { Country } from "country-state-city";
+import { currencyList } from "@/shared/form/components/currency-list";
+
+const CURRENCY_CODES = new Set(currencyList.map((c) => c.value));
+
+function isCurrencyCode(val: string): boolean {
+  const trimmed = val.trim().toUpperCase();
+  return trimmed.length === 3 && CURRENCY_CODES.has(trimmed);
+}
+
+function isNumericAmount(val: string): boolean {
+  return /^\d+(\.\d+)?$/.test(val.trim());
+}
+
+function normalizeCountryValue(val: string): string {
+  const trimmed = val.trim();
+  if (!trimmed) return trimmed;
+  if (trimmed.length === 2 && /^[A-Z]{2}$/i.test(trimmed)) return trimmed.toUpperCase();
+  const match = Country.getAllCountries().find(
+    (c) =>
+      c.name.toLowerCase() === trimmed.toLowerCase() ||
+      c.isoCode.toLowerCase() === trimmed.toLowerCase(),
+  );
+  return match ? match.isoCode : trimmed;
+}
+
+function groupSubmissionValuesByApiName(
+  values: JobFormSubmissionValue[] | undefined,
+  apiNameByFieldId: Map<number, string>,
+): Map<string, JobFormSubmissionValue[]> {
+  const grouped = new Map<string, JobFormSubmissionValue[]>();
+  for (const row of values ?? []) {
+    const apiName =
+      row.api_name?.trim() ?? apiNameByFieldId.get(coerceFieldId(row.field_id) ?? -1) ?? "";
+    if (!apiName) continue;
+    const list = grouped.get(apiName) ?? [];
+    list.push(row);
+    grouped.set(apiName, list);
+  }
+  return grouped;
+}
+
+function groupSubmissionFilesByApiName(
+  files: JobFormSubmissionFile[] | undefined,
+  apiNameByFieldId: Map<number, string>,
+): Map<string, JobFormSubmissionFile[]> {
+  const grouped = new Map<string, JobFormSubmissionFile[]>();
+  for (const file of files ?? []) {
+    if (file.is_deleted) continue;
+    const fieldId = coerceFieldId(file.field_id);
+    const apiName =
+      file.api_name?.trim() ?? (fieldId != null ? apiNameByFieldId.get(fieldId) : undefined) ?? "";
+    if (!apiName || !file.file_url?.trim()) continue;
+    const list = grouped.get(apiName) ?? [];
+    list.push(file);
+    grouped.set(apiName, list);
+  }
+  return grouped;
+}
+
+function resolveCurrencyValue(rows: JobFormSubmissionValue[]): { amount: string; currency: string } {
+  let amount = "";
+  let currency = "";
+  for (const row of rows) {
+    const val = row.value?.trim() ?? "";
+    if (!val) continue;
+    if (isCurrencyCode(val)) {
+      currency = val.toUpperCase();
+    } else if (isNumericAmount(val)) {
+      amount = val;
+    } else if (!amount) {
+      amount = val;
+    }
+  }
+  return { amount, currency };
+}
+
+function resolveScalarValue(
+  rows: JobFormSubmissionValue[],
+  fieldType: string | undefined,
+): unknown {
+  if (rows.length === 0) return "";
+  const norm = (fieldType ?? rows[0]?.field_type ?? "").toLowerCase();
+  if (norm === "currency") {
+    return resolveCurrencyValue(rows);
+  }
+  const last = rows[rows.length - 1];
+  const parsed = parseStoredValue(last.value, fieldType ?? last.field_type ?? undefined);
+  if (norm === "country" && typeof parsed === "string") {
+    return normalizeCountryValue(parsed);
+  }
+  return parsed;
+}
+
+function resolveFileFieldValue(
+  files: JobFormSubmissionFile[],
+  fieldType: string | undefined,
+): unknown {
+  const urls = files.map((f) => f.file_url).filter(Boolean);
+  if (urls.length === 0) return "";
+  const norm = (fieldType ?? files[0]?.field_type ?? "").toLowerCase();
+  if (norm === "image_upload" && urls.length > 1) {
+    return urls;
+  }
+  return urls[urls.length - 1];
+}
 
 function coerceFieldId(raw: unknown): number | null {
   if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) return raw;
@@ -97,6 +204,28 @@ export function mapFormDataToSubmissionValues(
       // File objects are sent as multipart entries — skip them from the JSON values array
       if (typeof File !== "undefined" && raw instanceof File) continue;
 
+      if (field.field_type === "currency" && raw && typeof raw === "object" && !Array.isArray(raw)) {
+        const currencyValue = raw as { amount?: unknown; currency?: unknown };
+        const initialObj =
+          initial && typeof initial === "object" && !Array.isArray(initial)
+            ? (initial as { amount?: unknown; currency?: unknown })
+            : undefined;
+        const amount = currencyValue.amount != null ? String(currencyValue.amount) : "";
+        const currency = currencyValue.currency != null ? String(currencyValue.currency) : "";
+        const initialAmount =
+          initialObj?.amount != null ? String(initialObj.amount) : typeof initial === "string" ? "" : "";
+        const initialCurrency =
+          initialObj?.currency != null ? String(initialObj.currency) : typeof initial === "string" ? String(initial) : "";
+
+        if (amount && !areValuesEqual(amount, initialAmount)) {
+          out.push({ field_id: field.id, value: amount });
+        }
+        if (currency && !areValuesEqual(currency, initialCurrency)) {
+          out.push({ field_id: field.id, value: currency });
+        }
+        continue;
+      }
+
       // If it is really unchanged (including empty-to-empty changes), do not send
       if (areValuesEqual(raw, initial)) {
         continue;
@@ -187,56 +316,61 @@ export function mapSubmissionValuesToFormDefaults(
   fieldTypeByFieldId: Map<number, string>,
   files?: JobFormSubmissionFile[],
 ): Record<string, unknown> {
-  const valueByFieldId = new Map<number, JobFormSubmissionValue>();
-  const valueByApiName = new Map<string, JobFormSubmissionValue>();
-  for (const row of values ?? []) {
-    const fieldId = coerceFieldId(row.field_id);
-    if (fieldId != null) valueByFieldId.set(fieldId, row);
-    const apiName = row.api_name?.trim();
-    if (apiName) valueByApiName.set(apiName, row);
-  }
-
+  const valuesByApiName = groupSubmissionValuesByApiName(values, apiNameByFieldId);
+  const filesByApiName = groupSubmissionFilesByApiName(files, apiNameByFieldId);
   const defaults: Record<string, unknown> = {};
+
+  const applyField = (field: NormalizedFormField) => {
+    if (!field.api_name) return;
+    const fieldType =
+      field.field_type ??
+      (field.id != null ? fieldTypeByFieldId.get(field.id) : undefined) ??
+      valuesByApiName.get(field.api_name)?.[0]?.field_type ??
+      filesByApiName.get(field.api_name)?.[0]?.field_type;
+    const normType = (fieldType ?? "").toLowerCase();
+    const fileRows = filesByApiName.get(field.api_name) ?? [];
+    const valueRows = valuesByApiName.get(field.api_name) ?? [];
+
+    if (FILE_FIELD_TYPES.has(normType) && fileRows.length > 0) {
+      defaults[field.api_name] = resolveFileFieldValue(fileRows, fieldType);
+      return;
+    }
+
+    if (valueRows.length > 0) {
+      defaults[field.api_name] = resolveScalarValue(valueRows, fieldType);
+      return;
+    }
+
+    if (defaults[field.api_name] === undefined) {
+      defaults[field.api_name] = normType === "image_upload" ? null : "";
+    }
+  };
 
   for (const section of sections) {
     if (section.is_subform) continue;
     for (const field of section.fields) {
-      if (!field.api_name) continue;
-      const row =
-        (field.id != null ? valueByFieldId.get(field.id) : undefined) ??
-        valueByApiName.get(field.api_name);
-      if (row) {
-        const fieldType =
-          row.field_type ??
-          (field.id != null ? fieldTypeByFieldId.get(field.id) : undefined) ??
-          field.field_type;
-        defaults[field.api_name] = parseStoredValue(row.value, fieldType);
-      } else if (defaults[field.api_name] === undefined) {
-        defaults[field.api_name] = "";
-      }
+      applyField(field);
     }
   }
 
-  for (const row of values ?? []) {
-    const apiName = row.api_name?.trim() ?? apiNameByFieldId.get(coerceFieldId(row.field_id) ?? -1);
-    if (!apiName || defaults[apiName] !== undefined) continue;
-    defaults[apiName] = parseStoredValue(
-      row.value,
-      row.field_type ?? fieldTypeByFieldId.get(coerceFieldId(row.field_id) ?? -1),
+  for (const apiName of valuesByApiName.keys()) {
+    if (defaults[apiName] !== undefined) continue;
+    const valueRows = valuesByApiName.get(apiName) ?? [];
+    defaults[apiName] = resolveScalarValue(
+      valueRows,
+      valueRows[0]?.field_type ?? fieldTypeByFieldId.get(coerceFieldId(valueRows[0]?.field_id) ?? -1),
     );
   }
 
-  // Map file fields from the separate files array
-  for (const file of files ?? []) {
-    const fieldId = coerceFieldId(file.field_id);
-    const apiName =
-      file.api_name?.trim() ??
-      (fieldId != null ? apiNameByFieldId.get(fieldId) : undefined);
-    if (!apiName) continue;
-    // Only set if not already populated by values
-    if (defaults[apiName] === undefined || defaults[apiName] === "") {
-      defaults[apiName] = file.file_url;
+  for (const apiName of filesByApiName.keys()) {
+    if (defaults[apiName] !== undefined && defaults[apiName] !== "" && defaults[apiName] !== null) {
+      continue;
     }
+    const fileRows = filesByApiName.get(apiName) ?? [];
+    defaults[apiName] = resolveFileFieldValue(
+      fileRows,
+      fileRows[0]?.field_type ?? fieldTypeByFieldId.get(coerceFieldId(fileRows[0]?.field_id) ?? -1),
+    );
   }
 
   return defaults;

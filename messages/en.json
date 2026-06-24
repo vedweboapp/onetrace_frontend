@@ -1675,6 +1675,7 @@
         "allLevelsSelected": "All levels"
       },
       "selectedSiteMapTitle": "Site address & map",
+      "selectedSitesMapTitle": "Site addresses & map",
       "mapNoStructuredAddress": "No structured address on file for this site. The map still tries to locate it from available fields.",
       "placeholders": {
         "customer": "Select client",
@@ -1686,6 +1687,7 @@
       },
       "hints": {
         "tags": "Enter tag IDs separated by commas or spaces (organization tags).",
+        "sitesMultiSelect": "Select one or more sites for this quotation.",
         "noLevels": "No levels returned for this project. Confirm the project levels API path if you need floor selection.",
         "noUsers": "No users were returned from the users API. Technician and role fields stay optional."
       },
@@ -1806,6 +1808,7 @@
         "quoteName": "Quote name",
         "customer": "Client",
         "site": "Site",
+        "sites": "Sites",
         "what3words": "What3words",
         "project": "Project",
         "primaryContact": "Primary contact",
@@ -1859,6 +1862,7 @@
         "quoteName": "Enter a quotation name.",
         "customer": "Select a client.",
         "site": "Select a site.",
+        "sites": "Select at least one site.",
         "project": "Select a project."
       }
     },

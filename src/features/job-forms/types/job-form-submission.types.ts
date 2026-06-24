@@ -13,6 +13,7 @@ export type JobFormSubmissionFile = {
   api_name?: string | null;
   field_type?: string | null;
   file_url: string;
+  is_deleted?: boolean;
 };
 
 export type JobFormSubmission = {

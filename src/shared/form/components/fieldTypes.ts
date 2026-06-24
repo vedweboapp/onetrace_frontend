@@ -328,7 +328,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
   //   ],
   // },
   currency: {
-    label: "Currency",
+    label: "Amount",
     icon: DollarSign,
     defaultConfig: () => ({
       type: "currency",
@@ -336,7 +336,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       name: "",
       placeholder: "0.00",
       required: false,
-      defaultValue: "",
+      defaultValue: "USD",
       max: 16,
       markAsPublic: false,
       show_tooltip: false,

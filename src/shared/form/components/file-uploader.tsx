@@ -21,6 +21,8 @@ interface FileUploaderProps {
     maxFileSize?: number;
     maxSize?: number;
     properties?: Record<string, any>;
+    readOnly?: boolean;
+    disabled?: boolean;
     onFileSelect?: (file: {
         name: string;
         type: string;
@@ -88,7 +90,11 @@ const FileUploader: React.FC<FileUploaderProps> = (props) => {
         className = "",
         accept: acceptProp,
         onFileSelect,
+        readOnly = false,
+        disabled = false,
     } = props;
+
+    const isLocked = readOnly || disabled;
 
     const accept = acceptProp ?? resolveAcceptTypes(props);
     const maxSize = resolveMaxSizeBytes(props);
@@ -218,8 +224,14 @@ const FileUploader: React.FC<FileUploaderProps> = (props) => {
                 }, [value]);
 
                 const handleContainerClick = () => {
+                    if (isLocked) return;
                     fileInputRef.current?.click();
                 };
+
+                const fileUrl =
+                    value && typeof value === "string" && !value.startsWith("data:")
+                        ? value
+                        : null;
 
                 return (
                     <div
@@ -242,14 +254,16 @@ const FileUploader: React.FC<FileUploaderProps> = (props) => {
                                         alt={fileName || "Preview"}
                                         className="w-full max-h-40 object-contain"
                                     />
-                                    <button
-                                        type="button"
-                                        onClick={() => handleRemove(onChange)}
-                                        className="absolute top-2 right-2 p-1.5 bg-white/90 dark:bg-slate-900/90 text-gray-500 hover:text-red-500 rounded-full shadow-sm border border-gray-200 dark:border-slate-600 transition-colors"
-                                        title="Remove file"
-                                    >
-                                        <X size={16} />
-                                    </button>
+                                    {!isLocked ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemove(onChange)}
+                                            className="absolute top-2 right-2 p-1.5 bg-white/90 dark:bg-slate-900/90 text-gray-500 hover:text-red-500 rounded-full shadow-sm border border-gray-200 dark:border-slate-600 transition-colors"
+                                            title="Remove file"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    ) : null}
                                     {fileName && (
                                         <div className="px-3 py-2 border-t border-gray-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-200 truncate">
                                             {fileName}
@@ -263,24 +277,31 @@ const FileUploader: React.FC<FileUploaderProps> = (props) => {
                                 </div>
                             ) : (
                                 <div
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={handleContainerClick}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                            e.preventDefault();
-                                            handleContainerClick();
-                                        }
-                                    }}
+                                    role={isLocked ? undefined : "button"}
+                                    tabIndex={isLocked ? undefined : 0}
+                                    onClick={isLocked ? undefined : handleContainerClick}
+                                    onKeyDown={
+                                        isLocked
+                                            ? undefined
+                                            : (e) => {
+                                                if (e.key === "Enter" || e.key === " ") {
+                                                    e.preventDefault();
+                                                    handleContainerClick();
+                                                }
+                                            }
+                                    }
                                     className={`
                                     flex items-center justify-between w-full h-[42px] px-3 
-                                    bg-white dark:bg-slate-900 border rounded-[8px] 
-                                    text-left cursor-pointer transition-all duration-200 outline-none
-                                     hover:shadow-sm
-                                     hover:border-[color:var(--dash-accent,#111111)] 
+                                    border rounded-[8px] text-left transition-all duration-200 outline-none
+                                    ${isLocked
+                                            ? "bg-gray-100 dark:bg-slate-800/50 cursor-not-allowed border-gray-200 dark:border-slate-700"
+                                            : "bg-white dark:bg-slate-900 cursor-pointer hover:shadow-sm hover:border-[color:var(--dash-accent,#111111)]"
+                                        }
                                     ${(error || fieldError)
                                             ? "border-red-500 focus:ring-red-500/20 focus:border-red-500"
-                                            : "border-gray-300 dark:border-slate-700"
+                                            : !isLocked
+                                                ? "border-gray-300 dark:border-slate-700"
+                                                : ""
                                         }
                                 `}
                                 >
@@ -288,57 +309,73 @@ const FileUploader: React.FC<FileUploaderProps> = (props) => {
                                         {fileName ? (
                                             <>
                                                 <File size={16} className="text-red-500 flex-shrink-0" />
-                                                <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate flex-1">
-                                                    {fileName}
-                                                    {fileSize != null && (
-                                                        <span className="text-xs text-gray-400 dark:text-slate-500 font-normal ml-1.5">
-                                                            ({(fileSize / 1024).toFixed(1)} KB)
-                                                        </span>
-                                                    )}
-                                                </span>
+                                                {isLocked && fileUrl ? (
+                                                    <a
+                                                        href={fileUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate flex-1 hover:underline"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        {fileName}
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate flex-1">
+                                                        {fileName}
+                                                        {fileSize != null && (
+                                                            <span className="text-xs text-gray-400 dark:text-slate-500 font-normal ml-1.5">
+                                                                ({(fileSize / 1024).toFixed(1)} KB)
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                )}
                                             </>
                                         ) : (
                                             <span className="text-sm text-gray-400 dark:text-slate-500">
-                                                Choose file
+                                                {isLocked ? "—" : "Choose file"}
                                             </span>
                                         )}
                                     </div>
 
-                                    <div
-                                        className="flex items-center gap-1.5 flex-shrink-0 ml-2"
-                                        onClick={(e) => e.stopPropagation()}
-                                    >
-                                        {fileName ? (
-                                            <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleRemove(onChange);
-                                                }}
-                                                className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors cursor-pointer"
-                                                title="Remove file"
-                                            >
-                                                <X size={16} />
-                                            </button>
-                                        ) : (
-                                            <ChevronDown size={16} className="text-gray-400 dark:text-slate-500" />
-                                        )}
-                                    </div>
+                                    {!isLocked ? (
+                                        <div
+                                            className="flex items-center gap-1.5 flex-shrink-0 ml-2"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            {fileName ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleRemove(onChange);
+                                                    }}
+                                                    className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors cursor-pointer"
+                                                    title="Remove file"
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                            ) : (
+                                                <ChevronDown size={16} className="text-gray-400 dark:text-slate-500" />
+                                            )}
+                                        </div>
+                                    ) : null}
                                 </div>
                             )}
 
-                            <input
-                                id={name}
-                                ref={fileInputRef}
-                                type="file"
-                                className="hidden"
-                                accept={accept === "*" ? undefined : accept}
-                                onChange={(e) =>
-                                    handleFileChange(e, onChange)
-                                }
-                            />
+                            {!isLocked ? (
+                                <input
+                                    id={name}
+                                    ref={fileInputRef}
+                                    type="file"
+                                    className="hidden"
+                                    accept={accept === "*" ? undefined : accept}
+                                    onChange={(e) =>
+                                        handleFileChange(e, onChange)
+                                    }
+                                />
+                            ) : null}
 
-                            {isImageFile(fileType) && preview && (
+                            {!isLocked && isImageFile(fileType) && preview ? (
                                 <button
                                     type="button"
                                     onClick={handleContainerClick}
@@ -346,7 +383,7 @@ const FileUploader: React.FC<FileUploaderProps> = (props) => {
                                 >
                                     Replace image
                                 </button>
-                            )}
+                            ) : null}
                         </div>
 
                         {error && (

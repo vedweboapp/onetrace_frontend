@@ -88,6 +88,8 @@ export function SiteFormModal({
     formState: { errors },
   } = useForm<SiteFormValues>({
     resolver: zodResolver(schema),
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: emptySiteFormDefaults(),
   });
 

@@ -121,6 +121,22 @@ export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: P
     };
   }, [mapReady, points]);
 
+  const fitMapToResolved = React.useCallback((map: google.maps.Map, points: ResolvedPoint[]) => {
+    if (points.length === 0) return;
+
+    if (points.length === 1) {
+      map.setCenter({ lat: points[0]!.lat, lng: points[0]!.lon });
+      map.setZoom(14);
+    } else {
+      const bounds = new google.maps.LatLngBounds();
+      for (const point of points) {
+        bounds.extend({ lat: point.lat, lng: point.lon });
+      }
+      map.fitBounds(bounds, 48);
+    }
+    google.maps.event.trigger(map, "resize");
+  }, []);
+
   React.useEffect(() => {
     const map = mapRef.current;
     if (!map || status !== "ready" || resolved.length === 0) return;
@@ -128,7 +144,6 @@ export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: P
     for (const m of markersRef.current) m.setMap(null);
     markersRef.current = [];
 
-    const bounds = new google.maps.LatLngBounds();
     for (const point of resolved) {
       const pos = { lat: point.lat, lng: point.lon };
       const marker = new google.maps.Marker({
@@ -137,17 +152,23 @@ export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: P
         title: point.label,
       });
       markersRef.current.push(marker);
-      bounds.extend(pos);
     }
 
-    if (resolved.length === 1) {
-      map.setCenter({ lat: resolved[0]!.lat, lng: resolved[0]!.lon });
-      map.setZoom(14);
-    } else {
-      map.fitBounds(bounds, 48);
-    }
-    google.maps.event.trigger(map, "resize");
-  }, [status, resolved]);
+    fitMapToResolved(map, resolved);
+  }, [status, resolved, fitMapToResolved]);
+
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !mapReady) return;
+
+    const ro = new ResizeObserver(() => {
+      const map = mapRef.current;
+      if (!map || status !== "ready" || resolved.length === 0) return;
+      fitMapToResolved(map, resolved);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [mapReady, status, resolved, fitMapToResolved]);
 
   const overlayMessage =
     status === "loading"
@@ -172,7 +193,7 @@ export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: P
     >
       <div
         ref={containerRef}
-        className={cn("z-0 min-h-[240px] w-full flex-1 basis-0", mapClassName)}
+        className={cn("z-0 h-full min-h-[200px] w-full flex-1 basis-0", mapClassName)}
         role="img"
         aria-label={t("ariaMap")}
       />

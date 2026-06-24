@@ -4,7 +4,7 @@ import { zTrimmedNonEmpty } from "@/shared/form";
 export type QuotationFormMessages = {
   quoteName: string;
   customer: string;
-  site: string;
+  sites: string;
   project: string;
 };
 
@@ -19,7 +19,7 @@ export function createQuotationFormSchema(messages: QuotationFormMessages) {
   return z.object({
     quote_name: zTrimmedNonEmpty(messages.quoteName),
     customer: idString(messages.customer),
-    site: idString(messages.site),
+    sites: z.array(idString(messages.sites)).min(1, { message: messages.sites }),
     project: idString(messages.project),
     primary_customer_contact: z.string(),
     additional_customer_contacts: z.array(
