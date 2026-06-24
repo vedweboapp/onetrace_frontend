@@ -1,9 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Info } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import type { ZohoWebhookSetupData } from "@/features/settings/integrations/types/integration.types";
+import {
+  parseZohoWebhookSamplePayload,
+  type ParsedZohoWebhookSamplePayload,
+} from "@/features/settings/integrations/utils/zoho-webhook-payload.util";
 import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 
@@ -79,10 +84,62 @@ function formatHeaderCopyText(header: Record<string, string>): string {
     .join("\n");
 }
 
-export function ZohoWebhookGuide({ setup }: { setup: ZohoWebhookSetupData }) {
+function jsonString(value: string): string {
+  return JSON.stringify(value);
+}
+
+function HighlightedWebhookPayloadJson({ parsed }: { parsed: ParsedZohoWebhookSamplePayload }) {
+  const requiredFields = React.useMemo(
+    () => new Set(parsed.fields.filter((row) => row.required).map((row) => row.field)),
+    [parsed.fields],
+  );
+
+  const fieldKeyClass = (field: string) =>
+    cn(
+      requiredFields.has(field) &&
+        "rounded-sm bg-amber-100/90 px-0.5 font-semibold text-amber-950 dark:bg-amber-950/60 dark:text-amber-100",
+    );
+
+  return (
+    <pre className="m-0 max-h-80 overflow-auto whitespace-pre-wrap break-words font-mono text-xs font-normal leading-relaxed text-slate-800 dark:text-slate-200">
+      <span>{"{\n"}</span>
+      <span>{`  ${jsonString(parsed.rootKey)}: [\n`}</span>
+      <span>{"    {\n"}</span>
+      {parsed.fields.map((row, index) => (
+        <React.Fragment key={row.field}>
+          <span>
+            {`      `}
+            <span className={fieldKeyClass(row.field)}>{jsonString(row.field)}</span>
+            {`: ${jsonString(row.sampleValue)}`}
+            {index < parsed.fields.length - 1 ? "," : ""}
+            {"\n"}
+          </span>
+        </React.Fragment>
+      ))}
+      <span>{"    }\n"}</span>
+      <span>{"  ]\n"}</span>
+      <span>{"}"}</span>
+    </pre>
+  );
+}
+
+type ZohoWebhookGuideProps = {
+  setup: ZohoWebhookSetupData;
+  configureMappingHref?: string;
+};
+
+export function ZohoWebhookGuide({ setup, configureMappingHref }: ZohoWebhookGuideProps) {
   const t = useTranslations("Dashboard.integrations.zohoWebhookSetup");
+  const tMapping = useTranslations("Dashboard.integrations.zohoKeyMapping");
   const headerEntries = Object.entries(setup.header ?? {});
-  const sampleJson = JSON.stringify(setup.sample_payload ?? {}, null, 2);
+
+  const parsed = React.useMemo(
+    () => parseZohoWebhookSamplePayload(setup.sample_payload, setup.module ?? setup.resource),
+    [setup.sample_payload, setup.module, setup.resource],
+  );
+
+  const sampleJson = JSON.stringify(parsed.copyPayload, null, 2);
+  const hasRequiredFields = parsed.fields.some((row) => row.required);
 
   return (
     <div className="space-y-6">
@@ -124,15 +181,41 @@ export function ZohoWebhookGuide({ setup }: { setup: ZohoWebhookSetupData }) {
         ) : null}
 
         <WebhookDetailCard
-          label={t("samplePayload")}
+          label={t("samplePayloadJson")}
           mono
           copyText={sampleJson}
           value={
-            <pre className="m-0 max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-xs font-normal leading-relaxed text-slate-800 dark:text-slate-200">
-              {sampleJson}
-            </pre>
+            <div className="space-y-3">
+              <div className="rounded-lg border border-slate-200/90 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                <HighlightedWebhookPayloadJson parsed={parsed} />
+              </div>
+              {hasRequiredFields ? (
+                <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">{t("requiredHighlightLegend")}</p>
+              ) : null}
+            </div>
           }
         />
+
+        <div className="flex gap-3 rounded-lg border border-sky-200/90 bg-sky-50/80 p-3 dark:border-sky-900/50 dark:bg-sky-950/25">
+          <Info className="mt-0.5 size-4 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden />
+          <div className="min-w-0 text-sm leading-relaxed text-sky-950 dark:text-sky-100">
+            <p className="font-medium">{t("mappingNoteTitle")}</p>
+            <p className="mt-1 text-sky-900/90 dark:text-sky-100/90">
+              {t("mappingNoteBody", { mappingTitle: tMapping("title") })}
+              {configureMappingHref ? (
+                <>
+                  {" "}
+                  <Link
+                    href={configureMappingHref}
+                    className="font-semibold underline underline-offset-2 hover:text-sky-800 dark:hover:text-sky-50"
+                  >
+                    {t("mappingNoteLink")}
+                  </Link>
+                </>
+              ) : null}
+            </p>
+          </div>
+        </div>
       </dl>
     </div>
   );

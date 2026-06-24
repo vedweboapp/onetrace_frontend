@@ -56,7 +56,9 @@ export type ZohoWebhookSetupData = {
   webhook_uri: string;
   header: Record<string, string>;
   method: string;
-  resource: string;
+  /** @deprecated Prefer `module` from API */
+  resource?: string;
+  module?: string;
   module_action: string;
   sample_payload: Record<string, unknown>;
 };

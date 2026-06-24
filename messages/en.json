@@ -326,6 +326,12 @@
         "headerTitle": "Header",
         "header": "Header: {name}",
         "samplePayload": "Sample payload",
+        "samplePayloadHint": "Send this JSON body from Zoho. Required keys are listed below — do not include a required flag in the payload.",
+        "samplePayloadJson": "JSON to send",
+        "requiredHighlightLegend": "Highlighted field names are required in the webhook payload.",
+        "mappingNoteTitle": "Need more fields?",
+        "mappingNoteBody": "Map additional Zoho fields under Configuration → {mappingTitle} first. Mapped fields then appear in this sample payload.",
+        "mappingNoteLink": "Open field mapping",
         "copy": "Copy",
         "copied": "Copied to clipboard",
         "loadError": "Failed to load webhook setup details. Please try again.",
@@ -358,7 +364,43 @@
         "yes": "Yes",
         "no": "No",
         "disconnected": "Disconnected"
-
+      },
+      "zohoIntegrationGuide": {
+        "title": "How to integrate Zoho Inventory with your SimHo account",
+        "intro": "Follow these steps to connect Zoho Inventory, authorize access, and configure field mapping so records can sync into SimHo.",
+        "stepLabel": "Step {number}",
+        "mappingNote": "Note — Field mapping facilitates data sync from Zoho Inventory to your SimHo account. No records can be synced if field mapping is not saved.",
+        "steps": {
+          "connect": {
+            "title": "Click Connect",
+            "body": "From Settings → Integrations, open Zoho Inventory and click Connect to start the integration.",
+            "imageAlt": "Zoho Inventory integration card with Connect button"
+          },
+          "authenticate": {
+            "title": "Authenticate with your Zoho Inventory account",
+            "body": "Sign in with the Zoho account that has access to the Zoho Inventory organization you want to connect.",
+            "imageAlt": "Zoho sign-in screen"
+          },
+          "allow": {
+            "title": "Allow platform access and click Accept",
+            "body": "Review the requested permissions, confirm access for the platform, and click Accept to continue.",
+            "imageAlt": "Zoho permission consent screen with Accept button"
+          },
+          "success": {
+            "title": "Integration successful — click Finish Setup",
+            "body": "When the integration completes, click Finish Setup to continue to the field mapping screen.",
+            "imageAlt": "Integration completed dialog with Finish integration button"
+          },
+          "mapping": {
+            "title": "Configure field mapping and save",
+            "body": "Select SimHo fields and the corresponding Zoho fields. Turn Pull Historical Records off if you do not want to sync all existing records from Zoho Inventory for the respective module. Then click Save Mapping.",
+            "imageAlt": "Field mapping screen with SimHo and Zoho field pairs"
+          }
+        },
+        "finish": {
+          "title": "Finish",
+          "body": "You have successfully integrated Zoho Inventory with your SimHo account. If you pulled historical data, check the respective module for synced records. Otherwise, only new records created after mapping is saved will appear."
+        }
       }
     },
     "settingsPersonalProfile": {
