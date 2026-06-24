@@ -13,7 +13,7 @@ import {
   buildSiteMassUpdateFields,
   useEntityListMassActions,
 } from "@/shared/mass-actions";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
@@ -153,7 +153,7 @@ export function SitesPanel() {
       try {
         const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
         if (!cancelled) setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
-      } catch {
+      } catch (error) {
         if (!cancelled) setClientOptions([]);
       }
     })();
@@ -177,9 +177,9 @@ export function SitesPanel() {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -228,8 +228,8 @@ export function SitesPanel() {
       await patchSite(row.id, { is_active: next });
       toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("toggleActiveError"));
+    } catch (error) {
+      toastApiError(error, t("toggleActiveError"));
     } finally {
       setTogglingId(null);
     }
@@ -436,7 +436,7 @@ export function SitesPanel() {
       <ConfirmDialog
         open={deleteOpen}
         onClose={() => (!deleting ? setDeleteOpen(false) : undefined)}
-        onConfirm={() => void (async () => { if (!deletingSite) return; setDeleting(true); try { await deleteSite(deletingSite.id); toastSuccess(t("deletedToast")); setDeleteOpen(false); setDeletingSite(null); setRefreshNonce((n) => n + 1); } catch { toastError(t("deleteError")); } finally { setDeleting(false); } })()}
+        onConfirm={() => void (async () => { if (!deletingSite) return; setDeleting(true); try { await deleteSite(deletingSite.id); toastSuccess(t("deletedToast")); setDeleteOpen(false); setDeletingSite(null); setRefreshNonce((n) => n + 1); } catch (error) { toastApiError(error, t("deleteError")); } finally { setDeleting(false); } })()}
         title={t("deleteConfirmTitle")}
         body={t("deleteConfirmBody")}
         highlight={deletingSite?.site_name}

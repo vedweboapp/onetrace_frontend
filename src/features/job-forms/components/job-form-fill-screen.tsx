@@ -30,7 +30,7 @@ import { useFormHandler } from "@/shared/form/hook/useFormHandler";
 import type { FormRule } from "@/shared/form/formbuilder/form-rules.types";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
 import { AppButton, SurfaceShell } from "@/shared/ui";
 import normalizeRules from "@/shared/form/utility/normalizerule";
@@ -133,8 +133,8 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
           )
         : {};
       setDefaultValues(defaults);
-    } catch {
-      setLoadError(t("loadError"));
+    } catch (error) {
+      setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
       setSchemaSections([]);
       setRules([]);
       setSubmission(null);
@@ -181,8 +181,8 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
         toastSuccess(t("submittedToast"));
       }
       router.replace(safeBack);
-    } catch {
-      toastError(t("submitError"));
+    } catch (error) {
+      toastApiError(error, t("submitError"));
     }
   }, { changesOnly: true });
 

@@ -48,7 +48,7 @@ function SnackbarCard({ item }: { item: SnackbarItem }) {
           aria-hidden
         />
       )}
-      <div className="min-w-0 flex-1 pt-px text-sm font-medium leading-snug tracking-tight text-slate-900 dark:text-slate-100">
+      <div className="min-w-0 flex-1 whitespace-pre-wrap pt-px text-sm font-medium leading-snug tracking-tight text-slate-900 dark:text-slate-100">
         {item.message}
       </div>
       <button

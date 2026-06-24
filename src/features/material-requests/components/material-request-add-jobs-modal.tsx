@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { fetchJobsPage } from "@/features/jobs/api/job.api";
@@ -56,9 +58,9 @@ export function MaterialRequestAddJobsModal({
             label: job.title?.trim() || `#${job.id}`,
           })),
         );
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("jobs.loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("jobs.loadError")));
           setJobOptions([]);
         }
       } finally {

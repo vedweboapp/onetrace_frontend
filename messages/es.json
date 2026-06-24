@@ -291,6 +291,9 @@
         "description": "Relaciona los campos de artículos de Zoho con los campos de artículos de OneTrace antes de sincronizar.",
         "externalField": "Campo Zoho",
         "internalField": "Campo SimHo",
+        "columnOnetrace": "OneTrace",
+        "columnZoho": "Zoho Inventory",
+        "mapsTo": "Se asigna a",
         "selectExternal": "Seleccionar campo Zoho",
         "selectInternal": "Seleccionar campo OneTrace",
         "addRow": "Añadir mapeo",
@@ -310,7 +313,7 @@
         "description": "Crea un webhook en Zoho Inventory con los valores de abajo para mantener los artículos sincronizados.",
         "guideTitle": "Cómo crear el webhook en Zoho Inventory",
         "step1": "Abre Zoho Inventory → Configuración → Automatización → Webhooks.",
-        "step2": "Crea un webhook nuevo y pega la URL, el método y las cabeceras de esta página.",
+        "step2": "Crea un webhook nuevo y usa la URL, el método y las cabeceras que se muestran abajo.",
         "step3": "Configura la acción según el recurso indicado abajo y guarda el webhook.",
         "method": "Método HTTP",
         "resourceAction": "Acción",
@@ -328,6 +331,8 @@
         "description": "Revisa el estado de tu conexión con Zoho y administra la sincronización.",
         "setupWebhook": "Configurar webhook personalizado",
         "configureMapping": "configuración",
+        "connectionDetailsTitle": "Detalles de la conexión",
+        "connectionDetailsSubtitle": "Estado y resumen de sincronización de esta integración.",
         "reconnect": "conectar",
         "webhookTitle": "Configuración del webhook personalizado",
         "backToDetails": "Volver a los detalles",
@@ -1565,7 +1570,8 @@
         "city": "Selecciona o escribe una ciudad.",
         "pincode": "Introduce un código postal.",
         "contactPersonTitle": "Selecciona un título.",
-        "contactPerson": "Selecciona una persona de contacto."
+        "contactPerson": "Selecciona una persona de contacto.",
+        "contactPersonDuplicate": "Esta combinación de título y persona de contacto ya está añadida."
       },
       "location": {
         "searchPlaceholder": "Empieza a escribir la dirección…",

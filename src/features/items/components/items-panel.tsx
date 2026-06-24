@@ -7,7 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchAllItemIds, fetchItemsPage } from "@/features/items/api/item.api";
 import type { Item } from "@/features/items/types/item.types";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
@@ -154,10 +154,10 @@ export function ItemsPanel() {
           setItems(next);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setItems([]);
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -192,8 +192,8 @@ export function ItemsPanel() {
       toastSuccess(t("deletedToast"));
       setDeleteTarget(null);
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("deleteError"));
+    } catch (error) {
+      toastApiError(error, t("deleteError"));
     } finally {
       setDeleting(false);
     }

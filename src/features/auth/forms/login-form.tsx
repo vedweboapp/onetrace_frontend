@@ -14,7 +14,7 @@ import {
 } from "@/features/auth/schemas/login-schema";
 import { useLogin } from "@/features/auth/hooks/use-login";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 
 export function LoginForm() {
   const t = useTranslations("Auth");
@@ -76,7 +76,7 @@ export function LoginForm() {
       setResendIn(59);
       toastSuccess(t("otpSent", { email: maskEmail(email) }));
       window.setTimeout(() => otpRefs.current[0]?.focus(), 50);
-    } catch { toastError(t("otpSendError")); }
+    } catch (error) { toastApiError(error, t("otpSendError")); }
   }
 
   async function handleVerifyOtp() {
@@ -87,13 +87,13 @@ export function LoginForm() {
     }
     setOtpCodeError(null);
     try { await submitOtp(otpEmail.trim(), otp); }
-    catch { toastError(t("otpVerifyError")); }
+    catch (error) { toastApiError(error, t("otpVerifyError")); }
   }
 
   async function handleResendOtp() {
     if (resendIn > 0) return;
     try { await sendOtp(otpEmail.trim()); setResendIn(59); toastSuccess(t("otpResent")); }
-    catch { toastError(t("otpSendError")); }
+    catch (error) { toastApiError(error, t("otpSendError")); }
   }
 
   function setOtpDigit(index: number, raw: string) {

@@ -156,21 +156,17 @@ export function VendorAddressesFields({ control, register, setValue, errors, dis
                   control={control}
                   name={`addresses.${index}.address_line_2`}
                   render={({ field: f }) => (
-                    <AddressPlaceAutocomplete
-                      id={`${idPrefix}-line2`}
-                      label={t("fields.addressLine2")}
-                      value={f.value ?? ""}
-                      onChange={f.onChange}
-                      onBlur={f.onBlur}
-                      countryIso={countryIso}
-                      contextCity={searchContext.city}
-                      contextState={searchContext.state}
-                      contextCountry={searchContext.country}
-                      disabled={disabled}
-                      onSelectPlace={(place) => {
-                        if (place.line2) setValue(`addresses.${index}.address_line_2`, place.line2);
-                      }}
-                    />
+                    <FieldGroup label={t("fields.addressLine2")} htmlFor={`${idPrefix}-line2`}>
+                      <input
+                        id={`${idPrefix}-line2`}
+                        autoComplete="address-line2"
+                        className={surfaceInputClassName}
+                        disabled={disabled}
+                        value={f.value ?? ""}
+                        onChange={f.onChange}
+                        onBlur={f.onBlur}
+                      />
+                    </FieldGroup>
                   )}
                 />
               </FormFieldRow>

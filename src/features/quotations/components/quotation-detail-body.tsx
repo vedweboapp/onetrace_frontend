@@ -38,7 +38,6 @@ import {
   detailMapFillClassName,
   detailMapViewportClassName,
 } from "@/shared/components/layout/detail-page-map-layout";
-import { DetailTabStepNav } from "@/shared/components/layout/detail-tab-step-nav";
 import {
   DetailMetricCard,
   DetailMetricsGrid,
@@ -517,7 +516,6 @@ export function QuotationDetailBody({
             }}
           />
         </DetailPageMapLayout>
-        <DetailTabStepNav onNext={() => goToTab("pricing")} nextLabel={t("formTabs.nextToPricing")} />
       </div>
 
       <div
@@ -539,7 +537,6 @@ export function QuotationDetailBody({
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("page.editQuoteScopeEmpty")}</p>
           )}
         </DetailPanelCard>
-        <DetailTabStepNav onPrev={() => goToTab("project")} prevLabel={t("formTabs.prevToProject")} />
       </div>
     </DetailPagePadding>
   );

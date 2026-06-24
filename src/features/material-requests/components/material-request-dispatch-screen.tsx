@@ -13,7 +13,7 @@ import {
 import type { MaterialRequestDispatchPayload } from "@/features/material-requests/types/material-request-dispatch.types";
 import type { MaterialRequestDetail } from "@/features/material-requests/types/material-request.types";
 import { cn } from "@/core/utils/http.util";
-import { toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
@@ -122,8 +122,8 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
                   : "",
           })),
         );
-      } catch {
-        if (!cancelled) setLoadError(t("detailLoadError"));
+      } catch (error) {
+        if (!cancelled) setLoadError(getApiErrorDisplayMessage(error, t("detailLoadError")));
       } finally {
         if (!cancelled) setLoading(false);
       }

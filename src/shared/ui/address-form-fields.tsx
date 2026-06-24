@@ -95,21 +95,19 @@ export function AddressLineAutocompleteFields<T extends FieldValues>({
         control={control}
         name={"address_line_2" as never}
         render={({ field }) => (
-          <AddressPlaceAutocomplete
-            id={`${idPrefix}-line2`}
-            label={labels.addressLine2}
-            variant="secondary"
-            value={field.value ?? ""}
-            onChange={field.onChange}
-            onBlur={field.onBlur}
-            countryIso={countryIso}
-            contextCity={searchContext.city}
-            contextState={searchContext.state}
-            contextCountry={searchContext.country}
-            contextPincode={searchContext.pincode}
-            disabled={disabled}
-            onSelectPlace={(place) => applyPlace(place, "2")}
-          />
+          <FieldGroup label={labels.addressLine2} htmlFor={`${idPrefix}-line2`}>
+            <input
+              id={`${idPrefix}-line2`}
+              autoComplete="address-line2"
+              aria-invalid={errors?.address_line_2 ? true : undefined}
+              className={cn(surfaceInputClassName, errors?.address_line_2 && "border-red-500 dark:border-red-500")}
+              disabled={disabled}
+              value={field.value ?? ""}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+            />
+            <FieldErrorText>{errors?.address_line_2}</FieldErrorText>
+          </FieldGroup>
         )}
       />
     </>

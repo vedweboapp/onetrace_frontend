@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+
 import * as React from "react";
 import { Calendar, Pencil, Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -142,7 +144,7 @@ export function PurchaseOrdersPanel() {
         if (!cancelled) {
           setVendorOptions(vendors.map((v) => ({ value: String(v.id), label: v.name })));
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) setVendorOptions([]);
       }
     })();
@@ -166,9 +168,9 @@ export function PurchaseOrdersPanel() {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {

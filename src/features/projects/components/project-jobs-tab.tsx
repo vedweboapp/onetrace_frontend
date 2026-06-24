@@ -33,7 +33,7 @@ import {
 } from "@/shared/mass-actions";
 import { routes } from "@/shared/config/routes";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import { jobAssignedWorkerLabel } from "@/features/jobs/utils/job-nested-fields.util";
 import {
@@ -527,7 +527,7 @@ export function ProjectJobsTab({ projectId }: Props) {
           }
           setStatusById(byId);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setJobStatusOptions([]);
           setMassClientOptions([]);
@@ -552,9 +552,9 @@ export function ProjectJobsTab({ projectId }: Props) {
       try {
         const data = await fetchProjectJobsHierarchy(projectId, { silent: true });
         if (!cancelled) setHierarchy(data);
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setHierarchy(null);
         }
       } finally {
@@ -579,8 +579,8 @@ export function ProjectJobsTab({ projectId }: Props) {
       setDeleteOpen(false);
       setDeletingJob(null);
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(tJobs("deleteError"));
+    } catch (error) {
+      toastApiError(error, tJobs("deleteError"));
     } finally {
       setDeleting(false);
     }

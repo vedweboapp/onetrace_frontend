@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+
 import * as React from "react";
 import { Calendar, Pencil, Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -173,7 +175,7 @@ export function InvoicesPanel() {
           })),
         );
         setProjectOptions(projectsRes.items.map((p) => ({ value: String(p.id), label: p.name })));
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setClientOptions([]);
           setContactOptions([]);
@@ -201,9 +203,9 @@ export function InvoicesPanel() {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {

@@ -15,7 +15,7 @@ import {
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton } from "@/shared/ui";
 
 type Props = {
@@ -129,8 +129,8 @@ function JobDetailActions({
       await updateJob(detail.id, { job_status: jobStatusId });
       toastSuccess(t("statusUpdatedToast"));
       onStatusSaved();
-    } catch {
-      toastError(t("statusUpdateError"));
+    } catch (error) {
+      toastApiError(error, t("statusUpdateError"));
     } finally {
       setStatusSaving(false);
     }

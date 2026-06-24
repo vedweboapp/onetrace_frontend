@@ -22,7 +22,7 @@ import type { Site } from "@/features/sites/types/site.types";
 import { hasDetailAddress } from "@/shared/components/layout/detail-formatted-address";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { buildProjectDetailTabHref, mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { AppButton } from "@/shared/ui";
@@ -199,8 +199,8 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         return;
       }
       router.push(mergeUrlQueryParam(routes.dashboard.jobs, "highlight", String(job.id)));
-    } catch {
-      toastError(t("detail.createJobError"));
+    } catch (error) {
+      toastApiError(error, t("detail.createJobError"));
     } finally {
       setCreatingJob(false);
     }

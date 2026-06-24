@@ -19,12 +19,8 @@ import { useEffect, useState } from "react";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { Inputs } from "../types/types";
 import { updatePersonalProfile } from "../api/personal-profile.api";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useTranslations } from "next-intl";
-import {
-    parseApiFailurePayload,
-    resolveApiErrorUserText,
-} from "@/core/errors/api-error-text";
 import { id } from "zod/v4/locales";
 
 const PersonalProfileForm = ({
@@ -225,7 +221,7 @@ const PersonalProfileForm = ({
             if (onSuccess) onSuccess();
         } catch (error) {
             console.error("Failed to update profile:", error);
-            toastError(resolveApiErrorUserText(parseApiFailurePayload(error)));
+            toastApiError(error);
         } finally {
             setIsSaving(false);
         }

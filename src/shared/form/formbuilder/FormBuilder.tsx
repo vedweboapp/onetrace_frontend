@@ -12,12 +12,8 @@ import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-s
 import { routes } from "@/shared/config/routes";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { AppTabs } from "@/shared/ui/app-tabs";
-import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastApiError, toastError } from "@/shared/feedback/app-toast";
 import { useTranslations } from "next-intl";
-import {
-  parseApiFailurePayload,
-  resolveApiErrorUserText,
-} from "@/core/errors/api-error-text";
 import api from "@/core/api/axios";
 import FormRenderer, { FormRendererRef } from "./FormRenderer";
 import FormRuleModal from "./form-rule-modal";
@@ -1250,7 +1246,7 @@ export default function FormBuilderLayout({
       }
     } catch (err) {
       console.error("Save failed", err);
-      toastError(resolveApiErrorUserText(parseApiFailurePayload(err)));
+      toastApiError(err);
     } finally {
       setSaving(false);
     }

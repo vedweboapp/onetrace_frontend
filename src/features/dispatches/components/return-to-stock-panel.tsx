@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+
 import * as React from "react";
 import { Calendar, Package, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -162,7 +164,7 @@ export function ReturnToStockPanel() {
       try {
         const options = await loadTechnicianOptions();
         if (!cancelled) setWorkerOptions(options);
-      } catch {
+      } catch (error) {
         if (!cancelled) setWorkerOptions([]);
       }
     })();
@@ -188,7 +190,7 @@ export function ReturnToStockPanel() {
           });
         }
         setMrOptions(options);
-      } catch {
+      } catch (error) {
         if (!cancelled) setMrOptions([]);
       }
     })();
@@ -205,9 +207,9 @@ export function ReturnToStockPanel() {
       try {
         const rows = await fetchDispatchReturnRequests(listFilters);
         if (!cancelled) setAllItems(rows);
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("return.loadListError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("return.loadListError")));
           setAllItems([]);
         }
       } finally {

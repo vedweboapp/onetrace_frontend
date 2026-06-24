@@ -11,7 +11,7 @@ import {
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { ConfirmDialog } from "@/shared/ui";
 
 type Props = {
@@ -32,8 +32,8 @@ export function GroupDetailScreen({ groupId }: Props) {
       await deleteGroup(detailForDelete.id);
       toastSuccess(t("deletedToast"));
       router.push(routes.dashboard.groups);
-    } catch {
-      toastError(t("loadError"));
+    } catch (error) {
+      toastApiError(error, t("loadError"));
     } finally {
       setDeleting(false);
     }

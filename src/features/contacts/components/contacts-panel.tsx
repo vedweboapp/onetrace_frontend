@@ -41,7 +41,7 @@ import {
   buildContactMassUpdateFields,
   useEntityListMassActions,
 } from "@/shared/mass-actions";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 
 function parseContactTypeParam(raw: string | null): ContactType {
   return raw === "vendor" ? "vendor" : "client";
@@ -183,7 +183,7 @@ export function ContactsPanel() {
           setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
           setVendorOptions(vendors.map((v) => ({ value: String(v.id), label: v.name })));
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setClientOptions([]);
           setVendorOptions([]);
@@ -206,9 +206,9 @@ export function ContactsPanel() {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -278,8 +278,8 @@ export function ContactsPanel() {
       await updateContact(row.id, { is_active: next });
       toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("toggleActiveError"));
+    } catch (error) {
+      toastApiError(error, t("toggleActiveError"));
     } finally {
       setTogglingId(null);
     }

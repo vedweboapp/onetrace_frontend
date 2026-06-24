@@ -33,7 +33,7 @@ import {
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
-import { toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import {
   MassActionBar,
   buildQrCodeMassUpdateFields,
@@ -121,7 +121,7 @@ export function QrCodesPanel() {
             })),
           );
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) setJobOptions([]);
       }
     })();
@@ -183,9 +183,9 @@ export function QrCodesPanel() {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {

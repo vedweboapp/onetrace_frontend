@@ -15,7 +15,7 @@ import {
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton, AppTabs, ConfirmDialog, type AppTabItem } from "@/shared/ui";
 
 type Props = {
@@ -65,8 +65,8 @@ export function VendorDetailScreen({ vendorId }: Props) {
       await deleteVendor(detailForDelete.id);
       toastSuccess(t("deletedToast"));
       router.push(routes.dashboard.vendors);
-    } catch {
-      toastError(t("loadError"));
+    } catch (error) {
+      toastApiError(error, t("loadError"));
     } finally {
       setDeleting(false);
     }
@@ -117,8 +117,8 @@ export function VendorDetailScreen({ vendorId }: Props) {
                 await updateVendor(detail.id, { is_active: next });
                 toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
                 retry();
-              } catch {
-                toastError(t("toggleActiveError"));
+              } catch (error) {
+                toastApiError(error, t("toggleActiveError"));
               } finally {
                 setTogglingActive(false);
               }

@@ -10,7 +10,7 @@ import { updateProjectJobForm } from "@/features/projects/api/project-job-form.a
 import { fetchProject, fetchProjectFormsPage, updateProject } from "@/features/projects/api/project.api";
 import type { FormListItem } from "@/features/forms/types/form.types";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import {
@@ -128,7 +128,7 @@ export function ProjectFormsTab() {
         console.error("Failed to fetch project forms:", err);
         if (!cancelled) {
           setItems([]);
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(err, t("loadError")));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -168,7 +168,7 @@ export function ProjectFormsTab() {
           setSelectedFormIds(assignedIds.map(String));
           setAssignFormOptions(forms.map((form) => ({ value: String(form.id), label: form.name })));
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) setAssignError(t("assignLoadError"));
       } finally {
         if (!cancelled) setAssignLoading(false);
@@ -198,8 +198,8 @@ export function ProjectFormsTab() {
       toastSuccess(t("assignedToast"));
       setAssignOpen(false);
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("assignSaveError"));
+    } catch (error) {
+      toastApiError(error, t("assignSaveError"));
     } finally {
       setAssignSaving(false);
     }
@@ -210,8 +210,8 @@ export function ProjectFormsTab() {
       await updateProjectJobForm(row.id, { is_active: next });
       toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("toggleActiveError"));
+    } catch (error) {
+      toastApiError(error, t("toggleActiveError"));
     } finally {
       setTogglingId(null);
     }

@@ -295,6 +295,9 @@
         "description": "Match Zoho item fields to your OneTrace item fields before syncing data.",
         "externalField": "Zoho field",
         "internalField": "SimHo field",
+        "columnOnetrace": "OneTrace",
+        "columnZoho": "Zoho Inventory",
+        "mapsTo": "Maps to",
         "selectExternal": "Select Zoho field",
         "selectInternal": "Select OneTrace field",
         "addRow": "Add mapping",
@@ -314,7 +317,7 @@
         "description": "Create a webhook in Zoho Inventory using the values below to keep items in sync.",
         "guideTitle": "How to create the webhook in Zoho Inventory",
         "step1": "Open Zoho Inventory → Settings → Automation → Webhooks.",
-        "step2": "Create a new webhook and paste the URL, method, and header values from this page.",
+        "step2": "Create a new webhook and use the URL, method, and header values shown below.",
         "step3": "Set the action to match the resource action below and save the webhook.",
         "method": "HTTP method",
         "resourceAction": "Action",
@@ -332,6 +335,8 @@
         "description": "Review your Zoho connection status and manage sync settings.",
         "setupWebhook": "Setup custom webhook",
         "configureMapping": "Configuration",
+        "connectionDetailsTitle": "Connection details",
+        "connectionDetailsSubtitle": "Status and sync overview for this integration.",
         "reconnect": "Connect",
         "webhookTitle": "Custom webhook setup",
         "backToDetails": "Back to details",
@@ -1570,7 +1575,8 @@
         "city": "Enter or select a city.",
         "pincode": "Enter a postal or ZIP code.",
         "contactPersonTitle": "Select a title.",
-        "contactPerson": "Select a contact person."
+        "contactPerson": "Select a contact person.",
+        "contactPersonDuplicate": "This title and contact person combination is already added."
       },
       "location": {
         "searchPlaceholder": "Start typing street address…",

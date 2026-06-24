@@ -15,9 +15,8 @@ import {
   hasDirtyFields,
   ORGANIZATION_TAB_FIELDS,
 } from "../utils/company-settings-diff.util";
-import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { useTranslations } from "next-intl";
-import { parseApiFailurePayload, resolveApiErrorUserText } from "@/core/errors/api-error-text";
 import { timeZones } from "@/shared/constants/timezones";
 
 interface OrganizationalDetailProps {
@@ -76,7 +75,7 @@ const OrganizationalDetail = React.forwardRef<OrganizationalDetailRef, Organizat
             onSaveSuccess?.(updated);
         } catch (error) {
             console.error("Failed to update organization details:", error);
-            toastError(resolveApiErrorUserText(parseApiFailurePayload(error)));
+            toastApiError(error);
         }
     };
 

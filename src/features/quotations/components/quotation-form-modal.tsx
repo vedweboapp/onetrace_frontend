@@ -27,8 +27,9 @@ import type { Project } from "@/features/projects/types/project.types";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { DetailTabStepNav } from "@/shared/components/layout/detail-tab-step-nav";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
@@ -309,8 +310,8 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
       onSaved();
       onClose();
       router.push(buildEntityDetailHrefAfterSave(routes.dashboard.quotations, saved.id, routes.dashboard.quotations));
-    } catch {
-      toastError(t("saveError"));
+    } catch (error) {
+      toastApiError(error, t("saveError"));
     } finally {
       setSaving(false);
     }
@@ -645,6 +646,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
             {...register("description")}
           />
         </FieldGroup>
+        <DetailTabStepNav onNext={() => setFormTab("pricing")} nextLabel={t("formTabs.nextToPricing")} />
         </div>
         <div
           role="tabpanel"
@@ -661,6 +663,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
               canShow={canShowLevels}
             />
           </div>
+          <DetailTabStepNav onPrev={() => setFormTab("project")} prevLabel={t("formTabs.prevToProject")} />
         </div>
       </form>
       </>

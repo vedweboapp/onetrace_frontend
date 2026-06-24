@@ -17,7 +17,7 @@ import {
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton } from "@/shared/ui";
 
 type Props = {
@@ -95,8 +95,8 @@ export function ContactDetailScreen({ contactId }: Props) {
                 await updateContact(detail.id, { is_active: next });
                 toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
                 retry();
-              } catch {
-                toastError(t("toggleActiveError"));
+              } catch (error) {
+                toastApiError(error, t("toggleActiveError"));
               } finally {
                 setTogglingActive(false);
               }

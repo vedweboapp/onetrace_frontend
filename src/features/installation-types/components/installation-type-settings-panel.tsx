@@ -15,7 +15,7 @@ import type { InstallationType } from "@/features/installation-types/types/insta
 import { formatInstallationTypeLabel, normalizeInstallationTypeHex } from "@/features/installation-types/utils/installation-type-display.util";
 import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
@@ -122,9 +122,9 @@ export function InstallationTypeSettingsPanel() {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -185,8 +185,8 @@ export function InstallationTypeSettingsPanel() {
       toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
       setDetailRow((prev) => (prev?.id === row.id ? { ...prev, is_active: next } : prev));
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("toggleActiveError"));
+    } catch (error) {
+      toastApiError(error, t("toggleActiveError"));
     } finally {
       setTogglingId(null);
     }

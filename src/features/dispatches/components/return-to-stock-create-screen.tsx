@@ -13,7 +13,7 @@ import {
 import type { DispatchReturnType, WorkerReturnDatePreset } from "@/features/dispatches/types/dispatch.types";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import { cn } from "@/core/utils/http.util";
-import { toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
@@ -104,7 +104,7 @@ export function ReturnToStockCreateScreen({
       try {
         const workers = await loadTechnicianOptions();
         if (!cancelled) setWorkerOptions(workers);
-      } catch {
+      } catch (error) {
         if (!cancelled) setWorkerOptions([]);
       }
     })();
@@ -135,7 +135,7 @@ export function ReturnToStockCreateScreen({
           });
         }
         setMrOptions(options);
-      } catch {
+      } catch (error) {
         if (!cancelled) setMrOptions([]);
       }
     })();
@@ -180,8 +180,8 @@ export function ReturnToStockCreateScreen({
         };
       }
       setDrafts(initial);
-    } catch {
-      setLoadError(t("return.loadError"));
+    } catch (error) {
+      setLoadError(getApiErrorDisplayMessage(error, t("return.loadError")));
       setMaterials(null);
     } finally {
       setLoading(false);

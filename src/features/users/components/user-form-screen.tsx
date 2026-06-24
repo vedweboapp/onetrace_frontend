@@ -11,7 +11,7 @@ import { fetchRoles, fetchUserProfile, inviteUser, updateUserProfile } from "@/f
 import { createUserFormSchema, type UserFormValues } from "@/features/users/schemas/user-form-schema";
 import { emptyUserFormDefaults, mapInviteUserFormToPayload, mapUserFormToUpdatePayload, userToFormDefaults } from "@/features/users/utils/user-form-map";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { sanitizeInternalListBack, buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
@@ -112,8 +112,8 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
         toastSuccess(t("createdToast"));
         router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.settingsUsers, created.id, listBack));
       }
-    } catch {
-      toastError(t("saveError"));
+    } catch (error) {
+      toastApiError(error, t("saveError"));
     } finally {
       setSaving(false);
     }
