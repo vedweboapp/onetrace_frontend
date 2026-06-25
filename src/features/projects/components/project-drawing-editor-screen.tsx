@@ -973,6 +973,24 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       return;
     }
 
+    if (activeTool === "pin") {
+      let isInsidePlot = false;
+      for (const plot of plots) {
+        const poly = plot.coordinates.map((c) => percentToPixel(c, pageSize));
+        if (insideOrOnBoundary(pt, poly)) {
+          isInsidePlot = true;
+          break;
+        }
+      }
+      e.currentTarget.style.cursor = isInsidePlot ? "crosshair" : "not-allowed";
+    } else if (activeTool === "pen" || activeTool === "plot-select") {
+      e.currentTarget.style.cursor = "crosshair";
+    } else if (activeTool === "hand") {
+      e.currentTarget.style.cursor = "grab";
+    } else {
+      e.currentTarget.style.cursor = "default";
+    }
+
     if (activeTool === "plot-select" && selectionStart) {
       setSelectionEnd(pt);
       return;
@@ -1302,13 +1320,11 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     }
 
     if (!plot) {
-      toastError(t("pinOutsidePlot"));
       return;
     }
 
     const plotStageCoordinates = plot.coordinates.map((p) => percentToPixel(p, pageSize));
     if (!inside(point, plotStageCoordinates)) {
-      toastError(t("pinOutsidePlot"));
       return;
     }
 
