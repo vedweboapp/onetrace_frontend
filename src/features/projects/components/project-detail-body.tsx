@@ -19,18 +19,21 @@ import {
 } from "@/shared/components/layout/detail-metric-card";
 import { ActiveStatusBadge } from "@/shared/ui";
 
-function projectSiteListRows(detail: Project): { id: number; label: string; isActive?: boolean }[] {
+function projectSiteListRows(
+  detail: Project,
+  siteLabel: string,
+): { id: number; label: string; isActive?: boolean }[] {
   const sites = detail.sites;
   if (!Array.isArray(sites) || sites.length === 0) return [];
   const rows: { id: number; label: string; isActive?: boolean }[] = [];
   for (const entry of sites) {
     if (typeof entry === "number" && Number.isFinite(entry) && entry > 0) {
-      rows.push({ id: entry, label: `#${entry}` });
+      rows.push({ id: entry, label: siteLabel });
     } else if (entry && typeof entry === "object" && typeof entry.id === "number") {
       const name = entry.site_name?.trim();
       rows.push({
         id: entry.id,
-        label: name || `#${entry.id}`,
+        label: name || siteLabel,
         isActive: typeof entry.is_active === "boolean" ? entry.is_active : undefined,
       });
     }
@@ -58,7 +61,7 @@ export function ProjectDetailBody({
 
   const start = detail.start_date?.slice(0, 10) ?? "";
   const end = detail.end_date?.slice(0, 10) ?? "";
-  const siteRows = projectSiteListRows(detail);
+  const siteRows = projectSiteListRows(detail, t("fields.site"));
 
   const addressParts = {
     line1: detail.address_line_1,
@@ -90,7 +93,7 @@ export function ProjectDetailBody({
                   href={`${routes.dashboard.clients}/${clientId}`}
                   className="break-words text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                 >
-                  {clientName ?? `#${clientId}`}
+                  {clientName ?? "—"}
                 </DetailEntityLink>
               ) : (
                 <span className="break-words text-slate-700 dark:text-slate-200">{clientName ?? "—"}</span>

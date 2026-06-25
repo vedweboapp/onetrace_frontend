@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { z } from "zod";
 import type { createWorkflowColourStatusApi } from "@/shared/api/create-workflow-colour-status.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { cn } from "@/core/utils/http.util";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -36,6 +36,7 @@ import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { routes } from "@/shared/config/routes";
 
 const DEFAULT_BG = "#E5E7EB";
 const DEFAULT_TEXT = "#374151";
@@ -98,6 +99,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
   const { translationNamespace, emptyStateIconName, formTitleId, api } = config;
   const t = useTranslations(translationNamespace);
   const tList = useTranslations("Dashboard.list");
+  const tCustomization = useTranslations("Dashboard.settingsNav.customization");
   const dateFmt = useDashboardDateFormat();
   const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } =
     useListUrlState();
@@ -165,9 +167,9 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -260,8 +262,8 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
       toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
       setDetailRow((prev) => (prev?.id === row.id ? { ...prev, is_active: next } : prev));
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("toggleActiveError"));
+    } catch (error) {
+      toastApiError(error, t("toggleActiveError"));
     } finally {
       setTogglingId(null);
     }
@@ -291,6 +293,10 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
     <div className="space-y-6">
       {!hideListChrome ? (
         <ListPageHeader
+          title={t("title")}
+          description={t("subtitle")}
+          backHref={routes.dashboard.settingsCustomization}
+          backAriaLabel={tCustomization("backToHub")}
           filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}

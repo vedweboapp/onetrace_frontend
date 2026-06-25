@@ -231,6 +231,7 @@
         "label": "Personalización",
         "hubTitle": "Personalización",
         "hubDescription": "Elige qué configurar: Tipos de Proyecto, Tipos de Instalación, Tipos de Proveedor, Tipos de Lista de Verificación, Estados de Pin, Estados de Trabajo, Estados de Material y Etiquetas.",
+        "backToHub": "Volver a personalización",
         "items": {
           "projectTypes": {
             "title": "Tipos de Proyecto",
@@ -284,6 +285,7 @@
         "finish": "Finalizar integración",
         "cancel": "Cancelar",
         "finishError": "No se pudo completar la integración con Zoho. Inténtalo de nuevo.",
+        "connectionFailed": "La conexión falló. Inténtalo de nuevo.",
         "missingParams": "Faltan datos de autorización. Inicia la conexión de nuevo desde Integraciones."
       },
       "zohoKeyMapping": {
@@ -291,6 +293,9 @@
         "description": "Relaciona los campos de artículos de Zoho con los campos de artículos de OneTrace antes de sincronizar.",
         "externalField": "Campo Zoho",
         "internalField": "Campo SimHo",
+        "columnOnetrace": "OneTrace",
+        "columnZoho": "Zoho Inventory",
+        "mapsTo": "Se asigna a",
         "selectExternal": "Seleccionar campo Zoho",
         "selectInternal": "Seleccionar campo OneTrace",
         "addRow": "Añadir mapeo",
@@ -310,13 +315,20 @@
         "description": "Crea un webhook en Zoho Inventory con los valores de abajo para mantener los artículos sincronizados.",
         "guideTitle": "Cómo crear el webhook en Zoho Inventory",
         "step1": "Abre Zoho Inventory → Configuración → Automatización → Webhooks.",
-        "step2": "Crea un webhook nuevo y pega la URL, el método y las cabeceras de esta página.",
+        "step2": "Crea un webhook nuevo y usa la URL, el método y las cabeceras que se muestran abajo.",
         "step3": "Configura la acción según el recurso indicado abajo y guarda el webhook.",
         "method": "Método HTTP",
         "resourceAction": "Acción",
         "webhookUri": "URL del webhook",
+        "headerTitle": "Cabecera",
         "header": "Cabecera: {name}",
         "samplePayload": "Carga útil de ejemplo",
+        "samplePayloadHint": "Envía este JSON desde Zoho. Las claves obligatorias se indican abajo — no incluyas un campo required en la carga útil.",
+        "samplePayloadJson": "JSON a enviar",
+        "requiredHighlightLegend": "indica campos obligatorios en la carga del webhook.",
+        "mappingNoteTitle": "¿Necesitas más campos?",
+        "mappingNoteBody": "Primero asigna más campos de Zoho en Configuración → {mappingTitle}. Los campos asignados aparecerán aquí en la carga de ejemplo.",
+        "mappingNoteLink": "Abrir asignación de campos",
         "copy": "Copiar",
         "copied": "Copiado al portapapeles",
         "loadError": "No se pudieron cargar los detalles del webhook. Inténtalo de nuevo.",
@@ -328,6 +340,8 @@
         "description": "Revisa el estado de tu conexión con Zoho y administra la sincronización.",
         "setupWebhook": "Configurar webhook personalizado",
         "configureMapping": "configuración",
+        "connectionDetailsTitle": "Detalles de la conexión",
+        "connectionDetailsSubtitle": "Estado y resumen de sincronización de esta integración.",
         "reconnect": "conectar",
         "webhookTitle": "Configuración del webhook personalizado",
         "backToDetails": "Volver a los detalles",
@@ -347,6 +361,43 @@
         "yes": "Sí",
         "no": "No",
         "disconnected": "Desconectado"
+      },
+      "zohoIntegrationGuide": {
+        "title": "Cómo integrar Zoho Inventory con tu cuenta SimHo",
+        "intro": "Sigue estos pasos para conectar Zoho Inventory, autorizar el acceso y configurar el mapeo de campos para que los registros se sincronicen en SimHo.",
+        "stepLabel": "Paso {number}",
+        "mappingNote": "Nota — El mapeo de campos facilita la sincronización de datos desde Zoho Inventory a tu cuenta SimHo. No se puede sincronizar ningún registro si el mapeo no se guarda.",
+        "steps": {
+          "connect": {
+            "title": "Haz clic en Conectar",
+            "body": "Desde Configuración → Integraciones, abre Zoho Inventory y haz clic en Conectar para iniciar la integración.",
+            "imageAlt": "Tarjeta de integración de Zoho Inventory con botón Conectar"
+          },
+          "authenticate": {
+            "title": "Autentícate con tu cuenta de Zoho Inventory",
+            "body": "Inicia sesión con la cuenta de Zoho que tenga acceso a la organización de Zoho Inventory que deseas conectar.",
+            "imageAlt": "Pantalla de inicio de sesión de Zoho"
+          },
+          "allow": {
+            "title": "Permite el acceso de la plataforma y haz clic en Aceptar",
+            "body": "Revisa los permisos solicitados, confirma el acceso para la plataforma y haz clic en Aceptar para continuar.",
+            "imageAlt": "Pantalla de consentimiento de permisos de Zoho con botón Aceptar"
+          },
+          "success": {
+            "title": "Integración exitosa — haz clic en Finalizar configuración",
+            "body": "Cuando se complete la integración, haz clic en Finalizar configuración para continuar a la pantalla de mapeo de campos.",
+            "imageAlt": "Diálogo de integración completada con botón Finalizar integración"
+          },
+          "mapping": {
+            "title": "Configura el mapeo de campos y guarda",
+            "body": "Selecciona los campos de SimHo y los campos correspondientes de Zoho. Desactiva Importar registros históricos si no deseas sincronizar todos los registros existentes de Zoho Inventory para el módulo respectivo. Luego haz clic en Guardar mapeo.",
+            "imageAlt": "Pantalla de mapeo de campos con pares SimHo y Zoho"
+          }
+        },
+        "finish": {
+          "title": "Finalizar",
+          "body": "Has integrado Zoho Inventory con tu cuenta SimHo correctamente. Si importaste datos históricos, revisa el módulo correspondiente para ver los registros sincronizados. De lo contrario, solo aparecerán los registros nuevos creados después de guardar el mapeo."
+        }
       }
     },
     "settingsPersonalProfile": {
@@ -1326,7 +1377,7 @@
         "sectionQr": "Código QR",
         "assignedJob": "Trabajo asignado",
         "notAssigned": "Sin asignar",
-        "viewJob": "Ver trabajo #{id}",
+        "viewJob": "Ver trabajo asignado",
         "recordId": "ID de registro"
       },
       "fields": {
@@ -1565,7 +1616,8 @@
         "city": "Selecciona o escribe una ciudad.",
         "pincode": "Introduce un código postal.",
         "contactPersonTitle": "Selecciona un título.",
-        "contactPerson": "Selecciona una persona de contacto."
+        "contactPerson": "Selecciona una persona de contacto.",
+        "contactPersonDuplicate": "Esta combinación de título y persona de contacto ya está añadida."
       },
       "location": {
         "searchPlaceholder": "Empieza a escribir la dirección…",
@@ -2213,7 +2265,7 @@
         "sectionLogs": "Registro de actividad",
         "sectionActivityTimeline": "Cronología de actividad",
         "sectionDispatches": "Envíos",
-        "dispatchLink": "Ver envío #{id}",
+        "dispatchLink": "Ver envío",
         "sectionOverview": "Resumen",
         "sectionJobs": "Trabajos",
         "sectionItems": "Ítems",
@@ -2361,7 +2413,7 @@
         "view": "Ver detalle"
       },
       "table": {
-        "dispatchId": "ID envío",
+        "dispatchId": "Número de envío",
         "jobName": "Trabajo",
         "dispatchDate": "Fecha",
         "status": "Estado",
@@ -2473,7 +2525,7 @@
         "delayed": "Retrasado"
       },
       "fields": {
-        "dispatchId": "ID envío",
+        "dispatchId": "Número de envío",
         "dispatchTo": "Enviar a",
         "dispatchedBy": "Enviado por",
         "dispatchDate": "Fecha de envío",

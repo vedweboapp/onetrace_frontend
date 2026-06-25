@@ -36,8 +36,7 @@ import {
   buildClientMassUpdateFields,
   useEntityListMassActions,
 } from "@/shared/mass-actions";
-import { toastSuccess } from "@/shared/feedback/app-toast";
-import { toastError } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 
 export function ClientsPanel() {
   const t = useTranslations("Dashboard.clients");
@@ -159,9 +158,9 @@ export function ClientsPanel() {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -201,8 +200,8 @@ export function ClientsPanel() {
       await updateClient(row.id, { is_active: next });
       toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("toggleActiveError"));
+    } catch (error) {
+      toastApiError(error, t("toggleActiveError"));
     } finally {
       setTogglingId(null);
     }

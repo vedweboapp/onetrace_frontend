@@ -235,6 +235,7 @@
         "label": "Customization",
         "hubTitle": "Customization",
         "hubDescription": "Choose what to configure — Project Types, Installation Types, Vendor Types, Checklist Types, Pin Statuses, Job Statuses, Material Statuses, and Tags.",
+        "backToHub": "Back to customization",
         "items": {
           "projectTypes": {
             "title": "Project Types",
@@ -288,6 +289,7 @@
         "finish": "Finish integration",
         "cancel": "Cancel",
         "finishError": "Failed to complete Zoho integration. Please try again.",
+        "connectionFailed": "Connection failed. Please try again.",
         "missingParams": "Missing authorization details. Please start the connection again from Integrations."
       },
       "zohoKeyMapping": {
@@ -295,6 +297,9 @@
         "description": "Match Zoho item fields to your OneTrace item fields before syncing data.",
         "externalField": "Zoho field",
         "internalField": "SimHo field",
+        "columnOnetrace": "OneTrace",
+        "columnZoho": "Zoho Inventory",
+        "mapsTo": "Maps to",
         "selectExternal": "Select Zoho field",
         "selectInternal": "Select OneTrace field",
         "addRow": "Add mapping",
@@ -314,13 +319,20 @@
         "description": "Create a webhook in Zoho Inventory using the values below to keep items in sync.",
         "guideTitle": "How to create the webhook in Zoho Inventory",
         "step1": "Open Zoho Inventory → Settings → Automation → Webhooks.",
-        "step2": "Create a new webhook and paste the URL, method, and header values from this page.",
+        "step2": "Create a new webhook and use the URL, method, and header values shown below.",
         "step3": "Set the action to match the resource action below and save the webhook.",
         "method": "HTTP method",
         "resourceAction": "Action",
         "webhookUri": "Webhook URL",
+        "headerTitle": "Header",
         "header": "Header: {name}",
         "samplePayload": "Sample payload",
+        "samplePayloadHint": "Send this JSON body from Zoho. Required keys are listed below — do not include a required flag in the payload.",
+        "samplePayloadJson": "JSON to send",
+        "requiredHighlightLegend": "indicates required fields in the webhook payload.",
+        "mappingNoteTitle": "Need more fields?",
+        "mappingNoteBody": "Map additional Zoho fields under Configuration → {mappingTitle} first. Mapped fields then appear in this sample payload.",
+        "mappingNoteLink": "Open field mapping",
         "copy": "Copy",
         "copied": "Copied to clipboard",
         "loadError": "Failed to load webhook setup details. Please try again.",
@@ -332,6 +344,8 @@
         "description": "Review your Zoho connection status and manage sync settings.",
         "setupWebhook": "Setup custom webhook",
         "configureMapping": "Configuration",
+        "connectionDetailsTitle": "Connection details",
+        "connectionDetailsSubtitle": "Status and sync overview for this integration.",
         "reconnect": "Connect",
         "webhookTitle": "Custom webhook setup",
         "backToDetails": "Back to details",
@@ -351,7 +365,43 @@
         "yes": "Yes",
         "no": "No",
         "disconnected": "Disconnected"
-
+      },
+      "zohoIntegrationGuide": {
+        "title": "How to integrate Zoho Inventory with your SimHo account",
+        "intro": "Follow these steps to connect Zoho Inventory, authorize access, and configure field mapping so records can sync into SimHo.",
+        "stepLabel": "Step {number}",
+        "mappingNote": "Note — Field mapping facilitates data sync from Zoho Inventory to your SimHo account. No records can be synced if field mapping is not saved.",
+        "steps": {
+          "connect": {
+            "title": "Click Connect",
+            "body": "From Settings → Integrations, open Zoho Inventory and click Connect to start the integration.",
+            "imageAlt": "Zoho Inventory integration card with Connect button"
+          },
+          "authenticate": {
+            "title": "Authenticate with your Zoho Inventory account",
+            "body": "Sign in with the Zoho account that has access to the Zoho Inventory organization you want to connect.",
+            "imageAlt": "Zoho sign-in screen"
+          },
+          "allow": {
+            "title": "Allow platform access and click Accept",
+            "body": "Review the requested permissions, confirm access for the platform, and click Accept to continue.",
+            "imageAlt": "Zoho permission consent screen with Accept button"
+          },
+          "success": {
+            "title": "Integration successful — click Finish Setup",
+            "body": "When the integration completes, click Finish Setup to continue to the field mapping screen.",
+            "imageAlt": "Integration completed dialog with Finish integration button"
+          },
+          "mapping": {
+            "title": "Configure field mapping and save",
+            "body": "Select SimHo fields and the corresponding Zoho fields. Turn Pull Historical Records off if you do not want to sync all existing records from Zoho Inventory for the respective module. Then click Save Mapping.",
+            "imageAlt": "Field mapping screen with SimHo and Zoho field pairs"
+          }
+        },
+        "finish": {
+          "title": "Finish",
+          "body": "You have successfully integrated Zoho Inventory with your SimHo account. If you pulled historical data, check the respective module for synced records. Otherwise, only new records created after mapping is saved will appear."
+        }
       }
     },
     "settingsPersonalProfile": {
@@ -1331,7 +1381,7 @@
         "sectionQr": "QR code",
         "assignedJob": "Assigned job",
         "notAssigned": "Not assigned",
-        "viewJob": "View job #{id}",
+        "viewJob": "View assigned job",
         "recordId": "Record ID"
       },
       "fields": {
@@ -1570,7 +1620,8 @@
         "city": "Enter or select a city.",
         "pincode": "Enter a postal or ZIP code.",
         "contactPersonTitle": "Select a title.",
-        "contactPerson": "Select a contact person."
+        "contactPerson": "Select a contact person.",
+        "contactPersonDuplicate": "This title and contact person combination is already added."
       },
       "location": {
         "searchPlaceholder": "Start typing street address…",
@@ -1667,6 +1718,7 @@
         "allLevelsSelected": "All levels"
       },
       "selectedSiteMapTitle": "Site address & map",
+      "selectedSitesMapTitle": "Site addresses & map",
       "mapNoStructuredAddress": "No structured address on file for this site. The map still tries to locate it from available fields.",
       "placeholders": {
         "customer": "Select client",
@@ -1678,6 +1730,7 @@
       },
       "hints": {
         "tags": "Enter tag IDs separated by commas or spaces (organization tags).",
+        "sitesMultiSelect": "Select one or more sites for this quotation.",
         "noLevels": "No levels returned for this project. Confirm the project levels API path if you need floor selection.",
         "noUsers": "No users were returned from the users API. Technician and role fields stay optional."
       },
@@ -1798,6 +1851,7 @@
         "quoteName": "Quote name",
         "customer": "Client",
         "site": "Site",
+        "sites": "Sites",
         "what3words": "What3words",
         "project": "Project",
         "primaryContact": "Primary contact",
@@ -1851,6 +1905,7 @@
         "quoteName": "Enter a quotation name.",
         "customer": "Select a client.",
         "site": "Select a site.",
+        "sites": "Select at least one site.",
         "project": "Select a project."
       }
     },
@@ -2218,7 +2273,7 @@
         "sectionLogs": "Activity logs",
         "sectionActivityTimeline": "Activity timeline",
         "sectionDispatches": "Dispatches",
-        "dispatchLink": "View dispatch #{id}",
+        "dispatchLink": "View dispatch",
         "sectionOverview": "Overview",
         "sectionJobs": "Jobs",
         "sectionItems": "Items",
@@ -2366,7 +2421,7 @@
         "view": "View details"
       },
       "table": {
-        "dispatchId": "Dispatch ID",
+        "dispatchId": "Dispatch number",
         "jobName": "Job name",
         "dispatchDate": "Dispatch date",
         "status": "Status",
@@ -2478,7 +2533,7 @@
         "delayed": "Delayed"
       },
       "fields": {
-        "dispatchId": "Dispatch ID",
+        "dispatchId": "Dispatch number",
         "dispatchTo": "Dispatch to",
         "dispatchedBy": "Dispatched by",
         "dispatchDate": "Dispatch date",

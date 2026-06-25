@@ -44,7 +44,7 @@ export function DispatchLineDetailPanel({ dispatchId, line, dateFmt, onRestocked
     <AppModal
       open
       onClose={() => (!saving ? onClose() : undefined)}
-      title={line.item.name?.trim() || `#${line.item.id}`}
+      title={line.item.name?.trim() || t("detail.lineTitle")}
       size="md"
       footer={
         <>

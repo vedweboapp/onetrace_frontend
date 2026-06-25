@@ -15,13 +15,14 @@ import type { ProjectType } from "@/features/project-types/types/project-type.ty
 import { formatProjectTypeLabel, normalizeProjectTypeHex } from "@/features/project-types/utils/project-type-display.util";
 import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { routes } from "@/shared/config/routes";
 import {
   ActiveStatusBadge,
   AddButton,
@@ -67,6 +68,7 @@ function projectTypeUserLabel(user: ProjectType["created_by"]): string {
 export function ProjectTypeSettingsPanel() {
   const t = useTranslations("Dashboard.projectTypes");
   const tList = useTranslations("Dashboard.list");
+  const tCustomization = useTranslations("Dashboard.settingsNav.customization");
   const dateFmt = useDashboardDateFormat();
   const { page, pageSize, listViewMode, search, isActiveParam, setUrl, setPage, setPageSize, setListViewMode } =
     useListUrlState();
@@ -122,9 +124,9 @@ export function ProjectTypeSettingsPanel() {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -185,8 +187,8 @@ export function ProjectTypeSettingsPanel() {
       toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
       setDetailRow((prev) => (prev?.id === row.id ? { ...prev, is_active: next } : prev));
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("toggleActiveError"));
+    } catch (error) {
+      toastApiError(error, t("toggleActiveError"));
     } finally {
       setTogglingId(null);
     }
@@ -287,6 +289,10 @@ export function ProjectTypeSettingsPanel() {
     <div className="space-y-6">
       {!hideListChrome ? (
         <ListPageHeader
+          title={t("title")}
+          description={t("subtitle")}
+          backHref={routes.dashboard.settingsCustomization}
+          backAriaLabel={tCustomization("backToHub")}
           filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}

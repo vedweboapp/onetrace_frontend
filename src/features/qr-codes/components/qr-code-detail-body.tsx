@@ -60,7 +60,7 @@ export function QrCodeDetailBody({ detail, dateFmt }: Props) {
                   href={`${routes.dashboard.jobs}/${detail.assigned_to_id}`}
                   className="text-sm font-medium text-[color:var(--dash-accent)] hover:underline"
                 >
-                  {t("detail.viewJob", { id: detail.assigned_to_id })}
+                  {t("detail.viewJob")}
                 </DetailEntityLink>
               ) : (
                 <span className="text-sm text-slate-600 dark:text-slate-400">{t("detail.notAssigned")}</span>
@@ -71,9 +71,6 @@ export function QrCodeDetailBody({ detail, dateFmt }: Props) {
             </DetailMetricCard>
             <DetailMetricCard label={t("table.lastScanned")}>
               <span>{formatOptionalDate(detail.last_scanned_at, dateFmt)}</span>
-            </DetailMetricCard>
-            <DetailMetricCard label={t("detail.recordId")}>
-              <span className="tabular-nums">{detail.id}</span>
             </DetailMetricCard>
           </DetailMetricsGrid>
         </DetailPanelCard>

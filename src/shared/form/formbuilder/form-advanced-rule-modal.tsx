@@ -7,6 +7,7 @@ import { FormRule, RuleCondition, FormRuleOutput, RuleAction, FormRuleBlock } fr
 import MultiSelect from "../components/multi-select";
 import PhoneInput from "react-phone-number-input";
 import { SurfacePhoneCountrySelect } from "@/shared/ui/surface-phone-country-select";
+import { DEFAULT_PHONE_COUNTRY } from "@/shared/ui/surface-phone-field";
 import { currencyList } from "../components/currency-list";
 
 const FORM_BUILDER_SUBHEADER_OFFSET = "top-28";
@@ -325,7 +326,7 @@ const FormAdvancedRuleModal = ({
       return (
         <PhoneInput
           international
-          defaultCountry="IN"
+          defaultCountry={DEFAULT_PHONE_COUNTRY}
           placeholder="Enter phone number"
           className="w-full mt-1.5"
           value={blockValue}

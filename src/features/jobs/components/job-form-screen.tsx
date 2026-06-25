@@ -26,7 +26,7 @@ import { fetchItemsPage } from "@/features/items/api/item.api";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
@@ -446,8 +446,8 @@ export function JobFormScreen({ mode, jobId }: Props) {
       const saved = isEdit && jobId ? await updateJob(jobId, payload) : await createJob(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.jobs, saved.id, listBack));
-    } catch {
-      toastError(isEdit ? t("updateError") : t("createError"));
+    } catch (error) {
+      toastApiError(error, isEdit ? t("updateError") : t("createError"));
     } finally {
       setSaving(false);
     }
@@ -709,13 +709,10 @@ export function JobFormScreen({ mode, jobId }: Props) {
             </section>
 
             <section className="space-y-6">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {t("sections.jobMeta")}
-              </h2>
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   {t("sections.jobMeta")}
-                </h3>
+                </h2>
                 <AppButton
                   type="button"
                   variant="primary"

@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+
 import * as React from "react";
 import { ArrowUpRight, LayoutGrid, List, Layers, MapPinned, User } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -7,8 +9,10 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchDrawingsPage } from "@/features/projects/api/drawing.api";
 import { DrawingFilePreview, DrawingFilePreviewFill } from "@/features/projects/components/drawing-file-preview";
+import { DrawingPinThumbnailOverlay } from "@/features/projects/components/drawing-pin-thumbnail-overlay";
 import { DrawingUploadModal } from "@/features/projects/components/drawing-upload-modal";
 import type { Drawing } from "@/features/projects/types/drawing.types";
+import { countDrawingPins } from "@/features/projects/utils/drawing-list-pins.util";
 import type { ListPageViewMode } from "@/shared/hooks/use-list-url-state";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { cn } from "@/core/utils/http.util";
@@ -77,7 +81,7 @@ function DrawingGridCard({
 }) {
   const t = useTranslations("Dashboard.projects.drawings");
   const createdBy = row.created_by?.username || row.created_by?.email || "—";
-  const pinCount = row.pin_count ?? row.pins_count;
+  const pinCount = countDrawingPins(row.plots, row.pin_count ?? row.pins_count);
   const hasLocation = Boolean(row.block?.trim() || row.level?.trim());
   const typeLabel = shortFileTypeLabel(row.drawing_file_type);
 
@@ -109,6 +113,7 @@ function DrawingGridCard({
           fileType={row.drawing_file_type}
           alt=""
         />
+        <DrawingPinThumbnailOverlay plots={row.plots} />
         <div
           className={cn(
             "pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-900/25 via-transparent to-transparent opacity-0 transition-opacity",
@@ -140,7 +145,7 @@ function DrawingGridCard({
           <span className="inline-flex tabular-nums rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
             {formatBytes(row.drawing_file_size)}
           </span>
-          {typeof pinCount === "number" ? (
+          {typeof pinCount === "number" && pinCount > 0 ? (
             <span className="inline-flex items-center rounded-full bg-emerald-100/90 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/55 dark:text-emerald-300">
               {t("cardPinCount", { count: pinCount })}
             </span>
@@ -245,9 +250,9 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
           setItems(next);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -280,14 +285,17 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     return [
       c.custom("drawing", t("table.drawing"), (row) => (
         <span className="flex min-w-0 items-center gap-3">
-          <DrawingFilePreview
-            key={`${row.id}-${row.drawing_file}`}
-            drawingFile={row.drawing_file}
-            fileType={row.drawing_file_type}
-            alt=""
-            widthPx={76}
-            className="h-12 w-[4.75rem] shrink-0 border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900"
-          />
+          <span className="relative h-12 w-[4.75rem] shrink-0 overflow-hidden border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
+            <DrawingFilePreview
+              key={`${row.id}-${row.drawing_file}`}
+              drawingFile={row.drawing_file}
+              fileType={row.drawing_file_type}
+              alt=""
+              widthPx={76}
+              className="size-full"
+            />
+            <DrawingPinThumbnailOverlay plots={row.plots} />
+          </span>
           <span className="min-w-0 truncate font-semibold text-slate-900 dark:text-slate-100">{row.name}</span>
         </span>
       )),

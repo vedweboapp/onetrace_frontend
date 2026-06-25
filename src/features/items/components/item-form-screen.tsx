@@ -7,7 +7,7 @@ import { useRouter } from "@/i18n/navigation";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { cn } from "@/core/utils/http.util";
 import { createItem, fetchItem, updateItem } from "@/features/items/api/item.api";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
@@ -117,8 +117,8 @@ export function ItemFormScreen({ mode, itemId }: Props) {
             });
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.items, saved.id, safeBack));
-    } catch {
-      toastError(t("loadError"));
+    } catch (error) {
+      toastApiError(error, t("loadError"));
     } finally {
       setSubmitting(false);
     }

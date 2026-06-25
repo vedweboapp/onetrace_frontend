@@ -16,7 +16,7 @@ import type { CompositeItem } from "@/features/composite-items/types/composite-i
 import { InstallationTypeChip } from "@/features/installation-types/components/installation-type-chip";
 import { resolveInstallationTypeChipData } from "@/features/items/utils/item-installation-type.util";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
-import { toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
@@ -132,7 +132,7 @@ export function CompositeItemsPanel() {
             label: it.installation_type?.trim() || `#${it.id}`,
           })),
         );
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setGroupOptions([]);
           setInstallationTypeOptions([]);
@@ -201,9 +201,9 @@ export function CompositeItemsPanel() {
           setItems(rows.filter((r) => r.is_composite === true));
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {

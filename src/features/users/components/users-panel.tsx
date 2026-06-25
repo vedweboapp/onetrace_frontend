@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+
 import * as React from "react";
 import { Pencil, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -92,9 +94,9 @@ export function UsersPanel() {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {

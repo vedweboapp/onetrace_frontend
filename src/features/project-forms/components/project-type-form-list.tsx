@@ -15,7 +15,7 @@ import {
 } from "@/shared/ui";
 import { useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { getProjectFormList, updateProjectForm } from "@/features/project-forms/api/project-forms.api";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import type { ProjectType } from "@/features/project-types/types/project-type.types";
 import { fetchInstallationTypesPage } from "@/features/installation-types/api/installation-type.api";
@@ -176,9 +176,9 @@ const ProjectTypeFormList = () => {
                     setItems(resolvedItems);
                     setPagination(resolvedPagination);
                 }
-            } catch {
+            } catch (error) {
                 if (!cancelled) {
-                    setLoadError(t("loadError"));
+                    setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
                     setItems([]);
                 }
             } finally {
@@ -204,7 +204,7 @@ const ProjectTypeFormList = () => {
                 if (!cancelled) {
                     setProjectTypes(Array.isArray(response.items) ? response.items : []);
                 }
-            } catch {
+            } catch (error) {
                 if (!cancelled) {
                     setProjectTypes([]);
                     setProjectTypesError(t("projectTypesLoadError"));
@@ -221,7 +221,7 @@ const ProjectTypeFormList = () => {
                 if (!cancelled) {
                     setInstallationTypes(Array.isArray(response.items) ? response.items : []);
                 }
-            } catch {
+            } catch (error) {
                 if (!cancelled) {
                     setInstallationTypes([]);
                     setInstallationTypesError(t("installationTypesLoadError"));
@@ -263,7 +263,7 @@ const ProjectTypeFormList = () => {
                 });
                 toastSuccess(t("statusUpdatedToast"));
             } catch (error) {
-                toastError(t("statusUpdateErrorToast"));
+                toastApiError(error, t("statusUpdateErrorToast"));
             } finally {
                 setTogglingId(null);
             }

@@ -25,6 +25,8 @@ type DashboardEmptyStateProps = {
   iconName?: DashboardEmptyStateIconName;
   action?: React.ReactNode;
   className?: string;
+  /** Shorter layout for embedded tabs/panels (no forced min-height). */
+  compact?: boolean;
 };
 
 export function DashboardEmptyState({
@@ -34,6 +36,7 @@ export function DashboardEmptyState({
   iconName = "default",
   action,
   className,
+  compact = false,
 }: DashboardEmptyStateProps) {
   const iconByName: Record<DashboardEmptyStateIconName, LucideIcon> = {
     default: Hammer,
@@ -53,7 +56,10 @@ export function DashboardEmptyState({
   return (
     <div
       className={cn(
-        "flex min-h-[420px] flex-col items-center justify-center rounded-2xl bg-slate-50/45 px-6 text-center dark:bg-slate-900/25",
+        "flex flex-col items-center justify-center px-6 text-center",
+        compact
+          ? "min-h-0 py-10 sm:py-14"
+          : "min-h-[420px] rounded-2xl bg-slate-50/45 dark:bg-slate-900/25",
         className,
       )}
     >

@@ -23,10 +23,10 @@ import {
   EntityDetailLoadingSkeleton,
   EntityDetailScreen,
 } from "@/shared/components/entity";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { buildProjectDetailTabHref } from "@/shared/utils/detail-from-list.util";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
   AppTabs,
@@ -131,8 +131,8 @@ export function ProjectDetailScreen({ projectId }: Props) {
       toastSuccess(t("deletedToast"));
       setDeleteOpen(false);
       router.push(routes.dashboard.projects);
-    } catch {
-      toastError(t("deleteError"));
+    } catch (error) {
+      toastApiError(error, t("deleteError"));
     } finally {
       setDeleting(false);
     }
@@ -143,10 +143,15 @@ export function ProjectDetailScreen({ projectId }: Props) {
     try {
       const q = await createQuotationFromProject(projectId);
       toastSuccess(t("detail.quoteFromProjectToast"));
-      setActiveTab("quotations");
-      router.push(buildProjectDetailTabHref(projectId, "quotations", q.id));
-    } catch {
-      toastError(t("detail.quoteFromProjectError"));
+      router.push(
+        buildEntityDetailHrefAfterSave(
+          routes.dashboard.quotations,
+          q.id,
+          `${routes.dashboard.projects}/${projectId}`,
+        ),
+      );
+    } catch (error) {
+      toastApiError(error, t("detail.quoteFromProjectError"));
     } finally {
       setQuoting(false);
     }
@@ -191,8 +196,8 @@ export function ProjectDetailScreen({ projectId }: Props) {
                 await patchProject(detail.id, { is_active: next });
                 toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
                 retry();
-              } catch {
-                toastError(t("toggleActiveError"));
+              } catch (error) {
+                toastApiError(error, t("toggleActiveError"));
               } finally {
                 setTogglingActive(false);
               }

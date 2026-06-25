@@ -25,7 +25,7 @@ import { fetchItemsPage } from "@/features/items/api/item.api";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { AddressPlaceAutocomplete } from "@/shared/components/maps/address-place-autocomplete";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
@@ -388,8 +388,8 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
         isEdit && invoiceId ? await updateInvoice(invoiceId, payload) : await createInvoice(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.invoices, saved.id, listBack));
-    } catch {
-      toastError(isEdit ? t("updateError") : t("createError"));
+    } catch (error) {
+      toastApiError(error, isEdit ? t("updateError") : t("createError"));
     } finally {
       setSaving(false);
     }
@@ -446,24 +446,17 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
           control={control}
           name={`${prefix}.address_line_2`}
           render={({ field }) => (
-            <AddressPlaceAutocomplete
-              id={`${prefix}-line2`}
-              label={t("fields.addressLine2")}
-              variant="secondary"
-              value={field.value ?? ""}
-              onChange={field.onChange}
-              onBlur={field.onBlur}
-              countryIso={typeof countryIso === "string" ? countryIso : ""}
-              contextCity={typeof city === "string" ? city : ""}
-              onSelectPlace={(place) => {
-                field.onChange(place.line2 || place.line1 || place.label);
-                setValue(countryIsoName, place.countryIso ?? "", { shouldDirty: true });
-                setValue(stateIsoName, place.stateIso ?? "", { shouldDirty: true });
-                setValue(cityName, place.city ?? "", { shouldDirty: true });
-                setValue(`${prefix}.pincode`, place.pincode ?? "", { shouldDirty: true });
-              }}
-              disabled={saving}
-            />
+            <FieldGroup label={t("fields.addressLine2")} htmlFor={`${prefix}-line2`}>
+              <input
+                id={`${prefix}-line2`}
+                autoComplete="address-line2"
+                className={surfaceInputClassName}
+                disabled={saving}
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+              />
+            </FieldGroup>
           )}
         />
         <CascadingLocationFields<InvoiceFormValues>
@@ -523,8 +516,8 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                   try {
                     await sendInvoice(invoiceId);
                     toastSuccess(t("send.success"));
-                  } catch {
-                    toastError(t("send.failed"));
+                  } catch (error) {
+                    toastApiError(error, t("send.failed"));
                   } finally {
                     setSending(false);
                   }

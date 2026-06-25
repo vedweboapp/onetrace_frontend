@@ -15,15 +15,17 @@ import { QuotationDraftComposer } from "@/features/quotations/components/quotati
 import {
   getQuotationAdditionalContactEntries,
   getQuotationCustomerId,
-  getQuotationNestedSite,
   getQuotationProjectId,
-  getQuotationSiteId,
   getQuotationTechnicianEntries,
   quotationCustomerLabel,
   quotationProjectLabel,
-  quotationSiteLabel,
+  quotationSiteListRows,
   quotationTagsLabels,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
+import {
+  quotationSiteSnapshotToAddressMapPoint,
+  siteToAddressMapPoint,
+} from "@/features/quotations/utils/quotation-site-map.util";
 import { seedDraftFromQuoteSections } from "@/features/quotations/utils/quotation-draft-seed.util";
 import type { Site } from "@/features/sites/types/site.types";
 import {
@@ -38,7 +40,6 @@ import {
   detailMapFillClassName,
   detailMapViewportClassName,
 } from "@/shared/components/layout/detail-page-map-layout";
-import { DetailTabStepNav } from "@/shared/components/layout/detail-tab-step-nav";
 import {
   DetailMetricCard,
   DetailMetricsGrid,
@@ -142,8 +143,8 @@ function QuotationDetailPeopleSection({
   );
 }
 
-const AddressMiniMap = dynamic(
-  () => import("@/shared/components/maps/address-mini-map").then((m) => m.AddressMiniMap),
+const AddressMultiMiniMap = dynamic(
+  () => import("@/shared/components/maps/address-multi-mini-map").then((m) => m.AddressMultiMiniMap),
   {
     ssr: false,
     loading: () => (
@@ -161,12 +162,12 @@ type Props = {
   customerName?: string;
   /** When `project` is a bare id, resolve the name from your projects cache. */
   projectName?: string;
-  /** When `site` is a bare id, resolve the label from your sites cache. */
-  siteName?: string;
+  /** Resolve site labels when API returns bare ids. */
+  siteNames?: Record<number, string>;
   /** When `tags` are bare ids, resolve display names from your tags cache. */
   tagLookup?: Record<number, string>;
-  siteDetail: Site | null;
-  siteDetailLoading: boolean;
+  siteDetails: Site[];
+  siteDetailsLoading: boolean;
   dateFmt: Intl.DateTimeFormat;
   dueFmt: Intl.DateTimeFormat;
 };
@@ -175,10 +176,10 @@ export function QuotationDetailBody({
   detail,
   customerName,
   projectName,
-  siteName,
+  siteNames,
   tagLookup,
-  siteDetail,
-  siteDetailLoading,
+  siteDetails,
+  siteDetailsLoading,
   dateFmt,
   dueFmt,
 }: Props) {
@@ -211,29 +212,20 @@ export function QuotationDetailBody({
     setDetailTab(searchParams.get("tab") === "pricing" ? "pricing" : "project");
   }, [detail.id, searchParams]);
 
-  const snap = detail.site_snapshot;
-  const snapshotAddressUsable =
-    !!snap &&
-    hasDetailAddress({
-      line1: snap.address_line_1,
-      line2: snap.address_line_2,
-      city: snap.city,
-      state: snap.state,
-      pincode: snap.pincode,
-      country: snap.country,
-    });
+  const siteRows = React.useMemo(() => quotationSiteListRows(detail, siteNames), [detail, siteNames]);
 
-  const nestedSite = getQuotationNestedSite(detail.site);
-  const nestedSiteAddressUsable =
-    !!nestedSite &&
-    hasDetailAddress({
-      line1: nestedSite.address_line_1,
-      line2: nestedSite.address_line_2,
-      city: nestedSite.city,
-      state: nestedSite.state,
-      pincode: nestedSite.pincode,
-      country: nestedSite.country,
-    });
+  const siteMapPoints = React.useMemo(() => {
+    if (siteDetails.length > 0) {
+      return siteDetails.map((site) => siteToAddressMapPoint(site));
+    }
+    const snapshots = [
+      ...(detail.site_snapshots ?? []),
+      ...(detail.site_snapshot ? [detail.site_snapshot] : []),
+    ];
+    return snapshots.map((snap) => quotationSiteSnapshotToAddressMapPoint(snap));
+  }, [detail.site_snapshot, detail.site_snapshots, siteDetails]);
+
+  const tagsLabel = quotationTagsLabels(detail.tags, tagLookup);
 
   const quoteSectionsSorted = React.useMemo(() => {
     const rows = detail.quote_sections;
@@ -246,11 +238,6 @@ export function QuotationDetailBody({
     [quoteSectionsSorted],
   );
 
-  const siteIdResolved = getQuotationSiteId(detail.site);
-  const siteWhat3Words =
-    snap?.what3words?.trim() || nestedSite?.what3words?.trim() || siteDetail?.what3words?.trim() || "";
-
-  const tagsLabel = quotationTagsLabels(detail.tags, tagLookup);
   const technicianEntries = React.useMemo(() => getQuotationTechnicianEntries(detail), [detail]);
   const additionalContactEntries = React.useMemo(
     () => getQuotationAdditionalContactEntries(detail.additional_customer_contact),
@@ -299,16 +286,22 @@ export function QuotationDetailBody({
           )}
         </DetailMetricCard>
 
-        <DetailMetricCard label={t("fields.site")}>
-          {
-            detail?.sites?.map((site: any, key: any) => {
-              return (
-                <DetailEntityLink href={`${routes.dashboard.sites}/${site.id}`} key={key} className={cn("mr-2",detailEntityLinkClassName)}>
-                  {site.site_name}
+        <DetailMetricCard label={t("fields.sites")}>
+          {siteRows.length === 0 ? (
+            <span>—</span>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {siteRows.map((row) => (
+                <DetailEntityLink
+                  key={row.id}
+                  href={`${routes.dashboard.sites}/${row.id}`}
+                  className={detailEntityLinkClassName}
+                >
+                  {row.label}
                 </DetailEntityLink>
-              );
-            })
-          }
+              ))}
+            </div>
+          )}
         </DetailMetricCard>
         <DetailMetricCard label={t("fields.tags")}>{tagsLabel}</DetailMetricCard>
         <DetailMetricCard label={t("fields.orderNumber")}>{detail.order_number?.trim() || "—"}</DetailMetricCard>
@@ -330,127 +323,55 @@ export function QuotationDetailBody({
   );
 
   const siteLocationSplit = React.useMemo(() => {
-    if (siteIdResolved == null) return null;
-    if (!(snapshotAddressUsable || nestedSiteAddressUsable || siteDetailLoading || siteDetail)) return null;
+    if (siteRows.length === 0 && siteMapPoints.length === 0 && !siteDetailsLoading) return null;
 
-    const mapShell = (addressParts: {
-      line1?: string | null;
-      line2?: string | null;
-      city?: string | null;
-      state?: string | null;
-      pincode?: string | null;
-      country?: string | null;
-    }) => (
-      <AddressMiniMap
-        addressParts={addressParts}
-        className={detailMapFillClassName}
-        mapClassName="h-full min-h-0 flex-1"
-      />
-    );
+    const addressNodes =
+      siteDetails.length > 0 ? (
+        <ul className="space-y-4">
+          {siteDetails.map((site) => (
+            <li key={site.id} className="space-y-2 border-t border-slate-200/80 pt-4 first:border-t-0 first:pt-0 dark:border-slate-800">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{site.site_name}</p>
+              {hasDetailAddress({
+                line1: site.address_line_1,
+                line2: site.address_line_2,
+                city: site.city,
+                state: site.state,
+                pincode: site.pincode,
+                country: site.country,
+              }) ? (
+                <DetailFormattedAddress
+                  line1={site.address_line_1}
+                  line2={site.address_line_2}
+                  city={site.city}
+                  state={site.state}
+                  pincode={site.pincode}
+                  country={site.country}
+                  emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">—</p>}
+                />
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400">{t("mapNoStructuredAddress")}</p>
+              )}
+              <What3WordsInline value={site.what3words} label={t("fields.what3words")} />
+            </li>
+          ))}
+        </ul>
+      ) : siteDetailsLoading ? null : (
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t("mapNoStructuredAddress")}</p>
+      );
 
-    if (snapshotAddressUsable && snap) {
-      const parts = {
-        line1: snap.address_line_1,
-        line2: snap.address_line_2,
-        city: snap.city,
-        state: snap.state,
-        pincode: snap.pincode,
-        country: snap.country,
-      };
-      return {
-        address: (
-          <DetailFormattedAddress
-            line1={parts.line1}
-            line2={parts.line2}
-            city={parts.city}
-            state={parts.state}
-            pincode={parts.pincode}
-            country={parts.country}
-            emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">—</p>}
-          />
-        ),
-        map: mapShell(parts),
-      };
-    }
+    const mapNode =
+      siteDetailsLoading && siteMapPoints.length === 0 ? (
+        <div className="h-full w-full animate-pulse bg-slate-100 dark:bg-slate-800" />
+      ) : siteMapPoints.length > 0 ? (
+        <AddressMultiMiniMap
+          points={siteMapPoints}
+          className={detailMapFillClassName}
+          mapClassName="h-full min-h-0 flex-1"
+        />
+      ) : null;
 
-    if (nestedSiteAddressUsable && nestedSite) {
-      const parts = {
-        line1: nestedSite.address_line_1,
-        line2: nestedSite.address_line_2,
-        city: nestedSite.city,
-        state: nestedSite.state,
-        pincode: nestedSite.pincode,
-        country: nestedSite.country,
-      };
-      return {
-        address: (
-          <DetailFormattedAddress
-            line1={parts.line1}
-            line2={parts.line2}
-            city={parts.city}
-            state={parts.state}
-            pincode={parts.pincode}
-            country={parts.country}
-            emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">—</p>}
-          />
-        ),
-        map: mapShell(parts),
-      };
-    }
-
-    if (siteDetailLoading) {
-      return {
-        address: null as React.ReactNode,
-        map: <div className="h-full w-full animate-pulse bg-slate-100 dark:bg-slate-800" />,
-      };
-    }
-
-    if (siteDetail) {
-      const parts = {
-        line1: siteDetail.address_line_1,
-        line2: siteDetail.address_line_2,
-        city: siteDetail.city,
-        state: siteDetail.state,
-        pincode: siteDetail.pincode,
-        country: siteDetail.country,
-      };
-      const hasAddr = hasDetailAddress({
-        line1: parts.line1,
-        line2: parts.line2,
-        city: parts.city,
-        state: parts.state,
-        pincode: parts.pincode,
-        country: parts.country,
-      });
-      return {
-        address: hasAddr ? (
-          <DetailFormattedAddress
-            line1={parts.line1}
-            line2={parts.line2}
-            city={parts.city}
-            state={parts.state}
-            pincode={parts.pincode}
-            country={parts.country}
-            emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">—</p>}
-          />
-        ) : (
-          <p className="text-sm text-slate-500 dark:text-slate-400">{t("mapNoStructuredAddress")}</p>
-        ),
-        map: mapShell(parts),
-      };
-    }
-
-    return null;
-  }, [
-    nestedSite,
-    nestedSiteAddressUsable,
-    siteDetail,
-    siteDetailLoading,
-    siteIdResolved,
-    snap,
-    snapshotAddressUsable,
-    t,
-  ]);
+    return { address: addressNodes, map: mapNode };
+  }, [siteDetails, siteDetailsLoading, siteMapPoints, siteRows.length, t]);
 
   const showMapColumn = siteLocationSplit != null;
 
@@ -486,11 +407,6 @@ export function QuotationDetailBody({
               {siteLocationSplit?.address ?? (
                 <p className="text-sm text-slate-500 dark:text-slate-400">{t("mapNoStructuredAddress")}</p>
               )}
-              <What3WordsInline
-                value={siteWhat3Words}
-                label={t("fields.what3words")}
-                className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800"
-              />
             </DetailPanelCard>
           ) : null}
 
@@ -517,7 +433,6 @@ export function QuotationDetailBody({
             }}
           />
         </DetailPageMapLayout>
-        <DetailTabStepNav onNext={() => goToTab("pricing")} nextLabel={t("formTabs.nextToPricing")} />
       </div>
 
       <div
@@ -539,7 +454,6 @@ export function QuotationDetailBody({
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("page.editQuoteScopeEmpty")}</p>
           )}
         </DetailPanelCard>
-        <DetailTabStepNav onPrev={() => goToTab("project")} prevLabel={t("formTabs.prevToProject")} />
       </div>
     </DetailPagePadding>
   );

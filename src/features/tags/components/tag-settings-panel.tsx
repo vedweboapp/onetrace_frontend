@@ -8,13 +8,14 @@ import { createTag, deleteTag, fetchTagsPage, updateTag } from "@/features/tags/
 import type { Tag } from "@/features/tags/types/tag.types";
 import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { routes } from "@/shared/config/routes";
 import {
   AddButton, AppButton,
   AppModal,
@@ -86,6 +87,7 @@ function TagChip({ row, className }: { row: Tag; className?: string }) {
 export function TagSettingsPanel() {
   const t = useTranslations("Dashboard.tags");
   const tList = useTranslations("Dashboard.list");
+  const tCustomization = useTranslations("Dashboard.settingsNav.customization");
   const dateFmt = useDashboardDateFormat();
   const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } = useListUrlState();
 
@@ -134,9 +136,9 @@ export function TagSettingsPanel() {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -226,8 +228,8 @@ export function TagSettingsPanel() {
       toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
       setDetailRow((prev) => (prev?.id === row.id ? { ...prev, is_active: next } : prev));
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("toggleActiveError"));
+    } catch (error) {
+      toastApiError(error, t("toggleActiveError"));
     } finally {
       setTogglingId(null);
     }
@@ -279,6 +281,10 @@ export function TagSettingsPanel() {
     <div className="space-y-6">
       {!hideListChrome ? (
         <ListPageHeader
+          title={t("title")}
+          description={t("subtitle")}
+          backHref={routes.dashboard.settingsCustomization}
+          backAriaLabel={tCustomization("backToHub")}
           filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}

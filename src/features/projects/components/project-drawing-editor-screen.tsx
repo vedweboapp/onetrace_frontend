@@ -22,7 +22,7 @@ import {
   resolvePinMarkerAbbreviation,
 } from "@/features/projects/utils/drawing-pin-display.util";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
 import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { AppButton, CheckmarkSelect, ConfirmDialog, DetailPanel, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
@@ -168,8 +168,44 @@ function plotContainsAllPins(
 
 function getCentroid(points: number[][]): number[] {
   if (!points.length) return [0, 0];
-  const [sx, sy] = points.reduce((acc, p) => [acc[0] + (p[0] ?? 0), acc[1] + (p[1] ?? 0)], [0, 0]);
-  return [Math.round(sx / points.length), Math.round(sy / points.length)];
+
+  let signedArea = 0;
+  let cx = 0;
+  let cy = 0;
+
+  for (let i = 0; i < points.length; i++) {
+    const p1 = points[i]!;
+    const p2 = points[(i + 1) % points.length]!;
+    const x0 = p1[0] ?? 0;
+    const y0 = p1[1] ?? 0;
+    const x1 = p2[0] ?? 0;
+    const y1 = p2[1] ?? 0;
+
+    const a = x0 * y1 - x1 * y0;
+    signedArea += a;
+    cx += (x0 + x1) * a;
+    cy += (y0 + y1) * a;
+  }
+
+  signedArea *= 0.5;
+
+  if (Math.abs(signedArea) < 1e-7) {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const p of points) {
+      const x = p[0] ?? 0;
+      const y = p[1] ?? 0;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    return [Math.round((minX + maxX) / 2), Math.round((minY + maxY) / 2)];
+  }
+
+  return [Math.round(cx / (6 * signedArea)), Math.round(cy / (6 * signedArea))];
 }
 
 function applyStableLocations(plots: LocalPlot[]) {
@@ -504,8 +540,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       if (results[4].status === "fulfilled") {
         setProjectForms(results[4].value.items);
       }
-    } catch {
-      toastError(t("loadError"));
+    } catch (error) {
+      toastApiError(error, t("loadError"));
     }
   }, [drawingId, projectId, t]);
 
@@ -1198,7 +1234,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     const plotsPayload = toPayload(localPlots, formData);
 
     // Append the JSON payload as a string field
-    formData.append('payload', JSON.stringify({ plots: plotsPayload }));
+    formData.append('payload', JSON.stringify({name: drawingName,plots: plotsPayload }));
 
     // Send multipart/form-data to the backend
     const updated = await updateDrawingPlots(projectId, drawingId, formData);
@@ -1414,8 +1450,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       toastSuccess(t("savedAll"));
       // Refresh all data from API after successful save
       await loadAllData();
-    } catch {
-      toastError(t("saveAllError"));
+    } catch (error) {
+      toastApiError(error, t("saveAllError"));
     } finally {
       setSavingAll(false);
     }
@@ -1565,10 +1601,13 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
           <div className="min-w-0">
               <input
               type="text"
-              disabled
+              // disabled
               className="border-0 border-b border-transparent outline-none focus:border-b-blue-500 truncate text-lg font-semibold text-slate-900 dark:text-slate-50"
-              value={drawingName || t("title")}
-              onChange={(e) => setDrawingName(e.target.value)}
+              value={drawingName}
+              onChange={(e) => {
+                setDrawingName(e.target.value);
+                setDirty(true);
+              }}
             />
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
           </div>
@@ -1766,8 +1805,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                       const minY = plotPoints.length ? Math.min(...plotPoints.map((p) => p[1])) : 0;
                       const maxX = plotPoints.length ? Math.max(...plotPoints.map((p) => p[0])) : 0;
                       const maxY = plotPoints.length ? Math.max(...plotPoints.map((p) => p[1])) : 0;
-                      const labelX = minX + (maxX - minX) / 2;
-                      const labelY = minY + (maxY - minY) / 2;
+                      const [labelX, labelY] = getCentroid(plotPoints);
                       const isSelected = selectedPlotId === String(plot.id);
                       const labelText = plot.name.length > 24 ? `${plot.name.slice(0, 24)}...` : plot.name;
                       const badgeWidth = Math.max(90, Math.min(220, labelText.length * 7 + 20));
@@ -1876,13 +1914,13 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                           <g className="pointer-events-none">
                             <rect
                               x={labelX - badgeWidth / 2}
-                              y={Math.max(8, labelY - 30)}
+                              y={Math.max(8, labelY - 12)}
                               width={badgeWidth}
                               height={24}
                               rx={12}
                               fill="rgba(15,23,42,0.9)"
                             />
-                            <text x={labelX} y={Math.max(24, labelY - 14)} fill="white" fontSize={12} fontWeight={700} textAnchor="middle">
+                            <text x={labelX} y={Math.max(24, labelY + 4)} fill="white" fontSize={12} fontWeight={700} textAnchor="middle">
                               {labelText}
                             </text>
                           </g>

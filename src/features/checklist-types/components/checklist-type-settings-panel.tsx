@@ -23,7 +23,7 @@ import { fetchProjectTypesPage } from "@/features/project-types/api/project-type
 import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
 import { zTrimmedNonEmpty } from "@/shared/form";
 import { ChecklistTypeSortableTable } from "@/features/checklist-types/components/checklist-type-sortable-table";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
@@ -35,6 +35,7 @@ import {
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { reorderArray } from "@/shared/utils/reorder-array.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { routes } from "@/shared/config/routes";
 import {
   ActiveStatusBadge,
   AddButton,
@@ -77,6 +78,7 @@ function formatOptionalDate(dateFmt: Intl.DateTimeFormat, value: string | null):
 export function ChecklistTypeSettingsPanel() {
   const t = useTranslations("Dashboard.checklistTypes");
   const tList = useTranslations("Dashboard.list");
+  const tCustomization = useTranslations("Dashboard.settingsNav.customization");
   const dateFmt = useDashboardDateFormat();
   const searchParams = useSearchParams();
   const { page, pageSize, listViewMode, search, isActiveParam, setUrl, setPage, setPageSize, setListViewMode } =
@@ -141,7 +143,7 @@ export function ChecklistTypeSettingsPanel() {
             })),
           );
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) setProjectTypeOptions([]);
       }
     })();
@@ -165,9 +167,9 @@ export function ChecklistTypeSettingsPanel() {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -232,8 +234,8 @@ export function ChecklistTypeSettingsPanel() {
       toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
       setDetailRow((prev) => (prev?.id === row.id ? { ...prev, is_active: next } : prev));
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("toggleActiveError"));
+    } catch (error) {
+      toastApiError(error, t("toggleActiveError"));
     } finally {
       setTogglingId(null);
     }
@@ -254,9 +256,9 @@ export function ChecklistTypeSettingsPanel() {
         await Promise.all(updates.map((u) => patchChecklistType(u.id, { sequence: u.sequence })));
         toastSuccess(t("sequenceUpdated"));
         setRefreshNonce((n) => n + 1);
-      } catch {
+      } catch (error) {
         setItems(prev);
-        toastError(t("sequenceUpdateError"));
+        toastApiError(error, t("sequenceUpdateError"));
       } finally {
         setReordering(false);
         setDragFromIndex(null);
@@ -349,6 +351,10 @@ export function ChecklistTypeSettingsPanel() {
     <div className="space-y-6">
       {!hideListChrome ? (
         <ListPageHeader
+          title={t("title")}
+          description={t("subtitle")}
+          backHref={routes.dashboard.settingsCustomization}
+          backAriaLabel={tCustomization("backToHub")}
           filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}

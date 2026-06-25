@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { City, State } from "country-state-city";
-import { isSiteContactPersonTitle } from "@/features/sites/utils/site-contact-person.util";
+import { findDuplicateSiteContactPersonIndices } from "@/features/sites/utils/site-contact-person.util";
 import { zTrimmedNonEmpty } from "@/shared/form";
 
 export type SiteFormMessages = {
@@ -13,6 +13,7 @@ export type SiteFormMessages = {
   pincode: string;
   contactPersonTitle: string;
   contactPerson: string;
+  contactPersonDuplicate: string;
 };
 
 export function createSiteFormSchema(messages: SiteFormMessages) {
@@ -71,6 +72,19 @@ export function createSiteFormSchema(messages: SiteFormMessages) {
           code: z.ZodIssueCode.custom,
           path: ["city"],
           message: messages.city,
+        });
+      }
+
+      for (const index of findDuplicateSiteContactPersonIndices(data.contacts)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["contacts", index, "contact"],
+          message: messages.contactPersonDuplicate,
+        });
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["contacts", index, "title"],
+          message: messages.contactPersonDuplicate,
         });
       }
     });

@@ -5,7 +5,7 @@ import { Check, CheckCheck, Layers, Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { fetchFormsPage } from "@/features/forms/api/forms.api";
+import { fetchProjectFormsByProject } from "@/features/forms/api/forms.api";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
 import { deleteJob } from "@/features/jobs/api/job.api";
 import { fetchProjectsPage, fetchProjectJobsHierarchy } from "@/features/projects/api/project.api";
@@ -33,7 +33,7 @@ import {
 } from "@/shared/mass-actions";
 import { routes } from "@/shared/config/routes";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import { jobAssignedWorkerLabel } from "@/features/jobs/utils/job-nested-fields.util";
 import {
@@ -503,7 +503,7 @@ export function ProjectJobsTab({ projectId }: Props) {
           fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
           fetchProjectsPage(1, 500, { is_active: true }),
           fetchSitesPage(1, 500, { is_active: true }),
-          fetchFormsPage(1, 500, undefined, { silent: true }),
+          fetchProjectFormsByProject(projectId, { silent: true }),
         ]);
         if (!cancelled) {
           setJobStatusOptions(statuses.items.map((s) => ({ value: String(s.id), label: s.status_name })));
@@ -511,7 +511,7 @@ export function ProjectJobsTab({ projectId }: Props) {
           setMassProjectOptions(projects.items.map((p) => ({ value: String(p.id), label: p.name })));
           setMassSiteOptions(sites.items.map((s) => ({ value: String(s.id), label: s.site_name })));
           setMassFormOptions(
-            forms.items.map((f) => ({
+            forms.map((f) => ({
               value: String(f.id),
               label: f.name?.trim() || `#${f.id}`,
             })),
@@ -527,7 +527,7 @@ export function ProjectJobsTab({ projectId }: Props) {
           }
           setStatusById(byId);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setJobStatusOptions([]);
           setMassClientOptions([]);
@@ -542,7 +542,7 @@ export function ProjectJobsTab({ projectId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [projectId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -552,9 +552,9 @@ export function ProjectJobsTab({ projectId }: Props) {
       try {
         const data = await fetchProjectJobsHierarchy(projectId, { silent: true });
         if (!cancelled) setHierarchy(data);
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setHierarchy(null);
         }
       } finally {
@@ -579,8 +579,8 @@ export function ProjectJobsTab({ projectId }: Props) {
       setDeleteOpen(false);
       setDeletingJob(null);
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(tJobs("deleteError"));
+    } catch (error) {
+      toastApiError(error, tJobs("deleteError"));
     } finally {
       setDeleting(false);
     }
