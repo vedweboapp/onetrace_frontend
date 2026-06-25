@@ -790,6 +790,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
             >
             <DetailPageMapLayout
               showMap
+              mapFillHeight
               gridClassName={detailMapFormGridClassName}
               mapTitle={t("detail.sectionMap")}
               map={

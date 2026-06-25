@@ -362,13 +362,13 @@ export function QuotationDetailBody({
     const mapNode =
       siteDetailsLoading && siteMapPoints.length === 0 ? (
         <div className="h-full w-full animate-pulse bg-slate-100 dark:bg-slate-800" />
-      ) : siteMapPoints.length > 0 ? (
+      ) : (
         <AddressMultiMiniMap
           points={siteMapPoints}
           className={detailMapFillClassName}
           mapClassName="h-full min-h-0 flex-1"
         />
-      ) : null;
+      );
 
     return { address: addressNodes, map: mapNode };
   }, [siteDetails, siteDetailsLoading, siteMapPoints, siteRows.length, t]);
@@ -396,6 +396,7 @@ export function QuotationDetailBody({
       >
         <DetailPageMapLayout
           showMap={showMapColumn}
+          mapFillHeight={showMapColumn}
           mapTitle={t("detail.sectionMap")}
           map={siteLocationSplit?.map ?? null}
         >

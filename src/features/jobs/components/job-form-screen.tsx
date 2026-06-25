@@ -34,6 +34,7 @@ import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack, sanitizeJobsBackHref } from "@/shared/utils/detail-from-list.util";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { ensureCheckmarkOption } from "@/shared/utils/checkmark-options.util";
+import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
 import { saveQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
 import {
   AppButton,
@@ -116,6 +117,10 @@ export function JobFormScreen({ mode, jobId }: Props) {
   const selectedClient = useWatch({ control, name: "client" });
   const selectedProject = useWatch({ control, name: "project" });
   const jobMetaItems = useWatch({ control, name: "job_meta_items" }) ?? [];
+  const usedJobItemIds = React.useMemo(
+    () => jobMetaItems.map((row) => row?.item?.trim() ?? "").filter((id) => id.length > 0),
+    [jobMetaItems],
+  );
 
   const clientId = selectedClient && /^\d+$/.test(selectedClient) ? Number.parseInt(selectedClient, 10) : undefined;
   const projectId = selectedProject && /^\d+$/.test(selectedProject) ? Number.parseInt(selectedProject, 10) : undefined;
@@ -754,10 +759,14 @@ export function JobFormScreen({ mode, jobId }: Props) {
                       const qty = parseMoneyValue(row?.quantity);
                       const rate = parseMoneyValue(row?.rate);
                       const amount = qty * rate;
-                      const filteredItems = ensureCheckmarkOption(
-                        itemOptionsForGroup(row?.group ?? ""),
+                      const filteredItems = checkmarkOptionsExcludingUsed(
+                        ensureCheckmarkOption(
+                          itemOptionsForGroup(row?.group ?? ""),
+                          row?.item ?? "",
+                          row?.item_name,
+                        ),
+                        usedJobItemIds,
                         row?.item ?? "",
-                        row?.item_name,
                       );
                       return (
                         <tr key={field.id} className="border-b border-slate-100 dark:border-slate-800">
