@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { LayoutGrid, List, Funnel } from "lucide-react";
+import { ArrowLeft, LayoutGrid, List, Funnel } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { useDashboardChromeStore } from "@/features/dashboard/store/dashboard-chrome.store";
 import type { ListPageViewMode } from "@/shared/hooks/use-list-url-state";
 import { dashboardContentHorizontalGutterClassName } from "@/shared/config/dashboard-shell";
@@ -11,6 +12,8 @@ import { cn } from "@/core/utils/http.util";
 type ListPageHeaderProps = {
   title?: string;
   description?: string;
+  backHref?: string;
+  backAriaLabel?: string;
   action?: React.ReactNode;
   controls?: React.ReactNode;
   className?: string;
@@ -28,6 +31,8 @@ type ListPageHeaderProps = {
 export function ListPageHeader({
   title,
   description,
+  backHref,
+  backAriaLabel,
   action,
   controls,
   className,
@@ -91,6 +96,38 @@ export function ListPageHeader({
   const filterAria = tList("filterMenuAria");
 
   React.useEffect(() => {
+    const pageHeadingRow =
+      title || backHref ? (
+        <div
+          className={cn(
+            dashboardContentHorizontalGutterClassName,
+            "flex min-h-11 items-center gap-2 border-b border-slate-200 py-1 dark:border-slate-800",
+          )}
+        >
+          {backHref ? (
+            <Link
+              href={backHref}
+              className={cn(
+                "inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-transparent text-slate-500 transition",
+                "hover:border-slate-200 hover:bg-slate-50 hover:text-slate-800",
+                "dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+              )}
+              aria-label={backAriaLabel ?? tList("back")}
+            >
+              <ArrowLeft className="size-4" strokeWidth={2} aria-hidden />
+            </Link>
+          ) : null}
+          {title ? (
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-sm font-semibold leading-tight text-slate-900 dark:text-slate-100">{title}</h1>
+              {description ? (
+                <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{description}</p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null;
+
     const viewToggle = showViewToggle ? (
       <div className="inline-flex h-8 shrink-0 items-center rounded-md border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-900">
         <button
@@ -130,13 +167,28 @@ export function ListPageHeader({
       setSecondaryRow(
         <div className={cn(dashboardContentHorizontalGutterClassName, "space-y-3 py-2.5", className)}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              {title ? (
-                <h1 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">{title}</h1>
+            <div className="flex min-w-0 items-start gap-2">
+              {backHref ? (
+                <Link
+                  href={backHref}
+                  className={cn(
+                    "inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-transparent text-slate-500 transition",
+                    "hover:border-slate-200 hover:bg-slate-50 hover:text-slate-800",
+                    "dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+                  )}
+                  aria-label={backAriaLabel ?? tList("back")}
+                >
+                  <ArrowLeft className="size-4" strokeWidth={2} aria-hidden />
+                </Link>
               ) : null}
-              {description ? (
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{description}</p>
-              ) : null}
+              <div className="min-w-0">
+                {title ? (
+                  <h1 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">{title}</h1>
+                ) : null}
+                {description ? (
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{description}</p>
+                ) : null}
+              </div>
             </div>
             {action ? <div className="shrink-0 self-start">{action}</div> : null}
           </div>
@@ -152,7 +204,7 @@ export function ListPageHeader({
     }
 
     const hasToolbar = Boolean(controls) || showViewToggle || action;
-    if (!hasToolbar) {
+    if (!hasToolbar && !pageHeadingRow) {
       setSecondaryRow(null);
       return () => setSecondaryRow(null);
     }
@@ -186,18 +238,21 @@ export function ListPageHeader({
 
     setSecondaryRow(
       <div className={className}>
-        <div
-          className={cn(
-            dashboardContentHorizontalGutterClassName,
-            "flex h-11 items-center justify-between gap-3",
-          )}
-        >
-          <div className="flex min-w-0 items-center gap-2">
-            {filterButton}
-            {viewToggle}
+        {pageHeadingRow}
+        {hasToolbar ? (
+          <div
+            className={cn(
+              dashboardContentHorizontalGutterClassName,
+              "flex h-11 items-center justify-between gap-3",
+            )}
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              {filterButton}
+              {viewToggle}
+            </div>
+            {action ? <div className="shrink-0">{action}</div> : null}
           </div>
-          {action ? <div className="shrink-0">{action}</div> : null}
-        </div>
+        ) : null}
         {filtersOpen && controls ? (
           <div
             ref={filterPanelRef}
@@ -222,6 +277,8 @@ export function ListPageHeader({
     variant,
     title,
     description,
+    backHref,
+    backAriaLabel,
     action,
     controls,
     className,

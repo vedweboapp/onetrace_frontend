@@ -11,6 +11,7 @@ import {
 } from "@/features/settings/integrations/utils/zoho-webhook-payload.util";
 import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
+import { fieldRequiredMarkClassName } from "@/shared/ui";
 
 function WebhookDetailCard({
   label,
@@ -88,38 +89,51 @@ function jsonString(value: string): string {
   return JSON.stringify(value);
 }
 
+const requiredFieldKeyClassName =
+  "rounded-sm bg-yellow-100/90 px-0.5 font-semibold text-yellow-950 dark:bg-yellow-950/60 dark:text-yellow-100";
+
 function HighlightedWebhookPayloadJson({ parsed }: { parsed: ParsedZohoWebhookSamplePayload }) {
   const requiredFields = React.useMemo(
     () => new Set(parsed.fields.filter((row) => row.required).map((row) => row.field)),
     [parsed.fields],
   );
 
-  const fieldKeyClass = (field: string) =>
-    cn(
-      requiredFields.has(field) &&
-        "rounded-sm bg-amber-100/90 px-0.5 font-semibold text-amber-950 dark:bg-amber-950/60 dark:text-amber-100",
-    );
-
   return (
     <pre className="m-0 max-h-80 overflow-auto whitespace-pre-wrap break-words font-mono text-xs font-normal leading-relaxed text-slate-800 dark:text-slate-200">
       <span>{"{\n"}</span>
       <span>{`  ${jsonString(parsed.rootKey)}: [\n`}</span>
       <span>{"    {\n"}</span>
-      {parsed.fields.map((row, index) => (
-        <React.Fragment key={row.field}>
-          <span>
-            {`      `}
-            <span className={fieldKeyClass(row.field)}>{jsonString(row.field)}</span>
-            {`: ${jsonString(row.sampleValue)}`}
-            {index < parsed.fields.length - 1 ? "," : ""}
-            {"\n"}
-          </span>
-        </React.Fragment>
-      ))}
+      {parsed.fields.map((row, index) => {
+        const isRequired = requiredFields.has(row.field);
+        return (
+          <React.Fragment key={row.field}>
+            <span>
+              {`      `}
+              <span className={cn(isRequired && requiredFieldKeyClassName)}>{jsonString(row.field)}</span>
+              {isRequired ? <span className={fieldRequiredMarkClassName}> *</span> : null}
+              {`: ${jsonString(row.sampleValue)}`}
+              {index < parsed.fields.length - 1 ? "," : ""}
+              {"\n"}
+            </span>
+          </React.Fragment>
+        );
+      })}
       <span>{"    }\n"}</span>
       <span>{"  ]\n"}</span>
       <span>{"}"}</span>
     </pre>
+  );
+}
+
+function RequiredFieldLegend() {
+  const t = useTranslations("Dashboard.integrations.zohoWebhookSetup");
+
+  return (
+    <p className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs leading-relaxed text-yellow-900 dark:text-yellow-100">
+      <span className={cn(requiredFieldKeyClassName, "font-mono")}>field_name</span>
+      <span className={fieldRequiredMarkClassName}> *</span>
+      <span>{t("requiredHighlightLegend")}</span>
+    </p>
   );
 }
 
@@ -189,9 +203,7 @@ export function ZohoWebhookGuide({ setup, configureMappingHref }: ZohoWebhookGui
               <div className="rounded-lg border border-slate-200/90 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
                 <HighlightedWebhookPayloadJson parsed={parsed} />
               </div>
-              {hasRequiredFields ? (
-                <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">{t("requiredHighlightLegend")}</p>
-              ) : null}
+              {hasRequiredFields ? <RequiredFieldLegend /> : null}
             </div>
           }
         />

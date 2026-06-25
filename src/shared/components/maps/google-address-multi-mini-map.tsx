@@ -170,17 +170,6 @@ export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: P
     return () => ro.disconnect();
   }, [mapReady, status, resolved, fitMapToResolved]);
 
-  const overlayMessage =
-    status === "loading"
-      ? t("loading")
-      : status === "notfound"
-        ? t("notFound")
-        : status === "error"
-          ? t("error")
-          : points.length === 0
-            ? t("noAddress")
-            : null;
-
   const center = resolved[0];
   const externalMapHref = center ? googleMapsTabUrl(center.lat, center.lon) : null;
 
@@ -197,11 +186,6 @@ export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: P
         role="img"
         aria-label={t("ariaMap")}
       />
-      {overlayMessage ? (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-slate-100/85 px-3 text-center text-sm text-slate-600 dark:bg-slate-900/80 dark:text-slate-300">
-          {overlayMessage}
-        </div>
-      ) : null}
       {status === "ready" && externalMapHref ? (
         <a
           href={externalMapHref}

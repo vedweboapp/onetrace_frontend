@@ -105,7 +105,7 @@ export function MaterialRequestDetailBody({
                   href={`${routes.dashboard.dispatches}/${dispatchId}`}
                   className="font-semibold text-slate-900 underline-offset-2 hover:underline dark:text-slate-100"
                 >
-                  {t("detail.dispatchLink", { id: `DSP-${String(dispatchId).padStart(5, "0")}` })}
+                  {t("detail.dispatchLink")}
                 </DetailEntityLink>
               </li>
             ))}

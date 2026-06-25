@@ -235,6 +235,7 @@
         "label": "Customization",
         "hubTitle": "Customization",
         "hubDescription": "Choose what to configure — Project Types, Installation Types, Vendor Types, Checklist Types, Pin Statuses, Job Statuses, Material Statuses, and Tags.",
+        "backToHub": "Back to customization",
         "items": {
           "projectTypes": {
             "title": "Project Types",
@@ -328,7 +329,7 @@
         "samplePayload": "Sample payload",
         "samplePayloadHint": "Send this JSON body from Zoho. Required keys are listed below — do not include a required flag in the payload.",
         "samplePayloadJson": "JSON to send",
-        "requiredHighlightLegend": "Highlighted field names are required in the webhook payload.",
+        "requiredHighlightLegend": "indicates required fields in the webhook payload.",
         "mappingNoteTitle": "Need more fields?",
         "mappingNoteBody": "Map additional Zoho fields under Configuration → {mappingTitle} first. Mapped fields then appear in this sample payload.",
         "mappingNoteLink": "Open field mapping",
@@ -1380,7 +1381,7 @@
         "sectionQr": "QR code",
         "assignedJob": "Assigned job",
         "notAssigned": "Not assigned",
-        "viewJob": "View job #{id}",
+        "viewJob": "View assigned job",
         "recordId": "Record ID"
       },
       "fields": {
@@ -2272,7 +2273,7 @@
         "sectionLogs": "Activity logs",
         "sectionActivityTimeline": "Activity timeline",
         "sectionDispatches": "Dispatches",
-        "dispatchLink": "View dispatch #{id}",
+        "dispatchLink": "View dispatch",
         "sectionOverview": "Overview",
         "sectionJobs": "Jobs",
         "sectionItems": "Items",
@@ -2420,7 +2421,7 @@
         "view": "View details"
       },
       "table": {
-        "dispatchId": "Dispatch ID",
+        "dispatchId": "Dispatch number",
         "jobName": "Job name",
         "dispatchDate": "Dispatch date",
         "status": "Status",
@@ -2532,7 +2533,7 @@
         "delayed": "Delayed"
       },
       "fields": {
-        "dispatchId": "Dispatch ID",
+        "dispatchId": "Dispatch number",
         "dispatchTo": "Dispatch to",
         "dispatchedBy": "Dispatched by",
         "dispatchDate": "Dispatch date",

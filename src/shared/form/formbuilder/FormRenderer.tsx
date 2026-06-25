@@ -389,7 +389,7 @@ const FormField: React.FC<{
         ? "md:col-span-3"
         : "md:col-span-1";
 
-  const fieldShellClass = cn(colSpanClass, isRequired && "border-l-2 border-l-red-500 pl-3");
+  const fieldShellClass = colSpanClass;
 
   if (normType === "phone" || normType === "mobile") {
     return (

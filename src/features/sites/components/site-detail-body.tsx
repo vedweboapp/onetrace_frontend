@@ -95,7 +95,7 @@ export function SiteDetailBody({
                   href={`${routes.dashboard.clients}/${clientId}`}
                   className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                 >
-                  {clientName ?? `#${clientId}`}
+                  {clientName ?? "—"}
                 </DetailEntityLink>
               ) : (
                 <span>{clientName ?? "—"}</span>

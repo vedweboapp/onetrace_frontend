@@ -78,6 +78,5 @@ export function ReturnToStockDetailScreen({ requestId }: Props) {
 function dispatchReturnWorkerSubtitle(detail: DispatchReturnRequest): string {
   const worker = detail.worker_name;
   if (typeof worker === "object" && worker?.name?.trim()) return worker.name.trim();
-  if (typeof worker === "number" && worker > 0) return `#${worker}`;
   return "";
 }

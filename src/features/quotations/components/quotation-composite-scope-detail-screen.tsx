@@ -357,7 +357,7 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
                             href={`${routes.dashboard.items}/${component.child_item}`}
                             className="block truncate text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                           >
-                            {child?.name ?? `${tItems("detail.componentItem")} #${component.child_item}`}
+                            {child?.name ?? "—"}
                           </DetailEntityLink>
                         </DetailLinkedTableTd>
                         <DetailLinkedTableTd

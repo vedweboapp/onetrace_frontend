@@ -77,7 +77,7 @@ export function ReturnToStockDetailBody({ detail, dueFmt }: Props) {
                     className="border-b border-slate-100 dark:border-slate-800"
                   >
                     <td className="px-3 py-3 font-medium text-slate-900 dark:text-slate-100">
-                      {line.item_name?.trim() || `#${line.item_id}`}
+                      {line.item_name?.trim() || "—"}
                     </td>
                     <td className="px-3 py-3">
                       <DetailEntityLink

@@ -277,19 +277,6 @@ export function GoogleSiteLocationMapPicker({
     return () => ro.disconnect();
   }, [displayLatLon]);
 
-  const showLoadingOverlay = geoStatus === "loading" && displayLatLon == null;
-
-  const overlay =
-    showLoadingOverlay
-      ? tMap("loading")
-      : geoStatus === "error"
-        ? tMap("error")
-        : geoStatus === "notfound" && !displayLatLon
-          ? t("mapNotFoundHint")
-          : lat == null && lon == null && !canGeocode
-            ? t("mapPickHint")
-            : null;
-
   const mapShell = (
     <div
       className={cn(
@@ -302,11 +289,6 @@ export function GoogleSiteLocationMapPicker({
         className={cn("z-0 h-full w-full", embedded ? "min-h-[280px]" : "min-h-[280px] h-[min(420px,50vh)]")}
         aria-label={tMap("ariaMap")}
       />
-      {overlay ? (
-        <div className="pointer-events-none absolute inset-0 z-[400] flex items-center justify-center bg-slate-100/50 px-4 text-center text-sm text-slate-600 dark:bg-slate-900/40 dark:text-slate-300">
-          {overlay}
-        </div>
-      ) : null}
     </div>
   );
 

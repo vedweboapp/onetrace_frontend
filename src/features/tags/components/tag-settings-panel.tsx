@@ -15,6 +15,7 @@ import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-u
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { routes } from "@/shared/config/routes";
 import {
   AddButton, AppButton,
   AppModal,
@@ -86,6 +87,7 @@ function TagChip({ row, className }: { row: Tag; className?: string }) {
 export function TagSettingsPanel() {
   const t = useTranslations("Dashboard.tags");
   const tList = useTranslations("Dashboard.list");
+  const tCustomization = useTranslations("Dashboard.settingsNav.customization");
   const dateFmt = useDashboardDateFormat();
   const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } = useListUrlState();
 
@@ -279,6 +281,10 @@ export function TagSettingsPanel() {
     <div className="space-y-6">
       {!hideListChrome ? (
         <ListPageHeader
+          title={t("title")}
+          description={t("subtitle")}
+          backHref={routes.dashboard.settingsCustomization}
+          backAriaLabel={tCustomization("backToHub")}
           filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}

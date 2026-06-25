@@ -53,8 +53,9 @@ import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import {
+  DetailPageMapLayout,
   detailMapFillClassName,
-  detailMapViewportClassName,
+  detailMapFormGridClassName,
 } from "@/shared/components/layout/detail-page-map-layout";
 import { DetailTabStepNav } from "@/shared/components/layout/detail-tab-step-nav";
 import { routes } from "@/shared/config/routes";
@@ -787,13 +788,19 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
               aria-labelledby="quotation-form-screen-trigger-project"
               className={cn("space-y-6", formTab !== "project" && "hidden")}
             >
-            <div
-              className={cn(
-                selectedSitesForMap.length > 0 &&
-                  "grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start lg:gap-8",
-              )}
+            <DetailPageMapLayout
+              showMap
+              gridClassName={detailMapFormGridClassName}
+              mapTitle={t("detail.sectionMap")}
+              map={
+                <AddressMultiMiniMap
+                  points={selectedSiteMapPoints}
+                  className={detailMapFillClassName}
+                  mapClassName="h-full min-h-0 flex-1"
+                />
+              }
             >
-            <div className="min-w-0 space-y-6">
+            <div className="space-y-6">
             <FormFieldRow cols="2">
               <FieldGroup label={t("fields.quoteName")} htmlFor="quotation-name" required>
                 <input
@@ -881,7 +888,6 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       values={field.value ?? []}
                       onChange={field.onChange}
                       onBlur={field.onBlur}
-                      closeOnSelect
                       disabled={saving || !projectId || siteOptions.length === 0}
                       placeholder={t("placeholders.site")}
                       listLabel={t("fields.sites")}
@@ -989,29 +995,6 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                 />
               </FieldGroup>
             </FormFieldRow>
-            </div>
-            {selectedSitesForMap.length > 0 ? (
-            <aside className="min-w-0 lg:sticky lg:top-4 lg:self-start">
-              <div
-                className={cn(
-                  detailMapViewportClassName,
-                  "w-full overflow-hidden rounded-xl border border-slate-200/90 dark:border-slate-800",
-                )}
-              >
-                <AddressMultiMiniMap
-                  points={selectedSiteMapPoints}
-                  className={detailMapFillClassName}
-                  mapClassName="h-full min-h-0"
-                />
-              </div>
-            </aside>
-            ) : null}
-            <div
-              className={cn(
-                "min-w-0 space-y-6",
-                selectedSitesForMap.length > 0 && "lg:col-span-2",
-              )}
-            >
             <FormFieldRow cols="2">
               <FieldGroup label={t("fields.tags")} htmlFor="quotation-tags">
                 <Controller
@@ -1077,7 +1060,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
               />
             </FieldGroup>
             </div>
-            </div>
+            </DetailPageMapLayout>
             <DetailTabStepNav onNext={() => setFormTab("pricing")} nextLabel={t("formTabs.nextToPricing")} />
             </div>
             <div

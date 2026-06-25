@@ -73,11 +73,7 @@ function compositeLineToDisplay(row: InvoiceCompositeItem, index: number): Displ
     (typeof item === "object" ? item?.name?.trim() : undefined) ||
     "—";
   const groupName =
-    typeof group === "object"
-      ? group?.name?.trim() || "—"
-      : group != null
-        ? `#${group}`
-        : "—";
+    typeof group === "object" ? group?.name?.trim() || "—" : "—";
   const itemId =
     typeof row.id === "number"
       ? row.id

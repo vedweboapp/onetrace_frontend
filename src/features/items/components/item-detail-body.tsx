@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
+import { fetchGroup } from "@/features/groups/api/group.api";
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { InstallationTypeChip } from "@/features/installation-types/components/installation-type-chip";
 import type { Item } from "@/features/items/types/item.types";
@@ -39,6 +40,7 @@ export function ItemDetailBody({
   const tMeta = useTranslations("Dashboard.common.detail");
   const tStatus = useTranslations("Dashboard.clients.status");
   const [childItemsById, setChildItemsById] = React.useState<Map<number, Item>>(new Map());
+  const [groupName, setGroupName] = React.useState<string | null>(null);
 
   const groupId = typeof detail.group === "number" && Number.isFinite(detail.group) && detail.group > 0 ? detail.group : null;
   const installationTypeChip = resolveInstallationTypeChipData(detail.installation_type);
@@ -63,6 +65,25 @@ export function ItemDetailBody({
       cancelled = true;
     };
   }, [detail.id, detail.is_composite, components.length]);
+
+  React.useEffect(() => {
+    if (!groupId) {
+      setGroupName(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const group = await fetchGroup(groupId);
+        if (!cancelled) setGroupName(group.name?.trim() || null);
+      } catch {
+        if (!cancelled) setGroupName(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [groupId]);
 
   return (
     <DetailPagePadding>
@@ -103,7 +124,7 @@ export function ItemDetailBody({
                   href={`${routes.dashboard.groups}/${groupId}`}
                   className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                 >
-                  #{groupId}
+                  {groupName ?? "—"}
                 </DetailEntityLink>
               </DetailMetricCard>
             ) : null}
@@ -136,7 +157,7 @@ export function ItemDetailBody({
                           href={`${routes.dashboard.items}/${component.child_item}`}
                           className="block truncate text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
                         >
-                          {child?.name ?? `${t("detail.componentItem")} #${component.child_item}`}
+                          {child?.name ?? "—"}
                         </DetailEntityLink>
                       </DetailLinkedTableTd>
                       <DetailLinkedTableTd

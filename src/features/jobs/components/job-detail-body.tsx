@@ -75,7 +75,7 @@ export function JobDetailBody({
         if (cancelled) return;
         const map = new Map<number, string>();
         for (const item of items) {
-          map.set(item.id, item.name?.trim() || item.sku?.trim() || `#${item.id}`);
+          map.set(item.id, item.name?.trim() || item.sku?.trim() || "—");
         }
         setCompositeNameById(map);
       } catch {
@@ -205,7 +205,7 @@ export function JobDetailBody({
                       row.name?.trim() ||
                       (row.item && typeof row.item === "object" && row.item.name?.trim()) ||
                       (itemId != null ? compositeNameById.get(itemId) : undefined) ||
-                      (itemId != null ? `#${itemId}` : "—");
+                      "—";
                     return (
                       <DetailLinkedTableRow key={`${itemId ?? "row"}-${index}`} index={index}>
                         <DetailLinkedTableTd
@@ -257,13 +257,6 @@ export function JobDetailBody({
 
         {detail.qr_code?.qr_image ? (
           <DetailPanelCard title={t("detail.sectionQrCode")}>
-            <DetailMetricsGrid>
-              {detail.qr_code.qr_code_id ? (
-                <DetailMetricCard label={t("detail.qrCodeId")}>
-                  <span className="font-mono text-sm">{detail.qr_code.qr_code_id}</span>
-                </DetailMetricCard>
-              ) : null}
-            </DetailMetricsGrid>
             <div className="mt-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img

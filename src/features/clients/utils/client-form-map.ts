@@ -11,8 +11,9 @@ function normalizePhoneForPhoneInput(raw: string | null | undefined): string {
   const digits = value.replace(/\D/g, "");
   if (!digits) return "";
 
-  if (digits.length === 10) return `+91${digits}`;
-  if (digits.length === 11 && digits.startsWith("0")) return `+91${digits.slice(1)}`;
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  if (digits.length === 11 && digits.startsWith("0")) return `+1${digits.slice(1)}`;
 
   return `+${digits}`;
 }
