@@ -1500,7 +1500,7 @@ export default function FormBuilderLayout({
                   <button
                     type="button"
                     className={`flex h-9 items-center gap-2 rounded px-3 text-sm transition ${previewLayout === "desktop"
-                      ? "bg-[var(--dash-accent)] text-white"
+                      ? "bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)]"
                       : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                       }`}
                     onClick={() => setPreviewLayout("desktop")}
@@ -1511,7 +1511,7 @@ export default function FormBuilderLayout({
                   <button
                     type="button"
                     className={`flex h-9 items-center gap-2 rounded px-3 text-sm transition ${previewLayout === "phone"
-                      ? "bg-[var(--dash-accent)] text-white "
+                      ? "bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)]"
                       : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                       }`}
                     onClick={() => setPreviewLayout("phone")}
