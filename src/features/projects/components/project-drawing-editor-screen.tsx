@@ -1428,6 +1428,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     const updatedPin = {
       ...detailPin,
       ...pinEditData,
+      quantity: (pinEditData.quantity === "" as any || pinEditData.quantity == null || isNaN(Number(pinEditData.quantity))) ? 1 : Number(pinEditData.quantity),
       status_detail: nextStatus ? {
         id: nextStatus.id,
         status_name: nextStatus.status_name,
@@ -1449,6 +1450,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     }));
     setPlots(nextPlots);
     setDetailPin(updatedPin as DrawingPin);
+    setPinEditData(updatedPin as DrawingPin);
     setIsPinEditing(false);
     setDirty(true);
     toastSuccess(t("pinSaved"));
@@ -2046,6 +2048,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         open={detailPin !== null}
         onClose={() => {
           setDetailPin(null);
+          setPinEditData({});
           setIsPinEditing(false);
           setPinDeleteConfirmOpen(false);
         }}
@@ -2057,7 +2060,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
               {isPinEditing ? (
                 <>
                   <button
-                    onClick={() => setIsPinEditing(false)}
+                    onClick={() => { setIsPinEditing(false); if (detailPin) setPinEditData(detailPin); }}
                     className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
                   >
                     Cancel
@@ -2134,9 +2137,9 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                   <DetailRow
                     icon={QuantityIcon}
                     label="Quantity"
-                    value={isPinEditing ? (pinEditData.quantity ?? 1) : (detailPin.quantity ?? 1)}
+                    value={isPinEditing ? (pinEditData.quantity !== undefined ? pinEditData.quantity : (detailPin.quantity ?? 1)) : (detailPin.quantity ?? 1)}
                     isEditing={isPinEditing}
-                    onChange={(val: string) => setPinEditData(prev => ({ ...prev, quantity: parseInt(val, 10) || 1 }))}
+                    onChange={(val: string) => setPinEditData(prev => ({ ...prev, quantity: val === "" ? ("" as any) : parseInt(val, 10) }))}
                   />
                   <DetailRow
                     icon={StatusIcon}
