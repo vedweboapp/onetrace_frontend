@@ -29,6 +29,8 @@
     "otpVerifyError": "Could not verify OTP. Check the code and try again.",
     "resendIn": "Resend code in",
     "resendNow": "Resend now",
+    "backToLogin": "Back to sign in",
+    "otpResent": "OTP resent successfully",
     "noAccount": "No account yet?",
     "signUpLink": "Create one",
     "dontHaveAccount": "Dont have an account ?",

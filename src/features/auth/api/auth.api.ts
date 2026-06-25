@@ -17,7 +17,7 @@ export type LoginRequest = {
 /** OTP request purposes — must match backend `purpose` values. */
 export const AUTH_OTP_PURPOSE = {
   login: "login",
-  passwordReset: "password_reset",
+  passwordReset: "forgot",
 } as const;
 
 export type AuthOtpPurpose = (typeof AUTH_OTP_PURPOSE)[keyof typeof AUTH_OTP_PURPOSE];
@@ -65,9 +65,20 @@ export { AUTH_API_PATHS };
 /**
  * Normalise the inner `data` object from the login envelope into the flat
  * shape consumed by the auth store.
- * The backend now puts `access` and `organizations` inside `user`.
+ * Handles both:
+ *   - New shape: { access, user: {...}, organizations: [...] }
+ *   - Old shape: { user: { access, organizations, ...userFields } }
  */
-function normaliseLoginResponse(raw: AuthLoginRawData): AuthLoginData {
+function normaliseLoginResponse(raw: any): AuthLoginData {
+  // New flat shape: access is at the top level
+  if (raw?.access) {
+    return {
+      access: raw.access,
+      user: raw.user ?? {},
+      organizations: raw.organizations ?? raw.user?.organizations ?? [],
+    };
+  }
+  // Old nested shape: access lives inside user
   const { access, organizations: userOrgs, ...userFields } = raw.user;
   return {
     access,
@@ -92,30 +103,30 @@ export async function logoutRequest(): Promise<void> {
 }
 
 export async function requestLoginOtp(body: OtpRequestBody): Promise<void> {
-  const { data } = await api.post<AuthLogoutEnvelope>(AUTH_API_PATHS.otpRequest, body);
+  const { data } = await api.post<AuthLogoutEnvelope>(AUTH_API_PATHS.sendOtp, body);
   assertApiSuccess(data);
 }
 
 export async function verifyLoginOtp(body: OtpVerifyBody): Promise<AuthLoginData> {
-  const { data } = await api.post<AuthLoginEnvelope>(AUTH_API_PATHS.otpVerify, body);
+  const { data } = await api.post<AuthLoginEnvelope>(AUTH_API_PATHS.verifyOtp, { ...body, purpose: "login" });
   assertApiSuccess(data);
   return normaliseLoginResponse(data.data);
 }
 
 export async function requestForgotPasswordOtp(body: ForgotOtpRequestBody): Promise<void> {
-  const { data } = await api.post<AuthLogoutEnvelope>(AUTH_API_PATHS.forgotOtpRequest, body);
+  const { data } = await api.post<AuthLogoutEnvelope>(AUTH_API_PATHS.sendOtp, body);
   assertApiSuccess(data);
 }
 export async function sendOtp(body: sendOtpBody): Promise<void> {
   const { data } = await api.post(AUTH_API_PATHS.sendOtp, body);
   assertApiSuccess(data);
 }
-export async function verifyOtp(body:verifyOtpBody):Promise<void>{
-  const {data} = await api.post(AUTH_API_PATHS.verifyOtp, body);
+export async function verifyOtp(body: verifyOtpBody): Promise<void> {
+  const { data } = await api.post(AUTH_API_PATHS.verifyOtp, body);
   assertApiSuccess(data);
 }
-export async function signUpHandler(body:signUpBody):Promise<void>{
-  const {data} = await api.post(AUTH_API_PATHS.signUp, body);
+export async function signUpHandler(body: signUpBody): Promise<void> {
+  const { data } = await api.post(AUTH_API_PATHS.signUp, body);
   assertApiSuccess(data);
 }
 export async function resetPasswordConfirm(body: PasswordResetConfirmBody): Promise<void> {

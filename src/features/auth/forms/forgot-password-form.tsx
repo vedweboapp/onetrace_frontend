@@ -11,6 +11,7 @@ import { cn } from "@/core/utils/http.util";
 
 const forgotPasswordSchema = z.object({
   email: z.string().min(1, "emailRequired").email("emailInvalid"),
+  otp: z.string().optional(),
 });
 
 type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
@@ -21,11 +22,29 @@ export function ForgotPasswordForm() {
 
   const form = useForm<ForgotPasswordValues>({
     resolver: zodResolver(forgotPasswordSchema),
-    defaultValues: { email: "" },
+    defaultValues: { email: "", otp: "" },
   });
+
+  const otpRefs = React.useRef<Array<HTMLInputElement | null>>([]);
+
+  function handleOtpDigit(index: number, raw: string) {
+    const val = raw.replace(/\D/g, "").slice(-1);
+    const current = form.getValues("otp") ?? "";
+    const digits = current.split("");
+    digits[index] = val;
+    form.setValue("otp", digits.join(""));
+    if (val && index < 5) otpRefs.current[index + 1]?.focus();
+  }
+
+  function handleOtpKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Backspace" && !e.currentTarget.value && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  }
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [apiError, setApiError] = React.useState<string | null>(null);
+  const [curerntStep, setCurrentStep] = React.useState<string>("send-otp");
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
   const [mode] = React.useState<"password" | "otp">("password"); // visual only (matches screenshot)
 
@@ -38,6 +57,7 @@ export function ForgotPasswordForm() {
         email: values.email,
         purpose: AUTH_OTP_PURPOSE.passwordReset,
       });
+      setCurrentStep("verify-otp")
       setSuccessMessage(t("otpSent", { email: values.email }));
     } catch {
       setApiError(t("otpSendError"));
@@ -104,31 +124,58 @@ export function ForgotPasswordForm() {
           </div>
 
           {/* ── Fields ── */}
-          <div className="space-y-1.5">
-            <label className="block text-[13px] font-semibold text-slate-700" style={{ letterSpacing: "0.01em" }}>
-              {t("workEmail")} <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <Mail className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <input
-                {...form.register("email")}
-                type="email"
-                autoComplete="email"
-                placeholder={t("emailPlaceholder")}
-                className={cn(inputCls, "pl-10")}
-                onBlur={() => void form.trigger("email")}
-              />
-            </div>
-            {form.formState.errors.email ? (
-              <p className="text-[12px] text-red-500">
-                {tVal(form.formState.errors.email.message ?? "")}
-              </p>
-            ) : null}
-            {apiError ? <p className="text-[12px] text-red-500">{apiError}</p> : null}
-            {successMessage ? (
-              <p className="text-[12px] text-emerald-600">{successMessage}</p>
-            ) : null}
-          </div>
+          {
+            curerntStep === "send-otp" && (
+              <div className="space-y-1.5">
+                <label className="block text-[13px] font-semibold text-slate-700" style={{ letterSpacing: "0.01em" }}>
+                  {t("workEmail")} <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    {...form.register("email")}
+                    type="email"
+                    autoComplete="email"
+                    placeholder={t("emailPlaceholder")}
+                    className={cn(inputCls, "pl-10")}
+                    onBlur={() => void form.trigger("email")}
+                  />
+                </div>
+                {form.formState.errors.email ? (
+                  <p className="text-[12px] text-red-500">
+                    {tVal(form.formState.errors.email.message ?? "")}
+                  </p>
+                ) : null}
+                {apiError ? <p className="text-[12px] text-red-500">{apiError}</p> : null}
+                {successMessage ? (
+                  <p className="text-[12px] text-emerald-600">{successMessage}</p>
+                ) : null}
+              </div>
+            )
+          }
+          {
+            curerntStep === "verify-otp" && (
+              <div className="space-y-3">
+                <label className="block text-[13px] font-semibold text-slate-700" style={{ letterSpacing: "0.01em" }}>
+                  Enter the 6-digit code sent to your email
+                </label>
+                <div className="flex gap-2 justify-center">
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <input
+                      key={i}
+                      ref={(el) => { otpRefs.current[i] = el; }}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      className="h-12 w-12 rounded-xl border border-slate-200 bg-slate-50 text-center text-lg font-semibold text-slate-900 outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-900/8"
+                      onChange={(e) => handleOtpDigit(i, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
+          }
 
           {/* ── CTA button ── */}
           <button

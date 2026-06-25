@@ -42,7 +42,7 @@ const PersonalProfileForm = ({
     const [isMounted, setIsMounted] = useState(false);
     const [deletedEmails, setDeletedEmails] = useState([]);
     const [deletedPhones, setDeletedPhones] = useState([]);
-    const [deletedAddress,setDeletedAddress] = useState([]); 
+    const [deletedAddress, setDeletedAddress] = useState([]);
     useEffect(() => {
         setIsMounted(true);
     }, []);
@@ -350,9 +350,10 @@ const PersonalProfileForm = ({
                                     </AppButton>
                                 )}
                             </div>
-                            <div className="space-y-3">
+                            <div className="space-y-3 flex flex-col">
                                 {emailFields.map((field, index) => (
                                     <div key={field.id} className="flex gap-3 items-end group">
+                                        
                                         <Input
                                             register={register(`emails.${index}.email` as const)}
                                             placeholder="Enter email address"
