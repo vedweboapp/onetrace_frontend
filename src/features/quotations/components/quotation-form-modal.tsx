@@ -458,7 +458,6 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   values={field.value ?? []}
                   onChange={field.onChange}
                   onBlur={field.onBlur}
-                  closeOnSelect
                   disabled={saving || !projectId}
                   placeholder={t("placeholders.site")}
                   listLabel={t("fields.sites")}

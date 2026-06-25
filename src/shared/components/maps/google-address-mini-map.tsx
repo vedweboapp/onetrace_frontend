@@ -146,18 +146,6 @@ export function GoogleAddressMiniMap({ addressParts, coordinates, className, map
     google.maps.event.trigger(map, "resize");
   }, [status, latLon]);
 
-  const waitingGeocode = status === "loading" || (status === "idle" && canGeocode);
-  const overlayMessage = waitingGeocode
-    ? t("loading")
-    : status === "notfound"
-      ? t("notFound")
-      : status === "error"
-        ? t("error")
-        : !canGeocode
-          ? t("noAddress")
-          : null;
-
-  const showOverlay = overlayMessage != null;
   const showOpenTab = status === "ready" && latLon != null;
   const externalMapHref = latLon ? googleMapsTabUrl(latLon.lat, latLon.lon) : null;
 
@@ -174,11 +162,6 @@ export function GoogleAddressMiniMap({ addressParts, coordinates, className, map
         role="img"
         aria-label={t("ariaMap")}
       />
-      {showOverlay ? (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-slate-100/85 px-3 text-center text-sm text-slate-600 dark:bg-slate-900/80 dark:text-slate-300">
-          {overlayMessage}
-        </div>
-      ) : null}
       {showOpenTab && externalMapHref ? (
         <a
           href={externalMapHref}
