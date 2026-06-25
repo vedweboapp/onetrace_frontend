@@ -21,6 +21,7 @@ import {
 } from "@/shared/utils/quick-create-navigation.util";
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { cn } from "@/core/utils/http.util";
 import {
   AppButton,
   CheckmarkSelect,
@@ -49,7 +50,29 @@ function toNumberOrNull(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-const COMPOSITE_ROW_GRID = "grid grid-cols-1 gap-2 sm:grid-cols-[1fr_180px_auto]";
+const COMPOSITE_ITEMS_GRID =
+  "grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_auto] sm:gap-x-3";
+
+const compositeHeaderCellClassName =
+  "hidden border-b border-slate-100 bg-slate-50/95 px-3 py-2 text-sm font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900/95 dark:text-slate-300 sm:block";
+
+function compositeItemCellClassName(rowIndex: number) {
+  return cn(
+    "min-w-0 px-3 py-2",
+    rowIndex > 0 && "border-t border-slate-100 dark:border-slate-800",
+  );
+}
+
+function compositeAbbreviationCellClassName(rowIndex: number) {
+  return cn("px-3 py-2", rowIndex > 0 && "sm:border-t sm:border-slate-100 dark:sm:border-slate-800");
+}
+
+function compositeActionsCellClassName(rowIndex: number) {
+  return cn(
+    "flex gap-2 px-3 py-2 sm:justify-end",
+    rowIndex > 0 && "sm:border-t sm:border-slate-100 dark:sm:border-slate-800",
+  );
+}
 
 export function GroupFormScreen({ mode, groupId }: Props) {
   const t = useTranslations("Dashboard.groups");
@@ -285,61 +308,65 @@ export function GroupFormScreen({ mode, groupId }: Props) {
               {nameInvalid ? <p className={fieldErrorTextClassName}>{tModal("nameError")}</p> : null}
             </div>
             <div>
-              <FieldLabel>{tModal("compositeItems")}</FieldLabel>
               {compositeLoadError ? (
-                <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">{compositeLoadError}</p>
+                <p className="text-sm text-amber-700 dark:text-amber-300">{compositeLoadError}</p>
               ) : null}
-              <div className="mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
-                <div
-                  className={`border-b border-slate-100 bg-slate-50/95 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/95 ${COMPOSITE_ROW_GRID}`}
-                >
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              <div
+                className={cn(
+                  "overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950",
+                  compositeLoadError ? "mt-2" : undefined,
+                )}
+              >
+                <div className={COMPOSITE_ITEMS_GRID}>
+                  <span className={compositeHeaderCellClassName}>
                     {tModal("compositeItem")}
                     <span className="ml-1 text-red-500">*</span>
                   </span>
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{tModal("abbreviation")}</span>
-                  <span className="hidden sm:block" aria-hidden />
-                </div>
-                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <span className={compositeHeaderCellClassName}>{tModal("abbreviation")}</span>
+                  <span className={compositeHeaderCellClassName} aria-hidden />
                   {rows.map((row, idx) => (
-                    <div key={row.id} className={`px-3 py-2 ${COMPOSITE_ROW_GRID} sm:items-center`}>
-                      <CheckmarkSelect
-                        listLabel={tModal("compositeItem")}
-                        buttonAriaLabel={tModal("compositeItem")}
-                        value={row.item}
-                        onChange={(value) => {
-                          setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, item: value } : x)));
-                        }}
-                        options={compositeOptionsForRow(row.id)}
-                        emptyLabel={tModal("compositeItemPlaceholder")}
-                        disabled={submitting}
-                        portaled
-                        searchable
-                        className="w-full"
-                        onAdd={
-                          compositeQuickCreate.onAdd
-                            ? () => {
-                                pendingCompositeRowRef.current = row.id;
-                                compositeQuickCreate.onAdd?.();
-                              }
-                            : undefined
-                        }
-                        addAriaLabel={compositeQuickCreate.addAriaLabel}
-                        addLabel={compositeQuickCreate.addLabel}
-                      />
-                      <input
-                        type="text"
-                        autoComplete="off"
-                        value={row.abbreviation}
-                        onChange={(e) => {
-                          const value = e.target.value.toUpperCase();
-                          setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, abbreviation: value } : x)));
-                        }}
-                        disabled={submitting}
-                        placeholder={tModal("abbreviationPlaceholder")}
-                        className={surfaceInputClassName}
-                      />
-                      <div className="flex gap-2 sm:justify-end">
+                    <React.Fragment key={row.id}>
+                      <div className={compositeItemCellClassName(idx)}>
+                        <CheckmarkSelect
+                          listLabel={tModal("compositeItem")}
+                          buttonAriaLabel={tModal("compositeItem")}
+                          value={row.item}
+                          onChange={(value) => {
+                            setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, item: value } : x)));
+                          }}
+                          options={compositeOptionsForRow(row.id)}
+                          emptyLabel={tModal("compositeItemPlaceholder")}
+                          disabled={submitting}
+                          portaled
+                          searchable
+                          className="w-full"
+                          onAdd={
+                            compositeQuickCreate.onAdd
+                              ? () => {
+                                  pendingCompositeRowRef.current = row.id;
+                                  compositeQuickCreate.onAdd?.();
+                                }
+                              : undefined
+                          }
+                          addAriaLabel={compositeQuickCreate.addAriaLabel}
+                          addLabel={compositeQuickCreate.addLabel}
+                        />
+                      </div>
+                      <div className={compositeAbbreviationCellClassName(idx)}>
+                        <input
+                          type="text"
+                          autoComplete="off"
+                          value={row.abbreviation}
+                          onChange={(e) => {
+                            const value = e.target.value.toUpperCase();
+                            setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, abbreviation: value } : x)));
+                          }}
+                          disabled={submitting}
+                          placeholder={tModal("abbreviationPlaceholder")}
+                          className={cn(surfaceInputClassName, "w-full")}
+                        />
+                      </div>
+                      <div className={compositeActionsCellClassName(idx)}>
                         <AppButton
                           type="button"
                           variant="secondary"
@@ -361,12 +388,11 @@ export function GroupFormScreen({ mode, groupId }: Props) {
                           </AppButton>
                         ) : null}
                       </div>
-                    </div>
+                    </React.Fragment>
                   ))}
                 </div>
               </div>
               {itemsInvalid ? <p className={fieldErrorTextClassName}>{tModal("atLeastOneCompositeItemError")}</p> : null}
-              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{tModal("compositeItemsHint")}</p>
             </div>
           </form>
         )}
