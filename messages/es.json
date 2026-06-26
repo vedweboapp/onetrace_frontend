@@ -86,7 +86,11 @@
     "forgotPassword": {
       "title": "¿Olvidaste la contraseña?",
       "body": "Ingresa tu correo para restablecer tu contraseña",
-      "backToLogin": "Volver a iniciar sesión"
+      "backToLogin": "Volver a iniciar sesión",
+      "rememberThePassword": "¿Recuerdas la contraseña?",
+      "resendIn": "Reenviar código en",
+      "resend": "Reenviar"
+
     },
     "resetPassword": {
       "title": "Restablecer contraseña",

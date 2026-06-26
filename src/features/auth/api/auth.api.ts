@@ -38,9 +38,9 @@ export type ForgotOtpRequestBody = {
 };
 
 export type PasswordResetConfirmBody = {
-  token: string;
+  email: string;
   new_password: string;
-  confirm_password: string;
+  new_password_confirm: string;
 };
 export type sendOtpBody = {
   email: string;
@@ -117,6 +117,7 @@ export async function requestForgotPasswordOtp(body: ForgotOtpRequestBody): Prom
   const { data } = await api.post<AuthLogoutEnvelope>(AUTH_API_PATHS.sendOtp, body);
   assertApiSuccess(data);
 }
+
 export async function sendOtp(body: sendOtpBody): Promise<void> {
   const { data } = await api.post(AUTH_API_PATHS.sendOtp, body);
   assertApiSuccess(data);

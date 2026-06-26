@@ -24,6 +24,7 @@
     "continue": "Continue",
     "sendOtp": "Send OTP",
     "otpRequired": "Enter the 6-digit OTP.",
+
     "otpSent": "OTP sent to {email}",
     "otpSendError": "Could not send OTP. Please try again.",
     "otpVerifyError": "Could not verify OTP. Check the code and try again.",
@@ -92,7 +93,11 @@
     "forgotPassword": {
       "title": "Forgot Password?",
       "body": "Enter your email to reset your password",
-      "backToLogin": "Back to sign in"
+      "backToLogin": "Back to sign in",
+      "rememberThePassword": "Remember the password ?",
+      "resendIn":"Resend code in",
+      "resend": "Resend"
+
     },
     "resetPassword": {
       "title": "Reset Password",

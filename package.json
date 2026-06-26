@@ -25,6 +25,7 @@
     "axios": "^1.16.0",
     "clsx": "^2.1.1",
     "country-state-city": "^3.2.1",
+    "dayjs": "^1.11.21",
     "input-otp": "^1.4.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.14.0",
