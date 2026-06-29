@@ -90,6 +90,7 @@ export function AddressLineAutocompleteFields<T extends FieldValues>({
             contextCity={searchContext.city}
             contextState={searchContext.state}
             contextCountry={searchContext.country}
+            contextPincode={searchContext.pincode}
             disabled={disabled}
             invalid={!!errors?.address_line_1}
             error={errors?.address_line_1}

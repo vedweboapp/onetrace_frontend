@@ -132,3 +132,52 @@ export function parseGoogleGeocoderResult(result: google.maps.GeocoderResult): P
     result.formatted_address,
   );
 }
+
+function readPlaceLocation(
+  location: google.maps.places.Place["location"],
+): { lat: number; lng: number } | null {
+  if (!location) return null;
+  const lat = location.lat();
+  const lng = location.lng();
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
+}
+
+function toLegacyAddressComponents(
+  components: NonNullable<google.maps.places.Place["addressComponents"]>,
+): google.maps.GeocoderAddressComponent[] {
+  return components.map((component) => ({
+    long_name: component.longText?.trim() ?? "",
+    short_name: component.shortText?.trim() ?? "",
+    types: component.types ?? [],
+  }));
+}
+
+/** Parses Place class (Places API New) into PlaceSuggestion. */
+export function parseGooglePlaceNew(
+  place: google.maps.places.Place,
+  opts?: { preferredLine1?: string },
+): PlaceSuggestion | null {
+  const components = place.addressComponents;
+  if (!components?.length) return null;
+
+  const coords = readPlaceLocation(place.location);
+  if (!coords) return null;
+
+  const legacyComponents = toLegacyAddressComponents(components);
+  const geometry = {
+    location: new google.maps.LatLng(coords.lat, coords.lng),
+  } as google.maps.places.PlaceGeometry;
+
+  const parsed = parseGoogleAddressComponents(
+    legacyComponents,
+    geometry,
+    place.formattedAddress ?? undefined,
+    place.displayName ?? undefined,
+  );
+  if (!parsed) return null;
+
+  if (place.id) parsed.id = `google:${place.id}`;
+  if (opts?.preferredLine1?.trim()) parsed.line1 = opts.preferredLine1.trim();
+  return parsed;
+}

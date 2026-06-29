@@ -8,6 +8,7 @@ import { isGoogleMapsEnabled } from "@/shared/utils/google-maps-loader.util";
 import {
   fetchGooglePlaceDetails,
   fetchGooglePlacePredictions,
+  isPincodeLikeQuery,
   type GooglePlacePrediction,
 } from "@/shared/utils/google-places-autocomplete.util";
 import { cn } from "@/core/utils/http.util";
@@ -37,7 +38,7 @@ type Props = {
   variant?: "primary" | "secondary";
 };
 
-export function   AddressPlaceAutocomplete({
+export function AddressPlaceAutocomplete({
   id,
   label,
   value,
@@ -96,6 +97,7 @@ export function   AddressPlaceAutocomplete({
         if (useGooglePlaces) {
           const predictions = await fetchGooglePlacePredictions(q, {
             countryIso,
+            contextCountry,
           });
           if (cancelled) return;
           setGooglePredictions(predictions);
@@ -165,18 +167,27 @@ export function   AddressPlaceAutocomplete({
   }
 
   async function pickGoogle(prediction: GooglePlacePrediction) {
-    if (!prediction.place_id || resolvingPlace) return;
+    if (!prediction.placeId || resolvingPlace) return;
     setResolvingPlace(true);
     try {
       const main = prediction.structured_formatting?.main_text?.trim();
-      const place = await fetchGooglePlaceDetails(prediction.place_id);
+      const secondary = prediction.structured_formatting?.secondary_text?.trim();
+      const description = prediction.description?.trim();
+      const place = await fetchGooglePlaceDetails(prediction);
       if (!place) return;
+
+      const addressLine1 =
+        description ||
+        [main, secondary].filter(Boolean).join(", ") ||
+        place.label ||
+        place.line1;
+
       skipSearchRef.current = true;
-      onChange(main || place.line1);
+      onChange(addressLine1);
       onSelectPlace({
         ...place,
-        line1: main || place.line1,
-        label: prediction.description?.trim() || place.label,
+        line1: addressLine1,
+        label: description || place.label,
       });
       setOpen(false);
       setGooglePredictions([]);
@@ -278,14 +289,20 @@ export function   AddressPlaceAutocomplete({
               </li>
             ) : (
               googlePredictions.map((prediction, idx) => {
+                const pincodeQuery = isPincodeLikeQuery(value);
                 const main =
                   prediction.structured_formatting?.main_text ??
                   prediction.description;
                 const secondary =
                   prediction.structured_formatting?.secondary_text ?? "";
+                const displayLabel = pincodeQuery
+                  ? prediction.description
+                  : secondary
+                    ? `${main}, ${secondary}`
+                    : main;
                 return (
                   <li
-                    key={prediction.place_id}
+                    key={prediction.placeId}
                     role="option"
                     aria-selected={idx === activeIndex}
                   >
@@ -306,9 +323,9 @@ export function   AddressPlaceAutocomplete({
                       />
                       <span className="min-w-0 flex-1">
                         <span className="block font-medium text-slate-900 dark:text-slate-100">
-                          {main}
+                          {pincodeQuery ? displayLabel : main}
                         </span>
-                        {secondary ? (
+                        {!pincodeQuery && secondary ? (
                           <span className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">
                             {secondary}
                           </span>
