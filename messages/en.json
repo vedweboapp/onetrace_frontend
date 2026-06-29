@@ -95,8 +95,11 @@
       "body": "Enter your email to reset your password",
       "backToLogin": "Back to sign in",
       "rememberThePassword": "Remember the password ?",
-      "resendIn":"Resend code in",
-      "resend": "Resend"
+      "resendIn": "Resend code in",
+      "resend": "Resend",
+      "newPassword": "New Password",
+      "otpInput": "Enter the 6-digit code sent to your email",
+      "newPasswordPlaceholder": "Enter new password"
 
     },
     "resetPassword": {

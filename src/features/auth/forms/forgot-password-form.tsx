@@ -15,8 +15,8 @@ import { AppButton } from "@/shared/ui";
 
 const forgotPasswordSchema = z.object({
   email: z.string().min(1, "emailRequired").email("emailInvalid"),
-  otp: z.string(),
-  new_password: z.string().min(1, "New password is required").min(8, "Password must be at least 8 characters"),
+  otp: z.string().optional().default(""),
+  new_password: z.string().optional().default(""),
 });
 
 type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
@@ -59,6 +59,18 @@ export function ForgotPasswordForm() {
   async function onSubmit(values: ForgotPasswordValues) {
     setApiError(null);
     setSuccessMessage(null);
+
+    // Per-step validation — only validate what's needed for the current step
+    if (curerntStep === "reset-password") {
+      if (!values.new_password || values.new_password.length < 8) {
+        form.setError("new_password", {
+          message: "Password must be at least 8 characters",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
 
@@ -227,7 +239,7 @@ export function ForgotPasswordForm() {
             curerntStep === "verify-otp" && (
               <div className="space-y-3">
                 <label className="block text-[13px] font-semibold text-slate-700" style={{ letterSpacing: "0.01em" }}>
-                  Enter the 6-digit code sent to your email
+                  {t("forgotPassword.otpInput")}
                 </label>
                 <div className="flex gap-2 justify-center">
                   {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -270,8 +282,8 @@ export function ForgotPasswordForm() {
           {
             curerntStep === "reset-password" && (
               <div className="space-y-4">
-                <label htmlFor="">
-                  New Password
+                <label htmlFor="" className="block text-[13px] font-semibold text-slate-700">
+                  {t("forgotPassword.newPassword")}
                   <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">

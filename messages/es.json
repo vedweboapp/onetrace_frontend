@@ -89,7 +89,9 @@
       "backToLogin": "Volver a iniciar sesión",
       "rememberThePassword": "¿Recuerdas la contraseña?",
       "resendIn": "Reenviar código en",
-      "resend": "Reenviar"
+      "resend": "Reenviar",
+      "newPassword": "Nueva Contraseña",
+      "otpInput": "Introduce el código de 6 dígitos que te enviamos por correo electrónico."
 
     },
     "resetPassword": {
