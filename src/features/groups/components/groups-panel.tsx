@@ -5,8 +5,6 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
-import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import { deleteGroup, fetchAllGroupIds, fetchGroupsPage } from "@/features/groups/api/group.api";
 import type { Group } from "@/features/groups/types/group.types";
 import {
@@ -44,6 +42,8 @@ import {
   massSelectionColumn,
   useEntityListMassActions,
 } from "@/shared/mass-actions";
+
+const EMPTY_COMPOSITE_BY_ID = new Map<number, never>();
 
 export function GroupsPanel() {
   const t = useTranslations("Dashboard.groups");
@@ -83,7 +83,6 @@ export function GroupsPanel() {
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
-  const [compositeById, setCompositeById] = React.useState<Map<number, CompositeItem>>(new Map());
 
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deletingGroup, setDeletingGroup] = React.useState<Group | null>(null);
@@ -153,22 +152,6 @@ export function GroupsPanel() {
     };
   }, [page, pageSize, search, refreshNonce, t]);
 
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items: composites } = await fetchCompositeItemsPage(1, 500);
-        if (cancelled) return;
-        setCompositeById(new Map(composites.map((it) => [it.id, it])));
-      } catch (error) {
-        if (!cancelled) setCompositeById(new Map());
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [refreshNonce]);
-
   const hasActiveFilters = hasListActiveFilters({ search });
   const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
     loading,
@@ -217,11 +200,11 @@ export function GroupsPanel() {
       c.truncate(
         "composite",
         t("table.compositeItems"),
-        (r) => groupLinkedItemsNamesSummary(r.items ?? [], compositeById),
+        (r) => groupLinkedItemsNamesSummary(r.items ?? [], EMPTY_COMPOSITE_BY_ID),
         {
           maxWidth: "lg",
           title: (r) =>
-            r.items?.length ? groupLinkedItemsSummaryText(r.items, compositeById) : undefined,
+            r.items?.length ? groupLinkedItemsSummaryText(r.items, EMPTY_COMPOSITE_BY_ID) : undefined,
         },
       ),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt, {
@@ -258,7 +241,7 @@ export function GroupsPanel() {
       //   { headerSrOnly: false },
       // ),
     ];
-  }, [compositeById, t, tList, dateFmt, massSel.tableColumn]);
+  }, [t, tList, dateFmt, massSel.tableColumn]);
 
   return (
     <div className="space-y-4">
@@ -343,7 +326,7 @@ export function GroupsPanel() {
                   }
                   description={
                     row.items && row.items.length > 0
-                      ? groupLinkedItemsSummaryText(row.items, compositeById, 2)
+                      ? groupLinkedItemsSummaryText(row.items, EMPTY_COMPOSITE_BY_ID, 2)
                       : undefined
                   }
                   footer={

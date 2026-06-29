@@ -108,6 +108,11 @@ export function JobsPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
 
+  const [fetchFilterOptions, setFetchFilterOptions] = React.useState(
+    () => Boolean(jobStatusParam || assignedWorkerParam),
+  );
+  const [fetchMassOptions, setFetchMassOptions] = React.useState(false);
+
   const [workerOptions, setWorkerOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [jobStatusOptions, setJobStatusOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [massClientOptions, setMassClientOptions] = React.useState<{ value: string; label: string }[]>([]);
@@ -265,22 +270,17 @@ export function JobsPanel() {
   );
 
   React.useEffect(() => {
+    if (!fetchFilterOptions) return;
     let cancelled = false;
     (async () => {
       try {
-        const [workers, statuses, clients, projects, sites] = await Promise.all([
+        const [workers, statuses] = await Promise.all([
           loadTechnicianOptions(),
           fetchJobStatusesPage(1, 500),
-          fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
-          fetchProjectsPage(1, 500, { is_active: true }),
-          fetchSitesPage(1, 500, { is_active: true }),
         ]);
         if (!cancelled) {
           setWorkerOptions(workers);
           setJobStatusOptions(statuses.items.map((s) => ({ value: String(s.id), label: s.status_name })));
-          setMassClientOptions(clients.items.map((c) => ({ value: String(c.id), label: c.name })));
-          setMassProjectOptions(projects.items.map((p) => ({ value: String(p.id), label: p.name })));
-          setMassSiteOptions(sites.items.map((s) => ({ value: String(s.id), label: s.site_name })));
           const byId: Record<number, { status_name: string; bg_colour: string; text_colour: string }> = {};
           for (const s of statuses.items) {
             byId[s.id] = {
@@ -291,14 +291,10 @@ export function JobsPanel() {
           }
           setStatusById(byId);
         }
-      } catch (error) {
+      } catch {
         if (!cancelled) {
           setWorkerOptions([]);
           setJobStatusOptions([]);
-          setMassClientOptions([]);
-          setMassProjectOptions([]);
-          setMassSiteOptions([]);
-          setMassFormOptions([]);
           setStatusById({});
         }
       }
@@ -306,7 +302,46 @@ export function JobsPanel() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fetchFilterOptions]);
+
+  React.useEffect(() => {
+    if (!fetchMassOptions) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [clients, projects, sites] = await Promise.all([
+          fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
+          fetchProjectsPage(1, 500, { is_active: true }),
+          fetchSitesPage(1, 500, { is_active: true }),
+        ]);
+        if (!cancelled) {
+          setMassClientOptions(clients.items.map((c) => ({ value: String(c.id), label: c.name })));
+          setMassProjectOptions(projects.items.map((p) => ({ value: String(p.id), label: p.name })));
+          setMassSiteOptions(sites.items.map((s) => ({ value: String(s.id), label: s.site_name })));
+        }
+      } catch {
+        if (!cancelled) {
+          setMassClientOptions([]);
+          setMassProjectOptions([]);
+          setMassSiteOptions([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchMassOptions]);
+
+  React.useEffect(() => {
+    if (jobStatusParam || assignedWorkerParam) setFetchFilterOptions(true);
+  }, [jobStatusParam, assignedWorkerParam]);
+
+  React.useEffect(() => {
+    if (mass.selectedCount > 0) {
+      setFetchMassOptions(true);
+      setFetchFilterOptions(true);
+    }
+  }, [mass.selectedCount]);
 
   React.useEffect(() => {
     if (!sharedMassUpdateProjectId) {
@@ -520,6 +555,9 @@ export function JobsPanel() {
                 searchable
                 clearable
                 className="w-full min-w-0 sm:w-44"
+                onOpenChange={(open) => {
+                  if (open) setFetchFilterOptions(true);
+                }}
                 onChange={(v) => setUrl({ job_status: v || null, page: null }, { replace: true })}
               />
               <CheckmarkSelect
@@ -532,6 +570,9 @@ export function JobsPanel() {
                 searchable
                 clearable
                 className="w-full min-w-0 sm:w-44"
+                onOpenChange={(open) => {
+                  if (open) setFetchFilterOptions(true);
+                }}
                 onChange={(v) => setUrl({ assigned_worker: v || null, page: null }, { replace: true })}
               />
             </div>

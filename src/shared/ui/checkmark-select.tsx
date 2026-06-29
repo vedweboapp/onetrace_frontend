@@ -73,6 +73,8 @@ type Props = {
   required?: boolean;
   /** Label when `value` is set but missing from `options` (e.g. after async reload). */
   fallbackLabel?: string;
+  /** Called when the dropdown opens or closes (e.g. to lazy-load options). */
+  onOpenChange?: (open: boolean) => void;
 };
 
 const DROPDOWN_GAP = 4;
@@ -190,8 +192,20 @@ export function CheckmarkSelect({
   addLabel,
   required,
   fallbackLabel,
+  onOpenChange,
 }: Props) {
   const [open, setOpen] = React.useState(false);
+  const onOpenChangeRef = React.useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
+  const openChangeReadyRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!openChangeReadyRef.current) {
+      openChangeReadyRef.current = true;
+      return;
+    }
+    onOpenChangeRef.current?.(open);
+  }, [open]);
   const [search, setSearch] = React.useState("");
   const rootRef = React.useRef<HTMLDivElement>(null);
   const anchorRef = React.useRef<HTMLDivElement>(null);

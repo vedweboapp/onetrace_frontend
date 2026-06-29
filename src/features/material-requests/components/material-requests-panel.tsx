@@ -46,6 +46,7 @@ import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { useDeferredListOptions } from "@/shared/hooks/use-deferred-list-options";
 import {
   MassActionBar,
   buildMaterialRequestMassUpdateFields,
@@ -97,11 +98,20 @@ export function MaterialRequestsPanel() {
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
-  const [workerOptions, setWorkerOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [fetchWorkerOptions, setFetchWorkerOptions] = React.useState(() => Boolean(workerParam));
+  const [fetchStatusCatalog, setFetchStatusCatalog] = React.useState(
+    () => Boolean(statusParam),
+  );
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
   const { options: statusFilterOptions, labelFor: statusLabel, rowFor: statusRowFor } =
-    useMaterialStatusCatalog();
+    useMaterialStatusCatalog(fetchStatusCatalog);
+
+  const loadWorkerOptions = React.useCallback(async () => {
+    return loadTechnicianOptions();
+  }, []);
+
+  const { options: workerOptions } = useDeferredListOptions(loadWorkerOptions, fetchWorkerOptions);
 
   const openCreate = React.useCallback(() => {
     router.push(buildPathWithStoredBack(`${pathname}/new`, listHref));
@@ -123,19 +133,12 @@ export function MaterialRequestsPanel() {
   );
 
   React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const options = await loadTechnicianOptions();
-        if (!cancelled) setWorkerOptions(options);
-      } catch (error) {
-        if (!cancelled) setWorkerOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (statusParam) setFetchStatusCatalog(true);
+  }, [statusParam]);
+
+  React.useEffect(() => {
+    if (workerParam) setFetchWorkerOptions(true);
+  }, [workerParam]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -226,6 +229,13 @@ export function MaterialRequestsPanel() {
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
 
+  React.useEffect(() => {
+    if (mass.selectedCount > 0) {
+      setFetchWorkerOptions(true);
+      setFetchStatusCatalog(true);
+    }
+  }, [mass.selectedCount]);
+
   const massSel = React.useMemo(() => massSelectionColumn(mass, items.length), [mass, items.length]);
 
   const tableColumns = React.useMemo(() => {
@@ -296,6 +306,9 @@ export function MaterialRequestsPanel() {
                 clearable
                 clearAriaLabel={tList("clearFilter")}
                 className="w-full min-w-0 sm:w-44"
+                onOpenChange={(open) => {
+                  if (open) setFetchStatusCatalog(true);
+                }}
                 onChange={(v) => setUrl({ status: v || null, page: null }, { replace: true })}
               />
               <CheckmarkSelect
@@ -309,6 +322,9 @@ export function MaterialRequestsPanel() {
                 clearable
                 clearAriaLabel={tList("clearFilter")}
                 className="w-full min-w-0 sm:w-56"
+                onOpenChange={(open) => {
+                  if (open) setFetchWorkerOptions(true);
+                }}
                 onChange={(v) => setUrl({ worker_name: v || null, page: null }, { replace: true })}
               />
               <SurfaceDateInput

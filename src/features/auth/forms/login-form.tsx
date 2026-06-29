@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { ArrowLeft, Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import * as React from "react";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { routes } from "@/shared/config/routes";
 import {
   loginSchema,
@@ -21,6 +21,22 @@ export function LoginForm() {
   const tVal = useTranslations("validation");
   const { submit, isSubmitting, sendOtp, submitOtp, isOtpSubmitting, isOtpVerifying } = useLogin();
 
+  const router = useRouter();
+  React.useEffect(() => {
+    const auth = localStorage.getItem("auth-storage")
+    if (auth) {
+      try {
+        const authToken = JSON.parse(auth)
+        if (authToken?.state?.accessToken) {
+          router.push(routes.dashboard.root);
+        }
+      }
+      catch (err) {
+        console.error(err)
+      }
+    }
+  }, []);
+  
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },

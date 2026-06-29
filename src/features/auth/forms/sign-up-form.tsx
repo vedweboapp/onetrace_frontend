@@ -3,12 +3,13 @@ import { cn } from "@/core/utils/http.util";
 import { SurfacePhoneField } from "@/shared/ui";
 import { Eye, EyeClosed, Mail } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { OTPInput } from "input-otp";
 import { Link, useRouter } from "@/i18n/navigation";
 import { sendOtp, signUpHandler, verifyOtp } from "../api/auth.api";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { routes } from "@/shared/config/routes";
 
 // Matches: local@domain.tld
 // Rejects: missing @, double dots, spaces, no TLD
@@ -49,6 +50,20 @@ const SignUpForm = () => {
   } = useForm<SignUpInput>({
     defaultValues: { otp: "" },
   });
+  useEffect(() => {
+    const auth = localStorage.getItem("auth-storage")
+    if (auth) {
+      try {
+        const authToken = JSON.parse(auth)
+        if (authToken?.state?.accessToken) {
+          route.push(routes.dashboard.root);
+        }
+      }
+      catch (err) {
+        console.error(err)
+      }
+    }
+  }, []);
   const route = useRouter();
   const t = useTranslations("Auth.signUpForm");
   const p = useTranslations("Auth.signUpForm.placeholders");
@@ -157,7 +172,7 @@ const SignUpForm = () => {
             <input
               type="text"
               {...register("middle_name")}
-              className={cn(inputClass,"w-full")}
+              className={cn(inputClass, "w-full")}
               placeholder={p("middleName")}
             />
           </div>
@@ -322,7 +337,7 @@ const SignUpForm = () => {
           className={cn(
             "w-full h-12 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors",
             (isSubmitting || !emailVerified) &&
-              "pointer-events-none opacity-25",
+            "pointer-events-none opacity-25",
           )}
         >
           {isSubmitting ? t("signingUp") : t("signUp")}

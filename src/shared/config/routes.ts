@@ -27,6 +27,7 @@ export const routes = {
     returnToStock: "/return-to-stock",
     settings: "/settings",
     settingsPinStatus: "/settings/pin-status",
+    settingsProjectStatus: "/settings/project-status",
     settingsJobStatus: "/settings/job-status",
     settingsMaterialStatus: "/settings/material-status",
     settingsTags: "/settings/tag",

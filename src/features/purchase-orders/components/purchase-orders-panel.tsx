@@ -45,6 +45,7 @@ import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { useDeferredListOptions } from "@/shared/hooks/use-deferred-list-options";
 
 export function PurchaseOrdersPanel() {
   const t = useTranslations("Dashboard.purchaseOrders");
@@ -89,7 +90,14 @@ export function PurchaseOrdersPanel() {
   });
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
-  const [vendorOptions, setVendorOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [fetchVendorOptions, setFetchVendorOptions] = React.useState(() => Boolean(vendorParam));
+
+  const loadVendorOptions = React.useCallback(async () => {
+    const { items: vendors } = await fetchVendorsPage(1, 500, { is_active: true });
+    return vendors.map((v) => ({ value: String(v.id), label: v.name }));
+  }, []);
+
+  const { options: vendorOptions } = useDeferredListOptions(loadVendorOptions, fetchVendorOptions);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
@@ -137,21 +145,8 @@ export function PurchaseOrdersPanel() {
   );
 
   React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items: vendors } = await fetchVendorsPage(1, 500, { is_active: true });
-        if (!cancelled) {
-          setVendorOptions(vendors.map((v) => ({ value: String(v.id), label: v.name })));
-        }
-      } catch (error) {
-        if (!cancelled) setVendorOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (vendorParam) setFetchVendorOptions(true);
+  }, [vendorParam]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -269,6 +264,9 @@ export function PurchaseOrdersPanel() {
                 clearable
                 clearAriaLabel={tList("clearFilter")}
                 className="w-full min-w-0 sm:w-56"
+                onOpenChange={(open) => {
+                  if (open) setFetchVendorOptions(true);
+                }}
                 onChange={(v) => setUrl({ vendor: v || null, page: null }, { replace: true })}
               />
             </div>

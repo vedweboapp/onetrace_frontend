@@ -7,7 +7,7 @@ export type CustomizationSettingsItemId =
   | "installationTypes"
   | "vendorTypes"
   | "checklistTypes"
-  | "pinStatus"
+  | "projectStatus"
   | "jobStatus"
   | "materialStatus"
   | "tags";
@@ -23,7 +23,7 @@ export const CUSTOMIZATION_SETTINGS_ITEMS: CustomizationSettingsItem[] = [
   { id: "installationTypes", href: routes.dashboard.settingsInstallationTypes, icon: Plug },
   { id: "vendorTypes", href: routes.dashboard.settingsVendorTypes, icon: Store },
   { id: "checklistTypes", href: routes.dashboard.settingsChecklistTypes, icon: ListChecks },
-  { id: "pinStatus", href: routes.dashboard.settingsPinStatus, icon: Tags },
+  { id: "projectStatus", href: routes.dashboard.settingsProjectStatus, icon: Tags },
   { id: "jobStatus", href: routes.dashboard.settingsJobStatus, icon: ListTodo },
   { id: "materialStatus", href: routes.dashboard.settingsMaterialStatus, icon: ClipboardList },
   { id: "tags", href: routes.dashboard.settingsTags, icon: Tag },

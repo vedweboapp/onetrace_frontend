@@ -113,10 +113,12 @@ export function CompositeItemsPanel() {
   const [installationTypeOptions, setInstallationTypeOptions] = React.useState<
     { value: string; label: string }[]
   >([]);
+  const [fetchMassOptions, setFetchMassOptions] = React.useState(false);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
   React.useEffect(() => {
+    if (!fetchMassOptions) return;
     let cancelled = false;
     (async () => {
       try {
@@ -132,7 +134,7 @@ export function CompositeItemsPanel() {
             label: it.installation_type?.trim() || `#${it.id}`,
           })),
         );
-      } catch (error) {
+      } catch {
         if (!cancelled) {
           setGroupOptions([]);
           setInstallationTypeOptions([]);
@@ -142,7 +144,7 @@ export function CompositeItemsPanel() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fetchMassOptions]);
 
   const listFilters = React.useMemo(() => ({ search: search || undefined }), [search]);
 
@@ -177,6 +179,10 @@ export function CompositeItemsPanel() {
     updateFields: massUpdateFields,
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
+
+  React.useEffect(() => {
+    if (mass.selectedCount > 0) setFetchMassOptions(true);
+  }, [mass.selectedCount]);
 
   const massSel = React.useMemo(() => massSelectionColumn(mass, items.length), [mass, items.length]);
 

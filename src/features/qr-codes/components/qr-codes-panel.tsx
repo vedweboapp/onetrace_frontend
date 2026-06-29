@@ -33,6 +33,7 @@ import {
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { useDeferredListOptions } from "@/shared/hooks/use-deferred-list-options";
 import { toastSuccess, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import {
   MassActionBar,
@@ -98,7 +99,17 @@ export function QrCodesPanel() {
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
-  const [jobOptions, setJobOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [fetchJobOptions, setFetchJobOptions] = React.useState(false);
+
+  const loadJobOptions = React.useCallback(async () => {
+    const { items: jobs } = await fetchJobsPage(1, 500, undefined, { silent: true });
+    return jobs.map((j) => ({
+      value: String(j.id),
+      label: j.title?.trim() || `#${j.id}`,
+    }));
+  }, []);
+
+  const { options: jobOptions } = useDeferredListOptions(loadJobOptions, fetchJobOptions);
 
   const statusFilterOptions = React.useMemo(
     () => [
@@ -107,28 +118,6 @@ export function QrCodesPanel() {
     ],
     [t],
   );
-
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items: jobs } = await fetchJobsPage(1, 500, undefined, { silent: true });
-        if (!cancelled) {
-          setJobOptions(
-            jobs.map((j) => ({
-              value: String(j.id),
-              label: j.title?.trim() || `#${j.id}`,
-            })),
-          );
-        }
-      } catch (error) {
-        if (!cancelled) setJobOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const listFilters = React.useMemo(
     () => ({ search: search || undefined, status: statusFilter }),
@@ -158,6 +147,10 @@ export function QrCodesPanel() {
     updateFields: massUpdateFields,
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
+
+  React.useEffect(() => {
+    if (mass.selectedCount > 0) setFetchJobOptions(true);
+  }, [mass.selectedCount]);
 
   const massSel = React.useMemo(() => massSelectionColumn(mass, items.length), [mass, items.length]);
 
