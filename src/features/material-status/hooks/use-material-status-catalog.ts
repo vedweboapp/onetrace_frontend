@@ -39,16 +39,19 @@ export function buildMaterialStatusCatalog(items: WorkflowColourStatus[]): Omit<
   return { byKey, options, labelFor, rowFor };
 }
 
-export function useMaterialStatusCatalog(): MaterialStatusCatalog {
+export function useMaterialStatusCatalog(enabled = true): MaterialStatusCatalog {
   const [catalog, setCatalog] = React.useState<Omit<MaterialStatusCatalog, "loading">>(() =>
     buildMaterialStatusCatalog([]),
   );
-  const [loading, setLoading] = React.useState(true);
+  const [loading, setLoading] = React.useState(enabled);
+  const startedRef = React.useRef(false);
 
   React.useEffect(() => {
+    if (!enabled || startedRef.current) return;
+    startedRef.current = true;
     let cancelled = false;
-    (async () => {
-      setLoading(true);
+    setLoading(true);
+    void (async () => {
       try {
         const { items } = await fetchMaterialStatusesPage(1, 500);
         if (!cancelled) setCatalog(buildMaterialStatusCatalog(items));
@@ -61,7 +64,7 @@ export function useMaterialStatusCatalog(): MaterialStatusCatalog {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [enabled]);
 
-  return { ...catalog, loading };
+  return { ...catalog, loading: enabled ? loading : false };
 }

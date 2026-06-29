@@ -55,6 +55,7 @@ import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { useDeferredListOptions } from "@/shared/hooks/use-deferred-list-options";
 
 export function QuotationsPanel() {
   const t = useTranslations("Dashboard.quotations");
@@ -107,15 +108,24 @@ export function QuotationsPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
 
-  const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [fetchCustomerOptions, setFetchCustomerOptions] = React.useState(() => Boolean(customerParam));
+  const [fetchSiteOptions, setFetchSiteOptions] = React.useState(() => Boolean(siteParam || customerParam));
+  const [fetchProjectOptions, setFetchProjectOptions] = React.useState(() => Boolean(projectParam));
+  const [fetchMassOptions, setFetchMassOptions] = React.useState(false);
   const [siteRows, setSiteRows] = React.useState<Site[]>([]);
   const [projectRows, setProjectRows] = React.useState<Project[]>([]);
-  const [tagLabelById, setTagLabelById] = React.useState<Record<number, string>>({});
   const [massSiteOptions, setMassSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [massProjectOptions, setMassProjectOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [massContactOptions, setMassContactOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [massTagOptions, setMassTagOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [massUserOptions, setMassUserOptions] = React.useState<{ value: string; label: string }[]>([]);
+
+  const loadCustomerOptions = React.useCallback(async () => {
+    const { items } = await fetchClientsPage(1, 500, { is_active: true });
+    return items.map((c) => ({ value: String(c.id), label: c.name }));
+  }, []);
+
+  const { options: clientOptions } = useDeferredListOptions(loadCustomerOptions, fetchCustomerOptions);
   const openCreate = React.useCallback(() => {
     router.push(buildPathWithStoredBack(`${pathname}/new`, listHref));
   }, [listHref, pathname, router]);
@@ -148,21 +158,53 @@ export function QuotationsPanel() {
   );
 
   React.useEffect(() => {
+    if (!fetchSiteOptions) return;
     let cancelled = false;
     (async () => {
       try {
-        const [clientsRes, sitesRes, projectsRes, contactsRes, tagsRes, usersRes] = await Promise.all([
-          fetchClientsPage(1, 500, { is_active: true }),
-          fetchSitesPage(1, 500, { is_active: true }),
-          fetchProjectsPage(1, 500, { is_active: true }),
+        const { items } = await fetchSitesPage(1, 500, {
+          client: customerFilter,
+          is_active: true,
+        });
+        if (!cancelled) setSiteRows(items);
+      } catch {
+        if (!cancelled) setSiteRows([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchSiteOptions, customerFilter]);
+
+  React.useEffect(() => {
+    if (!fetchProjectOptions) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchProjectsPage(1, 500, { is_active: true });
+        if (!cancelled) setProjectRows(items);
+      } catch {
+        if (!cancelled) setProjectRows([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchProjectOptions]);
+
+  React.useEffect(() => {
+    if (!fetchMassOptions) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [contactsRes, tagsRes, usersRes, sitesRes, projectsRes] = await Promise.all([
           fetchContactsPage(1, 500, { is_active: true }),
           fetchTagsPage(1, 500, { is_active: true }),
           fetchUsersPage(1, 500),
+          fetchSitesPage(1, 500, { is_active: true }),
+          fetchProjectsPage(1, 500, { is_active: true }),
         ]);
         if (!cancelled) {
-          setClientOptions(clientsRes.items.map((c) => ({ value: String(c.id), label: c.name })));
-          setMassSiteOptions(sitesRes.items.map((s) => ({ value: String(s.id), label: s.site_name })));
-          setMassProjectOptions(projectsRes.items.map((p) => ({ value: String(p.id), label: p.name })));
           setMassContactOptions(contactsRes.items.map((c) => ({ value: String(c.id), label: c.name })));
           const tagLabel = (row: Tag) => row.name ?? row.tag_name ?? `#${row.id}`;
           setMassTagOptions(tagsRes.items.map((row) => ({ value: String(row.id), label: tagLabel(row) })));
@@ -173,77 +215,40 @@ export function QuotationsPanel() {
               return { value: String(u.user_detail.id), label };
             }),
           );
+          setMassSiteOptions(sitesRes.items.map((s) => ({ value: String(s.id), label: s.site_name })));
+          setMassProjectOptions(projectsRes.items.map((p) => ({ value: String(p.id), label: p.name })));
+          setFetchCustomerOptions(true);
         }
-      } catch (error) {
+      } catch {
         if (!cancelled) {
-          setClientOptions([]);
-          setMassSiteOptions([]);
-          setMassProjectOptions([]);
           setMassContactOptions([]);
           setMassTagOptions([]);
           setMassUserOptions([]);
+          setMassSiteOptions([]);
+          setMassProjectOptions([]);
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fetchMassOptions]);
 
   React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items } = await fetchSitesPage(1, 500, {
-          client: customerFilter,
-          is_active: true,
-        });
-        if (!cancelled) setSiteRows(items);
-      } catch (error) {
-        if (!cancelled) setSiteRows([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    if (customerParam) setFetchCustomerOptions(true);
+  }, [customerParam]);
+
+  React.useEffect(() => {
+    if (siteParam || customerParam) setFetchSiteOptions(true);
+  }, [siteParam, customerParam]);
+
+  React.useEffect(() => {
+    if (projectParam) setFetchProjectOptions(true);
+  }, [projectParam]);
+
+  React.useEffect(() => {
+    if (customerFilter) setFetchSiteOptions(true);
   }, [customerFilter]);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items } = await fetchProjectsPage(1, 500, { is_active: true });
-        if (!cancelled) setProjectRows(items);
-      } catch (error) {
-        if (!cancelled) setProjectRows([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items: tags } = await fetchTagsPage(1, 500, { is_active: true });
-        if (!cancelled) {
-          const mapped: Record<number, string> = {};
-          for (const row of tags) {
-            const label = (row.name ?? row.tag_name ?? "").trim();
-            if (label) mapped[row.id] = label;
-          }
-          setTagLabelById(mapped);
-        }
-      } catch (error) {
-        if (!cancelled) setTagLabelById({});
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -300,6 +305,21 @@ export function QuotationsPanel() {
     for (const s of siteRows) m[s.id] = s.site_name;
     return m;
   }, [siteRows]);
+
+  const tagLabelById = React.useMemo(() => {
+    const m: Record<number, string> = {};
+    for (const row of items) {
+      if (!Array.isArray(row.tags)) continue;
+      for (const tag of row.tags) {
+        if (typeof tag !== "object" || tag === null || typeof tag.id !== "number") continue;
+        const label =
+          (typeof tag.name === "string" && tag.name.trim()) ||
+          (typeof tag.tag_name === "string" && tag.tag_name.trim());
+        if (label) m[tag.id] = label;
+      }
+    }
+    return m;
+  }, [items]);
 
   const projectOptionsForFilter = React.useMemo(() => {
     if (!customerFilter || customerFilter <= 0) {
@@ -382,6 +402,10 @@ export function QuotationsPanel() {
     updateFields: massUpdateFields,
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
+
+  React.useEffect(() => {
+    if (mass.selectedCount > 0) setFetchMassOptions(true);
+  }, [mass.selectedCount]);
 
   const hasActiveFilters = hasListActiveFilters({
     search,
@@ -507,6 +531,9 @@ export function QuotationsPanel() {
                 clearable
                 clearAriaLabel={tList("clearFilter")}
                 className="w-full min-w-0 sm:w-56"
+                onOpenChange={(open) => {
+                  if (open) setFetchCustomerOptions(true);
+                }}
                 onChange={(v) =>
                   setUrl({ customer: v || null, site: null, project: null, page: null }, { replace: true })
                 }
@@ -522,6 +549,9 @@ export function QuotationsPanel() {
                 clearable
                 clearAriaLabel={tList("clearFilter")}
                 className="w-full min-w-0 sm:w-56"
+                onOpenChange={(open) => {
+                  if (open) setFetchSiteOptions(true);
+                }}
                 onChange={(v) => setUrl({ site: v || null, page: null }, { replace: true })}
               />
               <CheckmarkSelect
@@ -535,6 +565,9 @@ export function QuotationsPanel() {
                 clearable
                 clearAriaLabel={tList("clearFilter")}
                 className="w-full min-w-0 sm:w-56"
+                onOpenChange={(open) => {
+                  if (open) setFetchProjectOptions(true);
+                }}
                 onChange={(v) => setUrl({ project: v || null, page: null }, { replace: true })}
               />
               <CheckmarkSelect
