@@ -15,8 +15,8 @@ import { AppButton } from "@/shared/ui";
 
 const forgotPasswordSchema = z.object({
   email: z.string().min(1, "emailRequired").email("emailInvalid"),
-  otp: z.string().optional().default(""),
-  new_password: z.string().optional().default(""),
+  otp: z.string(),
+  new_password: z.string(),
 });
 
 type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
@@ -268,7 +268,7 @@ export function ForgotPasswordForm() {
                             t("resendIn")
                           }
                         </span>
-                        <span className="font-semibold text-slate-800">{formatTime(timeLeft)}</span>
+                        <span className="font-semibold text-slate-800">{formatTime(timeLeft ?? 0)}</span>
                       </div>
                     )
                   }

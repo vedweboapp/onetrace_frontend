@@ -38,9 +38,11 @@ export type ForgotOtpRequestBody = {
 };
 
 export type PasswordResetConfirmBody = {
-  email: string;
+  email?: string;
+  token?: string;
   new_password: string;
-  new_password_confirm: string;
+  new_password_confirm?: string;
+  confirm_password?: string;
 };
 export type sendOtpBody = {
   email: string;

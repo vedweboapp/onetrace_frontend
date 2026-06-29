@@ -217,7 +217,7 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
   return (
     <>
       <div className="border rounded-[4px] border-gray-200 dark:border-slate-700 w-full overflow-hidden">
-        <div className="bg-gray-100 dark:bg-slate-800 px-6 py-4 flex items-center justify-between">
+        <div className="bg-gray-100 dark:bg-slate-800 px-3 py-2 lg:px-6 lg:py-4 flex items-center justify-between">
           {isEditing ? (
             <input
               autoFocus
@@ -276,7 +276,7 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
 
         <div
           ref={drop as any}
-          className={`min-h-[150px] bg-white dark:bg-slate-900 rounded-[8px] p-6 transition-all ${section.fields.length === 0
+          className={`min-h-[150px] bg-white dark:bg-slate-900 rounded-[8px] p-3 lg:p-6 transition-all ${section.fields.length === 0
             ? "flex items-center justify-center border-dotted border-2 border-gray-300 dark:border-slate-600"
             : ""
             } ${isOver ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30 shadow-sm" : ""}`}
@@ -379,6 +379,16 @@ export default function FormBuilderLayout({
     getFormSchemaById,
     clearSchema,
   } = useFormStore();
+
+  const [isLargeScreen, setIsLargeScreen] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1024px)");
+    setIsLargeScreen(media.matches);
+    const listener = (e: MediaQueryListEvent) => setIsLargeScreen(e.matches);
+    media.addEventListener("change", listener);
+    return () => media.removeEventListener("change", listener);
+  }, []);
 
   const searchParams = useSearchParams();
   const rawPurpose = searchParams.get("purpose");
@@ -1405,15 +1415,23 @@ export default function FormBuilderLayout({
           />
         )
       }
-      {/* Responsive Sub-header (Single Row) */}
+      {/* Responsive Sub-header */}
       <div
-        className="fixed top-14 z-20 flex border-t border-gray-200 dark:border-gray-700 items-center justify-between h-14 px-6 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-gray-700 transition-all duration-300"
-        style={{
-          left: sidebarW,
-          width: `calc(100% - ${sidebarW}px)`,
-        }}
+        className={`z-20 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-gray-700 transition-all duration-300 ${
+          isLargeScreen
+            ? "fixed top-14 flex items-center justify-between h-14 px-6"
+            : "relative w-full flex flex-col gap-4 p-4"
+        }`}
+        style={
+          isLargeScreen
+            ? {
+                left: sidebarW,
+                width: `calc(100% - ${sidebarW}px)`,
+              }
+            : undefined
+        }
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full lg:w-auto">
           <div className="w-8 h-8 bg-black rounded flex items-center justify-center">
             <div className="w-4 h-4 bg-white rounded-full opacity-80" />
           </div>
@@ -1430,7 +1448,7 @@ export default function FormBuilderLayout({
           </div>
         </div>
 
-        <div className="flex-1 flex justify-center">
+        <div className="flex justify-center w-full lg:w-auto lg:flex-1">
           <AppTabs
             tabs={tabs}
             value={activeTab}
@@ -1438,18 +1456,19 @@ export default function FormBuilderLayout({
           />
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button variant="secondary" onClick={() => router.push(BackUrl)}>
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
+          <Button variant="secondary" onClick={() => router.push(BackUrl)} className="flex-1 lg:flex-initial justify-center">
             Close
           </Button>
           <Button
             variant="secondary"
             onClick={() => handleSave(true)}
             disabled={!dirty || saving}
+            className="flex-1 lg:flex-initial justify-center"
           >
             Save and Close
           </Button>
-          <Button onClick={() => handleSave(false)} disabled={!dirty || saving}>
+          <Button onClick={() => handleSave(false)} disabled={!dirty || saving} className="flex-1 lg:flex-initial justify-center">
             {saving ? "Saving..." : "Save"}
           </Button>
         </div>
@@ -1459,8 +1478,8 @@ export default function FormBuilderLayout({
 
       {/* Main builder canvas offset past sidebar + ModuleBar */}
       <div
-        className="p-6 transition-all duration-300 pt-10"
-        style={{ marginLeft: canvasMarginLeft }}
+        className="px-2 py-4 lg:p-6 transition-all duration-300 pt-4 lg:pt-10"
+        style={isLargeScreen ? { marginLeft: canvasMarginLeft } : { marginLeft: 0 }}
       >
 
         <div className="mx-auto">
@@ -1523,8 +1542,11 @@ export default function FormBuilderLayout({
               </div>
               <div className="flex w-full justify-center">
                 <div
-                  className={`bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm ${previewLayout === "phone" ? "rounded-sm p-4" : "w-full rounded-sm p-8"
-                    }`}
+                  className={`bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm ${
+                    previewLayout === "phone"
+                      ? "rounded-sm p-2 sm:p-4"
+                      : "w-full rounded-sm p-3 sm:p-8"
+                  }`}
                   style={
                     previewLayout === "phone"
                       ? { width: 390, maxWidth: "100%" }
