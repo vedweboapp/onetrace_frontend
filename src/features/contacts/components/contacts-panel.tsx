@@ -36,6 +36,7 @@ import {
 import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { useDeferredListOptions } from "@/shared/hooks/use-deferred-list-options";
 import {
   MassActionBar,
   buildContactMassUpdateFields,
@@ -101,9 +102,24 @@ export function ContactsPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
+  const [fetchClientOptions, setFetchClientOptions] = React.useState(() => Boolean(clientParam));
+  const [fetchVendorOptions, setFetchVendorOptions] = React.useState(() => Boolean(vendorParam));
 
-  const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [vendorOptions, setVendorOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const loadClientOptions = React.useCallback(async () => {
+    const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+    return clients.map((c) => ({ value: String(c.id), label: c.name }));
+  }, []);
+
+  const loadVendorOptions = React.useCallback(async () => {
+    const { items: vendors } = await fetchVendorsPage(1, 500, { is_active: true });
+    return vendors.map((v) => ({ value: String(v.id), label: v.name }));
+  }, []);
+
+  const needsClientOptions = activeContactType === "client" && fetchClientOptions;
+  const needsVendorOptions = activeContactType === "vendor" && fetchVendorOptions;
+
+  const { options: clientOptions } = useDeferredListOptions(loadClientOptions, needsClientOptions);
+  const { options: vendorOptions } = useDeferredListOptions(loadVendorOptions, needsVendorOptions);
   const openCreate = React.useCallback(() => {
     const params = new URLSearchParams();
     params.set("back", listHref);
@@ -163,6 +179,20 @@ export function ContactsPanel() {
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
 
+  React.useEffect(() => {
+    if (mass.selectedCount > 0 && activeContactType === "client") {
+      setFetchClientOptions(true);
+    }
+  }, [mass.selectedCount, activeContactType]);
+
+  React.useEffect(() => {
+    if (clientParam) setFetchClientOptions(true);
+  }, [clientParam]);
+
+  React.useEffect(() => {
+    if (vendorParam) setFetchVendorOptions(true);
+  }, [vendorParam]);
+
   const commitSearch = React.useCallback(
     (q: string) => {
       const trimmed = q.trim();
@@ -170,30 +200,6 @@ export function ContactsPanel() {
     },
     [setUrl],
   );
-
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [{ items: clients }, { items: vendors }] = await Promise.all([
-          fetchClientsPage(1, 500, { is_active: true }),
-          fetchVendorsPage(1, 500, { is_active: true }),
-        ]);
-        if (!cancelled) {
-          setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
-          setVendorOptions(vendors.map((v) => ({ value: String(v.id), label: v.name })));
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setClientOptions([]);
-          setVendorOptions([]);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -402,6 +408,9 @@ export function ContactsPanel() {
                   clearable
                   clearAriaLabel={tList("clearFilter")}
                   className="w-full min-w-0 sm:w-56"
+                  onOpenChange={(open) => {
+                    if (open) setFetchVendorOptions(true);
+                  }}
                   onChange={(v) => setUrl({ vendor: v || null, page: null }, { replace: true })}
                 />
               ) : (
@@ -416,6 +425,9 @@ export function ContactsPanel() {
                   clearable
                   clearAriaLabel={tList("clearFilter")}
                   className="w-full min-w-0 sm:w-56"
+                  onOpenChange={(open) => {
+                    if (open) setFetchClientOptions(true);
+                  }}
                   onChange={(v) => setUrl({ client: v || null, page: null }, { replace: true })}
                 />
               )}

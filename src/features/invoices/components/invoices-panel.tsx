@@ -45,6 +45,7 @@ import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { useDeferredListOptions } from "@/shared/hooks/use-deferred-list-options";
 import {
   MassActionBar,
   buildInvoiceMassUpdateFields,
@@ -96,9 +97,17 @@ export function InvoicesPanel() {
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
-  const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [fetchClientOptions, setFetchClientOptions] = React.useState(() => Boolean(clientParam));
+  const [fetchMassOptions, setFetchMassOptions] = React.useState(false);
   const [contactOptions, setContactOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [projectOptions, setProjectOptions] = React.useState<{ value: string; label: string }[]>([]);
+
+  const loadClientOptions = React.useCallback(async () => {
+    const { items } = await fetchClientsPage(1, 500, { is_active: true }, { silent: true });
+    return items.map((c) => ({ value: String(c.id), label: c.name }));
+  }, []);
+
+  const { options: clientOptions } = useDeferredListOptions(loadClientOptions, fetchClientOptions);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
@@ -158,16 +167,15 @@ export function InvoicesPanel() {
   );
 
   React.useEffect(() => {
+    if (!fetchMassOptions) return;
     let cancelled = false;
     (async () => {
       try {
-        const [clientsRes, contactsRes, projectsRes] = await Promise.all([
-          fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
+        const [contactsRes, projectsRes] = await Promise.all([
           fetchContactsPage(1, 500, { is_active: true }),
           fetchProjectsPage(1, 500, { is_active: true }),
         ]);
         if (cancelled) return;
-        setClientOptions(clientsRes.items.map((c) => ({ value: String(c.id), label: c.name })));
         setContactOptions(
           contactsRes.items.map((c) => ({
             value: String(c.id),
@@ -175,9 +183,9 @@ export function InvoicesPanel() {
           })),
         );
         setProjectOptions(projectsRes.items.map((p) => ({ value: String(p.id), label: p.name })));
-      } catch (error) {
+        setFetchClientOptions(true);
+      } catch {
         if (!cancelled) {
-          setClientOptions([]);
           setContactOptions([]);
           setProjectOptions([]);
         }
@@ -186,7 +194,11 @@ export function InvoicesPanel() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fetchMassOptions]);
+
+  React.useEffect(() => {
+    if (clientParam) setFetchClientOptions(true);
+  }, [clientParam]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -280,6 +292,10 @@ export function InvoicesPanel() {
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
 
+  React.useEffect(() => {
+    if (mass.selectedCount > 0) setFetchMassOptions(true);
+  }, [mass.selectedCount]);
+
   const massSel = React.useMemo(() => massSelectionColumn(mass, items.length), [mass, items.length]);
 
   const tableColumns = React.useMemo(() => {
@@ -356,6 +372,9 @@ export function InvoicesPanel() {
               clearable
               clearAriaLabel={tList("clearFilter")}
               className="w-full min-w-0 sm:w-56"
+              onOpenChange={(open) => {
+                if (open) setFetchClientOptions(true);
+              }}
               onChange={(v) => setUrl({ client: v || null, page: null }, { replace: true })}
             />
           </div>
