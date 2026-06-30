@@ -231,7 +231,7 @@
       "customization": {
         "label": "Personalización",
         "hubTitle": "Personalización",
-        "hubDescription": "Elige qué configurar: Tipos de Proyecto, Tipos de Instalación, Tipos de Proveedor, Tipos de Lista de Verificación, Estados de Proyecto, Estados de Trabajo, Estados de Material y Etiquetas.",
+        "hubDescription": "Elige qué configurar: Tipos de Proyecto, Tipos de Instalación, Tipos de Proveedor, Tipos de Lista de Verificación, Estados de Proyecto, Estados de Pin, Estados de Trabajo, Estados de Material y Etiquetas.",
         "backToHub": "Volver a personalización",
         "items": {
           "projectTypes": {
@@ -252,7 +252,11 @@
           },
           "projectStatus": {
             "title": "Estados de Proyecto",
-            "description": "Estados de flujo para proyectos y pins en planos."
+            "description": "Estados de flujo para proyectos."
+          },
+          "pinStatus": {
+            "title": "Estados de Pin",
+            "description": "Estados de flujo para pins en planos de proyecto."
           },
           "jobStatus": {
             "title": "Estados de Trabajo",
