@@ -226,6 +226,7 @@
       "backToApp": "Projects",
       "appearance": "Appearance",
       "pinStatus": "Pin Statuses",
+      "projectStatus": "Project Statuses",
       "jobStatus": "Job Statuses",
       "materialStatus": "Material Statuses",
       "tags": "Tags",
@@ -244,7 +245,7 @@
       "customization": {
         "label": "Customization",
         "hubTitle": "Customization",
-        "hubDescription": "Choose what to configure — Project Types, Installation Types, Vendor Types, Checklist Types, Pin Statuses, Job Statuses, Material Statuses, and Tags.",
+        "hubDescription": "Choose what to configure — Project Types, Installation Types, Vendor Types, Checklist Types, Project Statuses, Job Statuses, Material Statuses, and Tags.",
         "backToHub": "Back to customization",
         "items": {
           "projectTypes": {
@@ -263,9 +264,9 @@
             "title": "Checklist Types",
             "description": "Checklists for job forms, linked to project types."
           },
-          "pinStatus": {
-            "title": "Pin Statuses",
-            "description": "Status colors for pins on drawings."
+          "projectStatus": {
+            "title": "Project Statuses",
+            "description": "Workflow statuses for projects and drawing pins."
           },
           "jobStatus": {
             "title": "Job Statuses",
@@ -602,6 +603,67 @@
       "activatedToast": "Pin status activated",
       "deactivatedToast": "Pin status deactivated",
       "toggleActiveError": "Could not update pin status. Try again.",
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "hexPlaceholder": "#000000",
+      "validationName": "Enter a status name.",
+      "validationHex": "Use a valid 6-digit hex color (e.g. #E5E7EB)."
+    },
+    "projectStatus": {
+      "metaTitle": "Project Statuses",
+      "title": "Project Statuses",
+      "subtitle": "Create and manage workflow labels for projects. Colors are used when displaying status chips across the app.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "table": {
+        "type": "Type",
+        "kindPin": "Pin",
+        "kindJob": "Job",
+        "name": "Name",
+        "tag": "Tag",
+        "status": "Status",
+        "createdBy": "Created by",
+        "createdAt": "Created at",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "empty": "No project statuses yet. Add one to get started.",
+      "emptyTitle": "No project statuses yet",
+      "emptyDescription": "Create workflow labels for projects used across your workspace.",
+      "loadError": "Could not load project statuses. Try again.",
+      "modal": {
+        "createTitle": "New project status",
+        "editTitle": "Edit",
+        "statusName": "Status name",
+        "bgColour": "Background color",
+        "textColour": "Text color",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this status?",
+      "deleteConfirmBody": "Projects using this status may need to be updated. This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} statuses",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Status updated",
+      "created": "Status created",
+      "deleted": "Status deleted",
+      "activatedToast": "Project status activated",
+      "deactivatedToast": "Project status deactivated",
+      "toggleActiveError": "Could not update project status. Try again.",
       "status": {
         "active": "Active",
         "inactive": "Inactive"
@@ -2909,6 +2971,7 @@
           "drawings": "Drawings",
           "jobsheets": "Job Sheets",
           "jobs": "Jobs",
+          "location": "Locations",
           "quotations": "Quotes",
           "docs": "Docs",
           "approvals": "Approvals",
@@ -2922,6 +2985,17 @@
           "status": "Status",
           "createdAt": "Created at"
         }
+      },
+      "location":{
+        "title": "Locations",
+        "subtitle": "Manage and view all locations for this project.",
+        "searchPlaceholder": "Search locations…",
+        "searchAria": "Search locations",
+        "filterJobSource": "Job source",
+        "filterLevel": "Level",
+        "filterAllLevels": "All levels",
+        "filterPlot": "Plot",
+        "filterAllPlots": "All plots"
       },
       "drawings": {
         "title": "Drawings",
@@ -3126,6 +3200,7 @@
         "name": "Project name",
         "client": "Client",
         "projectType": "Project type",
+        "site": "Site",
         "sites": "Sites",
         "description": "Description",
         "startDate": "Start date",

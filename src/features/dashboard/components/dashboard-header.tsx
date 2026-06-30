@@ -89,7 +89,7 @@ export function DashboardHeader() {
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
   const modulesHref = routes.dashboard.settingsModules;
   const customizationHref = routes.dashboard.settingsCustomization;
-  const pinStatusHref = routes.dashboard.settingsPinStatus;
+  const pinStatusHref = routes.dashboard.settingsProjectStatus;
   const jobStatusHref = routes.dashboard.settingsJobStatus;
   const materialStatusHref = routes.dashboard.settingsMaterialStatus;
   const tagHref = routes.dashboard.settingsTags;
@@ -133,8 +133,9 @@ export function DashboardHeader() {
     pathname === companySettingsHref || pathname.startsWith(`${companySettingsHref}/`);
   const modulesActive =
     pathname === modulesHref || pathname.startsWith(`${modulesHref}/`);
-  const pinStatusActive =
+  const projectStatusActive =
     pathname === pinStatusHref || pathname.startsWith(`${pinStatusHref}/`);
+  const pinStatusActive = projectStatusActive;
   const jobStatusActive =
     pathname === jobStatusHref || pathname.startsWith(`${jobStatusHref}/`);
   const materialStatusActive =
@@ -197,8 +198,8 @@ export function DashboardHeader() {
                               ? tSettingsNav("modules")
                               : customizationHubActive
                                 ? tSettingsNav("customization.label")
-                                : pinStatusActive
-                                  ? tSettingsNav("pinStatus")
+                                : projectStatusActive
+                                  ? tSettingsNav("projectStatus")
                                   : jobStatusActive
                                     ? tSettingsNav("jobStatus")
                                     : materialStatusActive

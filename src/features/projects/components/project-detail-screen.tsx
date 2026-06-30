@@ -64,6 +64,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
       { id: "forms", label: t("detail.tabs.forms") },
       { id: "drawings", label: t("detail.tabs.drawings") },
       { id: "jobs", label: t("detail.tabs.jobs") },
+      {id:"location",label: t("detail.tabs.location")},
       { id: "quotations", label: t("detail.tabs.quotations") },
       { id: "jobsheets", label: t("detail.tabs.jobsheets") },
       { id: "docs", label: t("detail.tabs.docs") },
@@ -268,7 +269,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
             <ProjectJobsTab projectId={detail.id} />
           ) : detail && activeTab === "quotations" ? (
             <ProjectQuotationsTab projectId={detail.id} />
-          ) : detail && activeTab === "Pins" ? (
+          ) : detail && activeTab === "location" ? (
             <ProjectPinsListTab />
           ) : activeTab !== "details" ? (
             <DashboardUnderDevelopmentState

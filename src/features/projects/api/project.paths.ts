@@ -15,4 +15,5 @@ export const PROJECT_PATHS = {
   projectFormSections: (id: number | string) => `project-forms/${id}/sections/`,
   /** POST | PUT /project-forms/{id}/rules/ */
   projectFormRules: (id: number | string) => `project-forms/${id}/rules/`,
+  projectLocation: (id:number | string) => `project/${id}/level/`
 } as const;

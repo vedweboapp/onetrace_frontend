@@ -14,6 +14,7 @@ export type DashboardEmptyStateIconName =
   | "items"
   | "compositeItems"
   | "pinStatus"
+  | "projectStatus"
   | "jobStatus"
   | "materialStatus"
   | "noResults";
@@ -47,6 +48,7 @@ export function DashboardEmptyState({
     items: Package,
     compositeItems: Package,
     pinStatus: Tags,
+    projectStatus: Tags,
     jobStatus: ListTodo,
     materialStatus: ClipboardList,
     noResults: SearchX,

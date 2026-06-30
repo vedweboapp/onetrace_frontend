@@ -61,6 +61,13 @@ export async function fetchProject(id: number): Promise<Project> {
   assertApiSuccess(data);
   return data.data;
 }
+import type { Drawing } from "../types/drawing.types";
+
+export async function fetchLocation(id: number | string): Promise<Drawing[]> {
+  const { data } = await api.get<ApiEnvelope<Drawing[]>>(PROJECT_PATHS.projectLocation(id));
+  assertApiSuccess(data);
+  return data.data;
+}
 
 export async function createProject(body: ProjectCreatePayload): Promise<Project> {
   const { data } = await api.post<ApiEnvelope<Project>>(PROJECT_PATHS.list, body);

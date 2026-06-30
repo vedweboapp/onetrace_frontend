@@ -39,6 +39,7 @@ import { cn } from "@/core/utils/http.util";
 import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { useDeferredListOptions } from "@/shared/hooks/use-deferred-list-options";
 import {
   MassActionBar,
   buildProjectMassUpdateFields,
@@ -102,8 +103,21 @@ export function ProjectsPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
 
-  const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [fetchClientOptions, setFetchClientOptions] = React.useState(false);
+
+  const loadClientOptions = React.useCallback(async () => {
+    const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+    return clients.map((c) => ({ value: String(c.id), label: c.name }));
+  }, []);
+
+  const { options: clientOptions } = useDeferredListOptions(loadClientOptions, fetchClientOptions);
+  const [fetchProjectTypeOptions, setFetchProjectTypeOptions] = React.useState(false);
   const [projectTypeById, setProjectTypeById] = React.useState<Record<number, ProjectType>>({});
+
+  const loadProjectTypeOptions = React.useCallback(async () => {
+    const { items } = await fetchProjectTypesPage(1, 500, { is_active: true });
+    return items;
+  }, []);
 
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deletingProject, setDeletingProject] = React.useState<Project | null>(null);
@@ -122,36 +136,20 @@ export function ProjectsPanel() {
   );
 
   React.useEffect(() => {
+    if (!fetchProjectTypeOptions) return;
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
-        const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
-        if (!cancelled) {
-          setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
-        }
-      } catch (error) {
-        if (!cancelled) setClientOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items } = await fetchProjectTypesPage(1, 500, { is_active: true });
+        const items = await loadProjectTypeOptions();
         if (!cancelled) setProjectTypeById(projectTypesById(items));
-      } catch (error) {
+      } catch {
         if (!cancelled) setProjectTypeById({});
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fetchProjectTypeOptions, loadProjectTypeOptions]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -234,6 +232,13 @@ export function ProjectsPanel() {
     updateFields: massUpdateFields,
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
+
+  React.useEffect(() => {
+    if (mass.selectedCount > 0) {
+      setFetchClientOptions(true);
+      setFetchProjectTypeOptions(true);
+    }
+  }, [mass.selectedCount]);
 
   const massSel = React.useMemo(() => massSelectionColumn(mass, items.length), [mass, items.length]);
 

@@ -40,6 +40,7 @@ import {
 import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { useDeferredListOptions } from "@/shared/hooks/use-deferred-list-options";
 
 function siteClientId(row: Site): number | null {
   if (typeof row.client === "number" && Number.isFinite(row.client) && row.client > 0) return row.client;
@@ -97,7 +98,17 @@ export function SitesPanel() {
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
-  const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [fetchClientOptions, setFetchClientOptions] = React.useState(() => Boolean(clientParam));
+
+  const loadClientOptions = React.useCallback(async () => {
+    const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+    return clients.map((c) => ({ value: String(c.id), label: c.name }));
+  }, []);
+
+  const { options: clientOptions } = useDeferredListOptions(
+    loadClientOptions,
+    fetchClientOptions,
+  );
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deletingSite, setDeletingSite] = React.useState<Site | null>(null);
   const [deleting, setDeleting] = React.useState(false);
@@ -148,19 +159,12 @@ export function SitesPanel() {
   });
 
   React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
-        if (!cancelled) setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
-      } catch (error) {
-        if (!cancelled) setClientOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (mass.selectedCount > 0) setFetchClientOptions(true);
+  }, [mass.selectedCount]);
+
+  React.useEffect(() => {
+    if (clientParam) setFetchClientOptions(true);
+  }, [clientParam]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -306,6 +310,9 @@ export function SitesPanel() {
                 clearable
                 clearAriaLabel={tList("clearFilter")}
                 className="w-full min-w-0 sm:w-56"
+                onOpenChange={(open) => {
+                  if (open) setFetchClientOptions(true);
+                }}
                 onChange={(v) => setUrl({ client: v || null, page: null }, { replace: true })}
               />
               <ListPageActiveFilter

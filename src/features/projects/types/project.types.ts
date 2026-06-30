@@ -70,7 +70,9 @@ export type Project = {
   organization: number;
   deleted_by: unknown;
 };
-
+export type Location= {
+  [key:string]:any
+};
 export type ProjectPagination = {
   total_records: number;
   total_pages: number;
