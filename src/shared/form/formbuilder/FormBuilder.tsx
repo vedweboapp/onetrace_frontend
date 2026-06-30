@@ -312,8 +312,7 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({
             </div>
           ) : (
             <div
-              className={`grid gap-8 ${section.column_count === 2 ? "grid-cols-2" : "grid-cols-1"}`}
-            >
+              className={`grid gap-2 lg:gap-8 ${section.column_count === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
               {section.fields
                 .filter((f) => !f.is_deleted)
                 .map((field, idx) => (
@@ -1315,6 +1314,14 @@ export default function FormBuilderLayout({
   const sidebarW = sidebarOpen ? 200 : 42;
   const canvasMarginLeft = 288;
 
+  // Keep CSS variables in sync with sidebar width so fixed sub-header and
+  // ModuleBar left-position animate purely via CSS (no React render delay).
+  React.useLayoutEffect(() => {
+    if (isLargeScreen) {
+      document.documentElement.style.setProperty("--subheader-sidebar-w", `${sidebarW}px`);
+    }
+  }, [sidebarW, isLargeScreen]);
+
   const {
     formRef,
     isLoading: isSubmitting,
@@ -1369,7 +1376,7 @@ export default function FormBuilderLayout({
 
   return (
 
-    <div className="relative flex flex-col h-full">
+    <div className="relative flex flex-col h-full -mx-4 -mt-5 lg:mx-0 lg:mt-0">
       {
         showRuleTypeModal && (
           <RuleTypeModal
@@ -1425,8 +1432,9 @@ export default function FormBuilderLayout({
         style={
           isLargeScreen
             ? {
-                left: sidebarW,
-                width: `calc(100% - ${sidebarW}px)`,
+                left: "var(--subheader-sidebar-w, 200px)",
+                width: "calc(100% - var(--subheader-sidebar-w, 200px))",
+                transition: "left 300ms cubic-bezier(0.4,0,0.2,1), width 300ms cubic-bezier(0.4,0,0.2,1)",
               }
             : undefined
         }

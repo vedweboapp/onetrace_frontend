@@ -353,13 +353,16 @@ const PersonalProfileForm = ({
                             <div className="space-y-3 flex flex-col">
                                 {emailFields.map((field, index) => (
                                     <div key={field.id} className="flex gap-3 items-end group">
-                                        
-                                        <Input
-                                            register={register(`emails.${index}.email` as const)}
-                                            placeholder="Enter email address"
-                                            className="flex-1"
-                                            readOnly={!isEditing}
-                                        />
+                                        <div className="relative w-full">
+                                            <Input
+                                                register={register(`emails.${index}.email` as const)}
+                                                placeholder="Enter email address"
+                                                className="flex-1"
+                                                readOnly={!isEditing}
+                                            />
+                                            {field?.is_primary && <p className="absolute top-2 right-2  px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold uppercase tracking-tight dark:bg-blue-900/40 dark:text-blue-300">{t("Primary")}</p>}
+
+                                        </div>
                                         {isEditing && (
                                             <label className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-50 dark:bg-slate-700 text-sm whitespace-nowrap">
                                                 <input
@@ -412,14 +415,19 @@ const PersonalProfileForm = ({
                             <div className="space-y-3">
                                 {phoneFields.map((field, index) => (
                                     <div key={field.id} className="flex gap-3 items-start group">
-                                        <SurfacePhoneField
-                                            control={control}
-                                            name={`phones.${index}.phone` as const}
-                                            id={`phone-${index}`}
-                                            label=""
-                                            className="flex-1"
-                                            disabled={!isEditing}
-                                        />
+                                        <div className="relative w-full">
+                                            <SurfacePhoneField
+                                                control={control}
+                                                name={`phones.${index}.phone` as const}
+                                                id={`phone-${index}`}
+                                                label=""
+                                                className="flex-1"
+                                                disabled={!isEditing}
+                                            />
+                                            {field?.is_primary && <p className="absolute top-2 right-2  px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold uppercase tracking-tight dark:bg-blue-900/40 dark:text-blue-300">{t("Primary")}</p>}
+
+                                        </div>
+
                                         {isEditing && (
                                             <label className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-50 dark:bg-slate-700 text-sm whitespace-nowrap mt-1.5">
                                                 <input

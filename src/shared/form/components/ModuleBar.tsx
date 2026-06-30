@@ -88,9 +88,8 @@ const ModuleBar: React.FC = () => {
       style={{
         left: "var(--modulebar-left, 200px)",
         width: 288,
-        maxWidth: `calc(100vw - ${sidebarW}px)`,
         height: "calc(100vh - 7rem)",
-        transition: "left 300ms ease, top 300ms ease",
+        transition: "left 300ms cubic-bezier(0.4,0,0.2,1), top 300ms cubic-bezier(0.4,0,0.2,1)",
       }}
     >
       {/* Scrollable field list */}

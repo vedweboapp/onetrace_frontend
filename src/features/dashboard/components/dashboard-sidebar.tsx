@@ -37,6 +37,7 @@ export function DashboardSidebar() {
   const shell = cn(
     "hidden h-full min-h-0 shrink-0 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900",
     "md:flex",
+    "transition-[width] duration-10 ease-[cubic-bezier(0.4,0,0.2,1)]",
     sidebarExpanded ? "md:w-50" : "md:w-[42px]",
   );
 
