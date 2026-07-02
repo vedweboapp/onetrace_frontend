@@ -245,7 +245,7 @@
       "customization": {
         "label": "Customization",
         "hubTitle": "Customization",
-        "hubDescription": "Choose what to configure — Project Types, Installation Types, Vendor Types, Checklist Types, Project Statuses, Job Statuses, Material Statuses, and Tags.",
+        "hubDescription": "Choose what to configure — Project Types, Installation Types, Vendor Types, Checklist Types, Project Statuses, Pin Statuses, Job Statuses, Material Statuses, and Tags.",
         "backToHub": "Back to customization",
         "items": {
           "projectTypes": {
@@ -266,7 +266,11 @@
           },
           "projectStatus": {
             "title": "Project Statuses",
-            "description": "Workflow statuses for projects and drawing pins."
+            "description": "Workflow statuses for projects."
+          },
+          "pinStatus": {
+            "title": "Pin Statuses",
+            "description": "Workflow statuses for drawing pins on project drawings."
           },
           "jobStatus": {
             "title": "Job Statuses",
@@ -2995,7 +2999,13 @@
         "filterLevel": "Level",
         "filterAllLevels": "All levels",
         "filterPlot": "Plot",
-        "filterAllPlots": "All plots"
+        "filterAllPlots": "All plots",
+        "createJob": "Create job",
+        "createJobPlaceHolder": "Enter Job Name",
+        "site": "Site",
+        "selectSite": "Select site",
+        "requiredJob": "Job title is required.",
+        "Start": "Start Date"
       },
       "drawings": {
         "title": "Drawings",
@@ -3207,7 +3217,8 @@
         "endDate": "End date",
         "createdAt": "Created",
         "updatedAt": "Last updated",
-        "createdBy": "Created by"
+        "createdBy": "Created by",
+        "projectStatus": "Project Status"
       },
       "hints": {
         "sitesMultiSelect": "Select one or more sites for this project."

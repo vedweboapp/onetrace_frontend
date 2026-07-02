@@ -1,16 +1,19 @@
 import api from "@/core/api/axios";
+import type { Job } from "@/features/jobs/types/job.types";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { PROJECT_PATHS } from "./project.paths";
 import type {
+  LocationToJobPayload,
   Project,
   ProjectCreatePayload,
   ProjectListResponse,
   ProjectUpdatePayload,
 } from "../types/project.types";
 import type { ProjectJobsHierarchyData, ProjectJobsHierarchyResponse } from "../types/project-jobs.types";
+import { normalizeProjectJobsHierarchy } from "../utils/project-jobs-list.util";
 import type { FormListItem, FormsPagination } from "@/features/forms/types/form.types";
 import {
   parseFormsListResponse,
@@ -80,7 +83,11 @@ export async function updateProject(id: number, body: ProjectUpdatePayload): Pro
   assertApiSuccess(data);
   return data.data;
 }
-
+export async function createJobFromLocation(body: LocationToJobPayload): Promise<Job> {
+  const { data } = await api.post<ApiEnvelope<Job>>(PROJECT_PATHS.createJobFromLocation, body);
+  assertApiSuccess(data);
+  return data.data;
+}
 export async function patchProject(id: number, body: { is_active: boolean }): Promise<Project> {
   const { data } = await api.patch<ApiEnvelope<Project>>(PROJECT_PATHS.detail(id), body);
   assertApiSuccess(data);
@@ -104,7 +111,7 @@ export async function fetchProjectJobsHierarchy(
     skipErrorToast: options?.silent === true,
   });
   assertEnvelopeSuccess(data);
-  return data.data;
+  return normalizeProjectJobsHierarchy(data.data ?? data);
 }
 
 export async function fetchProjectFormsPage(

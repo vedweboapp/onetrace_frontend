@@ -5,20 +5,25 @@ import {
   CheckmarkSelect,
   ListPageEmptyStates,
   ListPageSearchField,
+  surfaceInputClassName,
 } from "@/shared/ui";
-import { useTranslations } from "next-intl";
-import { fetchLocation as fetchLocationApi } from "@/features/projects/api/project.api";
-import type { Drawing, DrawingPin } from "@/features/projects/types/drawing.types";
+import { useLocale, useTranslations } from "next-intl";
+import { createJobFromLocation } from "@/features/projects/api/project.api";
+import { fetchDrawingsPage } from "@/features/projects/api/drawing.api";
+import type { Drawing, DrawingPin, DrawingPlot } from "@/features/projects/types/drawing.types";
+import type { ProjectPagination, ProjectSiteRef } from "@/features/projects/types/project.types";
 import { useParams } from "next/navigation";
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { Layers } from "lucide-react";
+import { Layers, MapPinned } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import type { ListEmptyStateKind } from "@/shared/hooks/use-list-active-inactive-empty";
-import { Dialog } from "@base-ui/react";
+import { useForm } from "react-hook-form";
+import { DrawingPinPreviewModal } from "./drawing-pin-preview-modal";
+import { useRouter } from "@/i18n/navigation";
+import { routes } from "@/shared/config/routes";
 
 const PIN_TABLE_GRID =
-  "grid w-full max-w-full grid-cols-[1.5rem_6rem_minmax(0,1.5fr)_minmax(0,1.8fr)_5rem_8rem] items-center gap-x-3 sm:gap-x-4";
-
+  "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,1.5rem)_minmax(0,5rem)_minmax(0,1fr)_minmax(0,0.5fr)_minmax(0,0.4fr)_minmax(0,0.4fr)_minmax(0,0.5fr)_minmax(0,0.45fr)_minmax(0,3rem)] items-center gap-x-3";
 const PIN_TABLE_HEADER_CLASS = cn(
   PIN_TABLE_GRID,
   "border-b border-slate-100 bg-slate-50/80 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400",
@@ -82,7 +87,7 @@ function GroupCheckbox({
       ref={ref}
       type="checkbox"
       className={cn(
-        "h-4 w-4 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 cursor-pointer accent-[color:var(--dash-accent,#f97316)]",
+        "h-4 w-4 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 cursor-pointer accent-(--dash-accent,#f97316)",
         className,
       )}
       checked={state === "all"}
@@ -109,14 +114,19 @@ function PinStatusChip({ pin }: { pin: DrawingPin }) {
 }
 
 function ProjectPinTableHeader() {
+  const locale = useLocale();
+  const isEs = locale === "es";
   return (
-    <div className={PIN_TABLE_HEADER_CLASS}>
+    <div className={cn("min-w-0", PIN_TABLE_HEADER_CLASS)}>
       <span aria-hidden />
-      <span>Pin ID</span>
-      <span>Product</span>
-      <span>Description</span>
-      <span>Quantity</span>
-      <span>Status</span>
+      <span className="min-w-0 truncate">Pin ID</span>
+      <span className="min-w-0 truncate">Product</span>
+      <span className="min-w-0 truncate">{isEs ? "Variación" : "Variation"}</span>
+      <span className="min-w-0 truncate">Quantity</span>
+      <span className="min-w-0 truncate">Is a Job</span>
+      <span className="min-w-0 truncate">Attachments</span>
+      <span className="min-w-0 truncate">Status</span>
+      <span className="sr-only">Actions</span>
     </div>
   );
 }
@@ -124,34 +134,82 @@ function ProjectPinTableHeader() {
 function ProjectPinRow({
   pin,
   selected,
+  disabled,
   onToggle,
+  onPreview,
 }: {
   pin: DrawingPin;
   selected: boolean;
+  disabled: boolean;
   onToggle: () => void;
+  onPreview: () => void;
 }) {
+  const locale = useLocale();
+  const isEs = locale === "es";
   const productName = pin.item_detail?.name || pin.group_detail?.name || "Pin";
   const sku = pin.item_detail?.sku;
+  const variationText = pin.variation ? (isEs ? "Sí" : "Yes") : (isEs ? "No" : "No");
 
   return (
-    <div className={cn(PIN_TABLE_ROW_CLASS, "hover:bg-slate-50/90 dark:hover:bg-slate-800/30")}>
+    <div className={cn("min-w-0", PIN_TABLE_ROW_CLASS, disabled ? "bg-slate-50/60 dark:bg-slate-950/40" : "hover:bg-slate-50/90 dark:hover:bg-slate-800/30")}> 
       <input
         type="checkbox"
-        className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded-[3px] border-slate-300 accent-[color:var(--dash-accent,#f97316)] dark:border-slate-600 dark:bg-slate-900"
+        disabled={disabled}
+        className={cn(
+          "h-3.5 w-3.5 shrink-0 rounded-[3px] border-slate-300 dark:border-slate-600 dark:bg-slate-900",
+          disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer accent-(--dash-accent,#f97316)",
+        )}
         checked={selected}
         onChange={onToggle}
       />
-      <span className="font-semibold text-slate-500">#{pin.id}</span>
+      <span className="min-w-0 font-semibold text-slate-500">#{pin.id}</span>
       <div className="flex flex-col min-w-0">
-        <span className="font-medium text-slate-900 dark:text-slate-100 truncate">{productName}</span>
-        {sku && <span className="text-xs text-slate-400 truncate">{sku}</span>}
+        <span className="min-w-0 font-medium text-slate-900 dark:text-slate-100 truncate">{productName}</span>
+        {sku && <span className="min-w-0 text-xs text-slate-400 truncate">{sku}</span>}
       </div>
-      <span className="text-xs text-slate-500 dark:text-slate-400 truncate" title={pin.description || undefined}>
-        {pin.description || "—"}
+      <span className="min-w-0 text-xs text-slate-500 dark:text-slate-400 truncate">
+        {variationText}
       </span>
-      <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{pin.quantity ?? 1}</span>
+      <span className="min-w-0 text-xs font-medium text-slate-600 dark:text-slate-400">{pin.quantity ?? 1}</span>
+      <span className="min-w-0 text-xs font-medium text-slate-600 dark:text-slate-400">{pin.is_converted_job ? "Yes" : "No"}</span>
+      <span className="min-w-0 text-xs font-medium text-slate-600 dark:text-slate-400 truncate">
+        {pin.attachments && pin.attachments.length > 0 ? (
+          (() => {
+            const attachment = pin.attachments[0];
+            const href = attachment.file ?? attachment.url;
+  
+            const label = attachment.file_name ?? attachment.name ?? "Attachment";
+            return href ? (
+              <a
+                href={String(href)}
+                download={attachment.file_name ?? attachment.name ?? undefined}
+                className="min-w-0 truncate text-xs font-medium text-slate-700 underline hover:text-slate-900 dark:text-slate-200 dark:hover:text-white cursor-pointer"
+              >
+                {label}
+              </a>
+            ) : (
+              <span className="min-w-0 truncate text-xs text-slate-500">{label}</span>
+            );
+          })()
+        ) : (
+          <span className="min-w-0 truncate text-xs text-slate-500">—</span>
+        )}
+      </span>
       <div>
         <PinStatusChip pin={pin} />
+      </div>
+      <div className="flex items-center justify-end">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onPreview();
+          }}
+          title="Preview on Drawing"
+          className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+        >
+          <MapPinned className="size-4" />
+        </button>
       </div>
     </div>
   );
@@ -163,20 +221,25 @@ function PlotPinsBlock({
   selectedIds,
   onTogglePlot,
   onTogglePin,
+  onPreviewPin,
 }: {
   plotName: string;
   pins: DrawingPin[];
   selectedIds: Set<number>;
   onTogglePlot: (ids: number[]) => void;
   onTogglePin: (id: number) => void;
+  onPreviewPin: (pin: DrawingPin) => void;
 }) {
-  const pinIds = useMemo(() => pins.map((p) => p.id), [pins]);
+  const selectablePinIds = useMemo(
+    () => pins.filter((p) => !p.is_converted_job).map((p) => p.id),
+    [pins],
+  );
 
   return (
-    <div className="max-w-full overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-700/80 dark:bg-slate-950/30">
-      <div className="flex items-center gap-2.5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-4 py-3 dark:border-slate-800 dark:from-slate-900/80 dark:to-slate-950/40">
+    <div className="min-w-0 w-full  rounded-xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-700/80 dark:bg-slate-950/30">
+      <div className="flex items-center gap-2.5 border-b border-slate-100 bg-linear-to-r from-slate-50 to-white px-4 py-3 dark:border-slate-800 dark:from-slate-900/80 dark:to-slate-950/40">
         <GroupCheckbox
-          ids={pinIds}
+          ids={selectablePinIds}
           selectedIds={selectedIds}
           onToggle={onTogglePlot}
         />
@@ -186,7 +249,7 @@ function PlotPinsBlock({
           {pins.length === 1 ? "1 Pin" : `${pins.length} Pins`}
         </span>
       </div>
-      <div className="min-w-0 max-w-full overflow-hidden">
+      <div className="min-w-0 w-full">
         {pins.length === 0 ? (
           <p className="p-4 text-sm text-slate-500 dark:text-slate-400 text-center bg-slate-50/30 dark:bg-transparent">
             No pins in this plot.
@@ -200,7 +263,9 @@ function PlotPinsBlock({
                   key={pin.id}
                   pin={pin}
                   selected={selectedIds.has(pin.id)}
+                  disabled={pin.is_converted_job === true}
                   onToggle={() => onTogglePin(pin.id)}
+                  onPreview={() => onPreviewPin(pin)}
                 />
               ))}
             </div>
@@ -211,42 +276,144 @@ function PlotPinsBlock({
   );
 }
 
-const ProjectPinsListTab = () => {
+const ProjectPinsListTab = ({
+  sites,
+}: {
+  sites?: Array<number | ProjectSiteRef> | null;
+}) => {
   const { id } = useParams<{ id: string }>();
   const [search, setSearch] = useState<string>("");
   const [levelFilter, setLevelFilter] = useState<number | undefined>();
   const [plotFilter, setPlotFilter] = useState<number | undefined>();
   const [locations, setLocations] = useState<Drawing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+  const [pagination, setPagination] = useState<ProjectPagination>({
+    total_records: 0,
+    total_pages: 1,
+    current_page: 1,
+    page_size: pageSize,
+    next: null,
+    previous: null,
+  });
   const [dialogVisible, setDialogVisible] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
+  const [previewPinData, setPreviewPinData] = useState<{ pin: DrawingPin; plots: DrawingPlot[]; drawingFile: string; drawingName: string } | null>(null);
+  const [dialogSiteId, setDialogSiteId] = useState<number | undefined>(undefined);
+  const sentinelRef = React.useRef<HTMLDivElement | null>(null);
 
   const t = useTranslations("Dashboard.projects.location");
-
-  const loadLocation = useCallback(async (): Promise<void> => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      if (id) {
-        const response = await fetchLocationApi(id);
-        setLocations(response);
-      }
-    } catch (e) {
-      console.error(e);
-      setLoadError(
-        typeof e === "object" && e && "message" in e
-          ? String(e.message)
-          : "Failed to load locations",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
+  const router = useRouter();
 
   useEffect(() => {
-    loadLocation();
-  }, [loadLocation]);
+    let cancelled = false;
+
+    async function loadLocationsPage(): Promise<void> {
+      if (!id) return;
+
+      if (page === 1) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+      setLoadError(null);
+
+      try {
+        const { items, pagination: p } = await fetchDrawingsPage(
+          Number(id),
+          page,
+          pageSize,
+          search || undefined,
+        );
+
+        if (cancelled) return;
+
+        setLocations((prev) => (page === 1 ? items : [...prev, ...items]));
+        setPagination(p);
+      } catch (e) {
+        if (cancelled) return;
+        console.error(e);
+        setLoadError(
+          typeof e === "object" && e && "message" in e
+            ? String((e as { message?: unknown }).message)
+            : "Failed to load locations",
+        );
+        if (page === 1) {
+          setLocations([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
+      }
+    }
+
+    loadLocationsPage();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, page, pageSize, search]);
+
+  const commitSearch = useCallback(
+    (value: string) => {
+      setSearch(value);
+      setPage(1);
+      setLocations([]);
+      setPagination({
+        total_records: 0,
+        total_pages: 1,
+        current_page: 1,
+        page_size: pageSize,
+        next: null,
+        previous: null,
+      });
+    },
+    [pageSize],
+  );
+
+  useEffect(() => {
+    if (loading || loadingMore || !pagination.next || page >= pagination.total_pages) {
+      return;
+    }
+
+    const element = sentinelRef.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setPage((currentPage) => Math.min(currentPage + 1, pagination.total_pages));
+        }
+      },
+      { rootMargin: "250px" },
+    );
+
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+    };
+  }, [loading, loadingMore, pagination.next, pagination.total_pages, page]);
+
+  const siteOptions = useMemo(() => {
+    if (!sites || sites.length === 0) return [] as { value: string; label: string }[];
+    return sites
+      .map((site) => {
+        if (typeof site === "number") {
+          return { value: String(site), label: `#${site}` };
+        }
+        return {
+          value: String(site.id),
+          label: site.site_name?.trim() || `#${site.id}`,
+        };
+      })
+      .filter((option) => option.value);
+  }, [sites]);
+
+  const { handleSubmit, reset, register, formState: { errors } } = useForm<{ start_date: string }>()
 
   const filteredLocations = useMemo(() => {
     const searchActive = search.trim() !== "";
@@ -305,19 +472,29 @@ const ProjectPinsListTab = () => {
     return options;
   }, [locations, levelFilter]);
 
-  const allPinIds = useMemo(() => {
+  const selectablePinIds = useMemo(() => {
     return filteredLocations.flatMap((level) =>
-      level.plots.flatMap((plot) => plot.pins.map((pin) => pin.id)),
+      level.plots.flatMap((plot) => plot.pins.filter((pin) => !pin.is_converted_job).map((pin) => pin.id)),
     );
   }, [filteredLocations]);
 
-  const allSelected = allPinIds.length > 0 && allPinIds.every((pinId) => selectedIds.has(pinId));
+  const effectiveSelectedIds = useMemo(() => {
+    const next = new Set<number>();
+    for (const pinId of selectedIds) {
+      if (selectablePinIds.includes(pinId)) {
+        next.add(pinId);
+      }
+    }
+    return next;
+  }, [selectedIds, selectablePinIds]);
+
+  const allSelected = selectablePinIds.length > 0 && selectablePinIds.every((pinId) => effectiveSelectedIds.has(pinId));
 
   const handleSelectAllToggle = useCallback(() => {
     if (allSelected) {
       setSelectedIds((prev) => {
         const next = new Set(prev);
-        for (const pinId of allPinIds) {
+        for (const pinId of selectablePinIds) {
           next.delete(pinId);
         }
         return next;
@@ -325,13 +502,13 @@ const ProjectPinsListTab = () => {
     } else {
       setSelectedIds((prev) => {
         const next = new Set(prev);
-        for (const pinId of allPinIds) {
+        for (const pinId of selectablePinIds) {
           next.add(pinId);
         }
         return next;
       });
     }
-  }, [allPinIds, allSelected]);
+  }, [selectablePinIds, allSelected]);
 
   const handleToggleGroup = useCallback((ids: number[]) => {
     setSelectedIds((prev) => toggleSelection(ids, prev));
@@ -349,7 +526,7 @@ const ProjectPinsListTab = () => {
     });
   }, []);
 
-  const hasActiveFilters = search.trim() !== "" || levelFilter != null || plotFilter != null;
+  const hasMorePages = pagination.next !== null && page < pagination.total_pages;
 
   const emptyStateKind: ListEmptyStateKind = useMemo(() => {
     if (loading || loadError) return "none";
@@ -364,28 +541,80 @@ const ProjectPinsListTab = () => {
     setPlotFilter(undefined);
   }, []);
 
+  const handleCreateJob = async (): Promise<void> => {
+    try {
+      const res = await createJobFromLocation({
+        project: Number(id),
+        pin_ids: Array.from(effectiveSelectedIds),
+      });
+      setDialogVisible(false);
+      reset();
+      router.push(`${routes.dashboard.jobs}/${res.id}`);
+    } catch (e) {
+      console.log("error in here", e);
+    }
+  };
   return (
-    <div className="min-w-0 divide-y divide-slate-100 dark:divide-slate-800">
+    <div className="min-w-0 divide-y  divide-slate-100 dark:divide-slate-800">
       {
         dialogVisible && (
           <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-99">
             <div className="bg-white p-6 rounded-lg">
               <h2 className="text-lg font-semibold">Create Job</h2>
               <p className="mt-2">Are you sure you want to create a job for the selected pins?</p>
+              <div className="mt-2">
+                <label htmlFor="" className="text-md font-semibold text-slate-800 dark:text-slate-200">{t("Start")} <span className="text-red-500">*</span></label>
+                <input
+                  type="date"
+                  {...register("start_date", {
+                    required: t("requiredJob"),
+                  })}
+                  placeholder={t("createJobPlaceHolder")}
+                  className={cn(surfaceInputClassName,
+                    errors.start_date ? "border-red-300 ring ring-red-500" : "border-slate-300",
+                    "w-full p-2 rounded-md",
+                  )}
+                />
+                {errors.start_date && (
+                  <p className="text-red-500">{errors.start_date.message}</p>
+                )}
+              </div>
+              <div className="mt-4">
+                <label htmlFor="site" className="text-md font-semibold text-slate-800 dark:text-slate-200">
+                  {t("site")} 
+                  <span className="text-red-500">*</span>
+                </label>
+                <CheckmarkSelect
+                  listLabel={t("site")}
+                  buttonAriaLabel={t("site")}
+                  options={siteOptions}
+                  value={dialogSiteId != null ? String(dialogSiteId) : ""}
+                  emptyLabel={t("selectSite")}
+                  portaled
+                  searchable
+                  clearable
+                  className="w-full"
+                  onChange={(value) => setDialogSiteId(value ? Number.parseInt(value, 10) : undefined)}
+                />
+              </div>
               <div className="mt-4 flex justify-end gap-2">
                 <AppButton
-                  onClick={() => setDialogVisible(false)}
+                  onClick={() => {
+                    reset();
+                    setDialogSiteId(undefined);
+                    setDialogVisible(false);
+                  }}
                   size="lg"
                   variant="secondary"
                 >
                   Cancel
                 </AppButton>
                 <AppButton
-                  onClick={() => setDialogVisible(false)}
+                  onClick={handleSubmit(handleCreateJob)}
                   size="lg"
                   variant="primary"
                 >
-                  Create Job
+                  {t("createJob")}
                 </AppButton>
               </div>
             </div>
@@ -404,7 +633,7 @@ const ProjectPinsListTab = () => {
       <div className="flex min-w-0 flex-col gap-3 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:px-6">
         <ListPageSearchField
           value={search}
-          onCommit={setSearch}
+          onCommit={commitSearch}
           placeholder={t("searchPlaceholder")}
           ariaLabel={t("searchAria")}
           className="sm:max-w-sm"
@@ -438,7 +667,7 @@ const ProjectPinsListTab = () => {
           onChange={(v) => setPlotFilter(v ? Number.parseInt(v, 10) : undefined)}
         />
         {
-          selectedIds.size > 0 && (
+          effectiveSelectedIds.size > 0 && (
             <AppButton
               variant="primary"
               size="lg"
@@ -448,8 +677,7 @@ const ProjectPinsListTab = () => {
             </AppButton>
           )
         }
-        {console.log("the slected ids", selectedIds)}
-        {allPinIds.length > 0 && (
+        {selectablePinIds.length > 0 && (
           <AppButton
             variant="primary"
             size="lg"
@@ -462,11 +690,11 @@ const ProjectPinsListTab = () => {
       </div>
 
       <div>
-        {loadError ? (
+        {loadError && locations.length === 0 ? (
           <p className="px-4 py-10 text-center text-sm text-red-600 dark:text-red-400 sm:px-6">
             {loadError}
           </p>
-        ) : loading ? (
+        ) : loading && locations.length === 0 ? (
           <div className="space-y-4 p-4 sm:p-6">
             {Array.from({ length: 3 }, (_, i) => (
               <div key={i} className="space-y-2">
@@ -488,6 +716,11 @@ const ProjectPinsListTab = () => {
           />
         ) : (
           <div className="space-y-8 px-4 py-4 sm:px-6 sm:py-6">
+            {loadError && locations.length > 0 && (
+              <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+                {loadError}
+              </p>
+            )}
             {filteredLocations.map((level) => {
               const levelPinIds = level.plots.flatMap((p) => p.pins.map((pin) => pin.id));
 
@@ -495,12 +728,15 @@ const ProjectPinsListTab = () => {
                 <section key={level.id} className="space-y-4">
                   <div className="flex items-center gap-2">
                     <GroupCheckbox
-                      ids={levelPinIds}
+                      ids={levelPinIds.filter((id) => {
+                        const plot = level.plots.flatMap((p) => p.pins).find((pin) => pin.id === id);
+                        return plot ? !plot.is_converted_job : true;
+                      })}
                       selectedIds={selectedIds}
                       onToggle={handleToggleGroup}
                     />
                     <span
-                      className="h-4 w-1 rounded-full bg-[color:var(--dash-accent,#f97316)]"
+                      className="h-4 w-1 rounded-full bg-(--dash-accent,#f97316)"
                       aria-hidden
                     />
                     <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200">
@@ -521,6 +757,14 @@ const ProjectPinsListTab = () => {
                           selectedIds={selectedIds}
                           onTogglePlot={handleToggleGroup}
                           onTogglePin={handleTogglePin}
+                          onPreviewPin={(pin) => {
+                            setPreviewPinData({
+                              pin,
+                              plots: [plot],
+                              drawingFile: level.drawing_file,
+                              drawingName: level.name,
+                            });
+                          }}
                         />
                       ))
                     )}
@@ -528,9 +772,25 @@ const ProjectPinsListTab = () => {
                 </section>
               );
             })}
+            {loadingMore && (
+              <div className="flex items-center justify-center py-4">
+                <span className="text-sm text-slate-500 animate-pulse">Loading more locations…</span>
+              </div>
+            )}
+            {hasMorePages && <div ref={sentinelRef} className="h-6" aria-hidden="true" />}
           </div>
         )}
       </div>
+      {previewPinData && (
+        <DrawingPinPreviewModal
+          open={previewPinData !== null}
+          onClose={() => setPreviewPinData(null)}
+          pin={previewPinData.pin}
+          plots={previewPinData.plots}
+          drawingFile={previewPinData.drawingFile}
+          drawingName={previewPinData.drawingName}
+        />
+      )}
     </div>
   );
 };

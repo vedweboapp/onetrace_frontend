@@ -270,7 +270,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
           ) : detail && activeTab === "quotations" ? (
             <ProjectQuotationsTab projectId={detail.id} />
           ) : detail && activeTab === "location" ? (
-            <ProjectPinsListTab />
+            <ProjectPinsListTab sites={detail.sites} />
           ) : activeTab !== "details" ? (
             <DashboardUnderDevelopmentState
               className="min-h-[calc(100vh-280px)] rounded-none px-4 sm:min-h-[420px] sm:px-6"

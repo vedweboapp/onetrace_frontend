@@ -14,11 +14,16 @@ export type ProjectUpsertPayload = {
   form_ids?: number[];
   start_date: string;
   end_date: string;
+  project_status?: number;
 };
 
 export type ProjectCreatePayload = ProjectUpsertPayload;
 export type ProjectUpdatePayload = Partial<ProjectUpsertPayload>;
-
+export type LocationToJobPayload = {
+  project: number,
+  // title: string,
+  pin_ids: number[]
+}
 /** When the API embeds client on project detail/list rows. */
 export type ProjectClientRef = {
   id: number;
@@ -39,6 +44,15 @@ export type ProjectTypeRef = {
 export type ProjectSiteRef = {
   id: number;
   site_name?: string | null;
+  is_active?: boolean;
+};
+
+export type ProjectStatusRef = {
+  id: number;
+  name?: string | null;
+  bg_color?: string | null;
+  text_color?: string | null;
+  organization?: number;
   is_active?: boolean;
 };
 
@@ -66,12 +80,13 @@ export type Project = {
   start_date: string;
   end_date: string;
   status: string;
+  project_status?: number | ProjectStatusRef | null;
   is_active: boolean;
   organization: number;
   deleted_by: unknown;
 };
-export type Location= {
-  [key:string]:any
+export type Location = {
+  [key: string]: any
 };
 export type ProjectPagination = {
   total_records: number;

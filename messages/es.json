@@ -236,7 +236,7 @@
       "customization": {
         "label": "Personalización",
         "hubTitle": "Personalización",
-        "hubDescription": "Elige qué configurar: Tipos de Proyecto, Tipos de Instalación, Tipos de Proveedor, Tipos de Lista de Verificación, Estados de Proyecto, Estados de Trabajo, Estados de Material y Etiquetas.",
+        "hubDescription": "Elige qué configurar: Tipos de Proyecto, Tipos de Instalación, Tipos de Proveedor, Tipos de Lista de Verificación, Estados de Proyecto, Estados de Pin, Estados de Trabajo, Estados de Material y Etiquetas.",
         "backToHub": "Volver a personalización",
         "items": {
           "projectTypes": {
@@ -257,7 +257,11 @@
           },
           "projectStatus": {
             "title": "Estados de Proyecto",
-            "description": "Estados de flujo para proyectos y pins en planos."
+            "description": "Estados de flujo para proyectos."
+          },
+          "pinStatus": {
+            "title": "Estados de Pin",
+            "description": "Estados de flujo para pins en planos de proyecto."
           },
           "jobStatus": {
             "title": "Estados de Trabajo",
@@ -2972,7 +2976,7 @@
           "createdAt": "Fecha de creación"
         }
       },
-      "location":{
+      "location": {
         "title": "Ubicacións",
         "subtitle": "Gestionar y ver todas las ubicaciones de este proyecto.",
         "searchPlaceholder": "Buscar ubicaciones…",
@@ -2981,7 +2985,13 @@
         "filterLevel": "Nivel",
         "filterAllLevels": "Todos los niveles",
         "filterPlot": "Parcela",
-        "filterAllPlots": "Todas las parcelas"
+        "filterAllPlots": "Todas las parcelas",
+        "createJob": "Crear trabajo",
+        "createJobPlaceHolder": "Ingrese el nombre del trabajo",
+        "site": "Sitio",
+        "selectSite": "Seleccionar sitio",
+        "requiredJob": "Se requiere el título del puesto.",
+        "Start": "Fecha de inicio"
       },
       "drawings": {
         "title": "Planos",
@@ -3193,7 +3203,8 @@
         "endDate": "Fecha de fin",
         "createdAt": "Creado",
         "updatedAt": "Última actualización",
-        "createdBy": "Creado por"
+        "createdBy": "Creado por",
+        "projectStatus": "Estado del proyecto"
       },
       "hints": {
         "sitesMultiSelect": "Selecciona uno o más sitios para este proyecto."

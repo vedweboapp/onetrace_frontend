@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Video, StopCircle, Camera, Trash2, Play, X, FileVideo } from "lucide-react";
+import { Video, StopCircle, Camera, Trash2, Play, X, FileVideo, SwitchCamera } from "lucide-react";
 
 export interface VideoRecorderProps {
   name?: string;
@@ -51,13 +51,21 @@ const VideoRecorder: React.FC<VideoRecorderProps> = ({
   const [cameraError, setCameraError] = React.useState<string | null>(null);
   const [sizeError, setSizeError] = React.useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+  const [facingMode, setFacingMode] = React.useState<"user" | "environment">("environment");
+  const [hasMultipleCameras, setHasMultipleCameras] = React.useState(true);
 
   // Derive the display filename from the controlled value
   const fileName = React.useMemo(() => {
     if (!value) return null;
     if (value instanceof File) return value.name;
-    // string URL - extract last segment
-    try { return decodeURIComponent(new URL(value).pathname.split("/").pop() ?? "video"); } catch { return "video"; }
+    if (typeof value === "string") {
+      try {
+        return decodeURIComponent(new URL(value).pathname.split("/").pop() ?? "video");
+      } catch {
+        return "video";
+      }
+    }
+    return null;
   }, [value]);
 
   // Effect to manage preview URL for any kind of value (File or String URL)
@@ -77,12 +85,16 @@ const VideoRecorder: React.FC<VideoRecorderProps> = ({
       return;
     }
 
-    try {
-      const url = URL.createObjectURL(value);
-      objectUrlRef.current = url;
-      setPreviewUrl(url);
-    } catch (e) {
-      console.error("Failed to create object URL for video preview:", e);
+    if (value instanceof Blob) {
+      try {
+        const url = URL.createObjectURL(value);
+        objectUrlRef.current = url;
+        setPreviewUrl(url);
+      } catch (e) {
+        console.error("Failed to create object URL for video preview:", e);
+      }
+    } else {
+      setPreviewUrl(null);
     }
 
     return () => {
@@ -108,32 +120,56 @@ const VideoRecorder: React.FC<VideoRecorderProps> = ({
     streamRef.current = null;
   }
 
+  const initCamera = async (mode: "user" | "environment") => {
+    stopStream();
+    setCameraError(null);
+
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      setCameraError(
+        "Camera API is not available. Make sure the page is served over HTTPS or localhost."
+      );
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: mode } },
+        audio: true,
+      });
+      streamRef.current = stream;
+      if (previewRef.current) {
+        previewRef.current.srcObject = stream;
+        previewRef.current.muted = true;
+        await previewRef.current.play().catch(() => { /* autoplay */ });
+      }
+
+      if (navigator.mediaDevices.enumerateDevices) {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter((d) => d.kind === "videoinput");
+        setHasMultipleCameras(videoDevices.length > 1);
+      }
+    } catch (err) {
+      setCameraError("Camera permission denied or unavailable.");
+      console.error("VideoRecorder: getUserMedia failed", err);
+    }
+  };
+
+  const toggleCamera = () => {
+    if (recording) return;
+    const nextMode = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(nextMode);
+    initCamera(nextMode);
+  };
+
   const openDialog = async () => {
     if (readOnly) return;
     setCameraError(null);
     setSizeError(null);
+    setFacingMode("environment");
     setDialogOpen(true);
     // Give the dialog time to mount before accessing the video element
     setTimeout(async () => {
-      // navigator.mediaDevices is undefined on HTTP (non-secure) contexts
-      if (!navigator?.mediaDevices?.getUserMedia) {
-        setCameraError(
-          "Camera API is not available. Make sure the page is served over HTTPS or localhost."
-        );
-        return;
-      }
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        streamRef.current = stream;
-        if (previewRef.current) {
-          previewRef.current.srcObject = stream;
-          previewRef.current.muted = true;
-          await previewRef.current.play().catch(() => { /* autoplay */ });
-        }
-      } catch (err) {
-        setCameraError("Camera permission denied or unavailable.");
-        console.error("VideoRecorder: getUserMedia failed", err);
-      }
+      await initCamera("environment");
     }, 100);
   };
 
@@ -364,6 +400,17 @@ const VideoRecorder: React.FC<VideoRecorderProps> = ({
                   <span className="size-2 rounded-full bg-white animate-pulse" />
                   REC {formatSeconds(timeLeft)}
                 </div>
+              )}
+              {!cameraError && hasMultipleCameras && (
+                <button
+                  type="button"
+                  onClick={toggleCamera}
+                  disabled={recording}
+                  className="absolute bottom-3 right-3 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white p-2.5 transition disabled:opacity-40 disabled:cursor-not-allowed backdrop-blur-sm shadow-md"
+                  title="Switch Camera"
+                >
+                  <SwitchCamera className="size-5" />
+                </button>
               )}
             </div>
 
