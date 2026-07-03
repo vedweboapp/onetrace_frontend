@@ -131,8 +131,25 @@ export type JobMetaLegacyPayload = {
   };
 };
 
+export type JobLevelPinSnapshot = {
+  id: number;
+};
+
+export type JobLevelPlotSnapshot = {
+  id: number;
+  name: string;
+  pins?: JobLevelPinSnapshot[];
+};
+
+export type JobLevelSnapshot = {
+  id: number;
+  name: string;
+  drawing_file?: string;
+  plots?: JobLevelPlotSnapshot[];
+};
+
 export type JobCreatePayload = {
-  title: string;
+  // title: string;
   description: string;
   assigned_worker: number;
   start_date: string;
@@ -153,7 +170,10 @@ export type JobUpdatePayload = Partial<JobCreatePayload> & {
   job_status?: number;
   /** List/detail toggle; omitted on create payload. */
   is_active?: boolean;
+  pins_list: [],
   checklists?: JobChecklistUpdateItem[];
+  /** Included when editing jobs created from project pins. */
+  levels?: JobLevelSnapshot[];
 };
 
 export type Job = {

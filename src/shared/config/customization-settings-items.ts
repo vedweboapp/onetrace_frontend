@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ClipboardList, ListChecks, ListTodo, MapPin, Plug, Shapes, Store, Tag, Tags } from "lucide-react";
+import { ClipboardList, ListChecks, ListTodo, MapPin, Plug, Shapes, Store, Tag, Tags, Text } from "lucide-react";
 import {
   CUSTOMIZATION_SETTINGS_HREFS,
   type CustomizationSettingsItemId,
@@ -21,6 +21,7 @@ const ICON_BY_ID: Record<CustomizationSettingsItemId, LucideIcon> = {
   jobStatus: ListTodo,
   materialStatus: ClipboardList,
   tags: Tag,
+  title: Text
 };
 
 export const CUSTOMIZATION_SETTINGS_ITEMS: CustomizationSettingsItem[] = CUSTOMIZATION_SETTINGS_HREFS.map(

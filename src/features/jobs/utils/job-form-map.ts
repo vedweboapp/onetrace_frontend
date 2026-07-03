@@ -106,7 +106,7 @@ export function mapJobFormToPayload(
   const job_meta = buildJobMetaPayload(values.job_meta_items);
 
   const payload: JobCreatePayload = {
-    title: values.title.trim(),
+    // title: values.title.trim(),
     description: values.description.trim(),
     assigned_worker: Number.parseInt(values.assigned_worker, 10),
     start_date: htmlDatetimeLocalToIso(values.start_date),

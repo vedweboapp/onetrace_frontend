@@ -274,6 +274,10 @@
           "tags": {
             "title": "Etiquetas",
             "description": "Etiquetas para organizar pins y registros."
+          },
+          "title": {
+            "title": "Títulos",
+            "description": "Organiza los títulos del proyecto."
           }
         }
       }
@@ -788,6 +792,47 @@
       "hexPlaceholder": "#000000",
       "validationName": "Introduce un nombre de estado.",
       "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #E5E7EB)."
+    },
+    "titleSettings": {
+      "metaTitle": "Títulos",
+      "title": "Títulos",
+      "subtitle": "Gestiona los títulos usados en toda la app.",
+      "add": "Añadir",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "table": {
+        "title": "Título",
+        "created": "Creado",
+        "updated": "Última actualización",
+        "actions": "Acciones"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "byUser": "Por {user}"
+      },
+      "emptyTitle": "Aún no hay títulos",
+      "emptyDescription": "Crea tu primer título para usarlo en los registros.",
+      "loadError": "No se pudieron cargar los títulos. Inténtalo de nuevo.",
+      "modal": {
+        "createTitle": "Nuevo título",
+        "editTitle": "Editar título",
+        "titleName": "Nombre",
+        "titleNamePlaceholder": "Introduce el nombre del título",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "deleteConfirmTitle": "¿Eliminar este título?",
+      "deleteConfirmBody": "Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar",
+      "pageLabel": "Mostrando {start}-{end} de {total} títulos",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "saved": "Título actualizado",
+      "created": "Título creado",
+      "deleted": "Título eliminado",
+      "validationName": "Introduce un nombre de título."
     },
     "tags": {
       "metaTitle": "Etiquetas",
@@ -2779,9 +2824,16 @@
       "sections": {
         "basic": "Detalles",
         "relations": "Vínculos",
+        "levels": "Niveles",
         "schedule": "Programación",
         "jobMeta": "Alcance del trabajo",
         "jobMetaHint": "Grupo, ítems compuestos y total opcionales enviados en job_meta."
+      },
+      "levelsHierarchy": {
+        "loadError": "No se pudieron cargar los niveles. Inténtalo de nuevo.",
+        "loadingMore": "Cargando más niveles…",
+        "noPlotsInLevel": "No hay parcelas en este nivel.",
+        "emptyLoaded": "Este proyecto aún no tiene niveles."
       },
       "lineItems": {
         "qty": "Cant.",

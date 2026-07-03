@@ -418,7 +418,7 @@ const ProjectPinsListTab = ({
       .filter((option) => option.value);
   }, [sites]);
 
-  const { handleSubmit, reset, register, formState: { errors } } = useForm<{ start_date: string }>()
+  const { handleSubmit, reset, register, setValue, formState: { errors } } = useForm<{ start_date: string; site: string }>({ defaultValues: { start_date: "", site: "" } })
 
   const filteredLocations = useMemo(() => {
     const searchActive = search.trim() !== "";
@@ -606,9 +606,16 @@ const ProjectPinsListTab = ({
                   portaled
                   searchable
                   clearable
-                  className="w-full"
-                  onChange={(value) => setDialogSiteId(value ? Number.parseInt(value, 10) : undefined)}
+                  className={cn("w-full", errors.site && "ring ring-red-500 rounded-lg")}
+                  onChange={(value) => {
+                    setDialogSiteId(value ? Number.parseInt(value, 10) : undefined);
+                    setValue("site", value ?? "", { shouldValidate: true });
+                  }}
                 />
+                <input type="hidden" {...register("site", { required: t("requiredSite") || "Site is required" })} />
+                {errors.site && (
+                  <p className="mt-1 text-sm text-red-500">{errors.site.message}</p>
+                )}
               </div>
               <div className="mt-4">
                 <label htmlFor="assigned-worker" className="text-md font-semibold text-slate-800 dark:text-slate-200">
