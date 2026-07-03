@@ -24,11 +24,14 @@
     "continue": "Continue",
     "sendOtp": "Send OTP",
     "otpRequired": "Enter the 6-digit OTP.",
+
     "otpSent": "OTP sent to {email}",
     "otpSendError": "Could not send OTP. Please try again.",
     "otpVerifyError": "Could not verify OTP. Check the code and try again.",
     "resendIn": "Resend code in",
     "resendNow": "Resend now",
+    "backToLogin": "Back to sign in",
+    "otpResent": "OTP resent successfully",
     "noAccount": "No account yet?",
     "signUpLink": "Create one",
     "dontHaveAccount": "Dont have an account ?",
@@ -90,7 +93,14 @@
     "forgotPassword": {
       "title": "Forgot Password?",
       "body": "Enter your email to reset your password",
-      "backToLogin": "Back to sign in"
+      "backToLogin": "Back to sign in",
+      "rememberThePassword": "Remember the password ?",
+      "resendIn": "Resend code in",
+      "resend": "Resend",
+      "newPassword": "New Password",
+      "otpInput": "Enter the 6-digit code sent to your email",
+      "newPasswordPlaceholder": "Enter new password"
+
     },
     "resetPassword": {
       "title": "Reset Password",
@@ -235,7 +245,7 @@
       "customization": {
         "label": "Customization",
         "hubTitle": "Customization",
-        "hubDescription": "Choose what to configure — Project Types, Installation Types, Vendor Types, Checklist Types, Project Statuses, Job Statuses, Material Statuses, and Tags.",
+        "hubDescription": "Choose what to configure — Project Types, Installation Types, Vendor Types, Checklist Types, Project Statuses, Pin Statuses, Job Statuses, Material Statuses, and Tags.",
         "backToHub": "Back to customization",
         "items": {
           "projectTypes": {
@@ -256,7 +266,11 @@
           },
           "projectStatus": {
             "title": "Project Statuses",
-            "description": "Workflow statuses for projects and drawing pins."
+            "description": "Workflow statuses for projects."
+          },
+          "pinStatus": {
+            "title": "Pin Statuses",
+            "description": "Workflow statuses for drawing pins on project drawings."
           },
           "jobStatus": {
             "title": "Job Statuses",
@@ -2961,6 +2975,7 @@
           "drawings": "Drawings",
           "jobsheets": "Job Sheets",
           "jobs": "Jobs",
+          "location": "Locations",
           "quotations": "Quotes",
           "docs": "Docs",
           "approvals": "Approvals",
@@ -2974,6 +2989,25 @@
           "status": "Status",
           "createdAt": "Created at"
         }
+      },
+      "location":{
+        "title": "Locations",
+        "subtitle": "Manage and view all locations for this project.",
+        "searchPlaceholder": "Search locations…",
+        "searchAria": "Search locations",
+        "filterJobSource": "Job source",
+        "filterLevel": "Level",
+        "filterAllLevels": "All levels",
+        "filterPlot": "Plot",
+        "filterAllPlots": "All plots",
+        "createJob": "Create job",
+        "createJobPlaceHolder": "Enter Job Name",
+        "site": "Site",
+        "selectSite": "Select site",
+        "requiredJob": "Job title is required.",
+        "Start": "Start Date",
+        "assignedWorker": "Assign Worker",
+        "selectWorker": "Select Worker"
       },
       "drawings": {
         "title": "Drawings",
@@ -3185,7 +3219,8 @@
         "endDate": "End date",
         "createdAt": "Created",
         "updatedAt": "Last updated",
-        "createdBy": "Created by"
+        "createdBy": "Created by",
+        "projectStatus": "Project Status"
       },
       "hints": {
         "sitesMultiSelect": "Select one or more sites for this project."

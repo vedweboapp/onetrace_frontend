@@ -8,7 +8,7 @@ import { useRouter } from "@/i18n/navigation";
 import { fetchDrawingDetail, updateDrawingPlots } from "@/features/projects/api/drawing.api";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
-import { fetchProjectStatusesPage } from "@/features/project-status/api/project-status.api";
+import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
 import { resolveDefaultPinStatus } from "@/features/pin-status/utils/pin-default-status.util";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
@@ -504,7 +504,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         fetchDrawingDetail(projectId, drawingId),
         fetchGroupsPage(1, 500),
         fetchCompositeItemsPage(1, 500),
-        fetchProjectStatusesPage(1, 500),
+        fetchPinStatusesPage(1, 500),
         fetchProjectFormsPage(projectId, 1, 500),
 
       ]);

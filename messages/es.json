@@ -86,7 +86,12 @@
     "forgotPassword": {
       "title": "¿Olvidaste la contraseña?",
       "body": "Ingresa tu correo para restablecer tu contraseña",
-      "backToLogin": "Volver a iniciar sesión"
+      "backToLogin": "Volver a iniciar sesión",
+      "rememberThePassword": "¿Recuerdas la contraseña?",
+      "resendIn": "Reenviar código en",
+      "resend": "Reenviar",
+      "newPassword": "Nueva Contraseña",
+      "otpInput": "Introduce el código de 6 dígitos que te enviamos por correo electrónico."
     },
     "resetPassword": {
       "title": "Restablecer contraseña",
@@ -231,7 +236,7 @@
       "customization": {
         "label": "Personalización",
         "hubTitle": "Personalización",
-        "hubDescription": "Elige qué configurar: Tipos de Proyecto, Tipos de Instalación, Tipos de Proveedor, Tipos de Lista de Verificación, Estados de Proyecto, Estados de Trabajo, Estados de Material y Etiquetas.",
+        "hubDescription": "Elige qué configurar: Tipos de Proyecto, Tipos de Instalación, Tipos de Proveedor, Tipos de Lista de Verificación, Estados de Proyecto, Estados de Pin, Estados de Trabajo, Estados de Material y Etiquetas.",
         "backToHub": "Volver a personalización",
         "items": {
           "projectTypes": {
@@ -252,7 +257,11 @@
           },
           "projectStatus": {
             "title": "Estados de Proyecto",
-            "description": "Estados de flujo para proyectos y pins en planos."
+            "description": "Estados de flujo para proyectos."
+          },
+          "pinStatus": {
+            "title": "Estados de Pin",
+            "description": "Estados de flujo para pins en planos de proyecto."
           },
           "jobStatus": {
             "title": "Estados de Trabajo",
@@ -2953,6 +2962,7 @@
           "jobsheets": "Hojas de trabajo",
           "jobs": "Trabajos",
           "quotations": "Cotizaciones",
+          "location": "Ubicacións",
           "docs": "Documentos",
           "approvals": "Aprobaciones",
           "pins": "patas"
@@ -2965,6 +2975,25 @@
           "status": "Estado",
           "createdAt": "Fecha de creación"
         }
+      },
+      "location": {
+        "title": "Ubicacións",
+        "subtitle": "Gestionar y ver todas las ubicaciones de este proyecto.",
+        "searchPlaceholder": "Buscar ubicaciones…",
+        "searchAria": "Buscar ubicaciones",
+        "filterJobSource": "Origen del trabajo",
+        "filterLevel": "Nivel",
+        "filterAllLevels": "Todos los niveles",
+        "filterPlot": "Parcela",
+        "filterAllPlots": "Todas las parcelas",
+        "createJob": "Crear trabajo",
+        "createJobPlaceHolder": "Ingrese el nombre del trabajo",
+        "site": "Sitio",
+        "selectSite": "Seleccionar sitio",
+        "requiredJob": "Se requiere el título del puesto.",
+        "Start": "Fecha de inicio",
+        "assignedWorker": "Asignar trabajador",
+        "selectWorker": "Seleccionar trabajador"
       },
       "drawings": {
         "title": "Planos",
@@ -3176,7 +3205,8 @@
         "endDate": "Fecha de fin",
         "createdAt": "Creado",
         "updatedAt": "Última actualización",
-        "createdBy": "Creado por"
+        "createdBy": "Creado por",
+        "projectStatus": "Estado del proyecto"
       },
       "hints": {
         "sitesMultiSelect": "Selecciona uno o más sitios para este proyecto."

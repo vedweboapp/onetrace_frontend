@@ -3,7 +3,7 @@
 import { ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { CUSTOMIZATION_SETTINGS_ITEMS } from "@/shared/config/customization-settings-nav";
+import { CUSTOMIZATION_SETTINGS_ITEMS } from "@/shared/config/customization-settings-items";
 import { cn } from "@/core/utils/http.util";
 import { ListPageCardGrid, SurfaceShell } from "@/shared/ui";
 

@@ -18,6 +18,7 @@ import MultiSelect from "../components/multi-select";
 import RadioGroup from "../components/radio-group";
 import FormCheckbox from "../components/form-checkbox";
 import SignaturePad from "../components/signature-pad";
+import VideoRecorder from "../components/VideoRecorder";
 import UsersSelect from "../components/users-select";
 import ImageUploadField from "../components/image-upload-field";
 import { Country } from "country-state-city";
@@ -153,6 +154,7 @@ const FIELD_COMPONENTS: Record<string, any> = {
   },
   multi_select: MultiSelect,
   signature: SignaturePad,
+  video_recorder: VideoRecorder,
   user: UsersSelect,
   country: CountrySelect,
   state: Input,
@@ -476,7 +478,7 @@ const FormField: React.FC<{
   }
 
   // Use Controller for complex components
-  if (["file_upload", "image_upload", "multi_select", "signature", "user", "currency"].includes(normType)) {
+  if (["file_upload", "image_upload", "multi_select", "signature", "video_recorder", "user", "currency"].includes(normType)) {
     const currencyDefault = buildCurrencyFieldDefault(field);
     return (
       <div className={fieldShellClass}>
@@ -522,6 +524,8 @@ const FormField: React.FC<{
                 field.properties?.validation_rules?.maxFileSize ??
                 field.properties?.validation_rules?.max_file_size
               }
+              maxSize={normType === "video_recorder" ? (field.maxSize ?? field.properties?.maxSize) : undefined}
+              recordingTime={normType === "video_recorder" ? (field.recordingTime ?? field.properties?.recordingTime) : undefined}
             />
           )}
         />
@@ -579,7 +583,7 @@ const FormField: React.FC<{
   );
 };
 
-const FILE_FIELD_TYPES = new Set(["signature", "file_upload", "image_upload"]);
+const FILE_FIELD_TYPES = new Set(["signature", "file_upload", "image_upload", "video_recorder"]);
 
 function buildCurrencyFieldDefault(field: Field): { amount: string; currency: string } {
   const currency = getFieldCurrencyDefault(field as Record<string, unknown>);
@@ -691,7 +695,7 @@ const buildDefaultValuesFromSchema = (
           f.defaultChecked === "true" ||
           f.defaultValue === true ||
           f.defaultValue === "true";
-      } else if (normType === "image_upload") {
+      } else if (normType === "image_upload" || normType === "video_recorder") {
         formData[f.api_name] =
           f.defaultValue !== undefined &&
           f.defaultValue !== null &&

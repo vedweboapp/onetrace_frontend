@@ -18,6 +18,7 @@ import {
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 import { ActiveStatusBadge } from "@/shared/ui";
+import { cn } from "@/core/utils/http.util";
 
 function projectSiteListRows(
   detail: Project,
@@ -63,6 +64,11 @@ export function ProjectDetailBody({
   const end = detail.end_date?.slice(0, 10) ?? "";
   const siteRows = projectSiteListRows(detail, t("fields.site"));
 
+  const projectStatus =
+    typeof detail.project_status === "object" && detail.project_status !== null
+      ? detail.project_status
+      : undefined;
+
   const addressParts = {
     line1: detail.address_line_1,
     line2: detail.address_line_2,
@@ -78,12 +84,21 @@ export function ProjectDetailBody({
       <div className={detailPageStackClassName}>
         <DetailPanelCard title={t("detail.sectionOverview")}>
           <DetailMetricsGrid className="sm:grid-cols-2">
-            <DetailStatusMetric
+            {/* <DetailStatusMetric
               label={t("table.status")}
               isActive={detail.is_active}
               activeLabel={t("status.active")}
               inactiveLabel={t("status.inactive")}
-            />
+            /> */}
+            <div
+              className="inline-flex items-center rounded-xl px-2.5 py-0.5 text-xs font-semibold w-fit"
+              style={{
+                backgroundColor: projectStatus?.bg_color ?? "#e2e8f0",
+                color: projectStatus?.text_color ?? "#0f172a",
+              }}
+            >
+              {projectStatus?.name || "—"}
+            </div>
             <DetailMetricCard label={t("fields.name")}>
               <span className="break-words">{detail.name}</span>
             </DetailMetricCard>

@@ -34,6 +34,11 @@ export type Drawing = {
   plots?: DrawingPlot[];
 };
 
+export type DrawingPinProjectFormRef = {
+  id: number;
+  name?: string | null;
+};
+
 export type DrawingPin = {
   id: number;
   x_coordinate: number;
@@ -45,8 +50,9 @@ export type DrawingPin = {
   quantity?: number;
   variation?: boolean;
   location?: number | string;
-  formId? : number | null;
-  project_form? : number | null;
+  is_converted_job?: boolean;
+  formId?: number | null;
+  project_form?: number | DrawingPinProjectFormRef | null;
 
   /** Optional description shown in the pin details panel. */
   description?: string | null;

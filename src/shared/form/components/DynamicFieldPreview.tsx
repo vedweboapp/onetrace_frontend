@@ -171,23 +171,23 @@ export default function DynamicFieldPreview({
     <div
       ref={ref}
       style={{ opacity: isDragging ? 0.5 : 1 }}
-      className={`group relative ${
-        field.required
+      className={`group relative ${field.required
           ? "border-l-2 border-l-red-500"
           : "border-dotted border-2"
-      } flex items-center justify-between bg-gray-50 dark:bg-slate-800 rounded-[4px] border-gray-300 dark:border-slate-600 px-5 py-3 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-md transition-all cursor-pointer`}
+        } flex items-center justify-between bg-gray-50 dark:bg-slate-800 rounded-[4px] border-gray-300 dark:border-slate-600 px-1 lg:px-5 py-1 lg:py-3 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-md transition-all cursor-pointer min-w-0`}
     >
-      <div className="flex  items-center gap-3">
-        <div className="font-medium text-gray-800 dark:text-gray-100 flex flex-col">
-          <span className="flex flex-col lg:flex-row items-center gap-2">
-            {field.field_label || "Untitled Field"}
-            {field.api_name && (
-              <span className="text-[11px] font-normal text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-slate-700 px-1.5 py-0.5 rounded border border-gray-200 dark:border-slate-600">
-                {field.api_name}
-              </span>
-            )}
-          </span>
-          <span className="text-sm text-gray-500 dark:text-gray-400">{field.field_type || "text"}</span>
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="font-medium text-gray-800 dark:text-gray-100 flex flex-col min-w-0 flex-1">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center gap-2 min-w-0 w-full">
+            <span className="truncate block min-w-0 w-full lg:w-auto">
+              {field.field_label || "Untitled Field"}
+            </span>
+            {/* {field.api_name && (
+      <span className="text-[11px] font-normal text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-slate-700 px-1.5 py-0.5 rounded border border-gray-200 dark:border-slate-600 shrink-0">
+        {field.api_name}
+      </span>
+    )} */}
+          </div>
         </div>
       </div>
       <DataTableRowActionsMenu

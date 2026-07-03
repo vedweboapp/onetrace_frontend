@@ -25,7 +25,8 @@ type ProjectStatusApiRow = {
   modified_at: string;
   deleted_at?: string | null;
   is_deleted?: boolean;
-  status_name: string;
+  status_name?: string;
+  name?: string;
   bg_color?: string;
   text_color?: string;
   bg_colour?: string;
@@ -44,7 +45,7 @@ function normalizeProjectStatusRow(row: ProjectStatusApiRow): WorkflowColourStat
     modified_at: row.modified_at,
     deleted_at: row.deleted_at,
     is_deleted: row.is_deleted,
-    status_name: row.status_name,
+    status_name: row.name ?? row.status_name ?? "",
     bg_colour: row.bg_colour ?? row.bg_color ?? "#E5E7EB",
     text_colour: row.text_colour ?? row.text_color ?? "#374151",
     is_active: row.is_active,
