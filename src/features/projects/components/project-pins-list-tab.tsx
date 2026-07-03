@@ -10,6 +10,7 @@ import {
 import { useLocale, useTranslations } from "next-intl";
 import { createJobFromLocation } from "@/features/projects/api/project.api";
 import { fetchDrawingsPage } from "@/features/projects/api/drawing.api";
+import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import type { Drawing, DrawingPin, DrawingPlot } from "@/features/projects/types/drawing.types";
 import type { ProjectPagination, ProjectSiteRef } from "@/features/projects/types/project.types";
 import { useParams } from "next/navigation";
@@ -23,7 +24,7 @@ import { useRouter } from "@/i18n/navigation";
 import { routes } from "@/shared/config/routes";
 
 const PIN_TABLE_GRID =
-  "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,1.5rem)_minmax(0,5rem)_minmax(0,1fr)_minmax(0,0.5fr)_minmax(0,0.4fr)_minmax(0,0.4fr)_minmax(0,0.5fr)_minmax(0,0.45fr)_minmax(0,3rem)] items-center gap-x-3";
+  "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,1.5rem)_minmax(0,5rem)_minmax(0,1fr)_minmax(0,0.5fr)_minmax(0,0.4fr)_minmax(0,0.4fr)_minmax(0,0.45fr)_minmax(0,3rem)] items-center gap-x-3";
 const PIN_TABLE_HEADER_CLASS = cn(
   PIN_TABLE_GRID,
   "border-b border-slate-100 bg-slate-50/80 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400",
@@ -124,7 +125,6 @@ function ProjectPinTableHeader() {
       <span className="min-w-0 truncate">{isEs ? "Variación" : "Variation"}</span>
       <span className="min-w-0 truncate">Quantity</span>
       <span className="min-w-0 truncate">Is a Job</span>
-      <span className="min-w-0 truncate">Attachments</span>
       <span className="min-w-0 truncate">Status</span>
       <span className="sr-only">Actions</span>
     </div>
@@ -172,29 +172,6 @@ function ProjectPinRow({
       </span>
       <span className="min-w-0 text-xs font-medium text-slate-600 dark:text-slate-400">{pin.quantity ?? 1}</span>
       <span className="min-w-0 text-xs font-medium text-slate-600 dark:text-slate-400">{pin.is_converted_job ? "Yes" : "No"}</span>
-      <span className="min-w-0 text-xs font-medium text-slate-600 dark:text-slate-400 truncate">
-        {pin.attachments && pin.attachments.length > 0 ? (
-          (() => {
-            const attachment = pin.attachments[0];
-            const href = attachment.file ?? attachment.url;
-  
-            const label = attachment.file_name ?? attachment.name ?? "Attachment";
-            return href ? (
-              <a
-                href={String(href)}
-                download={attachment.file_name ?? attachment.name ?? undefined}
-                className="min-w-0 truncate text-xs font-medium text-slate-700 underline hover:text-slate-900 dark:text-slate-200 dark:hover:text-white cursor-pointer"
-              >
-                {label}
-              </a>
-            ) : (
-              <span className="min-w-0 truncate text-xs text-slate-500">{label}</span>
-            );
-          })()
-        ) : (
-          <span className="min-w-0 truncate text-xs text-slate-500">—</span>
-        )}
-      </span>
       <div>
         <PinStatusChip pin={pin} />
       </div>
@@ -303,10 +280,38 @@ const ProjectPinsListTab = ({
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
   const [previewPinData, setPreviewPinData] = useState<{ pin: DrawingPin; plots: DrawingPlot[]; drawingFile: string; drawingName: string } | null>(null);
   const [dialogSiteId, setDialogSiteId] = useState<number | undefined>(undefined);
+  const [dialogAssignedWorkerId, setDialogAssignedWorkerId] = useState<number | undefined>(undefined);
+  const [workerOptions, setWorkerOptions] = useState<{ value: string; label: string }[]>([]);
+  const [loadingWorkers, setLoadingWorkers] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const sentinelRef = React.useRef<HTMLDivElement | null>(null);
 
   const t = useTranslations("Dashboard.projects.location");
   const router = useRouter();
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingWorkers(true);
+    loadTechnicianOptions()
+      .then((options) => {
+        if (!cancelled) {
+          setWorkerOptions(options);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setWorkerOptions([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingWorkers(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -541,17 +546,25 @@ const ProjectPinsListTab = ({
     setPlotFilter(undefined);
   }, []);
 
-  const handleCreateJob = async (): Promise<void> => {
+  const handleCreateJob = async (formData: { start_date: string }): Promise<void> => {
+    setIsSubmitting(true);
     try {
       const res = await createJobFromLocation({
         project: Number(id),
         pin_ids: Array.from(effectiveSelectedIds),
+        site: dialogSiteId,
+        start_date: formData.start_date,
+        assigned_worker: dialogAssignedWorkerId,
       });
       setDialogVisible(false);
       reset();
+      setDialogSiteId(undefined);
+      setDialogAssignedWorkerId(undefined);
       router.push(`${routes.dashboard.jobs}/${res.id}`);
     } catch (e) {
       console.log("error in here", e);
+    } finally {
+      setIsSubmitting(false);
     }
   };
   return (
@@ -597,11 +610,30 @@ const ProjectPinsListTab = ({
                   onChange={(value) => setDialogSiteId(value ? Number.parseInt(value, 10) : undefined)}
                 />
               </div>
+              <div className="mt-4">
+                <label htmlFor="assigned-worker" className="text-md font-semibold text-slate-800 dark:text-slate-200">
+                  {t("assignedWorker")}
+                </label>
+                <CheckmarkSelect
+                  listLabel={t("assignedWorker")}
+                  buttonAriaLabel={t("assignedWorker")}
+                  options={workerOptions}
+                  value={dialogAssignedWorkerId != null ? String(dialogAssignedWorkerId) : ""}
+                  emptyLabel={t("selectWorker") || "Select Worker"}
+                  portaled
+                  searchable
+                  clearable
+                  className="w-full"
+                  disabled={loadingWorkers || workerOptions.length === 0}
+                  onChange={(value) => setDialogAssignedWorkerId(value ? Number.parseInt(value, 10) : undefined)}
+                />
+              </div>
               <div className="mt-4 flex justify-end gap-2">
                 <AppButton
                   onClick={() => {
                     reset();
                     setDialogSiteId(undefined);
+                    setDialogAssignedWorkerId(undefined);
                     setDialogVisible(false);
                   }}
                   size="lg"
@@ -613,6 +645,8 @@ const ProjectPinsListTab = ({
                   onClick={handleSubmit(handleCreateJob)}
                   size="lg"
                   variant="primary"
+                  loading={isSubmitting}
+                  disabled={isSubmitting}
                 >
                   {t("createJob")}
                 </AppButton>

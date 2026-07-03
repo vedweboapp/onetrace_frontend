@@ -2991,7 +2991,9 @@
         "site": "Sitio",
         "selectSite": "Seleccionar sitio",
         "requiredJob": "Se requiere el título del puesto.",
-        "Start": "Fecha de inicio"
+        "Start": "Fecha de inicio",
+        "assignedWorker": "Asignar trabajador",
+        "selectWorker": "Seleccionar trabajador"
       },
       "drawings": {
         "title": "Planos",

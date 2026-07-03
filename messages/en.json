@@ -3005,7 +3005,9 @@
         "site": "Site",
         "selectSite": "Select site",
         "requiredJob": "Job title is required.",
-        "Start": "Start Date"
+        "Start": "Start Date",
+        "assignedWorker": "Assign Worker",
+        "selectWorker": "Select Worker"
       },
       "drawings": {
         "title": "Drawings",
