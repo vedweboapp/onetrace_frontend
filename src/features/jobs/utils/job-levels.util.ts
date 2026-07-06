@@ -8,9 +8,9 @@ export function isPinToDoStatus(pin: DrawingPin): boolean {
   return name === "to do" || name === "todo";
 }
 
-/** Non–To Do pins cannot be toggled (locked). */
+/** Non–To Do pins and already-converted pins cannot be toggled (locked). */
 export function isJobFormPinCheckboxDisabled(pin: DrawingPin): boolean {
-  return !isPinToDoStatus(pin);
+  return !isPinToDoStatus(pin) || pin.is_converted_job === true;
 }
 
 export function extractJobLevelsFromJob(job: Job): JobLevelSnapshot[] {

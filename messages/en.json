@@ -3059,7 +3059,10 @@
         "requiredJob": "Job title is required.",
         "Start": "Start Date",
         "assignedWorker": "Assign Worker",
-        "selectWorker": "Select Worker"
+        "selectWorker": "Select Worker",
+        "requiredSite": "Site is required.",
+        "requiredDate": "Date is required.",
+        "requiredWorker": "Worker is required."
       },
       "drawings": {
         "title": "Drawings",

@@ -473,7 +473,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
       if (isEdit && jobId) {
         const updatePayload: JobUpdatePayload = mapJobFormToPayload(values);
         if (jobFromPins) {
-          updatePayload.pins_list = Array.from(selectedPinIds);
+          updatePayload.pin_ids = Array.from(selectedPinIds);
         }
         const saved = await updateJob(jobId, updatePayload);
         toastSuccess(t("updatedToast"));
@@ -726,21 +726,6 @@ export function JobFormScreen({ mode, jobId }: Props) {
               </FormFieldRow>
             </section>
 
-            {isEdit && jobFromPins && projectId ? (
-              <section className="space-y-4">
-                <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  {t("sections.levels")}
-                </h2>
-                <JobFormLevelsSection
-                  projectId={projectId}
-                  initialJobLevels={initialJobLevels}
-                  selectedPinIds={selectedPinIds}
-                  onSelectedPinIdsChange={setSelectedPinIds}
-                  onLocationsChange={handleProjectLocationsChange}
-                  disabled={saving}
-                />
-              </section>
-            ) : null}
 
             <section className="space-y-6">
               <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -957,6 +942,22 @@ export function JobFormScreen({ mode, jobId }: Props) {
                   </tbody>
                 </table>
               </div>
+              
+            {isEdit && jobFromPins && projectId ? (
+              <section className="space-y-4">
+                <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  {t("sections.levels")}
+                </h2>
+                <JobFormLevelsSection
+                  projectId={projectId}
+                  initialJobLevels={initialJobLevels}
+                  selectedPinIds={selectedPinIds}
+                  onSelectedPinIdsChange={setSelectedPinIds}
+                  onLocationsChange={handleProjectLocationsChange}
+                  disabled={saving}
+                />
+              </section>
+            ) : null}
               <div className="ml-auto max-w-xs rounded-xl border border-slate-200 p-3 dark:border-slate-700">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-slate-900 dark:text-slate-100">{t("fields.scopeTotal")}</span>

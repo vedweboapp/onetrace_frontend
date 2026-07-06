@@ -3045,7 +3045,10 @@
         "requiredJob": "Se requiere el título del puesto.",
         "Start": "Fecha de inicio",
         "assignedWorker": "Asignar trabajador",
-        "selectWorker": "Seleccionar trabajador"
+        "selectWorker": "Seleccionar trabajador",
+        "requiredSite": "Se requiere un sitio.",
+        "requiredDate": "Se requiere una fecha.",
+        "requiredWorker": "Se requiere un trabajador."
       },
       "drawings": {
         "title": "Planos",

@@ -196,7 +196,7 @@ function PlotPinsBlock({
   onPreviewPin: (pin: DrawingPin) => void;
 }) {
   const selectablePinIds = React.useMemo(
-    () => pins.filter((pin) => isPinToDoStatus(pin)).map((pin) => pin.id),
+    () => pins.filter((pin) => isPinToDoStatus(pin) && !pin.is_converted_job).map((pin) => pin.id),
     [pins],
   );
 
@@ -257,6 +257,10 @@ export function JobFormLevelsSection({
   const t = useTranslations("Dashboard.jobs.levelsHierarchy");
 
   const [locations, setLocations] = React.useState<Drawing[]>([]);
+  // Mirror locations in a ref so the async effect can read the latest value
+  // without adding `locations` to its dependency array (which would cause loops).
+  const locationsRef = React.useRef<Drawing[]>(locations);
+  locationsRef.current = locations;
   const [loading, setLoading] = React.useState(true);
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
@@ -289,11 +293,13 @@ export function JobFormLevelsSection({
       try {
         const { items, pagination: p } = await fetchDrawingsPage(projectId, page, pageSize);
         if (cancelled) return;
-        setLocations((prev) => {
-          const next = page === 1 ? items : [...prev, ...items];
-          onLocationsChange(next);
-          return next;
-        });
+        // Compute next outside the setter — calling onLocationsChange (which updates
+        // parent state) inside a setState updater causes the React "setState during
+        // render" error. We use locationsRef to get the latest value without a
+        // stale closure.
+        const next = page === 1 ? items : [...locationsRef.current, ...items];
+        setLocations(next);
+        onLocationsChange(next);
         setPagination(p);
       } catch (error) {
         if (cancelled) return;
@@ -413,7 +419,7 @@ export function JobFormLevelsSection({
       <div className="space-y-8">
         {locations.map((level) => {
           const levelSelectablePinIds = (level.plots ?? []).flatMap((plot) =>
-            (plot.pins ?? []).filter((pin) => isPinToDoStatus(pin)).map((pin) => pin.id),
+            (plot.pins ?? []).filter((pin) => isPinToDoStatus(pin) && !pin.is_converted_job).map((pin) => pin.id),
           );
 
           return (
