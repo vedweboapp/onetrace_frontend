@@ -76,7 +76,7 @@ export async function updateChecklistType(
   if (definedUpdateKeys(body).length === 1) {
     return patchChecklistType(id, body);
   }
-  const { data } = await api.put<ApiEnvelope<ChecklistType>>(CHECKLIST_TYPE_PATHS.detail(id), body);
+  const { data } = await api.patch<ApiEnvelope<ChecklistType>>(CHECKLIST_TYPE_PATHS.detail(id), body);
   assertApiSuccess(data);
   return data.data;
 }

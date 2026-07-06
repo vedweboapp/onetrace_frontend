@@ -2,7 +2,7 @@ import type { DrawingPlot, DrawingPin } from "@/features/projects/types/drawing.
 
 export function collectDrawingPins(plots?: DrawingPlot[] | null): DrawingPin[] {
   if (!plots?.length) return [];
-  return plots.flatMap((plot) => plot.pins ?? []);
+  return plots.flatMap((plot) => plot?.pins ?? []);
 }
 
 export function countDrawingPins(plots?: DrawingPlot[] | null, fallback?: number): number {

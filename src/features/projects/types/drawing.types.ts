@@ -30,6 +30,7 @@ export type Drawing = {
   deleted_by: unknown;
   pin_count?: number;
   pins_count?: number;
+  
   /** Included on list responses when the API returns plot/pin geometry. */
   plots?: DrawingPlot[];
 };

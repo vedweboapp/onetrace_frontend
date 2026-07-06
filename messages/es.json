@@ -1053,7 +1053,17 @@
         "requiredLabel": "Obligatorio en formularios de trabajo",
         "activeLabel": "Activo",
         "save": "Guardar",
-        "cancel": "Cancelar"
+        "cancel": "Cancelar",
+        "file:": "Archivo",
+        "filePlaceholder": "Seleccionar archivo",
+        "fileError": "No se pudo cargar el archivo. Inténtalo de nuevo.",
+        "chooseFile": "Elegir archivo",
+        "replaceFile": "Reemplazar archivo",
+        "removeFile": "Quitar archivo",
+        "currentFile": "Archivo actual",
+        "validationFile": "Por favor adjunta un archivo",
+        "concentricPoint": "Punto concéntrico"
+
       },
       "deleteConfirmTitle": "¿Eliminar este tipo de lista de verificación?",
       "deleteConfirmBody": "Los formularios de trabajo que usen esta lista pueden verse afectados. Esta acción no se puede deshacer.",
@@ -1747,7 +1757,8 @@
         "mapPickHint": "Añade la dirección o búscala arriba, luego coloca el pin en el mapa.",
         "mapNotFoundHint": "No se pudo ubicar esta dirección — indica ciudad, provincia y código postal, o haz clic en el mapa para colocar el pin.",
         "addressFromPin": "Dirección actualizada según la posición del pin.",
-        "coordsLabel": "Coordenadas: {lat}, {lon}"
+        "coordsLabel": "Coordenadas: {lat}, {lon}",
+        "checkList":"Check lsit"
       }
     },
     "quotations": {

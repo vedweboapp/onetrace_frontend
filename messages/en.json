@@ -100,7 +100,6 @@
       "newPassword": "New Password",
       "otpInput": "Enter the 6-digit code sent to your email",
       "newPasswordPlaceholder": "Enter new password"
-
     },
     "resetPassword": {
       "title": "Reset Password",
@@ -284,9 +283,9 @@
             "title": "Tags",
             "description": "Tags for organizing pins and records."
           },
-          "title":{
-            "title":"Titles",
-            "description":"Organize the title for the project."
+          "title": {
+            "title": "Titles",
+            "description": "Organize the title for the project."
           }
         }
       }
@@ -1062,7 +1061,17 @@
         "requiredLabel": "Required on job forms",
         "activeLabel": "Active",
         "save": "Save",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "file": "File",
+        "filePlaceholder": "Select a file",
+        "fileRequired": "Please select a file.",
+        "chooseFile": "Choose file",
+        "replaceFile": "Replace file",
+        "removeFile": "Remove file",
+        "currentFile": "Current file",
+        "validationFile": "Please attach a file",
+        "concentricPoint": "Concentric Point"
+
       },
       "deleteConfirmTitle": "Delete this checklist type?",
       "deleteConfirmBody": "Job forms using this checklist may need to be updated. This action cannot be undone.",
@@ -3042,7 +3051,7 @@
           "createdAt": "Created at"
         }
       },
-      "location":{
+      "location": {
         "title": "Locations",
         "subtitle": "Manage and view all locations for this project.",
         "searchPlaceholder": "Search locations…",
@@ -3062,7 +3071,9 @@
         "selectWorker": "Select Worker",
         "requiredSite": "Site is required.",
         "requiredDate": "Date is required.",
-        "requiredWorker": "Worker is required."
+        "requiredWorker": "Worker is required.",
+        "CheckList": "Check List"
+        
       },
       "drawings": {
         "title": "Drawings",
@@ -3230,7 +3241,7 @@
         "filterManualSource": "Manual",
         "filterQuotationSource": "Auto",
         "selectAll": "Select All",
-        "deselectAll":"Deselect All",
+        "deselectAll": "Deselect All",
         "filterLevel": "Level",
         "filterAllLevels": "All levels",
         "filterPlot": "Plot",
