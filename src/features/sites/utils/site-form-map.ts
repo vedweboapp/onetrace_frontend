@@ -110,8 +110,17 @@ export function siteToFormDefaults(site: Site): SiteFormValues {
     longitude: site.longitude != null && Number.isFinite(site.longitude) ? String(site.longitude) : "",
     contacts: normalizeSiteContactPersonsFromApi(site).map((row) => {
       const contactId = getSiteContactPersonContactId(row.contact);
+      const rawTitle = row.title;
+      let formTitle = "";
+      if (rawTitle && typeof rawTitle === "object") {
+        const titleId = (rawTitle as Record<string, unknown>).id;
+        const titleStr = (rawTitle as Record<string, unknown>).title ?? (rawTitle as Record<string, unknown>).name;
+        formTitle = titleId != null ? String(titleId) : titleStr != null ? String(titleStr) : "";
+      } else {
+        formTitle = rawTitle ? String(rawTitle) : "";
+      }
       return {
-        title: row.title,
+        title: formTitle,
         contact: contactId ? String(contactId) : "",
       };
     }),

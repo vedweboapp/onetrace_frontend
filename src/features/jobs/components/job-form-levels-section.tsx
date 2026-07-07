@@ -7,15 +7,18 @@ import { fetchDrawingsPage } from "@/features/projects/api/drawing.api";
 import {
   isJobFormPinCheckboxDisabled,
   isPinToDoStatus,
+  collectPinIdsFromJobLevels,
 } from "@/features/jobs/utils/job-levels.util";
 import type { JobLevelSnapshot } from "@/features/jobs/types/job.types";
 import { DrawingPinPreviewModal } from "@/features/projects/components/drawing-pin-preview-modal";
 import type { Drawing, DrawingPin, DrawingPlot } from "@/features/projects/types/drawing.types";
 import type { ProjectPagination } from "@/features/projects/types/project.types";
 import { cn } from "@/core/utils/http.util";
+import { useLevelSnapshots, type LevelSnapshotState } from "@/shared/hooks/use-level-snapshots.hook";
+import { PinThumbnailCropped } from "@/shared/components/pin-thumbnail-cropped";
 
 const PIN_TABLE_GRID =
-  "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,1.5rem)_minmax(0,5rem)_minmax(0,1fr)_minmax(0,0.5fr)_minmax(0,0.4fr)_minmax(0,0.4fr)_minmax(0,0.45fr)_minmax(0,3rem)] items-center gap-x-3";
+  "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,1.5rem)_minmax(0,5rem)_minmax(0,1fr)_minmax(0,0.5fr)_minmax(0,0.4fr)_minmax(0,0.4fr)_minmax(0,0.45fr)_minmax(0,3.5rem)] items-center gap-x-3";
 const PIN_TABLE_HEADER_CLASS = cn(
   PIN_TABLE_GRID,
   "border-b border-slate-100 bg-slate-50/80 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400",
@@ -119,12 +122,18 @@ function JobFormPinRow({
   disabled,
   onToggle,
   onPreview,
+  drawingFile,
+  drawingFileType,
+  snapshotState,
 }: {
   pin: DrawingPin;
   selected: boolean;
   disabled: boolean;
   onToggle: () => void;
   onPreview: () => void;
+  drawingFile?: string;
+  drawingFileType?: string | null;
+  snapshotState?: LevelSnapshotState;
 }) {
   const locale = useLocale();
   const isEs = locale === "es";
@@ -171,9 +180,26 @@ function JobFormPinRow({
             onPreview();
           }}
           title="Preview on Drawing"
-          className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+          className="relative flex h-7 w-12 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
         >
-          <MapPinned className="size-4" />
+          {snapshotState?.status === "ready" && snapshotState.snapshot ? (
+            <PinThumbnailCropped
+              snapshotUrl={snapshotState.snapshot.objectUrl}
+              snapshotWidth={snapshotState.snapshot.width}
+              snapshotHeight={snapshotState.snapshot.height}
+              xPercent={pin.x_coordinate}
+              yPercent={pin.y_coordinate}
+              pinColor={pin.status_detail?.bg_colour || "#10b981"}
+              className="absolute inset-0"
+              alt=""
+            />
+          ) : snapshotState?.status === "loading" ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-full w-full animate-pulse bg-slate-100 dark:bg-slate-800" />
+            </div>
+          ) : (
+            <MapPinned className="size-4" />
+          )}
         </button>
       </div>
     </div>
@@ -184,6 +210,10 @@ function PlotPinsBlock({
   plotName,
   pins,
   selectedIds,
+  drawingFile,
+  drawingFileType,
+  snapshotState,
+  isPinDisabled,
   onTogglePlot,
   onTogglePin,
   onPreviewPin,
@@ -191,13 +221,17 @@ function PlotPinsBlock({
   plotName: string;
   pins: DrawingPin[];
   selectedIds: ReadonlySet<number>;
+  drawingFile?: string;
+  drawingFileType?: string | null;
+  snapshotState?: LevelSnapshotState;
+  isPinDisabled: (pin: DrawingPin) => boolean;
   onTogglePlot: (ids: number[]) => void;
   onTogglePin: (id: number) => void;
   onPreviewPin: (pin: DrawingPin) => void;
 }) {
   const selectablePinIds = React.useMemo(
-    () => pins.filter((pin) => isPinToDoStatus(pin) && !pin.is_converted_job).map((pin) => pin.id),
-    [pins],
+    () => pins.filter((pin) => !isPinDisabled(pin)).map((pin) => pin.id),
+    [pins, isPinDisabled],
   );
 
   return (
@@ -224,7 +258,10 @@ function PlotPinsBlock({
                   key={pin.id}
                   pin={pin}
                   selected={selectedIds.has(pin.id)}
-                  disabled={isJobFormPinCheckboxDisabled(pin)}
+                  disabled={isPinDisabled(pin)}
+                  drawingFile={drawingFile}
+                  drawingFileType={drawingFileType}
+                  snapshotState={snapshotState}
                   onToggle={() => onTogglePin(pin.id)}
                   onPreview={() => onPreviewPin(pin)}
                 />
@@ -257,6 +294,18 @@ export function JobFormLevelsSection({
   const t = useTranslations("Dashboard.jobs.levelsHierarchy");
 
   const [locations, setLocations] = React.useState<Drawing[]>([]);
+  const levelSnapshots = useLevelSnapshots(locations);
+
+  const currentJobPinIds = React.useMemo(() => {
+    return collectPinIdsFromJobLevels(initialJobLevels);
+  }, [initialJobLevels]);
+
+  const isPinDisabled = React.useCallback(
+    (pin: DrawingPin) => {
+      return !isPinToDoStatus(pin) || (pin.is_converted_job === true && !currentJobPinIds.has(pin.id));
+    },
+    [currentJobPinIds],
+  );
   // Mirror locations in a ref so the async effect can read the latest value
   // without adding `locations` to its dependency array (which would cause loops).
   const locationsRef = React.useRef<Drawing[]>(locations);
@@ -368,30 +417,30 @@ export function JobFormLevelsSection({
     (ids: number[]) => {
       const selectableIds = ids.filter((id) => {
         const pin = pinById.get(id);
-        return pin ? isPinToDoStatus(pin) : false;
+        return pin ? !isPinDisabled(pin) : false;
       });
       const next = toggleSelection(selectableIds, selectedPinIds);
       for (const id of ids) {
         const pin = pinById.get(id);
-        if (pin && isJobFormPinCheckboxDisabled(pin) && selectedPinIds.has(id)) {
+        if (pin && isPinDisabled(pin) && selectedPinIds.has(id)) {
           next.add(id);
         }
       }
       onSelectedPinIdsChange(next);
     },
-    [onSelectedPinIdsChange, pinById, selectedPinIds],
+    [onSelectedPinIdsChange, pinById, selectedPinIds, isPinDisabled],
   );
 
   const handleTogglePin = React.useCallback(
     (pinId: number) => {
       const pin = pinById.get(pinId);
-      if (!pin || isJobFormPinCheckboxDisabled(pin)) return;
+      if (!pin || isPinDisabled(pin)) return;
       const next = new Set(selectedPinIds);
       if (next.has(pinId)) next.delete(pinId);
       else next.add(pinId);
       onSelectedPinIdsChange(next);
     },
-    [onSelectedPinIdsChange, pinById, selectedPinIds],
+    [onSelectedPinIdsChange, pinById, selectedPinIds, isPinDisabled],
   );
 
   if (loading && locations.length === 0) {
@@ -445,6 +494,10 @@ export function JobFormLevelsSection({
                       plotName={plot.name}
                       pins={plot.pins ?? []}
                       selectedIds={selectedPinIds}
+                      drawingFile={level.drawing_file}
+                      drawingFileType={level.drawing_file_type}
+                      snapshotState={levelSnapshots.get(level.id)}
+                      isPinDisabled={isPinDisabled}
                       onTogglePlot={handleToggleGroup}
                       onTogglePin={handleTogglePin}
                       onPreviewPin={(pin) => {

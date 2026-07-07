@@ -134,7 +134,6 @@ export function mapJobFormToPayload(
 
 export function emptyJobFormDefaults(): JobFormValues {
   return {
-    title: "",
     description: "",
     forms: [],
     job_status: "",
@@ -190,7 +189,6 @@ export function jobToFormDefaults(job: Job): JobFormValues {
     }) ?? [];
 
   return {
-    title: job.title ?? "",
     description: job.description ?? "",
     forms: jobFormsToFormIds(job.forms),
     job_status: String(

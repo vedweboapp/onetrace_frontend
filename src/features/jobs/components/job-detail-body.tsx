@@ -267,7 +267,7 @@ export function JobDetailBody({
 
       const baseHref = `${routes.dashboard.jobFormFill(detail.id, projectFormId, jobFormId)}&name=${encodeURIComponent(
         label,
-      )}&back=${encodeURIComponent(`${routes.dashboard.jobs}/${detail.id}`)}`;
+      )}&back=${encodeURIComponent(`${routes.dashboard.jobs}/${detail.id}`)}&job_pin_id=${Number(pin.job_pin_id)}`;
       const submissionId =
         typeof form?.submitted_form_id === "number" && form.submitted_form_id > 0 ? form.submitted_form_id : null;
 

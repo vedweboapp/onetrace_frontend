@@ -170,7 +170,7 @@ export type JobUpdatePayload = Partial<JobCreatePayload> & {
   job_status?: number;
   /** List/detail toggle; omitted on create payload. */
   is_active?: boolean;
-  pin_ids: [],
+  pin_ids?: number[];
   checklists?: JobChecklistUpdateItem[];
   /** Included when editing jobs created from project pins. */
   levels?: JobLevelSnapshot[];

@@ -47,7 +47,7 @@ export async function fetchChecklistType(id: number): Promise<ChecklistType> {
   return data.data;
 }
 
-export async function createChecklistType(body: ChecklistTypeCreatePayload): Promise<ChecklistType> {
+export async function createChecklistType(body: ChecklistTypeCreatePayload | FormData): Promise<ChecklistType> {
   const { data } = await api.post<ApiEnvelope<ChecklistType>>(CHECKLIST_TYPE_PATHS.list, body);
   assertApiSuccess(data);
   return data.data;
@@ -62,7 +62,7 @@ function definedUpdateKeys(body: ChecklistTypeUpdatePayload): (keyof ChecklistTy
 /** Partial updates (e.g. `{ is_active: false }`) use PATCH; full saves use PUT. */
 export async function patchChecklistType(
   id: number,
-  body: ChecklistTypeUpdatePayload,
+  body: ChecklistTypeUpdatePayload | FormData,
 ): Promise<ChecklistType> {
   const { data } = await api.patch<ApiEnvelope<ChecklistType>>(CHECKLIST_TYPE_PATHS.detail(id), body);
   assertApiSuccess(data);
@@ -71,9 +71,9 @@ export async function patchChecklistType(
 
 export async function updateChecklistType(
   id: number,
-  body: ChecklistTypeUpdatePayload,
+  body: ChecklistTypeUpdatePayload | FormData,
 ): Promise<ChecklistType> {
-  if (definedUpdateKeys(body).length === 1) {
+  if (!(body instanceof FormData) && definedUpdateKeys(body).length === 1) {
     return patchChecklistType(id, body);
   }
   const { data } = await api.patch<ApiEnvelope<ChecklistType>>(CHECKLIST_TYPE_PATHS.detail(id), body);

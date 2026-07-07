@@ -6,6 +6,7 @@ import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { getSiteContactPersonContactId, normalizeSiteContactPersonsFromApi } from "@/features/sites/utils/site-contact-person.util";
 import { fetchSite, patchSite } from "@/features/sites/api/site.api";
+import { fetchTitlesPage } from "@/features/titles/api/title.api";
 import { SiteDetailBody } from "@/features/sites/components/site-detail-body";
 import type { Site } from "@/features/sites/types/site.types";
 import {
@@ -13,7 +14,7 @@ import {
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton } from "@/shared/ui";
 
 function siteClientId(site: Site): number | null {
@@ -45,6 +46,7 @@ function SiteDetailBodyWithContacts({
   dateFmt: Intl.DateTimeFormat;
 }) {
   const [contactNameById, setContactNameById] = React.useState<Record<number, string>>({});
+  const [titleNameById, setTitleNameById] = React.useState<Record<string, string>>({});
   const clientId = siteClientId(detail);
 
   React.useEffect(() => {
@@ -91,12 +93,34 @@ function SiteDetailBodyWithContacts({
     };
   }, [detail, clientId]);
 
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchTitlesPage(1, 500);
+        if (!cancelled) {
+          const mapped: Record<string, string> = {};
+          for (const item of items) {
+            mapped[String(item.id)] = item.title;
+          }
+          setTitleNameById(mapped);
+        }
+      } catch {
+        if (!cancelled) setTitleNameById({});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <SiteDetailBody
       detail={detail}
       clientName={clientName}
       dateFmt={dateFmt}
       contactNameById={contactNameById}
+      titleNameById={titleNameById}
     />
   );
 }

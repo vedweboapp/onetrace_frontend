@@ -34,6 +34,8 @@ import { DrawingFilePreviewFill } from "@/features/projects/components/drawing-f
 import { DrawingPinThumbnailOverlay } from "@/features/projects/components/drawing-pin-thumbnail-overlay";
 import { DrawingFilePreview } from "@/features/projects/components/drawing-file-preview";
 import { fetchChecklistTypesPage } from "@/features/checklist-types/api/checklist-type.api";
+import { useLevelSnapshots, type LevelSnapshotState } from "@/shared/hooks/use-level-snapshots.hook";
+import { PinThumbnailCropped } from "@/shared/components/pin-thumbnail-cropped";
 
 
 
@@ -150,6 +152,7 @@ function ProjectPinRow({
   onPreview,
   drawingFile,
   drawingFileType, // ← add this
+  snapshotState,
   plots,
   drawingName,
 }: {
@@ -160,6 +163,7 @@ function ProjectPinRow({
   onPreview: () => void;
   drawingFile?: string;
   drawingFileType?: string; // ← add this
+  snapshotState?: LevelSnapshotState;
   drawingName?: string;
   plots: DrawingPlot[];
 }) {
@@ -223,7 +227,22 @@ function ProjectPinRow({
           aria-label={`Preview pin #${pin.id} on drawing`}
           className="relative h-9 w-16 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
         >
-          {drawingFile && plots.length > 0 ? (
+          {snapshotState?.status === "ready" && snapshotState.snapshot ? (
+            <PinThumbnailCropped
+              snapshotUrl={snapshotState.snapshot.objectUrl}
+              snapshotWidth={snapshotState.snapshot.width}
+              snapshotHeight={snapshotState.snapshot.height}
+              xPercent={pin.x_coordinate}
+              yPercent={pin.y_coordinate}
+              pinColor={pin.status_detail?.bg_colour || "#10b981"}
+              className="absolute inset-0"
+              alt=""
+            />
+          ) : snapshotState?.status === "loading" ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-full w-full animate-pulse bg-slate-100 dark:bg-slate-800" />
+            </div>
+          ) : drawingFile && plots.length > 0 ? (
             <span className="absolute inset-0">
               <div
                 className="absolute inset-0"
@@ -282,6 +301,7 @@ function PlotPinsBlock({
   onPreviewPin,
   drawingFile,
   drawingFileType, // ← add
+  snapshotState,
   drawingName,
 }: {
   plot: DrawingPlot;
@@ -293,6 +313,7 @@ function PlotPinsBlock({
   onPreviewPin: (pin: DrawingPin) => void;
   drawingFile?: string;
   drawingFileType?: string; // ← add
+  snapshotState?: LevelSnapshotState;
   drawingName?: string;
 }) {
   const selectablePinIds = useMemo(
@@ -320,6 +341,7 @@ function PlotPinsBlock({
                   disabled={pin.is_converted_job === true}
                   drawingFile={drawingFile}
                   drawingFileType={drawingFileType} // ← add
+                  snapshotState={snapshotState}
                   drawingName={drawingName}
                   plots={[plot]}
                   onToggle={() => onTogglePin(pin.id)}
@@ -357,6 +379,7 @@ const ProjectPinsListTab = ({
   const [levelFilter, setLevelFilter] = useState<number | undefined>();
   const [plotFilter, setPlotFilter] = useState<number | undefined>();
   const [locations, setLocations] = useState<Drawing[]>([]);
+  const levelSnapshots = useLevelSnapshots(locations);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -1003,6 +1026,7 @@ useEffect(() => {
                           selectedIds={selectedIds}
                           drawingFile={level.drawing_file}
                           drawingFileType={level.drawing_file_type} // ← add
+                          snapshotState={levelSnapshots.get(level.id)}
                           drawingName={level.name}
                           onTogglePlot={handleToggleGroup}
                           onTogglePin={handleTogglePin}

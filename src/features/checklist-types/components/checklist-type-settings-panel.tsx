@@ -791,11 +791,6 @@ if (editing && initialValues) {
         <p className="text-sm text-slate-500 dark:text-slate-400">{t("modal.noFile")}</p>
       )}
     </FieldGroup>
-      <FieldGroup label={t("modal.concentricPoint")}>
-  <p className="text-sm text-slate-800 dark:text-slate-200">
-    {detailRow.concentric_point ? t("required.yes") : t("required.no")}
-  </p>
-</FieldGroup> 
     <FieldGroup label={t("table.status")}>
       <ActiveStatusBadge
         active={detailRow.is_active}
@@ -1000,22 +995,7 @@ if (editing && initialValues) {
   </label>
 </FieldGroup>
 
-<FieldGroup label={t("modal.concentricPoint")} htmlFor="checklist-type-concentric-point">
-  <label
-    htmlFor="checklist-type-concentric-point"
-    className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-300"
-  >
-    <input
-      id="checklist-type-concentric-point"
-      type="checkbox"
-      className="size-4 rounded border-slate-300"
-      checked={concentricPoint}
-      disabled={saving}
-      onChange={(e) => setConcentricPoint(e.target.checked)}
-    />
-    {concentricPoint ? t("required.yes") : t("required.no")}
-  </label>
-</FieldGroup>
+
         </div>
       </AppModal>
 
