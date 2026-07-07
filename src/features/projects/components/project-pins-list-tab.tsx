@@ -34,6 +34,8 @@ import { DrawingFilePreviewFill } from "@/features/projects/components/drawing-f
 import { DrawingPinThumbnailOverlay } from "@/features/projects/components/drawing-pin-thumbnail-overlay";
 import { DrawingFilePreview } from "@/features/projects/components/drawing-file-preview";
 import { fetchChecklistTypesPage } from "@/features/checklist-types/api/checklist-type.api";
+import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
+import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import { useLevelSnapshots, type LevelSnapshotState } from "@/shared/hooks/use-level-snapshots.hook";
 import { PinThumbnailCropped } from "@/shared/components/pin-thumbnail-cropped";
 
@@ -420,6 +422,9 @@ const [dialogChecklistIds, setDialogChecklistIds] = useState<number[]>([]);
   >([]);
   const [loadingWorkers, setLoadingWorkers] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dialogJobStatusId, setDialogJobStatusId] = useState<number | undefined>(undefined);
+  const [jobStatusOptions, setJobStatusOptions] = useState<{ value: string; label: string }[]>([]);
+  const [loadingJobStatuses, setLoadingJobStatuses] = useState(false);
   const sentinelRef = React.useRef<HTMLDivElement | null>(null);
 
   const t = useTranslations("Dashboard.projects.location");
@@ -437,6 +442,30 @@ const [dialogChecklistIds, setDialogChecklistIds] = useState<number[]>([]);
       })
       .finally(() => {
         if (!cancelled) setLoadingWorkers(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingJobStatuses(true);
+    fetchPinStatusesPage(1, 500, { is_active: true })
+      .then((res) => {
+        if (!cancelled)
+          setJobStatusOptions(
+            res.items.map((s: WorkflowColourStatus) => ({
+              value: String(s.id),
+              label: s.status_name,
+            }))
+          );
+      })
+      .catch(() => {
+        if (!cancelled) setJobStatusOptions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingJobStatuses(false);
       });
     return () => {
       cancelled = true;
@@ -720,13 +749,15 @@ useEffect(() => {
         site: dialogSiteId,
         start_date: formData.start_date,
         assigned_worker: dialogAssignedWorkerId,
-        checklists: dialogChecklistIds, 
+        checklists: dialogChecklistIds,
+        job_status: dialogJobStatusId,
       });
       setDialogVisible(false);
       reset();
       setDialogSiteId(undefined);
       setDialogAssignedWorkerId(undefined);
       setDialogChecklistIds([]);
+      setDialogJobStatusId(undefined);
       router.push(`${routes.dashboard.jobs}/${res.id}`);
     } catch (e) {
       console.log("error in here", e);
@@ -848,8 +879,28 @@ useEffect(() => {
     disabled={checkListLoading}
     className="w-full"
   />
-
 </div>
+
+            <div className="mt-4">
+              <label className="text-md font-semibold text-slate-800 dark:text-slate-200">
+                Job Status
+              </label>
+              <CheckmarkSelect
+                listLabel="Job Status"
+                buttonAriaLabel="Job Status"
+                options={jobStatusOptions}
+                value={dialogJobStatusId != null ? String(dialogJobStatusId) : ""}
+                emptyLabel="Select Job Status"
+                portaled
+                searchable
+                clearable
+                className="w-full"
+                disabled={loadingJobStatuses || jobStatusOptions.length === 0}
+                onChange={(value) =>
+                  setDialogJobStatusId(value ? Number.parseInt(value, 10) : undefined)
+                }
+              />
+            </div>
 
             <div className="mt-4 flex justify-end gap-2">
               <AppButton
@@ -859,6 +910,7 @@ useEffect(() => {
                   setDialogAssignedWorkerId(undefined);
                   setDialogVisible(false);
                   setDialogChecklistIds([]);
+                  setDialogJobStatusId(undefined);
                 }}
                 size="lg"
                 variant="secondary"
