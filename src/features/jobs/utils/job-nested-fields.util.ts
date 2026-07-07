@@ -169,6 +169,9 @@ function normalizeJobChecklistRow(row: JobChecklistApiRow): JobChecklistItem | n
     is_required: row.is_required === true,
     is_checked: row.is_checked === true,
     checked_at: row.checked_at ?? null,
+    concentric_point: row.concentric_point === true,
+    file: row.file ?? null,
+    concentric_point_is_checked: row.concentric_point_is_checked === true,
   };
 }
 
@@ -202,6 +205,8 @@ export function jobChecklistUpdatePayload(items: JobChecklistItem[]): JobCheckli
   return items.map((item) => ({
     checklist_id: item.id,
     is_checked: item.is_checked,
+    is_marked: item.is_checked,
+    concentric_point: item.concentric_point_is_checked ?? false,
   }));
 }
 
@@ -210,7 +215,12 @@ export function requiredJobChecklistsComplete(
   options?: { isMarked?: boolean },
 ): boolean {
   if (options?.isMarked) return true;
-  return items.every((item) => !item.is_required || item.is_checked);
+  return items.every((item) => {
+    if (!item.is_required) return true;
+    const basicChecked = item.is_checked;
+    const concentricChecked = !item.concentric_point || item.concentric_point_is_checked === true;
+    return basicChecked && concentricChecked;
+  });
 }
 
 export function jobFormsSummary(job: Pick<Job, "forms">): string {

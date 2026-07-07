@@ -5,6 +5,17 @@ import { useLocale, useTranslations } from "next-intl";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import type { Job } from "@/features/jobs/types/job.types";
 import { JobFormsSection } from "@/features/job-forms/components/job-forms-section";
+import { useRouter } from "@/i18n/navigation";
+import { JobFormChecklistGateModal } from "@/features/job-forms/components/job-form-checklist-gate-modal";
+import { updateJob, updateJobChecklists } from "@/features/jobs/api/job.api";
+import {
+  jobChecklistUpdatePayload,
+  requiredJobChecklistsComplete,
+} from "@/features/jobs/utils/job-nested-fields.util";
+import { toastApiError } from "@/shared/feedback/app-toast";
+import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
+import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
+import type { JobChecklistItem } from "@/features/jobs/types/job.types";
 import { JobChecklistsSection } from "@/features/jobs/components/job-checklists-section";
 import {
   getJobStatusRow,
@@ -103,10 +114,20 @@ function ProjectPinRow({
   pin,
   form,
   onPreview,
+  checklistsComplete,
+  onOpenGateModal,
+  onNavigate,
+  pinStatuses,
+  onUpdatePinStatus,
 }: {
   pin: DrawingPin;
-  form?: { label: string; href: string; projectFormId: number } | null;
+  form?: { label: string; href: string; projectFormId: number; submitted: boolean } | null;
   onPreview: () => void;
+  checklistsComplete: boolean;
+  onOpenGateModal: (href: string, label: string) => void;
+  onNavigate: (href: string) => void;
+  pinStatuses: WorkflowColourStatus[];
+  onUpdatePinStatus: (pinId: number, nextStatusId: number) => void;
 }) {
   const locale = useLocale();
   const isEs = locale === "es";
@@ -118,30 +139,64 @@ function ProjectPinRow({
     <div className={cn(PIN_TABLE_ROW_CLASS, "hover:bg-slate-50/90 dark:hover:bg-slate-800/30")}>
       <span className="font-semibold text-slate-500">#{pin.id}</span>
       <div className="flex flex-col min-w-0 pl-4">
-  <span className="font-medium text-slate-900 dark:text-slate-100 truncate">{productName}</span>
-  {sku && <span className="text-xs text-slate-400 truncate">{sku}</span>}
-</div>
+        <span className="font-medium text-slate-900 dark:text-slate-100 truncate">{productName}</span>
+        {sku && <span className="text-xs text-slate-400 truncate">{sku}</span>}
+      </div>
       <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
         {variationText}
       </span>
       <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{pin.quantity ?? 1}</span>
       <div className="min-w-0">
         {form ? (
-          <a
-            href={form.href}
-            className="inline-flex min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 transition hover:border-(--dash-accent) hover:text-(--dash-accent) dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"
+          <button
+            type="button"
+            onClick={() => {
+              if (form.submitted || checklistsComplete) {
+                onNavigate(form.href);
+              } else {
+                onOpenGateModal(form.href, form.label);
+              }
+            }}
+            className={cn(
+              "inline-flex min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-full border px-2.5 py-1 text-xs font-semibold transition text-left",
+              !form.submitted && !checklistsComplete
+                ? "border-slate-200 bg-slate-100 text-slate-400 cursor-pointer dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500"
+                : "border-slate-200 bg-slate-50 text-slate-700 hover:border-(--dash-accent) hover:text-(--dash-accent) dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"
+            )}
           >
             <span className="truncate">{form.label}</span>
             <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-700 dark:text-slate-300">
               #{form.projectFormId}
             </span>
-          </a>
+          </button>
         ) : (
           <span className="text-xs text-slate-500">—</span>
         )}
       </div>
       <div>
-        <PinStatusChip pin={pin} />
+        {pinStatuses.length > 0 ? (
+          <select
+            value={pin.status ?? pin.status_detail?.id ?? ""}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val) {
+                onUpdatePinStatus(pin.id, Number(val));
+              }
+            }}
+            className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-800 focus:border-[color:var(--dash-accent)] focus:ring-1 focus:ring-[color:var(--dash-accent)] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+          >
+            <option value="" disabled>
+              Select status...
+            </option>
+            {pinStatuses.map((st) => (
+              <option key={st.id} value={st.id}>
+                {st.status_name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <PinStatusChip pin={pin} />
+        )}
       </div>
       <div className="flex items-center justify-end">
         <button
@@ -165,11 +220,21 @@ function PlotPinsBlock({
   pins,
   onPreviewPin,
   getPinForm,
+  checklistsComplete,
+  onOpenGateModal,
+  onNavigate,
+  pinStatuses,
+  onUpdatePinStatus,
 }: {
   plotName: string;
   pins: DrawingPin[];
   onPreviewPin: (pin: DrawingPin) => void;
-  getPinForm: (pin: DrawingPin) => { label: string; href: string; projectFormId: number } | null;
+  getPinForm: (pin: DrawingPin) => { label: string; href: string; projectFormId: number; submitted: boolean } | null;
+  checklistsComplete: boolean;
+  onOpenGateModal: (href: string, label: string) => void;
+  onNavigate: (href: string) => void;
+  pinStatuses: WorkflowColourStatus[];
+  onUpdatePinStatus: (pinId: number, nextStatusId: number) => void;
 }) {
   return (
     <div className="w-full overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-700/80 dark:bg-slate-950/30">
@@ -195,6 +260,11 @@ function PlotPinsBlock({
                   pin={pin}
                   form={getPinForm(pin)}
                   onPreview={() => onPreviewPin(pin)}
+                  checklistsComplete={checklistsComplete}
+                  onOpenGateModal={onOpenGateModal}
+                  onNavigate={onNavigate}
+                  pinStatuses={pinStatuses}
+                  onUpdatePinStatus={onUpdatePinStatus}
                 />
               ))}
             </div>
@@ -219,6 +289,20 @@ export function JobDetailBody({
   const t = useTranslations("Dashboard.jobs");
   const tMeta = useTranslations("Dashboard.common.detail");
   const locale = useLocale();
+  const router = useRouter();
+
+  const [gateOpen, setGateOpen] = React.useState(false);
+  const [gateSaving, setGateSaving] = React.useState(false);
+  const [pendingHref, setPendingHref] = React.useState<string | null>(null);
+  const [pendingFormLabel, setPendingFormLabel] = React.useState("");
+
+  const [pinStatuses, setPinStatuses] = React.useState<WorkflowColourStatus[]>([]);
+
+  React.useEffect(() => {
+    fetchPinStatusesPage(1, 500, { is_active: true })
+      .then((res) => setPinStatuses(res.items))
+      .catch((err) => console.error("Failed to load pin statuses", err));
+  }, []);
 
   const [previewPinData, setPreviewPinData] = React.useState<{
     pin: DrawingPin;
@@ -239,6 +323,62 @@ export function JobDetailBody({
   const formEntries = jobFormEntries(detail);
   const checklistEntries = jobChecklistEntries(detail);
   const checklistMarked = jobChecklistIsMarked(detail);
+
+  const checklistsComplete = requiredJobChecklistsComplete(checklistEntries, { isMarked: checklistMarked });
+
+  async function handleGateConfirm(items: JobChecklistItem[]) {
+    setGateSaving(true);
+    try {
+      await updateJobChecklists(detail.id, jobChecklistUpdatePayload(items));
+      onChecklistsUpdated?.();
+      setGateOpen(false);
+      if (pendingHref) {
+        router.push(pendingHref);
+        setPendingHref(null);
+      }
+    } catch (error) {
+      toastApiError(error, "Failed to update checklists");
+    } finally {
+      setGateSaving(false);
+    }
+  }
+
+  async function handleUpdatePinStatus(pinId: number, nextStatusId: number) {
+    const updatedLevels = levels.map((level) => ({
+      id: level.id,
+      name: level.name,
+      drawing_file: level.drawing_file,
+      plots: (level.plots ?? []).map((plot) => ({
+        id: plot.id,
+        name: plot.name,
+        pins: (plot.pins ?? []).map((pin) => {
+          if (pin.id === pinId) {
+            return {
+              id: pin.id,
+              status: nextStatusId,
+            };
+          }
+          const existingStatusId =
+            typeof pin.status === "number"
+              ? pin.status
+              : typeof pin.status_id === "number"
+              ? pin.status_id
+              : pin.status_detail?.id;
+          return {
+            id: pin.id,
+            status: existingStatusId,
+          };
+        }),
+      })),
+    }));
+
+    try {
+      await updateJob(detail.id, { levels: updatedLevels });
+      onChecklistsUpdated?.();
+    } catch (err) {
+      toastApiError(err, "Failed to update pin status");
+    }
+  }
 
   const getPinForm = React.useCallback(
     (pin: DrawingPin) => {
@@ -275,6 +415,7 @@ export function JobDetailBody({
         label,
         href: submissionId ? `${baseHref}&submissionId=${submissionId}` : baseHref,
         projectFormId,
+        submitted: !!submissionId,
       };
     },
     [detail.id, formEntries],
@@ -385,7 +526,14 @@ export function JobDetailBody({
           />
         </DetailPanelCard>
 
-        <JobChecklistsSection checklists={checklistEntries} />
+        <JobChecklistsSection
+          checklists={checklistEntries}
+          onCompleteChecks={checklistMarked ? undefined : () => {
+            setPendingHref(null);
+            setPendingFormLabel("Job Verification Checks");
+            setGateOpen(true);
+          }}
+        />
 
         {meta && (meta.total != null || compositeRows.length > 0) ? (
           <DetailPanelCard title={t("detail.sectionWorkScope")}>
@@ -548,6 +696,15 @@ export function JobDetailBody({
                               });
                             }}
                             getPinForm={getPinForm}
+                            checklistsComplete={checklistsComplete}
+                            onOpenGateModal={(href, label) => {
+                              setPendingHref(href);
+                              setPendingFormLabel(label);
+                              setGateOpen(true);
+                            }}
+                            onNavigate={(href) => router.push(href)}
+                            pinStatuses={pinStatuses}
+                            onUpdatePinStatus={handleUpdatePinStatus}
                           />
                         ))
                       )}
@@ -585,6 +742,14 @@ export function JobDetailBody({
           drawingName={previewPinData.drawingName}
         />
       )}
+      <JobFormChecklistGateModal
+        open={gateOpen}
+        formLabel={pendingFormLabel}
+        checklists={checklistEntries}
+        saving={gateSaving}
+        onClose={() => setGateOpen(false)}
+        onConfirm={handleGateConfirm}
+      />
     </DetailPagePadding>
   );
 }

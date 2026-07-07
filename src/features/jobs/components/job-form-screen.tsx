@@ -13,6 +13,7 @@ import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
 import { createJob, fetchJob, updateJob } from "@/features/jobs/api/job.api";
 import { JobFormLevelsSection } from "@/features/jobs/components/job-form-levels-section";
 import { createJobFormSchema, type JobFormValues } from "@/features/jobs/schemas/job-form-schema";
+import { fetchChecklistTypesPage } from "@/features/checklist-types/api/checklist-type.api";
 import {
   emptyJobFormDefaults,
   jobFormSelectOptions,
@@ -100,6 +101,9 @@ export function JobFormScreen({ mode, jobId }: Props) {
   const [jobFromPins, setJobFromPins] = React.useState(false);
   const [initialJobLevels, setInitialJobLevels] = React.useState<JobLevelSnapshot[]>([]);
   const [selectedPinIds, setSelectedPinIds] = React.useState<Set<number>>(() => new Set());
+  const [checklistOptions, setChecklistOptions] = React.useState<Option[]>([]);
+  const [checklistLoading, setChecklistLoading] = React.useState(false);
+  const [checklistSearch, setChecklistSearch] = React.useState<string>("");
   const [projectLocations, setProjectLocations] = React.useState<Drawing[]>([]);
 
   const handleProjectLocationsChange = React.useCallback((locations: Drawing[]) => {
@@ -222,6 +226,35 @@ export function JobFormScreen({ mode, jobId }: Props) {
       setClientOptions([]);
     }
   }, []);
+
+
+  const fetchChecklistOptions = React.useCallback(async (searchTerm?: string) => {
+    try {
+      setChecklistLoading(true);
+      const response = await fetchChecklistTypesPage(1, 100, {
+        is_active: true,
+        search: searchTerm || undefined, // ← confirm actual filter key with checklist-type.api
+      });
+      setChecklistOptions(
+        response.items.map((item) => ({
+          value: String(item.id),
+          label: item.title ?? `Checklist #${item.id}`, // adjust to the real field
+        })),
+      );
+    } catch {
+      setChecklistOptions([]);
+    } finally {
+      setChecklistLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const timeout = setTimeout(() => {
+      void fetchChecklistOptions(checklistSearch);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [checklistSearch, fetchChecklistOptions]);
+
 
   const reloadProjects = React.useCallback(async () => {
     if (!clientId || clientId <= 0) {
@@ -724,6 +757,33 @@ export function JobFormScreen({ mode, jobId }: Props) {
                   )}
                 />
               </FormFieldRow>
+              <FormFieldRow>
+                <FormFieldRow cols="2">
+                  <Controller
+                    control={control}
+                    name="checklists"
+                    render={({ field }) => (
+                      <div>
+                        <FieldGroup label={t("fields.checklists")} htmlFor="job-checklists">
+                          <MultiCheckSelect
+                            id="job-checklists"
+                            options={checklistOptions}
+                            values={field.value ?? []}
+                            onChange={(next) => field.onChange(next)}
+                            onSearchChange={setChecklistSearch}
+                            placeholder={t("fields.selectCheckList")}
+                            disabled={saving || checklistLoading}
+                            invalid={!!errors.checklists}
+                            listLabel={t("fields.checklists")}
+                            portaled
+                            searchable
+                          />
+                        </FieldGroup>
+                      </div>
+                    )}
+                  />
+                </FormFieldRow>
+              </FormFieldRow>
             </section>
 
 
@@ -942,22 +1002,22 @@ export function JobFormScreen({ mode, jobId }: Props) {
                   </tbody>
                 </table>
               </div>
-              
-            {isEdit && jobFromPins && projectId ? (
-              <section className="space-y-4">
-                <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  {t("sections.levels")}
-                </h2>
-                <JobFormLevelsSection
-                  projectId={projectId}
-                  initialJobLevels={initialJobLevels}
-                  selectedPinIds={selectedPinIds}
-                  onSelectedPinIdsChange={setSelectedPinIds}
-                  onLocationsChange={handleProjectLocationsChange}
-                  disabled={saving}
-                />
-              </section>
-            ) : null}
+
+              {isEdit && jobFromPins && projectId ? (
+                <section className="space-y-4">
+                  <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    {t("sections.levels")}
+                  </h2>
+                  <JobFormLevelsSection
+                    projectId={projectId}
+                    initialJobLevels={initialJobLevels}
+                    selectedPinIds={selectedPinIds}
+                    onSelectedPinIdsChange={setSelectedPinIds}
+                    onLocationsChange={handleProjectLocationsChange}
+                    disabled={saving}
+                  />
+                </section>
+              ) : null}
               <div className="ml-auto max-w-xs rounded-xl border border-slate-200 p-3 dark:border-slate-700">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-slate-900 dark:text-slate-100">{t("fields.scopeTotal")}</span>

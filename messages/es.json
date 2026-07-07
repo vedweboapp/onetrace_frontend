@@ -2880,7 +2880,9 @@
         "completedAt": "Completado",
         "createdAt": "Creado",
         "updatedAt": "Última actualización",
-        "createdBy": "Creado por"
+        "createdBy": "Creado por",
+        "checklists":"lista de verificación",
+        "selectCheckList": "Seleccionar lista de verificación"
       },
       "modal": {
         "cancel": "Cancelar",

@@ -33,6 +33,7 @@ export function createJobFormSchema(messages: JobFormMessages) {
           message: messages.assignedWorker,
         }),
       start_date: zTrimmedNonEmpty(messages.startDate),
+      checklists: z.array(z.string()).optional(),
       job_meta_items: z
         .array(
           z.object({

@@ -2806,6 +2806,7 @@
         "layoutDesktop": "Desktop",
         "layoutPhone": "Phone",
         "checklistSaveError": "Could not save checklist. Try again."
+        
       },
       "checklists": {
         "sectionTitle": "Checklists",
@@ -2890,7 +2891,9 @@
         "completedAt": "Completed",
         "createdAt": "Created",
         "updatedAt": "Last updated",
-        "createdBy": "Created by"
+        "createdBy": "Created by",
+        "checklists": "Check List",
+        "selectCheckList": "Select Check List"
       },
       "modal": {
         "cancel": "Cancel",
