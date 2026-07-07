@@ -74,10 +74,12 @@ export async function completeZohoIntegration(params: ZohoCallbackParams): Promi
   return "Integration completed successfully";
 }
 
-export async function fetchZohoKeyMapping(): Promise<ZohoKeyMappingData> {
+export async function fetchZohoKeyMapping(
+  module: string = ZOHO_DEFAULT_RESOURCE,
+): Promise<ZohoKeyMappingData> {
   const { data } = await api.get<ApiEnvelope<ZohoKeyMappingData> | ZohoKeyMappingData>(
     INTEGRATION_PATHS.zohoKeyMapping,
-    { params: { module: "items" } },
+    { params: { module } },
   );
 
   if (data && typeof data === "object" && "success" in data && data.success === false) {

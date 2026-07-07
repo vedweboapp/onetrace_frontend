@@ -137,26 +137,18 @@ function RequiredFieldLegend() {
   );
 }
 
-type ZohoWebhookGuideProps = {
+type ZohoWebhookSharedSetupProps = {
   setup: ZohoWebhookSetupData;
   configureMappingHref?: string;
 };
 
-export function ZohoWebhookGuide({ setup, configureMappingHref }: ZohoWebhookGuideProps) {
+export function ZohoWebhookSharedSetup({ setup, configureMappingHref }: ZohoWebhookSharedSetupProps) {
   const t = useTranslations("Dashboard.integrations.zohoWebhookSetup");
   const tMapping = useTranslations("Dashboard.integrations.zohoKeyMapping");
   const headerEntries = Object.entries(setup.header ?? {});
 
-  const parsed = React.useMemo(
-    () => parseZohoWebhookSamplePayload(setup.sample_payload, setup.module ?? setup.resource),
-    [setup.sample_payload, setup.module, setup.resource],
-  );
-
-  const sampleJson = JSON.stringify(parsed.copyPayload, null, 2);
-  const hasRequiredFields = parsed.fields.some((row) => row.required);
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="rounded-xl border border-amber-200/90 bg-amber-50/80 p-4 dark:border-amber-900/50 dark:bg-amber-950/25">
         <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">{t("guideTitle")}</p>
         <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm leading-relaxed text-amber-900/90 dark:text-amber-100/90">
@@ -171,10 +163,8 @@ export function ZohoWebhookGuide({ setup, configureMappingHref }: ZohoWebhookGui
         <WebhookDetailCard label={t("resourceAction")} value={setup.module_action} />
       </dl>
 
-      <dl className="space-y-3">
-        <WebhookDetailCard label={t("webhookUri")} value={setup.webhook_uri} mono copyText={setup.webhook_uri} />
-
-        {headerEntries.length > 0 ? (
+      {headerEntries.length > 0 ? (
+        <dl className="space-y-3">
           <WebhookDetailCard
             label={t("headerTitle")}
             mono
@@ -192,43 +182,78 @@ export function ZohoWebhookGuide({ setup, configureMappingHref }: ZohoWebhookGui
               </div>
             }
           />
-        ) : null}
+        </dl>
+      ) : null}
 
-        <WebhookDetailCard
-          label={t("samplePayloadJson")}
-          mono
-          copyText={sampleJson}
-          value={
-            <div className="space-y-3">
-              <div className="rounded-lg border border-slate-200/90 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-                <HighlightedWebhookPayloadJson parsed={parsed} />
-              </div>
-              {hasRequiredFields ? <RequiredFieldLegend /> : null}
-            </div>
-          }
-        />
-
-        <div className="flex gap-3 rounded-lg border border-sky-200/90 bg-sky-50/80 p-3 dark:border-sky-900/50 dark:bg-sky-950/25">
-          <Info className="mt-0.5 size-4 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden />
-          <div className="min-w-0 text-sm leading-relaxed text-sky-950 dark:text-sky-100">
-            <p className="font-medium">{t("mappingNoteTitle")}</p>
-            <p className="mt-1 text-sky-900/90 dark:text-sky-100/90">
-              {t("mappingNoteBody", { mappingTitle: tMapping("title") })}
-              {configureMappingHref ? (
-                <>
-                  {" "}
-                  <Link
-                    href={configureMappingHref}
-                    className="font-semibold underline underline-offset-2 hover:text-sky-800 dark:hover:text-sky-50"
-                  >
-                    {t("mappingNoteLink")}
-                  </Link>
-                </>
-              ) : null}
-            </p>
-          </div>
+      <div className="flex gap-3 rounded-lg border border-sky-200/90 bg-sky-50/80 p-3 dark:border-sky-900/50 dark:bg-sky-950/25">
+        <Info className="mt-0.5 size-4 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden />
+        <div className="min-w-0 text-sm leading-relaxed text-sky-950 dark:text-sky-100">
+          <p className="font-medium">{t("mappingNoteTitle")}</p>
+          <p className="mt-1 text-sky-900/90 dark:text-sky-100/90">
+            {t("mappingNoteBody", { mappingTitle: tMapping("title") })}
+            {configureMappingHref ? (
+              <>
+                {" "}
+                <Link
+                  href={configureMappingHref}
+                  className="font-semibold underline underline-offset-2 hover:text-sky-800 dark:hover:text-sky-50"
+                >
+                  {t("mappingNoteLink")}
+                </Link>
+              </>
+            ) : null}
+          </p>
         </div>
-      </dl>
+      </div>
+    </div>
+  );
+}
+
+type ZohoWebhookResourceFieldsProps = {
+  setup: ZohoWebhookSetupData;
+};
+
+export function ZohoWebhookResourceFields({ setup }: ZohoWebhookResourceFieldsProps) {
+  const t = useTranslations("Dashboard.integrations.zohoWebhookSetup");
+
+  const parsed = React.useMemo(
+    () => parseZohoWebhookSamplePayload(setup.sample_payload, setup.module ?? setup.resource),
+    [setup.sample_payload, setup.module, setup.resource],
+  );
+
+  const sampleJson = JSON.stringify(parsed.copyPayload, null, 2);
+  const hasRequiredFields = parsed.fields.some((row) => row.required);
+
+  return (
+    <dl className="space-y-4">
+      <WebhookDetailCard label={t("webhookUri")} value={setup.webhook_uri} mono copyText={setup.webhook_uri} />
+      <WebhookDetailCard
+        label={t("samplePayloadJson")}
+        mono
+        copyText={sampleJson}
+        value={
+          <div className="space-y-3">
+            <div className="rounded-lg border border-slate-200/90 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+              <HighlightedWebhookPayloadJson parsed={parsed} />
+            </div>
+            {hasRequiredFields ? <RequiredFieldLegend /> : null}
+          </div>
+        }
+      />
+    </dl>
+  );
+}
+
+type ZohoWebhookGuideProps = {
+  setup: ZohoWebhookSetupData;
+  configureMappingHref?: string;
+};
+
+export function ZohoWebhookGuide({ setup, configureMappingHref }: ZohoWebhookGuideProps) {
+  return (
+    <div className="space-y-6">
+      <ZohoWebhookSharedSetup setup={setup} configureMappingHref={configureMappingHref} />
+      <ZohoWebhookResourceFields setup={setup} />
     </div>
   );
 }

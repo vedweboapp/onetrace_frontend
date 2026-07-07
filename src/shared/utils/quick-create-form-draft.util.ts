@@ -45,6 +45,7 @@ export function loadQuickCreateFormDraft<T>(returnTo: string): T | null {
   }
 }
 
+
 export function clearQuickCreateFormDraft(returnTo: string): void {
   if (typeof sessionStorage === "undefined") return;
   try {

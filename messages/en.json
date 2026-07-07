@@ -309,14 +309,14 @@
       },
       "zohoKeyMapping": {
         "title": "Map Zoho Inventory fields",
-        "description": "Match Zoho item fields to your OneTrace item fields before syncing data.",
+        "description": "Match Zoho fields to your SimHo fields before syncing data.",
         "externalField": "Zoho field",
         "internalField": "SimHo field",
-        "columnOnetrace": "OneTrace",
+        "columnOnetrace": "SimHo",
         "columnZoho": "Zoho Inventory",
         "mapsTo": "Maps to",
         "selectExternal": "Select Zoho field",
-        "selectInternal": "Select OneTrace field",
+        "selectInternal": "Select SimHo field",
         "addRow": "Add mapping",
         "removeRow": "Remove mapping",
         "pullHistoricalData": "Pull historical data",
@@ -331,7 +331,7 @@
       },
       "zohoWebhookSetup": {
         "title": "Zoho webhook setup",
-        "description": "Create a webhook in Zoho Inventory using the values below to keep items in sync.",
+        "description": "Create a webhook in Zoho Inventory using the values below to keep data in sync.",
         "guideTitle": "How to create the webhook in Zoho Inventory",
         "step1": "Open Zoho Inventory → Settings → Automation → Webhooks.",
         "step2": "Create a new webhook and use the URL, method, and header values shown below.",
@@ -380,6 +380,29 @@
         "yes": "Yes",
         "no": "No",
         "disconnected": "Disconnected"
+      },
+      "zohoResources": {
+        "mappingPageTitle": "Map Zoho Inventory fields",
+        "mappingPageDescription": "Match Zoho fields to your SimHo fields for each resource before syncing data.",
+        "webhookPageTitle": "Zoho webhook setup",
+        "webhookPageDescription": "Create webhooks in Zoho Inventory using the shared settings below. Each resource has its own URL and sample JSON.",
+        "resourceValuesTitle": "Webhook URL & sample payload",
+        "resourceValuesDescription": "These values differ per resource. Expand a section to copy the webhook URL and JSON payload for that resource.",
+        "items": {
+          "title": "Items and composite items",
+          "mappingDescription": "Match Zoho item fields to your SimHo item and composite item fields.",
+          "toggleSection": "Toggle items and composite items section"
+        },
+        "customers": {
+          "title": "Customers and contacts",
+          "mappingDescription": "Match Zoho customer fields to your SimHo client and contact fields.",
+          "toggleSection": "Toggle customers and contacts section"
+        },
+        "vendors": {
+          "title": "Vendors",
+          "mappingDescription": "Match Zoho vendor fields to your SimHo vendor fields.",
+          "toggleSection": "Toggle vendors section"
+        }
       },
       "zohoIntegrationGuide": {
         "title": "How to integrate Zoho Inventory with your SimHo account",
