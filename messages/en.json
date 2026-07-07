@@ -3072,7 +3072,8 @@
         "requiredSite": "Site is required.",
         "requiredDate": "Date is required.",
         "requiredWorker": "Worker is required.",
-        "CheckList": "Check List"
+        "checkList": "Check List",
+        "selectChecklist": "Select Checklist"
         
       },
       "drawings": {

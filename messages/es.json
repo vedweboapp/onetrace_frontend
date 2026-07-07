@@ -1758,7 +1758,8 @@
         "mapNotFoundHint": "No se pudo ubicar esta dirección — indica ciudad, provincia y código postal, o haz clic en el mapa para colocar el pin.",
         "addressFromPin": "Dirección actualizada según la posición del pin.",
         "coordsLabel": "Coordenadas: {lat}, {lon}",
-        "checkList":"Check lsit"
+        "checkList":"lista de verificación",
+        "selectChecklist": "Seleccionar lista de verificación"
       }
     },
     "quotations": {
