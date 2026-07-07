@@ -511,7 +511,6 @@ export function JobFormScreen({ mode, jobId }: Props) {
                 />
                 <FieldErrorText>{errors.title?.message}</FieldErrorText>
               </FieldGroup>
-
               <FieldGroup label={t("fields.description")} htmlFor="job-description">
                 <textarea
                   id="job-description"
@@ -522,7 +521,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                 />
               </FieldGroup>
 
-            
+
             </section>
 
             <section className="space-y-6">

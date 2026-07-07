@@ -8,7 +8,7 @@ import { fetchClient } from "@/features/clients/api/client.api";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import type { ProjectType } from "@/features/project-types/types/project-type.types";
 import { createQuotationFromProject } from "@/features/quotations/api/quotation.api";
-import { deleteProject, fetchProject, patchProject } from "@/features/projects/api/project.api";
+import { deleteProject, fetchProject, patchProject, updateProject } from "@/features/projects/api/project.api";
 import { ProjectDetailBody } from "@/features/projects/components/project-detail-body";
 import { ProjectDrawingsTab } from "@/features/projects/components/project-drawings-tab";
 import { ProjectFormsTab } from "@/features/projects/components/project-forms-tab";
@@ -31,10 +31,13 @@ import {
   AppButton,
   AppTabs,
   type AppTabItem,
+  CheckmarkSelect,
   ConfirmDialog,
   DashboardUnderDevelopmentState,
 } from "@/shared/ui";
 import ProjectPinsListTab from "./project-pins-list-tab";
+import { fetchProjectStatusesPage } from "@/features/project-status/api/project-status.api";
+import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 
 type Props = {
   projectId: number;
@@ -58,12 +61,46 @@ export function ProjectDetailScreen({ projectId }: Props) {
   const [activeTab, setActiveTab] = React.useState("details");
   const [togglingActive, setTogglingActive] = React.useState(false);
 
+  // --- Project Status Dialog ---
+  const [statusDialogOpen, setStatusDialogOpen] = React.useState(false);
+  const [statusOptions, setStatusOptions] = React.useState<WorkflowColourStatus[]>([]);
+  const [selectedStatusId, setSelectedStatusId] = React.useState<string>("");
+  const [updatingStatus, setUpdatingStatus] = React.useState(false);
+
+  // Load all project statuses once
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchProjectStatusesPage(1, 500, { is_active: true });
+        if (!cancelled) setStatusOptions(items);
+      } catch {
+        if (!cancelled) setStatusOptions([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Sync selected status when dialog opens (pre-select current status)
+  React.useEffect(() => {
+    if (!statusDialogOpen) return;
+    const current = detailForClient?.project_status;
+    if (typeof current === "object" && current !== null) {
+      setSelectedStatusId(String(current.id));
+    } else if (typeof current === "number") {
+      setSelectedStatusId(String(current));
+    } else {
+      setSelectedStatusId("");
+    }
+  }, [statusDialogOpen, detailForClient]);
+
   const detailTabs = React.useMemo<AppTabItem[]>(
     () => [
       { id: "details", label: t("detail.tabs.details") },
       { id: "forms", label: t("detail.tabs.forms") },
       { id: "drawings", label: t("detail.tabs.drawings") },
       { id: "jobs", label: t("detail.tabs.jobs") },
+      {id:"location",label: t("detail.tabs.location")},
       { id: "quotations", label: t("detail.tabs.quotations") },
       { id: "jobsheets", label: t("detail.tabs.jobsheets") },
       { id: "docs", label: t("detail.tabs.docs") },
@@ -183,28 +220,105 @@ export function ProjectDetailScreen({ projectId }: Props) {
       }
       actions={({ detail, listBack, retry }) => (
         <div className="flex flex-wrap items-center gap-2">
+          {/* Update Status Button */}
           <AppButton
             type="button"
             variant="secondary"
             size="sm"
-            loading={togglingActive}
-            disabled={togglingActive}
-            onClick={async () => {
-              const next = !detail.is_active;
-              setTogglingActive(true);
-              try {
-                await patchProject(detail.id, { is_active: next });
-                toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
-                retry();
-              } catch (error) {
-                toastApiError(error, t("toggleActiveError"));
-              } finally {
-                setTogglingActive(false);
-              }
-            }}
+            onClick={() => setStatusDialogOpen(true)}
           >
-            {detail.is_active ? t("deactivate") : t("activate")}
+            Update Status
           </AppButton>
+
+          {/* Update Status Dialog */}
+          {statusDialogOpen && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+              onClick={(e) => { if (e.target === e.currentTarget && !updatingStatus) setStatusDialogOpen(false); }}
+            >
+              <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+                <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                  Update Project Status
+                </h2>
+
+                {/* Current Status chip */}
+                {(() => {
+                  const cur = detail.project_status;
+                  const statusRef = typeof cur === "object" && cur !== null ? cur : null;
+                  const curOption = statusRef
+                    ? statusOptions.find((s) => s.id === statusRef.id)
+                    : null;
+                  const label = curOption?.status_name ?? statusRef?.name ?? null;
+                  const bg = curOption?.bg_colour ?? statusRef?.bg_color ?? null;
+                  const textClr = curOption?.text_colour ?? statusRef?.text_color ?? null;
+
+                  return label ? (
+                    <div className="mt-3 flex items-center gap-2">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">Current:</span>
+                      <span
+                        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                        style={{ backgroundColor: bg ?? "#E5E7EB", color: textClr ?? "#374151" }}
+                      >
+                        {label}
+                      </span>
+                    </div>
+                  ) : null;
+                })()}
+
+                <div className="mt-4">
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Select New Status
+                  </label>
+                  <CheckmarkSelect
+                    listLabel="Project Status"
+                    buttonAriaLabel="Select project status"
+                    options={statusOptions.map((s) => ({ value: String(s.id), label: s.status_name }))}
+                    value={selectedStatusId}
+                    emptyLabel="Select status…"
+                    portaled
+                    searchable
+                    clearable
+                    className="w-full"
+                    onChange={(v) => setSelectedStatusId(v ?? "")}
+                  />
+                </div>
+
+                <div className="mt-5 flex justify-end gap-2">
+                  <AppButton
+                    variant="secondary"
+                    size="sm"
+                    disabled={updatingStatus}
+                    onClick={() => setStatusDialogOpen(false)}
+                  >
+                    Cancel
+                  </AppButton>
+                  <AppButton
+                    variant="primary"
+                    size="sm"
+                    loading={updatingStatus}
+                    disabled={updatingStatus || !selectedStatusId}
+                    onClick={async () => {
+                      if (!selectedStatusId) return;
+                      setUpdatingStatus(true);
+                      try {
+                        await updateProject(detail.id, { project_status: Number(selectedStatusId) });
+                        toastSuccess("Project status updated");
+                        setStatusDialogOpen(false);
+                        retry();
+                      } catch (error) {
+                        toastApiError(error, "Failed to update project status");
+                      } finally {
+                        setUpdatingStatus(false);
+                      }
+                    }}
+                  >
+                    Update Status
+                  </AppButton>
+                </div>
+              </div>
+            </div>
+          )}
+
           <AppButton
             type="button"
             variant="secondary"
@@ -268,8 +382,8 @@ export function ProjectDetailScreen({ projectId }: Props) {
             <ProjectJobsTab projectId={detail.id} />
           ) : detail && activeTab === "quotations" ? (
             <ProjectQuotationsTab projectId={detail.id} />
-          ) : detail && activeTab === "Pins" ? (
-            <ProjectPinsListTab />
+          ) : detail && activeTab === "location" ? (
+            <ProjectPinsListTab sites={detail.sites} />
           ) : activeTab !== "details" ? (
             <DashboardUnderDevelopmentState
               className="min-h-[calc(100vh-280px)] rounded-none px-4 sm:min-h-[420px] sm:px-6"

@@ -43,6 +43,8 @@ import {
   SurfaceShell,
   surfaceInputClassName,
 } from "@/shared/ui";
+import { fetchProjectStatusesPage } from "@/features/project-status/api/project-status.api";
+
 
 type Props = {
   mode: "create" | "edit";
@@ -64,7 +66,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   const [projectTypeOptions, setProjectTypeOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [siteOptions, setSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [formOptions, setFormOptions] = React.useState<{ value: string; label: string }[]>([]);
-
+  const [projectStatusOptions, setProjectStatusOptions] = React.useState<{ value: string; label: string }[]>([]);
   const schema = React.useMemo(
     () =>
       createProjectFormSchema({
@@ -214,6 +216,23 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   }, [selectedProjectType, setValue]);
 
   React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchProjectStatusesPage(1, 500, { is_active: true });
+        if (!cancelled) {
+          setProjectStatusOptions(items.map((pt) => ({ value: String(pt.id), label: pt.status_name })));
+        }
+      } catch {
+        if (!cancelled) setProjectStatusOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  React.useEffect(() => {
     if (!selectedClient || !/^\d+$/.test(selectedClient)) {
       setSiteOptions([]);
       setValue("sites", []);
@@ -304,169 +323,194 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
           </div>
         ) : (
           <>
-          <form id="project-upsert-screen-form" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(submit)}>
-            {noClients ? (
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-                {t("noClientsHint")}
-              </p>
-            ) : null}
-            {noProjectTypes ? (
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-                {t("noProjectTypesHint")}
-              </p>
-            ) : null}
-            <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
-              <FieldGroup label={t("fields.name")} htmlFor="project-name" required>
-                <input
-                  id="project-name"
-                  aria-invalid={errors.name ? true : undefined}
-                  aria-describedby={errors.name ? "project-name-err" : undefined}
-                  className={cn(surfaceInputClassName, errors.name && "border-red-500 dark:border-red-500")}
-                  {...register("name", {
-                    onChange: (e) => {
-                      e.target.value = capitalizeFirstLetter(e.target.value);
-                    },
-                  })}
-                />
-                <FieldErrorText id="project-name-err">{errors.name?.message}</FieldErrorText>
-              </FieldGroup>
-              <FieldGroup label={t("fields.client")} htmlFor="project-client" required>
+            <form id="project-upsert-screen-form" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(submit)}>
+              {noClients ? (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+                  {t("noClientsHint")}
+                </p>
+              ) : null}
+              {noProjectTypes ? (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+                  {t("noProjectTypesHint")}
+                </p>
+              ) : null}
+              <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+                <FieldGroup label={t("fields.name")} htmlFor="project-name" required>
+                  <input
+                    id="project-name"
+                    aria-invalid={errors.name ? true : undefined}
+                    aria-describedby={errors.name ? "project-name-err" : undefined}
+                    className={cn(surfaceInputClassName, errors.name && "border-red-500 dark:border-red-500")}
+                    {...register("name", {
+                      onChange: (e) => {
+                        e.target.value = capitalizeFirstLetter(e.target.value);
+                      },
+                    })}
+                  />
+                  <FieldErrorText id="project-name-err">{errors.name?.message}</FieldErrorText>
+                </FieldGroup>
+                <FieldGroup label={t("fields.client")} htmlFor="project-client" required>
+                  <Controller
+                    control={control}
+                    name="client"
+                    render={({ field }) => (
+                      <CheckmarkSelect
+                        id="project-client"
+                        portaled
+                        searchable
+                        listLabel={t("fields.client")}
+                        options={clientOptions}
+                        value={field.value}
+                        emptyLabel={t("placeholders.client")}
+                        disabled={saving || noClients}
+                        invalid={!!errors.client}
+                        onBlur={field.onBlur}
+                        onChange={(v) => {
+                          field.onChange(v);
+                          setValue("sites", []);
+                        }}
+                        onAdd={clientQuickCreate.onAdd}
+                        addAriaLabel={clientQuickCreate.addAriaLabel}
+                        addLabel={clientQuickCreate.addLabel}
+                      />
+                    )}
+                  />
+                  <FieldErrorText>{errors.client?.message}</FieldErrorText>
+                </FieldGroup>
+                <FieldGroup label={t("fields.projectType")} htmlFor="project-type" required>
+                  <Controller
+                    control={control}
+                    name="project_type"
+                    render={({ field }) => (
+                      <CheckmarkSelect
+                        id="project-type"
+                        portaled
+                        searchable
+                        listLabel={t("fields.projectType")}
+                        options={projectTypeOptions}
+                        value={field.value}
+                        emptyLabel={t("placeholders.projectType")}
+                        disabled={saving || noProjectTypes}
+                        invalid={!!errors.project_type}
+                        onBlur={field.onBlur}
+                        onAdd={() => router.push(routes.dashboard.settingsProjectTypes)}
+                        addAriaLabel="Add project type"
+                        addLabel="Add project type"
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                  <FieldErrorText>{errors.project_type?.message}</FieldErrorText>
+                </FieldGroup>
+                <FieldGroup label={t("fields.projectStatus")} htmlFor="project-status" required>
+                  <Controller
+                    control={control}
+                    name="project_status"
+                    render={({ field }) => (
+                      <CheckmarkSelect
+                        id="project-status"
+                        portaled
+                        searchable
+                        // listLabel={t("fields.projectStatus")}
+                        options={projectStatusOptions}
+                        value={field.value ?? ""}
+                        // emptyLabel={t("placeholders.projectStatus")}
+                        disabled={saving || projectStatusOptions.length === 0}
+                        // invalid={!!errors.project_status}
+                        onBlur={field.onBlur}
+                        onAdd={() => router.push(routes.dashboard.settingsProjectStatus)}
+                        addAriaLabel="Add project status"
+                        addLabel="Add project status"
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                  <FieldErrorText>{errors.project_status?.message}</FieldErrorText>
+                </FieldGroup>
+              </FormFieldRow>
+              <FieldGroup label="Forms" htmlFor="project-form-ids">
                 <Controller
                   control={control}
-                  name="client"
+                  name="form_ids"
                   render={({ field }) => (
-                    <CheckmarkSelect
-                      id="project-client"
-                      portaled
-                      searchable
-                      listLabel={t("fields.client")}
-                      options={clientOptions}
-                      value={field.value}
-                      emptyLabel={t("placeholders.client")}
-                      disabled={saving || noClients}
-                      invalid={!!errors.client}
-                      onBlur={field.onBlur}
-                      onChange={(v) => {
-                        field.onChange(v);
-                        setValue("sites", []);
-                      }}
-                      onAdd={clientQuickCreate.onAdd}
-                      addAriaLabel={clientQuickCreate.addAriaLabel}
-                      addLabel={clientQuickCreate.addLabel}
-                    />
-                  )}
-                />
-                <FieldErrorText>{errors.client?.message}</FieldErrorText>
-              </FieldGroup>
-              <FieldGroup label={t("fields.projectType")} htmlFor="project-type" required>
-                <Controller
-                  control={control}
-                  name="project_type"
-                  render={({ field }) => (
-                    <CheckmarkSelect
-                      id="project-type"
-                      portaled
-                      searchable
-                      listLabel={t("fields.projectType")}
-                      options={projectTypeOptions}
-                      value={field.value}
-                      emptyLabel={t("placeholders.projectType")}
-                      disabled={saving || noProjectTypes}
-                      invalid={!!errors.project_type}
-                      onBlur={field.onBlur}
-                      onAdd={() => router.push(routes.dashboard.settingsProjectTypes)}
-                      addAriaLabel="Add project type"
-                      addLabel="Add project type"
+                    <MultiCheckSelect
+                      id="project-form-ids"
+                      options={formOptions}
+                      values={field.value ?? []}
                       onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      disabled={saving || !selectedProjectType || formOptions.length === 0}
+                      placeholder="Select forms..."
+                      listLabel="Forms"
                     />
                   )}
                 />
-                <FieldErrorText>{errors.project_type?.message}</FieldErrorText>
+                {selectedProjectType && formOptions.length === 0 && (
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">No forms found for this project type.</p>
+                )}
               </FieldGroup>
-            </FormFieldRow>
-            <FieldGroup label="Forms" htmlFor="project-form-ids">
-              <Controller
-                control={control}
-                name="form_ids"
-                render={({ field }) => (
-                  <MultiCheckSelect
-                    id="project-form-ids"
-                    options={formOptions}
-                    values={field.value ?? []}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    disabled={saving || !selectedProjectType || formOptions.length === 0}
-                    placeholder="Select forms..."
-                    listLabel="Forms"
-                  />
-                )}
-              />
-              {selectedProjectType && formOptions.length === 0 && (
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">No forms found for this project type.</p>
-              )}
-            </FieldGroup>
-            <FieldGroup label={t("fields.sites")} htmlFor="project-sites">
-              <Controller
-                control={control}
-                name="sites"
-                render={({ field }) => (
-                  <MultiCheckSelect
-                    id="project-sites"
-                    options={siteOptions}
-                    values={field.value ?? []}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    disabled={saving || !selectedClient}
-                    placeholder={t("placeholders.site")}
-                    listLabel={t("fields.sites")}
-                    onAdd={siteQuickCreate.onAdd}
-                    addAriaLabel={siteQuickCreate.addAriaLabel}
-                    addLabel={siteQuickCreate.addLabel}
-                  />
-                )}
-              />
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("hints.sitesMultiSelect")}</p>
-            </FieldGroup>
-            <FieldGroup label={t("fields.description")} htmlFor="project-description" required>
-              <textarea
-                id="project-description"
-                rows={4}
-                aria-invalid={errors.description ? true : undefined}
-                aria-describedby={errors.description ? "project-desc-err" : undefined}
-                className={cn(
-                  surfaceInputClassName,
-                  "h-auto min-h-[100px] resize-y py-3 leading-5",
-                  errors.description && "border-red-500 dark:border-red-500",
-                )}
-                {...register("description")}
-              />
-              <FieldErrorText id="project-desc-err">{errors.description?.message}</FieldErrorText>
-            </FieldGroup>
-            <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
-              <FieldGroup label={t("fields.startDate")} htmlFor="project-start" required>
-                <SurfaceDateInput
-                  id="project-start"
-                  type="date"
-                  aria-invalid={errors.start_date ? true : undefined}
-                  aria-describedby={errors.start_date ? "project-start-err" : undefined}
-                  invalid={!!errors.start_date}
-                  {...register("start_date")}
+              <FieldGroup label={t("fields.sites")} htmlFor="project-sites">
+                <Controller
+                  control={control}
+                  name="sites"
+                  render={({ field }) => (
+                    <MultiCheckSelect
+                      id="project-sites"
+                      options={siteOptions}
+                      values={field.value ?? []}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      disabled={saving || !selectedClient}
+                      placeholder={t("placeholders.site")}
+                      listLabel={t("fields.sites")}
+                      onAdd={siteQuickCreate.onAdd}
+                      addAriaLabel={siteQuickCreate.addAriaLabel}
+                      addLabel={siteQuickCreate.addLabel}
+                    />
+                  )}
                 />
-                <FieldErrorText id="project-start-err">{errors.start_date?.message}</FieldErrorText>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("hints.sitesMultiSelect")}</p>
               </FieldGroup>
-              <FieldGroup label={t("fields.endDate")} htmlFor="project-end" required>
-                <SurfaceDateInput
-                  id="project-end"
-                  type="date"
-                  aria-invalid={errors.end_date ? true : undefined}
-                  aria-describedby={errors.end_date ? "project-end-err" : undefined}
-                  invalid={!!errors.end_date}
-                  {...register("end_date")}
+              <FieldGroup label={t("fields.description")} htmlFor="project-description" required>
+                <textarea
+                  id="project-description"
+                  rows={4}
+                  aria-invalid={errors.description ? true : undefined}
+                  aria-describedby={errors.description ? "project-desc-err" : undefined}
+                  className={cn(
+                    surfaceInputClassName,
+                    "h-auto min-h-[100px] resize-y py-3 leading-5",
+                    errors.description && "border-red-500 dark:border-red-500",
+                  )}
+                  {...register("description")}
                 />
-                <FieldErrorText id="project-end-err">{errors.end_date?.message}</FieldErrorText>
+                <FieldErrorText id="project-desc-err">{errors.description?.message}</FieldErrorText>
               </FieldGroup>
-            </FormFieldRow>
-          </form>
+              <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+                <FieldGroup label={t("fields.startDate")} htmlFor="project-start" required>
+                  <SurfaceDateInput
+                    id="project-start"
+                    type="date"
+                    aria-invalid={errors.start_date ? true : undefined}
+                    aria-describedby={errors.start_date ? "project-start-err" : undefined}
+                    invalid={!!errors.start_date}
+                    {...register("start_date")}
+                  />
+                  <FieldErrorText id="project-start-err">{errors.start_date?.message}</FieldErrorText>
+                </FieldGroup>
+                <FieldGroup label={t("fields.endDate")} htmlFor="project-end" required>
+                  <SurfaceDateInput
+                    id="project-end"
+                    type="date"
+                    aria-invalid={errors.end_date ? true : undefined}
+                    aria-describedby={errors.end_date ? "project-end-err" : undefined}
+                    invalid={!!errors.end_date}
+                    {...register("end_date")}
+                  />
+                  <FieldErrorText id="project-end-err">{errors.end_date?.message}</FieldErrorText>
+                </FieldGroup>
+              </FormFieldRow>
+            </form>
           </>
         )}
       </SurfaceShell>

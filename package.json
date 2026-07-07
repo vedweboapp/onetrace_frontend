@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --hostname 0.0.0.0",
+    "dev": "next dev --hostname 0.0.0.0 --experimental-https",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -25,6 +25,7 @@
     "axios": "^1.16.0",
     "clsx": "^2.1.1",
     "country-state-city": "^3.2.1",
+    "dayjs": "^1.11.21",
     "input-otp": "^1.4.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.14.0",
