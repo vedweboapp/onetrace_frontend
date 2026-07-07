@@ -1,29 +1,28 @@
 "use client";
 
 import * as React from "react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { Link, useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/navigation";
 import {
   connectZohoInventory,
   fetchZohoConnection,
-  fetchZohoWebhookSetup,
 } from "@/features/settings/integrations/api/integration.api";
-import { ZOHO_DEFAULT_RESOURCE } from "@/features/settings/integrations/api/integration.paths";
-import { ZohoWebhookGuide } from "@/features/settings/integrations/components/zoho-webhook-guide";
+import { ZOHO_RESOURCES } from "@/features/settings/integrations/api/integration.paths";
+import { ZohoWebhooksPanel } from "@/features/settings/integrations/components/zoho-webhooks-panel";
 import { ZohoIntegrationGuide } from "@/features/settings/integrations/components/zoho-integration-guide";
 import { ZohoKeyMappingForm } from "@/features/settings/integrations/components/zoho-key-mapping-screen";
 import { ZohoCallbackFinishModal } from "@/features/settings/integrations/components/zoho-callback-finish-modal";
 import { buildZohoConnectionTabUrl, buildZohoFrontendCallbackUrl, readZohoOAuthCallbackParams } from "@/features/settings/integrations/utils/zoho-callback-url.util";
 import type {
   ZohoConnectionDetails,
-  ZohoWebhookSetupData,
 } from "@/features/settings/integrations/types/integration.types";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { AppButton, AppTabs, SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+import { DetailCollapsibleSection } from "@/shared/components/layout/detail-collapsible-section";
 
 type TabsType = {
   key: string,
@@ -46,9 +45,7 @@ function boolLabel(value: boolean, label: (key: "yes" | "no") => string) {
 export function ZohoConnectionDetailsScreen() {
   const t = useTranslations("Dashboard.integrations.zohoConnection");
   const tIntegrations = useTranslations("Dashboard.integrations");
-  const tKeyMapping = useTranslations("Dashboard.integrations.zohoKeyMapping");
-  const tWebhook = useTranslations("Dashboard.integrations.zohoWebhookSetup");
-  const locale = useLocale();
+  const tResources = useTranslations("Dashboard.integrations.zohoResources");
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -72,20 +69,10 @@ export function ZohoConnectionDetailsScreen() {
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [connection, setConnection] = React.useState<ZohoConnectionDetails | null>(null);
-  const [webhookLoading, setWebhookLoading] = React.useState(false);
-  const [webhookError, setWebhookError] = React.useState<string | null>(null);
-  const [webhookSetup, setWebhookSetup] = React.useState<ZohoWebhookSetupData | null>(null);
   const [reconnecting, setReconnecting] = React.useState(false);
-  const [mappingResetNonce, setMappingResetNonce] = React.useState(0);
+  const [mappingResetNonce, setMappingResetNonce] = React.useState<Record<string, number>>({});
+  const [webhookRefreshKey, setWebhookRefreshKey] = React.useState(0);
 
-  const dateFmt = React.useMemo(
-    () =>
-      new Intl.DateTimeFormat(locale === "es" ? "es" : "en", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }),
-    [locale],
-  );
   const tabs: TabsType[] = [
     {
       key: "help",
@@ -118,30 +105,13 @@ export function ZohoConnectionDetailsScreen() {
     void loadConnection();
   }, [loadConnection]);
 
-  const refetchWebhookSetup = React.useCallback(async () => {
-    setWebhookLoading(true);
-    setWebhookError(null);
-    try {
-      const data = await fetchZohoWebhookSetup(ZOHO_DEFAULT_RESOURCE);
-      setWebhookSetup(data);
-    } catch {
-      setWebhookError(t("webhookLoadError"));
-    } finally {
-      setWebhookLoading(false);
-    }
-  }, [t]);
+  function handleMappingSaveSuccess() {
+    void loadConnection();
+    setWebhookRefreshKey((key) => key + 1);
+  }
 
-  React.useEffect(() => {
-    if (activeTab === "webhook" && !webhookSetup && !webhookLoading) {
-      void refetchWebhookSetup();
-    }
-  }, [activeTab, webhookSetup, webhookLoading, refetchWebhookSetup]);
-
-  function formatWebhookLastReceived(value: string | null | undefined) {
-    if (!value?.trim()) return t("notAvailable");
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return value;
-    return dateFmt.format(parsed);
+  function resetMapping(resource: string) {
+    setMappingResetNonce((prev) => ({ ...prev, [resource]: (prev[resource] ?? 0) + 1 }));
   }
 
   async function handleReconnect() {
@@ -227,20 +197,13 @@ export function ZohoConnectionDetailsScreen() {
         <SurfaceShell className="rounded-xl">
           <div className="space-y-6 p-4 sm:p-6">
             <div>
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("webhookTitle")}</h2>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{tWebhook("description")}</p>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tResources("webhookPageTitle")}</h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{tResources("webhookPageDescription")}</p>
             </div>
-            {webhookLoading ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="h-16 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-                <div className="h-16 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-                <div className="col-span-full h-20 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-              </div>
-            ) : webhookError ? (
-              <p className="text-sm text-red-600 dark:text-red-400">{webhookError}</p>
-            ) : webhookSetup ? (
-              <ZohoWebhookGuide setup={webhookSetup} configureMappingHref={buildZohoConnectionTabUrl("configure")} />
-            ) : null}
+            <ZohoWebhooksPanel
+              refreshKey={webhookRefreshKey}
+              configureMappingHref={buildZohoConnectionTabUrl("configure")}
+            />
           </div>
         </SurfaceShell>
       ) : activeTab === "configure" && connection ? (
@@ -300,20 +263,31 @@ export function ZohoConnectionDetailsScreen() {
           </SurfaceShell>
 
           <SurfaceShell className="rounded-xl">
-            <div className="space-y-6 p-4 sm:p-6">
+            <div className="space-y-4 p-4 sm:p-6">
               <div>
-                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tKeyMapping("title")}</h2>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{tKeyMapping("description")}</p>
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tResources("mappingPageTitle")}</h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{tResources("mappingPageDescription")}</p>
               </div>
-              <ZohoKeyMappingForm
-                key={mappingResetNonce}
-                showCancelButton={true}
-                onCancel={() => setMappingResetNonce((n) => n + 1)}
-                onSaveSuccess={() => {
-                  void loadConnection();
-                  void refetchWebhookSetup();
-                }}
-              />
+              {ZOHO_RESOURCES.map((resource, index) => (
+                <DetailCollapsibleSection
+                  key={resource}
+                  title={tResources(`${resource}.title`)}
+                  defaultOpen={index === 0}
+                  toggleAriaLabel={tResources(`${resource}.toggleSection`)}
+                  bodyClassName="space-y-4 pt-4"
+                >
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {tResources(`${resource}.mappingDescription`)}
+                  </p>
+                  <ZohoKeyMappingForm
+                    key={`${resource}-${mappingResetNonce[resource] ?? 0}`}
+                    resource={resource}
+                    showCancelButton={true}
+                    onCancel={() => resetMapping(resource)}
+                    onSaveSuccess={handleMappingSaveSuccess}
+                  />
+                </DetailCollapsibleSection>
+              ))}
             </div>
           </SurfaceShell>
         </div>

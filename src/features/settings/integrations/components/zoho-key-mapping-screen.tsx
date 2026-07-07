@@ -5,7 +5,7 @@ import { ArrowRight, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
-import { ZOHO_DEFAULT_RESOURCE } from "@/features/settings/integrations/api/integration.paths";
+import { ZOHO_DEFAULT_RESOURCE, ZOHO_RESOURCES, type ZohoResource } from "@/features/settings/integrations/api/integration.paths";
 import { fetchZohoKeyMapping, saveZohoKeyMapping } from "@/features/settings/integrations/api/integration.api";
 import type { ZohoMappingRow, ZohoFieldSchema } from "@/features/settings/integrations/types/integration.types";
 import {
@@ -19,6 +19,7 @@ import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { AppButton, CheckmarkSelect, SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
+import { DetailCollapsibleSection } from "@/shared/components/layout/detail-collapsible-section";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 
 
@@ -98,12 +99,14 @@ function areTypesCompatible(typeA: string | undefined, typeB: string | undefined
 }
 
 export type ZohoKeyMappingFormProps = {
+  resource?: ZohoResource;
   onSaveSuccess?: () => void;
   onCancel?: () => void;
   showCancelButton?: boolean;
 };
 
 export function ZohoKeyMappingForm({
+  resource = ZOHO_DEFAULT_RESOURCE,
   onSaveSuccess,
   onCancel,
   showCancelButton = true,
@@ -127,7 +130,7 @@ export function ZohoKeyMappingForm({
       setLoading(true);
       setLoadError(null);
       try {
-        const data = await fetchZohoKeyMapping();
+        const data = await fetchZohoKeyMapping(resource);
         if (cancelled) return;
         const sortedInternalFields = sortInternalFields(data.internal_fields);
         setExternalFields(data.external_fields);
@@ -144,7 +147,7 @@ export function ZohoKeyMappingForm({
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [resource, t]);
 
   function updateRow(rowId: string, patch: Partial<Pick<ZohoMappingRow, "externalField" | "internalField">>) {
     setRows((prev) => prev.map((row) => (row.id === rowId ? { ...row, ...patch } : row)));
@@ -171,7 +174,7 @@ export function ZohoKeyMappingForm({
     setSaving(true);
     try {
       const result = await saveZohoKeyMapping({
-        resource: ZOHO_DEFAULT_RESOURCE,
+        resource,
         pull_historical_data: pullHistoricalData,
         mappings,
       });
@@ -212,7 +215,7 @@ export function ZohoKeyMappingForm({
       ) : loadError ? (
         <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>
       ) : (
-        <>
+        <div className="space-y-5">
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
             <div
               className={cn(
@@ -325,7 +328,7 @@ export function ZohoKeyMappingForm({
             onChange={setPullHistoricalData}
           />
 
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 dark:border-slate-700 sm:flex-row sm:justify-end">
             {showCancelButton && (
               <AppButton
                 type="button"
@@ -347,14 +350,14 @@ export function ZohoKeyMappingForm({
               {t("saveMapping")}
             </AppButton>
           </div>
-        </>
+        </div>
       )}
     </>
   );
 }
 
 export function ZohoKeyMappingScreen() {
-  const t = useTranslations("Dashboard.integrations.zohoKeyMapping");
+  const tResources = useTranslations("Dashboard.integrations.zohoResources");
   const tConnection = useTranslations("Dashboard.integrations.zohoConnection");
   const searchParams = useSearchParams();
   const safeBack = React.useMemo(() => {
@@ -381,15 +384,28 @@ export function ZohoKeyMappingScreen() {
   return (
     <div className="space-y-6 py-6">
       <DetailPageHeader
-        title={t("title")}
-        subtitle={t("description")}
+        title={tResources("mappingPageTitle")}
+        subtitle={tResources("mappingPageDescription")}
         backHref={safeBack}
         backAriaLabel={tConnection("backToDetails")}
       />
 
       <SurfaceShell className="rounded-xl">
-        <div className="space-y-6 p-4 sm:p-6">
-          <ZohoKeyMappingForm />
+        <div className="space-y-4 p-4 sm:p-6">
+          {ZOHO_RESOURCES.map((resource, index) => (
+            <DetailCollapsibleSection
+              key={resource}
+              title={tResources(`${resource}.title`)}
+              defaultOpen={index === 0}
+              toggleAriaLabel={tResources(`${resource}.toggleSection`)}
+              bodyClassName="space-y-4 pt-4"
+            >
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {tResources(`${resource}.mappingDescription`)}
+              </p>
+              <ZohoKeyMappingForm resource={resource} showCancelButton={false} />
+            </DetailCollapsibleSection>
+          ))}
         </div>
       </SurfaceShell>
     </div>

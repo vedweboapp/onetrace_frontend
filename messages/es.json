@@ -300,14 +300,14 @@
       },
       "zohoKeyMapping": {
         "title": "Mapear campos de Zoho Inventory",
-        "description": "Relaciona los campos de artículos de Zoho con los campos de artículos de OneTrace antes de sincronizar.",
+        "description": "Relaciona los campos de Zoho con los campos de SimHo antes de sincronizar.",
         "externalField": "Campo Zoho",
         "internalField": "Campo SimHo",
-        "columnOnetrace": "OneTrace",
+        "columnOnetrace": "SimHo",
         "columnZoho": "Zoho Inventory",
         "mapsTo": "Se asigna a",
         "selectExternal": "Seleccionar campo Zoho",
-        "selectInternal": "Seleccionar campo OneTrace",
+        "selectInternal": "Seleccionar campo SimHo",
         "addRow": "Añadir mapeo",
         "removeRow": "Eliminar mapeo",
         "pullHistoricalData": "Importar datos históricos",
@@ -322,7 +322,7 @@
       },
       "zohoWebhookSetup": {
         "title": "Configuración del webhook de Zoho",
-        "description": "Crea un webhook en Zoho Inventory con los valores de abajo para mantener los artículos sincronizados.",
+        "description": "Crea un webhook en Zoho Inventory con los valores de abajo para mantener los datos sincronizados.",
         "guideTitle": "Cómo crear el webhook en Zoho Inventory",
         "step1": "Abre Zoho Inventory → Configuración → Automatización → Webhooks.",
         "step2": "Crea un webhook nuevo y usa la URL, el método y las cabeceras que se muestran abajo.",
@@ -371,6 +371,29 @@
         "yes": "Sí",
         "no": "No",
         "disconnected": "Desconectado"
+      },
+      "zohoResources": {
+        "mappingPageTitle": "Mapear campos de Zoho Inventory",
+        "mappingPageDescription": "Relaciona los campos de Zoho con los campos de SimHo para cada recurso antes de sincronizar.",
+        "webhookPageTitle": "Configuración del webhook de Zoho",
+        "webhookPageDescription": "Crea webhooks en Zoho Inventory con la configuración compartida de abajo. Cada recurso tiene su propia URL y JSON de ejemplo.",
+        "resourceValuesTitle": "URL del webhook y carga de ejemplo",
+        "resourceValuesDescription": "Estos valores cambian según el recurso. Expande una sección para copiar la URL y el JSON de ese recurso.",
+        "items": {
+          "title": "Artículos y artículos compuestos",
+          "mappingDescription": "Relaciona los campos de artículos de Zoho con los campos de artículos y artículos compuestos de SimHo.",
+          "toggleSection": "Mostrar u ocultar sección de artículos y artículos compuestos"
+        },
+        "customers": {
+          "title": "Clientes y contactos",
+          "mappingDescription": "Relaciona los campos de clientes de Zoho con los campos de clientes y contactos de SimHo.",
+          "toggleSection": "Mostrar u ocultar sección de clientes y contactos"
+        },
+        "vendors": {
+          "title": "Proveedores",
+          "mappingDescription": "Relaciona los campos de proveedores de Zoho con los campos de proveedores de SimHo.",
+          "toggleSection": "Mostrar u ocultar sección de proveedores"
+        }
       },
       "zohoIntegrationGuide": {
         "title": "Cómo integrar Zoho Inventory con tu cuenta SimHo",
