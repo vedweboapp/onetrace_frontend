@@ -4,7 +4,8 @@ import {
   Calendar, Clock, ArrowUpDown, DollarSign, Circle,
   Percent, MapPin, CheckSquare, Link, Search,
   Calculator, User, FileUp, Image, BarChart3,
-  Home, ListChecks, Globe, LucideIcon, PenTool
+  Home, ListChecks, Globe, LucideIcon, PenTool,
+  Video
 } from "lucide-react";
 
 interface FieldButtonProps {
@@ -188,6 +189,11 @@ export const FormFieldsConfig: FieldConfigItem[] = [
     type: "signature",
     label: "Signature",
     icon: PenTool,
+  }, {
+    key: "video_recorder",
+    type: "video_recorder",
+    label: "Video Recorder",
+    icon: Video,
   }
 ];
 

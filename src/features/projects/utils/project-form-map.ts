@@ -21,6 +21,7 @@ export function mapProjectFormToPayload(values: ProjectFormValues): ProjectUpser
     form_ids,
     start_date: values.start_date.trim(),
     end_date: values.end_date.trim(),
+    project_status: values.project_status ? Number.parseInt(values.project_status, 10) : undefined,
   };
 }
 
@@ -34,6 +35,7 @@ export function emptyProjectFormDefaults(): ProjectFormValues {
     form_ids: [],
     start_date: "",
     end_date: "",
+    project_status: "",
   };
 }
 
@@ -59,6 +61,11 @@ export function projectToFormDefaults(project: Project): ProjectFormValues {
           .map(String)
       : [];
 
+  const projectStatusId =
+    typeof project.project_status === "object" && project.project_status !== null
+      ? project.project_status.id
+      : project.project_status;
+
   return {
     name: project.name ?? "",
     client: clientId ? String(clientId) : "",
@@ -68,5 +75,6 @@ export function projectToFormDefaults(project: Project): ProjectFormValues {
     form_ids: formIds,
     start_date: start,
     end_date: end,
+    project_status: projectStatusId ? String(projectStatusId) : "",
   };
 }

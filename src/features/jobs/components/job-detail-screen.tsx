@@ -57,7 +57,7 @@ export function JobDetailScreen({ jobId }: Props) {
       listRoute={routes.dashboard.jobs}
       loadError={t("detailLoadError")}
       fetch={fetchJob}
-      getTitle={(detail) => detail.title}
+      getTitle={(detail) => detail.job_serial_number ?? String(detail.id)}
       labels={{
         metaTitle: t("detailMetaTitle"),
         backAria: t("detail.backAria"),

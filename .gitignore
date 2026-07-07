@@ -41,3 +41,5 @@ coverage
 
 # Lockfile — you asked to exclude; many teams commit this for reproducible installs.
 package-lock.json
+
+certificates

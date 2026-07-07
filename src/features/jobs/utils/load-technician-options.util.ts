@@ -15,7 +15,7 @@ export async function loadTechnicianOptions(): Promise<SelectOption[]> {
     : allUsers;
 
   return items.map((u) => ({
-    value: String(u.user_detail.id),
+    value: String(u.id),
     label: userProfileLabel(u),
   }));
 }

@@ -25,6 +25,7 @@ import {
   Globe,
   LucideIcon,
   PenTool,
+  Video,
 } from "lucide-react";
 import { currencyList } from "./currency-list";
 
@@ -630,16 +631,17 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
     configFields: [
       { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
       { type: "number", label: "Max File Size (MB)", key: "maxFileSize" },
-      { type: "drop-down", label: "Allowed File Types", key: "allowedTypes", options: 
-        [
-           { value: "*", label: "All Files" }
-        , { value: "image/*", label: "Images" }
-        , { value: "application/pdf", label: "PDFs" }
-        , { value: "application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document", label: "Word Documents" }
-        , { value: "application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", label: "Excel Spreadsheets" }
-        , { value: "text/csv", label: "CSV Files" }
-        ]
-       },
+      {
+        type: "drop-down", label: "Allowed File Types", key: "allowedTypes", options:
+          [
+            { value: "*", label: "All Files" }
+            , { value: "image/*", label: "Images" }
+            , { value: "application/pdf", label: "PDFs" }
+            , { value: "application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document", label: "Word Documents" }
+            , { value: "application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", label: "Excel Spreadsheets" }
+            , { value: "text/csv", label: "CSV Files" }
+          ]
+      },
       { type: "checkbox", label: "Required", key: "required" },
       // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
       // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
@@ -814,6 +816,28 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       { type: "number", label: "Canvas Height (px)", key: "height" },
       { type: "checkbox", label: "Required", key: "required" },
     ],
+  },
+  video_recorder: {
+    label: "Video Recorder",
+    icon: Video,
+    defaultConfig: () => ({
+      type: "video_recorder",
+      label: "Video Recorder",
+      name: "",
+      required: false,
+      show_tooltip: false,
+      tool_tip: ""
+
+    }),
+    configFields: [
+      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "drop-down", label: "Max Size (MB)", key: "maxSize", options: [{ value: "1", label: "1MB" }, { value: "5", label: "5MB" }, { value: "10", label: "10MB" }, { value: "20", label: "20MB" }, { value: "50", label: "50MB" }, { value: "100", label: "100MB" }] },
+      { type: "drop-down", label: "Recording Time", key: "recordingTime", options: [{ value: "30", label: "30s" }, { value: "60", label: "1m" }, { value: "90", label: "1m30s" }] },
+      { type: "checkbox", label: "Required", key: "required" },
+      // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
+      // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+    ],
+
   }
 };
 
