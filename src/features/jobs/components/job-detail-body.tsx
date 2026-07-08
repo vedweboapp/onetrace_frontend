@@ -837,6 +837,7 @@ export function JobDetailBody({
                         plots.map((plot: JobDrawingPlot) => (
                           <PlotPinsBlock
                             key={`${level.id}-${plot.id}`}
+                            plot={plot}
                             plotName={plot.name}
                             pins={plot.pins ?? []}
                             onPreviewPin={(pin) => {
