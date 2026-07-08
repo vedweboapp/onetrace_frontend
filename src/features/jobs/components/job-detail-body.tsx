@@ -361,11 +361,6 @@ function PlotPinsBlock({
   snapshotState?: LevelSnapshotState;
   drawingName?: string;
 }) {
-  const plotsForOverlay = React.useMemo(
-    () => (plot.coordinates ? [plot as DrawingPlot] : []),
-    [plot],
-  );
-
   return (
     <div className="w-full overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-700/80 dark:bg-slate-950/30">
       <div className="flex items-center gap-2.5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-4 py-3 dark:border-slate-800 dark:from-slate-900/80 dark:to-slate-950/40">
@@ -399,7 +394,7 @@ function PlotPinsBlock({
                   drawingFile={drawingFile}
                   drawingFileType={drawingFileType}
                   snapshotState={snapshotState}
-                  plots={plotsForOverlay}
+                  plots={[plot as DrawingPlot]}
                   drawingName={drawingName}
                 />
               ))}
@@ -859,6 +854,10 @@ export function JobDetailBody({
                             onNavigate={(href) => router.push(href)}
                             pinStatuses={pinStatuses}
                             onUpdatePinStatus={handleUpdatePinStatus}
+                            drawingFile={level.drawing_file}
+                            drawingFileType={level.drawing_file_type}
+                            snapshotState={levelSnapshots.get(level.id)}
+                            drawingName={level.name}
                           />
                         ))
                       )}

@@ -198,11 +198,14 @@ export function jobChecklistIsMarked(job: Pick<Job, "checklists">): boolean {
 
 export function jobChecklistEntries(job: Pick<Job, "checklists">): JobChecklistItem[] {
   const rows = resolveChecklistApiRows(job.checklists);
+  console.log("📋 Checklist Raw Data:", rows);
   if (rows.length === 0) return [];
-  return rows
+  const normalized = rows
     .map((row) => normalizeJobChecklistRow(row))
     .filter((row): row is JobChecklistItem => row !== null)
     .sort((a, b) => a.sequence - b.sequence || a.id - b.id);
+  console.log("📋 Checklist Normalized:", normalized);
+  return normalized;
 }
 
 export function jobChecklistUpdatePayload(items: JobChecklistItem[]): JobChecklistUpdateItem[] {
