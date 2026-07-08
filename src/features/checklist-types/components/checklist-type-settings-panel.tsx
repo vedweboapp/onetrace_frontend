@@ -23,10 +23,19 @@ import { fetchProjectTypesPage } from "@/features/project-types/api/project-type
 import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
 import { zTrimmedNonEmpty } from "@/shared/form";
 import { ChecklistTypeSortableTable } from "@/features/checklist-types/components/checklist-type-sortable-table";
-import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import {
+  toastError,
+  toastSuccess,
+  toastApiError,
+  getApiErrorDisplayMessage,
+} from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
-import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import {
+  hasListActiveFilters,
+  parseIsActiveParam,
+  useListUrlState,
+} from "@/shared/hooks/use-list-url-state";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   applySequencesToItems,
@@ -36,6 +45,7 @@ import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { reorderArray } from "@/shared/utils/reorder-array.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { routes } from "@/shared/config/routes";
+import { Paperclip, X } from "lucide-react";
 import {
   ActiveStatusBadge,
   AddButton,
@@ -69,7 +79,10 @@ function checklistTypeUserLabel(user: ChecklistType["created_by"]): string {
   return `#${user.id}`;
 }
 
-function formatOptionalDate(dateFmt: Intl.DateTimeFormat, value: string | null): string {
+function formatOptionalDate(
+  dateFmt: Intl.DateTimeFormat,
+  value: string | null,
+): string {
   if (!value?.trim()) return "—";
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? "—" : dateFmt.format(d);
@@ -81,8 +94,17 @@ export function ChecklistTypeSettingsPanel() {
   const tCustomization = useTranslations("Dashboard.settingsNav.customization");
   const dateFmt = useDashboardDateFormat();
   const searchParams = useSearchParams();
-  const { page, pageSize, listViewMode, search, isActiveParam, setUrl, setPage, setPageSize, setListViewMode } =
-    useListUrlState();
+  const {
+    page,
+    pageSize,
+    listViewMode,
+    search,
+    isActiveParam,
+    setUrl,
+    setPage,
+    setPageSize,
+    setListViewMode,
+  } = useListUrlState();
   const isActiveFilter = parseIsActiveParam(isActiveParam) ?? true;
 
   const projectTypeParam = searchParams.get("project_type");
@@ -115,17 +137,35 @@ export function ChecklistTypeSettingsPanel() {
   const [detailRow, setDetailRow] = React.useState<ChecklistType | null>(null);
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
-  const [projectTypeOptions, setProjectTypeOptions] = React.useState<{ value: string; label: string }[]>([]);
-
+  const [projectTypeOptions, setProjectTypeOptions] = React.useState<
+    { value: string; label: string }[]
+  >([]);
+  const [initialValues, setInitialValues] = React.useState<{
+  title: string;
+  projectTypeId: string;
+  isRequired: boolean;
+  concentricPoint: boolean;
+} | null>(null);
   const [formOpen, setFormOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<ChecklistType | null>(null);
   const [title, setTitle] = React.useState("");
   const [projectTypeId, setProjectTypeId] = React.useState("");
   const [isRequired, setIsRequired] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
-  const [errors, setErrors] = React.useState<{ title?: string; project_type?: string }>({});
-
-  const [deleteTarget, setDeleteTarget] = React.useState<ChecklistType | null>(null);
+  // const [errors, setErrors] = React.useState<{ title?: string; project_type?: string }>({});
+  const [file, setFile] = React.useState<File | null>(null);
+  const [existingFileName, setExistingFileName] = React.useState<string | null>(
+    null,
+  );
+  const [concentricPoint, setConcentricPoint] = React.useState(false);
+  const [errors, setErrors] = React.useState<{
+    title?: string;
+    project_type?: string;
+    file?: string;
+  }>({});
+  const [deleteTarget, setDeleteTarget] = React.useState<ChecklistType | null>(
+    null,
+  );
   const [deleting, setDeleting] = React.useState(false);
   const [reordering, setReordering] = React.useState(false);
   const [dragFromIndex, setDragFromIndex] = React.useState<number | null>(null);
@@ -134,7 +174,9 @@ export function ChecklistTypeSettingsPanel() {
     let cancelled = false;
     (async () => {
       try {
-        const { items: projectTypes } = await fetchProjectTypesPage(1, 500, { is_active: true });
+        const { items: projectTypes } = await fetchProjectTypesPage(1, 500, {
+          is_active: true,
+        });
         if (!cancelled) {
           setProjectTypeOptions(
             projectTypes.map((pt) => ({
@@ -158,11 +200,12 @@ export function ChecklistTypeSettingsPanel() {
       setLoading(true);
       setLoadError(null);
       try {
-        const { items: nextItems, pagination: p } = await fetchChecklistTypesPage(page, pageSize, {
-          search: search || undefined,
-          is_active: isActiveFilter,
-          project_type: projectTypeFilter,
-        });
+        const { items: nextItems, pagination: p } =
+          await fetchChecklistTypesPage(page, pageSize, {
+            search: search || undefined,
+            is_active: isActiveFilter,
+            project_type: projectTypeFilter,
+          });
         if (!cancelled) {
           setItems(nextItems);
           setPagination(p);
@@ -179,7 +222,15 @@ export function ChecklistTypeSettingsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, refreshNonce, search, isActiveFilter, projectTypeFilter, t]);
+  }, [
+    page,
+    pageSize,
+    refreshNonce,
+    search,
+    isActiveFilter,
+    projectTypeFilter,
+    t,
+  ]);
 
   const hasActiveFilters = hasListActiveFilters({
     search,
@@ -194,45 +245,66 @@ export function ChecklistTypeSettingsPanel() {
     });
     return p.total_records;
   }, [search, projectTypeFilter]);
-  const { hideListChrome, listLoading, emptyStateKind, filtersActive, switchToInactive } =
-    useListActiveInactiveEmptyState({
-      loading,
-      loadError,
-      itemsLength: items.length,
-      isActiveParam,
-      isActiveFilter,
-      hasActiveFilters,
-      setUrl,
-      countInactive,
-    });
+  const {
+    hideListChrome,
+    listLoading,
+    emptyStateKind,
+    filtersActive,
+    switchToInactive,
+  } = useListActiveInactiveEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    isActiveParam,
+    isActiveFilter,
+    hasActiveFilters,
+    setUrl,
+    countInactive,
+  });
 
-  const openEdit = React.useCallback((row: ChecklistType) => {
-    setDetailRow(null);
-    setEditing(row);
-    setTitle(formatChecklistTypeLabel(row));
-    const ptId = projectTypeIdFromChecklistRow(row);
-    setProjectTypeId(ptId ? String(ptId) : "");
-    setIsRequired(row.is_required);
-    setErrors({});
-    setFormOpen(true);
-  }, []);
+const openEdit = React.useCallback((row: ChecklistType) => {
+  setDetailRow(null);
+  setEditing(row);
+  const initTitle = formatChecklistTypeLabel(row);
+  const ptId = projectTypeIdFromChecklistRow(row);
+  const initProjectTypeId = ptId ? String(ptId) : "";
+  setTitle(initTitle);
+  setProjectTypeId(initProjectTypeId);
+  setIsRequired(row.is_required);
+  setConcentricPoint(row.concentric_point ?? false);
+  setFile(null);
+  setExistingFileName(row.file ? row.file.split("/").pop() ?? row.file : null);
+  setInitialValues({
+    title: initTitle,
+    projectTypeId: initProjectTypeId,
+    isRequired: row.is_required,
+    concentricPoint: row.concentric_point ?? false,
+  });
+  setErrors({});
+  setFormOpen(true);
+}, []);
 
-  function openCreate() {
-    setDetailRow(null);
-    setEditing(null);
-    setTitle("");
-    setProjectTypeId("");
-    setIsRequired(true);
-    setErrors({});
-    setFormOpen(true);
-  }
-
+function openCreate() {
+  setDetailRow(null);
+  setEditing(null);
+  setTitle("");
+  setProjectTypeId("");
+  setIsRequired(true);
+  setConcentricPoint(false);
+  setFile(null);
+  setExistingFileName(null);
+  setInitialValues(null);
+  setErrors({});
+  setFormOpen(true);
+}
   async function handleToggleActive(row: ChecklistType, next: boolean) {
     setTogglingId(row.id);
     try {
       await patchChecklistType(row.id, { is_active: next });
       toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
-      setDetailRow((prev) => (prev?.id === row.id ? { ...prev, is_active: next } : prev));
+      setDetailRow((prev) =>
+        prev?.id === row.id ? { ...prev, is_active: next } : prev,
+      );
       setRefreshNonce((n) => n + 1);
     } catch (error) {
       toastApiError(error, t("toggleActiveError"));
@@ -243,7 +315,8 @@ export function ChecklistTypeSettingsPanel() {
 
   const handleReorder = React.useCallback(
     async (fromIndex: number, toIndex: number) => {
-      if (reordering || fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+      if (reordering || fromIndex === toIndex || fromIndex < 0 || toIndex < 0)
+        return;
       const prev = items;
       const reordered = reorderArray(items, fromIndex, toIndex);
       const withSequences = applySequencesToItems(reordered, page, pageSize);
@@ -253,7 +326,11 @@ export function ChecklistTypeSettingsPanel() {
       setItems(withSequences);
       setReordering(true);
       try {
-        await Promise.all(updates.map((u) => patchChecklistType(u.id, { sequence: u.sequence })));
+        await Promise.all(
+          updates.map((u) =>
+            patchChecklistType(u.id, { sequence: u.sequence }),
+          ),
+        );
         toastSuccess(t("sequenceUpdated"));
         setRefreshNonce((n) => n + 1);
       } catch (error) {
@@ -267,54 +344,90 @@ export function ChecklistTypeSettingsPanel() {
     [items, page, pageSize, reordering, t],
   );
 
-  async function submitForm() {
-    const formSchema = z.object({
-      title: zTrimmedNonEmpty(t("validationTitle")),
-      project_type: z
-        .string()
-        .trim()
-        .min(1, t("validationProjectType"))
-        .refine((v) => /^\d+$/.test(v) && Number.parseInt(v, 10) > 0, t("validationProjectType")),
-    });
-    const parsed = formSchema.safeParse({ title, project_type: projectTypeId });
-    if (!parsed.success) {
-      const nextErrors: { title?: string; project_type?: string } = {};
-      for (const issue of parsed.error.issues) {
-        const field = String(issue.path[0] ?? "");
-        if (field === "title") nextErrors.title = String(issue.message);
-        if (field === "project_type") nextErrors.project_type = String(issue.message);
-      }
-      setErrors(nextErrors);
-      return;
-    }
 
-    setErrors({});
-    const { title: nextTitle, project_type: ptRaw } = parsed.data;
-    const projectType = Number.parseInt(ptRaw, 10);
-    setSaving(true);
-    try {
-      if (editing) {
-        await updateChecklistType(editing.id, {
-          title: nextTitle,
-          project_type: projectType,
-          is_required: isRequired,
-        });
-        toastSuccess(t("saved"));
-      } else {
-        await createChecklistType({
-          title: nextTitle,
-          project_type: projectType,
-          is_required: isRequired,
-        });
-        toastSuccess(t("created"));
-      }
-      setFormOpen(false);
-      if (!editing) setUrl({ page: null });
-      setRefreshNonce((n) => n + 1);
-    } finally {
-      setSaving(false);
+async function submitForm() {
+  const formSchema = z.object({
+    title: zTrimmedNonEmpty(t("validationTitle")),
+    project_type: z
+      .string()
+      .trim()
+      .min(1, t("validationProjectType"))
+      .refine((v) => /^\d+$/.test(v) && Number.parseInt(v, 10) > 0, t("validationProjectType")),
+  });
+  const parsed = formSchema.safeParse({ title, project_type: projectTypeId });
+
+  const nextErrors: { title?: string; project_type?: string; file?: string } = {};
+  if (!parsed.success) {
+    for (const issue of parsed.error.issues) {
+      const field = String(issue.path[0] ?? "");
+      if (field === "title") nextErrors.title = String(issue.message);
+      if (field === "project_type") nextErrors.project_type = String(issue.message);
     }
   }
+
+  if (!editing && !file) {
+    nextErrors.file = t("validationFile");
+  }
+
+  if (Object.keys(nextErrors).length > 0) {
+    setErrors(nextErrors);
+    return;
+  }
+
+  if (!parsed.success) return;
+
+  setErrors({});
+  const { title: nextTitle, project_type: ptRaw } = parsed.data;
+  const projectType = Number.parseInt(ptRaw, 10);
+
+  const payload = new FormData();
+
+
+if (editing && initialValues) {
+  if (nextTitle !== initialValues.title) {
+    payload.append("title", nextTitle);
+  }
+  payload.append("project_type", String(projectType));
+  if (isRequired !== initialValues.isRequired) {
+    payload.append("is_required", String(isRequired));
+  }
+  if (concentricPoint !== initialValues.concentricPoint) {
+    payload.append("concentric_point", String(concentricPoint));
+  }
+  if (file) {
+    payload.append("file", file);
+  }
+
+  if (Array.from(payload.keys()).length === 0) {
+    setFormOpen(false);
+    return;
+  }
+} else {
+  payload.append("title", nextTitle);
+  payload.append("project_type", String(projectType));
+  payload.append("is_required", String(isRequired));
+  payload.append("concentric_point", String(concentricPoint));
+  if (file) {
+    payload.append("file", file);
+  }
+}
+
+  setSaving(true);
+  try {
+    if (editing) {
+      await updateChecklistType(editing.id, payload);
+      toastSuccess(t("saved"));
+    } else {
+      await createChecklistType(payload);
+      toastSuccess(t("created"));
+    }
+    setFormOpen(false);
+    if (!editing) setUrl({ page: null });
+    setRefreshNonce((n) => n + 1);
+  } finally {
+    setSaving(false);
+  }
+}
 
   async function confirmDelete() {
     if (!deleteTarget) return;
@@ -379,7 +492,10 @@ export function ChecklistTypeSettingsPanel() {
                 clearable
                 portaled
                 onChange={(v) =>
-                  setUrl({ project_type: v || null, page: null }, { replace: true })
+                  setUrl(
+                    { project_type: v || null, page: null },
+                    { replace: true },
+                  )
                 }
               />
               <ListPageActiveFilter
@@ -389,7 +505,10 @@ export function ChecklistTypeSettingsPanel() {
                 filterAriaLabel={t("filterState")}
                 isActiveParam={isActiveParam}
                 onChange={(active) =>
-                  setUrl({ is_active: active ? null : "false", page: null }, { replace: true })
+                  setUrl(
+                    { is_active: active ? null : "false", page: null },
+                    { replace: true },
+                  )
                 }
               />
             </div>
@@ -399,7 +518,9 @@ export function ChecklistTypeSettingsPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">
+            {loadError}
+          </p>
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
@@ -426,13 +547,23 @@ export function ChecklistTypeSettingsPanel() {
               action: <AddButton type="button" onClick={openCreate} />,
             }}
             onClearFilters={() =>
-              setUrl({ search: null, is_active: null, project_type: null, page: null }, { replace: true })
+              setUrl(
+                {
+                  search: null,
+                  is_active: null,
+                  project_type: null,
+                  page: null,
+                },
+                { replace: true },
+              )
             }
             onSwitchToInactive={switchToInactive}
           />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
-            <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">{t("reorderHint")}</p>
+            <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+              {t("reorderHint")}
+            </p>
             <ListPageCardGrid>
               {items.map((row, index) => (
                 <div
@@ -477,7 +608,8 @@ export function ChecklistTypeSettingsPanel() {
                     title={formatChecklistTypeLabel(row)}
                     meta={
                       <>
-                        {t("table.projectType")}: {projectTypeLabelFromChecklistRow(row)}
+                        {t("table.projectType")}:{" "}
+                        {projectTypeLabelFromChecklistRow(row)}
                       </>
                     }
                     description={`${t("detail.createdAt")}: ${formatOptionalDate(dateFmt, row.created_at)}${
@@ -488,7 +620,11 @@ export function ChecklistTypeSettingsPanel() {
                     footer={
                       <ActiveStatusBadge
                         active={row.is_active}
-                        label={row.is_active ? t("status.active") : t("status.inactive")}
+                        label={
+                          row.is_active
+                            ? t("status.active")
+                            : t("status.inactive")
+                        }
                       />
                     }
                     onCardClick={() => setDetailRow(row)}
@@ -499,7 +635,9 @@ export function ChecklistTypeSettingsPanel() {
           </div>
         ) : (
           <div className="p-4 sm:p-6">
-            <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">{t("reorderHint")}</p>
+            <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+              {t("reorderHint")}
+            </p>
             <ChecklistTypeSortableTable
               items={items}
               reordering={reordering}
@@ -527,7 +665,11 @@ export function ChecklistTypeSettingsPanel() {
         {!listLoading && !loadError && items.length > 0 ? (
           <DataTablePaginationBar
             pagination={pagination}
-            summary={t("pageLabel", { start: pageRange.start, end: pageRange.end, total: pagination.total_records })}
+            summary={t("pageLabel", {
+              start: pageRange.start,
+              end: pageRange.end,
+              total: pagination.total_records,
+            })}
             prevLabel={t("prev")}
             nextLabel={t("next")}
             onPrev={() => setPage(Math.max(1, pagination.current_page - 1))}
@@ -565,7 +707,12 @@ export function ChecklistTypeSettingsPanel() {
         footer={
           detailRow ? (
             <>
-              <AppButton type="button" variant="secondary" size="sm" onClick={() => setDetailRow(null)}>
+              <AppButton
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setDetailRow(null)}
+              >
                 {t("modal.cancel")}
               </AppButton>
               <AppButton
@@ -586,7 +733,9 @@ export function ChecklistTypeSettingsPanel() {
                 size="sm"
                 loading={togglingId === detailRow.id}
                 disabled={togglingId === detailRow.id}
-                onClick={() => void handleToggleActive(detailRow, !detailRow.is_active)}
+                onClick={() =>
+                  void handleToggleActive(detailRow, !detailRow.is_active)
+                }
               >
                 {detailRow.is_active ? t("deactivate") : t("activate")}
               </AppButton>
@@ -607,51 +756,77 @@ export function ChecklistTypeSettingsPanel() {
         }
       >
         {detailRow ? (
-          <div className="space-y-5">
-            <FieldGroup label={t("table.title")}>
-              <p className="text-sm text-slate-800 dark:text-slate-200">{formatChecklistTypeLabel(detailRow)}</p>
-            </FieldGroup>
-            <FieldGroup label={t("table.projectType")}>
-              <p className="text-sm text-slate-800 dark:text-slate-200">
-                {projectTypeLabelFromChecklistRow(detailRow)}
-              </p>
-            </FieldGroup>
-            <FieldGroup label={t("table.sequence")}>
-              <p className="text-sm text-slate-800 dark:text-slate-200">{detailRow.sequence}</p>
-            </FieldGroup>
-            <FieldGroup label={t("table.required")}>
-              <p className="text-sm text-slate-800 dark:text-slate-200">
-                {detailRow.is_required ? t("required.yes") : t("required.no")}
-              </p>
-            </FieldGroup>
-            <FieldGroup label={t("table.status")}>
-              <ActiveStatusBadge
-                active={detailRow.is_active}
-                label={detailRow.is_active ? t("status.active") : t("status.inactive")}
-              />
-            </FieldGroup>
-            <FieldGroup label={t("detail.createdAt")}>
-              <p className="text-sm text-slate-800 dark:text-slate-200">
-                {formatOptionalDate(dateFmt, detailRow.created_at)}
-              </p>
-              {checklistTypeUserLabel(detailRow.created_by) !== "—" ? (
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {t("detail.byUser", { user: checklistTypeUserLabel(detailRow.created_by) })}
-                </p>
-              ) : null}
-            </FieldGroup>
-            <FieldGroup label={t("detail.updatedAt")}>
-              <p className="text-sm text-slate-800 dark:text-slate-200">
-                {formatOptionalDate(dateFmt, detailRow.modified_at)}
-              </p>
-              {checklistTypeUserLabel(detailRow.modified_by) !== "—" ? (
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {t("detail.byUser", { user: checklistTypeUserLabel(detailRow.modified_by) })}
-                </p>
-              ) : null}
-            </FieldGroup>
-          </div>
-        ) : null}
+  <div className="space-y-5">
+    <FieldGroup label={t("table.title")}>
+      <p className="text-sm text-slate-800 dark:text-slate-200">
+        {formatChecklistTypeLabel(detailRow)}
+      </p>
+    </FieldGroup>
+    <FieldGroup label={t("table.projectType")}>
+      <p className="text-sm text-slate-800 dark:text-slate-200">
+        {projectTypeLabelFromChecklistRow(detailRow)}
+      </p>
+    </FieldGroup>
+    <FieldGroup label={t("table.sequence")}>
+      <p className="text-sm text-slate-800 dark:text-slate-200">
+        {detailRow.sequence}
+      </p>
+    </FieldGroup>
+    <FieldGroup label={t("table.required")}>
+      <p className="text-sm text-slate-800 dark:text-slate-200">
+        {detailRow.is_required ? t("required.yes") : t("required.no")}
+      </p>
+    </FieldGroup>
+
+    <FieldGroup label={t("modal.file")}>
+      {detailRow.file ? (
+        <a
+          href={detailRow.file ?? "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+        >
+{detailRow.file.split("/").pop() ?? detailRow.file}        </a>
+      ) : (
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t("modal.noFile")}</p>
+      )}
+    </FieldGroup>
+    <FieldGroup label={t("table.status")}>
+      <ActiveStatusBadge
+        active={detailRow.is_active}
+        label={
+          detailRow.is_active
+            ? t("status.active")
+            : t("status.inactive")
+        }
+      />
+    </FieldGroup>
+    <FieldGroup label={t("detail.createdAt")}>
+      <p className="text-sm text-slate-800 dark:text-slate-200">
+        {formatOptionalDate(dateFmt, detailRow.created_at)}
+      </p>
+      {checklistTypeUserLabel(detailRow.created_by) !== "—" ? (
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          {t("detail.byUser", {
+            user: checklistTypeUserLabel(detailRow.created_by),
+          })}
+        </p>
+      ) : null}
+    </FieldGroup>
+    <FieldGroup label={t("detail.updatedAt")}>
+      <p className="text-sm text-slate-800 dark:text-slate-200">
+        {formatOptionalDate(dateFmt, detailRow.modified_at)}
+      </p>
+      {checklistTypeUserLabel(detailRow.modified_by) !== "—" ? (
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          {t("detail.byUser", {
+            user: checklistTypeUserLabel(detailRow.modified_by),
+          })}
+        </p>
+      ) : null}
+    </FieldGroup>
+  </div>
+) : null}
       </DetailPanel>
 
       <AppModal
@@ -663,10 +838,22 @@ export function ChecklistTypeSettingsPanel() {
         isBusy={saving}
         footer={
           <>
-            <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => setFormOpen(false)}>
+            <AppButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={saving}
+              onClick={() => setFormOpen(false)}
+            >
               {t("modal.cancel")}
             </AppButton>
-            <AppButton type="button" variant="primary" size="sm" loading={saving} onClick={() => void submitForm()}>
+            <AppButton
+              type="button"
+              variant="primary"
+              size="sm"
+              loading={saving}
+              onClick={() => void submitForm()}
+            >
               {t("modal.save")}
             </AppButton>
           </>
@@ -686,15 +873,21 @@ export function ChecklistTypeSettingsPanel() {
               value={title}
               onChange={(e) => {
                 setTitle(capitalizeFirstLetter(e.target.value));
-                if (errors.title) setErrors((prev) => ({ ...prev, title: undefined }));
+                if (errors.title)
+                  setErrors((prev) => ({ ...prev, title: undefined }));
               }}
               className={cn(
                 surfaceInputClassName,
-                errors.title && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
+                errors.title &&
+                  "border-red-500 focus:border-red-500 focus:ring-red-500/20",
               )}
               autoComplete="off"
             />
-            {errors.title ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.title}</p> : null}
+            {errors.title ? (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                {errors.title}
+              </p>
+            ) : null}
           </FieldGroup>
           <FieldGroup
             label={
@@ -713,26 +906,96 @@ export function ChecklistTypeSettingsPanel() {
               portaled
               onChange={(v) => {
                 setProjectTypeId(v);
-                if (errors.project_type) setErrors((prev) => ({ ...prev, project_type: undefined }));
+                if (errors.project_type)
+                  setErrors((prev) => ({ ...prev, project_type: undefined }));
               }}
             />
             {errors.project_type ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.project_type}</p>
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                {errors.project_type}
+              </p>
             ) : null}
           </FieldGroup>
-          <FieldGroup label={t("modal.requiredLabel")} htmlFor="checklist-type-required">
-            <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+     
+          <FieldGroup
+            label={
+              <span>
+                {t("modal.file")}{" "}
+                {!editing && <span className="text-red-500">*</span>}
+              </span>
+            }
+            htmlFor="checklist-type-file"
+          >
+            <div className="flex items-center gap-3">
+              <label
+                htmlFor="checklist-type-file"
+                className={cn(
+                  "inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                  "border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
+                  "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800",
+                  errors.file && "border-red-500",
+                )}
+              >
+                <Paperclip className="size-4" aria-hidden />
+                {file ? t("modal.replaceFile") : t("modal.chooseFile")}
+              </label>
               <input
-                id="checklist-type-required"
-                type="checkbox"
-                className="size-4 rounded border-slate-300"
-                checked={isRequired}
+                id="checklist-type-file"
+                type="file"
+                className="sr-only"
                 disabled={saving}
-                onChange={(e) => setIsRequired(e.target.checked)}
+                onChange={(e) => {
+                  const next = e.target.files?.[0] ?? null;
+                  setFile(next);
+                  if (errors.file)
+                    setErrors((prev) => ({ ...prev, file: undefined }));
+                }}
               />
-              {isRequired ? t("required.yes") : t("required.no")}
-            </label>
+
+              {file ? (
+                <span className="flex min-w-0 items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  <span className="min-w-0 max-w-[10rem] truncate">
+                    {file.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setFile(null)}
+                    aria-label={t("modal.removeFile")}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </span>
+              ) : existingFileName ? (
+                <span className="min-w-0 max-w-[10rem] truncate text-xs text-slate-500 dark:text-slate-400">
+                  {t("modal.currentFile")}: {existingFileName}
+                </span>
+              ) : null}
+            </div>
+            {errors.file ? (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                {errors.file}
+              </p>
+            ) : null}
           </FieldGroup>
+          <FieldGroup label={t("modal.requiredLabel")} htmlFor="checklist-type-is-required">
+  <label
+    htmlFor="checklist-type-is-required"
+    className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-300"
+  >
+    <input
+      id="checklist-type-is-required"
+      type="checkbox"
+      className="size-4 rounded border-slate-300"
+      checked={isRequired}
+      disabled={saving}
+      onChange={(e) => setIsRequired(e.target.checked)}
+    />
+    {isRequired ? t("required.yes") : t("required.no")}
+  </label>
+</FieldGroup>
+
+
         </div>
       </AppModal>
 
@@ -742,7 +1005,9 @@ export function ChecklistTypeSettingsPanel() {
         onConfirm={() => void confirmDelete()}
         title={t("deleteConfirmTitle")}
         body={t("deleteConfirmBody")}
-        highlight={deleteTarget ? formatChecklistTypeLabel(deleteTarget) : undefined}
+        highlight={
+          deleteTarget ? formatChecklistTypeLabel(deleteTarget) : undefined
+        }
         confirmLabel={t("confirmDelete")}
         cancelLabel={t("modal.cancel")}
         isBusy={deleting}

@@ -6,13 +6,15 @@ import { useTranslations } from "next-intl";
 import { Controller, useFieldArray, useWatch, type Control, type FieldErrors } from "react-hook-form";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { SITE_CONTACT_PERSON_TITLES } from "@/features/sites/constants/site-contact-person.constants";
+import { fetchTitlesPage } from "@/features/titles/api/title.api";
+import type { Title } from "@/features/titles/types/title.types";
 import type { SiteFormValues } from "@/features/sites/schemas/site-form-schema";
 import { cn } from "@/core/utils/http.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { AppButton, CheckmarkSelect, FieldErrorText, FieldGroup } from "@/shared/ui";
 
 type Props = {
-  control: Control<SiteFormValues, any, any>;
+  control: Control<SiteFormValues>;
   errors: FieldErrors<SiteFormValues>;
   disabled?: boolean;
   pendingContactRowRef: React.MutableRefObject<number | null>;
@@ -62,18 +64,51 @@ export function SiteContactPersonsFields({
     name: "contacts",
   });
 
-  const titleOptions = React.useMemo(
-    () => [
-      {
-        value: "",
-        label: t("contactPerson.titlePlaceholder"),
-      },
-      ...SITE_CONTACT_PERSON_TITLES.map((value) => ({
-        value,
-        label: t(`contactPerson.titles.${value}`),
-      })),
-    ],
-    [t],
+  const [titles, setTitles] = React.useState<Title[]>([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { items } = await fetchTitlesPage(1, 500);
+        if (!cancelled) {
+          setTitles(items);
+        }
+      } catch {
+        if (!cancelled) setTitles([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const getRowTitleOptions = React.useCallback(
+    (selectedValue: string) => {
+      const list = [
+        {
+          value: "",
+          label: t("contactPerson.titlePlaceholder"),
+        },
+        ...titles.map((item) => ({
+          value: String(item.id),
+          label: item.title,
+        })),
+      ];
+
+      if (selectedValue && !list.some((opt) => opt.value === selectedValue)) {
+        const isLegacy = (SITE_CONTACT_PERSON_TITLES as readonly string[]).includes(selectedValue);
+        list.push({
+          value: selectedValue,
+          label: isLegacy
+            ? t(`contactPerson.titles.${selectedValue}`, { defaultValue: selectedValue })
+            : selectedValue,
+        });
+      }
+
+      return list;
+    },
+    [titles, t],
   );
 
   const contactSelectOptions = React.useMemo(
@@ -158,7 +193,7 @@ export function SiteContactPersonsFields({
                       id={`site-cp-title-${index}`}
                       portaled
                       listLabel={t("contactPerson.titleLabel")}
-                      options={titleOptions}
+                      options={getRowTitleOptions(titleField.value)}
                       value={titleField.value}
                       emptyLabel={t("contactPerson.titlePlaceholder")}
                       disabled={disabled}

@@ -37,11 +37,13 @@ export function SiteDetailBody({
   dateFmt,
   clientName,
   contactNameById = {},
+  titleNameById = {},
 }: {
   detail: Site;
   dateFmt: Intl.DateTimeFormat;
   clientName: string | null;
   contactNameById?: Record<number, string>;
+  titleNameById?: Record<string, string>;
 }) {
   const t = useTranslations("Dashboard.sites");
   const tMeta = useTranslations("Dashboard.common.detail");
@@ -108,17 +110,40 @@ export function SiteDetailBody({
           {contactPersonRows.length === 0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("contactPerson.empty")}</p>
           ) : (
-            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-              {contactPersonRows.map((row, index) => {
-                const contactId = getSiteContactPersonContactId(row.contact);
-                const contactLabel = formatSiteContactPersonContactLabel(row.contact, contactNameById);
-                return (
-                  <li
-                    key={row.id ?? `${row.title}-${contactId ?? index}`}
-                    className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                  >
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-xs font-bold uppercase tracking-[0.05em] text-slate-400 dark:text-slate-500">
+                  {t("contactPerson.titleLabel")}
+                </span>
+                <span className="text-xs font-bold uppercase tracking-[0.05em] text-slate-400 dark:text-slate-500">
+                  {t("contactPerson.contactLabel")}
+                </span>
+              </div>
+              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                {contactPersonRows.map((row, index) => {
+                  const contactId = getSiteContactPersonContactId(row.contact);
+                  const contactLabel = formatSiteContactPersonContactLabel(row.contact, contactNameById);
+                  return (
+                    <li
+                      key={row.id ?? `${row.title}-${contactId ?? index}`}
+                      className="flex flex-wrap items-center justify-between gap-3 py-3 last:pb-0"
+                    >
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                      {t(`contactPerson.titles.${row.title}`)}
+                      {(() => {
+                        // API sometimes returns title as an object — coerce to string safely
+                        const rawTitle = row.title;
+                        const titleKey: string =
+                          rawTitle && typeof rawTitle === "object"
+                            ? String((rawTitle as Record<string, unknown>).title ?? (rawTitle as Record<string, unknown>).name ?? "")
+                            : String(rawTitle ?? "");
+                        
+                        const resolvedTitle = titleNameById[titleKey] || titleKey;
+                        const isLegacy = ["site_contact", "finance", "emergency"].includes(resolvedTitle);
+                        if (isLegacy) {
+                          return t(`contactPerson.titles.${resolvedTitle}`, { defaultValue: resolvedTitle });
+                        }
+                        return resolvedTitle || "—";
+                      })()}
                     </span>
                     {contactId ? (
                       <DetailEntityLink
@@ -134,6 +159,7 @@ export function SiteDetailBody({
                 );
               })}
             </ul>
+            </div>
           )}
         </DetailPanelCard>
 

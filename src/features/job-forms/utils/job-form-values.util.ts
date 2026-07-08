@@ -259,6 +259,7 @@ export function buildJobFormSubmissionFormData(
     remarks?: string;
     submissionId?: number;
     defaultValues?: Record<string, unknown>;
+    job_pin_id?: number;
   },
 ): FormData {
   const values = mapFormDataToSubmissionValues(formData, sections, extra?.defaultValues);
@@ -269,7 +270,10 @@ export function buildJobFormSubmissionFormData(
   if (extra?.remarks != null) {
     fd.append("remarks", extra.remarks);
   }
-  
+  if (extra?.job_pin_id != null) {
+    fd.append("job_pin_id", String(extra.job_pin_id));
+  }
+
   // Only include the values key if there are changed/dirty fields
   if (values.length > 0) {
     fd.append("values", JSON.stringify(values));
@@ -281,7 +285,7 @@ export function buildJobFormSubmissionFormData(
     if (section.is_subform) continue;
     for (const field of section.fields) {
       if (!field.api_name || field.id == null) continue;
-      
+
       // Untouched field -> do not send
       if (!(field.api_name in formData)) continue;
 

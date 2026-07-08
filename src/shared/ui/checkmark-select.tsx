@@ -211,14 +211,16 @@ export function CheckmarkSelect({
   const anchorRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
+  // Defensively coerce value — callers may pass a number or object from the API
+  const safeValue = typeof value === "string" ? value : String(value ?? "");
   const resolvedOptions = React.useMemo(() => {
-    const id = value.trim();
+    const id = safeValue.trim();
     if (!id || options.some((opt) => opt.value === id)) return options;
     const label = fallbackLabel?.trim() || id;
     return [{ value: id, label }, ...options];
-  }, [options, value, fallbackLabel]);
-  const selected = resolvedOptions.find((o) => o.value === value);
-  const canClear = Boolean(clearable && !disabled && value.trim() !== "");
+  }, [options, safeValue, fallbackLabel]);
+  const selected = resolvedOptions.find((o) => o.value === safeValue);
+  const canClear = Boolean(clearable && !disabled && safeValue.trim() !== "");
   const showAdd = Boolean(onAdd && !disabled);
   // Show add action only in dropdown footer, not on trigger.
   const useSplitTrigger = canClear;
@@ -248,7 +250,7 @@ export function CheckmarkSelect({
     if (open) setSearch("");
   }, [open]);
 
-  const displayLabel = value && selected ? selected.label : emptyLabel;
+  const displayLabel = safeValue && selected ? selected.label : emptyLabel;
 
   const listClasses = cn(
     "flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
@@ -306,7 +308,7 @@ export function CheckmarkSelect({
         ) : null}
         <ul role="listbox" aria-label={listLabel} className="min-h-0 flex-1 overflow-auto py-1">
           {filteredOptions.map((opt) => {
-            const isSelected = opt.value === value;
+            const isSelected = opt.value === safeValue;
             return (
               <li key={opt.value === "" ? "__empty__" : opt.value} role="presentation">
                 <button
@@ -459,7 +461,7 @@ export function CheckmarkSelect({
             onClick={() => !disabled && setOpen((o) => !o)}
             className={openSplitButtonClass}
           >
-            <span className={cn("min-w-0 flex-1 truncate", !value && "text-slate-400 dark:text-slate-500")}>
+            <span className={cn("min-w-0 flex-1 truncate", !safeValue && "text-slate-400 dark:text-slate-500")}>
               {displayLabel}
             </span>
             <ChevronDown
@@ -508,7 +510,7 @@ export function CheckmarkSelect({
             onClick={() => !disabled && setOpen((o) => !o)}
             className={triggerClass}
           >
-            <span className={cn("truncate", !value && "text-slate-400 dark:text-slate-500")}>{displayLabel}</span>
+            <span className={cn("truncate", !safeValue && "text-slate-400 dark:text-slate-500")}>{displayLabel}</span>
             <ChevronDown
               className={cn(
                 "shrink-0 text-[color:var(--dash-accent,#111111)] opacity-80 transition dark:opacity-90",

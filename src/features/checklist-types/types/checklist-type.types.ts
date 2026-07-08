@@ -27,6 +27,8 @@ export type ChecklistType = {
   organization?: number;
   project_type: ChecklistTypeProjectTypeRef | number | null;
   project_type_name?: string | null;
+  file?: string | null;
+  concentric_point?: boolean; 
 };
 
 export type ChecklistTypePagination = {
