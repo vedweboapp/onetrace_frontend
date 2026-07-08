@@ -30,6 +30,7 @@ export type Drawing = {
   deleted_by: unknown;
   pin_count?: number;
   pins_count?: number;
+
   /** Included on list responses when the API returns plot/pin geometry. */
   plots?: DrawingPlot[];
 };
@@ -53,7 +54,7 @@ export type DrawingPin = {
   is_converted_job?: boolean;
   formId?: number | null;
   project_form?: number | DrawingPinProjectFormRef | null;
-
+  job_pin_id?: number | string;
   /** Optional description shown in the pin details panel. */
   description?: string | null;
 

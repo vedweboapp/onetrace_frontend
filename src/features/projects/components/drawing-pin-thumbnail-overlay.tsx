@@ -7,8 +7,9 @@ import { cn } from "@/core/utils/http.util";
 
 type Props = {
   plots?: DrawingPlot[] | null;
+  activePinId?: number;   // ← add
   className?: string;
-};
+}
 
 function TinyPin({ color }: { color: string }) {
   return (
@@ -28,8 +29,12 @@ function TinyPin({ color }: { color: string }) {
 }
 
 /** Renders very small pin markers at API coordinates on a drawing thumbnail. */
-export function DrawingPinThumbnailOverlay({ plots, className }: Props) {
-  const pins = React.useMemo(() => collectDrawingPins(plots), [plots]);
+export function DrawingPinThumbnailOverlay({ plots, activePinId, className }: Props) {
+  const pins = React.useMemo(() => {
+    const all = collectDrawingPins(plots);
+    return activePinId != null ? all.filter((p) => p.id === activePinId) : all;
+  }, [plots, activePinId]);
+
   if (!pins.length) return null;
 
   return (

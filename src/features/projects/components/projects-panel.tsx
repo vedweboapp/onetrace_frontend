@@ -20,7 +20,6 @@ import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
-  ActiveStatusBadge,
   AddButton,
   ConfirmDialog,
   DataTablePaginationBar,
@@ -313,9 +312,23 @@ export function ProjectsPanel() {
           cellClassName: "max-w-[14rem] lg:max-w-xs xl:max-w-md",
         },
       ),
-      c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive"), {
-        responsive: "lg",
-      }),
+      c.custom("status", t("table.status"), (r) => {
+        const ps = r.project_status;
+        if (ps && typeof ps === "object" && ps.name?.trim()) {
+          return (
+            <span
+              className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+              style={{
+                backgroundColor: ps.bg_color || "#e2e8f0",
+                color: ps.text_color || "#475569",
+              }}
+            >
+              {ps.name.trim()}
+            </span>
+          );
+        }
+        return <span className="text-slate-400 dark:text-slate-500">—</span>;
+      }, { responsive: "lg" }),
       // c.actions("actions", t("table.actions"), (row) => (
       //   <DataTableRowActionsMenu
       //     menuAriaLabel={tList("openRowActions")}
@@ -470,10 +483,23 @@ export function ProjectsPanel() {
                     <div className="flex w-full flex-wrap items-center justify-between gap-3">
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
                         {typeChip ? <ProjectTypeChip row={typeChip} /> : null}
-                        <ActiveStatusBadge
-                          active={row.is_active}
-                          label={row.is_active ? t("status.active") : t("status.inactive")}
-                        />
+                        {(() => {
+                          const ps = row.project_status;
+                          if (ps && typeof ps === "object" && ps.name?.trim()) {
+                            return (
+                              <span
+                                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                                style={{
+                                  backgroundColor: ps.bg_color || "#e2e8f0",
+                                  color: ps.text_color || "#475569",
+                                }}
+                              >
+                                {ps.name.trim()}
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                       <span className="text-xs text-slate-500 dark:text-slate-400">
                         {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}

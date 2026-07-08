@@ -100,7 +100,6 @@
       "newPassword": "New Password",
       "otpInput": "Enter the 6-digit code sent to your email",
       "newPasswordPlaceholder": "Enter new password"
-
     },
     "resetPassword": {
       "title": "Reset Password",
@@ -283,6 +282,10 @@
           "tags": {
             "title": "Tags",
             "description": "Tags for organizing pins and records."
+          },
+          "title": {
+            "title": "Titles",
+            "description": "Organize the title for the project."
           }
         }
       }
@@ -821,6 +824,47 @@
       "validationName": "Enter a status name.",
       "validationHex": "Use a valid 6-digit hex color (e.g. #E5E7EB)."
     },
+    "titleSettings": {
+      "metaTitle": "Titles",
+      "title": "Titles",
+      "subtitle": "Manage titles used across the app.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "table": {
+        "title": "Title",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "emptyTitle": "No titles yet",
+      "emptyDescription": "Create your first title to use across records.",
+      "loadError": "Could not load titles. Try again.",
+      "modal": {
+        "createTitle": "New title",
+        "editTitle": "Edit title",
+        "titleName": "Name",
+        "titleNamePlaceholder": "Enter title name",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this title?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} titles",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Title updated",
+      "created": "Title created",
+      "deleted": "Title deleted",
+      "validationName": "Enter a title name."
+    },
     "tags": {
       "metaTitle": "Tags",
       "title": "Tags",
@@ -1040,7 +1084,17 @@
         "requiredLabel": "Required on job forms",
         "activeLabel": "Active",
         "save": "Save",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "file": "File",
+        "filePlaceholder": "Select a file",
+        "fileRequired": "Please select a file.",
+        "chooseFile": "Choose file",
+        "replaceFile": "Replace file",
+        "removeFile": "Remove file",
+        "currentFile": "Current file",
+        "validationFile": "Please attach a file",
+        "concentricPoint": "Concentric Point"
+
       },
       "deleteConfirmTitle": "Delete this checklist type?",
       "deleteConfirmBody": "Job forms using this checklist may need to be updated. This action cannot be undone.",
@@ -2775,6 +2829,7 @@
         "layoutDesktop": "Desktop",
         "layoutPhone": "Phone",
         "checklistSaveError": "Could not save checklist. Try again."
+        
       },
       "checklists": {
         "sectionTitle": "Checklists",
@@ -2815,9 +2870,16 @@
       "sections": {
         "basic": "Details",
         "relations": "Links",
+        "levels": "Levels",
         "schedule": "Schedule",
         "jobMeta": "Work scope",
         "jobMetaHint": "Optional group, composite items, and scope total sent in job_meta."
+      },
+      "levelsHierarchy": {
+        "loadError": "Could not load levels. Try again.",
+        "loadingMore": "Loading more levels…",
+        "noPlotsInLevel": "No plots in this level.",
+        "emptyLoaded": "No levels returned for this project yet."
       },
       "lineItems": {
         "qty": "Qty",
@@ -2852,7 +2914,9 @@
         "completedAt": "Completed",
         "createdAt": "Created",
         "updatedAt": "Last updated",
-        "createdBy": "Created by"
+        "createdBy": "Created by",
+        "checklists": "Check List",
+        "selectCheckList": "Select Check List"
       },
       "modal": {
         "cancel": "Cancel",
@@ -3013,7 +3077,7 @@
           "createdAt": "Created at"
         }
       },
-      "location":{
+      "location": {
         "title": "Locations",
         "subtitle": "Manage and view all locations for this project.",
         "searchPlaceholder": "Search locations…",
@@ -3030,7 +3094,13 @@
         "requiredJob": "Job title is required.",
         "Start": "Start Date",
         "assignedWorker": "Assign Worker",
-        "selectWorker": "Select Worker"
+        "selectWorker": "Select Worker",
+        "requiredSite": "Site is required.",
+        "requiredDate": "Date is required.",
+        "requiredWorker": "Worker is required.",
+        "checkList": "Check List",
+        "selectChecklist": "Select Checklist"
+        
       },
       "drawings": {
         "title": "Drawings",
@@ -3198,7 +3268,7 @@
         "filterManualSource": "Manual",
         "filterQuotationSource": "Auto",
         "selectAll": "Select All",
-        "deselectAll":"Deselect All",
+        "deselectAll": "Deselect All",
         "filterLevel": "Level",
         "filterAllLevels": "All levels",
         "filterPlot": "Plot",

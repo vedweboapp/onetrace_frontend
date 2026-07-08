@@ -1,5 +1,4 @@
-import type { Site, SiteContactPerson } from "@/features/sites/types/site.types";
-import type { SiteContactPersonTitle } from "@/features/sites/constants/site-contact-person.constants";
+import type { Site, SiteContactPerson, SiteContactPersonTitle } from "@/features/sites/types/site.types";
 
 export function getSiteContactPersonContactId(
   contact: SiteContactPerson["contact"],
@@ -28,7 +27,7 @@ export function formatSiteContactPersonContactLabel(
 }
 
 export function isSiteContactPersonTitle(value: string): value is SiteContactPersonTitle {
-  return value === "site_contact" || value === "finance" || value === "emergency";
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 export function normalizeSiteContactPersonsFromApi(site: Site): SiteContactPerson[] {

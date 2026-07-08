@@ -48,6 +48,9 @@ export type JobChecklistItem = {
   is_required: boolean;
   is_checked: boolean;
   checked_at: string | null;
+  concentric_point?: boolean;
+  file?: string | null;
+  concentric_point_is_checked?: boolean;
 };
 
 /** Raw job detail checklist row (API may use `checklist_id`). */
@@ -59,6 +62,9 @@ export type JobChecklistApiRow = {
   is_required?: boolean;
   is_checked?: boolean;
   checked_at?: string | null;
+  concentric_point?: boolean;
+  file?: string | null;
+  concentric_point_is_checked?: boolean;
 };
 
 /** Job detail checklists block: `{ is_marked, items: [...] }`. */
@@ -70,6 +76,8 @@ export type JobChecklistsBlock = {
 export type JobChecklistUpdateItem = {
   checklist_id: number;
   is_checked: boolean;
+  is_marked: boolean;
+  concentric_point: boolean;
 };
 
 export type JobFormRef = {
@@ -131,8 +139,25 @@ export type JobMetaLegacyPayload = {
   };
 };
 
+export type JobLevelPinSnapshot = {
+  id: number;
+};
+
+export type JobLevelPlotSnapshot = {
+  id: number;
+  name: string;
+  pins?: JobLevelPinSnapshot[];
+};
+
+export type JobLevelSnapshot = {
+  id: number;
+  name: string;
+  drawing_file?: string;
+  plots?: JobLevelPlotSnapshot[];
+};
+
 export type JobCreatePayload = {
-  title: string;
+  // title: string;
   description: string;
   assigned_worker: number;
   start_date: string;
@@ -142,6 +167,7 @@ export type JobCreatePayload = {
   project?: number;
   site?: number;
   job_meta?: JobMetaPayload;
+  checklists?: number[];
 };
 
 /** Backend creates a job from a quotation (minimal body). */
@@ -149,11 +175,14 @@ export type JobCreateFromQuotationPayload = {
   quotation_id: number;
 };
 
-export type JobUpdatePayload = Partial<JobCreatePayload> & {
+export type JobUpdatePayload = Omit<Partial<JobCreatePayload>, "checklists"> & {
   job_status?: number;
   /** List/detail toggle; omitted on create payload. */
   is_active?: boolean;
-  checklists?: JobChecklistUpdateItem[];
+  pin_ids?: number[];
+  checklists?: number[] | JobChecklistUpdateItem[];
+  /** Included when editing jobs created from project pins. */
+  levels?: JobLevelSnapshot[];
 };
 
 export type Job = {

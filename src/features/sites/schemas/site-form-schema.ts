@@ -39,10 +39,7 @@ export function createSiteFormSchema(messages: SiteFormMessages) {
       longitude: z.string(),
       contacts: z.array(
         z.object({
-          title: z
-            .string()
-            .trim()
-            .refine((val) => ["site_contact", "finance", "emergency"].includes(val), { message: messages.contactPersonTitle }),
+          title: zTrimmedNonEmpty(messages.contactPersonTitle),
           contact: z
             .string()
             .trim()
