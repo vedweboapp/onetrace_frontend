@@ -12,7 +12,7 @@ export type SiteClientRef = {
   phone?: string | null;
 };
 
-export type SiteContactPersonTitle = "site_contact" | "finance" | "emergency";
+export type SiteContactPersonTitle = string;
 
 export type SiteContactPersonPayload = {
   title: SiteContactPersonTitle;

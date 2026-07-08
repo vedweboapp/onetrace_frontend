@@ -2,7 +2,7 @@ import { z } from "zod";
 import { zTrimmedNonEmpty } from "@/shared/form";
 
 export type JobFormMessages = {
-  title: string;
+  // title: string;
   assignedWorker: string;
   startDate: string;
   optionalId: string;
@@ -18,7 +18,7 @@ const optionalPositiveId = (message: string) =>
 export function createJobFormSchema(messages: JobFormMessages) {
   return z
     .object({
-      title: zTrimmedNonEmpty(messages.title),
+      // title: zTrimmedNonEmpty(messages.title),
       description: z.string(),
       forms: z.array(z.string()),
       job_status: optionalPositiveId(messages.optionalId),
@@ -33,6 +33,7 @@ export function createJobFormSchema(messages: JobFormMessages) {
           message: messages.assignedWorker,
         }),
       start_date: zTrimmedNonEmpty(messages.startDate),
+      checklists: z.array(z.string()).optional(),
       job_meta_items: z
         .array(
           z.object({

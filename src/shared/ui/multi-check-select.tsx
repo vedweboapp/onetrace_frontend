@@ -60,6 +60,12 @@ function measureDropdownPlacement(
 }
 
 type Props = {
+  // Existing props...
+  // ...
+  // Optional external search handler to control the query value externally.
+  onSearchChange?: (next: string) => void;
+  // Existing props continuation
+
   id?: string;
   options: CheckmarkSelectOption[];
   values: string[];
@@ -104,6 +110,7 @@ export function MultiCheckSelect({
   addLabel,
   fallbackLabels,
   closeOnSelect = false,
+  onSearchChange,
 }: Props) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -221,7 +228,11 @@ export function MultiCheckSelect({
         <div className="border-b border-slate-100 p-2 dark:border-slate-800">
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setQuery(val);
+              if (onSearchChange) onSearchChange(val);
+            }}
             placeholder={searchPlaceholder}
             className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm outline-none focus-visible:border-[color:var(--dash-accent,#111111)] focus-visible:ring-2 focus-visible:ring-[color:var(--dash-accent,#111111)]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
           />
