@@ -112,12 +112,16 @@ function normalizeJobFormRef(entry: JobFormRefApiRow): JobFormRef | null {
         ? entry.submitted_form_id
         : null;
 
+  const submittedByStatus =
+    typeof entry.status === "string" && entry.status.toLowerCase() === "submitted";
   const isSubmitted =
-    typeof entry.is_submitted === "boolean" ? entry.is_submitted : submissionId != null;
+    typeof entry.is_submitted === "boolean"
+      ? entry.is_submitted
+      : submissionId != null || submittedByStatus;
 
   return {
     id: jobFormId,
-    name: entry.name,
+    name: entry.name ?? entry.project_form_name ?? null,
     project_form_id: projectFormId,
     is_submitted: isSubmitted,
     submitted_form_id: submissionId,

@@ -62,7 +62,7 @@ export function JobFormsSection({
       typeof form.submitted_form_id === "number" && form.submitted_form_id > 0
         ? form.submitted_form_id
         : null;
-    return submitted && submissionId ? `${hrefBase}&submissionId=${submissionId}` : hrefBase;
+    return submitted && submissionId ? `${hrefBase}&submission_id=${submissionId}` : hrefBase;
   }
 
   function openForm(form: JobFormRef) {

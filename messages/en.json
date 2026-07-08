@@ -654,6 +654,12 @@
         "createTitle": "New project status",
         "editTitle": "Edit",
         "statusName": "Status name",
+        "category": "Category",
+        "categoryPlaceholder": "Select category",
+        "categoryOptions": {
+          "open": "Open",
+          "closed": "Closed"
+        },
         "bgColour": "Background color",
         "textColour": "Text color",
         "save": "Save",
@@ -2818,6 +2824,7 @@
         "gateTitle": "Complete checklist first",
         "gateBody": "Mark the required items before opening “{form}”.",
         "gateRequiredHint": "All required checklist items must be checked to continue.",
+        "concentricPoint": "Concentric Point",
         "continueToForm": "Continue to form",
         "cancel": "Cancel",
         "blockedTitle": "Checklist required",
@@ -2849,7 +2856,7 @@
         "relations": "Links",
         "levels": "Levels",
         "schedule": "Schedule",
-        "jobMeta": "Work scope",
+        "jobMeta": "Task List",
         "jobMetaHint": "Optional group, composite items, and scope total sent in job_meta."
       },
       "levelsHierarchy": {
@@ -3075,6 +3082,8 @@
         "requiredSite": "Site is required.",
         "requiredDate": "Date is required.",
         "requiredWorker": "Worker is required.",
+        "requiredChecklist": "Checklist is required.",
+        "requiredJobStatus": "Job status is required.",
         "checkList": "Check List",
         "selectChecklist": "Select Checklist"
         

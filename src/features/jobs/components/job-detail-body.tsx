@@ -12,7 +12,7 @@ import {
   jobChecklistUpdatePayload,
   requiredJobChecklistsComplete,
 } from "@/features/jobs/utils/job-nested-fields.util";
-import { toastApiError } from "@/shared/feedback/app-toast";
+import { toastApiError, toastError } from "@/shared/feedback/app-toast";
 import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import type { JobChecklistItem } from "@/features/jobs/types/job.types";
@@ -51,7 +51,11 @@ import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { cn } from "@/core/utils/http.util";
 import { Layers, MapPinned } from "lucide-react";
 import { DrawingPinPreviewModal } from "@/features/projects/components/drawing-pin-preview-modal";
-import type { DrawingPin, DrawingPlot } from "@/features/projects/types/drawing.types";
+import type { Drawing, DrawingPin, DrawingPlot } from "@/features/projects/types/drawing.types";
+import { useLevelSnapshots, type LevelSnapshotState } from "@/shared/hooks/use-level-snapshots.hook";
+import { PinThumbnailCropped } from "@/shared/components/pin-thumbnail-cropped";
+import { DrawingFilePreviewFill } from "@/features/projects/components/drawing-file-preview";
+import { DrawingPinThumbnailOverlay } from "@/features/projects/components/drawing-pin-thumbnail-overlay";
 
 type JobDrawingPlot = Omit<DrawingPlot, "coordinates"> & {
   coordinates?: number[][];
@@ -62,11 +66,12 @@ type JobDrawingLevel = {
   id: number;
   name: string;
   drawing_file: string;
+  drawing_file_type?: string;
   plots?: JobDrawingPlot[];
 };
 
 const PIN_TABLE_GRID =
-  "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,4rem)_minmax(0,1fr)_minmax(0,0.5fr)_minmax(0,0.4fr)_minmax(0,0.7fr)_minmax(0,0.5fr)_minmax(0,3rem)] items-center gap-x-3 sm:gap-x-4";
+  "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,4rem)_minmax(0,1.2fr)_minmax(0,5.5rem)_minmax(0,0.5fr)_minmax(0,0.4fr)_minmax(0,0.8fr)_minmax(0,0.5fr)_minmax(0,3rem)] items-center gap-x-3 sm:gap-x-4";
 
 const PIN_TABLE_HEADER_CLASS = cn(
   PIN_TABLE_GRID,
@@ -101,6 +106,7 @@ function ProjectPinTableHeader() {
     <div className={PIN_TABLE_HEADER_CLASS}>
       <span>Pin ID</span>
       <span>Product</span>
+      <span>Preview</span>
       <span>{isEs ? "Variación" : "Variation"}</span>
       <span>Quantity</span>
       <span>Form</span>
@@ -115,25 +121,40 @@ function ProjectPinRow({
   form,
   onPreview,
   checklistsComplete,
+  checklistMarked,
   onOpenGateModal,
   onNavigate,
   pinStatuses,
   onUpdatePinStatus,
+  drawingFile,
+  drawingFileType,
+  snapshotState,
+  plots,
+  drawingName,
 }: {
   pin: DrawingPin;
   form?: { label: string; href: string; projectFormId: number; submitted: boolean } | null;
   onPreview: () => void;
   checklistsComplete: boolean;
+  checklistMarked: boolean;
   onOpenGateModal: (href: string, label: string) => void;
   onNavigate: (href: string) => void;
   pinStatuses: WorkflowColourStatus[];
   onUpdatePinStatus: (pinId: number, nextStatusId: number) => void;
+  drawingFile?: string;
+  drawingFileType?: string;
+  snapshotState?: LevelSnapshotState;
+  plots: DrawingPlot[];
+  drawingName?: string;
 }) {
   const locale = useLocale();
   const isEs = locale === "es";
   const productName = pin.item_detail?.name || pin.group_detail?.name || "Pin";
   const sku = pin.item_detail?.sku;
   const variationText = pin.variation ? (isEs ? "Sí" : "Yes") : (isEs ? "No" : "No");
+  const t = useTranslations("Dashboard.jobs.forms");
+
+  const [isEditingStatus, setIsEditingStatus] = React.useState(false);
 
   return (
     <div className={cn(PIN_TABLE_ROW_CLASS, "hover:bg-slate-50/90 dark:hover:bg-slate-800/30")}>
@@ -142,6 +163,64 @@ function ProjectPinRow({
         <span className="font-medium text-slate-900 dark:text-slate-100 truncate">{productName}</span>
         {sku && <span className="text-xs text-slate-400 truncate">{sku}</span>}
       </div>
+
+      {/* Preview thumbnail */}
+      <div className="flex items-center justify-start">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onPreview();
+          }}
+          title={drawingName ? `Preview on ${drawingName}` : "Preview on Drawing"}
+          aria-label={`Preview pin #${pin.id} on drawing`}
+          className="relative h-9 w-16 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
+        >
+          {snapshotState?.status === "ready" && snapshotState.snapshot ? (
+            <PinThumbnailCropped
+              snapshotUrl={snapshotState.snapshot.objectUrl}
+              snapshotWidth={snapshotState.snapshot.width}
+              snapshotHeight={snapshotState.snapshot.height}
+              xPercent={pin.x_coordinate}
+              yPercent={pin.y_coordinate}
+              pinColor={pin.status_detail?.bg_colour || "#10b981"}
+              className="absolute inset-0"
+              alt=""
+            />
+          ) : snapshotState?.status === "loading" ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-full w-full animate-pulse bg-slate-100 dark:bg-slate-800" />
+            </div>
+          ) : drawingFile && plots.length > 0 ? (
+            <span className="absolute inset-0">
+              <div
+                className="absolute inset-0"
+                style={{
+                  transformOrigin: `${pin.x_coordinate}% ${pin.y_coordinate}%`,
+                  transform: `translate(${50 - pin.x_coordinate}%, ${50 - pin.y_coordinate}%) scale(3)`,
+                }}
+              >
+                <DrawingFilePreviewFill
+                  drawingFile={drawingFile}
+                  fileType={drawingFileType}
+                  alt=""
+                  className="size-full"
+                />
+                <DrawingPinThumbnailOverlay
+                  plots={plots}
+                  activePinId={pin.id}
+                />
+              </div>
+            </span>
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-500">
+              Preview
+            </span>
+          )}
+          <span className="sr-only">Preview</span>
+        </button>
+      </div>
+
       <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
         {variationText}
       </span>
@@ -161,12 +240,23 @@ function ProjectPinRow({
               "inline-flex min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-full border px-2.5 py-1 text-xs font-semibold transition text-left",
               !form.submitted && !checklistsComplete
                 ? "border-slate-200 bg-slate-100 text-slate-400 cursor-pointer dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500"
-                : "border-slate-200 bg-slate-50 text-slate-700 hover:border-(--dash-accent) hover:text-(--dash-accent) dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"
+                : "border-slate-200 bg-slate-50 text-slate-700 hover:border-[color:var(--dash-accent)] hover:text-[color:var(--dash-accent)] dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"
             )}
           >
             <span className="truncate">{form.label}</span>
             <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-700 dark:text-slate-300">
               #{form.projectFormId}
+            </span>
+            <span className={cn(
+              "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+              form.submitted
+                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                : !checklistsComplete
+                  ? "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                  : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+            )}
+            >
+              {form.submitted ? t("statusSubmitted") : t("statusPending")}
             </span>
           </button>
         ) : (
@@ -174,13 +264,16 @@ function ProjectPinRow({
         )}
       </div>
       <div>
-        {pinStatuses.length > 0 ? (
+        {isEditingStatus && pinStatuses.length > 0 ? (
           <select
+            autoFocus
             value={pin.status ?? pin.status_detail?.id ?? ""}
+            onBlur={() => setIsEditingStatus(false)}
             onChange={(e) => {
               const val = e.target.value;
               if (val) {
                 onUpdatePinStatus(pin.id, Number(val));
+                setIsEditingStatus(false);
               }
             }}
             className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-800 focus:border-[color:var(--dash-accent)] focus:ring-1 focus:ring-[color:var(--dash-accent)] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
@@ -195,7 +288,27 @@ function ProjectPinRow({
             ))}
           </select>
         ) : (
-          <PinStatusChip pin={pin} />
+          <div
+            onDoubleClick={() => {
+              if (!checklistMarked) {
+                toastError(
+                  locale === "es"
+                    ? "Las listas de verificación deben estar marcadas antes de actualizar el estado."
+                    : "Checklists must be marked complete before changing status."
+                );
+                return;
+              }
+              setIsEditingStatus(true);
+            }}
+            className="cursor-pointer select-none"
+            title={
+              checklistMarked
+                ? (locale === "es" ? "Doble clic para editar estado" : "Double click to edit status")
+                : (locale === "es" ? "Las listas de verificación deben marcarse primero" : "Checklists must be marked complete first")
+            }
+          >
+            <PinStatusChip pin={pin} />
+          </div>
         )}
       </div>
       <div className="flex items-center justify-end">
@@ -216,26 +329,43 @@ function ProjectPinRow({
 }
 
 function PlotPinsBlock({
+  plot,
   plotName,
   pins,
   onPreviewPin,
   getPinForm,
   checklistsComplete,
+  checklistMarked,
   onOpenGateModal,
   onNavigate,
   pinStatuses,
   onUpdatePinStatus,
+  drawingFile,
+  drawingFileType,
+  snapshotState,
+  drawingName,
 }: {
+  plot: JobDrawingPlot;
   plotName: string;
   pins: DrawingPin[];
   onPreviewPin: (pin: DrawingPin) => void;
   getPinForm: (pin: DrawingPin) => { label: string; href: string; projectFormId: number; submitted: boolean } | null;
   checklistsComplete: boolean;
+  checklistMarked: boolean;
   onOpenGateModal: (href: string, label: string) => void;
   onNavigate: (href: string) => void;
   pinStatuses: WorkflowColourStatus[];
   onUpdatePinStatus: (pinId: number, nextStatusId: number) => void;
+  drawingFile?: string;
+  drawingFileType?: string;
+  snapshotState?: LevelSnapshotState;
+  drawingName?: string;
 }) {
+  const plotsForOverlay = React.useMemo(
+    () => (plot.coordinates ? [plot as DrawingPlot] : []),
+    [plot],
+  );
+
   return (
     <div className="w-full overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-700/80 dark:bg-slate-950/30">
       <div className="flex items-center gap-2.5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-4 py-3 dark:border-slate-800 dark:from-slate-900/80 dark:to-slate-950/40">
@@ -261,10 +391,16 @@ function PlotPinsBlock({
                   form={getPinForm(pin)}
                   onPreview={() => onPreviewPin(pin)}
                   checklistsComplete={checklistsComplete}
+                  checklistMarked={checklistMarked}
                   onOpenGateModal={onOpenGateModal}
                   onNavigate={onNavigate}
                   pinStatuses={pinStatuses}
                   onUpdatePinStatus={onUpdatePinStatus}
+                  drawingFile={drawingFile}
+                  drawingFileType={drawingFileType}
+                  snapshotState={snapshotState}
+                  plots={plotsForOverlay}
+                  drawingName={drawingName}
                 />
               ))}
             </div>
@@ -317,6 +453,22 @@ export function JobDetailBody({
     if (!rawLevels) return [];
     return Array.isArray(rawLevels) ? rawLevels : [rawLevels];
   }, [detail]);
+
+  const levelsAsDrawings = React.useMemo(
+    () =>
+      levels.map(
+        (l) =>
+          ({
+            id: l.id,
+            name: l.name,
+            drawing_file: l.drawing_file,
+            drawing_file_type: l.drawing_file_type ?? "",
+          }) as unknown as Drawing,
+      ),
+    [levels],
+  );
+  const levelSnapshots = useLevelSnapshots(levelsAsDrawings);
+
   const statusRow = getJobStatusRow(detail);
   const meta = normalizeJobMeta(detail.job_meta);
   const compositeRows = meta?.composite_items ?? [];
@@ -344,36 +496,21 @@ export function JobDetailBody({
   }
 
   async function handleUpdatePinStatus(pinId: number, nextStatusId: number) {
-    const updatedLevels = levels.map((level) => ({
-      id: level.id,
-      name: level.name,
-      drawing_file: level.drawing_file,
-      plots: (level.plots ?? []).map((plot) => ({
-        id: plot.id,
-        name: plot.name,
-        pins: (plot.pins ?? []).map((pin) => {
-          if (pin.id === pinId) {
-            return {
-              id: pin.id,
-              status: nextStatusId,
-            };
-          }
-          const existingStatusId =
-            typeof pin.status === "number"
-              ? pin.status
-              : typeof pin.status_id === "number"
-              ? pin.status_id
-              : pin.status_detail?.id;
-          return {
-            id: pin.id,
-            status: existingStatusId,
-          };
-        }),
-      })),
-    }));
+    if (!checklistMarked) {
+      toastError(
+        locale === "es"
+          ? "Las listas de verificación deben estar marcadas antes de actualizar el estado."
+          : "Checklists must be marked complete before changing status."
+      );
+      return;
+    }
+    // Send only the changed pin to the API: [{ id, status }]
+    const pinsPayload: Array<{ id: number; status: number | null }> = [
+      { id: pinId, status: nextStatusId },
+    ];
 
     try {
-      await updateJob(detail.id, { levels: updatedLevels });
+      await updateJob(detail.id, { pins: pinsPayload });
       onChecklistsUpdated?.();
     } catch (err) {
       toastApiError(err, "Failed to update pin status");
@@ -382,13 +519,17 @@ export function JobDetailBody({
 
   const getPinForm = React.useCallback(
     (pin: DrawingPin) => {
+      const pinProjectForm =
+        pin.project_form && typeof pin.project_form === "object"
+          ? pin.project_form
+          : null;
       const pinProjectFormId =
         typeof pin.formId === "number"
           ? pin.formId
           : typeof pin.project_form === "number"
           ? pin.project_form
-          : pin.project_form && typeof pin.project_form === "object"
-          ? pin.project_form.id
+          : pinProjectForm
+          ? pinProjectForm.id
           : null;
       if (pinProjectFormId == null) return null;
 
@@ -396,26 +537,37 @@ export function JobDetailBody({
         (entry) => entry.project_form_id === pinProjectFormId || entry.id === pinProjectFormId,
       );
 
-      const projectFormName =
-        pin.project_form && typeof pin.project_form === "object" && pin.project_form.name
-          ? pin.project_form.name.trim()
-          : undefined;
-
+      const projectFormName = pinProjectForm?.name || undefined;
       const label = form?.name?.trim() || projectFormName || `#${pinProjectFormId}`;
       const jobFormId = form?.id ?? pinProjectFormId;
       const projectFormId = form?.project_form_id ?? pinProjectFormId;
 
+      const apiSubmissionId = pinProjectForm?.submission_id;
+      const apiSubmissionStatus = pinProjectForm?.submission_status;
+
+      const submissionId =
+        typeof apiSubmissionId === "number" && apiSubmissionId > 0
+          ? apiSubmissionId
+          : typeof form?.submitted_form_id === "number" && form.submitted_form_id > 0
+          ? form.submitted_form_id
+          : null;
+
+      const submitted =
+        (typeof apiSubmissionStatus === "string" && apiSubmissionStatus.toLowerCase() === "submitted") ||
+        (form != null &&
+          (typeof form.is_submitted === "boolean"
+            ? form.is_submitted
+            : typeof form.submitted_form_id === "number" && form.submitted_form_id > 0));
+
       const baseHref = `${routes.dashboard.jobFormFill(detail.id, projectFormId, jobFormId)}&name=${encodeURIComponent(
         label,
       )}&back=${encodeURIComponent(`${routes.dashboard.jobs}/${detail.id}`)}&job_pin_id=${Number(pin.job_pin_id)}`;
-      const submissionId =
-        typeof form?.submitted_form_id === "number" && form.submitted_form_id > 0 ? form.submitted_form_id : null;
 
       return {
         label,
-        href: submissionId ? `${baseHref}&submissionId=${submissionId}` : baseHref,
+        href: submitted && submissionId ? `${baseHref}&submission_id=${submissionId}` : baseHref,
         projectFormId,
-        submitted: !!submissionId,
+        submitted,
       };
     },
     [detail.id, formEntries],
@@ -697,6 +849,7 @@ export function JobDetailBody({
                             }}
                             getPinForm={getPinForm}
                             checklistsComplete={checklistsComplete}
+                            checklistMarked={checklistMarked}
                             onOpenGateModal={(href, label) => {
                               setPendingHref(href);
                               setPendingFormLabel(label);

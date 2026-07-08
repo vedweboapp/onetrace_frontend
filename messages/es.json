@@ -646,6 +646,12 @@
         "createTitle": "Nuevo estado de proyecto",
         "editTitle": "Editar",
         "statusName": "Nombre del estado",
+        "category": "Categoría",
+        "categoryPlaceholder": "Selecciona una categoría",
+        "categoryOptions": {
+          "open": "Abierto",
+          "closed": "Cerrado"
+        },
         "bgColour": "Color de fondo",
         "textColour": "Color del texto",
         "save": "Guardar",
@@ -2807,6 +2813,7 @@
         "gateTitle": "Complete la lista de verificación primero",
         "gateBody": "Marque los ítems obligatorios antes de abrir «{form}».",
         "gateRequiredHint": "Todos los ítems obligatorios deben estar marcados para continuar.",
+        "concentricPoint": "Punto concéntrico",
         "continueToForm": "Continuar al formulario",
         "cancel": "Cancelar",
         "blockedTitle": "Lista de verificación obligatoria",
@@ -3062,7 +3069,9 @@
         "selectWorker": "Seleccionar trabajador",
         "requiredSite": "Se requiere un sitio.",
         "requiredDate": "Se requiere una fecha.",
-        "requiredWorker": "Se requiere un trabajador."
+        "requiredWorker": "Se requiere un trabajador.",
+        "requiredChecklist": "Se requiere una lista de verificación.",
+        "requiredJobStatus": "Se requiere un estado del trabajo."
       },
       "drawings": {
         "title": "Planos",
