@@ -831,8 +831,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
     }),
     configFields: [
       { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
-      { type: "drop-down", label: "Max Size (MB)", key: "maxSize", options: [{ value: "1", label: "1MB" }, { value: "5", label: "5MB" }, { value: "10", label: "10MB" }, { value: "20", label: "20MB" }, { value: "50", label: "50MB" }, { value: "100", label: "100MB" }] },
-      { type: "drop-down", label: "Recording Time", key: "recordingTime", options: [{ value: "30", label: "30s" }, { value: "60", label: "1m" }, { value: "90", label: "1m30s" }] },
+      { type: "drop-down", label: "Max Size (MB)", key: "maxSize", options: [{ value: "1", label: "1MB" }, { value: "5", label: "5MB" }, { value: "10", label: "10MB" }, { value: "20", label: "20MB" }, { value: "50", label: "50MB" }, { value: "100", label: "100MB" }, { value: "200", label: "200MB" }] },
       { type: "checkbox", label: "Required", key: "required" },
       // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
       // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
