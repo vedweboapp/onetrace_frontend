@@ -9,7 +9,7 @@ import {
   surfaceInputClassName,
 } from "@/shared/ui";
 import { useLocale, useTranslations } from "next-intl";
-import { createJobFromLocation } from "@/features/projects/api/project.api";
+import { createJobFromLocation, fetchProject } from "@/features/projects/api/project.api";
 import { fetchDrawingsPage } from "@/features/projects/api/drawing.api";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import type {
@@ -21,6 +21,7 @@ import type {
   ProjectPagination,
   ProjectSiteRef,
 } from "@/features/projects/types/project.types";
+import { getProjectTypeId } from "@/features/projects/utils/project-type-id.util";
 import { useParams } from "next/navigation";
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { Layers, MapPinned } from "lucide-react";
@@ -34,7 +35,7 @@ import { DrawingFilePreviewFill } from "@/features/projects/components/drawing-f
 import { DrawingPinThumbnailOverlay } from "@/features/projects/components/drawing-pin-thumbnail-overlay";
 import { DrawingFilePreview } from "@/features/projects/components/drawing-file-preview";
 import { fetchChecklistTypesPage } from "@/features/checklist-types/api/checklist-type.api";
-import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
+import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import { useLevelSnapshots, type LevelSnapshotState } from "@/shared/hooks/use-level-snapshots.hook";
 import { PinThumbnailCropped } from "@/shared/components/pin-thumbnail-cropped";
@@ -412,8 +413,7 @@ const ProjectPinsListTab = ({
   );
 const [dialogChecklistIds, setDialogChecklistIds] = useState<number[]>([]);
   const [checklistSearch, setChecklistSearch] = useState<string>("");
-  const handleChecklistSearch = useCallback((q: string) => setChecklistSearch(q), []);
-
+  const [projectTypeId, setProjectTypeId] = useState<number | null>(null);
   const [dialogAssignedWorkerId, setDialogAssignedWorkerId] = useState<
     number | undefined
   >(undefined);
@@ -451,7 +451,7 @@ const [dialogChecklistIds, setDialogChecklistIds] = useState<number[]>([]);
   useEffect(() => {
     let cancelled = false;
     setLoadingJobStatuses(true);
-    fetchPinStatusesPage(1, 500, { is_active: true })
+    fetchJobStatusesPage(1, 500)
       .then((res) => {
         if (!cancelled)
           setJobStatusOptions(
@@ -514,13 +514,41 @@ const [dialogChecklistIds, setDialogChecklistIds] = useState<number[]>([]);
       cancelled = true;
     };
   }, [id, page, pageSize, search]);
+
+  useEffect(() => {
+    if (!id || !/^\d+$/.test(id)) {
+      setProjectTypeId(null);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const project = await fetchProject(Number.parseInt(id, 10));
+        if (!cancelled) {
+          setProjectTypeId(getProjectTypeId(project));
+        }
+      } catch {
+        if (!cancelled) setProjectTypeId(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
  const fetchCheckListData = useCallback(
   async (searchTerm?: string): Promise<void> => {
+    if (!projectTypeId) {
+      setCheckListData([]);
+      return;
+    }
+
     try {
       setCheckListLoading(true);
       const response = await fetchChecklistTypesPage(1, 100, {
         is_active: true,
-        search: searchTerm || undefined, // ← confirm this is the actual filter key fetchChecklistTypesPage expects
+        project_type: projectTypeId,
+        search: searchTerm || undefined,
       });
       setCheckListData(
         response.items.map((item) => ({
@@ -534,7 +562,7 @@ const [dialogChecklistIds, setDialogChecklistIds] = useState<number[]>([]);
       setCheckListLoading(false);
     }
   },
-  [],
+  [projectTypeId],
 );
 
   const commitSearch = useCallback(

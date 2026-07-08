@@ -47,6 +47,9 @@ import {
 } from "@/shared/mass-actions";
 
 function projectRowClientLabel(row: Project, labels: Record<number, string>): string {
+  if (row.client && typeof row.client === "object" && row.client.name?.trim()) {
+    return row.client.name.trim();
+  }
   const cid = getProjectClientId(row);
   if (!cid) return "—";
   return labels[cid] ?? `#${cid}`;
