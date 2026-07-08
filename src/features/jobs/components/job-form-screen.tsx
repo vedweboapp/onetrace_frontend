@@ -34,7 +34,8 @@ import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-opt
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import { formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
 import { fetchItemsPage } from "@/features/items/api/item.api";
-import { fetchProjectsPage } from "@/features/projects/api/project.api";
+import { fetchProject, fetchProjectsPage } from "@/features/projects/api/project.api";
+import { getProjectTypeId } from "@/features/projects/utils/project-type-id.util";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
@@ -104,6 +105,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
   const [checklistOptions, setChecklistOptions] = React.useState<Option[]>([]);
   const [checklistLoading, setChecklistLoading] = React.useState(false);
   const [checklistSearch, setChecklistSearch] = React.useState<string>("");
+  const [projectTypeId, setProjectTypeId] = React.useState<number | null>(null);
   const [projectLocations, setProjectLocations] = React.useState<Drawing[]>([]);
 
   const handleProjectLocationsChange = React.useCallback((locations: Drawing[]) => {
@@ -229,16 +231,22 @@ export function JobFormScreen({ mode, jobId }: Props) {
 
 
   const fetchChecklistOptions = React.useCallback(async (searchTerm?: string) => {
+    if (!projectTypeId) {
+      setChecklistOptions([]);
+      return;
+    }
+
     try {
       setChecklistLoading(true);
       const response = await fetchChecklistTypesPage(1, 100, {
         is_active: true,
-        search: searchTerm || undefined, // ← confirm actual filter key with checklist-type.api
+        project_type: projectTypeId,
+        search: searchTerm || undefined,
       });
       setChecklistOptions(
         response.items.map((item) => ({
           value: String(item.id),
-          label: item.title ?? `Checklist #${item.id}`, // adjust to the real field
+          label: item.title ?? `Checklist #${item.id}`,
         })),
       );
     } catch {
@@ -246,7 +254,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
     } finally {
       setChecklistLoading(false);
     }
-  }, []);
+  }, [projectTypeId]);
 
   React.useEffect(() => {
     const timeout = setTimeout(() => {
@@ -394,8 +402,10 @@ export function JobFormScreen({ mode, jobId }: Props) {
     if (!selectedProject || !/^\d+$/.test(selectedProject)) {
       setSiteOptions([]);
       setFormOptions([]);
+      setProjectTypeId(null);
       return;
     }
+
     void reloadSites();
     (async () => {
       try {
@@ -409,6 +419,22 @@ export function JobFormScreen({ mode, jobId }: Props) {
         setFormOptions([]);
       }
     })();
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const project = await fetchProject(Number.parseInt(selectedProject, 10));
+        if (!cancelled) {
+          setProjectTypeId(getProjectTypeId(project));
+        }
+      } catch {
+        if (!cancelled) setProjectTypeId(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedProject, reloadSites]);
 
   React.useEffect(() => {
