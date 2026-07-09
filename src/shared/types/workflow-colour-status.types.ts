@@ -13,6 +13,7 @@ export type WorkflowColourStatus = {
   status_name: string;
   bg_colour: string;
   text_colour: string;
+  category?: string | null;
   deleted_at?: string | null;
   is_deleted?: boolean;
   is_active?: boolean;
@@ -40,6 +41,7 @@ export type WorkflowColourStatusCreatePayload = {
   status_name: string;
   bg_colour: string;
   text_colour: string;
+  category?: string;
 };
 
 export type WorkflowColourStatusUpdatePayload = Partial<WorkflowColourStatusCreatePayload> & {

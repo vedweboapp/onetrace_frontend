@@ -627,6 +627,7 @@ useEffect(() => {
     })),
   [checkListData],
 );
+
   const {
     handleSubmit,
     reset,
@@ -636,7 +637,9 @@ useEffect(() => {
   } = useForm<{
     start_date: string;
     site: string;
-  }>({ defaultValues: { start_date: "", site: "" } });
+    checklists: string[];
+    job_status: string;
+  }>({ defaultValues: { start_date: "", site: "", checklists: [], job_status: "" } });
 
   const filteredLocations = useMemo(() => {
     const searchActive = search.trim() !== "";
@@ -893,25 +896,38 @@ useEffect(() => {
 
             <div className="mt-4">
   <label className="text-md font-semibold text-slate-800 dark:text-slate-200">
-    {t("checkList")}
+    {t("checkList")} <span className="text-red-500">*</span>
   </label>
   <MultiCheckSelect
     id="checklist-select"
     options={checklistOptions}
     values={dialogChecklistIds.map(String)}
-    onChange={(values: string[]) =>
-      setDialogChecklistIds(values.map((v) => Number.parseInt(v, 10)))
-    }
+    onChange={(values: string[]) => {
+      const ids = values.map((v) => Number.parseInt(v, 10));
+      setDialogChecklistIds(ids);
+      setValue("checklists", values, { shouldValidate: true });
+    }}
     placeholder={t("selectChecklist") || "Select Checklist"}
     listLabel={t("checkList")}
     disabled={checkListLoading}
     className="w-full"
   />
+  <input
+    type="hidden"
+    {...register("checklists", {
+      required: t("requiredChecklist") || "Checklist is required",
+    })}
+  />
+  {errors.checklists && (
+    <p className="mt-1 text-sm text-red-500">
+      {errors.checklists.message}
+    </p>
+  )}
 </div>
 
             <div className="mt-4">
               <label className="text-md font-semibold text-slate-800 dark:text-slate-200">
-                Job Status
+                Job Status <span className="text-red-500">*</span>
               </label>
               <CheckmarkSelect
                 listLabel="Job Status"
@@ -924,10 +940,22 @@ useEffect(() => {
                 clearable
                 className="w-full"
                 disabled={loadingJobStatuses || jobStatusOptions.length === 0}
-                onChange={(value) =>
-                  setDialogJobStatusId(value ? Number.parseInt(value, 10) : undefined)
-                }
+                onChange={(value) => {
+                  setDialogJobStatusId(value ? Number.parseInt(value, 10) : undefined);
+                  setValue("job_status", value ?? "", { shouldValidate: true });
+                }}
               />
+              <input
+                type="hidden"
+                {...register("job_status", {
+                  required: t("requiredJobStatus") || "Job status is required",
+                })}
+              />
+              {errors.job_status && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.job_status.message}
+                </p>
+              )}
             </div>
 
             <div className="mt-4 flex justify-end gap-2">
