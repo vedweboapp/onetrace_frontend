@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { z } from "zod";
 import type { createWorkflowColourStatusApi } from "@/shared/api/create-workflow-colour-status.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
-import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { cn } from "@/core/utils/http.util";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -17,6 +17,8 @@ import {
   AppModal,
   ConfirmDialog,
   ActiveStatusBadge,
+  CheckmarkSelect,
+  type CheckmarkSelectOption,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
   type DashboardEmptyStateIconName,
@@ -94,10 +96,11 @@ export type WorkflowColourStatusSettingsConfig = {
   emptyStateIconName: DashboardEmptyStateIconName;
   formTitleId: string;
   api: ReturnType<typeof createWorkflowColourStatusApi>;
+  showCategory?: boolean;
 };
 
 export function WorkflowColourStatusSettingsPanel({ config }: { config: WorkflowColourStatusSettingsConfig }) {
-  const { translationNamespace, emptyStateIconName, formTitleId, api } = config;
+  const { translationNamespace, emptyStateIconName, formTitleId, api, showCategory } = config;
   const t = useTranslations(translationNamespace);
   const tList = useTranslations("Dashboard.list");
   const tCustomization = useTranslations("Dashboard.settingsNav.customization");
@@ -106,6 +109,13 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
     useListUrlState();
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
+  const categoryOptions = React.useMemo<CheckmarkSelectOption[]>(
+    () => [
+      { value: "open", label: t("modal.categoryOptions.open") },
+      { value: "closed", label: t("modal.categoryOptions.closed") },
+    ],
+    [t],
+  );
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -134,11 +144,13 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
   const [statusName, setStatusName] = React.useState("");
   const [bgColour, setBgColour] = React.useState(DEFAULT_BG);
   const [textColour, setTextColour] = React.useState(DEFAULT_TEXT);
+  const [category, setCategory] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [errors, setErrors] = React.useState<{
     status_name?: string;
     bg_colour?: string;
     text_colour?: string;
+    category?: string;
   }>({});
 
   const [deleteTarget, setDeleteTarget] = React.useState<WorkflowColourStatus | null>(null);
@@ -151,6 +163,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
     setStatusName(row.status_name);
     setBgColour(normalizeHex(row.bg_colour));
     setTextColour(normalizeHex(row.text_colour));
+    setCategory(row.category ?? "");
     setErrors({});
     setFormOpen(true);
   }, []);
@@ -188,6 +201,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
     setStatusName("");
     setBgColour(DEFAULT_BG);
     setTextColour(DEFAULT_TEXT);
+    setCategory("");
     setErrors({});
     setFormOpen(true);
   }
@@ -199,28 +213,32 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
       status_name: zTrimmedNonEmpty(t("validationName")),
       bg_colour: zHexColour6(hexMsg),
       text_colour: zHexColour6(hexMsg),
+      category: z.string().trim().optional(),
     });
 
     const parsed = formSchema.safeParse({
       status_name: statusName,
       bg_colour: bgColour,
       text_colour: textColour,
+      category,
     });
 
     if (!parsed.success) {
-      const nextErrors: { status_name?: string; bg_colour?: string; text_colour?: string } = {};
+      const nextErrors: { status_name?: string; bg_colour?: string; text_colour?: string; category?: string } = {};
       for (const issue of parsed.error.issues) {
         const field = String(issue.path[0] ?? "");
         if (field === "status_name") nextErrors.status_name = String(issue.message);
         if (field === "bg_colour") nextErrors.bg_colour = String(issue.message);
         if (field === "text_colour") nextErrors.text_colour = String(issue.message);
+        if (field === "category") nextErrors.category = String(issue.message);
       }
       setErrors(nextErrors);
       return;
     }
 
     setErrors({});
-    const { status_name: name, bg_colour: bg, text_colour: fg } = parsed.data;
+    const { status_name: name, bg_colour: bg, text_colour: fg, category: rawCategory } = parsed.data;
+    const trimmedCategory = rawCategory?.trim() ?? "";
 
     setSaving(true);
     try {
@@ -229,10 +247,16 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
           status_name: name,
           bg_colour: bg,
           text_colour: fg,
+          category: trimmedCategory,
         });
         toastSuccess(t("saved"));
       } else {
-        await api.create({ status_name: name, bg_colour: bg, text_colour: fg });
+        await api.create({
+          status_name: name,
+          bg_colour: bg,
+          text_colour: fg,
+          ...(trimmedCategory ? { category: trimmedCategory } : {}),
+        });
         toastSuccess(t("created"));
       }
       setFormOpen(false);
@@ -459,6 +483,11 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
                 label={detailRow.is_active === true ? t("status.active") : t("status.inactive")}
               />
             </FieldGroup>
+            {detailRow.category ? (
+              <FieldGroup label={t("modal.category")}>
+                <p className="text-sm text-slate-800 dark:text-slate-200">{detailRow.category}</p>
+              </FieldGroup>
+            ) : null}
             <FieldGroup label={t("modal.bgColour")}>
               <div className="flex items-center gap-3">
                 <span
@@ -574,6 +603,32 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
             </div>
             {errors.bg_colour ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.bg_colour}</p> : null}
           </div>
+          {showCategory ? (
+            <FieldGroup
+              label={
+                <span>
+                  {t("modal.category")}
+                </span>
+              }
+              htmlFor={`${formTitleId}-category`}
+            >
+              <CheckmarkSelect
+                id={`${formTitleId}-category`}
+                options={categoryOptions}
+                value={category}
+                onChange={(next) => {
+                  setCategory(next);
+                  if (errors.category) setErrors((prev) => ({ ...prev, category: undefined }));
+                }}
+                emptyLabel={t("modal.categoryPlaceholder")}
+                fallbackLabel={t("modal.categoryPlaceholder")}
+                className={cn(errors.category && "ring-1 ring-red-500 focus:ring-red-500/20")}
+                disabled={saving}
+                onBlur={() => undefined}
+              />
+              {errors.category ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.category}</p> : null}
+            </FieldGroup>
+          ) : null}
           <div>
             <span className={fieldLabelClassName}>{t("modal.textColour")} <span className="text-red-500">*</span></span>
             <div className="mt-1.5 flex items-center gap-2">

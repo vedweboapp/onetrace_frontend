@@ -31,6 +31,7 @@ type ProjectStatusApiRow = {
   text_color?: string;
   bg_colour?: string;
   text_colour?: string;
+  category?: string | null;
   is_active?: boolean;
   deleted_by?: unknown;
   organization?: number;
@@ -48,6 +49,7 @@ function normalizeProjectStatusRow(row: ProjectStatusApiRow): WorkflowColourStat
     status_name: row.name ?? row.status_name ?? "",
     bg_colour: row.bg_colour ?? row.bg_color ?? "#E5E7EB",
     text_colour: row.text_colour ?? row.text_color ?? "#374151",
+    category: row.category ?? null,
     is_active: row.is_active,
     deleted_by: row.deleted_by,
     organization: row.organization,
@@ -59,6 +61,7 @@ function toWriteBody(body: WorkflowColourStatusCreatePayload): Record<string, st
     name: body.status_name,
     bg_color: body.bg_colour,
     text_color: body.text_colour,
+    ...(body.category ? { category: body.category } : {}),
   };
 }
 
@@ -67,6 +70,7 @@ function toPatchBody(body: WorkflowColourStatusUpdatePayload): Record<string, st
   if (body.status_name !== undefined) payload.name = body.status_name;
   if (body.bg_colour !== undefined) payload.bg_color = body.bg_colour;
   if (body.text_colour !== undefined) payload.text_color = body.text_colour;
+  if (body.category !== undefined) payload.category = body.category;
   if (body.is_active !== undefined) payload.is_active = body.is_active;
   return payload;
 }

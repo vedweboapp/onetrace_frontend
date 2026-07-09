@@ -112,12 +112,16 @@ function normalizeJobFormRef(entry: JobFormRefApiRow): JobFormRef | null {
         ? entry.submitted_form_id
         : null;
 
+  const submittedByStatus =
+    typeof entry.status === "string" && entry.status.toLowerCase() === "submitted";
   const isSubmitted =
-    typeof entry.is_submitted === "boolean" ? entry.is_submitted : submissionId != null;
+    typeof entry.is_submitted === "boolean"
+      ? entry.is_submitted
+      : submissionId != null || submittedByStatus;
 
   return {
     id: jobFormId,
-    name: entry.name,
+    name: entry.name ?? entry.project_form_name ?? null,
     project_form_id: projectFormId,
     is_submitted: isSubmitted,
     submitted_form_id: submissionId,
@@ -194,11 +198,14 @@ export function jobChecklistIsMarked(job: Pick<Job, "checklists">): boolean {
 
 export function jobChecklistEntries(job: Pick<Job, "checklists">): JobChecklistItem[] {
   const rows = resolveChecklistApiRows(job.checklists);
+  console.log("📋 Checklist Raw Data:", rows);
   if (rows.length === 0) return [];
-  return rows
+  const normalized = rows
     .map((row) => normalizeJobChecklistRow(row))
     .filter((row): row is JobChecklistItem => row !== null)
     .sort((a, b) => a.sequence - b.sequence || a.id - b.id);
+  console.log("📋 Checklist Normalized:", normalized);
+  return normalized;
 }
 
 export function jobChecklistUpdatePayload(items: JobChecklistItem[]): JobChecklistUpdateItem[] {

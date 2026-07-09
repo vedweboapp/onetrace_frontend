@@ -265,12 +265,15 @@ export function buildJobFormSubmissionFormData(
   const values = mapFormDataToSubmissionValues(formData, sections, extra?.defaultValues);
 
   const fd = new FormData();
-  fd.append("job_form_id", String(jobFormId));
+  const hasJobPinId = extra?.job_pin_id != null;
+  if (!hasJobPinId) {
+    fd.append("job_form_id", String(jobFormId));
+  }
   fd.append("status", extra?.status ?? "submitted");
   if (extra?.remarks != null) {
     fd.append("remarks", extra.remarks);
   }
-  if (extra?.job_pin_id != null) {
+  if (hasJobPinId) {
     fd.append("job_pin_id", String(extra.job_pin_id));
   }
 

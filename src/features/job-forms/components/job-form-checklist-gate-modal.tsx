@@ -110,18 +110,16 @@ export function JobFormChecklistGateModal({
                     View File
                   </a>
                 ) : null}
-                {item.concentric_point ? (
-                  <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                    <input
-                      type="checkbox"
-                      className="size-3.5 rounded border-slate-300"
-                      checked={item.concentric_point_is_checked ?? false}
-                      disabled={saving}
-                      onChange={() => toggleConcentric(item.id)}
-                    />
-                    <span>Concentric Point</span>
-                  </label>
-                ) : null}
+                <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                  <input
+                    type="checkbox"
+                    className="size-3.5 rounded border-slate-300"
+                    checked={item.concentric_point_is_checked ?? false}
+                    disabled={saving}
+                    onChange={() => toggleConcentric(item.id)}
+                  />
+                  <span>{t("concentricPoint")}</span>
+                </label>
               </div>
             </div>
           </li>

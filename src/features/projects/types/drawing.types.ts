@@ -38,6 +38,8 @@ export type Drawing = {
 export type DrawingPinProjectFormRef = {
   id: number;
   name?: string | null;
+  submission_id?: number | null;
+  submission_status?: string | null;
 };
 
 export type DrawingPin = {

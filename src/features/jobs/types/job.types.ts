@@ -95,7 +95,10 @@ export type JobFormRefApiRow = {
   id?: number;
   job_form_id?: number;
   project_form_id?: number;
+  project_form_name?: string | null;
   name?: string | null;
+  status?: string | null;
+  submitted_at?: string | null;
   is_submitted?: boolean;
   submitted_form_id?: number | null;
   submission_id?: number | null;
@@ -180,6 +183,7 @@ export type JobUpdatePayload = Omit<Partial<JobCreatePayload>, "checklists"> & {
   /** List/detail toggle; omitted on create payload. */
   is_active?: boolean;
   pin_ids?: number[];
+  pins?: Array<{ id: number; status: number | null }>;
   checklists?: number[] | JobChecklistUpdateItem[];
   /** Included when editing jobs created from project pins. */
   levels?: JobLevelSnapshot[];

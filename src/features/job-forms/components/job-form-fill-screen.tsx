@@ -67,17 +67,17 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
   const [checklistBlocked, setChecklistBlocked] = React.useState(false);
 
   const modeParam = searchParams.get("mode");
-  const submissionIdParam = searchParams.get("submissionId");
+  const submissionIdParam = searchParams.get("submissionId") ?? searchParams.get("submission_id");
   const submissionIdHint = React.useMemo(() => {
     const n = Number.parseInt(submissionIdParam ?? "", 10);
     return Number.isFinite(n) && n > 0 ? n : undefined;
   }, [submissionIdParam]);
 
   const jobPinIdParam = searchParams.get("job_pin_id");
-const jobPinIdHint = React.useMemo(() => {
-  const n = Number.parseInt(jobPinIdParam ?? "", 10);
-  return Number.isFinite(n) && n > 0 ? n : undefined;
-}, [jobPinIdParam]);
+  const jobPinIdHint = React.useMemo(() => {
+    const n = Number.parseInt(jobPinIdParam ?? "", 10);
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  }, [jobPinIdParam]);
 
   const uiMode: UiMode = React.useMemo(() => {
     if (submission && modeParam !== "edit") return "view";
@@ -98,7 +98,7 @@ const jobPinIdHint = React.useMemo(() => {
     if (formNameHint?.trim()) params.set("name", formNameHint.trim());
     if (jobPinIdHint != null) params.set("job_pin_id", String(jobPinIdHint));
     const sid = extra?.submissionId ?? submission?.id;
-    if (sid != null && sid > 0) params.set("submissionId", String(sid));
+    if (sid != null && sid > 0) params.set("submission_id", String(sid));
     if (extra?.mode) params.set("mode", extra.mode);
     return `${pathname}?${params.toString()}`;
   }
