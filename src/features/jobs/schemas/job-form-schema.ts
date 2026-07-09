@@ -7,6 +7,7 @@ export type JobFormMessages = {
   startDate: string;
   optionalId: string;
   compositeQuantity: string;
+  requiredChecklist: string;
 };
 
 const optionalPositiveId = (message: string) =>
@@ -33,7 +34,7 @@ export function createJobFormSchema(messages: JobFormMessages) {
           message: messages.assignedWorker,
         }),
       start_date: zTrimmedNonEmpty(messages.startDate),
-      checklists: z.array(z.string()).optional(),
+      checklists: z.array(z.string()).min(1, { message: messages.requiredChecklist }),
       job_meta_items: z
         .array(
           z.object({
