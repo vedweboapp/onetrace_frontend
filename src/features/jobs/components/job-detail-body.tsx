@@ -111,7 +111,6 @@ function ProjectPinTableHeader() {
       <span>Quantity</span>
       <span>Form</span>
       <span>Status</span>
-      <span className="sr-only">Actions</span>
     </div>
   );
 }
@@ -310,19 +309,6 @@ function ProjectPinRow({
             <PinStatusChip pin={pin} />
           </div>
         )}
-      </div>
-      <div className="flex items-center justify-end">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onPreview();
-          }}
-          title="Preview on Drawing"
-          className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-        >
-          <MapPinned className="size-4" />
-        </button>
       </div>
     </div>
   );

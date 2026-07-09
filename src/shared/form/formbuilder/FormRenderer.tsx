@@ -704,10 +704,12 @@ const buildDefaultValuesFromSchema = (
             : null;
       } else if (normType === "currency") {
         formData[f.api_name] = buildCurrencyFieldDefault(f);
-      } else if (
-        ["multi_select", "file_upload", "user"].includes(normType)
-      ) {
-        // Use defaultValue array if set, otherwise empty array
+      } else if (normType === "file_upload") {
+        formData[f.api_name] =
+          f.defaultValue !== undefined && f.defaultValue !== null && f.defaultValue !== ""
+            ? f.defaultValue
+            : null;
+      } else if (["multi_select", "user"].includes(normType)) {
         formData[f.api_name] = Array.isArray(f.defaultValue)
           ? f.defaultValue
           : [];

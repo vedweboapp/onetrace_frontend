@@ -166,6 +166,11 @@ function normalizeJobChecklistRow(row: JobChecklistApiRow): JobChecklistItem | n
         ? row.id
         : null;
   if (id == null) return null;
+  const concentricPoint = row.concentric_point === true;
+  const concentricPointIsChecked =
+    row.concentric_point_is_checked === true ||
+    (row.concentric_point_is_checked == null && concentricPoint);
+
   return {
     id,
     title: row.title ?? null,
@@ -173,9 +178,9 @@ function normalizeJobChecklistRow(row: JobChecklistApiRow): JobChecklistItem | n
     is_required: row.is_required === true,
     is_checked: row.is_checked === true,
     checked_at: row.checked_at ?? null,
-    concentric_point: row.concentric_point === true,
+    concentric_point: concentricPoint,
     file: row.file ?? null,
-    concentric_point_is_checked: row.concentric_point_is_checked === true,
+    concentric_point_is_checked: concentricPointIsChecked,
   };
 }
 

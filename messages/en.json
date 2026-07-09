@@ -2937,7 +2937,8 @@
         "endDate": "Enter an end date and time.",
         "endBeforeStart": "End must be on or after the start.",
         "optionalId": "Choose a valid option.",
-        "compositeQuantity": "Enter a quantity greater than zero when a composite item is selected."
+        "compositeQuantity": "Enter a quantity greater than zero when a composite item is selected.",
+        "requiredChecklist": "Please select at least one checklist item."
       }
     },
     "home": {
@@ -3105,7 +3106,7 @@
         "requiredSite": "Site is required.",
         "requiredDate": "Date is required.",
         "requiredWorker": "Worker is required.",
-        "requiredChecklist": "Checklist is required.",
+        "requiredChecklist": "Please select at least one checklist item.",
         "requiredJobStatus": "Job status is required.",
         "checkList": "Check List",
         "selectChecklist": "Select Checklist"

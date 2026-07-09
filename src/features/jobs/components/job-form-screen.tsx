@@ -119,6 +119,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
         startDate: t("validation.startDate"),
         optionalId: t("validation.optionalId"),
         compositeQuantity: t("validation.compositeQuantity"),
+        requiredChecklist: t("validation.requiredChecklist"),
       }),
     [t],
   );
@@ -790,7 +791,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                     name="checklists"
                     render={({ field }) => (
                       <div>
-                        <FieldGroup label={t("fields.checklists")} htmlFor="job-checklists">
+                        <FieldGroup required label={t("fields.checklists")} htmlFor="job-checklists">
                           <MultiCheckSelect
                             id="job-checklists"
                             options={checklistOptions}
@@ -804,6 +805,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                             portaled
                             searchable
                           />
+                          <FieldErrorText>{errors.checklists?.message}</FieldErrorText>
                         </FieldGroup>
                       </div>
                     )}
