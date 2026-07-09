@@ -128,6 +128,31 @@ function serializeFieldValue(value: unknown): string {
   return String(value);
 }
 
+function isFileLikeValue(value: unknown): value is File {
+  return typeof File !== "undefined" && value instanceof File;
+}
+
+function isDataUrl(value: unknown): value is string {
+  return typeof value === "string" && value.startsWith("data:");
+}
+
+function coerceFileValue(value: unknown, fileName: string): File | null {
+  if (isFileLikeValue(value)) return value;
+  if (!isDataUrl(value)) return null;
+
+  const [header, base64] = value.split(",");
+  if (!header || !base64) return null;
+
+  const mimeMatch = header.match(/:(.*?);/);
+  const mime = mimeMatch?.[1] ?? "application/octet-stream";
+  const binary = typeof atob === "function" ? atob(base64) : Buffer.from(base64, "base64").toString("binary");
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new File([bytes], fileName, { type: mime });
+}
+
 function parseStoredValue(raw: string, fieldType?: string): unknown {
   const trimmed = raw.trim();
   if (!trimmed) return "";
@@ -289,26 +314,38 @@ export function buildJobFormSubmissionFormData(
     for (const field of section.fields) {
       if (!field.api_name || field.id == null) continue;
 
-      // Untouched field -> do not send
-      if (!(field.api_name in formData)) continue;
+      const hasFieldKey = field.api_name in formData;
+      const val = hasFieldKey ? formData[field.api_name] : undefined;
+      const fileValue = coerceFileValue(val, field.api_name);
+      const hasExistingFile =
+        typeof extra?.defaultValues?.[field.api_name] === "string" &&
+        extra.defaultValues[field.api_name] !== "";
 
-      const val = formData[field.api_name];
-      if (typeof File !== "undefined" && val instanceof File) {
+      if (fileValue) {
         fd.append(`values[${fileIndex}][field_id]`, String(field.id));
         fd.append(`values[${fileIndex}][field_type]`, field.field_type ?? "file");
-        fd.append(`values[${fileIndex}][value]`, val, val.name);
+        fd.append(`values[${fileIndex}][value]`, fileValue, fileValue.name);
         fileIndex++;
-      } else if (FILE_FIELD_TYPES.has(field.field_type)) {
-        // If file field was cleared and had an existing file URL, send is_deleted: true
-        const hasExistingFile =
-          typeof extra?.defaultValues?.[field.api_name] === "string" &&
-          extra.defaultValues[field.api_name] !== "";
-        if (hasExistingFile && (val === null || val === "" || val === undefined)) {
+        continue;
+      }
+
+      if (!FILE_FIELD_TYPES.has(field.field_type)) continue;
+
+      if (!hasFieldKey) {
+        if (!hasExistingFile && field.field_type === "file_upload") {
           fd.append(`values[${fileIndex}][field_id]`, String(field.id));
           fd.append(`values[${fileIndex}][field_type]`, field.field_type ?? "file");
-          fd.append(`values[${fileIndex}][is_deleted]`, "true");
+          fd.append(`values[${fileIndex}][value]`, "");
           fileIndex++;
         }
+        continue;
+      }
+
+      if (hasExistingFile && (val === null || val === "" || val === undefined)) {
+        fd.append(`values[${fileIndex}][field_id]`, String(field.id));
+        fd.append(`values[${fileIndex}][field_type]`, field.field_type ?? "file");
+        fd.append(`values[${fileIndex}][is_deleted]`, "true");
+        fileIndex++;
       }
     }
   }

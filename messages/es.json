@@ -2926,7 +2926,8 @@
         "endDate": "Introduce fecha y hora de fin.",
         "endBeforeStart": "La fecha de fin debe ser igual o posterior al inicio.",
         "optionalId": "Elige una opción válida.",
-        "compositeQuantity": "Introduce una cantidad mayor que cero cuando haya un ítem compuesto."
+        "compositeQuantity": "Introduce una cantidad mayor que cero cuando haya un ítem compuesto.",
+        "requiredChecklist": "Por favor seleccione al menos un elemento de la lista de verificación."
       }
     },
     "home": {
@@ -3093,7 +3094,7 @@
         "requiredSite": "Se requiere un sitio.",
         "requiredDate": "Se requiere una fecha.",
         "requiredWorker": "Se requiere un trabajador.",
-        "requiredChecklist": "Se requiere una lista de verificación.",
+        "requiredChecklist": "Por favor seleccione al menos un elemento de la lista de verificación.",
         "requiredJobStatus": "Se requiere un estado del trabajo."
       },
       "drawings": {
