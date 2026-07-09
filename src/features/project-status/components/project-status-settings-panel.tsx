@@ -23,6 +23,7 @@ export function ProjectStatusSettingsPanel() {
         emptyStateIconName: "projectStatus",
         formTitleId: "project-status-form-title",
         api: projectStatusApi,
+        showCategory: true,
       }}
     />
   );
