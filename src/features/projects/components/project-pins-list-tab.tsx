@@ -9,7 +9,10 @@ import {
   surfaceInputClassName,
 } from "@/shared/ui";
 import { useLocale, useTranslations } from "next-intl";
-import { createJobFromLocation, fetchProject } from "@/features/projects/api/project.api";
+import {
+  createJobFromLocation,
+  fetchProject,
+} from "@/features/projects/api/project.api";
 import { fetchDrawingsPage } from "@/features/projects/api/drawing.api";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import type {
@@ -27,7 +30,7 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { Layers, MapPinned } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import type { ListEmptyStateKind } from "@/shared/hooks/use-list-active-inactive-empty";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { DrawingPinPreviewModal } from "./drawing-pin-preview-modal";
 import { useRouter } from "@/i18n/navigation";
 import { routes } from "@/shared/config/routes";
@@ -37,10 +40,11 @@ import { DrawingFilePreview } from "@/features/projects/components/drawing-file-
 import { fetchChecklistTypesPage } from "@/features/checklist-types/api/checklist-type.api";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
-import { useLevelSnapshots, type LevelSnapshotState } from "@/shared/hooks/use-level-snapshots.hook";
+import {
+  useLevelSnapshots,
+  type LevelSnapshotState,
+} from "@/shared/hooks/use-level-snapshots.hook";
 import { PinThumbnailCropped } from "@/shared/components/pin-thumbnail-cropped";
-
-
 
 const PIN_TABLE_GRID =
   "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,1.4rem)_minmax(0,5rem)_minmax(0,1fr)_minmax(0,6rem)_minmax(0,0.5fr)_minmax(0,0.4fr)_minmax(0,0.4fr)_minmax(0,0.45fr)] items-center gap-x-3";
@@ -363,15 +367,17 @@ const ProjectPinsListTab = ({
 }: {
   sites?: Array<number | ProjectSiteRef> | null;
 }) => {
-  
-
-
   const siteOptions = useMemo(() => {
-    if (!sites || sites.length === 0) return [] as { value: string; label: string }[];
+    if (!sites || sites.length === 0)
+      return [] as { value: string; label: string }[];
     return sites
       .map((site) => {
-        if (typeof site === "number") return { value: String(site), label: `#${site}` };
-        return { value: String(site.id), label: site.site_name?.trim() || `#${site.id}` };
+        if (typeof site === "number")
+          return { value: String(site), label: `#${site}` };
+        return {
+          value: String(site.id),
+          label: site.site_name?.trim() || `#${site.id}`,
+        };
       })
       .filter((option) => option.value);
   }, [sites]);
@@ -411,7 +417,7 @@ const ProjectPinsListTab = ({
   const [dialogSiteId, setDialogSiteId] = useState<number | undefined>(
     undefined,
   );
-const [dialogChecklistIds, setDialogChecklistIds] = useState<number[]>([]);
+  const [dialogChecklistIds, setDialogChecklistIds] = useState<number[]>([]);
   const [checklistSearch, setChecklistSearch] = useState<string>("");
   const [projectTypeId, setProjectTypeId] = useState<number | null>(null);
   const [dialogAssignedWorkerId, setDialogAssignedWorkerId] = useState<
@@ -422,8 +428,12 @@ const [dialogChecklistIds, setDialogChecklistIds] = useState<number[]>([]);
   >([]);
   const [loadingWorkers, setLoadingWorkers] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [dialogJobStatusId, setDialogJobStatusId] = useState<number | undefined>(undefined);
-  const [jobStatusOptions, setJobStatusOptions] = useState<{ value: string; label: string }[]>([]);
+  const [dialogJobStatusId, setDialogJobStatusId] = useState<
+    number | undefined
+  >(undefined);
+  const [jobStatusOptions, setJobStatusOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
   const [loadingJobStatuses, setLoadingJobStatuses] = useState(false);
   const sentinelRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -458,7 +468,7 @@ const [dialogChecklistIds, setDialogChecklistIds] = useState<number[]>([]);
             res.items.map((s: WorkflowColourStatus) => ({
               value: String(s.id),
               label: s.status_name,
-            }))
+            })),
           );
       })
       .catch(() => {
@@ -536,34 +546,34 @@ const [dialogChecklistIds, setDialogChecklistIds] = useState<number[]>([]);
       cancelled = true;
     };
   }, [id]);
- const fetchCheckListData = useCallback(
-  async (searchTerm?: string): Promise<void> => {
-    if (!projectTypeId) {
-      setCheckListData([]);
-      return;
-    }
+  const fetchCheckListData = useCallback(
+    async (searchTerm?: string): Promise<void> => {
+      if (!projectTypeId) {
+        setCheckListData([]);
+        return;
+      }
 
-    try {
-      setCheckListLoading(true);
-      const response = await fetchChecklistTypesPage(1, 100, {
-        is_active: true,
-        project_type: projectTypeId,
-        search: searchTerm || undefined,
-      });
-      setCheckListData(
-        response.items.map((item) => ({
-          id: item.id,
-          label: item.title ?? `Checklist #${item.id}`,
-        })),
-      );
-      setCheckListLoading(false);
-    } catch (e) {
-      console.error("Failed to fetch checklist types:", e);
-      setCheckListLoading(false);
-    }
-  },
-  [projectTypeId],
-);
+      try {
+        setCheckListLoading(true);
+        const response = await fetchChecklistTypesPage(1, 100, {
+          is_active: true,
+          project_type: projectTypeId,
+          search: searchTerm || undefined,
+        });
+        setCheckListData(
+          response.items.map((item) => ({
+            id: item.id,
+            label: item.title ?? `Checklist #${item.id}`,
+          })),
+        );
+        setCheckListLoading(false);
+      } catch (e) {
+        console.error("Failed to fetch checklist types:", e);
+        setCheckListLoading(false);
+      }
+    },
+    [projectTypeId],
+  );
 
   const commitSearch = useCallback(
     (value: string) => {
@@ -582,14 +592,13 @@ const [dialogChecklistIds, setDialogChecklistIds] = useState<number[]>([]);
     [pageSize],
   );
 
-useEffect(() => {
-  if (!dialogVisible) return;
-  const timeout = window.setTimeout(() => {
-    void fetchCheckListData(checklistSearch);
-  }, 300);
-  return () => window.clearTimeout(timeout);
-}, [dialogVisible, checklistSearch, fetchCheckListData]);
-
+  useEffect(() => {
+    if (!dialogVisible) return;
+    const timeout = window.setTimeout(() => {
+      void fetchCheckListData(checklistSearch);
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [dialogVisible, checklistSearch, fetchCheckListData]);
 
   useEffect(() => {
     if (
@@ -618,20 +627,20 @@ useEffect(() => {
     return () => observer.disconnect();
   }, [loading, loadingMore, pagination.next, pagination.total_pages, page]);
 
-
- const checklistOptions = useMemo(
-  () =>
-    checkListData.map((item) => ({
-      value: String(item.id),
-      label: item.label,
-    })),
-  [checkListData],
-);
+  const checklistOptions = useMemo(
+    () =>
+      checkListData.map((item) => ({
+        value: String(item.id),
+        label: item.label,
+      })),
+    [checkListData],
+  );
 
   const {
     handleSubmit,
     reset,
     register,
+    control,
     setValue,
     formState: { errors },
   } = useForm<{
@@ -639,7 +648,16 @@ useEffect(() => {
     site: string;
     checklists: string[];
     job_status: string;
-  }>({ defaultValues: { start_date: "", site: "", checklists: [], job_status: "" } });
+    assigned_worker: string;
+  }>({
+    defaultValues: {
+      start_date: "",
+      site: "",
+      checklists: [],
+      job_status: "",
+      assigned_worker: "",
+    },
+  });
 
   const filteredLocations = useMemo(() => {
     const searchActive = search.trim() !== "";
@@ -771,17 +789,25 @@ useEffect(() => {
 
   const handleCreateJob = async (formData: {
     start_date: string;
+    site: string;
+    checklists: string[];
+    job_status: string;
+    assigned_worker: string;
   }): Promise<void> => {
     setIsSubmitting(true);
     try {
       const res = await createJobFromLocation({
         project: Number(id),
         pin_ids: Array.from(effectiveSelectedIds),
-        site: dialogSiteId,
+        site: formData.site ? Number(formData.site) : undefined,
         start_date: formData.start_date,
-        assigned_worker: dialogAssignedWorkerId,
-        checklists: dialogChecklistIds,
-        job_status: dialogJobStatusId,
+        assigned_worker: formData.assigned_worker
+          ? Number(formData.assigned_worker)
+          : undefined,
+        checklists: formData.checklists.map(Number),
+        job_status: formData.job_status
+          ? Number(formData.job_status)
+          : undefined,
       });
       setDialogVisible(false);
       reset();
@@ -800,8 +826,8 @@ useEffect(() => {
   return (
     <div className="min-w-0 divide-y divide-slate-100 dark:divide-slate-800">
       {dialogVisible && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-99">
-          <div className="bg-white p-6 rounded-lg">
+        <div className="fixed inset-0 flex items-center justify-center  bg-black/50 backdrop-blur-sm z-99">
+          <div className="bg-white p-6 rounded-lg dark:bg-slate-950">
             <h2 className="text-lg font-semibold">Create Job</h2>
             <p className="mt-2">
               Are you sure you want to create a job for the selected pins?
@@ -822,7 +848,7 @@ useEffect(() => {
                   errors.start_date
                     ? "border-red-300 ring ring-red-500"
                     : "border-slate-300",
-                  "w-full p-2 rounded-md",
+                  "w-full p-2 rounded-md bg-white dark:bg-slate-900",
                 )}
               />
               {errors.start_date && (
@@ -834,32 +860,43 @@ useEffect(() => {
               <label className="text-md font-semibold text-slate-800 dark:text-slate-200">
                 {t("site")} <span className="text-red-500">*</span>
               </label>
-              <CheckmarkSelect
-                listLabel={t("site")}
-                buttonAriaLabel={t("site")}
-                options={siteOptions}
-                value={dialogSiteId != null ? String(dialogSiteId) : ""}
-                emptyLabel={t("selectSite")}
-                portaled
-                searchable
-                clearable
-                className={cn(
-                  "w-full",
-                  errors.site && "ring ring-red-500 rounded-lg",
-                )}
-                onChange={(value) => {
-                  setDialogSiteId(
-                    value ? Number.parseInt(value, 10) : undefined,
-                  );
-                  setValue("site", value ?? "", { shouldValidate: true });
+              <Controller
+                control={control}
+                name="site"
+                rules={{
+                  required: t("requiredSite") || "Site is required",
                 }}
+                render={({ field }) => (
+                  <CheckmarkSelect
+                    listLabel={t("site")}
+                    buttonAriaLabel={t("site")}
+                    options={siteOptions}
+                    value={field.value}
+                    emptyLabel={t("selectSite")}
+                    portaled
+                    searchable
+                    clearable
+                    className={cn(
+                      "w-full",
+                      errors.site && "ring ring-red-500 rounded-lg",
+                    )}
+                    // onChange={(value) => {
+                    //   setDialogSiteId(
+                    //     value ? Number.parseInt(value, 10) : undefined,
+                    //   );
+                    //   setValue("site", value ?? "", { shouldValidate: true });
+                    // }}
+                    onChange={(option) => field.onChange(option)}
+                  />
+                )}
               />
+              {/*               
               <input
                 type="hidden"
                 {...register("site", {
                   required: t("requiredSite") || "Site is required",
                 })}
-              />
+              /> */}
               {errors.site && (
                 <p className="mt-1 text-sm text-red-500">
                   {errors.site.message}
@@ -871,59 +908,67 @@ useEffect(() => {
               <label className="text-md font-semibold text-slate-800 dark:text-slate-200">
                 {t("assignedWorker")}
               </label>
-              <CheckmarkSelect
-                listLabel={t("assignedWorker")}
-                buttonAriaLabel={t("assignedWorker")}
-                options={workerOptions}
-                value={
-                  dialogAssignedWorkerId != null
-                    ? String(dialogAssignedWorkerId)
-                    : ""
-                }
-                emptyLabel={t("selectWorker") || "Select Worker"}
-                portaled
-                searchable
-                clearable
-                className="w-full"
-                disabled={loadingWorkers || workerOptions.length === 0}
-                onChange={(value) =>
-                  setDialogAssignedWorkerId(
-                    value ? Number.parseInt(value, 10) : undefined,
-                  )
-                }
+              <Controller
+                name="assigned_worker"
+                rules={{
+                  required: false,
+                }}
+                control={control}
+                render={({ field }) => (
+                  <CheckmarkSelect
+                    listLabel={t("assignedWorker")}
+                    buttonAriaLabel={t("assignedWorker")}
+                    options={workerOptions}
+                    value={field.value || ""}
+                    emptyLabel={t("selectWorker") || "Select Worker"}
+                    portaled
+                    searchable
+                    clearable
+                    className="w-full"
+                    disabled={loadingWorkers || workerOptions.length === 0}
+                    onChange={(value) => field.onChange(value)}
+                  />
+                )}
               />
             </div>
 
             <div className="mt-4">
-  <label className="text-md font-semibold text-slate-800 dark:text-slate-200">
-    {t("checkList")} <span className="text-red-500">*</span>
-  </label>
-  <MultiCheckSelect
-    id="checklist-select"
-    options={checklistOptions}
-    values={dialogChecklistIds.map(String)}
-    onChange={(values: string[]) => {
-      const ids = values.map((v) => Number.parseInt(v, 10));
-      setDialogChecklistIds(ids);
-      setValue("checklists", values, { shouldValidate: true });
-    }}
-    placeholder={t("selectChecklist") || "Select Checklist"}
-    listLabel={t("checkList")}
-    disabled={checkListLoading}
-    className="w-full"
-  />
-  <input
+              <label className="text-md font-semibold text-slate-800 dark:text-slate-200">
+                {t("checkList")} <span className="text-red-500">*</span>
+              </label>
+              <Controller
+                control={control}
+                name="checklists"
+                rules={{
+                  required: t("requiredChecklist") || "Checklist is required",
+                }}
+                render={({ field }) => (
+                  <MultiCheckSelect
+                    id="checklist-select"
+                    options={checklistOptions}
+                    // values={dialogChecklistIds.map(String)}
+                    values={field.value ?? []}
+                    onChange={(options: string[]) => field.onChange(options)}
+                    placeholder={t("selectChecklist") || "Select Checklist"}
+                    listLabel={t("checkList")}
+                    disabled={checkListLoading}
+                    className="w-full"
+                  />
+                )}
+              />
+
+              {/* <input
     type="hidden"
     {...register("checklists", {
       required: t("requiredChecklist") || "Checklist is required",
     })}
-  />
-  {errors.checklists && (
-    <p className="mt-1 text-sm text-red-500">
-      {errors.checklists.message}
-    </p>
-  )}
-</div>
+  /> */}
+              {errors.checklists && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.checklists.message}
+                </p>
+              )}
+            </div>
 
             <div className="mt-4">
               <label className="text-md font-semibold text-slate-800 dark:text-slate-200">
@@ -933,7 +978,9 @@ useEffect(() => {
                 listLabel="Job Status"
                 buttonAriaLabel="Job Status"
                 options={jobStatusOptions}
-                value={dialogJobStatusId != null ? String(dialogJobStatusId) : ""}
+                value={
+                  dialogJobStatusId != null ? String(dialogJobStatusId) : ""
+                }
                 emptyLabel="Select Job Status"
                 portaled
                 searchable
@@ -941,7 +988,9 @@ useEffect(() => {
                 className="w-full"
                 disabled={loadingJobStatuses || jobStatusOptions.length === 0}
                 onChange={(value) => {
-                  setDialogJobStatusId(value ? Number.parseInt(value, 10) : undefined);
+                  setDialogJobStatusId(
+                    value ? Number.parseInt(value, 10) : undefined,
+                  );
                   setValue("job_status", value ?? "", { shouldValidate: true });
                 }}
               />

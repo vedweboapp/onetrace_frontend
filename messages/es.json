@@ -476,7 +476,8 @@
       "layoutSavedToast": "Diseño guardado correctamente",
       "layoutCreatedToast": "Diseño creado correctamente",
       "layoutUpdatedToast": "Diseño actualizado correctamente",
-      "moduleCreatedToast": "Módulo creado correctamente"
+      "moduleCreatedToast": "Módulo creado correctamente",
+      "nameRequired": "El nombre del formulario es obligatorio."
     },
     "settingsProjectForms": {
       "createNewForm": "Crear nuevo formulario",

@@ -7,6 +7,7 @@ import ModuleBar from "../components/ModuleBar";
 import { GoGear } from "react-icons/go";
 import { DataTableRowActionsMenu } from "@/shared/ui/data-table-row-actions-menu";
 import { AppButton, AppButton as Button } from "@/shared/ui/app-button";
+import { cn } from "@/core/utils/http.util";
 import { useFormStore } from "@/features/form-builder/store/form-builder.store";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import { routes } from "@/shared/config/routes";
@@ -414,6 +415,7 @@ export default function FormBuilderLayout({
         ? "Loading Layout..."
         : targetModule || "Untitled",
   );
+  const [moduleNameError, setModuleNameError] = useState<string | null>(null);
 
   const [sections, setSections] = useState<Section[]>([
     {
@@ -862,6 +864,11 @@ export default function FormBuilderLayout({
   };
 
   const handleSave = async (isClose = false) => {
+    if (!moduleName.trim()) {
+      setModuleNameError(t("nameRequired"));
+      return;
+    }
+
     try {
       setSaving(true);
       const isNew = !formSchema || formSchema.length === 0;
@@ -1443,16 +1450,33 @@ export default function FormBuilderLayout({
           <div className="w-8 h-8 bg-black rounded flex items-center justify-center">
             <div className="w-4 h-4 bg-white rounded-full opacity-80" />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-1">
             <input
+              id="form-builder-name"
               value={moduleName}
               onChange={(e) => {
                 setModuleName(e.target.value);
+                setModuleNameError(null);
                 setDirty(true);
               }}
-              className="font-bold text-gray-900 dark:text-gray-100 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 outline-none w-auto max-w-[200px]"
+              onBlur={() => {
+                if (!moduleName.trim()) {
+                  setModuleNameError(t("nameRequired"));
+                }
+              }}
+              aria-invalid={moduleNameError ? true : undefined}
+              aria-describedby={moduleNameError ? "form-builder-name-error" : undefined}
+              className={cn(
+                "font-bold text-gray-900 dark:text-gray-100 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 outline-none w-auto max-w-[200px]",
+                moduleNameError ? "border-red-500 dark:border-red-500" : "",
+              )}
               placeholder="Untitled"
             />
+            {moduleNameError ? (
+              <p id="form-builder-name-error" className="text-xs text-red-600 dark:text-red-400">
+                {moduleNameError}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -1471,12 +1495,16 @@ export default function FormBuilderLayout({
           <Button
             variant="secondary"
             onClick={() => handleSave(true)}
-            disabled={!dirty || saving}
+            disabled={!dirty || saving || !moduleName.trim()}
             className="flex-1 lg:flex-initial justify-center"
           >
             Save and Close
           </Button>
-          <Button onClick={() => handleSave(false)} disabled={!dirty || saving} className="flex-1 lg:flex-initial justify-center">
+          <Button
+            onClick={() => handleSave(false)}
+            disabled={!dirty || saving || !moduleName.trim()}
+            className="flex-1 lg:flex-initial justify-center"
+          >
             {saving ? "Saving..." : "Save"}
           </Button>
         </div>
