@@ -328,8 +328,28 @@ function PlotPinsBlock({
     [pins],
   );
 
+  const plotHeaderRef = React.useRef<HTMLInputElement>(null);
+  const plotState = getSelectionState(selectablePinIds, selectedIds);
+
+  React.useEffect(() => {
+    if (plotHeaderRef.current) plotHeaderRef.current.indeterminate = plotState === "partial";
+  }, [plotState]);
+
   return (
     <div className="min-w-0 w-full rounded-xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-700/80 dark:bg-slate-950/30">
+      <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 flex items-center gap-3">
+        <input
+          ref={plotHeaderRef}
+          type="checkbox"
+          className={cn(
+            "h-4 w-4 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 cursor-pointer accent-(--dash-accent,#f97316)",
+          )}
+          checked={plotState === "all"}
+          disabled={selectablePinIds.length === 0}
+          onChange={() => onTogglePlot(selectablePinIds)}
+        />
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{plotName}</h3>
+      </div>
       {/* header unchanged */}
       <div className="min-w-0 w-full">
         {pins.length === 0 ? (
