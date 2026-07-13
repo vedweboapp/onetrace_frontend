@@ -282,7 +282,7 @@ const SignUpForm = () => {
                 <button
                   type="button"
                   onClick={VerifyOtp}
-                  className=" mt-0.5 cursor-pointer hover:underline text-sm font-medium"
+                  className=" mt-0.5 cursor-pointer hover:underline text-sm font-medium text-slate-900"
                 >
                   {verifyingOtp ? t("verifyingOtp") : t("verifyOtp")}
                 </button>

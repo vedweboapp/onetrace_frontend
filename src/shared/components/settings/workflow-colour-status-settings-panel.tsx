@@ -110,11 +110,14 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
   const categoryOptions = React.useMemo<CheckmarkSelectOption[]>(
-    () => [
-      { value: "open", label: t("modal.categoryOptions.open") },
-      { value: "closed", label: t("modal.categoryOptions.closed") },
-    ],
-    [t],
+    () =>
+      showCategory
+        ? [
+            { value: "open", label: t("modal.categoryOptions.open") },
+            { value: "closed", label: t("modal.categoryOptions.closed") },
+          ]
+        : [],
+    [showCategory, t],
   );
 
   const commitSearch = React.useCallback(
