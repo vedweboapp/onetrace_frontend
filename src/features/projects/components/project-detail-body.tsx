@@ -8,25 +8,22 @@ import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { resolveProjectTypeChipData } from "@/features/projects/utils/project-type-id.util";
 import { routes } from "@/shared/config/routes";
-import { DetailFormattedAddress, hasDetailAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
   DetailMetricCard,
   DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
-  DetailStatusMetric,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
-import { ActiveStatusBadge } from "@/shared/ui";
-import { cn } from "@/core/utils/http.util";
+import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
 
 function projectSiteListRows(
   detail: Project,
   siteLabel: string,
-): { id: number; label: string; isActive?: boolean }[] {
+): { id: number; label: string }[] {
   const sites = detail.sites;
   if (!Array.isArray(sites) || sites.length === 0) return [];
-  const rows: { id: number; label: string; isActive?: boolean }[] = [];
+  const rows: { id: number; label: string }[] = [];
   for (const entry of sites) {
     if (typeof entry === "number" && Number.isFinite(entry) && entry > 0) {
       rows.push({ id: entry, label: siteLabel });
@@ -35,7 +32,6 @@ function projectSiteListRows(
       rows.push({
         id: entry.id,
         label: name || siteLabel,
-        isActive: typeof entry.is_active === "boolean" ? entry.is_active : undefined,
       });
     }
   }
@@ -69,36 +65,22 @@ export function ProjectDetailBody({
       ? detail.project_status
       : undefined;
 
-  const addressParts = {
-    line1: detail.address_line_1,
-    line2: detail.address_line_2,
-    city: detail.city,
-    state: detail.state,
-    pincode: detail.pincode,
-    country: detail.country,
-  };
-  const showAddress = hasDetailAddress(addressParts);
+  const statusChip = projectStatus
+    ? {
+        status_name: projectStatus.name?.trim() || "—",
+        bg_colour: projectStatus.bg_color ?? "#e2e8f0",
+        text_colour: projectStatus.text_color ?? "#0f172a",
+      }
+    : null;
 
   return (
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
         <DetailPanelCard title={t("detail.sectionOverview")}>
           <DetailMetricsGrid className="sm:grid-cols-2">
-            {/* <DetailStatusMetric
-              label={t("table.status")}
-              isActive={detail.is_active}
-              activeLabel={t("status.active")}
-              inactiveLabel={t("status.inactive")}
-            /> */}
-            <div
-              className="inline-flex items-center rounded-xl px-2.5 py-0.5 text-xs font-semibold w-fit"
-              style={{
-                backgroundColor: projectStatus?.bg_color ?? "#e2e8f0",
-                color: projectStatus?.text_color ?? "#0f172a",
-              }}
-            >
-              {projectStatus?.name || "—"}
-            </div>
+            <DetailMetricCard label={t("table.status")}>
+              <WorkflowColourStatusChip row={statusChip} fallbackLabel="—" />
+            </DetailMetricCard>
             <DetailMetricCard label={t("fields.name")}>
               <span className="break-words">{detail.name}</span>
             </DetailMetricCard>
@@ -125,12 +107,11 @@ export function ProjectDetailBody({
             </DetailMetricCard>
             {detail.status ? (
               <DetailMetricCard label={t("table.status")}>
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                <span className="inline-flex max-w-full truncate rounded-full border border-black/10 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm dark:bg-slate-800 dark:text-slate-200">
                   {detail.status}
                 </span>
               </DetailMetricCard>
             ) : null}
-            
           </DetailMetricsGrid>
         </DetailPanelCard>
 
@@ -143,8 +124,6 @@ export function ProjectDetailBody({
             <p className="text-sm font-normal text-slate-500 dark:text-slate-400">—</p>
           )}
         </DetailPanelCard>
-
-      
 
         <DetailPanelCard title={t("detail.panelSites")}>
           {siteRows.length === 0 ? (
@@ -159,14 +138,6 @@ export function ProjectDetailBody({
                   >
                     <span className="break-words">{row.label}</span>
                   </DetailEntityLink>
-                  {typeof row.isActive === "boolean" ? (
-                    <div className="mt-2">
-                      <ActiveStatusBadge
-                        active={row.isActive}
-                        label={row.isActive ? t("status.active") : t("status.inactive")}
-                      />
-                    </div>
-                  ) : null}
                 </li>
               ))}
             </ul>
