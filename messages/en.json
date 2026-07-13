@@ -485,6 +485,8 @@
       "layoutCreatedToast": "Layout created successfully",
       "layoutUpdatedToast": "Layout updated successfully",
       "moduleCreatedToast": "Module created successfully",
+      "nameLabel": "Form name",
+      "namePlaceholder": "Enter form name",
       "nameRequired": "Form name is required."
     },
     "settingsProjectForms": {
@@ -1539,6 +1541,7 @@
         "retry": "Retry",
         "backAria": "Back to QR codes list",
         "sectionQr": "QR code",
+        "sectionDetails": "Details",
         "assignedJob": "Assigned job",
         "notAssigned": "Not assigned",
         "viewJob": "View assigned job",

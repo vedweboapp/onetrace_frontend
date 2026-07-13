@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
+import { DetailSystemMetadataSection } from "@/shared/components/entity";
 import type { QrCode } from "@/features/qr-codes/types/qr-code.types";
 import {
   DetailMetricCard,
@@ -11,7 +11,6 @@ import {
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 import { ActiveStatusBadge } from "@/shared/ui";
-import { routes } from "@/shared/config/routes";
 
 function formatOptionalDate(value: string | null, dateFmt: Intl.DateTimeFormat): string {
   if (!value?.trim()) return "—";
@@ -52,25 +51,13 @@ export function QrCodeDetailBody({ detail, dateFmt }: Props) {
           </div>
         </DetailPanelCard>
 
-        <DetailPanelCard title={t("table.assignedJob")}>
+        <DetailPanelCard title={t("detail.sectionDetails")}>
           <DetailMetricsGrid>
-            <DetailMetricCard label={t("detail.assignedJob")}>
-              {detail.assigned_to_id != null && detail.assigned_to_id > 0 ? (
-                <DetailEntityLink
-                  href={`${routes.dashboard.jobs}/${detail.assigned_to_id}`}
-                  className="text-sm font-medium text-[color:var(--dash-accent)] hover:underline"
-                >
-                  {t("detail.viewJob")}
-                </DetailEntityLink>
-              ) : (
-                <span className="text-sm text-slate-600 dark:text-slate-400">{t("detail.notAssigned")}</span>
-              )}
+            <DetailMetricCard label={t("table.lastScanned")}>
+              <span>{formatOptionalDate(detail.last_scanned_at, dateFmt)}</span>
             </DetailMetricCard>
             <DetailMetricCard label={t("table.scanCount")}>
               <span className="tabular-nums">{detail.scan_count}</span>
-            </DetailMetricCard>
-            <DetailMetricCard label={t("table.lastScanned")}>
-              <span>{formatOptionalDate(detail.last_scanned_at, dateFmt)}</span>
             </DetailMetricCard>
           </DetailMetricsGrid>
         </DetailPanelCard>

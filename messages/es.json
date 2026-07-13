@@ -477,6 +477,8 @@
       "layoutCreatedToast": "Diseño creado correctamente",
       "layoutUpdatedToast": "Diseño actualizado correctamente",
       "moduleCreatedToast": "Módulo creado correctamente",
+      "nameLabel": "Nombre del formulario",
+      "namePlaceholder": "Introduce el nombre del formulario",
       "nameRequired": "El nombre del formulario es obligatorio."
     },
     "settingsProjectForms": {
@@ -1531,6 +1533,7 @@
         "retry": "Reintentar",
         "backAria": "Volver a la lista de códigos QR",
         "sectionQr": "Código QR",
+        "sectionDetails": "Detalles",
         "assignedJob": "Trabajo asignado",
         "notAssigned": "Sin asignar",
         "viewJob": "Ver trabajo asignado",
