@@ -7,6 +7,8 @@ import ModuleBar from "../components/ModuleBar";
 import { GoGear } from "react-icons/go";
 import { DataTableRowActionsMenu } from "@/shared/ui/data-table-row-actions-menu";
 import { AppButton, AppButton as Button } from "@/shared/ui/app-button";
+import { fieldRequiredMarkClassName } from "@/shared/ui/field-primitives";
+import { cn } from "@/core/utils/http.util";
 import { useFormStore } from "@/features/form-builder/store/form-builder.store";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import { routes } from "@/shared/config/routes";
@@ -409,11 +411,12 @@ export default function FormBuilderLayout({
 
   const [moduleName, setModuleName] = useState(
     purpose === "create_layout" || purpose === "create_project_form"
-      ? "New Layout"
+      ? ""
       : purpose === "edit_layout" || purpose === "edit_project_form"
         ? "Loading Layout..."
-        : targetModule || "Untitled",
+        : targetModule || "",
   );
+  const [moduleNameInvalid, setModuleNameInvalid] = useState(false);
 
   const [sections, setSections] = useState<Section[]>([
     {
@@ -862,6 +865,12 @@ export default function FormBuilderLayout({
   };
 
   const handleSave = async (isClose = false) => {
+    if (!moduleName.trim()) {
+      setModuleNameInvalid(true);
+      return;
+    }
+    setModuleNameInvalid(false);
+
     try {
       setSaving(true);
       const isNew = !formSchema || formSchema.length === 0;
@@ -1443,16 +1452,37 @@ export default function FormBuilderLayout({
           <div className="w-8 h-8 bg-black rounded flex items-center justify-center">
             <div className="w-4 h-4 bg-white rounded-full opacity-80" />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-1">
+            <label htmlFor="form-builder-name" className="sr-only">
+              {t("nameLabel")}
+            </label>
             <input
+              id="form-builder-name"
               value={moduleName}
               onChange={(e) => {
-                setModuleName(e.target.value);
+                const next = e.target.value;
+                setModuleName(next);
                 setDirty(true);
+                if (moduleNameInvalid && next.trim()) {
+                  setModuleNameInvalid(false);
+                }
               }}
-              className="font-bold text-gray-900 dark:text-gray-100 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 outline-none w-auto max-w-[200px]"
-              placeholder="Untitled"
+              aria-invalid={moduleNameInvalid || undefined}
+              aria-required="true"
+              className={cn(
+                "min-w-[12rem] max-w-[16rem] rounded-md border bg-white px-2.5 py-1.5 text-sm font-semibold text-slate-900 outline-none transition",
+                "placeholder:font-normal placeholder:text-slate-400",
+                "focus:ring-2 focus:ring-[color:var(--dash-accent,#111111)]/20",
+                "dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500",
+                moduleNameInvalid
+                  ? "border-red-500 focus:border-red-500 dark:border-red-500"
+                  : "border-slate-200 hover:border-slate-300 focus:border-[color:var(--dash-accent,#111111)] dark:border-slate-700 dark:hover:border-slate-600",
+              )}
+              placeholder={t("namePlaceholder")}
             />
+            <span className={fieldRequiredMarkClassName} aria-hidden>
+              *
+            </span>
           </div>
         </div>
 
@@ -1476,7 +1506,11 @@ export default function FormBuilderLayout({
           >
             Save and Close
           </Button>
-          <Button onClick={() => handleSave(false)} disabled={!dirty || saving} className="flex-1 lg:flex-initial justify-center">
+          <Button
+            onClick={() => handleSave(false)}
+            disabled={!dirty || saving}
+            className="flex-1 lg:flex-initial justify-center"
+          >
             {saving ? "Saving..." : "Save"}
           </Button>
         </div>
