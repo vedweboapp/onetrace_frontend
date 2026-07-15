@@ -17,4 +17,5 @@ export const PROJECT_PATHS = {
   projectFormRules: (id: number | string) => `project-forms/${id}/rules/`,
   projectLocation: (id: number | string) => `project/${id}/level/`,
   createJobFromLocation: "jobs/",
+  massUpdate: (projectId: number | string) => `project/${projectId}/level/operation/mass_update/`,
 } as const;
