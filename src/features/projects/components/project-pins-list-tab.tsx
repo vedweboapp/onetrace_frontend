@@ -581,8 +581,8 @@ function PlotPinsBlock({
       ) => {
         const categoryId = String(
           currentPin?.item_detail?.id ??
-            currentPin?.group_detail?.id ??
-            "uncategorized",
+          currentPin?.group_detail?.id ??
+          "uncategorized",
         );
         const existingCategory = acc.find((cat) => cat.id === categoryId);
 
@@ -771,6 +771,7 @@ const ProjectPinsListTab = ({
     plots: DrawingPlot[];
     drawingFile: string;
     drawingName: string;
+    drawingId?: number;
   } | null>(null);
   const [dialogSiteId, setDialogSiteId] = useState<number | undefined>(
     undefined,
@@ -793,8 +794,8 @@ const ProjectPinsListTab = ({
     { value: string; label: string }[]
   >([]);
   const [loadingJobStatuses, setLoadingJobStatuses] = useState(false);
-  const [selectedJobStatus, setSelectedJobStatus] = useState("");
-  const [selectedQuoteStatus, setSelectedQuoteStatus] = useState("");
+  const [selectedJobStatus, setSelectedJobStatus] = useState("false");
+  const [selectedQuoteStatus, setSelectedQuoteStatus] = useState("approved");
   const [selectedAction, setSelectedAction] = useState("");
   const [selectedActionField, setSelectedActionField] = useState("");
   const [selectedFormId, setSelectedFormId] = useState("");
@@ -895,7 +896,7 @@ const ProjectPinsListTab = ({
 
   useEffect(() => {
     let cancelled = false;
-    loadLocationsPage().catch(() => {});
+    loadLocationsPage().catch(() => { });
     return () => {
       cancelled = true;
     };
@@ -1324,7 +1325,7 @@ const ProjectPinsListTab = ({
 
   const QuoteFilerOptions = [
     { value: "", label: "All Pins" },
-    { value: "draft", label:"Draft"},
+    { value: "draft", label: "Draft" },
     { value: "approved", label: "Quote Aprooved" },
     { value: "rejected", label: "Rejected" },
   ];
@@ -1727,130 +1728,130 @@ const ProjectPinsListTab = ({
       </div>
       {selectedIds.size > 0 && <div className="p-4 sm:p-6">
         <div className="bg-white drak:bg-slate-900/20 p-2 sm:px-4 sm:py-2  border dark:border-slate-700/80  rounded-lg border-slate-200/90 flex items-center justify-between gap-3 overflow-hidden">
-         <div className="flex items-center  gap-4">
-          <span className="shrink-0 whitespace-nowrap rounded-md bg-[color:var(--dash-accent,#111)]/10 px-2 py-1 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-100">
-            {selectedIds.size} {selectedIds.size === 1 ? "pin" : "pins"}{" "}
-            selected
-          </span>
-          <div className="bg-slate-200  h-4"></div>
-          <CheckmarkSelect
-            listLabel={t("massAction")}
-            buttonAriaLabel={t("massAction")}
-            options={massActionOptions}
-            emptyLabel={t("selectAction")}
-            className="w-42"
-            value={selectedAction}
-            clearable
-            size="sm"
-            portaled
-            onChange={(e) => {
-              setSelectedAction(e);
-            }}
-          />
-          {selectedAction && (
-            <div className="flex items-center gap-3">
-              <CheckmarkSelect
-                listLabel={t("actionField")}
-                buttonAriaLabel={t("actionField")}
-                options={actionFields}
-                emptyLabel={t("selectField")}
-                value={selectedActionField}
-                clearable
-                size="sm"
-                portaled
-                className="w-40"
-                onChange={(e) => {
-                  setSelectedActionField(e);
-                  setSelectedFormId("");
-                  setSelectedVariation("");
-                  setSelectedQuantity("");
-                }}
-              />
-
-              {selectedActionField === "update_form" && (
+          <div className="flex items-center  gap-4">
+            <span className="shrink-0 whitespace-nowrap rounded-md bg-[color:var(--dash-accent,#111)]/10 px-2 py-1 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-100">
+              {selectedIds.size} {selectedIds.size === 1 ? "pin" : "pins"}{" "}
+              selected
+            </span>
+            <div className="bg-slate-200  h-4"></div>
+            <CheckmarkSelect
+              listLabel={t("massAction")}
+              buttonAriaLabel={t("massAction")}
+              options={massActionOptions}
+              emptyLabel={t("selectAction")}
+              className="w-42"
+              value={selectedAction}
+              clearable
+              size="sm"
+              portaled
+              onChange={(e) => {
+                setSelectedAction(e);
+              }}
+            />
+            {selectedAction && (
+              <div className="flex items-center gap-3">
                 <CheckmarkSelect
-                  listLabel="Form"
-                  buttonAriaLabel="Form"
-                  options={formOptions}
-                  emptyLabel={loadingForms ? "Loading..." : "Select Form"}
-                  value={selectedFormId}
-                  clearable
-                  size="sm"
-                  portaled
-                  className="w-44"
-                  disabled={loadingForms}
-                  onChange={(e) => setSelectedFormId(e)}
-                />
-              )}
-
-              {selectedActionField === "update_variation" && (
-                <CheckmarkSelect
-                  listLabel="Variation"
-                  buttonAriaLabel="Variation"
-                  options={[
-                    { value: "true", label: "Yes" },
-                    { value: "false", label: "No" },
-                  ]}
-                  emptyLabel="Select Variation"
-                  value={selectedVariation}
+                  listLabel={t("actionField")}
+                  buttonAriaLabel={t("actionField")}
+                  options={actionFields}
+                  emptyLabel={t("selectField")}
+                  value={selectedActionField}
                   clearable
                   size="sm"
                   portaled
                   className="w-40"
-                  onChange={(e) => setSelectedVariation(e)}
+                  onChange={(e) => {
+                    setSelectedActionField(e);
+                    setSelectedFormId("");
+                    setSelectedVariation("");
+                    setSelectedQuantity("");
+                  }}
                 />
-              )}
 
-              {selectedActionField === "update_quantity" && (
-                <input
-                  type="number"
-                  min="1"
-                  value={selectedQuantity}
-                  onChange={(e) => setSelectedQuantity(e.target.value)}
-                  className={cn(
-                    surfaceInputClassName,
-                    "w-24 px-3 py-1 text-sm rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100",
-                  )}
-                  placeholder="Qty"
-                />
-              )}
+                {selectedActionField === "update_form" && (
+                  <CheckmarkSelect
+                    listLabel="Form"
+                    buttonAriaLabel="Form"
+                    options={formOptions}
+                    emptyLabel={loadingForms ? "Loading..." : "Select Form"}
+                    value={selectedFormId}
+                    clearable
+                    size="sm"
+                    portaled
+                    className="w-44"
+                    disabled={loadingForms}
+                    onChange={(e) => setSelectedFormId(e)}
+                  />
+                )}
 
-              <AppButton
-                variant="primary"
-                size="sm"
-                onClick={handleApplyMassUpdate}
-                loading={isSubmitting}
-                disabled={
-                  isSubmitting ||
-                  !selectedActionField ||
-                  (selectedActionField === "update_form" && !selectedFormId) ||
-                  (selectedActionField === "update_variation" && !selectedVariation) ||
-                  (selectedActionField === "update_quantity" && !selectedQuantity)
-                }
-              >
-                Apply
-              </AppButton>
-             
-            </div>
-          )}
-         </div>
-         
-          
-           {effectiveSelectedIds.size > 0 && (
+                {selectedActionField === "update_variation" && (
+                  <CheckmarkSelect
+                    listLabel="Variation"
+                    buttonAriaLabel="Variation"
+                    options={[
+                      { value: "true", label: "Yes" },
+                      { value: "false", label: "No" },
+                    ]}
+                    emptyLabel="Select Variation"
+                    value={selectedVariation}
+                    clearable
+                    size="sm"
+                    portaled
+                    className="w-40"
+                    onChange={(e) => setSelectedVariation(e)}
+                  />
+                )}
+
+                {selectedActionField === "update_quantity" && (
+                  <input
+                    type="number"
+                    min="1"
+                    value={selectedQuantity}
+                    onChange={(e) => setSelectedQuantity(e.target.value)}
+                    className={cn(
+                      surfaceInputClassName,
+                      "w-24 px-3 py-1 text-sm rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100",
+                    )}
+                    placeholder="Qty"
+                  />
+                )}
+
                 <AppButton
                   variant="primary"
                   size="sm"
-                  onClick={() => {
-                    if (alreadyJobPins.length > 0) {
-                      setJobConflictWarning(true);
-                    } else {
-                      setDialogVisible(true);
-                    }
-                  }}
+                  onClick={handleApplyMassUpdate}
+                  loading={isSubmitting}
+                  disabled={
+                    isSubmitting ||
+                    !selectedActionField ||
+                    (selectedActionField === "update_form" && !selectedFormId) ||
+                    (selectedActionField === "update_variation" && !selectedVariation) ||
+                    (selectedActionField === "update_quantity" && !selectedQuantity)
+                  }
                 >
-                  Create Job
+                  Apply
                 </AppButton>
-              )}
+
+              </div>
+            )}
+          </div>
+
+
+          {effectiveSelectedIds.size > 0 && (
+            <AppButton
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                if (alreadyJobPins.length > 0) {
+                  setJobConflictWarning(true);
+                } else {
+                  setDialogVisible(true);
+                }
+              }}
+            >
+              Create Job
+            </AppButton>
+          )}
         </div>
       </div>}
 
@@ -1949,7 +1950,7 @@ const ProjectPinsListTab = ({
                               pins={plot.pins}
                               selectedIds={selectedIds}
                               drawingFile={level.drawing_file}
-                              drawingFileType={level.drawing_file_type} // ← add
+                              drawingFileType={level.drawing_file_type}
                               snapshotState={levelSnapshots.get(level.id)}
                               drawingName={level.name}
                               onTogglePlot={handleToggleGroup}
@@ -1959,9 +1960,10 @@ const ProjectPinsListTab = ({
                               onPreviewPin={(pin) => {
                                 setPreviewPinData({
                                   pin,
-                                  plots: [plot],
+                                  plots: level.plots,
                                   drawingFile: level.drawing_file,
                                   drawingName: level.name,
+                                  drawingId: level.id,
                                 });
                               }}
                             />
@@ -1997,6 +1999,24 @@ const ProjectPinsListTab = ({
           plots={previewPinData.plots}
           drawingFile={previewPinData.drawingFile}
           drawingName={previewPinData.drawingName}
+          projectId={Number(id)}
+          drawingId={previewPinData.drawingId}
+          editUrl={previewPinData.drawingId ? `/projects/${id}/drawings/${previewPinData.drawingId}` : undefined}
+          onSaveSuccess={(updatedPin) => {
+            setPreviewPinData(prev => prev ? { ...prev, pin: updatedPin } : null);
+            setLocations(prevLocations =>
+              prevLocations.map(drawing => {
+                if (drawing.id !== previewPinData.drawingId) return drawing;
+                return {
+                  ...drawing,
+                  plots: (drawing.plots ?? []).map(plot => ({
+                    ...plot,
+                    pins: (plot.pins ?? []).map(p => p.id === updatedPin.id ? updatedPin : p)
+                  }))
+                };
+              })
+            );
+          }}
         />
       )}
     </div>

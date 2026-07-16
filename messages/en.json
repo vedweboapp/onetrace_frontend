@@ -3113,7 +3113,17 @@
         "requiredChecklist": "Please select at least one checklist item.",
         "requiredJobStatus": "Job status is required.",
         "checkList": "Check List",
-        "selectChecklist": "Select Checklist"
+        "selectChecklist": "Select Checklist",
+        "pinsStatus": "Pin Status",
+        "quoteStatus": "Quote Status",
+        "massUpdate": "Mass Update",
+        "massAction": "Action",
+        "selectAction": "Select action",
+        "actionField": "Field",
+        "selectField": "Select field",
+        "actionFieldForm": "Form",
+        "actionFieldVariation": "Variation",
+        "actionFieldQuantity": "Quantity"
         
       },
       "drawings": {

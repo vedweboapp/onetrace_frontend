@@ -1791,7 +1791,7 @@
         "mapNotFoundHint": "No se pudo ubicar esta dirección — indica ciudad, provincia y código postal, o haz clic en el mapa para colocar el pin.",
         "addressFromPin": "Dirección actualizada según la posición del pin.",
         "coordsLabel": "Coordenadas: {lat}, {lon}",
-        "checkList":"lista de verificación",
+        "checkList": "lista de verificación",
         "selectChecklist": "Seleccionar lista de verificación"
       }
     },
@@ -3099,7 +3099,17 @@
         "requiredDate": "Se requiere una fecha.",
         "requiredWorker": "Se requiere un trabajador.",
         "requiredChecklist": "Por favor seleccione al menos un elemento de la lista de verificación.",
-        "requiredJobStatus": "Se requiere un estado del trabajo."
+        "requiredJobStatus": "Se requiere un estado del trabajo.",
+        "pinsStatus": "Estado de los pines",
+        "quoteStatus": "Estado de la cotización",
+        "massUpdate": "Actualización masiva",
+        "massAction": "Acción",
+        "selectAction": "Seleccionar acción",
+        "actionField": "Campo",
+        "selectField": "Seleccionar campo",
+        "actionFieldForm": "Formulario",
+        "actionFieldVariation": "Variación",
+        "actionFieldQuantity": "Cantidad"
       },
       "drawings": {
         "title": "Planos",
