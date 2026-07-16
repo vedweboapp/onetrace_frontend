@@ -16,6 +16,7 @@ import type { PinStatus } from "@/features/pin-status/types/pin-status.types";
 import type { FormListItem } from "@/features/forms/types/form.types";
 import type { DrawingPin, DrawingPinAttachment, DrawingPlot, DrawingPlotUpsert } from "@/features/projects/types/drawing.types";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
+import { readPinFocus, clearPinFocus } from "@/features/projects/utils/pin-geometry.util";
 import {
   defaultQuantityForNewPin,
   resolvePinDisplayQuantity,
@@ -557,6 +558,48 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     };
   }, [loadAllData]);
 
+  // ── Auto-focus the pin that was previewed from the Location tab ──────────
+  // After data loads, read the saved pin coordinates and zoom + scroll to it.
+  React.useEffect(() => {
+    if (loading) return; // wait until drawing + pins are ready
+
+    const focus = readPinFocus(projectId);
+    // Only focus if the stored entry is for this drawing
+    if (!focus || focus.drawingId !== drawingId) return;
+
+    const timer = window.setTimeout(() => {
+      const viewport = viewportRef.current;
+      if (!viewport) return;
+
+      const ps = pageSizeRef.current;
+      const viewW = viewport.clientWidth;
+      const viewH = viewport.clientHeight;
+
+      // Pin center in pixel space
+      const pinX = (focus.x / 100) * ps.width;
+      const pinY = (focus.y / 100) * ps.height;
+
+      // Moderate zoom — enough to see the pin clearly but not too close
+      const targetZoom = 2;
+      setZoom(targetZoom);
+
+      // Scroll to center the pin in the viewport
+      window.requestAnimationFrame(() => {
+        const scrollLeft = pinX * targetZoom - viewW / 2;
+        const scrollTop  = pinY * targetZoom - viewH / 2;
+        viewport.scrollTo({
+          left: Math.max(0, scrollLeft),
+          top:  Math.max(0, scrollTop),
+          behavior: "smooth",
+        });
+      });
+
+      clearPinFocus(projectId);
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
   React.useEffect(() => {
     let cancelled = false;
     if (!selectedGroupId) {
@@ -2020,6 +2063,9 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               setDetailPlotId(null);
                               setDetailPin(pin);
                               setPinEditData(pin);
+
+                              // Save pin coordinates so auto-focus works on the next visit
+                              savePinFocus(pin.x_coordinate, pin.y_coordinate, projectId, drawingId);
 
                               // Pre-populate dropdowns for editing
                               setSelectedGroupId(pin.group ? String(pin.group) : "");

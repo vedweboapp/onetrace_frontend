@@ -794,8 +794,8 @@ const ProjectPinsListTab = ({
     { value: string; label: string }[]
   >([]);
   const [loadingJobStatuses, setLoadingJobStatuses] = useState(false);
-  const [selectedJobStatus, setSelectedJobStatus] = useState("");
-  const [selectedQuoteStatus, setSelectedQuoteStatus] = useState("");
+  const [selectedJobStatus, setSelectedJobStatus] = useState("false");
+  const [selectedQuoteStatus, setSelectedQuoteStatus] = useState("approved");
   const [selectedAction, setSelectedAction] = useState("");
   const [selectedActionField, setSelectedActionField] = useState("");
   const [selectedFormId, setSelectedFormId] = useState("");
@@ -1147,6 +1147,7 @@ const ProjectPinsListTab = ({
     }
     return next;
   }, [selectedIds, selectablePinIds]);
+
 
   // Pins among the selection that are already converted to jobs
   const alreadyJobPins = useMemo(() => {
