@@ -2377,6 +2377,10 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               {projectForms?.find(f => f.id === (isPinEditing ? pinEditData.formId : detailPin.formId))?.name || "Select Form"}
                             </span>
                           )
+                        ) : compositeItemInstallationType ? (
+                          <span className="text-xs text-amber-600 dark:text-amber-400 font-medium text-right max-w-[200px]">
+                            No form with the installation type found in the project
+                          </span>
                         ) : null
                       }
                     </div>

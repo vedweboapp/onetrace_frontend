@@ -250,7 +250,7 @@ export function CheckmarkSelect({
     if (open) setSearch("");
   }, [open]);
 
-  const displayLabel = safeValue && selected ? selected.label : emptyLabel;
+  const displayLabel = selected ? selected.label : emptyLabel;
 
   const listClasses = cn(
     "flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",

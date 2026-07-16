@@ -12,6 +12,9 @@ export function mapProjectFormToPayload(values: ProjectFormValues): ProjectUpser
   const form_ids = (values.form_ids ?? [])
     .map((raw) => Number.parseInt(raw, 10))
     .filter((id) => Number.isFinite(id) && id > 0);
+  const manager_ids = (values.manager_ids ?? [])
+    .map((raw) => Number.parseInt(raw, 10))
+    .filter((id) => Number.isFinite(id) && id > 0);
   return {
     name: values.name.trim(),
     client: Number.isFinite(clientId) ? clientId : 0,
@@ -19,6 +22,7 @@ export function mapProjectFormToPayload(values: ProjectFormValues): ProjectUpser
     description: values.description.trim(),
     sites,
     form_ids,
+    manager_ids,
     start_date: values.start_date.trim(),
     end_date: values.end_date.trim(),
     project_status: values.project_status ? Number.parseInt(values.project_status, 10) : undefined,
@@ -36,6 +40,7 @@ export function emptyProjectFormDefaults(): ProjectFormValues {
     start_date: "",
     end_date: "",
     project_status: "",
+    manager_ids: [],
   };
 }
 
@@ -66,6 +71,15 @@ export function projectToFormDefaults(project: Project): ProjectFormValues {
       ? project.project_status.id
       : project.project_status;
 
+  const managerIds = Array.isArray(project.manager_ids)
+    ? project.manager_ids.map(String)
+    : Array.isArray(project.managers)
+      ? project.managers
+          .map((m: any) => (typeof m === "number" ? m : m?.id))
+          .filter((id): id is number => Number.isFinite(id) && id > 0)
+          .map(String)
+      : [];
+
   return {
     name: project.name ?? "",
     client: clientId ? String(clientId) : "",
@@ -76,5 +90,6 @@ export function projectToFormDefaults(project: Project): ProjectFormValues {
     start_date: start,
     end_date: end,
     project_status: projectStatusId ? String(projectStatusId) : "",
+    manager_ids: managerIds,
   };
 }

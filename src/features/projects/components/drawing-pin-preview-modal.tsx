@@ -7,7 +7,7 @@ import { resolvePinMarkerAbbreviation } from "@/features/projects/utils/drawing-
 import type { DrawingPin, DrawingPlot, DrawingPinAttachment, DrawingPlotUpsert } from "@/features/projects/types/drawing.types";
 import { AppModal, AppButton } from "@/shared/ui";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
-import { Loader2, MapPinned, LayoutGrid, FileText, Paperclip } from "lucide-react";
+import { Loader2, MapPinned, LayoutGrid, FileText, Paperclip, X } from "lucide-react";
 import { fetchDrawingDetail, updateDrawingPlots } from "@/features/projects/api/drawing.api";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
@@ -341,6 +341,7 @@ export function DrawingPinPreviewModal({
   const [isEditing, setIsEditing] = React.useState(false);
   const [pinEditData, setPinEditData] = React.useState<DrawingPin | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [detailsOpen, setDetailsOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (open && projectId) {
@@ -360,6 +361,7 @@ export function DrawingPinPreviewModal({
     if (open) {
       setIsEditing(false);
       setPinEditData(null);
+      setDetailsOpen(false);
     }
   }, [open]);
 
@@ -504,6 +506,28 @@ export function DrawingPinPreviewModal({
   const pinX = pageSize ? (pin.x_coordinate / 100) * pageSize.width : 0;
   const pinY = pageSize ? (pin.y_coordinate / 100) * pageSize.height : 0;
 
+  // Compute installation_type from the active item (editing or viewing)
+  const activeItemId = isEditing && pinEditData ? (pinEditData.item ?? pin.item) : pin.item;
+  const activeItemDetail = isEditing && pinEditData
+    ? (itemsList.find(i => i.id === activeItemId) ?? pinEditData.item_detail ?? pin.item_detail)
+    : pin.item_detail;
+  const activeInstallationType: string = (() => {
+    const instType = activeItemDetail?.installation_type;
+    if (instType && typeof instType === "object") {
+      return instType.id != null ? String(instType.id) : "";
+    }
+    return instType != null ? String(instType) : "";
+  })();
+
+  // Filter forms by the pin's item installation_type (mirrors editor screen logic)
+  const availableForms = activeInstallationType
+    ? formsList.filter(form => {
+        const formType = (form as any)?.installation_type?.id ?? (form as any)?.installation_type_id;
+        if (formType == null) return false;
+        return String(formType) === activeInstallationType;
+      })
+    : formsList;
+
   return (
     <AppModal
       open={open}
@@ -518,8 +542,8 @@ export function DrawingPinPreviewModal({
     >
       <div className="grid grid-cols-1 md:grid-cols-10 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/20">
 
-        {/* Left Column (MAP) - 70% width */}
-        <div className="relative md:col-span-7 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
+        {/* Left Column (MAP) - 70% or 100% width */}
+        <div className={`relative ${detailsOpen ? "md:col-span-7 border-r" : "md:col-span-10"} border-b md:border-b-0 border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden`}>
           {loading && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm dark:bg-slate-900/70">
               <div className="flex flex-col items-center gap-2">
@@ -668,8 +692,13 @@ export function DrawingPinPreviewModal({
 
                 {/* Pin Plotting Layer */}
                 {pageSize && (
-                  <div
-                    className="absolute"
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDetailsOpen(true);
+                    }}
+                    title="Click to view details"
+                    className="absolute cursor-pointer hover:scale-105 active:scale-95 transition-transform duration-150 border-none bg-transparent p-0 outline-none"
                     style={{
                       left: pinX,
                       top: pinY,
@@ -679,7 +708,7 @@ export function DrawingPinPreviewModal({
                     }}
                   >
                     <PinMarker label={label} abbreviation={abbreviation} color={color} />
-                  </div>
+                  </button>
                 )}
               </div>
             ) : (
@@ -691,62 +720,75 @@ export function DrawingPinPreviewModal({
         </div>
 
         {/* Right Column (FIELDS) - 30% width */}
-        <div className="md:col-span-3 bg-white dark:bg-slate-900 flex flex-col max-h-[70vh] overflow-hidden border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800">
-          {/* Header/Title with EDIT button */}
-          <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800/80">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                Location #{pin.location || String(pin.id)}
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                {productName}
-              </p>
-            </div>
-            
-            {/* Action buttons */}
-            {projectId && drawingId && (
-              <div className="flex items-center gap-2">
-                {isEditing ? (
-                  <>
-                    <button
-                      onClick={() => {
-                        setIsEditing(false);
-                        setPinEditData(pin);
-                      }}
-                      className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-all shadow-md shadow-blue-100 dark:shadow-none flex items-center gap-1"
-                    >
-                      {saving && <Loader2 className="h-3 w-3 animate-spin" />}
-                      Save
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => {
-                      const normalizedFormId =
-                        pin.formId ??
-                        (typeof pin.project_form === "number" ? pin.project_form : null);
-                      setPinEditData({ ...pin, formId: normalizedFormId });
-                      setIsEditing(true);
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                    Edit
-                  </button>
-                )}
+        {detailsOpen && (
+          <div className="md:col-span-3 bg-white dark:bg-slate-900 flex flex-col max-h-[70vh] overflow-hidden border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800">
+            {/* Header/Title with EDIT and CLOSE buttons */}
+            <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800/80 gap-3">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 truncate">
+                  Location #{pin.location || String(pin.id)}
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+                  {productName}
+                </p>
               </div>
-            )}
-          </div>
+              
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {projectId && drawingId && (
+                  <div className="flex items-center gap-1.5">
+                    {isEditing ? (
+                      <>
+                        <button
+                          onClick={() => {
+                            setIsEditing(false);
+                            setPinEditData(pin);
+                          }}
+                          className="px-2 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleSave}
+                          disabled={saving}
+                          className="px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-all shadow-md shadow-blue-100 dark:shadow-none flex items-center gap-1"
+                        >
+                          {saving && <Loader2 className="h-3 w-3 animate-spin" />}
+                          Save
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          const normalizedFormId =
+                            pin.formId ??
+                            (typeof pin.project_form === "number" ? pin.project_form : null);
+                          setPinEditData({ ...pin, formId: normalizedFormId });
+                          setIsEditing(true);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                        Edit
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => {
+                    setIsEditing(false);
+                    setDetailsOpen(false);
+                  }}
+                  title="Close details"
+                  className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
 
           {/* Details list */}
           <div className="flex-1 overflow-y-auto p-3  space-y-6">
@@ -993,7 +1035,7 @@ export function DrawingPinPreviewModal({
                   <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Form</span>
                 </div>
                 <div className="flex-1 flex justify-end">
-                  {formsList.length > 0 ? (
+                  {availableForms.length > 0 ? (
                     isEditing && pinEditData ? (
                       <select
                         value={String(
@@ -1008,7 +1050,7 @@ export function DrawingPinPreviewModal({
                         className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 max-w-[200px]"
                       >
                         <option value="">Select Form</option>
-                        {formsList.map((opt) => (
+                        {availableForms.map((opt) => (
                           <option key={opt.id} value={opt.id}>
                             {opt.name}
                           </option>
@@ -1016,14 +1058,16 @@ export function DrawingPinPreviewModal({
                       </select>
                     ) : (
                       <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 text-right">
-                        {formsList.find(f =>
+                        {availableForms.find(f =>
                           f.id === (pin.formId ?? (typeof pin.project_form === "number" ? pin.project_form : null))
                         )?.name || "-"}
                       </span>
                     )
-                  ) : (
-                    <span className="text-sm font-semibold text-slate-500">-</span>
-                  )}
+                  ) : activeInstallationType ? (
+                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium text-right max-w-[180px]">
+                      No form with the installation type found in the project
+                    </span>
+                  ) : null}
                 </div>
               </div>
 
@@ -1076,6 +1120,7 @@ export function DrawingPinPreviewModal({
             </div>
           </div>
         </div>
+      )}
 
       </div>
     </AppModal>

@@ -794,8 +794,8 @@ const ProjectPinsListTab = ({
     { value: string; label: string }[]
   >([]);
   const [loadingJobStatuses, setLoadingJobStatuses] = useState(false);
-  const [selectedJobStatus, setSelectedJobStatus] = useState("false");
-  const [selectedQuoteStatus, setSelectedQuoteStatus] = useState("approved");
+  const [selectedJobStatus, setSelectedJobStatus] = useState("");
+  const [selectedQuoteStatus, setSelectedQuoteStatus] = useState("");
   const [selectedAction, setSelectedAction] = useState("");
   const [selectedActionField, setSelectedActionField] = useState("");
   const [selectedFormId, setSelectedFormId] = useState("");
@@ -863,10 +863,14 @@ const ProjectPinsListTab = ({
       setLoadError(null);
 
       try {
-        const params = {
+        const rawParams: Record<string, string> = {
           is_converted_job: selectedJobStatus,
           quote_status: selectedQuoteStatus,
         };
+        // Strip empty-string values — empty means "All", so omit them entirely
+        const params = Object.fromEntries(
+          Object.entries(rawParams).filter(([, v]) => v !== "")
+        );
         const { items, pagination: p } = await fetchDrawingsPage(
           Number(id),
           page,
@@ -1324,13 +1328,13 @@ const ProjectPinsListTab = ({
   };
 
   const QuoteFilerOptions = [
-    { value: "", label: "All Pins" },
+    { value: "", label: "All Quotes" },
     { value: "draft", label: "Draft" },
-    { value: "approved", label: "Quote Aprooved" },
-    { value: "rejected", label: "Rejected" },
+    { value: "approved", label: "Quote Approved" },
+    // { value: "rejected", label: "Rejected" },
   ];
   const jobStatus = [
-    { value: "", label: "All" },
+    { value: "", label: "All Jobs Pins" },
     { value: "true", label: "Is a job" },
     { value: "false", label: "Not a job" },
   ];
@@ -1581,12 +1585,12 @@ const ProjectPinsListTab = ({
               </div>
               <div>
                 <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">
-                  Some pins are already a job
+                  These pins are already assigned a job
                 </h3>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   {alreadyJobPins.length} of {effectiveSelectedIds.size} selected{" "}
                   {effectiveSelectedIds.size === 1 ? "pin" : "pins"}{" "}
-                  {alreadyJobPins.length === 1 ? "is" : "are"} already converted to a job and will be skipped.
+                  {alreadyJobPins.length === 1 ? "is" : "are"} assigned to a job and will not be included in the new job
                 </p>
               </div>
             </div>
@@ -1595,7 +1599,7 @@ const ProjectPinsListTab = ({
             <div className="px-6 py-4 max-h-60 overflow-y-auto">
               <div className="rounded-lg border border-slate-200 dark:border-slate-700/80 overflow-hidden">
                 <div className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,2fr)_minmax(0,1.5fr)] bg-slate-50 dark:bg-slate-800/50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
-                  <span>Pin ID</span>
+                  <span>Pin#</span>
                   <span>Product</span>
                   <span>Form</span>
                 </div>

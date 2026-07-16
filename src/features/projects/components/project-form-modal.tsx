@@ -3,7 +3,8 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
+import { fetchSitesPage } from "@/features/sites/api/site.api";
 import { useRouter } from "@/i18n/navigation";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
@@ -21,6 +22,8 @@ import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { fetchUsersPage } from "@/features/users/api/user.api";
+import { userProfileLabel } from "@/features/jobs/utils/job-nested-fields.util";
 import {
   AppButton,
   AppModal,
@@ -28,6 +31,7 @@ import {
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
+  MultiCheckSelect,
   SurfaceDateInput,
   surfaceInputClassName,
 } from "@/shared/ui";
@@ -61,6 +65,8 @@ export function ProjectFormModal({
   const router = useRouter();
   const [saving, setSaving] = React.useState(false);
   const [projectTypeOptions, setProjectTypeOptions] = React.useState<ProjectClientOption[]>([]);
+  const [managerOptions, setManagerOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [siteOptions, setSiteOptions] = React.useState<ProjectClientOption[]>([]);
 
   const schema = React.useMemo(
     () =>
@@ -110,6 +116,57 @@ export function ProjectFormModal({
         }
       } catch {
         if (!cancelled) setProjectTypeOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  const selectedClient = useWatch({ control, name: "client" });
+
+  const clientIdForQuick =
+    selectedClient && /^\d+$/.test(selectedClient) ? Number.parseInt(selectedClient, 10) : undefined;
+
+  const reloadSites = React.useCallback(async () => {
+    if (!clientIdForQuick || clientIdForQuick <= 0) {
+      setSiteOptions([]);
+      return;
+    }
+    try {
+      const { items } = await fetchSitesPage(1, 500, { client: clientIdForQuick, is_active: true });
+      setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name })));
+    } catch {
+      setSiteOptions([]);
+    }
+  }, [clientIdForQuick]);
+
+  React.useEffect(() => {
+    if (!selectedClient || !/^\d+$/.test(selectedClient)) {
+      setSiteOptions([]);
+      setValue("sites", []);
+      return;
+    }
+    void reloadSites();
+  }, [selectedClient, setValue, reloadSites]);
+
+  const siteQuickCreate = useQuickCreate({
+    kind: "site",
+    clientId: clientIdForQuick,
+    addDisabled: !clientIdForQuick,
+  });
+
+  React.useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchUsersPage(1, 500);
+        if (!cancelled) {
+          setManagerOptions(items.map((u) => ({ value: String(u.id), label: userProfileLabel(u) })));
+        }
+      } catch {
+        if (!cancelled) setManagerOptions([]);
       }
     })();
     return () => {
@@ -268,6 +325,49 @@ export function ProjectFormModal({
               )}
             />
             <FieldErrorText>{errors.project_type?.message}</FieldErrorText>
+          </FieldGroup>
+        </FormFieldRow>
+
+        <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+          <FieldGroup label={t("fields.sites")} htmlFor="project-sites">
+            <Controller
+              control={control}
+              name="sites"
+              render={({ field }) => (
+                <MultiCheckSelect
+                  id="project-sites"
+                  options={siteOptions}
+                  values={field.value ?? []}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  disabled={saving || !selectedClient}
+                  placeholder={t("placeholders.site")}
+                  listLabel={t("fields.sites")}
+                  onAdd={siteQuickCreate.onAdd}
+                  addAriaLabel={siteQuickCreate.addAriaLabel}
+                  addLabel={siteQuickCreate.addLabel}
+                />
+              )}
+            />
+          </FieldGroup>
+
+          <FieldGroup label="Managers" htmlFor="project-managers">
+            <Controller
+              control={control}
+              name="manager_ids"
+              render={({ field }) => (
+                <MultiCheckSelect
+                  id="project-managers"
+                  options={managerOptions}
+                  values={field.value ?? []}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  disabled={saving || managerOptions.length === 0}
+                  placeholder="Select managers..."
+                  listLabel="Managers"
+                />
+              )}
+            />
           </FieldGroup>
         </FormFieldRow>
 
