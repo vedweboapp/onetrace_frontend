@@ -142,10 +142,11 @@ export function MultiCheckSelect({
     [resolvedOptions, selectedMap],
   );
   const filteredOptions = React.useMemo(() => {
+    if (onSearchChange) return resolvedOptions;
     const q = query.trim().toLowerCase();
     if (!q) return resolvedOptions;
     return resolvedOptions.filter((o) => o.label.toLowerCase().includes(q));
-  }, [resolvedOptions, query]);
+  }, [resolvedOptions, query, onSearchChange]);
 
   const updatePlacement = React.useCallback(() => {
     const el = triggerRef.current;
@@ -184,6 +185,12 @@ export function MultiCheckSelect({
   React.useEffect(() => {
     if (open) setQuery("");
   }, [open]);
+
+  React.useEffect(() => {
+    if (open) {
+      onSearchChange?.(query);
+    }
+  }, [query, open, onSearchChange]);
 
   function toggleOne(value: string) {
     const isAdding = !selectedMap.has(value);

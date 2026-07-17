@@ -71,14 +71,20 @@ export function projectToFormDefaults(project: Project): ProjectFormValues {
       ? project.project_status.id
       : project.project_status;
 
-  const managerIds = Array.isArray(project.manager_ids)
-    ? project.manager_ids.map(String)
-    : Array.isArray(project.managers)
-      ? project.managers
-          .map((m: any) => (typeof m === "number" ? m : m?.id))
-          .filter((id): id is number => Number.isFinite(id) && id > 0)
-          .map(String)
-      : [];
+  let managerIds: string[] = [];
+  if (Array.isArray(project.manager_ids)) {
+    managerIds = project.manager_ids.map(String);
+  } else if (Array.isArray(project.manager_detail)) {
+    managerIds = project.manager_detail
+      .map((entry) => entry?.manager?.id)
+      .filter((id): id is number => typeof id === "number" && Number.isFinite(id) && id > 0)
+      .map(String);
+  } else if (Array.isArray(project.managers)) {
+    managerIds = project.managers
+      .map((m: any) => (typeof m === "number" ? m : m?.id))
+      .filter((id): id is number => Number.isFinite(id) && id > 0)
+      .map(String);
+  }
 
   return {
     name: project.name ?? "",

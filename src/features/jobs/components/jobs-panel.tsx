@@ -87,6 +87,9 @@ export function JobsPanel() {
 
   const jobStatusParam = searchParams.get("job_status");
   const assignedWorkerParam = searchParams.get("assigned_worker");
+  const jobCategoryParam = searchParams.get("job_category") ?? "";
+  const [selectedJobCategory, setSelectedJobCategory] = React.useState(jobCategoryParam);
+  const jobTypeParam = searchParams.get("job_type") ?? "";
 
   const jobStatusFilter =
     jobStatusParam && /^\d+$/.test(jobStatusParam) ? Number.parseInt(jobStatusParam, 10) : undefined;
@@ -94,7 +97,6 @@ export function JobsPanel() {
     assignedWorkerParam && /^\d+$/.test(assignedWorkerParam)
       ? Number.parseInt(assignedWorkerParam, 10)
       : undefined;
-
   const [items, setItems] = React.useState<Job[]>([]);
   const [pagination, setPagination] = React.useState({
     total_records: 0,
@@ -109,7 +111,7 @@ export function JobsPanel() {
   const [refreshNonce, setRefreshNonce] = React.useState(0);
 
   const [fetchFilterOptions, setFetchFilterOptions] = React.useState(
-    () => Boolean(jobStatusParam || assignedWorkerParam),
+    () => Boolean(jobStatusParam || assignedWorkerParam || jobTypeParam || jobCategoryParam),
   );
   const [fetchMassOptions, setFetchMassOptions] = React.useState(false);
 
@@ -131,8 +133,10 @@ export function JobsPanel() {
       search: search || undefined,
       job_status: jobStatusFilter,
       assigned_worker: assignedWorkerFilter,
+      job_type: jobTypeParam || undefined,
+      job_category: selectedJobCategory || undefined,
     }),
-    [search, jobStatusFilter, assignedWorkerFilter],
+    [search, jobStatusFilter, assignedWorkerFilter, jobTypeParam, selectedJobCategory],
   );
 
   const fetchAllIds = React.useCallback(
@@ -158,7 +162,7 @@ export function JobsPanel() {
     totalRecords: pagination.total_records,
     pageItems: items,
     fetchAllIds,
-    resetDeps: [pageSize, search, jobStatusFilter, assignedWorkerFilter],
+    resetDeps: [pageSize, search, jobStatusFilter, assignedWorkerFilter, jobTypeParam, selectedJobCategory],
     updateFields: [],
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
@@ -379,6 +383,8 @@ export function JobsPanel() {
           search: search || undefined,
           job_status: jobStatusFilter,
           assigned_worker: assignedWorkerFilter,
+          job_type: jobTypeParam || undefined,
+          job_category: selectedJobCategory || undefined,
         });
         if (!cancelled) {
           setItems(nextItems);
@@ -400,8 +406,10 @@ export function JobsPanel() {
     page,
     pageSize,
     search,
+    selectedJobCategory,
     jobStatusFilter,
     assignedWorkerFilter,
+    jobTypeParam,
     refreshNonce,
     t,
   ]);
@@ -523,9 +531,14 @@ export function JobsPanel() {
   const pageRange = getListPageRange(pagination);
 
   function clearFilters() {
-    setUrl({ search: null, job_status: null, assigned_worker: null, page: null }, { replace: true });
+    setUrl({ search: null, job_status: null, assigned_worker: null, job_type: null, job_category: null, page: null }, { replace: true });
+    setSelectedJobCategory("");
   }
-
+  const JobCategoryOptions = [
+    { value: "", label: "All Categories" },
+    { value: "serviceJob", label: "Services" },
+    { value: "projectJob", label: "Projects" },
+  ]
   return (
     <div className="space-y-4">
       {!hideListChrome ? (
@@ -574,6 +587,19 @@ export function JobsPanel() {
                   if (open) setFetchFilterOptions(true);
                 }}
                 onChange={(v) => setUrl({ assigned_worker: v || null, page: null }, { replace: true })}
+              />
+              <CheckmarkSelect
+                options={JobCategoryOptions}
+                value={selectedJobCategory}
+                emptyLabel={t("filterAllCategories")}
+                portaled
+                searchable
+                clearable
+                className="w-full min-w-0 sm:w-44"
+                onChange={(e) => {
+                  setSelectedJobCategory(e);
+
+                }}
               />
             </div>
           }

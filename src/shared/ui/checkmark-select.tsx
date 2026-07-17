@@ -75,6 +75,8 @@ type Props = {
   fallbackLabel?: string;
   /** Called when the dropdown opens or closes (e.g. to lazy-load options). */
   onOpenChange?: (open: boolean) => void;
+  /** Called when the search query changes inside the dropdown. */
+  onSearchChange?: (search: string) => void;
 };
 
 const DROPDOWN_GAP = 4;
@@ -193,6 +195,7 @@ export function CheckmarkSelect({
   required,
   fallbackLabel,
   onOpenChange,
+  onSearchChange,
 }: Props) {
   const [open, setOpen] = React.useState(false);
   const onOpenChangeRef = React.useRef(onOpenChange);
@@ -250,6 +253,12 @@ export function CheckmarkSelect({
     if (open) setSearch("");
   }, [open]);
 
+  React.useEffect(() => {
+    if (open) {
+      onSearchChange?.(search);
+    }
+  }, [search, open, onSearchChange]);
+
   const displayLabel = selected ? selected.label : emptyLabel;
 
   const listClasses = cn(
@@ -259,10 +268,11 @@ export function CheckmarkSelect({
   const optionTextSize = size === "sm" ? "text-xs" : "text-sm";
   const optionY = size === "sm" ? "py-2" : "py-2.5";
   const filteredOptions = React.useMemo(() => {
+    if (onSearchChange) return resolvedOptions;
     const q = search.trim().toLowerCase();
     if (!q) return resolvedOptions;
     return resolvedOptions.filter((opt) => opt.label.toLowerCase().includes(q));
-  }, [resolvedOptions, search]);
+  }, [resolvedOptions, search, onSearchChange]);
 
   function renderOptionList(extraStyle: CSSProperties, extraClass?: string) {
     const listMaxHeight = open ? dropdownPlacement.maxHeight : DROPDOWN_PREFERRED_MAX;

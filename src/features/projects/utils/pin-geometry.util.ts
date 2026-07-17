@@ -19,8 +19,8 @@ export type PinFocusEntry = {
   projectId: number;
 };
 
-function pinFocusKey(projectId: number): string {
-  return `pin_focus_${projectId}`;
+function pinFocusKey(projectId: number, drawingId: number): string {
+  return `pin_focus_${projectId}_${drawingId}`;
 }
 
 /**
@@ -35,7 +35,7 @@ export function savePinFocus(
 ): void {
   try {
     const entry: PinFocusEntry = { x, y, drawingId, projectId };
-    sessionStorage.setItem(pinFocusKey(projectId), JSON.stringify(entry));
+    sessionStorage.setItem(pinFocusKey(projectId, drawingId), JSON.stringify(entry));
   } catch {
     // sessionStorage may be unavailable – fail silently
   }
@@ -45,12 +45,12 @@ export function savePinFocus(
  * Read the saved pin focus entry.
  * Returns null if nothing was saved or the project ID doesn't match.
  */
-export function readPinFocus(projectId: number): PinFocusEntry | null {
+export function readPinFocus(projectId: number, drawingId: number): PinFocusEntry | null {
   try {
-    const raw = sessionStorage.getItem(pinFocusKey(projectId));
+    const raw = sessionStorage.getItem(pinFocusKey(projectId, drawingId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PinFocusEntry;
-    if (parsed.projectId !== projectId) return null;
+    if (parsed.projectId !== projectId || parsed.drawingId !== drawingId) return null;
     return parsed;
   } catch {
     return null;
@@ -60,9 +60,27 @@ export function readPinFocus(projectId: number): PinFocusEntry | null {
 /**
  * Clear the saved pin focus entry after it has been consumed by the editor.
  */
-export function clearPinFocus(projectId: number): void {
+export function clearPinFocus(projectId: number, drawingId: number): void {
   try {
-    sessionStorage.removeItem(pinFocusKey(projectId));
+    sessionStorage.removeItem(pinFocusKey(projectId, drawingId));
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Clear all saved pin focuses (e.g. on logout).
+ */
+export function clearAllPinFocus(): void {
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && key.startsWith("pin_focus_")) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((k) => sessionStorage.removeItem(k));
   } catch {
     // ignore
   }

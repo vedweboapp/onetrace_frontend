@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Document, Page, pdfjs } from "react-pdf";
+import { useTranslations } from "next-intl";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
 import { resolvePinMarkerAbbreviation } from "@/features/projects/utils/drawing-pin-display.util";
 import type { DrawingPin, DrawingPlot, DrawingPinAttachment, DrawingPlotUpsert } from "@/features/projects/types/drawing.types";
@@ -258,6 +259,7 @@ export function DrawingPinPreviewModal({
   onSaveSuccess,
 }: DrawingPinPreviewModalProps) {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const t = useTranslations("Dashboard.projects.drawings.editor");
   const [pageSize, setPageSize] = React.useState<{ width: number; height: number } | null>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -1065,7 +1067,7 @@ export function DrawingPinPreviewModal({
                     )
                   ) : activeInstallationType ? (
                     <span className="text-xs text-amber-600 dark:text-amber-400 font-medium text-right max-w-[180px]">
-                      No form with the installation type found in the project
+                      {t("noFormWithInstallationType")}
                     </span>
                   ) : null}
                 </div>
