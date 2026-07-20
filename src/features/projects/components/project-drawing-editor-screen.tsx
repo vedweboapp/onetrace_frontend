@@ -440,6 +440,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const wasDraggingRef = React.useRef(false);
   const originalPinStateRef = React.useRef<{ x: number, y: number, plotId: number } | null>(null);
   const draggingVertexRef = React.useRef<{ plotId: number, index: number } | null>(null);
+  const [pendingPinScroll, setPendingPinScroll] = React.useState<{ x: number; y: number } | null>(null);
 
   const [pageSize, setPageSize] = React.useState({ width: 1200, height: 900 });
   const pageSizeRef = React.useRef(pageSize);
@@ -611,6 +612,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       // Store the normalised (0–100) coordinates; Phase 2 will compute scroll
       // after React re-renders with the new zoom value.
       pendingPinScrollRef.current = { x: focus.x, y: focus.y };
+      setPendingPinScroll({ x: focus.x, y: focus.y });
       setZoom(1.6);
     };
 
@@ -622,11 +624,20 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     };
   }, [loading, projectId, drawingId]);
 
+  React.useEffect(() => {
+    if (!savedPinFocus || loading) return;
+    if (pendingPinScrollRef.current || pendingPinScroll) return;
+
+    pendingPinScrollRef.current = savedPinFocus;
+    setPendingPinScroll(savedPinFocus);
+    setZoom(1.6);
+  }, [savedPinFocus, loading, pendingPinScroll]);
+
   // ── Auto-focus: PHASE 2 ───────────────────────────────────────────────────
   // Runs after the zoom change triggered in Phase 1. This computes pixel
   // coordinates and scrolls the viewport so the saved pin is centered.
   React.useEffect(() => {
-    const pending = pendingPinScrollRef.current;
+    const pending = pendingPinScrollRef.current || pendingPinScroll;
     if (!pending) return;
     const vp = viewportRef.current;
     const stage = stageRef.current;
@@ -657,9 +668,10 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       vp.scrollTop = top;
     }
 
-    // Clear only the pending ref after scrolling; leave storage so the highlight persists.
+    // Clear only the pending refs after scrolling; leave storage so the highlight persists.
     pendingPinScrollRef.current = null;
-  }, [zoom, projectId, drawingId]);
+    setPendingPinScroll(null);
+  }, [zoom, projectId, drawingId, pendingPinScroll, pageSize.width, pageSize.height]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -2146,13 +2158,12 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               setDetailPin(pin);
                               setPinEditData(pin);
 
-                              // Save pin coordinates so auto-focus works on the next visit
-                              savePinFocus(pin.x_coordinate, pin.y_coordinate, projectId, drawingId);
-
-                              if (pin.id <= 0) {
-                                stagePinCoordinates(projectId, drawingId, pin.id, pin.x_coordinate, pin.y_coordinate);
-                              } else {
+                              if (pin.id > 0) {
+                                // Save backend-persisted pin coordinates so auto-focus works on the next visit
+                                savePinFocus(pin.x_coordinate, pin.y_coordinate, projectId, drawingId);
                                 saveSelectedPinCoordinates(projectId, drawingId, pin.id, pin.x_coordinate, pin.y_coordinate);
+                              } else {
+                                stagePinCoordinates(projectId, drawingId, pin.id, pin.x_coordinate, pin.y_coordinate);
                               }
                               setSelectedGroupId(pin.group ? String(pin.group) : "");
                               setSelectedCompositeId(pin.item ? String(pin.item) : "");
