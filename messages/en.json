@@ -232,6 +232,7 @@
       "projectTypes": "Project Types",
       "installationTypes": "Installation Types",
       "vendorTypes": "Vendor Types",
+      "unitTypes": "Unit Types",
       "checklistTypes": "Checklist Types",
       "users": "Users",
       "personalProfile": "Personal Profile",
@@ -244,7 +245,7 @@
       "customization": {
         "label": "Customization",
         "hubTitle": "Customization",
-        "hubDescription": "Choose what to configure — Project Types, Installation Types, Vendor Types, Checklist Types, Project Statuses, Pin Statuses, Job Statuses, Material Statuses, and Tags.",
+        "hubDescription": "Choose what to configure — Project Types, Installation Types, Vendor Types, Unit Types, Checklist Types, Project Statuses, Pin Statuses, Job Statuses, Material Statuses, Tags, and Titles.",
         "backToHub": "Back to customization",
         "items": {
           "projectTypes": {
@@ -258,6 +259,10 @@
           "vendorTypes": {
             "title": "Vendor Types",
             "description": "Categories for vendors with colored labels."
+          },
+          "unitTypes": {
+            "title": "Unit Types",
+            "description": "Units of measure such as Kg, box, or metre."
           },
           "checklistTypes": {
             "title": "Checklist Types",
@@ -832,6 +837,56 @@
       "hexPlaceholder": "#000000",
       "validationName": "Enter a status name.",
       "validationHex": "Use a valid 6-digit hex color (e.g. #E5E7EB)."
+    },
+    "unitTypes": {
+      "metaTitle": "Unit Types",
+      "title": "Unit Types",
+      "subtitle": "Manage units of measure used across items and quotations.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "filterState": "Active state",
+      "table": {
+        "name": "Unit",
+        "shortForm": "Short form",
+        "status": "Status",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "emptyTitle": "No unit types yet",
+      "emptyDescription": "Create your first unit type (e.g. Kg, box) for items and pricing.",
+      "loadError": "Could not load unit types. Try again.",
+      "modal": {
+        "createTitle": "New unit type",
+        "editTitle": "Edit unit type",
+        "unitName": "Name",
+        "unitNamePlaceholder": "e.g. Kg",
+        "unitShortForm": "Short form",
+        "unitShortFormPlaceholder": "e.g. kg",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this unit type?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} unit types",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Unit type updated",
+      "created": "Unit type created",
+      "deleted": "Unit type deleted",
+      "activatedToast": "Unit type activated",
+      "deactivatedToast": "Unit type deactivated",
+      "toggleActiveError": "Could not update unit type status. Try again.",
+      "validationName": "Enter a unit name.",
+      "validationShortForm": "Enter a unit short form (e.g. kg)."
     },
     "titleSettings": {
       "metaTitle": "Titles",
@@ -1837,13 +1892,19 @@
       "filterAllProjects": "All projects",
       "filterStatus": "Quote status",
       "filterAllStatuses": "All statuses",
+      "filterCategory": "Category",
+      "filterAllCategories": "All categories",
+      "category": {
+        "service": "Service",
+        "project": "Project"
+      },
       "pageLabel": "Showing {start}-{end} of {total} quotations",
       "prev": "Previous",
       "next": "Next",
       "quoteStatus": {
         "draft": "Draft",
         "sent": "Sent",
-        "accepted": "Accepted",
+        "approved": "Approved",
         "rejected": "Rejected"
       },
       "table": {
@@ -1903,7 +1964,7 @@
         "createSection": "Add section",
         "newSectionPlaceholder": "Section name",
         "selectProjectHint": "Select a project to load levels.",
-        "sectionsTitle": "Project sections & pricing",
+        "sectionsTitle": "Scope & pricing",
         "selectAllSections": "Select all sections in this project",
         "includedViaSelectAll": "Included because all sections are selected",
         "plotSubtotal": "Plot subtotal",
@@ -1941,7 +2002,7 @@
         "duplicateLine": "Duplicate",
         "rowActions": "Actions",
         "emptyPlots": "No plots in this section yet.",
-        "emptySections": "No sections loaded. Pick a project with levels or add sections manually.",
+        "emptySections": "No sections yet. Add a section, then select groups and items with quantity.",
         "includeSection": "Include",
         "quoteOnlySection": "Quote-only (not linked to a project level)",
         "sectionTotal": "Section total",
@@ -2060,8 +2121,10 @@
       "formTabs": {
         "aria": "Quotation sections",
         "project": "Project & details",
+        "details": "Details",
         "pricing": "Scope & pricing",
         "prevToProject": "Previous: Project & details",
+        "prevToDetails": "Previous: Details",
         "nextToPricing": "Next: Scope & pricing"
       },
       "validation": {
@@ -3541,6 +3604,25 @@
         "installationType": "Installation type",
         "installationTypePlaceholder": "Select installation type",
         "installationTypesLoadError": "Could not load installation types.",
+        "unitType": "Unit",
+        "unitTypePlaceholder": "Select unit",
+        "unitTypesLoadError": "Could not load unit types.",
+        "installationCost": "Installation cost",
+        "installationCostPlaceholder": "Enter price",
+        "installationCostType": "Pricing",
+        "installationCostTypeFixed": "Fixed amount",
+        "installationCostTypeRate": "Rate / hr",
+        "fulfilmentDetails": "Fulfilment details",
+        "dimensions": "Dimensions",
+        "dimensionsPlaceholder": "L x W x H",
+        "dimensionsHint": "(Length X Width X Height)",
+        "dimensionsUnit": "Dimensions unit",
+        "weight": "Weight",
+        "weightUnit": "Weight unit",
+        "attachments": "Attachments",
+        "attachmentsHint": "Attach one or more files (documents, images, specs).",
+        "addAttachments": "Add files",
+        "removeAttachment": "Remove",
         "createdToast": "Composite item created",
         "updatedToast": "Composite item updated"
       },
@@ -3591,6 +3673,14 @@
         "sectionOverview": "Overview",
         "group": "Group",
         "installationType": "Installation type",
+        "unitType": "Unit",
+        "installationCost": "Installation cost",
+        "installationCostFixed": "Fixed amount",
+        "installationCostRate": "Rate / hr",
+        "dimensions": "Dimensions",
+        "weight": "Weight",
+        "sectionAttachments": "Attachments",
+        "noAttachments": "No attachments.",
         "sectionComponents": "Components",
         "sectionRecord": "Record",
         "sku": "SKU",
@@ -3626,8 +3716,21 @@
         "skuPlaceholder": "e.g. HNG001",
         "skuError": "Enter a SKU.",
         "quantity": "Quantity",
+        "unitType": "Unit",
+        "unitTypePlaceholder": "Select unit",
+        "unitTypesLoadError": "Could not load unit types.",
         "costPrice": "Cost price",
         "sellingPrice": "Selling price",
+        "fulfilmentDetails": "Fulfilment details",
+        "dimensions": "Dimensions",
+        "dimensionsPlaceholder": "L x W x H",
+        "dimensionsHint": "(Length X Width X Height)",
+        "dimensionsUnit": "Dimensions unit",
+        "weight": "Weight",
+        "weightUnit": "Weight unit",
+        "attachments": "Attachments",
+        "addAttachments": "Add files",
+        "removeAttachment": "Remove",
         "createdToast": "Item created",
         "updatedToast": "Item updated"
       },

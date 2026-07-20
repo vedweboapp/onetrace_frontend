@@ -5,6 +5,8 @@ import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { ITEM_PATHS } from "@/features/items/api/item.paths";
 import type { Item, ItemCreatePayload, ItemListResponse, ItemUpdatePayload } from "@/features/items/types/item.types";
+import type { ItemAttachmentWriteRef } from "@/features/items/utils/item-write-form-data.util";
+import { buildItemWriteBody } from "@/features/items/utils/item-write-form-data.util";
 
 function assertEnvelopeSuccess(envelope: { success: boolean; message?: string }) {
   if (!envelope.success) {
@@ -51,14 +53,23 @@ export async function fetchItem(id: number): Promise<Item> {
   return data.data;
 }
 
-export async function createItem(body: ItemCreatePayload): Promise<Item> {
-  const { data } = await api.post<ApiEnvelope<Item>>(ITEM_PATHS.list, body);
+export async function createItem(
+  body: ItemCreatePayload,
+  options?: { attachmentRefs?: ItemAttachmentWriteRef[] },
+): Promise<Item> {
+  const payload = buildItemWriteBody(body, options?.attachmentRefs);
+  const { data } = await api.post<ApiEnvelope<Item>>(ITEM_PATHS.list, payload);
   assertApiSuccess(data);
   return data.data;
 }
 
-export async function updateItem(id: number, body: ItemUpdatePayload): Promise<Item> {
-  const { data } = await api.patch<ApiEnvelope<Item>>(ITEM_PATHS.detail(id), body);
+export async function updateItem(
+  id: number,
+  body: ItemUpdatePayload,
+  options?: { attachmentRefs?: ItemAttachmentWriteRef[] },
+): Promise<Item> {
+  const payload = buildItemWriteBody(body, options?.attachmentRefs);
+  const { data } = await api.patch<ApiEnvelope<Item>>(ITEM_PATHS.detail(id), payload);
   assertApiSuccess(data);
   return data.data;
 }

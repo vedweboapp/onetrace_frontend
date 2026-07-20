@@ -24,6 +24,8 @@ const nextPublicApiUrl =
 const googleMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
 
 const nextConfig: NextConfig = {
+  // Keep trailing slashes on /api/v1/* so Django APPEND_SLASH POST endpoints work via rewrite.
+  skipTrailingSlashRedirect: true,
   allowedDevOrigins: ["ineffectual-stephania-immemorially.ngrok-free.dev"],
   env: {
     NEXT_PUBLIC_API_URL: nextPublicApiUrl,
@@ -63,14 +65,19 @@ const nextConfig: NextConfig = {
       VENDOR_USE_MOCK ? "vendors" : null,
       PURCHASE_ORDER_USE_MOCK ? "purchase-orders" : null,
     ].filter(Boolean) as string[];
-    const source =
+    const pathMatch =
       mockPrefixes.length > 0
-        ? `/api/v1/:path((?!${mockPrefixes.join("|")}).*)`
-        : "/api/v1/:path*";
+        ? `:path((?!${mockPrefixes.join("|")}).*)`
+        : ":path*";
     return [
+      // Prefer explicit trailing-slash match so Django receives POST .../login/
       {
-        source,
-        destination: `${backendOrigin}/api/v1/:path*`,
+        source: `/api/v1/${pathMatch}/`,
+        destination: `${backendOrigin}/api/v1/:path*/`,
+      },
+      {
+        source: `/api/v1/${pathMatch}`,
+        destination: `${backendOrigin}/api/v1/:path*/`,
       },
     ];
   },

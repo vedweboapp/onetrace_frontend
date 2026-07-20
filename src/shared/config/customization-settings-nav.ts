@@ -4,6 +4,7 @@ export type CustomizationSettingsItemId =
   | "projectTypes"
   | "installationTypes"
   | "vendorTypes"
+  | "unitTypes"
   | "checklistTypes"
   | "projectStatus"
   | "pinStatus"
@@ -19,6 +20,7 @@ export const CUSTOMIZATION_SETTINGS_HREFS: ReadonlyArray<{
     { id: "projectTypes", href: routes.dashboard.settingsProjectTypes },
     { id: "installationTypes", href: routes.dashboard.settingsInstallationTypes },
     { id: "vendorTypes", href: routes.dashboard.settingsVendorTypes },
+    { id: "unitTypes", href: routes.dashboard.settingsUnitTypes },
     { id: "checklistTypes", href: routes.dashboard.settingsChecklistTypes },
     { id: "projectStatus", href: routes.dashboard.settingsProjectStatus },
     { id: "pinStatus", href: routes.dashboard.settingsPinStatus },

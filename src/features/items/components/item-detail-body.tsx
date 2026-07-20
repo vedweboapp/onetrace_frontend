@@ -8,6 +8,10 @@ import { InstallationTypeChip } from "@/features/installation-types/components/i
 import type { Item } from "@/features/items/types/item.types";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import { resolveInstallationTypeChipData } from "@/features/items/utils/item-installation-type.util";
+import { resolveUnitTypeShortLabel } from "@/features/items/utils/item-unit-type.util";
+import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
+import type { UnitType } from "@/features/unit-types/types/unit-type.types";
+import type { InstallationCostType, ItemAttachment } from "@/features/items/types/item.types";
 import { routes } from "@/shared/config/routes";
 import {
   DetailLinkedTable,
@@ -29,6 +33,42 @@ function moneyDisplay(v: unknown): string {
   return Number.isFinite(n) ? n.toFixed(2) : "—";
 }
 
+function attachmentDisplayLabel(row: ItemAttachment): string {
+  if (row.file_name?.trim()) return row.file_name.trim();
+  const url = row.file_url ?? row.attachment ?? row.url;
+  if (url?.trim()) {
+    const parts = url.split("/");
+    const last = parts[parts.length - 1];
+    if (last?.trim()) return decodeURIComponent(last);
+  }
+  return row.id != null ? `Attachment #${row.id}` : "Attachment";
+}
+
+function attachmentDisplayUrl(row: ItemAttachment): string | null {
+  const raw = row.file_url ?? row.attachment ?? row.url;
+  return raw?.trim() || null;
+}
+
+function installationCostTypeLabel(
+  value: InstallationCostType | string | null | undefined,
+  t: (key: "installationCostFixed" | "installationCostRate") => string,
+): string {
+  return value === "rate_per_hr" ? t("installationCostRate") : t("installationCostFixed");
+}
+
+function formatQuantityWithUnit(quantity: Item["quantity"], unitLabel: string): string {
+  if (quantity == null) return "—";
+  if (unitLabel !== "—") return `${quantity} ${unitLabel}`;
+  return String(quantity);
+}
+
+function formatValueWithUnit(value: string | number | null | undefined, unit: string | null | undefined): string {
+  const raw = value == null ? "" : String(value).trim();
+  if (!raw) return "—";
+  const suffix = unit?.trim();
+  return suffix ? `${raw} ${suffix}` : raw;
+}
+
 export function ItemDetailBody({
   detail,
   dateFmt,
@@ -41,10 +81,19 @@ export function ItemDetailBody({
   const tStatus = useTranslations("Dashboard.clients.status");
   const [childItemsById, setChildItemsById] = React.useState<Map<number, Item>>(new Map());
   const [groupName, setGroupName] = React.useState<string | null>(null);
+  const [unitTypesById, setUnitTypesById] = React.useState<Record<number, Pick<UnitType, "id" | "name" | "short_form">>>({});
 
   const groupId = typeof detail.group === "number" && Number.isFinite(detail.group) && detail.group > 0 ? detail.group : null;
   const installationTypeChip = resolveInstallationTypeChipData(detail.installation_type);
+  const unitTypeLabel = resolveUnitTypeShortLabel(detail.unit_type, unitTypesById);
   const components = detail.components ?? [];
+  const attachments = (detail.attachments ?? []).filter(
+    (row) => row && (row.id != null || row.file_name || row.file_url || row.attachment || row.url),
+  );
+  const installationCostValue = moneyDisplay(detail.installation_cost);
+  const hasInstallationCost =
+    detail.is_composite &&
+    (installationCostValue !== "—" || Boolean(detail.installation_cost_type?.trim()));
 
   React.useEffect(() => {
     if (!detail.is_composite || components.length === 0) {
@@ -85,6 +134,28 @@ export function ItemDetailBody({
     };
   }, [groupId]);
 
+  React.useEffect(() => {
+    if (detail.unit_type == null || typeof detail.unit_type !== "number") {
+      setUnitTypesById({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchUnitTypesPage(1, 500, { is_active: true });
+        if (cancelled) return;
+        setUnitTypesById(
+          Object.fromEntries(items.map((u) => [u.id, { id: u.id, name: u.name, short_form: u.short_form }])),
+        );
+      } catch {
+        if (!cancelled) setUnitTypesById({});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [detail.id, detail.unit_type]);
+
   return (
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
@@ -102,8 +173,15 @@ export function ItemDetailBody({
               <span className="font-mono">{detail.sku?.trim() ? detail.sku : "—"}</span>
             </DetailMetricCard>
             <DetailMetricCard label={t("detail.quantity")}>
-              <span className="tabular-nums">{detail.quantity ?? "—"}</span>
+              <span className="tabular-nums">
+                {unitTypeLabel !== "—" ? formatQuantityWithUnit(detail.quantity, unitTypeLabel) : (detail.quantity ?? "—")}
+              </span>
             </DetailMetricCard>
+            {unitTypeLabel !== "—" ? (
+              <DetailMetricCard label={t("detail.unitType")}>
+                <span>{unitTypeLabel}</span>
+              </DetailMetricCard>
+            ) : null}
             <DetailMetricCard label={t("detail.reorder")}>
               <span className="tabular-nums">{detail.reorder_quantity ?? "—"}</span>
             </DetailMetricCard>
@@ -118,6 +196,36 @@ export function ItemDetailBody({
                 <InstallationTypeChip row={installationTypeChip} />
               </DetailMetricCard>
             ) : null}
+            {hasInstallationCost ? (
+              <DetailMetricCard label={t("detail.installationCost")}>
+                <span className="tabular-nums">
+                  {installationCostValue !== "—"
+                    ? `${installationCostValue} (${installationCostTypeLabel(detail.installation_cost_type, (key) => t(`detail.${key}`))})`
+                    : installationCostTypeLabel(detail.installation_cost_type, (key) => t(`detail.${key}`))}
+                </span>
+              </DetailMetricCard>
+            ) : null}
+            {detail.length != null || detail.width != null || detail.height != null ? (
+              <DetailMetricCard label={t("detail.dimensions")}>
+                <span>
+                  {[
+                    detail.length != null && String(detail.length).trim() !== "" ? String(detail.length) : null,
+                    detail.width != null && String(detail.width).trim() !== "" ? String(detail.width) : null,
+                    detail.height != null && String(detail.height).trim() !== "" ? String(detail.height) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" x ")}
+                  {detail.dimensions_unit != null && detail.dimensions_unit !== ""
+                    ? ` ${detail.dimensions_unit}`
+                    : ""}
+                </span>
+              </DetailMetricCard>
+            ) : null}
+            {detail.weight != null && String(detail.weight).trim() !== "" ? (
+              <DetailMetricCard label={t("detail.weight")}>
+                <span className="tabular-nums">{formatValueWithUnit(detail.weight, detail.weight_unit)}</span>
+              </DetailMetricCard>
+            ) : null}
             {groupId ? (
               <DetailMetricCard label={t("detail.group")}>
                 <DetailEntityLink
@@ -129,7 +237,41 @@ export function ItemDetailBody({
               </DetailMetricCard>
             ) : null}
           </DetailMetricsGrid>
-        </DetailPanelCard>
+          </DetailPanelCard>
+
+        {detail.is_composite ? (
+          <DetailPanelCard title={t("detail.sectionAttachments")}>
+            {attachments.length > 0 ? (
+              <ul className="space-y-2">
+                {attachments.map((row, index) => {
+                  const href = attachmentDisplayUrl(row);
+                  const label = attachmentDisplayLabel(row);
+                  return (
+                    <li
+                      key={row.id ?? `${label}-${index}`}
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700"
+                    >
+                      {href ? (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block truncate text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                        >
+                          {label}
+                        </a>
+                      ) : (
+                        <span className="block truncate text-slate-800 dark:text-slate-100">{label}</span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-sm font-normal text-slate-500 dark:text-slate-400">{t("detail.noAttachments")}</p>
+            )}
+          </DetailPanelCard>
+        ) : null}
 
         {detail.is_composite ? (
           <DetailPanelCard title={t("detail.sectionComponents")}>

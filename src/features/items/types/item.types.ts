@@ -24,6 +24,24 @@ export type ItemInstallationTypeRef = {
   text_colour?: string | null;
 };
 
+export type ItemUnitTypeRef = {
+  id: number;
+  name?: string | null;
+  short_form?: string | null;
+};
+
+export type ItemAttachment = {
+  id?: number;
+  file_name?: string | null;
+  attachment?: string | null;
+  file_url?: string | null;
+  url?: string | null;
+};
+
+export type InstallationCostType = "fixed_amount" | "rate_per_hr";
+export type DimensionUnit = "cm" | "mm" | "m" | "in" | "ft";
+export type WeightUnit = "kg" | "g" | "lb";
+
 export type Item = {
   id: number;
   components?: ItemComponentRef[];
@@ -47,6 +65,19 @@ export type Item = {
   organization?: number;
   group?: number | null;
   installation_type?: number | ItemInstallationTypeRef | null;
+  unit_type?: number | ItemUnitTypeRef | null;
+  installation_cost?: string | number | null;
+  installation_cost_type?: InstallationCostType | string | null;
+  // Fulfilment / dimensions (backend expects separate fields)
+  length?: string | number | null;
+  width?: string | number | null;
+  height?: string | number | null;
+  // Legacy (older frontend stored dimensions as a single string)
+  dimensions?: string | null;
+  dimensions_unit?: DimensionUnit | string | null;
+  weight?: string | number | null;
+  weight_unit?: WeightUnit | string | null;
+  attachments?: ItemAttachment[] | null;
 };
 
 export type ItemCreatePayload = {
@@ -59,7 +90,20 @@ export type ItemCreatePayload = {
   reorder_quantity?: number;
   group?: number;
   installation_type?: number;
+  unit_type?: number;
+  installation_cost?: number;
+  installation_cost_type?: InstallationCostType;
+  // Fulfilment / dimensions
+  length?: number | null;
+  width?: number | null;
+  height?: number | null;
+  // Legacy
+  dimensions?: string;
+  dimensions_unit?: DimensionUnit | null;
+  weight?: number;
+  weight_unit?: WeightUnit;
   components?: ItemComponentRef[];
+  attachments?: Array<{ id: number; is_deleted?: boolean }>;
 };
 
 export type ItemUpdatePayload = Partial<ItemCreatePayload>;

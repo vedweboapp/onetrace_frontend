@@ -17,6 +17,7 @@ import type { FormListItem } from "@/features/forms/types/form.types";
 import type { DrawingPin, DrawingPinAttachment, DrawingPlot, DrawingPlotUpsert } from "@/features/projects/types/drawing.types";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
 import {
+  PinFocusEntry,
   readPinFocus,
   clearPinFocus,
   savePinFocus,
@@ -426,6 +427,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [detailPin, setDetailPin] = React.useState<DrawingPin | null>(null);
   const [pinEditData, setPinEditData] = React.useState<Partial<DrawingPin>>({});
   const [isPinEditing, setIsPinEditing] = React.useState(false);
+  const [savedPinFocus, setSavedPinFocus] = React.useState<{ x: number; y: number } | null>(null);
   const [hoveredPinId, setHoveredPinId] = React.useState<number | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [pinDeleteConfirmOpen, setPinDeleteConfirmOpen] = React.useState(false);
@@ -592,6 +594,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
     const focus = readPinFocus(projectId, drawingId);
     if (!focus) return;
+    setSavedPinFocus({ x: focus.x, y: focus.y });
 
     let attempts = 0;
     let timer: number | null = null;
@@ -618,6 +621,45 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       }
     };
   }, [loading, projectId, drawingId]);
+
+  // ── Auto-focus: PHASE 2 ───────────────────────────────────────────────────
+  // Runs after the zoom change triggered in Phase 1. This computes pixel
+  // coordinates and scrolls the viewport so the saved pin is centered.
+  React.useEffect(() => {
+    const pending = pendingPinScrollRef.current;
+    if (!pending) return;
+    const vp = viewportRef.current;
+    const stage = stageRef.current;
+    if (!vp || !stage) return;
+
+    // The wrapper around the stage applies 40px padding on all sides.
+    const PADDING = 40;
+    const ps = pageSizeRef.current;
+
+    // percent (0-100) -> pixel on unscaled stage
+    const pinPixel = percentToPixel([pending.x, pending.y], ps);
+
+    // After CSS scale, visual pixel position is multiplied by `zoom` and
+    // offset by the wrapper padding.
+    const targetX = Math.round(pinPixel[0] * zoom + PADDING - vp.clientWidth / 2);
+    const targetY = Math.round(pinPixel[1] * zoom + PADDING - vp.clientHeight / 2);
+
+    const maxLeft = Math.max(0, vp.scrollWidth - vp.clientWidth);
+    const maxTop = Math.max(0, vp.scrollHeight - vp.clientHeight);
+
+    const left = Math.max(0, Math.min(maxLeft, targetX));
+    const top = Math.max(0, Math.min(maxTop, targetY));
+
+    try {
+      vp.scrollTo({ left, top, behavior: "smooth" });
+    } catch {
+      vp.scrollLeft = left;
+      vp.scrollTop = top;
+    }
+
+    // Clear only the pending ref after scrolling; leave storage so the highlight persists.
+    pendingPinScrollRef.current = null;
+  }, [zoom, projectId, drawingId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -916,7 +958,14 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
 
   function onStageClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (activeTool === "hand" || activeTool === "select" || activeTool === "plot-select") return;
+    if (activeTool === "hand") return;
+    if (activeTool === "select") {
+      setDetailPin(null);
+      setPinEditData({});
+      setIsPinEditing(false);
+      return;
+    }
+    if (activeTool === "plot-select") return;
     const pt = stagePointFromEvent(e);
     if (!pt) return;
     if (activeTool === "pen") {
@@ -2060,6 +2109,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                         const abbreviation = resolvePinMarkerAbbreviation(pin, groupItemAbbrevByKey, productName);
                         const pinQuantity = resolvePinDisplayQuantity(pin);
                         const isHovered = hoveredPinId === pin.id;
+                        const isFocused = savedPinFocus != null && Math.abs(pin.x_coordinate - savedPinFocus.x) < 1e-6 && Math.abs(pin.y_coordinate - savedPinFocus.y) < 1e-6;
+                        const innerScaleClass = draggingPinId === pin.id ? "scale-125" : isHovered ? "scale-110" : "";
 
                         return (
                           <div
@@ -2070,7 +2121,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               top: pinY,
                               transformOrigin: "bottom center",
                               transform: `translate(-50%, -100%) scale(${1 / zoom})`,
-                              zIndex: draggingPinId === pin.id ? 200 : isHovered ? 100 : 20,
+                              zIndex: draggingPinId === pin.id ? 200 : isFocused ? 150 : isHovered ? 100 : 20,
                               cursor: activeTool === "select" ? (draggingPinId === pin.id ? "grabbing" : "grab") : "pointer",
                             }}
                             onMouseEnter={() => setHoveredPinId(pin.id)}
@@ -2110,7 +2161,10 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                             }}
                           >
                             {isHovered && <PinTooltip pin={pin} productName={productName} quantity={pinQuantity} />}
-                            <div className={cn("duration-200 origin-bottom", draggingPinId === pin.id ? "scale-125" : isHovered ? "scale-110" : "", "cursor-grab")}>
+                            <div className={cn("relative duration-200 origin-bottom", innerScaleClass, "cursor-grab")}> 
+                              {isFocused ? (
+                                <div className="absolute left-1/2 top-full -translate-x-1/2 mt-1 h-2 w-10 rounded-full bg-black blur-sm" />
+                              ) : null}
                               <PinMarker label={pinLabels.get(pin.id) || (index + 1)} abbreviation={abbreviation} color={color} />
                             </div>
                           </div>
