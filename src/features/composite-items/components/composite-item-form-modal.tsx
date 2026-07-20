@@ -632,7 +632,6 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
             ))}
           </div>
           {componentsInvalid ? <p className={fieldErrorTextClassName}>{t("atLeastOneComponentError")}</p> : null}
-          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t("componentsHint")}</p>
         </div>
       </form>
     </AppModal>

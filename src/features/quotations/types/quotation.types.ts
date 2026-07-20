@@ -148,7 +148,10 @@ export type QuotationCreatePayload = {
   project_manager?: number | null;
   technicians: number[];
   description?: string | null;
-  project: number;
+  /** Required for project quotations; omit/null for service quotations. */
+  project?: number | null;
+  /** `servicequote` | `projectquote`. */
+  quote_category?: "servicequote" | "projectquote";
   levels: number[];
   select_all_levels: boolean;
   /** Optional: full section/plot/pin ordering and totals for quotation scope. */
@@ -191,6 +194,10 @@ export type QuotationListItem = {
   select_all_levels: boolean;
   /** Quote workflow status; API may omit when not set. */
   status?: string | null;
+  /** `servicequote` | `projectquote` when API returns category. */
+  quote_category?: string | null;
+  /** @deprecated Prefer `quote_category`. */
+  category?: string | null;
   is_active: boolean;
   organization: number | null;
 };

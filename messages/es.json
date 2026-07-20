@@ -224,6 +224,7 @@
       "projectTypes": "Tipos de Proyecto",
       "installationTypes": "Tipos de Instalación",
       "vendorTypes": "Tipos de Proveedor",
+      "unitTypes": "Tipos de Unidad",
       "checklistTypes": "Tipos de Lista de Verificación",
       "users": "Usuarios",
       "personalProfile": "Perfil personal",
@@ -236,7 +237,7 @@
       "customization": {
         "label": "Personalización",
         "hubTitle": "Personalización",
-        "hubDescription": "Elige qué configurar: Tipos de Proyecto, Tipos de Instalación, Tipos de Proveedor, Tipos de Lista de Verificación, Estados de Proyecto, Estados de Pin, Estados de Trabajo, Estados de Material y Etiquetas.",
+        "hubDescription": "Elige qué configurar: Tipos de Proyecto, Tipos de Instalación, Tipos de Proveedor, Tipos de Unidad, Tipos de Lista de Verificación, Estados de Proyecto, Estados de Pin, Estados de Trabajo, Estados de Material, Etiquetas y Títulos.",
         "backToHub": "Volver a personalización",
         "items": {
           "projectTypes": {
@@ -250,6 +251,10 @@
           "vendorTypes": {
             "title": "Tipos de Proveedor",
             "description": "Categorías de proveedor con etiquetas de color."
+          },
+          "unitTypes": {
+            "title": "Tipos de Unidad",
+            "description": "Unidades de medida como Kg, caja o metro."
           },
           "checklistTypes": {
             "title": "Tipos de Lista de Verificación",
@@ -824,6 +829,56 @@
       "hexPlaceholder": "#000000",
       "validationName": "Introduce un nombre de estado.",
       "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #E5E7EB)."
+    },
+    "unitTypes": {
+      "metaTitle": "Tipos de Unidad",
+      "title": "Tipos de Unidad",
+      "subtitle": "Gestiona unidades de medida usadas en ítems y cotizaciones.",
+      "add": "Añadir",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "filterState": "Estado activo",
+      "table": {
+        "name": "Unidad",
+        "shortForm": "Forma corta",
+        "status": "Estado",
+        "created": "Creado",
+        "updated": "Última actualización",
+        "actions": "Acciones"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "emptyTitle": "Aún no hay tipos de unidad",
+      "emptyDescription": "Crea tu primer tipo de unidad (p. ej. Kg, caja) para ítems y precios.",
+      "loadError": "No se pudieron cargar los tipos de unidad. Inténtalo de nuevo.",
+      "modal": {
+        "createTitle": "Nuevo tipo de unidad",
+        "editTitle": "Editar tipo de unidad",
+        "unitName": "Nombre",
+        "unitNamePlaceholder": "p. ej. Kg",
+        "unitShortForm": "Forma corta",
+        "unitShortFormPlaceholder": "p. ej. kg",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "deleteConfirmTitle": "¿Eliminar este tipo de unidad?",
+      "deleteConfirmBody": "Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar",
+      "pageLabel": "Mostrando {start}-{end} de {total} tipos de unidad",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "saved": "Tipo de unidad actualizado",
+      "created": "Tipo de unidad creado",
+      "deleted": "Tipo de unidad eliminado",
+      "activatedToast": "Tipo de unidad activado",
+      "deactivatedToast": "Tipo de unidad desactivado",
+      "toggleActiveError": "No se pudo actualizar el estado. Inténtalo de nuevo.",
+      "validationName": "Introduce un nombre de unidad.",
+      "validationShortForm": "Introduce una abreviatura de unidad (p. ej. kg)."
     },
     "titleSettings": {
       "metaTitle": "Títulos",
@@ -1831,13 +1886,19 @@
       "filterAllProjects": "Todos los proyectos",
       "filterStatus": "Estado de la cotización",
       "filterAllStatuses": "Todos los estados",
+      "filterCategory": "Categoría",
+      "filterAllCategories": "Todas las categorías",
+      "category": {
+        "service": "Servicio",
+        "project": "Proyecto"
+      },
       "pageLabel": "Mostrando {start}-{end} de {total} cotizaciones",
       "prev": "Anterior",
       "next": "Siguiente",
       "quoteStatus": {
         "draft": "Borrador",
         "sent": "Enviada",
-        "accepted": "Aceptada",
+        "approved": "Aprobada",
         "rejected": "Rechazada"
       },
       "table": {
@@ -1895,7 +1956,7 @@
         "createSection": "Agregar seccion",
         "newSectionPlaceholder": "Nombre de seccion",
         "selectProjectHint": "Selecciona un proyecto para cargar niveles.",
-        "sectionsTitle": "Secciones del proyecto y precios",
+        "sectionsTitle": "Alcance y precios",
         "selectAllSections": "Seleccionar todas las secciones de este proyecto",
         "includedViaSelectAll": "Incluida porque están seleccionadas todas las secciones",
         "plotSubtotal": "Subtotal del plot",
@@ -1933,7 +1994,7 @@
         "duplicateLine": "Duplicar",
         "rowActions": "Acciones",
         "emptyPlots": "Aún no hay parcelas en esta sección.",
-        "emptySections": "No hay secciones. Elige un proyecto con niveles o añade secciones manualmente.",
+        "emptySections": "Aún no hay secciones. Añade una sección y selecciona grupos e ítems con cantidad.",
         "includeSection": "Incluir",
         "quoteOnlySection": "Solo cotización (no vinculada a un nivel del proyecto)",
         "sectionTotal": "Total sección",
@@ -2051,8 +2112,10 @@
       "formTabs": {
         "aria": "Secciones de la cotización",
         "project": "Proyecto y datos",
+        "details": "Datos",
         "pricing": "Alcance y precios",
         "prevToProject": "Anterior: Proyecto y datos",
+        "prevToDetails": "Anterior: Datos",
         "nextToPricing": "Siguiente: Alcance y precios"
       },
       "validation": {
@@ -3524,6 +3587,25 @@
         "installationType": "Tipo de instalación",
         "installationTypePlaceholder": "Seleccionar tipo de instalación",
         "installationTypesLoadError": "No se pudieron cargar los tipos de instalación.",
+        "unitType": "Unidad",
+        "unitTypePlaceholder": "Seleccionar unidad",
+        "unitTypesLoadError": "No se pudieron cargar los tipos de unidad.",
+        "installationCost": "Coste de instalación",
+        "installationCostPlaceholder": "Introducir precio",
+        "installationCostType": "Precio",
+        "installationCostTypeFixed": "Importe fijo",
+        "installationCostTypeRate": "Tarifa / h",
+        "fulfilmentDetails": "Detalles de cumplimiento",
+        "dimensions": "Dimensiones",
+        "dimensionsPlaceholder": "L x A x H",
+        "dimensionsHint": "(Largo X Ancho X Alto)",
+        "dimensionsUnit": "Unidad de dimensiones",
+        "weight": "Peso",
+        "weightUnit": "Unidad de peso",
+        "attachments": "Adjuntos",
+        "attachmentsHint": "Adjunta uno o más archivos (documentos, imágenes, especificaciones).",
+        "addAttachments": "Añadir archivos",
+        "removeAttachment": "Quitar",
         "createdToast": "Ítem compuesto creado",
         "updatedToast": "Ítem compuesto actualizado"
       },
@@ -3574,6 +3656,14 @@
         "sectionOverview": "Resumen",
         "group": "Grupo",
         "installationType": "Tipo de instalación",
+        "unitType": "Unidad",
+        "installationCost": "Coste de instalación",
+        "installationCostFixed": "Importe fijo",
+        "installationCostRate": "Tarifa / h",
+        "dimensions": "Dimensiones",
+        "weight": "Peso",
+        "sectionAttachments": "Adjuntos",
+        "noAttachments": "Sin adjuntos.",
         "sectionComponents": "Componentes",
         "sectionRecord": "Registro",
         "sku": "SKU",
@@ -3608,8 +3698,21 @@
         "skuPlaceholder": "p. ej. HNG001",
         "skuError": "Introduce un SKU.",
         "quantity": "Cantidad",
+        "unitType": "Unidad",
+        "unitTypePlaceholder": "Seleccionar unidad",
+        "unitTypesLoadError": "No se pudieron cargar los tipos de unidad.",
         "costPrice": "Precio de coste",
         "sellingPrice": "Precio de venta",
+        "fulfilmentDetails": "Detalles de cumplimiento",
+        "dimensions": "Dimensiones",
+        "dimensionsPlaceholder": "L x A x H",
+        "dimensionsHint": "(Largo X Ancho X Alto)",
+        "dimensionsUnit": "Unidad de dimensiones",
+        "weight": "Peso",
+        "weightUnit": "Unidad de peso",
+        "attachments": "Adjuntos",
+        "addAttachments": "Añadir archivos",
+        "removeAttachment": "Quitar",
         "createdToast": "Ítem creado",
         "updatedToast": "Ítem actualizado"
       },
