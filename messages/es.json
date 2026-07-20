@@ -2739,6 +2739,7 @@
       "filterAllStatuses": "Todos los estados",
       "filterAssignedWorker": "Técnico asignado",
       "filterAllWorkers": "Todos los técnicos",
+      "filterAllCategories": "Todas las categorías",
       "massAssign": {
         "assignTo": "Asignar a",
         "apply": "Aplicar",
@@ -3206,7 +3207,8 @@
           "saveAll": "Guardar",
           "savedAll": "Todos los cambios guardados.",
           "saveAllError": "No se pudieron guardar todos los cambios.",
-          "loading": "Cargando editor..."
+          "loading": "Cargando editor...",
+          "noFormWithInstallationType": "No se encontró ningún formulario con el tipo de instalación en el proyecto. Asigne un formulario o cree uno nuevo."
         }
       },
       "formsTab": {

@@ -2749,6 +2749,7 @@
       "filterAllStatuses": "All statuses",
       "filterAssignedWorker": "Assigned worker",
       "filterAllWorkers": "All technicians",
+      "filterAllCategories": "All categories",
       "massAssign": {
         "assignTo": "Assign to",
         "apply": "Apply",
@@ -3221,7 +3222,8 @@
           "saveAll": "Save",
           "savedAll": "All changes saved.",
           "saveAllError": "Could not save all changes.",
-          "loading": "Loading editor..."
+          "loading": "Loading editor...",
+          "noFormWithInstallationType": "No form with the installation type found in the project. Assign form or create a new form."
         }
       },
       "formsTab": {
