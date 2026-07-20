@@ -73,7 +73,7 @@ export function ProjectJobsTab({ projectId }: Props) {
 
   const [search, setSearch] = React.useState("");
   const [jobStatusFilter, setJobStatusFilter] = React.useState<number | undefined>();
-  const [jobSourceFilter, setJobSourceFilter] = React.useState<ProjectJobsSourceFilter>(DEFAULT_PROJECT_JOBS_SOURCE);
+  // const [jobSourceFilter, setJobSourceFilter] = React.useState<ProjectJobsSourceFilter>(DEFAULT_PROJECT_JOBS_SOURCE);
   const [levelFilter, setLevelFilter] = React.useState<number | undefined>();
   const [plotFilter, setPlotFilter] = React.useState<number | undefined>();
 
@@ -101,11 +101,11 @@ export function ProjectJobsTab({ projectId }: Props) {
     () => ({
       search: search || undefined,
       job_status: jobStatusFilter,
-      job_source: jobSourceFilter,
+      // job_source: jobSourceFilter,
       level_id: levelFilter,
       plot_id: plotFilter,
     }),
-    [search, jobStatusFilter, jobSourceFilter, levelFilter, plotFilter],
+    [search, jobStatusFilter, levelFilter, plotFilter],
   );
 
   const filteredHierarchy = React.useMemo(
@@ -124,14 +124,14 @@ export function ProjectJobsTab({ projectId }: Props) {
     [hierarchy, levelFilter],
   );
 
-  const jobSourceOptions = React.useMemo(
-    () => [
-      { value: DEFAULT_PROJECT_JOBS_SOURCE, label: t("filterAllSources") },
-      { value: "quotation", label: t("filterQuotationSource") },
-      { value: "manual", label: t("filterManualSource") },
-    ],
-    [t],
-  );
+  // const jobSourceOptions = React.useMemo(
+  //   () => [
+  //     { value: DEFAULT_PROJECT_JOBS_SOURCE, label: t("filterAllSources") },
+  //     { value: "quotation", label: t("filterQuotationSource") },
+  //     { value: "manual", label: t("filterManualSource") },
+  //   ],
+  //   [t],
+  // );
 
   const workerLabelById = React.useMemo(() => {
     const map: Record<number, string> = {};
@@ -183,7 +183,7 @@ export function ProjectJobsTab({ projectId }: Props) {
   const mass = useEntityListMassActions({
     resource: "jobs",
     pageItems: tableRows,
-    resetDeps: [search, jobStatusFilter, jobSourceFilter, levelFilter, plotFilter],
+    resetDeps: [search, jobStatusFilter,  levelFilter, plotFilter],
     updateFields: massUpdateFields,
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
@@ -371,7 +371,7 @@ export function ProjectJobsTab({ projectId }: Props) {
   const hasActiveFilters =
     search.trim() !== "" ||
     jobStatusFilter != null ||
-    jobSourceFilter !== DEFAULT_PROJECT_JOBS_SOURCE ||
+    // jobSourceFilter !== DEFAULT_PROJECT_JOBS_SOURCE ||
     levelFilter != null ||
     plotFilter != null;
 
@@ -384,7 +384,7 @@ export function ProjectJobsTab({ projectId }: Props) {
   function clearFilters() {
     setSearch("");
     setJobStatusFilter(undefined);
-    setJobSourceFilter(DEFAULT_PROJECT_JOBS_SOURCE);
+    // setJobSourceFilter(DEFAULT_PROJECT_JOBS_SOURCE);
     setLevelFilter(undefined);
     setPlotFilter(undefined);
   }
@@ -432,7 +432,7 @@ export function ProjectJobsTab({ projectId }: Props) {
           className="w-full min-w-0 sm:w-44"
           onChange={(v) => setJobStatusFilter(v ? Number.parseInt(v, 10) : undefined)}
         />
-        <CheckmarkSelect
+        {/* <CheckmarkSelect
           listLabel={t("filterJobSource")}
           buttonAriaLabel={t("filterJobSource")}
           options={jobSourceOptions}
@@ -446,8 +446,8 @@ export function ProjectJobsTab({ projectId }: Props) {
             setLevelFilter(undefined);
             setPlotFilter(undefined);
           }}
-        />
-        {jobSourceFilter !== "manual" ? (
+        /> */}
+        {/* {jobSourceFilter !== "manual" ? (
           <>
             <CheckmarkSelect
               listLabel={t("filterLevel")}
@@ -478,7 +478,7 @@ export function ProjectJobsTab({ projectId }: Props) {
               onChange={(v) => setPlotFilter(v ? Number.parseInt(v, 10) : undefined)}
             />
           </>
-        ) : null}
+        ) : null} */}
       </div>
 
       {mass.selectedCount > 0 && !loading && !loadError ? (

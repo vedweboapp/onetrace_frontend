@@ -1,7 +1,6 @@
 import api from "@/core/api/axios";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
-import { getProjectJobForm } from "@/features/projects/api/project-job-form.api";
 import type {
   JobFormSubmission,
   SubmitJobFormSummary,
@@ -10,7 +9,7 @@ import { normalizeProjectFormMetadataResponse } from "@/features/job-forms/utils
 import { JOB_FORM_PATHS } from "./job-form.paths";
 
 export async function fetchJobFormSchema(formId: number) {
-  const raw = await getProjectJobForm(formId);
+  const { data: raw } = await api.get(`project-forms/${formId}/metadata/`);
   return normalizeProjectFormMetadataResponse(raw);
 }
 
