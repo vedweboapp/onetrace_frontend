@@ -26,28 +26,23 @@ export function buildItemWriteBody(
   const newFiles = refs.filter((r): r is { file: File } => "file" in r && r.file instanceof File);
   const metaRefs = refs.filter((r): r is { id: number; is_deleted?: boolean } => "id" in r);
 
-  const bodyWithDeletes =
-    metaRefs.length > 0
-      ? {
-          ...body,
-          attachments: metaRefs.map((r) => ({ id: r.id, is_deleted: r.is_deleted ?? true })),
-        }
-      : body;
-
-  if (newFiles.length === 0) {
-    return bodyWithDeletes;
+  if (newFiles.length === 0 && metaRefs.length === 0) {
+    return body;
   }
 
   const fd = new FormData();
-  const record = bodyWithDeletes as Record<string, unknown>;
+  const record = body as Record<string, unknown>;
   for (const [key, value] of Object.entries(record)) {
     if (value === undefined) continue;
     appendScalar(fd, key, value);
   }
 
-  newFiles.forEach(({ file }, index) => {
-    fd.append(`attachment${index + 1}`, file, file.name);
-  });
+  for (const ref of metaRefs) {
+    fd.append("attachments", JSON.stringify(ref));
+  }
+  for (const { file } of newFiles) {
+    fd.append("attachments", file, file.name);
+  }
 
   return fd;
 }
