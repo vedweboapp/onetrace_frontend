@@ -5,7 +5,7 @@ import { useRouter } from "@/i18n/navigation";
 import { logoutRequest } from "@/features/auth/api/auth.api";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { routes } from "@/shared/config/routes";
-import { clearAllPinFocus } from "@/features/projects/utils/pin-geometry.util";
+import { clearAllDrawingGeometry, clearAllPinFocus } from "@/features/projects/utils/pin-geometry.util";
 
 export function useLogout() {
   const router = useRouter();
@@ -20,6 +20,7 @@ export function useLogout() {
     
     } finally {
       clearAllPinFocus();
+      clearAllDrawingGeometry();
       clearAuth();
       setIsLoggingOut(false);
       router.replace(routes.auth.login);
