@@ -44,3 +44,12 @@ export function resolveUnitTypeShortLabel(
 export function unitTypeNameFromRef(ref: ItemUnitTypeRef): string {
   return ref.name?.trim() || "";
 }
+
+/** When no unit is chosen yet, pick the first active option from the API list. */
+export function resolveDefaultUnitTypeSelectValue(
+  currentValue: string,
+  options: Array<{ value: string }>,
+): string {
+  if (currentValue.trim()) return currentValue;
+  return options[0]?.value ?? "";
+}

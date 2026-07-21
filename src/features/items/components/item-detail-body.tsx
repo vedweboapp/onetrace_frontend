@@ -11,7 +11,12 @@ import { resolveInstallationTypeChipData } from "@/features/items/utils/item-ins
 import { resolveUnitTypeShortLabel } from "@/features/items/utils/item-unit-type.util";
 import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
 import type { UnitType } from "@/features/unit-types/types/unit-type.types";
-import type { InstallationCostType, ItemAttachment } from "@/features/items/types/item.types";
+import type { InstallationCostType } from "@/features/items/types/item.types";
+import {
+  hasItemAttachment,
+  resolveItemAttachmentLabel,
+  resolveItemAttachmentUrl,
+} from "@/features/items/utils/item-attachment-display.util";
 import { routes } from "@/shared/config/routes";
 import {
   DetailLinkedTable,
@@ -31,22 +36,6 @@ import {
 function moneyDisplay(v: unknown): string {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : Number.NaN;
   return Number.isFinite(n) ? n.toFixed(2) : "—";
-}
-
-function attachmentDisplayLabel(row: ItemAttachment): string {
-  if (row.file_name?.trim()) return row.file_name.trim();
-  const url = row.file_url ?? row.attachment ?? row.url;
-  if (url?.trim()) {
-    const parts = url.split("/");
-    const last = parts[parts.length - 1];
-    if (last?.trim()) return decodeURIComponent(last);
-  }
-  return row.id != null ? `Attachment #${row.id}` : "Attachment";
-}
-
-function attachmentDisplayUrl(row: ItemAttachment): string | null {
-  const raw = row.file_url ?? row.attachment ?? row.url;
-  return raw?.trim() || null;
 }
 
 function installationCostTypeLabel(
@@ -87,9 +76,7 @@ export function ItemDetailBody({
   const installationTypeChip = resolveInstallationTypeChipData(detail.installation_type);
   const unitTypeLabel = resolveUnitTypeShortLabel(detail.unit_type, unitTypesById);
   const components = detail.components ?? [];
-  const attachments = (detail.attachments ?? []).filter(
-    (row) => row && (row.id != null || row.file_name || row.file_url || row.attachment || row.url),
-  );
+  const attachments = (detail.attachments ?? []).filter(hasItemAttachment);
   const installationCostValue = moneyDisplay(detail.installation_cost);
   const hasInstallationCost =
     detail.is_composite &&
@@ -239,39 +226,37 @@ export function ItemDetailBody({
           </DetailMetricsGrid>
           </DetailPanelCard>
 
-        {detail.is_composite ? (
-          <DetailPanelCard title={t("detail.sectionAttachments")}>
-            {attachments.length > 0 ? (
-              <ul className="space-y-2">
-                {attachments.map((row, index) => {
-                  const href = attachmentDisplayUrl(row);
-                  const label = attachmentDisplayLabel(row);
-                  return (
-                    <li
-                      key={row.id ?? `${label}-${index}`}
-                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700"
-                    >
-                      {href ? (
-                        <a
-                          href={href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block truncate text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                        >
-                          {label}
-                        </a>
-                      ) : (
-                        <span className="block truncate text-slate-800 dark:text-slate-100">{label}</span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p className="text-sm font-normal text-slate-500 dark:text-slate-400">{t("detail.noAttachments")}</p>
-            )}
-          </DetailPanelCard>
-        ) : null}
+        <DetailPanelCard title={t("detail.sectionAttachments")}>
+          {attachments.length > 0 ? (
+            <ul className="space-y-2">
+              {attachments.map((row, index) => {
+                const href = resolveItemAttachmentUrl(row);
+                const label = resolveItemAttachmentLabel(row);
+                return (
+                  <li
+                    key={row.id ?? `${label}-${index}`}
+                    className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700"
+                  >
+                    {href ? (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block truncate text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                      >
+                        {label}
+                      </a>
+                    ) : (
+                      <span className="block truncate text-slate-800 dark:text-slate-100">{label}</span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-sm font-normal text-slate-500 dark:text-slate-400">{t("detail.noAttachments")}</p>
+          )}
+        </DetailPanelCard>
 
         {detail.is_composite ? (
           <DetailPanelCard title={t("detail.sectionComponents")}>
