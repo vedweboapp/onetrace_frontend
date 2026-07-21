@@ -15,6 +15,7 @@ export type ProjectUpsertPayload = {
   start_date: string;
   end_date: string;
   project_status?: number;
+  manager_ids?: number[];
 };
 
 export type ProjectCreatePayload = ProjectUpsertPayload;
@@ -76,6 +77,19 @@ export type Project = {
   sites?: Array<number | ProjectSiteRef> | null;
   form_ids?: number[] | null;
   forms?: Array<{ id: number; name?: string | null } | number> | null;
+  managers?: Array<{ id: number; username?: string; email?: string } | number> | null;
+  manager_ids?: number[] | null;
+  manager_detail?: Array<{
+    id: number;
+    manager: {
+      id: number;
+      user_id: number;
+      username: string;
+      email: string;
+      first_name?: string | null;
+      last_name?: string | null;
+    };
+  }> | null;
   address_line_1?: string | null;
   address_line_2?: string | null;
   city?: string | null;

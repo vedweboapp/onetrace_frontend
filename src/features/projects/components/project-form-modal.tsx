@@ -3,7 +3,9 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
+import { fetchSitesPage } from "@/features/sites/api/site.api";
+import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { useRouter } from "@/i18n/navigation";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
@@ -21,6 +23,8 @@ import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { fetchUsersPage } from "@/features/users/api/user.api";
+import { userProfileLabel } from "@/features/jobs/utils/job-nested-fields.util";
 import {
   AppButton,
   AppModal,
@@ -28,6 +32,7 @@ import {
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
+  MultiCheckSelect,
   SurfaceDateInput,
   surfaceInputClassName,
 } from "@/shared/ui";
@@ -61,6 +66,18 @@ export function ProjectFormModal({
   const router = useRouter();
   const [saving, setSaving] = React.useState(false);
   const [projectTypeOptions, setProjectTypeOptions] = React.useState<ProjectClientOption[]>([]);
+  const [managerOptions, setManagerOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [siteOptions, setSiteOptions] = React.useState<ProjectClientOption[]>([]);
+  const [clientSearchQuery, setClientSearchQuery] = React.useState("");
+  const [managerSearchQuery, setManagerSearchQuery] = React.useState("");
+  const [siteSearchQuery, setSiteSearchQuery] = React.useState("");
+  const [projectTypeSearchQuery, setProjectTypeSearchQuery] = React.useState("");
+  const initialClientsLoaded = React.useRef(false);
+  const initialManagersLoaded = React.useRef(false);
+  const accumulatedClientLabels = React.useRef<Record<string, string>>({});
+  const accumulatedSiteLabels = React.useRef<Record<string, string>>({});
+  const accumulatedManagerLabels = React.useRef<Record<string, string>>({});
+  const accumulatedProjectTypeLabels = React.useRef<Record<string, string>>({});
 
   const schema = React.useMemo(
     () =>
@@ -102,20 +119,123 @@ export function ProjectFormModal({
   React.useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    (async () => {
+    const t = setTimeout(async () => {
       try {
-        const { items } = await fetchProjectTypesPage(1, 500, { is_active: true });
+        const { items } = await fetchProjectTypesPage(1, 500, { is_active: true, search: projectTypeSearchQuery });
         if (!cancelled) {
-          setProjectTypeOptions(items.map((pt) => ({ value: String(pt.id), label: formatProjectTypeLabel(pt) })));
+          const newOptions = items.map((pt) => ({ value: String(pt.id), label: formatProjectTypeLabel(pt) }));
+          newOptions.forEach((opt) => {
+            accumulatedProjectTypeLabels.current[opt.value] = opt.label;
+          });
+          setProjectTypeOptions(newOptions);
         }
       } catch {
         if (!cancelled) setProjectTypeOptions([]);
       }
-    })();
+    }, 400);
     return () => {
       cancelled = true;
+      clearTimeout(t);
     };
-  }, [open]);
+  }, [open, projectTypeSearchQuery]);
+
+  const selectedClient = useWatch({ control, name: "client" });
+
+  const clientIdForQuick =
+    selectedClient && /^\d+$/.test(selectedClient) ? Number.parseInt(selectedClient, 10) : undefined;
+
+  const reloadSites = React.useCallback(async (searchQuery?: string) => {
+    if (!clientIdForQuick || clientIdForQuick <= 0) {
+      setSiteOptions([]);
+      return;
+    }
+    try {
+      const { items } = await fetchSitesPage(1, 500, { client: clientIdForQuick, is_active: true, search: searchQuery });
+      const newOptions = items.map((s) => ({ value: String(s.id), label: s.site_name }));
+      newOptions.forEach((opt) => {
+        accumulatedSiteLabels.current[opt.value] = opt.label;
+      });
+      setSiteOptions(newOptions);
+    } catch {
+      setSiteOptions([]);
+    }
+  }, [clientIdForQuick]);
+
+  React.useEffect(() => {
+    if (!selectedClient || !/^\d+$/.test(selectedClient)) {
+      setSiteOptions([]);
+      setValue("sites", []);
+      return;
+    }
+    const t = setTimeout(() => {
+      void reloadSites(siteSearchQuery);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [selectedClient, setValue, reloadSites, siteSearchQuery]);
+
+  const siteQuickCreate = useQuickCreate({
+    kind: "site",
+    clientId: clientIdForQuick,
+    addDisabled: !clientIdForQuick,
+  });
+
+  const reloadClients = React.useCallback(async (searchQuery?: string) => {
+    try {
+      const { items } = await fetchClientsPage(1, 100, { is_active: true, search: searchQuery }, { silent: true });
+      const newOptions = items.map((c) => ({ value: String(c.id), label: c.name }));
+      newOptions.forEach((opt) => {
+        accumulatedClientLabels.current[opt.value] = opt.label;
+      });
+      setLocalClientOptions(newOptions);
+    } catch {
+      // Keep existing or empty
+    }
+  }, []);
+
+  const reloadManagers = React.useCallback(async (searchQuery?: string) => {
+    try {
+      const { items } = await fetchUsersPage(1, 100, { search: searchQuery });
+      const newOptions = items.map((u) => ({ value: String(u.id), label: userProfileLabel(u) }));
+      newOptions.forEach((opt) => {
+        accumulatedManagerLabels.current[opt.value] = opt.label;
+      });
+      setManagerOptions(newOptions);
+    } catch {
+      setManagerOptions([]);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) {
+      initialClientsLoaded.current = false;
+      return;
+    }
+    if (!initialClientsLoaded.current) {
+      initialClientsLoaded.current = true;
+      void reloadClients("");
+      return;
+    }
+    const t = setTimeout(() => {
+      void reloadClients(clientSearchQuery);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [clientSearchQuery, reloadClients, open]);
+
+  React.useEffect(() => {
+    if (!open) {
+      initialManagersLoaded.current = false;
+      return;
+    }
+    if (!initialManagersLoaded.current) {
+      initialManagersLoaded.current = true;
+      void reloadManagers("");
+      return;
+    }
+    const t = setTimeout(() => {
+      void reloadManagers(managerSearchQuery);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [managerSearchQuery, reloadManagers, open]);
 
   async function submit(values: ProjectFormValues) {
     const payload = mapProjectFormToPayload(values);
@@ -156,6 +276,65 @@ export function ProjectFormModal({
   React.useEffect(() => {
     setLocalClientOptions(clientOptions);
   }, [clientOptions]);
+
+  const selectedClientVal = useWatch({ control, name: "client" });
+  const selectedProjectTypeVal = useWatch({ control, name: "project_type" });
+
+  const projectClientFallbackLabel = React.useMemo(() => {
+    if (selectedClientVal && accumulatedClientLabels.current[selectedClientVal]) {
+      return accumulatedClientLabels.current[selectedClientVal];
+    }
+    if (project?.client && typeof project.client === "object" && project.client.name) {
+      return project.client.name;
+    }
+    return "";
+  }, [project, selectedClientVal, localClientOptions]);
+
+  const projectTypeFallbackLabel = React.useMemo(() => {
+    if (selectedProjectTypeVal && accumulatedProjectTypeLabels.current[selectedProjectTypeVal]) {
+      return accumulatedProjectTypeLabels.current[selectedProjectTypeVal];
+    }
+    if (project?.project_type && typeof project.project_type === "object" && project.project_type.project_type) {
+      return project.project_type.project_type;
+    }
+    return "";
+  }, [project, selectedProjectTypeVal, projectTypeOptions]);
+
+  const managerFallbackLabels = React.useMemo(() => {
+    const labels: Record<string, string> = { ...accumulatedManagerLabels.current };
+    if (project) {
+      if (Array.isArray((project as any).manager_detail)) {
+        for (const md of (project as any).manager_detail) {
+          if (md && typeof md === "object" && md.manager) {
+            const id = String(md.manager.id);
+            labels[id] = md.manager.username || md.manager.email || `#${id}`;
+          }
+        }
+      } else if (Array.isArray(project.managers)) {
+        // Fallback in case it's still sent as managers somewhere else
+        for (const m of project.managers) {
+          if (m && typeof m === "object") {
+            const id = String(m.id);
+            labels[id] = m.username || m.email || `#${id}`;
+          }
+        }
+      }
+    }
+    return labels;
+  }, [project, managerOptions]);
+
+  const siteFallbackLabels = React.useMemo(() => {
+    const labels: Record<string, string> = { ...accumulatedSiteLabels.current };
+    if (project && Array.isArray(project.sites)) {
+      for (const s of project.sites) {
+        if (s && typeof s === "object") {
+          const id = String(s.id);
+          labels[id] = s.site_name || `#${id}`;
+        }
+      }
+    }
+    return labels;
+  }, [project, siteOptions]);
 
   const noClients = localClientOptions.length === 0;
   const noProjectTypes = projectTypeOptions.length === 0;
@@ -238,6 +417,8 @@ export function ProjectFormModal({
                   onAdd={clientQuickCreate.onAdd}
                   addAriaLabel={clientQuickCreate.addAriaLabel}
                   addLabel={clientQuickCreate.addLabel}
+                  onSearchChange={setClientSearchQuery}
+                  fallbackLabel={projectClientFallbackLabel}
                 />
               )}
             />
@@ -263,11 +444,60 @@ export function ProjectFormModal({
                   onAdd={() => router.push(routes.dashboard.settingsProjectTypes)}
                   addAriaLabel="Add project type"
                   addLabel="Add project type"
+                  onSearchChange={setProjectTypeSearchQuery}
+                  fallbackLabel={projectTypeFallbackLabel}
                   onChange={field.onChange}
                 />
               )}
             />
             <FieldErrorText>{errors.project_type?.message}</FieldErrorText>
+          </FieldGroup>
+        </FormFieldRow>
+
+        <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+          <FieldGroup label={t("fields.sites")} htmlFor="project-sites">
+            <Controller
+              control={control}
+              name="sites"
+              render={({ field }) => (
+                <MultiCheckSelect
+                  id="project-sites"
+                  options={siteOptions}
+                  values={field.value ?? []}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  disabled={saving || !selectedClient}
+                  placeholder={t("placeholders.site")}
+                  listLabel={t("fields.sites")}
+                  onAdd={siteQuickCreate.onAdd}
+                  addAriaLabel={siteQuickCreate.addAriaLabel}
+                  addLabel={siteQuickCreate.addLabel}
+                  onSearchChange={setSiteSearchQuery}
+                  fallbackLabels={siteFallbackLabels}
+                />
+              )}
+            />
+          </FieldGroup>
+
+          <FieldGroup label="Managers" htmlFor="project-managers">
+            <Controller
+              control={control}
+              name="manager_ids"
+              render={({ field }) => (
+                <MultiCheckSelect
+                  id="project-managers"
+                  options={managerOptions}
+                  values={field.value ?? []}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  disabled={saving}
+                  placeholder="Select managers..."
+                  listLabel="Managers"
+                  onSearchChange={setManagerSearchQuery}
+                  fallbackLabels={managerFallbackLabels}
+                />
+              )}
+            />
           </FieldGroup>
         </FormFieldRow>
 

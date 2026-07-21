@@ -1,3 +1,5 @@
+import { resolveBackendOrigin } from "@/core/config/api-url.util";
+
 export type MockMaterialRequestListFilters = {
   search?: string;
   status?: string;
@@ -6,12 +8,6 @@ export type MockMaterialRequestListFilters = {
   page: number;
   pageSize: number;
 };
-
-function backendOrigin(): string {
-  return (
-    process.env.BACKEND_API_ORIGIN?.replace(/\/$/, "") ?? "http://110.225.254.51:5050"
-  );
-}
 
 function backendHeaders(authHeader?: string | null): HeadersInit {
   const headers: Record<string, string> = {
@@ -50,7 +46,7 @@ export async function mockBackendFetchJob(
   project?: { id: number; name?: string | null } | null;
   job_meta?: unknown;
 } | null> {
-  const res = await fetch(`${backendOrigin()}/api/v1/jobs/${id}/`, {
+  const res = await fetch(`${resolveBackendOrigin()}/api/v1/jobs/${id}/`, {
     headers: backendHeaders(authHeader),
     cache: "no-store",
   });
@@ -66,7 +62,7 @@ export async function mockBackendFetchJob(
 export async function mockBackendFetchItemLabels(
   authHeader?: string | null,
 ): Promise<Record<number, string>> {
-  const res = await fetch(`${backendOrigin()}/api/v1/items/?page=1&page_size=500&is_active=true`, {
+  const res = await fetch(`${resolveBackendOrigin()}/api/v1/items/?page=1&page_size=500&is_active=true`, {
     headers: backendHeaders(authHeader),
     cache: "no-store",
   });

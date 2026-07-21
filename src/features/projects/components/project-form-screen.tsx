@@ -13,6 +13,8 @@ import { formatProjectTypeLabel } from "@/features/project-types/utils/project-t
 import { createProject, fetchProject, updateProject } from "@/features/projects/api/project.api";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import { fetchFormsPage } from "@/features/forms/api/forms.api";
+import { fetchUsersPage } from "@/features/users/api/user.api";
+import { userProfileLabel } from "@/features/jobs/utils/job-nested-fields.util";
 import { createProjectFormSchema, type ProjectFormValues } from "@/features/projects/schemas/project-form-schema";
 import {
   emptyProjectFormDefaults,
@@ -63,10 +65,17 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [clientSearchQuery, setClientSearchQuery] = React.useState("");
+  const [projectClientName, setProjectClientName] = React.useState("");
+  const [managerSearchQuery, setManagerSearchQuery] = React.useState("");
+  const [managerFallbackLabels, setManagerFallbackLabels] = React.useState<Record<string, string>>({});
   const [projectTypeOptions, setProjectTypeOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [siteOptions, setSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [formOptions, setFormOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [projectStatusOptions, setProjectStatusOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [managerOptions, setManagerOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const initialClientsLoaded = React.useRef(false);
+  const initialManagersLoaded = React.useRef(false);
   const schema = React.useMemo(
     () =>
       createProjectFormSchema({
@@ -97,18 +106,47 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   const selectedClient = useWatch({ control, name: "client" });
   const selectedProjectType = useWatch({ control, name: "project_type" });
 
-  const reloadClients = React.useCallback(async () => {
+  const reloadClients = React.useCallback(async (searchQuery?: string) => {
     try {
-      const { items } = await fetchClientsPage(1, 500, { is_active: true }, { silent: true });
+      const { items } = await fetchClientsPage(1, 100, { is_active: true, search: searchQuery }, { silent: true });
       setClientOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
     } catch {
       setClientOptions([]);
     }
   }, []);
 
+  const reloadManagers = React.useCallback(async (searchQuery?: string) => {
+    try {
+      const { items } = await fetchUsersPage(1, 100, { search: searchQuery });
+      setManagerOptions(items.map((u) => ({ value: String(u.id), label: userProfileLabel(u) })));
+    } catch {
+      setManagerOptions([]);
+    }
+  }, []);
+
   React.useEffect(() => {
-    void reloadClients();
-  }, [reloadClients]);
+    if (!initialClientsLoaded.current) {
+      initialClientsLoaded.current = true;
+      void reloadClients("");
+      return;
+    }
+    const t = setTimeout(() => {
+      void reloadClients(clientSearchQuery);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [clientSearchQuery, reloadClients]);
+
+  React.useEffect(() => {
+    if (!initialManagersLoaded.current) {
+      initialManagersLoaded.current = true;
+      void reloadManagers("");
+      return;
+    }
+    const t = setTimeout(() => {
+      void reloadManagers(managerSearchQuery);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [managerSearchQuery, reloadManagers]);
 
   const draftReturnTo = React.useMemo(() => {
     const qs = searchParams.toString();
@@ -249,7 +287,31 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       setScreenError(null);
       try {
         const row = await fetchProject(projectId);
-        if (!cancelled) reset(projectToFormDefaults(row));
+        if (!cancelled) {
+          reset(projectToFormDefaults(row));
+          if (row.client && typeof row.client === "object" && row.client.name) {
+            setProjectClientName(row.client.name);
+          }
+          const labels: Record<string, string> = {};
+          if (Array.isArray(row.manager_detail)) {
+            for (const entry of row.manager_detail) {
+              const m = entry?.manager;
+              if (m && typeof m === "object") {
+                const id = String(m.id);
+                const full = `${m.first_name ?? ""} ${m.last_name ?? ""}`.trim();
+                labels[id] = full || m.username || m.email || `#${id}`;
+              }
+            }
+          } else if (Array.isArray(row.managers)) {
+            for (const m of row.managers) {
+              if (m && typeof m === "object") {
+                const id = String(m.id);
+                labels[id] = m.username || m.email || `#${id}`;
+              }
+            }
+          }
+          setManagerFallbackLabels(labels);
+        }
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
       } finally {
@@ -372,6 +434,8 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                         onAdd={clientQuickCreate.onAdd}
                         addAriaLabel={clientQuickCreate.addAriaLabel}
                         addLabel={clientQuickCreate.addLabel}
+                        onSearchChange={setClientSearchQuery}
+                        fallbackLabel={projectClientName}
                       />
                     )}
                   />
@@ -449,28 +513,50 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">No forms found for this project type.</p>
                 )}
               </FieldGroup>
-              <FieldGroup label={t("fields.sites")} htmlFor="project-sites">
-                <Controller
-                  control={control}
-                  name="sites"
-                  render={({ field }) => (
-                    <MultiCheckSelect
-                      id="project-sites"
-                      options={siteOptions}
-                      values={field.value ?? []}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      disabled={saving || !selectedClient}
-                      placeholder={t("placeholders.site")}
-                      listLabel={t("fields.sites")}
-                      onAdd={siteQuickCreate.onAdd}
-                      addAriaLabel={siteQuickCreate.addAriaLabel}
-                      addLabel={siteQuickCreate.addLabel}
-                    />
-                  )}
-                />
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("hints.sitesMultiSelect")}</p>
-              </FieldGroup>
+              <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+                <FieldGroup label={t("fields.sites")} htmlFor="project-sites">
+                  <Controller
+                    control={control}
+                    name="sites"
+                    render={({ field }) => (
+                      <MultiCheckSelect
+                        id="project-sites"
+                        options={siteOptions}
+                        values={field.value ?? []}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={saving || !selectedClient}
+                        placeholder={t("placeholders.site")}
+                        listLabel={t("fields.sites")}
+                        onAdd={siteQuickCreate.onAdd}
+                        addAriaLabel={siteQuickCreate.addAriaLabel}
+                        addLabel={siteQuickCreate.addLabel}
+                      />
+                    )}
+                  />
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("hints.sitesMultiSelect")}</p>
+                </FieldGroup>
+                <FieldGroup label="Managers" htmlFor="project-managers">
+                  <Controller
+                    control={control}
+                    name="manager_ids"
+                    render={({ field }) => (
+                      <MultiCheckSelect
+                        id="project-managers"
+                        options={managerOptions}
+                        values={field.value ?? []}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={saving}
+                        placeholder="Select managers..."
+                        listLabel="Managers"
+                        onSearchChange={setManagerSearchQuery}
+                        fallbackLabels={managerFallbackLabels}
+                      />
+                    )}
+                  />
+                </FieldGroup>
+              </FormFieldRow>
               <FieldGroup label={t("fields.description")} htmlFor="project-description" required>
                 <textarea
                   id="project-description"

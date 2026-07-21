@@ -13,9 +13,24 @@ import {
 import { fetchInstallationTypesPage } from "@/features/installation-types/api/installation-type.api";
 import { getInstallationTypeId } from "@/features/items/utils/item-installation-type.util";
 import { formatInstallationTypeLabel } from "@/features/installation-types/utils/installation-type-display.util";
+import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
+import { formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
+import { getUnitTypeId, resolveDefaultUnitTypeSelectValue } from "@/features/items/utils/item-unit-type.util";
+import type { ItemAttachmentWriteRef } from "@/features/items/utils/item-write-form-data.util";
+import {
+  hasItemAttachment,
+  resolveItemAttachmentLabel,
+  resolveItemAttachmentUrl,
+} from "@/features/items/utils/item-attachment-display.util";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import { cn } from "@/core/utils/http.util";
-import type { ItemComponentRef } from "@/features/items/types/item.types";
+import type {
+  DimensionUnit,
+  InstallationCostType,
+  ItemAttachment,
+  ItemComponentRef,
+  WeightUnit,
+} from "@/features/items/types/item.types";
 import type { Item } from "@/features/items/types/item.types";
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
@@ -35,6 +50,7 @@ import {
   type CheckmarkSelectOption,
   FieldLabel,
   fieldErrorTextClassName,
+  InputWithEndSelect,
   SurfaceShell,
   surfaceInputClassName,
 } from "@/shared/ui";
@@ -45,6 +61,55 @@ type Props = {
 };
 
 type ComponentRow = { id: string; dbId?: number; child_item: string; quantity: string };
+
+type AttachmentDraft = {
+  key: string;
+  id?: number;
+  file?: File;
+  file_name?: string;
+  file_url?: string;
+  removed?: boolean;
+};
+
+function nextAttachmentKey(): string {
+  return `att-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function attachmentLabel(draft: AttachmentDraft): string {
+  if (draft.file?.name) return draft.file.name;
+  if (draft.file_name?.trim()) return draft.file_name.trim();
+  return resolveItemAttachmentLabel({
+    id: draft.id,
+    file_name: draft.file_name,
+    file: draft.file_url,
+  });
+}
+
+function attachmentUrl(draft: AttachmentDraft): string | null {
+  return resolveItemAttachmentUrl({ file: draft.file_url, file_url: draft.file_url });
+}
+
+function mapApiAttachments(rows: ItemAttachment[] | null | undefined): AttachmentDraft[] {
+  if (!Array.isArray(rows)) return [];
+  return rows.filter(hasItemAttachment).map((row) => ({
+    key: nextAttachmentKey(),
+    id: row.id,
+    file_name: row.file_name ?? undefined,
+    file_url: resolveItemAttachmentUrl(row) ?? undefined,
+  }));
+}
+
+function buildAttachmentRefs(drafts: AttachmentDraft[]): ItemAttachmentWriteRef[] {
+  const out: ItemAttachmentWriteRef[] = [];
+  for (const draft of drafts) {
+    if (draft.removed && draft.id != null) {
+      out.push({ id: draft.id, is_deleted: true });
+    } else if (draft.file) {
+      out.push({ file: draft.file });
+    }
+  }
+  return out;
+}
 
 function nextRowId(): string {
   return `comp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -61,6 +126,59 @@ function installationTypeIdPayload(value: string): { installation_type?: number 
   const id = toNumberOrNull(value);
   if (id == null || id <= 0) return {};
   return { installation_type: id };
+}
+
+function unitTypeIdPayload(value: string): { unit_type?: number } {
+  const id = toNumberOrNull(value);
+  if (id == null || id <= 0) return {};
+  return { unit_type: id };
+}
+
+function installationCostPayload(
+  costRaw: string,
+  typeRaw: InstallationCostType,
+): { installation_cost?: number; installation_cost_type?: InstallationCostType } {
+  const cost = toNumberOrNull(costRaw);
+  if (cost == null || cost < 0) return {};
+  return { installation_cost: cost, installation_cost_type: typeRaw };
+}
+
+function dimensionsPayload(
+  lengthRaw: string,
+  widthRaw: string,
+  heightRaw: string,
+): { length?: number | null; width?: number | null; height?: number | null } {
+  const lengthN = toNumberOrNull(lengthRaw);
+  const widthN = toNumberOrNull(widthRaw);
+  const heightN = toNumberOrNull(heightRaw);
+  // Backend expects `length`, `width`, `height` together. If any is missing/invalid, send nothing.
+  if (lengthN == null || widthN == null || heightN == null) return {};
+  return { length: lengthN, width: widthN, height: heightN };
+}
+
+function parseDimensionsInput(raw: string): { length: string; width: string; height: string } {
+  // Accept formats like: `22*22*22`, `22 x 22 x 22`, `22X 22 * 22`
+  const parts = raw
+    .split(/[xX*]/g)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length < 3) return { length: "", width: "", height: "" };
+  return { length: parts[0], width: parts[1], height: parts[2] };
+}
+
+function composeDimensionsInput(lengthRaw: string, widthRaw: string, heightRaw: string): string {
+  const l = lengthRaw.trim();
+  const w = widthRaw.trim();
+  const h = heightRaw.trim();
+  if (!l && !w && !h) return "";
+  if (!l || !w || !h) return ""; // keep it consistent with backend "all or nothing"
+  return `${l}*${w}*${h}`;
+}
+
+function weightPayload(valueRaw: string, unitRaw: WeightUnit): { weight?: number; weight_unit?: WeightUnit } {
+  const value = toNumberOrNull(valueRaw);
+  if (value == null || value < 0) return {};
+  return { weight: value, weight_unit: unitRaw };
 }
 
 export function CompositeItemFormScreen({ mode, itemId }: Props) {
@@ -95,12 +213,36 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     cost_price: number;
     selling_price: number;
     installation_type: number | null;
+    unit_type: number | null;
+    installation_cost: number | null;
+    installation_cost_type: InstallationCostType | null;
+    length: number | null;
+    width: number | null;
+    height: number | null;
+    dimensions_unit: DimensionUnit | null;
+    weight: number | null;
+    weight_unit: WeightUnit;
     components: { id?: number; child_item: number; quantity: number }[];
   } | null>(null);
 
   const [installationType, setInstallationType] = React.useState("");
   const [installationTypeOptions, setInstallationTypeOptions] = React.useState<CheckmarkSelectOption[]>([]);
   const [installationTypesError, setInstallationTypesError] = React.useState<string | null>(null);
+  const [unitType, setUnitType] = React.useState("");
+  const [unitTypeOptions, setUnitTypeOptions] = React.useState<CheckmarkSelectOption[]>([]);
+  const [unitTypesError, setUnitTypesError] = React.useState<string | null>(null);
+  const [installationCost, setInstallationCost] = React.useState("");
+  const [installationCostType, setInstallationCostType] = React.useState<InstallationCostType>("fixed_amount");
+  const [length, setLength] = React.useState("");
+  const [width, setWidth] = React.useState("");
+  const [height, setHeight] = React.useState("");
+  const [dimensionsInput, setDimensionsInput] = React.useState("");
+  const [dimensionsUnit, setDimensionsUnit] = React.useState<DimensionUnit>("cm");
+  const [weight, setWeight] = React.useState("");
+  const [weightUnit, setWeightUnit] = React.useState<WeightUnit>("kg");
+  const [attachmentDrafts, setAttachmentDrafts] = React.useState<AttachmentDraft[]>([]);
+  const initialAttachmentDraftsRef = React.useRef<AttachmentDraft[]>([]);
+  const attachmentInputRef = React.useRef<HTMLInputElement>(null);
   const [itemOptions, setItemOptions] = React.useState<Item[]>([]);
   const [itemsError, setItemsError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
@@ -125,8 +267,44 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
   }, [pathname, searchParams]);
 
   const getFormDraft = React.useCallback(
-    () => ({ name, sku, qty, cost, sell, installationType, rows }),
-    [name, sku, qty, cost, sell, installationType, rows],
+    () => ({
+      name,
+      sku,
+      qty,
+      cost,
+      sell,
+      installationType,
+      unitType,
+      installationCost,
+      installationCostType,
+      length,
+      width,
+      height,
+      dimensionsInput,
+      dimensionsUnit,
+      weight,
+      weightUnit,
+      rows,
+    }),
+    [
+      name,
+      sku,
+      qty,
+      cost,
+      sell,
+      installationType,
+      unitType,
+      installationCost,
+      installationCostType,
+      length,
+      width,
+      height,
+      dimensionsInput,
+      dimensionsUnit,
+      weight,
+      weightUnit,
+      rows,
+    ],
   );
 
   const restoreFormDraft = React.useCallback((draft: unknown) => {
@@ -137,6 +315,16 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
       cost?: string;
       sell?: string;
       installationType?: string;
+      unitType?: string;
+      installationCost?: string;
+      installationCostType?: InstallationCostType;
+      length?: string;
+      width?: string;
+      height?: string;
+      dimensionsInput?: string;
+      dimensionsUnit?: DimensionUnit;
+      weight?: string;
+      weightUnit?: WeightUnit;
       rows?: ComponentRow[];
     };
     if (typeof saved.name === "string") setName(saved.name);
@@ -145,6 +333,31 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     if (typeof saved.cost === "string") setCost(saved.cost);
     if (typeof saved.sell === "string") setSell(saved.sell);
     if (typeof saved.installationType === "string") setInstallationType(saved.installationType);
+    if (typeof saved.unitType === "string") setUnitType(saved.unitType);
+    if (typeof saved.installationCost === "string") setInstallationCost(saved.installationCost);
+    if (saved.installationCostType === "fixed_amount" || saved.installationCostType === "rate_per_hr") {
+      setInstallationCostType(saved.installationCostType);
+    }
+    if (typeof saved.length === "string") setLength(saved.length);
+    if (typeof saved.width === "string") setWidth(saved.width);
+    if (typeof saved.height === "string") setHeight(saved.height);
+    if (typeof saved.dimensionsUnit === "string") {
+      const v = saved.dimensionsUnit;
+      setDimensionsUnit(v);
+    }
+    if (typeof saved.dimensionsInput === "string") {
+      setDimensionsInput(saved.dimensionsInput);
+      const parsed = parseDimensionsInput(saved.dimensionsInput);
+      setLength(parsed.length);
+      setWidth(parsed.width);
+      setHeight(parsed.height);
+    } else {
+      setDimensionsInput(composeDimensionsInput(saved.length ?? "", saved.width ?? "", saved.height ?? ""));
+    }
+    if (typeof saved.weight === "string") setWeight(saved.weight);
+    if (saved.weightUnit === "kg" || saved.weightUnit === "g" || saved.weightUnit === "lb") {
+      setWeightUnit(saved.weightUnit);
+    }
     if (Array.isArray(saved.rows) && saved.rows.length > 0) setRows(saved.rows);
   }, []);
 
@@ -316,16 +529,22 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
 
   React.useEffect(() => {
     let cancelled = false;
+
     (async () => {
       setItemsError(null);
+      try {
+        const itemsRes = await fetchItemsPage(1, 500, { isComposite: false });
+        if (!cancelled) setItemOptions(itemsRes.items);
+      } catch {
+        if (!cancelled) setItemsError(tModal("itemsLoadError"));
+      }
+    })();
+
+    (async () => {
       setInstallationTypesError(null);
       try {
-        const [itemsRes, installationTypesRes] = await Promise.all([
-          fetchItemsPage(1, 500, { isComposite: false }),
-          fetchInstallationTypesPage(1, 500, { is_active: true }),
-        ]);
+        const installationTypesRes = await fetchInstallationTypesPage(1, 500, { is_active: true });
         if (!cancelled) {
-          setItemOptions(itemsRes.items);
           setInstallationTypeOptions(
             installationTypesRes.items.map((row) => ({
               value: String(row.id),
@@ -334,12 +553,27 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
           );
         }
       } catch {
-        if (!cancelled) {
-          setItemsError(tModal("itemsLoadError"));
-          setInstallationTypesError(tModal("installationTypesLoadError"));
-        }
+        if (!cancelled) setInstallationTypesError(tModal("installationTypesLoadError"));
       }
     })();
+
+    (async () => {
+      setUnitTypesError(null);
+      try {
+        const unitTypesRes = await fetchUnitTypesPage(1, 500, { is_active: true });
+        if (!cancelled) {
+          const options = unitTypesRes.items.map((row) => ({
+            value: String(row.id),
+            label: formatUnitTypeShortLabel(row),
+          }));
+          setUnitTypeOptions(options);
+          setUnitType((prev) => resolveDefaultUnitTypeSelectValue(prev, options));
+        }
+      } catch {
+        if (!cancelled) setUnitTypesError(tModal("unitTypesLoadError"));
+      }
+    })();
+
     return () => {
       cancelled = true;
     };
@@ -361,6 +595,37 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
           setSell(String(item.selling_price ?? 0));
           const installationTypeId = getInstallationTypeId(item.installation_type);
           setInstallationType(installationTypeId != null ? String(installationTypeId) : "");
+          const unitTypeId = getUnitTypeId(item.unit_type);
+          setUnitType(unitTypeId != null ? String(unitTypeId) : "");
+          setInstallationCost(
+            item.installation_cost != null && String(item.installation_cost).trim() !== ""
+              ? String(item.installation_cost)
+              : "",
+          );
+          const costType = item.installation_cost_type;
+          setInstallationCostType(costType === "rate_per_hr" ? "rate_per_hr" : "fixed_amount");
+          setLength(item.length != null && String(item.length).trim() !== "" ? String(item.length) : "");
+          setWidth(item.width != null && String(item.width).trim() !== "" ? String(item.width) : "");
+          setHeight(item.height != null && String(item.height).trim() !== "" ? String(item.height) : "");
+          const dimUnit =
+            item.dimensions_unit === "cm" || item.dimensions_unit === "mm" || item.dimensions_unit === "m"
+              ? item.dimensions_unit
+              : item.dimensions_unit === "in" || item.dimensions_unit === "ft"
+                ? item.dimensions_unit
+                : "cm";
+          setDimensionsUnit(dimUnit);
+          setDimensionsInput(
+            item.length != null && item.width != null && item.height != null
+              ? `${item.length}*${item.width}*${item.height}`
+              : typeof item.dimensions === "string"
+                ? item.dimensions
+                : "",
+          );
+          setWeight(item.weight != null && String(item.weight).trim() !== "" ? String(item.weight) : "");
+          setWeightUnit(item.weight_unit === "g" || item.weight_unit === "lb" ? item.weight_unit : "kg");
+          const attDrafts = mapApiAttachments(item.attachments);
+          setAttachmentDrafts(attDrafts);
+          initialAttachmentDraftsRef.current = attDrafts.map((d) => ({ ...d }));
           const comps = item.components ?? [];
           setRows(
             comps.length > 0
@@ -380,6 +645,16 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
             cost_price: Number(item.cost_price ?? 0),
             selling_price: Number(item.selling_price ?? 0),
             installation_type: installationTypeId != null ? installationTypeId : null,
+            unit_type: unitTypeId != null ? unitTypeId : null,
+            installation_cost: toNumberOrNull(String(item.installation_cost ?? "")),
+            installation_cost_type:
+              item.installation_cost_type === "rate_per_hr" ? "rate_per_hr" : "fixed_amount",
+            length: toNumberOrNull(String(item.length ?? "")),
+            width: toNumberOrNull(String(item.width ?? "")),
+            height: toNumberOrNull(String(item.height ?? "")),
+            dimensions_unit: dimUnit,
+            weight: toNumberOrNull(String(item.weight ?? "")),
+            weight_unit: item.weight_unit === "g" || item.weight_unit === "lb" ? item.weight_unit : "kg",
             components: comps.map((c) => ({
               id: c.id,
               child_item: Number(c.child_item),
@@ -461,6 +736,14 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     }
 
     const installationTypePayload = installationTypeIdPayload(installationType);
+    const unitTypePayload = unitTypeIdPayload(unitType);
+    const installationCostFields = installationCost.trim()
+      ? installationCostPayload(installationCost, installationCostType)
+      : {};
+    const dimensionsFields = dimensionsPayload(length, width, height);
+    const hasDimensions = Object.keys(dimensionsFields).length > 0;
+    const weightFields = weight.trim() ? weightPayload(weight, weightUnit) : {};
+    const attachmentRefs = buildAttachmentRefs(attachmentDrafts);
 
     setSubmitting(true);
     try {
@@ -482,28 +765,82 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
           payload.installation_type = currentInstType;
         }
 
+        const currentUnitType = toNumberOrNull(unitType);
+        if (currentUnitType !== init.unit_type) {
+          payload.unit_type = currentUnitType;
+        }
+
+        const currentInstCost = installationCost.trim() ? toNumberOrNull(installationCost) : null;
+        if (currentInstCost !== init.installation_cost) {
+          payload.installation_cost = currentInstCost;
+        }
+        if (installationCostType !== (init.installation_cost_type ?? "fixed_amount")) {
+          payload.installation_cost_type = installationCost.trim() ? installationCostType : null;
+        }
+        const currentLength = length.trim() ? toNumberOrNull(length) : null;
+        if (currentLength !== init.length) {
+          payload.length = currentLength;
+        }
+
+        const currentWidth = width.trim() ? toNumberOrNull(width) : null;
+        if (currentWidth !== init.width) {
+          payload.width = currentWidth;
+        }
+
+        const currentHeight = height.trim() ? toNumberOrNull(height) : null;
+        if (currentHeight !== init.height) {
+          payload.height = currentHeight;
+        }
+
+        if (hasDimensions) {
+          const initDimsUnit = init.dimensions_unit ?? "cm";
+          if (dimensionsUnit !== initDimsUnit) {
+            payload.dimensions_unit = dimensionsUnit;
+          }
+        } else if ([length, width, height].every((v) => !v.trim())) {
+          const initDimsUnit = init.dimensions_unit ?? "cm";
+          if (initDimsUnit != null) {
+            payload.dimensions_unit = null;
+          }
+        }
+        const currentWeight = weight.trim() ? toNumberOrNull(weight) : null;
+        if (currentWeight !== init.weight) {
+          payload.weight = currentWeight;
+        }
+        if (weightUnit !== (init.weight_unit ?? "kg")) {
+          payload.weight_unit = weight.trim() ? weightUnit : null;
+        }
+
         const compsEqual = areComponentsEqual(init.components, comps, deletedComponents);
         if (!compsEqual) {
           payload.components = [...comps, ...deletedComponents];
         }
 
-        if (Object.keys(payload).length === 0) {
+        if (Object.keys(payload).length === 0 && attachmentRefs.length === 0) {
           toastSuccess(tModal("updatedToast"));
           router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.compositeItems, itemId, safeBack));
           return;
         }
 
-        saved = await updateCompositeItem(itemId, payload);
+        saved = await updateCompositeItem(itemId, payload, { attachmentRefs });
       } else {
-        saved = await createCompositeItem({
-          name: name.trim(),
-          sku: sku.trim(),
-          quantity: qtyN,
-          cost_price: costN,
-          selling_price: sellN,
-          components: comps,
-          ...installationTypePayload,
-        });
+        saved = await createCompositeItem(
+          {
+            name: name.trim(),
+            sku: sku.trim(),
+            quantity: qtyN,
+            cost_price: costN,
+            selling_price: sellN,
+            components: comps,
+            ...installationTypePayload,
+            ...unitTypePayload,
+            ...installationCostFields,
+            ...dimensionsFields,
+            ...(hasDimensions ? { dimensions_unit: dimensionsUnit } : {}),
+            ...weightFields,
+          },
+          { attachmentRefs },
+        );
       }
 
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
@@ -517,6 +854,48 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
   }
 
   const noItems = itemOptions.length === 0;
+
+  const installationCostTypeOptions = React.useMemo<CheckmarkSelectOption[]>(
+    () => [
+      { value: "fixed_amount", label: tModal("installationCostTypeFixed") },
+      { value: "rate_per_hr", label: tModal("installationCostTypeRate") },
+    ],
+    [tModal],
+  );
+
+  const weightUnitOptions = React.useMemo<CheckmarkSelectOption[]>(
+    () => [
+      { value: "kg", label: "kg" },
+      { value: "g", label: "g" },
+      { value: "lb", label: "lb" },
+    ],
+    [],
+  );
+
+  const visibleAttachments = attachmentDrafts.filter((d) => !d.removed);
+
+  function onAttachmentFilesSelected(files: FileList | null) {
+    if (!files?.length) return;
+    const next = Array.from(files).map((file) => ({
+      key: nextAttachmentKey(),
+      file,
+      file_name: file.name,
+    }));
+    setAttachmentDrafts((prev) => [...prev, ...next]);
+    if (attachmentInputRef.current) attachmentInputRef.current.value = "";
+  }
+
+  function removeAttachment(key: string) {
+    setAttachmentDrafts((prev) =>
+      prev
+        .map((d) => {
+          if (d.key !== key) return d;
+          if (d.id != null) return { ...d, removed: true };
+          return null;
+        })
+        .filter((d): d is AttachmentDraft => d != null),
+    );
+  }
 
   return (
     <div className="pb-12">
@@ -549,40 +928,76 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
           </div>
         ) : (
           <form id="composite-item-form-screen" className="space-y-5 p-4 sm:p-6" onSubmit={(e) => void submit(e)}>
-            <div>
-              <FieldLabel htmlFor={nameId} required>{tModal("name")}</FieldLabel>
-              <input id={nameId} type="text" autoComplete="off" value={name} onChange={(e) => setName(capitalizeFirstLetter(e.target.value))} onBlur={() => setNameTouched(true)} disabled={submitting} placeholder={tModal("namePlaceholder")} className={surfaceInputClassName} />
-              {nameInvalid ? <p className={fieldErrorTextClassName}>{tModal("nameError")}</p> : null}
-            </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <FieldLabel htmlFor={nameId} required>{tModal("name")}</FieldLabel>
+                <input id={nameId} type="text" autoComplete="off" value={name} onChange={(e) => setName(capitalizeFirstLetter(e.target.value))} onBlur={() => setNameTouched(true)} disabled={submitting} placeholder={tModal("namePlaceholder")} className={surfaceInputClassName} />
+                {nameInvalid ? <p className={fieldErrorTextClassName}>{tModal("nameError")}</p> : null}
+              </div>
               <div>
                 <FieldLabel htmlFor={skuId} required>{tModal("sku")}</FieldLabel>
                 <input id={skuId} type="text" autoComplete="off" value={sku} onChange={(e) => setSku(e.target.value)} onBlur={() => setSkuTouched(true)} disabled={submitting} placeholder={tModal("skuPlaceholder")} className={cn(surfaceInputClassName, skuInvalid && "border-red-500 focus:border-red-500 focus:ring-red-500/20")} />
                 {skuInvalid ? <p className={fieldErrorTextClassName}>{tModal("skuError")}</p> : null}
               </div>
-              <div>
-                <FieldLabel htmlFor={qtyId} required>{tModal("quantity")}</FieldLabel>
-                <input id={qtyId} type="number" inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} disabled={submitting} className={surfaceInputClassName} min={0} />
-              </div>
             </div>
             <div>
-              <FieldLabel>{tModal("installationType")}</FieldLabel>
-              {installationTypesError ? (
-                <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">{installationTypesError}</p>
+              <FieldLabel htmlFor={qtyId} required>{tModal("quantity")}</FieldLabel>
+              <InputWithEndSelect
+                inputId={qtyId}
+                inputType="number"
+                inputMode="numeric"
+                min={0}
+                inputValue={qty}
+                onInputChange={setQty}
+                disabled={submitting}
+                selectValue={unitType}
+                onSelectChange={setUnitType}
+                selectOptions={unitTypeOptions}
+                selectAriaLabel={tModal("unitType")}
+                selectDisabled={unitTypeOptions.length === 0}
+              />
+              {unitTypesError ? (
+                <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{unitTypesError}</p>
               ) : null}
-              <div className="mt-2">
-                <CheckmarkSelect
-                  listLabel={tModal("installationType")}
-                  buttonAriaLabel={tModal("installationType")}
-                  value={installationType}
-                  onChange={setInstallationType}
-                  options={installationTypeOptions}
-                  emptyLabel={tModal("installationTypePlaceholder")}
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <FieldLabel>{tModal("installationType")}</FieldLabel>
+                {installationTypesError ? (
+                  <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">{installationTypesError}</p>
+                ) : null}
+                <div className="mt-2">
+                  <CheckmarkSelect
+                    listLabel={tModal("installationType")}
+                    buttonAriaLabel={tModal("installationType")}
+                    value={installationType}
+                    onChange={setInstallationType}
+                    options={installationTypeOptions}
+                    emptyLabel={tModal("installationTypePlaceholder")}
+                    disabled={submitting}
+                    portaled
+                    searchable
+                    clearable
+                    className="w-full"
+                  />
+                </div>
+              </div>
+              <div>
+                <FieldLabel htmlFor="composite-installation-cost">{tModal("installationCost")}</FieldLabel>
+                <InputWithEndSelect
+                  inputId="composite-installation-cost"
+                  inputType="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="0.01"
+                  inputValue={installationCost}
+                  onInputChange={setInstallationCost}
+                  placeholder={tModal("installationCostPlaceholder")}
                   disabled={submitting}
-                  portaled
-                  searchable
-                  clearable
-                  className="w-full max-w-md"
+                  selectValue={installationCostType}
+                  onSelectChange={(v) => setInstallationCostType(v === "rate_per_hr" ? "rate_per_hr" : "fixed_amount")}
+                  selectOptions={installationCostTypeOptions}
+                  selectAriaLabel={tModal("installationCostType")}
                 />
               </div>
             </div>
@@ -594,6 +1009,59 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
               <div>
                 <FieldLabel htmlFor={sellId} required>{tModal("sellingPrice")}</FieldLabel>
                 <input id={sellId} type="number" inputMode="decimal" value={sell} onChange={(e) => setSell(e.target.value)} disabled={submitting} className={surfaceInputClassName} min={0} step="0.01" />
+              </div>
+            </div>
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tModal("fulfilmentDetails")}</h3>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-start">
+                <div>
+                  <FieldLabel htmlFor="composite-dimensions">{tModal("dimensions")}</FieldLabel>
+                  <div className="mt-1.5">
+                    <InputWithEndSelect
+                      inputId="composite-dimensions"
+                      inputValue={dimensionsInput}
+                      onInputChange={(v) => {
+                        setDimensionsInput(v);
+                        const parsed = parseDimensionsInput(v);
+                        setLength(parsed.length);
+                        setWidth(parsed.width);
+                        setHeight(parsed.height);
+                      }}
+                      inputType="text"
+                      disabled={submitting}
+                      placeholder={tModal("dimensionsPlaceholder")}
+                      selectValue={dimensionsUnit}
+                      onSelectChange={(v) => setDimensionsUnit((v as DimensionUnit) ?? "cm")}
+                      selectOptions={[
+                        { value: "cm", label: "cm" },
+                        { value: "mm", label: "mm" },
+                        { value: "m", label: "m" },
+                        { value: "in", label: "in" },
+                        { value: "ft", label: "ft" },
+                      ]}
+                      selectAriaLabel={tModal("dimensionsUnit")}
+                      selectDisabled={false}
+                    />
+                  </div>
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{tModal("dimensionsHint")}</p>
+                </div>
+                <div>
+                  <FieldLabel htmlFor="composite-weight">{tModal("weight")}</FieldLabel>
+                  <InputWithEndSelect
+                    inputId="composite-weight"
+                    inputType="number"
+                    inputMode="decimal"
+                    min={0}
+                    step="0.01"
+                    inputValue={weight}
+                    onInputChange={setWeight}
+                    disabled={submitting}
+                    selectValue={weightUnit}
+                    onSelectChange={(v) => setWeightUnit((v as WeightUnit) || "kg")}
+                    selectOptions={weightUnitOptions}
+                    selectAriaLabel={tModal("weightUnit")}
+                  />
+                </div>
               </div>
             </div>
             <div>
@@ -639,7 +1107,66 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                 ))}
               </div>
               {componentsInvalid ? <p className={fieldErrorTextClassName}>{tModal("atLeastOneComponentError")}</p> : null}
-              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{tModal("componentsHint")}</p>
+            </div>
+            <div>
+              <FieldLabel>{tModal("attachments")}</FieldLabel>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  ref={attachmentInputRef}
+                  type="file"
+                  multiple
+                  className="sr-only"
+                  disabled={submitting}
+                  onChange={(e) => onAttachmentFilesSelected(e.target.files)}
+                />
+                <AppButton
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={submitting}
+                  onClick={() => attachmentInputRef.current?.click()}
+                >
+                  {tModal("addAttachments")}
+                </AppButton>
+              </div>
+              {visibleAttachments.length > 0 ? (
+                <ul className="mt-3 space-y-2">
+                  {visibleAttachments.map((draft) => {
+                    const href = attachmentUrl(draft);
+                    return (
+                      <li
+                        key={draft.key}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-2.5 py-1.5 text-sm dark:border-slate-700"
+                      >
+                        {href ? (
+                          <a
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="min-w-0 truncate text-[color:var(--dash-accent,#111111)] underline-offset-2 hover:underline"
+                          >
+                            {attachmentLabel(draft)}
+                          </a>
+                        ) : (
+                          <span className="min-w-0 truncate text-slate-800 dark:text-slate-100">
+                            {attachmentLabel(draft)}
+                          </span>
+                        )}
+                        <AppButton
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="!px-2"
+                          disabled={submitting}
+                          onClick={() => removeAttachment(draft.key)}
+                        >
+                          {tModal("removeAttachment")}
+                        </AppButton>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : null}
             </div>
           </form>
         )}

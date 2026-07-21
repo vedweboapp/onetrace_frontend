@@ -128,3 +128,22 @@ export async function fetchProjectFormsPage(
     pagination: parseFormsPaginationResponse(data),
   };
 }
+
+export type ProjectMassUpdatePayload = {
+  pin_ids: number[];
+  form_id?: number | null;
+  variation?: boolean;
+  quantity?: number;
+};
+
+export async function massUpdatePins(
+  projectId: number,
+  payload: ProjectMassUpdatePayload,
+): Promise<void> {
+  const { data } = await api.post<ApiEnvelope<unknown>>(
+    PROJECT_PATHS.massUpdate(projectId),
+    payload,
+  );
+  assertApiSuccess(data);
+}
+

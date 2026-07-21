@@ -9,7 +9,6 @@
  *   - Open DevTools → Network → filter "material-requests" to copy payload/response.
  *
  * When `false`:
- *   - Same route handlers proxy to `BACKEND_API_ORIGIN` (real Django/backend API).
- *   - Or remove route files and rely on `next.config.ts` rewrites only.
+ *   - Same route handlers proxy to the backend from `NEXT_PUBLIC_API_URL`.
  */
 export const MATERIAL_REQUEST_USE_MOCK = true;

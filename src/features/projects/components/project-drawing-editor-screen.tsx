@@ -16,6 +16,7 @@ import type { PinStatus } from "@/features/pin-status/types/pin-status.types";
 import type { FormListItem } from "@/features/forms/types/form.types";
 import type { DrawingPin, DrawingPinAttachment, DrawingPlot, DrawingPlotUpsert } from "@/features/projects/types/drawing.types";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
+import { readPinFocus, clearPinFocus, savePinFocus } from "@/features/projects/utils/pin-geometry.util";
 import {
   defaultQuantityForNewPin,
   resolvePinDisplayQuantity,
@@ -430,6 +431,10 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const draggingVertexRef = React.useRef<{ plotId: number, index: number } | null>(null);
 
   const [pageSize, setPageSize] = React.useState({ width: 1200, height: 900 });
+  const pageSizeRef = React.useRef(pageSize);
+  React.useEffect(() => {
+    pageSizeRef.current = pageSize;
+  }, [pageSize]);
   const [panMode, setPanMode] = React.useState(false);
   const [panStart, setPanStart] = React.useState({ x: 0, y: 0 });
   const [scrollStart, setScrollStart] = React.useState({ left: 0, top: 0 });
@@ -440,6 +445,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const stageRef = React.useRef<HTMLDivElement>(null);
   const nameInputRef = React.useRef<HTMLInputElement>(null);
   const lastPinConstraintToastRef = React.useRef(0);
+  // Stores a pending pin focus target set by phase-1; consumed by phase-2 after zoom re-render.
+  const pendingPinScrollRef = React.useRef<{ x: number; y: number } | null>(null);
 
 
   const selectedPlot = React.useMemo(
@@ -556,6 +563,79 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       cancelled = true;
     };
   }, [loadAllData]);
+
+  // ── Auto-focus: PHASE 1 ───────────────────────────────────────────────────
+  // Runs after data loads. Reads the saved pin target, stores it in a ref,
+  // and triggers a zoom change. The actual scroll happens in Phase 2 after
+  // React commits the new zoom to the DOM.
+  React.useEffect(() => {
+    if (loading) return;
+
+    const focus = readPinFocus(projectId, drawingId);
+    if (!focus) return;
+
+    let attempts = 0;
+    const attemptFocus = () => {
+      const ps = pageSizeRef.current;
+      // Wait until the image/pdf has reported its real dimensions (not the 1200x900 default)
+      if (ps.width === 1200 && ps.height === 900 && attempts < 15) {
+        attempts++;
+        timer = window.setTimeout(attemptFocus, 100);
+        return;
+      }
+
+      // Store the normalised (0–100) coordinates; Phase 2 will compute scroll
+      // after React re-renders with the new zoom value.
+      pendingPinScrollRef.current = { x: focus.x, y: focus.y };
+      setZoom(1.6);
+      clearPinFocus(projectId, drawingId);
+    };
+
+    let timer = window.setTimeout(attemptFocus, 300);
+    return () => window.clearTimeout(timer);
+  }, [loading, projectId, drawingId]);
+
+  // ── Auto-focus: PHASE 2 ───────────────────────────────────────────────────
+  // Runs whenever `zoom` changes. If there is a pending scroll target it means
+  // Phase 1 just set the zoom; now the DOM has the correct scaled dimensions
+  // so we can calculate an accurate scroll position.
+  React.useEffect(() => {
+    const target = pendingPinScrollRef.current;
+    if (!target) return;
+
+    // Consume immediately so this only fires once per pin-focus event.
+    pendingPinScrollRef.current = null;
+
+    // Use two rAFs: the first lets the browser finish layout after the zoom
+    // re-render; the second does the actual scroll so it lands precisely.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const viewport = viewportRef.current;
+        if (!viewport) return;
+
+        const ps = pageSizeRef.current;
+        const currentZoom = zoom;          // zoom state is already committed here
+        const viewW = viewport.clientWidth;
+        const viewH = viewport.clientHeight;
+
+        // Pin centre in scaled-pixel space
+        const pinPixelX = (target.x / 100) * ps.width  * currentZoom;
+        const pinPixelY = (target.y / 100) * ps.height * currentZoom;
+
+        // The flex container has 40px padding, so the stage top-left is at (40, 40)
+        // relative to the scroll container when content overflows.
+        const scrollLeft = pinPixelX + 40 - viewW / 2;
+        const scrollTop  = pinPixelY + 40 - viewH / 2;
+
+        viewport.scrollTo({
+          left: Math.max(0, scrollLeft),
+          top:  Math.max(0, scrollTop),
+          behavior: "smooth",
+        });
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoom]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -1016,9 +1096,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   }
 
   const draggingPinIdRef = React.useRef<number | null>(null);
-  const pageSizeRef = React.useRef(pageSize);
   const plotsRef = React.useRef(plots);
-  React.useEffect(() => { pageSizeRef.current = pageSize; }, [pageSize]);
   React.useEffect(() => { plotsRef.current = plots; }, [plots]);
   React.useEffect(() => { draggingPinIdRef.current = draggingPinId; }, [draggingPinId]);
   React.useEffect(() => { draggingVertexRef.current = draggingVertex; }, [draggingVertex]);
@@ -2021,6 +2099,9 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               setDetailPin(pin);
                               setPinEditData(pin);
 
+                              // Save pin coordinates so auto-focus works on the next visit
+                              savePinFocus(pin.x_coordinate, pin.y_coordinate, projectId, drawingId);
+
                               // Pre-populate dropdowns for editing
                               setSelectedGroupId(pin.group ? String(pin.group) : "");
                               setSelectedCompositeId(pin.item ? String(pin.item) : "");
@@ -2377,6 +2458,10 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               {projectForms?.find(f => f.id === (isPinEditing ? pinEditData.formId : detailPin.formId))?.name || "Select Form"}
                             </span>
                           )
+                        ) : compositeItemInstallationType ? (
+                          <span className="text-xs text-amber-600 dark:text-amber-400 font-medium text-right max-w-[200px]">
+                            {t("noFormWithInstallationType")}
+                          </span>
                         ) : null
                       }
                     </div>
