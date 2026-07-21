@@ -265,6 +265,17 @@ export function JobsPanel() {
     [projectLabelById],
   );
 
+  const jobCategoryDisplay = React.useCallback(
+    (row: Job) => {
+      const category = typeof row.job_category === "string" ? row.job_category.trim() : "";
+      if (!category) return "—";
+      if (category === "servicejob") return t("category.service");
+      if (category === "projectjob") return t("category.project");
+      return category;
+    },
+    [t],
+  );
+
   const commitSearch = React.useCallback(
     (q: string) => {
       const trimmed = q.trim();
@@ -489,6 +500,9 @@ export function JobsPanel() {
       c.truncate("project", t("fields.project"), (r) => jobProjectDisplay(r), {
         title: (r) => jobProjectDisplay(r),
       }),
+      c.truncate("projectCategory", t("table.projectCategory"), (r) => jobCategoryDisplay(r), {
+        title: (r) => jobCategoryDisplay(r),
+      }),
       // c.actions("actions", t("table.actions"), (row) => (
       //   <DataTableRowActionsMenu
       //     menuAriaLabel={tList("openRowActions")}
@@ -521,6 +535,7 @@ export function JobsPanel() {
     search,
     jobStatusParam,
     assignedWorkerParam,
+    jobCategoryParam,
   });
   const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
     loading,
@@ -535,10 +550,10 @@ export function JobsPanel() {
     setSelectedJobCategory("");
   }
   const JobCategoryOptions = [
-    { value: "", label: "All Categories" },
-    { value: "serviceJob", label: "Services" },
-    { value: "projectJob", label: "Projects" },
-  ]
+    { value: "", label: t("filterAllCategories") },
+    { value: "servicejob", label: t("category.service") },
+    { value: "projectjob", label: t("category.project") },
+  ];
   return (
     <div className="space-y-4">
       {!hideListChrome ? (
@@ -589,6 +604,8 @@ export function JobsPanel() {
                 onChange={(v) => setUrl({ assigned_worker: v || null, page: null }, { replace: true })}
               />
               <CheckmarkSelect
+                listLabel={t("filterJobCategory")}
+                buttonAriaLabel={t("filterJobCategory")}
                 options={JobCategoryOptions}
                 value={selectedJobCategory}
                 emptyLabel={t("filterAllCategories")}
@@ -598,7 +615,7 @@ export function JobsPanel() {
                 className="w-full min-w-0 sm:w-44"
                 onChange={(e) => {
                   setSelectedJobCategory(e);
-
+                  setUrl({ job_category: e || null, page: null }, { replace: true });
                 }}
               />
             </div>

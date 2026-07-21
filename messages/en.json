@@ -2812,7 +2812,12 @@
       "filterAllStatuses": "All statuses",
       "filterAssignedWorker": "Assigned worker",
       "filterAllWorkers": "All technicians",
+      "filterJobCategory": "Job category",
       "filterAllCategories": "All categories",
+      "category": {
+        "service": "Services",
+        "project": "Projects"
+      },
       "massAssign": {
         "assignTo": "Assign to",
         "apply": "Apply",
@@ -2841,6 +2846,7 @@
         "title": "Job",
         "jobStatus": "Job status",
         "assignedWorker": "Assigned worker",
+        "projectCategory": "Category",
         "start": "Start",
         "serialNo": "Job",
         "end": "End",
@@ -3402,7 +3408,8 @@
         "createdAt": "Created",
         "updatedAt": "Last updated",
         "createdBy": "Created by",
-        "projectStatus": "Project Status"
+        "projectStatus": "Project Status",
+        "manager":"Managers"
       },
       "hints": {
         "sitesMultiSelect": "Select one or more sites for this project."

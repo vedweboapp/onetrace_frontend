@@ -218,6 +218,7 @@ export type Job = {
   project?: number | JobProjectRef;
   site?: number | JobSiteRef;
   qr_code?: JobQrCodeRef | null;
+  job_category?: string | null;
   job_meta?: JobMetaPayload | JobMetaLegacyPayload | null;
 };
 
