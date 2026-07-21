@@ -88,6 +88,8 @@ export type JobFormRef = {
   is_submitted?: boolean;
   /** Present when this job form has been submitted; use for detail API + status. */
   submitted_form_id?: number | null;
+  /** Optional dynamic form identifier from the job detail API. */
+  dynamic_form_id?: number | string | null;
 };
 
 /** Raw job detail `forms` entry (API may use `job_form_id` / `submission_id`). */
@@ -102,6 +104,7 @@ export type JobFormRefApiRow = {
   is_submitted?: boolean;
   submitted_form_id?: number | null;
   submission_id?: number | null;
+  dynamic_form_id?: number | string | null;
 };
 
 export type JobQrCodeRef = {

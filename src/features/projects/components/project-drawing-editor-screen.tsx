@@ -16,7 +16,17 @@ import type { PinStatus } from "@/features/pin-status/types/pin-status.types";
 import type { FormListItem } from "@/features/forms/types/form.types";
 import type { DrawingPin, DrawingPinAttachment, DrawingPlot, DrawingPlotUpsert } from "@/features/projects/types/drawing.types";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
-import { readPinFocus, clearPinFocus, savePinFocus } from "@/features/projects/utils/pin-geometry.util";
+import {
+  PinFocusEntry,
+  readPinFocus,
+  clearPinFocus,
+  savePinFocus,
+  saveSelectedPlotCoordinates,
+  stagePlotCoordinates,
+  saveSelectedPinCoordinates,
+  stagePinCoordinates,
+  commitDrawingGeometryDraft,
+} from "@/features/projects/utils/pin-geometry.util";
 import {
   defaultQuantityForNewPin,
   resolvePinDisplayQuantity,
@@ -417,6 +427,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [detailPin, setDetailPin] = React.useState<DrawingPin | null>(null);
   const [pinEditData, setPinEditData] = React.useState<Partial<DrawingPin>>({});
   const [isPinEditing, setIsPinEditing] = React.useState(false);
+  const [savedPinFocus, setSavedPinFocus] = React.useState<{ x: number; y: number } | null>(null);
   const [hoveredPinId, setHoveredPinId] = React.useState<number | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [pinDeleteConfirmOpen, setPinDeleteConfirmOpen] = React.useState(false);
@@ -429,6 +440,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const wasDraggingRef = React.useRef(false);
   const originalPinStateRef = React.useRef<{ x: number, y: number, plotId: number } | null>(null);
   const draggingVertexRef = React.useRef<{ plotId: number, index: number } | null>(null);
+  const [pendingPinScroll, setPendingPinScroll] = React.useState<{ x: number; y: number } | null>(null);
 
   const [pageSize, setPageSize] = React.useState({ width: 1200, height: 900 });
   const pageSizeRef = React.useRef(pageSize);
@@ -453,6 +465,16 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     () => plots.find((p) => String(p.id) === selectedPlotId) ?? null,
     [plots, selectedPlotId],
   );
+
+  React.useEffect(() => {
+    if (!selectedPlot) return;
+    if (selectedPlot.id <= 0) {
+      stagePlotCoordinates(projectId, drawingId, selectedPlot.id, selectedPlot.coordinates);
+    } else {
+      saveSelectedPlotCoordinates(projectId, drawingId, selectedPlot.id, selectedPlot.coordinates);
+    }
+  }, [selectedPlot, projectId, drawingId]);
+
   const normalizedFileUrl = React.useMemo(() => resolveDrawingFileUrl(filePath), [filePath]);
   const isPdf = /\.pdf(\?|$)/i.test(filePath) || /\.pdf(\?|$)/i.test(normalizedFileUrl);
 
@@ -573,8 +595,11 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
     const focus = readPinFocus(projectId, drawingId);
     if (!focus) return;
+    setSavedPinFocus({ x: focus.x, y: focus.y });
 
     let attempts = 0;
+    let timer: number | null = null;
+
     const attemptFocus = () => {
       const ps = pageSizeRef.current;
       // Wait until the image/pdf has reported its real dimensions (not the 1200x900 default)
@@ -587,55 +612,66 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       // Store the normalised (0–100) coordinates; Phase 2 will compute scroll
       // after React re-renders with the new zoom value.
       pendingPinScrollRef.current = { x: focus.x, y: focus.y };
+      setPendingPinScroll({ x: focus.x, y: focus.y });
       setZoom(1.6);
-      clearPinFocus(projectId, drawingId);
     };
 
-    let timer = window.setTimeout(attemptFocus, 300);
-    return () => window.clearTimeout(timer);
+    timer = window.setTimeout(attemptFocus, 300);
+    return () => {
+      if (timer !== null) {
+        window.clearTimeout(timer);
+      }
+    };
   }, [loading, projectId, drawingId]);
 
-  // ── Auto-focus: PHASE 2 ───────────────────────────────────────────────────
-  // Runs whenever `zoom` changes. If there is a pending scroll target it means
-  // Phase 1 just set the zoom; now the DOM has the correct scaled dimensions
-  // so we can calculate an accurate scroll position.
   React.useEffect(() => {
-    const target = pendingPinScrollRef.current;
-    if (!target) return;
+    if (!savedPinFocus || loading) return;
+    if (pendingPinScrollRef.current || pendingPinScroll) return;
 
-    // Consume immediately so this only fires once per pin-focus event.
+    pendingPinScrollRef.current = savedPinFocus;
+    setPendingPinScroll(savedPinFocus);
+    setZoom(1.6);
+  }, [savedPinFocus, loading, pendingPinScroll]);
+
+  // ── Auto-focus: PHASE 2 ───────────────────────────────────────────────────
+  // Runs after the zoom change triggered in Phase 1. This computes pixel
+  // coordinates and scrolls the viewport so the saved pin is centered.
+  React.useEffect(() => {
+    const pending = pendingPinScrollRef.current || pendingPinScroll;
+    if (!pending) return;
+    const vp = viewportRef.current;
+    const stage = stageRef.current;
+    if (!vp || !stage) return;
+
+    // The wrapper around the stage applies 40px padding on all sides.
+    const PADDING = 40;
+    const ps = pageSizeRef.current;
+
+    // percent (0-100) -> pixel on unscaled stage
+    const pinPixel = percentToPixel([pending.x, pending.y], ps);
+
+    // After CSS scale, visual pixel position is multiplied by `zoom` and
+    // offset by the wrapper padding.
+    const targetX = Math.round(pinPixel[0] * zoom + PADDING - vp.clientWidth / 2);
+    const targetY = Math.round(pinPixel[1] * zoom + PADDING - vp.clientHeight / 2);
+
+    const maxLeft = Math.max(0, vp.scrollWidth - vp.clientWidth);
+    const maxTop = Math.max(0, vp.scrollHeight - vp.clientHeight);
+
+    const left = Math.max(0, Math.min(maxLeft, targetX));
+    const top = Math.max(0, Math.min(maxTop, targetY));
+
+    try {
+      vp.scrollTo({ left, top, behavior: "smooth" });
+    } catch {
+      vp.scrollLeft = left;
+      vp.scrollTop = top;
+    }
+
+    // Clear only the pending refs after scrolling; leave storage so the highlight persists.
     pendingPinScrollRef.current = null;
-
-    // Use two rAFs: the first lets the browser finish layout after the zoom
-    // re-render; the second does the actual scroll so it lands precisely.
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        const viewport = viewportRef.current;
-        if (!viewport) return;
-
-        const ps = pageSizeRef.current;
-        const currentZoom = zoom;          // zoom state is already committed here
-        const viewW = viewport.clientWidth;
-        const viewH = viewport.clientHeight;
-
-        // Pin centre in scaled-pixel space
-        const pinPixelX = (target.x / 100) * ps.width  * currentZoom;
-        const pinPixelY = (target.y / 100) * ps.height * currentZoom;
-
-        // The flex container has 40px padding, so the stage top-left is at (40, 40)
-        // relative to the scroll container when content overflows.
-        const scrollLeft = pinPixelX + 40 - viewW / 2;
-        const scrollTop  = pinPixelY + 40 - viewH / 2;
-
-        viewport.scrollTo({
-          left: Math.max(0, scrollLeft),
-          top:  Math.max(0, scrollTop),
-          behavior: "smooth",
-        });
-      });
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom]);
+    setPendingPinScroll(null);
+  }, [zoom, projectId, drawingId, pendingPinScroll, pageSize.width, pageSize.height]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -934,7 +970,14 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
 
   function onStageClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (activeTool === "hand" || activeTool === "select" || activeTool === "plot-select") return;
+    if (activeTool === "hand") return;
+    if (activeTool === "select") {
+      setDetailPin(null);
+      setPinEditData({});
+      setIsPinEditing(false);
+      return;
+    }
+    if (activeTool === "plot-select") return;
     const pt = stagePointFromEvent(e);
     if (!pt) return;
     if (activeTool === "pen") {
@@ -1141,6 +1184,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
               : pin
           )
         })));
+        stagePinCoordinates(projectId, drawingId, pinId, pct[0]!, pct[1]!);
       } else if (vertex !== null) {
         // Validation: Prevent dragging vertex into another plot or crossing boundaries
         const targetPlot = currentPlots.find(p => p.id === vertex.plotId);
@@ -1322,7 +1366,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     }));
   }
 
-  async function persistPlots(localPlots: LocalPlot[]) {
+  async function persistPlots(localPlots: LocalPlot[]): Promise<LocalPlot[]> {
     // Create a new FormData for each save operation
     const formData = new FormData();
 
@@ -1338,6 +1382,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     applyStableLocations(normalized);
     setPlots(normalized);
     setDirty(false);
+    return normalized;
   }
 
   async function savePlotFromModal() {
@@ -1354,10 +1399,11 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     const percentageCoordinates = tempPoints.map((pt) => pixelToPercent(pt, pageSize));
 
 
+    const createdPlotId = Date.now() * -1;
     const nextPlots = [
       ...plots,
       {
-        id: Date.now() * -1,
+        id: createdPlotId,
         name,
         coordinates: percentageCoordinates,
         pins: [],
@@ -1366,8 +1412,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       }
     ];
     setPlots(nextPlots);
-    const created = nextPlots.at(-1);
-    if (created) setSelectedPlotId(String(created.id));
+    setSelectedPlotId(String(createdPlotId));
+    stagePlotCoordinates(projectId, drawingId, createdPlotId, percentageCoordinates);
     setPlotNameDraft("");
     setPlotColorDraft(PLOT_PALETTE[0]!);
     setTempPoints([]);
@@ -1426,7 +1472,9 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       }
     }
 
+    const nextPinId = Date.now() * -1;
     const nextPin = {
+      id: nextPinId,
       x_coordinate: Number(((point[0] / pageSize.width) * 100).toFixed(6)),
       y_coordinate: Number(((point[1] / pageSize.height) * 100).toFixed(6)),
       status: selectedStatus.id,
@@ -1453,9 +1501,10 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     };
 
     const nextPlots = plots.map((p) =>
-      p.id === plot.id ? { ...p, pins: [...p.pins, { id: Date.now() * -1, ...nextPin }] } : p,
+      p.id === plot.id ? { ...p, pins: [...p.pins, nextPin] } : p,
     );
     setPlots(nextPlots);
+    stagePinCoordinates(projectId, drawingId, nextPinId, nextPin.x_coordinate, nextPin.y_coordinate);
     setDetailPin(null);
     setDetailPlotId(null);
     setDirty(true);
@@ -1542,10 +1591,18 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
     setSavingAll(true);
     try {
-      await persistPlots(plots);
+      const normalized = await persistPlots(plots);
       toastSuccess(t("savedAll"));
       // Refresh all data from API after successful save
       await loadAllData();
+
+      normalized.forEach((plot) => {
+        saveSelectedPlotCoordinates(projectId, drawingId, plot.id, plot.coordinates);
+        plot.pins.forEach((pin) => {
+          saveSelectedPinCoordinates(projectId, drawingId, pin.id, pin.x_coordinate, pin.y_coordinate);
+        });
+      });
+      commitDrawingGeometryDraft(projectId, drawingId);
     } catch (error) {
       toastApiError(error, t("saveAllError"));
     } finally {
@@ -2064,6 +2121,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                         const abbreviation = resolvePinMarkerAbbreviation(pin, groupItemAbbrevByKey, productName);
                         const pinQuantity = resolvePinDisplayQuantity(pin);
                         const isHovered = hoveredPinId === pin.id;
+                        const isFocused = savedPinFocus != null && Math.abs(pin.x_coordinate - savedPinFocus.x) < 1e-6 && Math.abs(pin.y_coordinate - savedPinFocus.y) < 1e-6;
+                        const innerScaleClass = draggingPinId === pin.id ? "scale-125" : isHovered ? "scale-110" : "";
 
                         return (
                           <div
@@ -2074,7 +2133,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               top: pinY,
                               transformOrigin: "bottom center",
                               transform: `translate(-50%, -100%) scale(${1 / zoom})`,
-                              zIndex: draggingPinId === pin.id ? 200 : isHovered ? 100 : 20,
+                              zIndex: draggingPinId === pin.id ? 200 : isFocused ? 150 : isHovered ? 100 : 20,
                               cursor: activeTool === "select" ? (draggingPinId === pin.id ? "grabbing" : "grab") : "pointer",
                             }}
                             onMouseEnter={() => setHoveredPinId(pin.id)}
@@ -2099,10 +2158,13 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               setDetailPin(pin);
                               setPinEditData(pin);
 
-                              // Save pin coordinates so auto-focus works on the next visit
-                              savePinFocus(pin.x_coordinate, pin.y_coordinate, projectId, drawingId);
-
-                              // Pre-populate dropdowns for editing
+                              if (pin.id > 0) {
+                                // Save backend-persisted pin coordinates so auto-focus works on the next visit
+                                savePinFocus(pin.x_coordinate, pin.y_coordinate, projectId, drawingId);
+                                saveSelectedPinCoordinates(projectId, drawingId, pin.id, pin.x_coordinate, pin.y_coordinate);
+                              } else {
+                                stagePinCoordinates(projectId, drawingId, pin.id, pin.x_coordinate, pin.y_coordinate);
+                              }
                               setSelectedGroupId(pin.group ? String(pin.group) : "");
                               setSelectedCompositeId(pin.item ? String(pin.item) : "");
 
@@ -2110,7 +2172,10 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                             }}
                           >
                             {isHovered && <PinTooltip pin={pin} productName={productName} quantity={pinQuantity} />}
-                            <div className={cn("duration-200 origin-bottom", draggingPinId === pin.id ? "scale-125" : isHovered ? "scale-110" : "", "cursor-grab")}>
+                            <div className={cn("relative duration-200 origin-bottom", innerScaleClass, "cursor-grab")}> 
+                              {isFocused ? (
+                                <div className="absolute left-1/2 top-full -translate-x-1/2 mt-1 h-2 w-10 rounded-full bg-black blur-sm" />
+                              ) : null}
                               <PinMarker label={pinLabels.get(pin.id) || (index + 1)} abbreviation={abbreviation} color={color} />
                             </div>
                           </div>

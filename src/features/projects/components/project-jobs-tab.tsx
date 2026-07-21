@@ -34,7 +34,7 @@ import {
   massSelectionColumn,
   useEntityListMassActions,
 } from "@/shared/mass-actions";
-import { CheckmarkSelect, ConfirmDialog, DataTableRowActionsMenu, ListPageEmptyStates, ListPageSearchField, SurfaceShell } from "@/shared/ui";
+import { CheckmarkSelect, ConfirmDialog, DataTableRowActionsMenu, ListPageEmptyStates, ListPageSearchField, SurfaceShell, DataTablePaginationBar, DataTable, DataTableHead, DataTableBody, DataTableRow, DataTableTd, DataTableTh, DataTableScroll } from "@/shared/ui";
 import {
   buildDetailHrefWithListReturn,
   buildPathWithStoredBack,
@@ -73,7 +73,7 @@ export function ProjectJobsTab({ projectId }: Props) {
 
   const [search, setSearch] = React.useState("");
   const [jobStatusFilter, setJobStatusFilter] = React.useState<number | undefined>();
-  const [jobSourceFilter, setJobSourceFilter] = React.useState<ProjectJobsSourceFilter>(DEFAULT_PROJECT_JOBS_SOURCE);
+  // const [jobSourceFilter, setJobSourceFilter] = React.useState<ProjectJobsSourceFilter>(DEFAULT_PROJECT_JOBS_SOURCE);
   const [levelFilter, setLevelFilter] = React.useState<number | undefined>();
   const [plotFilter, setPlotFilter] = React.useState<number | undefined>();
 
@@ -101,11 +101,11 @@ export function ProjectJobsTab({ projectId }: Props) {
     () => ({
       search: search || undefined,
       job_status: jobStatusFilter,
-      job_source: jobSourceFilter,
+      // job_source: jobSourceFilter,
       level_id: levelFilter,
       plot_id: plotFilter,
     }),
-    [search, jobStatusFilter, jobSourceFilter, levelFilter, plotFilter],
+    [search, jobStatusFilter, levelFilter, plotFilter],
   );
 
   const filteredHierarchy = React.useMemo(
@@ -118,20 +118,29 @@ export function ProjectJobsTab({ projectId }: Props) {
     [filteredHierarchy],
   );
 
+  // Pagination state (client-side paging over filtered rows)
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(10);
+  const totalPages = Math.max(1, Math.ceil(tableRows.length / rowsPerPage));
+  const paginatedRows = React.useMemo(() => {
+    const start = page * rowsPerPage;
+    return tableRows.slice(start, start + rowsPerPage);
+  }, [tableRows, page, rowsPerPage]);
+
   const levelOptions = React.useMemo(() => (hierarchy ? collectProjectJobLevelOptions(hierarchy) : []), [hierarchy]);
   const plotOptions = React.useMemo(
     () => (hierarchy ? collectProjectJobPlotOptions(hierarchy, levelFilter) : []),
     [hierarchy, levelFilter],
   );
 
-  const jobSourceOptions = React.useMemo(
-    () => [
-      { value: DEFAULT_PROJECT_JOBS_SOURCE, label: t("filterAllSources") },
-      { value: "quotation", label: t("filterQuotationSource") },
-      { value: "manual", label: t("filterManualSource") },
-    ],
-    [t],
-  );
+  // const jobSourceOptions = React.useMemo(
+  //   () => [
+  //     { value: DEFAULT_PROJECT_JOBS_SOURCE, label: t("filterAllSources") },
+  //     { value: "quotation", label: t("filterQuotationSource") },
+  //     { value: "manual", label: t("filterManualSource") },
+  //   ],
+  //   [t],
+  // );
 
   const workerLabelById = React.useMemo(() => {
     const map: Record<number, string> = {};
@@ -183,7 +192,7 @@ export function ProjectJobsTab({ projectId }: Props) {
   const mass = useEntityListMassActions({
     resource: "jobs",
     pageItems: tableRows,
-    resetDeps: [search, jobStatusFilter, jobSourceFilter, levelFilter, plotFilter],
+    resetDeps: [search, jobStatusFilter,  levelFilter, plotFilter],
     updateFields: massUpdateFields,
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
@@ -371,9 +380,19 @@ export function ProjectJobsTab({ projectId }: Props) {
   const hasActiveFilters =
     search.trim() !== "" ||
     jobStatusFilter != null ||
-    jobSourceFilter !== DEFAULT_PROJECT_JOBS_SOURCE ||
+    // jobSourceFilter !== DEFAULT_PROJECT_JOBS_SOURCE ||
     levelFilter != null ||
     plotFilter != null;
+
+  // Reset page when filters change
+  React.useEffect(() => {
+    setPage(0);
+  }, [search, jobStatusFilter, levelFilter, plotFilter]);
+
+  // Ensure current page is within totalPages when rowsPerPage or total changes
+  React.useEffect(() => {
+    if (page > Math.max(0, totalPages - 1)) setPage(Math.max(0, totalPages - 1));
+  }, [totalPages, page]);
 
   const emptyStateKind: ListEmptyStateKind = React.useMemo(() => {
     if (loading || loadError || tableRows.length > 0) return "none";
@@ -384,7 +403,7 @@ export function ProjectJobsTab({ projectId }: Props) {
   function clearFilters() {
     setSearch("");
     setJobStatusFilter(undefined);
-    setJobSourceFilter(DEFAULT_PROJECT_JOBS_SOURCE);
+    // setJobSourceFilter(DEFAULT_PROJECT_JOBS_SOURCE);
     setLevelFilter(undefined);
     setPlotFilter(undefined);
   }
@@ -432,7 +451,7 @@ export function ProjectJobsTab({ projectId }: Props) {
           className="w-full min-w-0 sm:w-44"
           onChange={(v) => setJobStatusFilter(v ? Number.parseInt(v, 10) : undefined)}
         />
-        <CheckmarkSelect
+        {/* <CheckmarkSelect
           listLabel={t("filterJobSource")}
           buttonAriaLabel={t("filterJobSource")}
           options={jobSourceOptions}
@@ -446,8 +465,8 @@ export function ProjectJobsTab({ projectId }: Props) {
             setLevelFilter(undefined);
             setPlotFilter(undefined);
           }}
-        />
-        {jobSourceFilter !== "manual" ? (
+        /> */}
+        {/* {jobSourceFilter !== "manual" ? (
           <>
             <CheckmarkSelect
               listLabel={t("filterLevel")}
@@ -478,7 +497,7 @@ export function ProjectJobsTab({ projectId }: Props) {
               onChange={(v) => setPlotFilter(v ? Number.parseInt(v, 10) : undefined)}
             />
           </>
-        ) : null}
+        ) : null} */}
       </div>
 
       {mass.selectedCount > 0 && !loading && !loadError ? (
@@ -496,12 +515,28 @@ export function ProjectJobsTab({ projectId }: Props) {
       <div className="p-6">
         {loadError ? (
           <p className="px-4 py-10 text-center text-sm text-red-600 dark:text-red-400 sm:px-6">{loadError}</p>
-        ) : loading ? (
-          <div className="space-y-2 px-4 py-6 sm:px-6">
-            {Array.from({ length: 5 }, (_, i) => (
-              <div key={i} className="h-10 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-            ))}
-          </div>
+          ) : loading ? (
+          <SurfaceShell className="rounded-none border-0">
+            <div className="overflow-auto px-4 py-6 sm:px-6">
+              <div className="animate-pulse">
+                <DataTableScroll>
+                  <DataTable>
+                    <DataTableBody>
+                      {Array.from({ length: Math.max(3, Math.min(rowsPerPage, 10)) }).map((_, r) => (
+                        <DataTableRow key={r}>
+                          {tableColumns.map((col) => (
+                            <DataTableTd key={col.id}>
+                              <div className="h-4 w-full rounded bg-slate-100 dark:bg-slate-800" />
+                            </DataTableTd>
+                          ))}
+                        </DataTableRow>
+                      ))}
+                    </DataTableBody>
+                  </DataTable>
+                </DataTableScroll>
+              </div>
+            </div>
+          </SurfaceShell>
         ) : tableRows.length === 0 ? (
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
@@ -517,12 +552,30 @@ export function ProjectJobsTab({ projectId }: Props) {
           <SurfaceShell className="rounded-none border-0">
             <EntityDataTable
               columns={tableColumns}
-              rows={tableRows}
+              rows={paginatedRows}
               onRowClick={(row) => openJobDetail(row.id)}
               getRowClassName={(row) => highlightClassName(row.id)}
               rowHighlightId={(row) => row.id}
               scrollClassName="rounded-none"
             />
+            {tableRows.length > 0 && (
+              <DataTablePaginationBar
+                pagination={{ current_page: page + 1, total_pages: totalPages, total_records: tableRows.length }}
+                summary={`Showing ${Math.min(page * rowsPerPage + 1, tableRows.length)}-${Math.min((page + 1) * rowsPerPage, tableRows.length)} of ${tableRows.length}`}
+                prevLabel="Prev"
+                nextLabel="Next"
+                onPrev={() => setPage((p) => Math.max(0, p - 1))}
+                onNext={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                onPageSelect={(p) => setPage(Math.max(0, Math.min(totalPages - 1, p - 1)))}
+                pageSizeControl={{
+                  listLabel: tList("rowsPerPage"),
+                  buttonAriaLabel: tList("rowsPerPage"),
+                  value: rowsPerPage,
+                  options: [{ value: "5", label: "5" }, { value: "10", label: "10" }, { value: "20", label: "20" }, { value: "50", label: "50" }],
+                  onChange: (n) => { setRowsPerPage(n); setPage(0); },
+                }}
+              />
+            )}
           </SurfaceShell>
         )}
       </div>
