@@ -19,9 +19,14 @@ import type { InputWithEndSelectOption } from "@/shared/ui";
 import { AppButton, FieldLabel, fieldErrorTextClassName, InputWithEndSelect, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
 import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
 import { formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
-import { getUnitTypeId } from "@/features/items/utils/item-unit-type.util";
-import type { DimensionUnit, ItemAttachment, WeightUnit } from "@/features/items/types/item.types";
+import { getUnitTypeId, resolveDefaultUnitTypeSelectValue } from "@/features/items/utils/item-unit-type.util";
 import type { ItemAttachmentWriteRef } from "@/features/items/utils/item-write-form-data.util";
+import {
+  hasItemAttachment,
+  resolveItemAttachmentLabel,
+  resolveItemAttachmentUrl,
+} from "@/features/items/utils/item-attachment-display.util";
+import type { DimensionUnit, ItemAttachment, WeightUnit } from "@/features/items/types/item.types";
 
 type Props = {
   mode: "create" | "edit";
@@ -51,24 +56,25 @@ function nextAttachmentKey(): string {
 function attachmentLabel(draft: AttachmentDraft): string {
   if (draft.file?.name) return draft.file.name;
   if (draft.file_name?.trim()) return draft.file_name.trim();
-  return draft.file_url?.trim() || `Attachment #${draft.id ?? "?"}`;
+  return resolveItemAttachmentLabel({
+    id: draft.id,
+    file_name: draft.file_name,
+    file: draft.file_url,
+  });
 }
 
 function attachmentUrl(draft: AttachmentDraft): string | null {
-  const raw = draft.file_url?.trim();
-  return raw || null;
+  return resolveItemAttachmentUrl({ file: draft.file_url, file_url: draft.file_url });
 }
 
 function mapApiAttachments(rows: ItemAttachment[] | null | undefined): AttachmentDraft[] {
   if (!Array.isArray(rows)) return [];
-  return rows
-    .filter((row) => row && (row.id != null || row.file_name || row.file_url || (row as any).attachment || (row as any).url))
-    .map((row) => ({
-      key: nextAttachmentKey(),
-      id: row.id,
-      file_name: row.file_name ?? undefined,
-      file_url: row.file_url ?? (row as any).attachment ?? (row as any).url ?? undefined,
-    }));
+  return rows.filter(hasItemAttachment).map((row) => ({
+    key: nextAttachmentKey(),
+    id: row.id,
+    file_name: row.file_name ?? undefined,
+    file_url: resolveItemAttachmentUrl(row) ?? undefined,
+  }));
 }
 
 function buildAttachmentRefs(drafts: AttachmentDraft[]): ItemAttachmentWriteRef[] {
@@ -220,12 +226,12 @@ export function ItemFormScreen({ mode, itemId }: Props) {
       try {
         const { items } = await fetchUnitTypesPage(1, 500, { is_active: true });
         if (!cancelled) {
-          setUnitTypeOptions(
-            items.map((row) => ({
-              value: String(row.id),
-              label: formatUnitTypeShortLabel(row),
-            })),
-          );
+          const options = items.map((row) => ({
+            value: String(row.id),
+            label: formatUnitTypeShortLabel(row),
+          }));
+          setUnitTypeOptions(options);
+          setUnitType((prev) => resolveDefaultUnitTypeSelectValue(prev, options));
         }
       } catch {
         if (!cancelled) setUnitTypesError(tModal("unitTypesLoadError"));
@@ -336,39 +342,41 @@ export function ItemFormScreen({ mode, itemId }: Props) {
           </div>
         ) : (
           <form id="item-form-screen" className="space-y-5 p-4 sm:p-6" onSubmit={(e) => void submit(e)}>
-            <div>
-              <FieldLabel htmlFor={nameId} required>
-                {tModal("name")}
-              </FieldLabel>
-              <input
-                id={nameId}
-                type="text"
-                autoComplete="off"
-                value={name}
-                onChange={(e) => setName(capitalizeFirstLetter(e.target.value))}
-                onBlur={() => setTouched((p) => ({ ...p, name: true }))}
-                disabled={submitting}
-                placeholder={tModal("namePlaceholder")}
-                className={cn(surfaceInputClassName, nameInvalid && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
-              />
-              {nameInvalid ? <p className={fieldErrorTextClassName}>{tModal("nameError")}</p> : null}
-            </div>
-            <div>
-              <FieldLabel htmlFor={skuId} required>
-                {tModal("sku")}
-              </FieldLabel>
-              <input
-                id={skuId}
-                type="text"
-                autoComplete="off"
-                value={sku}
-                onChange={(e) => setSku(e.target.value)}
-                onBlur={() => setTouched((p) => ({ ...p, sku: true }))}
-                disabled={submitting}
-                placeholder={tModal("skuPlaceholder")}
-                className={cn(surfaceInputClassName, skuInvalid && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
-              />
-              {skuInvalid ? <p className={fieldErrorTextClassName}>{tModal("skuError")}</p> : null}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <FieldLabel htmlFor={nameId} required>
+                  {tModal("name")}
+                </FieldLabel>
+                <input
+                  id={nameId}
+                  type="text"
+                  autoComplete="off"
+                  value={name}
+                  onChange={(e) => setName(capitalizeFirstLetter(e.target.value))}
+                  onBlur={() => setTouched((p) => ({ ...p, name: true }))}
+                  disabled={submitting}
+                  placeholder={tModal("namePlaceholder")}
+                  className={cn(surfaceInputClassName, nameInvalid && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
+                />
+                {nameInvalid ? <p className={fieldErrorTextClassName}>{tModal("nameError")}</p> : null}
+              </div>
+              <div>
+                <FieldLabel htmlFor={skuId} required>
+                  {tModal("sku")}
+                </FieldLabel>
+                <input
+                  id={skuId}
+                  type="text"
+                  autoComplete="off"
+                  value={sku}
+                  onChange={(e) => setSku(e.target.value)}
+                  onBlur={() => setTouched((p) => ({ ...p, sku: true }))}
+                  disabled={submitting}
+                  placeholder={tModal("skuPlaceholder")}
+                  className={cn(surfaceInputClassName, skuInvalid && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
+                />
+                {skuInvalid ? <p className={fieldErrorTextClassName}>{tModal("skuError")}</p> : null}
+              </div>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div>
@@ -385,7 +393,6 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                   onSelectChange={setUnitType}
                   selectOptions={unitTypeOptions}
                   selectAriaLabel={tModal("unitType")}
-                  selectPlaceholder={tModal("unitTypePlaceholder")}
                   selectDisabled={unitTypeOptions.length === 0}
                 />
                 {unitTypesError ? <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{unitTypesError}</p> : null}

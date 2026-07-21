@@ -157,7 +157,11 @@ export type QuotationCreatePayload = {
   /** Optional: full section/plot/pin ordering and totals for quotation scope. */
   quote_sections?: QuotationQuoteSection[];
   grand_total?: number | null;
+  /** Quote workflow status: draft | sent | approved | rejected. */
+  status?: string | null;
 };
+
+export type QuotationUpdatePayload = Partial<QuotationCreatePayload>;
 
 export type QuotationListItem = {
   id: number;

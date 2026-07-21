@@ -32,10 +32,17 @@ export type ItemUnitTypeRef = {
 
 export type ItemAttachment = {
   id?: number;
+  /** Absolute or relative media URL from the API. */
+  file?: string | null;
   file_name?: string | null;
+  file_size?: number | null;
+  content_type_value?: string | null;
+  /** Legacy aliases */
   attachment?: string | null;
   file_url?: string | null;
   url?: string | null;
+  created_at?: string | null;
+  modified_at?: string | null;
 };
 
 export type InstallationCostType = "fixed_amount" | "rate_per_hr";

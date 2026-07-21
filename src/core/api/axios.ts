@@ -17,6 +17,7 @@ import {
 import { markApiErrorToasted } from "@/core/errors/api-error-toast.util";
 import { AuthRefreshEnvelope } from "@/features/auth/types/auth.types";
 import { navigateToLoginIfBrowser } from "@/features/auth/utils/auth-redirect.util";
+import { resolvePublicApiBaseUrl } from "@/core/config/api-url.util";
 
 declare module "axios" {
   export interface AxiosRequestConfig {
@@ -26,9 +27,7 @@ declare module "axios" {
 }
 
 function resolveApiBaseUrl(): string {
-  const fromEnv = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
-  return "/api/v1";
+  return resolvePublicApiBaseUrl();
 }
 
 /** Django APPEND_SLASH requires POST/PATCH/PUT paths to end with `/`. */

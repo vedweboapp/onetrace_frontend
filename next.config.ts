@@ -1,30 +1,19 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
-import { DISPATCH_USE_MOCK } from "./src/features/dispatches/api/dispatch.mock.config";
-import { MATERIAL_STATUS_USE_MOCK } from "./src/features/material-status/api/material-status.mock.config";
-import { MATERIAL_REQUEST_USE_MOCK } from "./src/features/material-requests/api/material-request.mock.config";
-import { VENDOR_TYPE_USE_MOCK } from "./src/features/vendor-types/api/vendor-type.mock.config";
-import { PURCHASE_ORDER_USE_MOCK } from "./src/features/purchase-orders/api/purchase-order.mock.config";
-import { VENDOR_USE_MOCK } from "./src/features/vendors/api/vendor.mock.config";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
-const backendOrigin =
-  process.env.BACKEND_API_ORIGIN?.replace(/\/$/, "") ??
-  "http://110.225.254.51:5050";
-
-
-const explicitPublicApi = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "");
 const nextPublicApiUrl =
-  explicitPublicApi ||
-  (process.env.NODE_ENV === "development"
-    ? "/api/v1"
-    : `${backendOrigin}/api/v1`);
+  process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "") ??
+  "http://110.225.254.51:5050/api/v1";
+
+const backendApiOrigin =
+  process.env.BACKEND_API_ORIGIN?.trim().replace(/\/$/, "") ??
+  "http://110.225.254.51:5050";
 
 const googleMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
 
 const nextConfig: NextConfig = {
-  // Keep trailing slashes on /api/v1/* so Django APPEND_SLASH POST endpoints work via rewrite.
   skipTrailingSlashRedirect: true,
   allowedDevOrigins: ["ineffectual-stephania-immemorially.ngrok-free.dev"],
   env: {
@@ -56,28 +45,10 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
-    const mockPrefixes = [
-      MATERIAL_REQUEST_USE_MOCK ? "material-requests" : null,
-      DISPATCH_USE_MOCK ? "dispatches" : null,
-      DISPATCH_USE_MOCK ? "dispatch-return-requests" : null,
-      MATERIAL_STATUS_USE_MOCK ? "material-status" : null,
-      VENDOR_TYPE_USE_MOCK ? "vendor-type" : null,
-      VENDOR_USE_MOCK ? "vendors" : null,
-      PURCHASE_ORDER_USE_MOCK ? "purchase-orders" : null,
-    ].filter(Boolean) as string[];
-    const pathMatch =
-      mockPrefixes.length > 0
-        ? `:path((?!${mockPrefixes.join("|")}).*)`
-        : ":path*";
     return [
-      // Prefer explicit trailing-slash match so Django receives POST .../login/
       {
-        source: `/api/v1/${pathMatch}/`,
-        destination: `${backendOrigin}/api/v1/:path*/`,
-      },
-      {
-        source: `/api/v1/${pathMatch}`,
-        destination: `${backendOrigin}/api/v1/:path*/`,
+        source: "/api/v1/:path*",
+        destination: `${backendApiOrigin}/api/v1/:path*`,
       },
     ];
   },
