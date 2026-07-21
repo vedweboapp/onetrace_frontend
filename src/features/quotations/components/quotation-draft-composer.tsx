@@ -231,6 +231,11 @@ type Props = {
   canShow: boolean;
   /** When true, scope is view-only: no edits, adds, deletes, or drag-reorder. */
   readOnly?: boolean;
+  /**
+   * When false (project quotations), hide add-section and add-item controls.
+   * Service/manual quotations keep these enabled (default).
+   */
+  allowManualLines?: boolean;
 };
 
 export function QuotationDraftComposer({
@@ -239,6 +244,7 @@ export function QuotationDraftComposer({
   saving,
   canShow,
   readOnly = false,
+  allowManualLines = true,
 }: Props) {
   const t = useTranslations("Dashboard.quotations.draft");
   const tDraw = useTranslations("Dashboard.projects.drawings.editor");
@@ -937,28 +943,30 @@ export function QuotationDraftComposer({
             <span>{t("selectAllSections")}</span>
           </label>
 
-          <div className="flex max-w-xl flex-row flex-wrap items-center gap-1.5">
-            <label className="sr-only" htmlFor="draft-new-section">
-              {t("newSectionLabel")}
-            </label>
-            <input
-              id="draft-new-section"
-              value={newSectionName}
-              onChange={(e) => setNewSectionName(e.target.value)}
-              onBlur={() =>
-                setNewSectionName((prev) => {
-                  const next = capitalizeFirstLetter(prev);
-                  return next !== prev ? next : prev;
-                })
-              }
-              placeholder={t("newSectionPlaceholder")}
-              className={cn(surfaceInputClassName, "min-w-0 flex-1")}
-              disabled={saving}
-            />
-            <AppButton type="button" variant="secondary" size="sm" disabled={saving || newSectionName.trim().length === 0} onClick={addSection}>
-              {t("addSection")}
-            </AppButton>
-          </div>
+          {allowManualLines ? (
+            <div className="flex max-w-xl flex-row flex-wrap items-center gap-1.5">
+              <label className="sr-only" htmlFor="draft-new-section">
+                {t("newSectionLabel")}
+              </label>
+              <input
+                id="draft-new-section"
+                value={newSectionName}
+                onChange={(e) => setNewSectionName(e.target.value)}
+                onBlur={() =>
+                  setNewSectionName((prev) => {
+                    const next = capitalizeFirstLetter(prev);
+                    return next !== prev ? next : prev;
+                  })
+                }
+                placeholder={t("newSectionPlaceholder")}
+                className={cn(surfaceInputClassName, "min-w-0 flex-1")}
+                disabled={saving}
+              />
+              <AppButton type="button" variant="secondary" size="sm" disabled={saving || newSectionName.trim().length === 0} onClick={addSection}>
+                {t("addSection")}
+              </AppButton>
+            </div>
+          ) : null}
         </>
       ) : null}
 
@@ -1163,13 +1171,10 @@ export function QuotationDraftComposer({
                       </div>
                     ) : null}
                   </div>
-                  {section.level_id == null ? (
-                    <p className="mt-1 pl-8 text-xs text-slate-500 dark:text-slate-400">{t("quoteOnlySection")}</p>
-                  ) : null}
                 </summary>
 
                 <div className="mt-3 space-y-3 rounded-lg border border-slate-200 bg-slate-50/40 p-3 dark:border-slate-700 dark:bg-slate-950/25">
-                  {!readOnly ? (
+                  {!readOnly && allowManualLines ? (
                     <DraftCompositeAddRow
                       idPrefix={`${compositeFormId}-s-${section.id}`}
                       saving={saving}
@@ -1215,9 +1220,7 @@ export function QuotationDraftComposer({
                     readOnly={readOnly}
                   />
 
-                  {(section.section_pins ?? []).length === 0 && section.plots.length === 0 ? (
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{t("emptyPlots")}</p>
-                  ) : section.plots.length > 0 ? (
+                  {section.plots.length > 0 ? (
                     <ul className="space-y-2">
                       {section.plots.map((plot, pi) => {
                         const plotKey = draftCompositeRowKey(section.id, plot.id);
@@ -1239,7 +1242,7 @@ export function QuotationDraftComposer({
                           onToggleOpen={(open) => togglePlotOpen(plot.id, open)}
                           onPlotName={(name) => updatePlotName(si, pi, name)}
                           addCompositeToolbar={
-                            readOnly ? null : (
+                            readOnly || !allowManualLines ? null : (
                             <DraftCompositeAddRow
                               idPrefix={`${compositeFormId}-p-${section.id}-${plot.id}`}
                               saving={saving}

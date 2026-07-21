@@ -43,6 +43,9 @@ export function hasListActiveFilters(args: {
   workerNameParam?: string | null;
   requestedDateParam?: string | null;
   projectTypeParam?: string | null;
+  /** Quotations `quote_category` (or legacy category) URL param. */
+  categoryParam?: string | null;
+  quoteCategoryParam?: string | null;
 }): boolean {
   if (args.search.trim() !== "") return true;
   /** Default list is active-only; only “inactive” is treated as an applied filter. */
@@ -60,6 +63,8 @@ export function hasListActiveFilters(args: {
   if (args.workerNameParam != null && args.workerNameParam.trim() !== "") return true;
   if (args.requestedDateParam != null && args.requestedDateParam.trim() !== "") return true;
   if (args.projectTypeParam != null && args.projectTypeParam.trim() !== "") return true;
+  if (args.categoryParam != null && args.categoryParam.trim() !== "") return true;
+  if (args.quoteCategoryParam != null && args.quoteCategoryParam.trim() !== "") return true;
   return false;
 }
 

@@ -257,7 +257,7 @@ export function QuotationDetailBody({
     const c = raw.toLowerCase();
     if (c === "draft") return t("quoteStatus.draft");
     if (c === "sent") return t("quoteStatus.sent");
-    if (c === "accepted") return t("quoteStatus.accepted");
+    if (c === "approved" || c === "accepted") return t("quoteStatus.approved");
     if (c === "rejected") return t("quoteStatus.rejected");
     return raw;
   }

@@ -41,12 +41,14 @@ export async function fetchDrawingsPage(
   page = 1,
   pageSize = 100,
   search?: string,
+  params?: Record<string,any>
 ): Promise<{ items: Drawing[]; pagination: ProjectPagination }> {
   const { data } = await api.get<DrawingListResponse>(DRAWING_PATHS.list(projectId), {
     params: {
       page,
       page_size: pageSize,
       ...(search?.trim() ? { search: search.trim() } : {}),
+      ...(params)
     },
   });
   assertEnvelopeSuccess(data);

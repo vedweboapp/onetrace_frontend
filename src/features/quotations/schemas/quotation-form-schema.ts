@@ -8,7 +8,11 @@ export type QuotationFormMessages = {
   project: string;
 };
 
-export function createQuotationFormSchema(messages: QuotationFormMessages) {
+export function createQuotationFormSchema(
+  messages: QuotationFormMessages,
+  options?: { requireProject?: boolean },
+) {
+  const requireProject = options?.requireProject !== false;
   const idString = (msg: string) =>
     z
       .string()
@@ -20,7 +24,8 @@ export function createQuotationFormSchema(messages: QuotationFormMessages) {
     quote_name: zTrimmedNonEmpty(messages.quoteName),
     customer: idString(messages.customer),
     sites: z.array(idString(messages.sites)).min(1, { message: messages.sites }),
-    project: idString(messages.project),
+    /** Required for project quotations; empty string allowed for service quotations. */
+    project: requireProject ? idString(messages.project) : z.string(),
     primary_customer_contact: z.string(),
     additional_customer_contacts: z.array(
       z.object({

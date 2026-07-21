@@ -17,6 +17,7 @@ import {
 import { markApiErrorToasted } from "@/core/errors/api-error-toast.util";
 import { AuthRefreshEnvelope } from "@/features/auth/types/auth.types";
 import { navigateToLoginIfBrowser } from "@/features/auth/utils/auth-redirect.util";
+import { resolvePublicApiBaseUrl } from "@/core/config/api-url.util";
 
 declare module "axios" {
   export interface AxiosRequestConfig {
@@ -26,9 +27,39 @@ declare module "axios" {
 }
 
 function resolveApiBaseUrl(): string {
-  const fromEnv = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
-  return "/api/v1";
+  return resolvePublicApiBaseUrl();
+}
+
+/** Django APPEND_SLASH requires POST/PATCH/PUT paths to end with `/`. */
+function ensureTrailingSlashUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed || trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return trimmed;
+
+  // Absolute URLs — mutate pathname only.
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    try {
+      const parsed = new URL(trimmed);
+      if (!parsed.pathname.endsWith("/")) {
+        parsed.pathname = `${parsed.pathname}/`;
+      }
+      return parsed.toString();
+    } catch {
+      return trimmed;
+    }
+  }
+
+  // Relative to axios baseURL (e.g. "clients/26" or "/api/v1/clients/26").
+  // Do NOT resolve with `new URL(rel, origin)` — that turns "clients/26" into "/clients/26"
+  // and bypasses baseURL, hitting Next.js page routes instead of the API proxy.
+  const hashIndex = trimmed.indexOf("#");
+  const queryIndex = trimmed.indexOf("?");
+  let pathEnd = trimmed.length;
+  if (hashIndex >= 0) pathEnd = Math.min(pathEnd, hashIndex);
+  if (queryIndex >= 0) pathEnd = Math.min(pathEnd, queryIndex);
+  const path = trimmed.slice(0, pathEnd);
+  const suffix = trimmed.slice(pathEnd);
+  if (!path || path.endsWith("/")) return trimmed;
+  return `${path}/${suffix}`;
 }
 
 const baseURL = resolveApiBaseUrl();
@@ -76,6 +107,9 @@ const refreshClient = axios.create({
 
 refreshClient.interceptors.request.use((config) => {
   delete config.headers.Authorization;
+  if (typeof config.url === "string" && config.url.length > 0) {
+    config.url = ensureTrailingSlashUrl(config.url);
+  }
   return config;
 });
 
@@ -86,6 +120,13 @@ const api = axios.create({
     Accept: "application/json",
     "Content-Type": "application/json",
   },
+});
+
+api.interceptors.request.use((config) => {
+  if (typeof config.url === "string" && config.url.length > 0) {
+    config.url = ensureTrailingSlashUrl(config.url);
+  }
+  return config;
 });
 
 attachJsonEnvelopeGuard(api);

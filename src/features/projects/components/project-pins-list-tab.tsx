@@ -12,8 +12,11 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   createJobFromLocation,
   fetchProject,
+  fetchProjectFormsPage,
+  massUpdatePins,
 } from "@/features/projects/api/project.api";
 import { fetchDrawingsPage } from "@/features/projects/api/drawing.api";
+import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import type {
   Drawing,
@@ -27,7 +30,7 @@ import type {
 import { getProjectTypeId } from "@/features/projects/utils/project-type-id.util";
 import { useParams } from "next/navigation";
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { Layers, MapPinned } from "lucide-react";
+import { ChevronRight, Layers, MapPinned } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import type { ListEmptyStateKind } from "@/shared/hooks/use-list-active-inactive-empty";
 import { Controller, useForm } from "react-hook-form";
@@ -45,9 +48,10 @@ import {
   type LevelSnapshotState,
 } from "@/shared/hooks/use-level-snapshots.hook";
 import { PinThumbnailCropped } from "@/shared/components/pin-thumbnail-cropped";
+import { number } from "zod";
 
 const PIN_TABLE_GRID =
-  "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,1.4rem)_minmax(0,5rem)_minmax(0,1fr)_minmax(0,6rem)_minmax(0,0.5fr)_minmax(0,0.4fr)_minmax(0,0.4fr)_minmax(0,0.45fr)] items-center gap-x-3";
+  "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,1.4rem)_minmax(0,5rem)_minmax(0,1fr)_minmax(0,6rem)_minmax(0,0.5fr)_minmax(0,0.4fr)_minmax(0,0.4fr)_minmax(0,1fr)_minmax(0,0.45fr)] items-center gap-x-3";
 const PIN_TABLE_HEADER_CLASS = cn(
   PIN_TABLE_GRID,
   "border-b border-slate-100 bg-slate-50/80 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400",
@@ -57,6 +61,9 @@ const PIN_TABLE_ROW_CLASS = cn(
   PIN_TABLE_GRID,
   "px-4 py-3 text-sm transition-colors border-b border-slate-100 last:border-b-0 dark:border-slate-800/80",
 );
+
+const SELECTION_CHECKBOX_CLASS_NAME =
+  "h-4 w-4 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 cursor-pointer accent-(--dash-accent,#f97316)";
 
 const getSelectionState = (
   ids: number[],
@@ -86,6 +93,53 @@ const toggleSelection = (
   return next;
 };
 
+function ProjectPinsListLoadingSkeleton() {
+  return (
+    <>
+      {Array.from({ length: 2 }, (_, levelIndex) => (
+        <section key={levelIndex} className="space-y-4 p-6">
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-4 rounded-full animate-pulse bg-slate-100 dark:bg-slate-800" />
+            <div className="h-4 w-48 rounded-full animate-pulse bg-slate-100 dark:bg-slate-800" />
+          </div>
+
+          <div className="space-y-4">
+            {Array.from({ length: 2 }, (_, plotIndex) => (
+              <div
+                key={plotIndex}
+                className="min-w-0 w-full rounded-xl border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+              >
+                <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800/80 bg-slate-100/70 dark:bg-slate-950/20 flex items-center gap-3">
+                  <div className="h-4 w-4 rounded-full animate-pulse bg-slate-100 dark:bg-slate-800" />
+                  <div className="h-4 w-36 rounded-full animate-pulse bg-slate-100 dark:bg-slate-800" />
+                </div>
+                <div className="space-y-2 p-4">
+                  <div className="h-4 w-2/5 rounded-full animate-pulse bg-slate-100 dark:bg-slate-800" />
+                  <div className="overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800">
+                    {Array.from({ length: 2 }, (_, rowIndex) => (
+                      <div
+                        key={rowIndex}
+                        className="grid min-w-0 grid-cols-[minmax(0,1.4rem)_minmax(0,5rem)_minmax(0,1fr)_minmax(0,6rem)_minmax(0,0.5fr)_minmax(0,0.4fr)_minmax(0,0.4fr)_minmax(0,0.45fr)] items-center gap-x-3 border-t border-slate-200 px-4 py-3 dark:border-slate-800"
+                      >
+                        {Array.from({ length: 8 }, (_, cellIndex) => (
+                          <div
+                            key={cellIndex}
+                            className="h-6 rounded bg-slate-200 dark:bg-slate-800 animate-pulse"
+                          />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </>
+  );
+}
+
 function GroupCheckbox({
   ids,
   selectedIds,
@@ -106,9 +160,7 @@ function GroupCheckbox({
     <input
       ref={ref}
       type="checkbox"
-      className={cn(
-        "h-4 w-4 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 cursor-pointer accent-(--dash-accent,#f97316)",
-      )}
+      className={SELECTION_CHECKBOX_CLASS_NAME}
       checked={state === "all"}
       disabled={ids.length === 0}
       onChange={() => onToggle(ids)}
@@ -146,7 +198,165 @@ function ProjectPinTableHeader() {
       </span>
       <span className="min-w-0 truncate">Quantity</span>
       <span className="min-w-0 truncate">Is a Job</span>
+      <span className="min-w-0 truncate">
+        {isEs ? "Formulario" : "Form"}
+      </span>
       <span className="min-w-0 truncate">Status</span>
+    </div>
+  );
+}
+
+type PinCategory = {
+  id: string;
+  item_name: string;
+  pins: DrawingPin[];
+};
+
+function PlotPinCategoryGroup({
+  category,
+  selectedIds,
+  onTogglePin,
+  onToggleCategory,
+  onPreviewPin: onPreviewPinProp,
+  expanded,
+  onToggleExpanded,
+  drawingFile,
+  drawingFileType,
+  snapshotState,
+  drawingName,
+  plot,
+  resolveFormName,
+}: {
+  category: PinCategory;
+  selectedIds: Set<number>;
+  onTogglePin: (id: number) => void;
+  onToggleCategory: (ids: number[]) => void;
+  onPreviewPin: (pin: DrawingPin) => void;
+  expanded: boolean;
+  onToggleExpanded: () => void;
+  drawingFile?: string;
+  drawingFileType?: string;
+  snapshotState?: LevelSnapshotState;
+  drawingName?: string;
+  plot: DrawingPlot;
+  resolveFormName?: (pin: DrawingPin) => string;
+}) {
+  const categoryPinIds = useMemo(
+    () => category.pins.map((pin) => pin.id),
+    [category.pins],
+  );
+
+  const categoryState = useMemo(
+    () => getSelectionState(categoryPinIds, selectedIds),
+    [categoryPinIds, selectedIds],
+  );
+
+  const categoryCheckboxRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (categoryCheckboxRef.current)
+      categoryCheckboxRef.current.indeterminate = categoryState === "partial";
+  }, [categoryState]);
+
+  return (
+    <div
+      key={category.id}
+      className="border-b border-slate-200 dark:border-slate-800/60"
+    >
+      <div className="px-4 py-2 bg-slate-50/70 dark:bg-slate-900/40 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <input
+            ref={categoryCheckboxRef}
+            type="checkbox"
+            className={SELECTION_CHECKBOX_CLASS_NAME}
+            checked={categoryState === "all"}
+            disabled={categoryPinIds.length === 0}
+            onChange={() => onToggleCategory(categoryPinIds)}
+          />
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300"
+            onClick={onToggleExpanded}
+          >
+            <ChevronRight
+              className={cn(
+                "h-3 w-3 transition-transform duration-200",
+                expanded && "rotate-90",
+              )}
+            />
+            <span>{category.item_name}</span>
+          </button>
+        </div>
+        <span className="text-xs text-slate-500 dark:text-slate-400">
+          {category.pins.length} {category.pins.length === 1 ? "item" : "items"}
+        </span>
+      </div>
+      {expanded && (
+        <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+          {category.pins.map((pin) => (
+            <ProjectPinRow
+              key={pin.id}
+              pin={pin}
+              selected={selectedIds.has(pin.id)}
+              disabled={false}
+              drawingFile={drawingFile}
+              drawingFileType={drawingFileType}
+              snapshotState={snapshotState}
+              drawingName={drawingName}
+              plots={[plot]}
+              onToggle={() => onTogglePin(pin.id)}
+              onPreview={() => onPreviewPinProp(pin)}
+              resolveFormName={resolveFormName}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LazyPreviewContent({
+  children,
+  fallback,
+}: {
+  children: React.ReactNode;
+  fallback: React.ReactNode;
+}) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [shouldRender, setShouldRender] = React.useState(false);
+
+  React.useEffect(() => {
+    if (
+      shouldRender ||
+      typeof window === "undefined" ||
+      !containerRef.current
+    ) {
+      return;
+    }
+
+    if (typeof IntersectionObserver === "undefined") {
+      setShouldRender(true);
+      return;
+    }
+
+    const node = containerRef.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setShouldRender(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "220px 0px" },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [shouldRender]);
+
+  return (
+    <div ref={containerRef} className="h-full w-full">
+      {shouldRender ? children : fallback}
     </div>
   );
 }
@@ -158,10 +368,11 @@ function ProjectPinRow({
   onToggle,
   onPreview,
   drawingFile,
-  drawingFileType, // ← add this
+  drawingFileType,
   snapshotState,
   plots,
   drawingName,
+  resolveFormName,
 }: {
   pin: DrawingPin;
   selected: boolean;
@@ -169,10 +380,11 @@ function ProjectPinRow({
   onToggle: () => void;
   onPreview: () => void;
   drawingFile?: string;
-  drawingFileType?: string; // ← add this
+  drawingFileType?: string;
   snapshotState?: LevelSnapshotState;
   drawingName?: string;
   plots: DrawingPlot[];
+  resolveFormName?: (pin: DrawingPin) => string;
 }) {
   const locale = useLocale();
   const isEs = locale === "es";
@@ -203,7 +415,7 @@ function ProjectPinRow({
           "h-3.5 w-3.5 shrink-0 rounded-[3px] border-slate-300 dark:border-slate-600 dark:bg-slate-900",
           disabled
             ? "cursor-not-allowed opacity-40"
-            : "cursor-pointer accent-(--dash-accent,#f97316)",
+            : SELECTION_CHECKBOX_CLASS_NAME,
         )}
         checked={selected}
         onChange={onToggle}
@@ -234,47 +446,55 @@ function ProjectPinRow({
           aria-label={`Preview pin #${pin.id} on drawing`}
           className="relative h-9 w-16 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
         >
-          {snapshotState?.status === "ready" && snapshotState.snapshot ? (
-            <PinThumbnailCropped
-              snapshotUrl={snapshotState.snapshot.objectUrl}
-              snapshotWidth={snapshotState.snapshot.width}
-              snapshotHeight={snapshotState.snapshot.height}
-              xPercent={pin.x_coordinate}
-              yPercent={pin.y_coordinate}
-              pinColor={pin.status_detail?.bg_colour || "#10b981"}
-              className="absolute inset-0"
-              alt=""
-            />
-          ) : snapshotState?.status === "loading" ? (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="h-full w-full animate-pulse bg-slate-100 dark:bg-slate-800" />
-            </div>
-          ) : drawingFile && plots.length > 0 ? (
-            <span className="absolute inset-0">
-              <div
-                className="absolute inset-0"
-                style={{
-                  transformOrigin: `${pin.x_coordinate}% ${pin.y_coordinate}%`,
-                  transform: `translate(${50 - pin.x_coordinate}%, ${50 - pin.y_coordinate}%) scale(3)`,
-                }}
-              >
-                <DrawingFilePreviewFill
-                  drawingFile={drawingFile}
-                  fileType={drawingFileType}
-                  alt=""
-                  className="size-full"
-                />
-                <DrawingPinThumbnailOverlay
-                  plots={plots}
-                  activePinId={pin.id}
-                />
+          <LazyPreviewContent
+            fallback={
+              <div className="absolute inset-0 flex items-center justify-center bg-slate-50/80 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800/80 dark:text-slate-400">
+                Preview
               </div>
-            </span>
-          ) : (
-            <span className="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-500">
-              Preview
-            </span>
-          )}
+            }
+          >
+            {snapshotState?.status === "ready" && snapshotState.snapshot ? (
+              <PinThumbnailCropped
+                snapshotUrl={snapshotState.snapshot.objectUrl}
+                snapshotWidth={snapshotState.snapshot.width}
+                snapshotHeight={snapshotState.snapshot.height}
+                xPercent={pin.x_coordinate}
+                yPercent={pin.y_coordinate}
+                pinColor={pin.status_detail?.bg_colour || "#10b981"}
+                className="absolute inset-0"
+                alt=""
+              />
+            ) : snapshotState?.status === "loading" ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="h-full w-full animate-pulse bg-slate-100 dark:bg-slate-800" />
+              </div>
+            ) : drawingFile && plots.length > 0 ? (
+              <span className="absolute inset-0">
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    transformOrigin: `${pin.x_coordinate}% ${pin.y_coordinate}%`,
+                    transform: `translate(${50 - pin.x_coordinate}%, ${50 - pin.y_coordinate}%) scale(3)`,
+                  }}
+                >
+                  <DrawingFilePreviewFill
+                    drawingFile={drawingFile}
+                    fileType={drawingFileType}
+                    alt=""
+                    className="size-full"
+                  />
+                  <DrawingPinThumbnailOverlay
+                    plots={plots}
+                    activePinId={pin.id}
+                  />
+                </div>
+              </span>
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-500">
+                Preview
+              </span>
+            )}
+          </LazyPreviewContent>
           <span className="sr-only">Preview</span>
         </button>
       </div>
@@ -291,6 +511,10 @@ function ProjectPinRow({
         {pin.is_converted_job ? "Yes" : "No"}
       </span>
 
+      <span className="min-w-0 text-xs font-medium text-slate-600 dark:text-slate-400 truncate">
+        {resolveFormName ? resolveFormName(pin) : "—"}
+      </span>
+
       <div>
         <PinStatusChip pin={pin} />
       </div>
@@ -305,11 +529,13 @@ function PlotPinsBlock({
   selectedIds,
   onTogglePlot,
   onTogglePin,
+  onToggleCategory,
   onPreviewPin,
   drawingFile,
-  drawingFileType, // ← add
+  drawingFileType,
   snapshotState,
   drawingName,
+  resolveFormName,
 }: {
   plot: DrawingPlot;
   plotName: string;
@@ -317,14 +543,21 @@ function PlotPinsBlock({
   selectedIds: Set<number>;
   onTogglePlot: (ids: number[]) => void;
   onTogglePin: (id: number) => void;
+  onToggleCategory: (ids: number[]) => void;
   onPreviewPin: (pin: DrawingPin) => void;
   drawingFile?: string;
-  drawingFileType?: string; // ← add
+  drawingFileType?: string;
   snapshotState?: LevelSnapshotState;
   drawingName?: string;
+  resolveFormName?: (pin: DrawingPin) => string;
 }) {
+  const [plotExpanded, setPlotExpanded] = useState<boolean>(true);
+
+  const togglePlotExpanded = useCallback(() => {
+    setPlotExpanded((v) => !v);
+  }, []);
   const selectablePinIds = useMemo(
-    () => pins.filter((p) => !p.is_converted_job).map((p) => p.id),
+    () => pins.map((p) => p.id),
     [pins],
   );
 
@@ -332,52 +565,139 @@ function PlotPinsBlock({
   const plotState = getSelectionState(selectablePinIds, selectedIds);
 
   React.useEffect(() => {
-    if (plotHeaderRef.current) plotHeaderRef.current.indeterminate = plotState === "partial";
+    if (plotHeaderRef.current)
+      plotHeaderRef.current.indeterminate = plotState === "partial";
   }, [plotState]);
+
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(
+    () => new Set<string>(),
+  );
+
+  const categorizedPins = useMemo(() => {
+    return pins.reduce(
+      (
+        acc: Array<{ id: string; item_name: string; pins: DrawingPin[] }>,
+        currentPin,
+      ) => {
+        const categoryId = String(
+          currentPin?.item_detail?.id ??
+          currentPin?.group_detail?.id ??
+          "uncategorized",
+        );
+        const existingCategory = acc.find((cat) => cat.id === categoryId);
+
+        const itemName =
+          currentPin?.item_detail?.name ??
+          currentPin?.group_detail?.name ??
+          "Uncategorized";
+
+        if (existingCategory) {
+          existingCategory.pins.push(currentPin);
+        } else {
+          acc.push({
+            id: categoryId,
+            item_name: itemName,
+            pins: [currentPin],
+          });
+        }
+
+        return acc;
+      },
+      [] as Array<{ id: string; item_name: string; pins: DrawingPin[] }>,
+    );
+  }, [pins]);
+
+  const toggleCategoryExpanded = useCallback((categoryId: string) => {
+    setExpandedCategoryIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) next.delete(categoryId);
+      else next.add(categoryId);
+      return next;
+    });
+  }, []);
+
+  const handleToggleCategory = useCallback(
+    (categoryPinIds: number[]) => {
+      onToggleCategory(categoryPinIds);
+    },
+    [onToggleCategory],
+  );
 
   return (
     <div className="min-w-0 w-full rounded-xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-700/80 dark:bg-slate-950/30">
       <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 flex items-center gap-3">
-        <input
-          ref={plotHeaderRef}
-          type="checkbox"
-          className={cn(
-            "h-4 w-4 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 cursor-pointer accent-(--dash-accent,#f97316)",
-          )}
-          checked={plotState === "all"}
-          disabled={selectablePinIds.length === 0}
-          onChange={() => onTogglePlot(selectablePinIds)}
-        />
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{plotName}</h3>
+        {plotExpanded ? (
+          <>
+            <input
+              ref={plotHeaderRef}
+              type="checkbox"
+              className={SELECTION_CHECKBOX_CLASS_NAME}
+              checked={plotState === "all"}
+              disabled={selectablePinIds.length === 0}
+              onChange={() => onTogglePlot(selectablePinIds)}
+            />
+            <button
+              type="button"
+              onClick={togglePlotExpanded}
+              className="inline-flex cursor-pointer items-center gap-2"
+            >
+              <ChevronRight
+                className={cn(
+                  "h-3 w-3 transition-transform duration-200",
+                  plotExpanded && "rotate-90",
+                )}
+              />
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {plotName}
+              </h3>
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={togglePlotExpanded}
+            className="inline-flex cursor-pointer items-center gap-2"
+          >
+            <ChevronRight
+              className={cn(
+                "h-3 w-3 transition-transform duration-200",
+                plotExpanded && "rotate-90",
+              )}
+            />
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              {plotName}
+            </h3>
+          </button>
+        )}
       </div>
-      {/* header unchanged */}
       <div className="min-w-0 w-full">
         {pins.length === 0 ? (
           <p className="p-4 text-sm text-slate-500 dark:text-slate-400 text-center bg-slate-50/30 dark:bg-transparent">
             No pins in this plot.
           </p>
-        ) : (
+        ) : plotExpanded ? (
           <>
             <ProjectPinTableHeader />
-            <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-              {pins.map((pin) => (
-                <ProjectPinRow
-                  key={pin.id}
-                  pin={pin}
-                  selected={selectedIds.has(pin.id)}
-                  disabled={pin.is_converted_job === true}
-                  drawingFile={drawingFile}
-                  drawingFileType={drawingFileType} // ← add
-                  snapshotState={snapshotState}
-                  drawingName={drawingName}
-                  plots={[plot]}
-                  onToggle={() => onTogglePin(pin.id)}
-                  onPreview={() => onPreviewPin(pin)}
-                />
-              ))}
-            </div>
+            {categorizedPins.map((category) => (
+              <PlotPinCategoryGroup
+                key={category.id}
+                category={category}
+                selectedIds={selectedIds}
+                onTogglePin={onTogglePin}
+                onToggleCategory={handleToggleCategory}
+                onPreviewPin={onPreviewPin}
+                expanded={expandedCategoryIds.has(category.id)}
+                onToggleExpanded={() => toggleCategoryExpanded(category.id)}
+                drawingFile={drawingFile}
+                drawingFileType={drawingFileType}
+                snapshotState={snapshotState}
+                drawingName={drawingName}
+                plot={plot}
+                resolveFormName={resolveFormName}
+              />
+            ))}
           </>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -403,6 +723,24 @@ const ProjectPinsListTab = ({
   }, [sites]);
 
   const { id } = useParams<{ id: string }>();
+
+  const [collapsedLevelIds, setCollapsedLevelIds] = useState<Set<number>>(
+    () => new Set(),
+  );
+
+  const toggleLevelExpanded = useCallback((levelId: number) => {
+    setCollapsedLevelIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(levelId)) next.delete(levelId);
+      else next.add(levelId);
+      return next;
+    });
+  }, []);
+
+  const isLevelExpanded = useCallback(
+    (levelId: number) => !collapsedLevelIds.has(levelId),
+    [collapsedLevelIds],
+  );
 
   const [search, setSearch] = useState<string>("");
   const [levelFilter, setLevelFilter] = useState<number | undefined>();
@@ -433,6 +771,7 @@ const ProjectPinsListTab = ({
     plots: DrawingPlot[];
     drawingFile: string;
     drawingName: string;
+    drawingId?: number;
   } | null>(null);
   const [dialogSiteId, setDialogSiteId] = useState<number | undefined>(
     undefined,
@@ -455,6 +794,17 @@ const ProjectPinsListTab = ({
     { value: string; label: string }[]
   >([]);
   const [loadingJobStatuses, setLoadingJobStatuses] = useState(false);
+  const [selectedJobStatus, setSelectedJobStatus] = useState("false");
+  const [selectedQuoteStatus, setSelectedQuoteStatus] = useState("approved");
+  const [selectedAction, setSelectedAction] = useState("");
+  const [selectedActionField, setSelectedActionField] = useState("");
+  const [selectedFormId, setSelectedFormId] = useState("");
+  const [selectedVariation, setSelectedVariation] = useState("");
+  const [selectedQuantity, setSelectedQuantity] = useState("");
+  const [formOptions, setFormOptions] = useState<{ value: string; label: string }[]>([]);
+  const [projectForms, setProjectForms] = useState<any[]>([]);
+  const [loadingForms, setLoadingForms] = useState(false);
+  const [jobConflictWarning, setJobConflictWarning] = useState(false);
   const sentinelRef = React.useRef<HTMLDivElement | null>(null);
 
   const t = useTranslations("Dashboard.projects.location");
@@ -502,28 +852,35 @@ const ProjectPinsListTab = ({
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadLocationsPage(): Promise<void> {
+  const loadLocationsPage = useCallback(
+    async (silent = false): Promise<void> => {
       if (!id) return;
 
-      if (page === 1) setLoading(true);
-      else setLoadingMore(true);
+      if (!silent) {
+        if (page === 1) setLoading(true);
+        else setLoadingMore(true);
+      }
       setLoadError(null);
 
       try {
+        const rawParams: Record<string, string> = {
+          is_converted_job: selectedJobStatus,
+          quote_status: selectedQuoteStatus,
+        };
+        // Strip empty-string values — empty means "All", so omit them entirely
+        const params = Object.fromEntries(
+          Object.entries(rawParams).filter(([, v]) => v !== "")
+        );
         const { items, pagination: p } = await fetchDrawingsPage(
           Number(id),
           page,
           pageSize,
           search || undefined,
+          params,
         );
-        if (cancelled) return;
         setLocations((prev) => (page === 1 ? items : [...prev, ...items]));
         setPagination(p);
       } catch (e) {
-        if (cancelled) return;
         console.error(e);
         setLoadError(
           typeof e === "object" && e && "message" in e
@@ -532,18 +889,23 @@ const ProjectPinsListTab = ({
         );
         if (page === 1) setLocations([]);
       } finally {
-        if (!cancelled) {
+        if (!silent) {
           setLoading(false);
           setLoadingMore(false);
         }
       }
-    }
+    },
+    [id, page, pageSize, search, selectedJobStatus, selectedQuoteStatus],
+  );
 
-    loadLocationsPage();
+  useEffect(() => {
+    let cancelled = false;
+    loadLocationsPage().catch(() => { });
     return () => {
       cancelled = true;
     };
-  }, [id, page, pageSize, search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, page, pageSize, search, selectedJobStatus, selectedQuoteStatus]);
 
   useEffect(() => {
     if (!id || !/^\d+$/.test(id)) {
@@ -566,6 +928,34 @@ const ProjectPinsListTab = ({
       cancelled = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    setLoadingForms(true);
+    fetchProjectFormsPage(Number(id), 1, 500)
+      .then((res) => {
+        if (!cancelled) {
+          setProjectForms(res.items);
+          setFormOptions(
+            res.items.map((form) => ({
+              value: String(form.id),
+              label: form.name,
+            })),
+          );
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch project forms:", err);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingForms(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
   const fetchCheckListData = useCallback(
     async (searchTerm?: string): Promise<void> => {
       if (!projectTypeId) {
@@ -745,7 +1135,7 @@ const ProjectPinsListTab = ({
   const selectablePinIds = useMemo(() => {
     return filteredLocations.flatMap((level) =>
       level.plots.flatMap((plot) =>
-        plot.pins.filter((pin) => !pin.is_converted_job).map((pin) => pin.id),
+        plot.pins.map((pin) => pin.id),
       ),
     );
   }, [filteredLocations]);
@@ -758,25 +1148,83 @@ const ProjectPinsListTab = ({
     return next;
   }, [selectedIds, selectablePinIds]);
 
+
+  // Pins among the selection that are already converted to jobs
+  const alreadyJobPins = useMemo(() => {
+    const result: DrawingPin[] = [];
+    for (const level of filteredLocations) {
+      for (const plot of level.plots) {
+        for (const pin of plot.pins) {
+          if (effectiveSelectedIds.has(pin.id) && pin.is_converted_job) {
+            result.push(pin);
+          }
+        }
+      }
+    }
+    return result;
+  }, [filteredLocations, effectiveSelectedIds]);
+
+  // Pin IDs safe to use for Create Job (exclude already-converted ones)
+  const jobEligiblePinIds = useMemo(
+    () =>
+      Array.from(effectiveSelectedIds).filter((pinId) =>
+        !alreadyJobPins.some((p) => p.id === pinId),
+      ),
+    [effectiveSelectedIds, alreadyJobPins],
+  );
+
+  const formNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const form of projectForms) {
+      map.set(form.id, form.name);
+    }
+    return map;
+  }, [projectForms]);
+
+  const resolveFormName = useCallback(
+    (pin: DrawingPin) => {
+      if (!pin) return "—";
+      const pf = pin.project_form;
+      if (pf && typeof pf === "object") {
+        if (pf.name) return pf.name;
+        const mappedName = formNameById.get(pf.id);
+        if (mappedName) return mappedName;
+      } else if (typeof pf === "number") {
+        const mappedName = formNameById.get(pf);
+        if (mappedName) return mappedName;
+      }
+      const fId = pin.formId;
+      if (typeof fId === "number") {
+        const mappedName = formNameById.get(fId);
+        if (mappedName) return mappedName;
+      }
+      return "—";
+    },
+    [formNameById],
+  );
+
   const allSelected =
     selectablePinIds.length > 0 &&
     selectablePinIds.every((pinId) => effectiveSelectedIds.has(pinId));
 
-  const handleSelectAllToggle = useCallback(() => {
-    if (allSelected) {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        for (const pinId of selectablePinIds) next.delete(pinId);
-        return next;
-      });
-    } else {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        for (const pinId of selectablePinIds) next.add(pinId);
-        return next;
-      });
-    }
-  }, [selectablePinIds, allSelected]);
+  const handleSelectAllToggle = useCallback(
+    (_ids: number[]) => {
+      if (allSelected) {
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          for (const pinId of selectablePinIds) next.delete(pinId);
+          return next;
+        });
+      } else {
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          for (const pinId of selectablePinIds) next.add(pinId);
+          return next;
+        });
+      }
+    },
+    [selectablePinIds, allSelected],
+  );
 
   const handleToggleGroup = useCallback((ids: number[]) => {
     setSelectedIds((prev) => toggleSelection(ids, prev));
@@ -818,7 +1266,7 @@ const ProjectPinsListTab = ({
     try {
       const res = await createJobFromLocation({
         project: Number(id),
-        pin_ids: Array.from(effectiveSelectedIds),
+        pin_ids: jobEligiblePinIds,
         site: formData.site ? Number(formData.site) : undefined,
         start_date: formData.start_date,
         assigned_worker: formData.assigned_worker
@@ -843,6 +1291,74 @@ const ProjectPinsListTab = ({
     }
   };
 
+  const handleApplyMassUpdate = async () => {
+    if (!selectedActionField || selectedIds.size === 0 || !id) return;
+
+    setIsSubmitting(true);
+    try {
+      const pinIds = Array.from(selectedIds);
+      const payload: import("@/features/projects/api/project.api").ProjectMassUpdatePayload = {
+        pin_ids: pinIds,
+      };
+
+      if (selectedActionField === "update_form") {
+        payload.form_id = selectedFormId ? Number(selectedFormId) : null;
+      } else if (selectedActionField === "update_variation") {
+        payload.variation = selectedVariation === "true";
+      } else if (selectedActionField === "update_quantity") {
+        payload.quantity = selectedQuantity ? Number(selectedQuantity) : 1;
+      }
+
+      await massUpdatePins(Number(id), payload);
+
+      // Refresh data from server
+      await loadLocationsPage(true);
+      setSelectedIds(new Set());
+      setSelectedAction("");
+      setSelectedActionField("");
+      setSelectedFormId("");
+      setSelectedVariation("");
+      setSelectedQuantity("");
+      toastSuccess("Pins updated successfully");
+    } catch (err) {
+      console.error("Failed to mass update pins:", err);
+      toastError("Failed to update pins");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const QuoteFilerOptions = [
+    { value: "", label: "All Quotes" },
+    { value: "draft", label: "Draft" },
+    { value: "approved", label: "Quote Approved" },
+    // { value: "rejected", label: "Rejected" },
+  ];
+  const jobStatus = [
+    { value: "", label: "All Jobs Pins" },
+    { value: "true", label: "Is a job" },
+    { value: "false", label: "Not a job" },
+  ];
+  const massActionOptions = [
+    {
+      value: "update",
+      label: t("massUpdate"),
+    },
+  ];
+  const actionFields = [
+    {
+      value: "update_form",
+      label: t("actionFieldForm"),
+    },
+    {
+      value: "update_variation",
+      label: t("actionFieldVariation"),
+    },
+    {
+      value: "update_quantity",
+      label: t("actionFieldQuantity"),
+    },
+  ];
   return (
     <div className="min-w-0 divide-y divide-slate-100 dark:divide-slate-800">
       {dialogVisible && (
@@ -855,12 +1371,13 @@ const ProjectPinsListTab = ({
 
             <div className="mt-2">
               <label className="text-md font-semibold text-slate-800 dark:text-slate-200">
-                {t("Start")} <span className="text-red-500">*</span>
+                {t("Start")}
+                {/* <span className="text-red-500">*</span> */}
               </label>
               <input
                 type="date"
                 {...register("start_date", {
-                  required: t("requiredJob"),
+                  // required: t("requiredJob"),
                 })}
                 placeholder={t("createJobPlaceHolder")}
                 className={cn(
@@ -1056,6 +1573,91 @@ const ProjectPinsListTab = ({
         </div>
       )}
 
+      {/* Already-a-job conflict warning modal */}
+      {jobConflictWarning && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-700/80 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-start gap-3 px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+                <svg className="h-5 w-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">
+                  These pins are already assigned a job
+                </h3>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  {alreadyJobPins.length} of {effectiveSelectedIds.size} selected{" "}
+                  {effectiveSelectedIds.size === 1 ? "pin" : "pins"}{" "}
+                  {alreadyJobPins.length === 1 ? "is" : "are"} assigned to a job and will not be included in the new job
+                </p>
+              </div>
+            </div>
+
+            {/* Table of conflicting pins */}
+            <div className="px-6 py-4 max-h-60 overflow-y-auto">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700/80 overflow-hidden">
+                <div className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,2fr)_minmax(0,1.5fr)] bg-slate-50 dark:bg-slate-800/50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                  <span>Pin#</span>
+                  <span>Product</span>
+                  <span>Form</span>
+                </div>
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {alreadyJobPins.map((pin) => (
+                    <div
+                      key={pin.id}
+                      className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,2fr)_minmax(0,1.5fr)] px-4 py-2.5 text-sm"
+                    >
+                      <span className="font-semibold text-slate-500">#{pin.id}</span>
+                      <span className="text-slate-700 dark:text-slate-300 truncate">
+                        {pin.item_detail?.name || pin.group_detail?.name || "—"}
+                      </span>
+                      <span className="text-slate-500 dark:text-slate-400 truncate">
+                        {resolveFormName ? resolveFormName(pin) : "—"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer note */}
+            {jobEligiblePinIds.length > 0 && (
+              <div className="px-6 pb-2">
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Only the remaining {jobEligiblePinIds.length}{" "}
+                  {jobEligiblePinIds.length === 1 ? "pin" : "pins"} will be included in the new job.
+                </p>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 px-6 py-4">
+              <AppButton
+                variant="secondary"
+                size="sm"
+                onClick={() => setJobConflictWarning(false)}
+              >
+                Cancel
+              </AppButton>
+              <AppButton
+                variant="primary"
+                size="sm"
+                disabled={jobEligiblePinIds.length === 0}
+                onClick={() => {
+                  setJobConflictWarning(false);
+                  setDialogVisible(true);
+                }}
+              >
+                Continue
+              </AppButton>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="px-4 py-4 sm:px-6">
         <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">
           {t("title")}
@@ -1073,7 +1675,30 @@ const ProjectPinsListTab = ({
           ariaLabel={t("searchAria")}
           className="sm:max-w-sm"
         />
-
+        <CheckmarkSelect
+          listLabel={t("quoteStatus")}
+          buttonAriaLabel={t("quoteStatus")}
+          options={QuoteFilerOptions}
+          value={selectedQuoteStatus}
+          emptyLabel={t("quoteStatus")}
+          className="w-full min-w-0 sm:w-44"
+          onChange={(o) => {
+            setSelectedQuoteStatus(o);
+          }}
+          clearable
+        />
+        <CheckmarkSelect
+          options={jobStatus}
+          listLabel={t("pinsStatus")}
+          buttonAriaLabel={t("pinsStatus")}
+          emptyLabel={t("pinsStatus")}
+          clearable
+          className="w-full min-w-0 sm:w-44"
+          value={selectedJobStatus}
+          onChange={(e) => {
+            setSelectedJobStatus(e);
+          }}
+        />
         <CheckmarkSelect
           listLabel={t("filterLevel")}
           buttonAriaLabel={t("filterLevel")}
@@ -1105,42 +1730,143 @@ const ProjectPinsListTab = ({
             setPlotFilter(v ? Number.parseInt(v, 10) : undefined)
           }
         />
-
-        {effectiveSelectedIds.size > 0 && (
-          <AppButton
-            variant="primary"
-            size="lg"
-            onClick={() => setDialogVisible(true)}
-          >
-            Create Job
-          </AppButton>
-        )}
-
-        {selectablePinIds.length > 0 && (
-          <AppButton
-            variant="primary"
-            size="lg"
-            onClick={handleSelectAllToggle}
-          >
-            <span>{allSelected ? "Deselect All" : "Select All"}</span>
-          </AppButton>
-        )}
       </div>
+      {selectedIds.size > 0 && <div className="p-4 sm:p-6">
+        <div className="bg-white drak:bg-slate-900/20 p-2 sm:px-4 sm:py-2  border dark:border-slate-700/80  rounded-lg border-slate-200/90 flex items-center justify-between gap-3 overflow-hidden">
+          <div className="flex items-center  gap-4">
+            <span className="shrink-0 whitespace-nowrap rounded-md bg-[color:var(--dash-accent,#111)]/10 px-2 py-1 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-100">
+              {selectedIds.size} {selectedIds.size === 1 ? "pin" : "pins"}{" "}
+              selected
+            </span>
+            <div className="bg-slate-200  h-4"></div>
+            <CheckmarkSelect
+              listLabel={t("massAction")}
+              buttonAriaLabel={t("massAction")}
+              options={massActionOptions}
+              emptyLabel={t("selectAction")}
+              className="w-42"
+              value={selectedAction}
+              clearable
+              size="sm"
+              portaled
+              onChange={(e) => {
+                setSelectedAction(e);
+              }}
+            />
+            {selectedAction && (
+              <div className="flex items-center gap-3">
+                <CheckmarkSelect
+                  listLabel={t("actionField")}
+                  buttonAriaLabel={t("actionField")}
+                  options={actionFields}
+                  emptyLabel={t("selectField")}
+                  value={selectedActionField}
+                  clearable
+                  size="sm"
+                  portaled
+                  className="w-40"
+                  onChange={(e) => {
+                    setSelectedActionField(e);
+                    setSelectedFormId("");
+                    setSelectedVariation("");
+                    setSelectedQuantity("");
+                  }}
+                />
+
+                {selectedActionField === "update_form" && (
+                  <CheckmarkSelect
+                    listLabel="Form"
+                    buttonAriaLabel="Form"
+                    options={formOptions}
+                    emptyLabel={loadingForms ? "Loading..." : "Select Form"}
+                    value={selectedFormId}
+                    clearable
+                    size="sm"
+                    portaled
+                    className="w-44"
+                    disabled={loadingForms}
+                    onChange={(e) => setSelectedFormId(e)}
+                  />
+                )}
+
+                {selectedActionField === "update_variation" && (
+                  <CheckmarkSelect
+                    listLabel="Variation"
+                    buttonAriaLabel="Variation"
+                    options={[
+                      { value: "true", label: "Yes" },
+                      { value: "false", label: "No" },
+                    ]}
+                    emptyLabel="Select Variation"
+                    value={selectedVariation}
+                    clearable
+                    size="sm"
+                    portaled
+                    className="w-40"
+                    onChange={(e) => setSelectedVariation(e)}
+                  />
+                )}
+
+                {selectedActionField === "update_quantity" && (
+                  <input
+                    type="number"
+                    min="1"
+                    value={selectedQuantity}
+                    onChange={(e) => setSelectedQuantity(e.target.value)}
+                    className={cn(
+                      surfaceInputClassName,
+                      "w-24 px-3 py-1 text-sm rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100",
+                    )}
+                    placeholder="Qty"
+                  />
+                )}
+
+                <AppButton
+                  variant="primary"
+                  size="sm"
+                  onClick={handleApplyMassUpdate}
+                  loading={isSubmitting}
+                  disabled={
+                    isSubmitting ||
+                    !selectedActionField ||
+                    (selectedActionField === "update_form" && !selectedFormId) ||
+                    (selectedActionField === "update_variation" && !selectedVariation) ||
+                    (selectedActionField === "update_quantity" && !selectedQuantity)
+                  }
+                >
+                  Apply
+                </AppButton>
+
+              </div>
+            )}
+          </div>
+
+
+          {effectiveSelectedIds.size > 0 && (
+            <AppButton
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                if (alreadyJobPins.length > 0) {
+                  setJobConflictWarning(true);
+                } else {
+                  setDialogVisible(true);
+                }
+              }}
+            >
+              Create Job
+            </AppButton>
+          )}
+        </div>
+      </div>}
 
       <div>
         {loadError && locations.length === 0 ? (
           <p className="px-4 py-10 text-center text-sm text-red-600 dark:text-red-400 sm:px-6">
             {loadError}
           </p>
-        ) : loading && locations.length === 0 ? (
-          <div className="space-y-4 p-4 sm:p-6">
-            {Array.from({ length: 3 }, (_, i) => (
-              <div key={i} className="space-y-2">
-                <div className="h-6 w-40 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-                <div className="h-24 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-              </div>
-            ))}
-          </div>
+        ) : loading ? (
+          <ProjectPinsListLoadingSkeleton />
         ) : emptyStateKind !== "none" ? (
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
@@ -1154,87 +1880,119 @@ const ProjectPinsListTab = ({
             onClearFilters={clearFilters}
           />
         ) : (
-          <div className="space-y-8 px-4 py-4 sm:px-6 sm:py-6">
-            {loadError && locations.length > 0 && (
-              <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
-                {loadError}
-              </p>
-            )}
+          <>
+            <label className="inline-flex shrink-0 items-center gap-2 cursor-pointer px-6">
+              <GroupCheckbox
+                ids={selectablePinIds}
+                selectedIds={effectiveSelectedIds}
+                onToggle={handleSelectAllToggle}
+              />
+              <span className="whitespace-nowrap text-sm text-slate-700 dark:text-slate-200">
+                {allSelected ? "Deselect All" : "Select All"}
+              </span>
+            </label>
+            <div className="space-y-8 px-4 py-4 sm:px-6 sm:py-6">
+              {loadError && locations.length > 0 && (
+                <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+                  {loadError}
+                </p>
+              )}
 
-            {filteredLocations.map((level) => {
-              const levelPinIds = level.plots.flatMap((p) =>
-                p.pins.map((pin) => pin.id),
-              );
+              {filteredLocations.map((level) => {
+                const levelPinIds = level.plots.flatMap((p) =>
+                  p.pins.map((pin) => pin.id),
+                );
 
-              return (
-                <section key={level.id} className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <GroupCheckbox
-                      ids={levelPinIds.filter((id) => {
-                        const plot = level.plots
-                          .flatMap((p) => p.pins)
-                          .find((pin) => pin.id === id);
-                        return plot ? !plot.is_converted_job : true;
-                      })}
-                      selectedIds={selectedIds}
-                      onToggle={handleToggleGroup}
-                    />
-                    <span
-                      className="h-4 w-1 rounded-full bg-(--dash-accent,#f97316)"
-                      aria-hidden
-                    />
-                    <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200">
-                      {level.name}
-                    </h3>
-                  </div>
-
-                  <div className="space-y-4">
-                    {level.plots.length === 0 ? (
-                      <p className="text-sm text-slate-500 dark:text-slate-400 pl-9">
-                        No plots in this level.
-                      </p>
-                    ) : (
-                      level.plots.map((plot) => (
-                        <PlotPinsBlock
-                          key={`${level.id}-${plot.id}`}
-                          plot={plot}
-                          plotName={plot.name}
-                          pins={plot.pins}
-                          selectedIds={selectedIds}
-                          drawingFile={level.drawing_file}
-                          drawingFileType={level.drawing_file_type} // ← add
-                          snapshotState={levelSnapshots.get(level.id)}
-                          drawingName={level.name}
-                          onTogglePlot={handleToggleGroup}
-                          onTogglePin={handleTogglePin}
-                          onPreviewPin={(pin) => {
-                            setPreviewPinData({
-                              pin,
-                              plots: [plot],
-                              drawingFile: level.drawing_file,
-                              drawingName: level.name,
-                            });
-                          }}
+                return (
+                  <section
+                    key={level.id}
+                    className="space-y-4 p-4 bg-white dark:border-slate-700/80 border border-slate-200/90 dark:bg-slate-900/50 rounded-lg"
+                  >
+                    <div className="flex items-center gap-2">
+                      <GroupCheckbox
+                        ids={levelPinIds.filter((id) => {
+                          const plot = level.plots
+                            .flatMap((p) => p.pins)
+                            .find((pin) => pin.id === id);
+                          return plot ? !plot.is_converted_job : true;
+                        })}
+                        selectedIds={selectedIds}
+                        onToggle={handleToggleGroup}
+                      />
+                      <span
+                        className="h-4 w-1 rounded-full bg-(--dash-accent,#f97316)"
+                        aria-hidden
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleLevelExpanded(level.id)}
+                        className="flex flex-1 cursor-pointer items-center gap-2 rounded-md py-1 text-left"
+                      >
+                        <ChevronRight
+                          className={cn(
+                            "h-3 w-3 transition-transform duration-200",
+                            isLevelExpanded(level.id) && "rotate-90",
+                          )}
                         />
-                      ))
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200">
+                          {level.name}
+                        </h3>
+                      </button>
+                    </div>
+
+                    {isLevelExpanded(level.id) && (
+                      <div className="space-y-4">
+                        {level.plots.length === 0 ? (
+                          <p className="text-sm text-slate-500 dark:text-slate-400 pl-9">
+                            No plots in this level.
+                          </p>
+                        ) : (
+                          level.plots.map((plot) => (
+                            <PlotPinsBlock
+                              key={`${level.id}-${plot.id}`}
+                              plot={plot}
+                              plotName={plot.name}
+                              pins={plot.pins}
+                              selectedIds={selectedIds}
+                              drawingFile={level.drawing_file}
+                              drawingFileType={level.drawing_file_type}
+                              snapshotState={levelSnapshots.get(level.id)}
+                              drawingName={level.name}
+                              onTogglePlot={handleToggleGroup}
+                              onToggleCategory={handleToggleGroup}
+                              onTogglePin={handleTogglePin}
+                              resolveFormName={resolveFormName}
+                              onPreviewPin={(pin) => {
+                                setPreviewPinData({
+                                  pin,
+                                  plots: level.plots,
+                                  drawingFile: level.drawing_file,
+                                  drawingName: level.name,
+                                  drawingId: level.id,
+                                });
+                              }}
+                            />
+                          ))
+                        )}
+                      </div>
                     )}
-                  </div>
-                </section>
-              );
-            })}
+                  </section>
+                );
+              })}
 
-            {loadingMore && (
-              <div className="flex items-center justify-center py-4">
-                <span className="text-sm text-slate-500 animate-pulse">
-                  Loading more locations…
-                </span>
-              </div>
-            )}
+              {loadingMore && (
+                <div className="flex items-center justify-center py-4">
+                  <span className="text-sm text-slate-500 animate-pulse">
+                    Loading more locations…
+                  </span>
+                </div>
+              )}
 
-            {hasMorePages && (
-              <div ref={sentinelRef} className="h-6" aria-hidden="true" />
-            )}
-          </div>
+              {hasMorePages && (
+                <div ref={sentinelRef} className="h-6" aria-hidden="true" />
+              )}
+            </div>
+          </>
         )}
       </div>
 
@@ -1246,6 +2004,24 @@ const ProjectPinsListTab = ({
           plots={previewPinData.plots}
           drawingFile={previewPinData.drawingFile}
           drawingName={previewPinData.drawingName}
+          projectId={Number(id)}
+          drawingId={previewPinData.drawingId}
+          editUrl={previewPinData.drawingId ? `/projects/${id}/drawings/${previewPinData.drawingId}` : undefined}
+          onSaveSuccess={(updatedPin) => {
+            setPreviewPinData(prev => prev ? { ...prev, pin: updatedPin } : null);
+            setLocations(prevLocations =>
+              prevLocations.map(drawing => {
+                if (drawing.id !== previewPinData.drawingId) return drawing;
+                return {
+                  ...drawing,
+                  plots: (drawing.plots ?? []).map(plot => ({
+                    ...plot,
+                    pins: (plot.pins ?? []).map(p => p.id === updatedPin.id ? updatedPin : p)
+                  }))
+                };
+              })
+            );
+          }}
         />
       )}
     </div>

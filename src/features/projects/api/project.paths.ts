@@ -6,7 +6,7 @@ export const PROJECT_PATHS = {
   /** GET /{projectId}/project-forms/ */
   projectFormsList: (projectId: number | string) => `project-forms/?project_id=${projectId}`,
   /** GET /project-forms/{id}/ */
-  projectForms: (id: number | string) => `project-forms/${id}/metadata/`,
+  projectForms: (id: number | string) => `forms/${id}/metadata/`,
   /** GET /project-forms/{id}/metadata/ */
   projectFormMetadata: (id: number | string) => `project-forms/${id}/metadata/`,
   /** PUT /project-forms/{id}/update/ */
@@ -17,4 +17,5 @@ export const PROJECT_PATHS = {
   projectFormRules: (id: number | string) => `project-forms/${id}/rules/`,
   projectLocation: (id: number | string) => `project/${id}/level/`,
   createJobFromLocation: "jobs/",
+  massUpdate: (projectId: number | string) => `project/${projectId}/level/operation/mass_update/`,
 } as const;

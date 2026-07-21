@@ -61,6 +61,8 @@ export { FormFieldRow, FormFieldSpanFull } from "./form-field-grid";
 export { SurfacePhoneField } from "./surface-phone-field";
 export type { SurfacePhoneFieldProps } from "./surface-phone-field";
 export { SurfaceShell } from "./surface-shell";
+export { InputWithEndSelect } from "./input-with-end-select";
+export type { InputWithEndSelectOption } from "./input-with-end-select";
 export { CheckmarkSelect } from "./checkmark-select";
 export type { CheckmarkSelectOption } from "./checkmark-select";
 export { MultiCheckSelect } from "./multi-check-select";

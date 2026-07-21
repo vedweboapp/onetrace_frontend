@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
+import { resolveBackendOrigin } from "@/core/config/api-url.util";
 import { MATERIAL_STATUS_USE_MOCK } from "./material-status.mock.config";
-
-function backendOrigin(): string {
-  return process.env.BACKEND_API_ORIGIN?.replace(/\/$/, "") ?? "http://110.225.254.51:5050";
-}
 
 export function materialStatusMockRoutesEnabled(): boolean {
   return MATERIAL_STATUS_USE_MOCK;
@@ -22,7 +19,7 @@ export async function proxyMaterialStatusToBackend(
   relativePath: string,
 ): Promise<NextResponse> {
   const incoming = new URL(request.url);
-  const target = new URL(`${backendOrigin()}/api/v1/${relativePath}`);
+  const target = new URL(`${resolveBackendOrigin()}/api/v1/${relativePath}`);
   target.search = incoming.search;
   const headers = new Headers(request.headers);
   headers.delete("host");

@@ -1,5 +1,6 @@
 import type { QuotationCreatePayload, QuotationDetail } from "@/features/quotations/types/quotation.types";
 import type { QuotationFormValues } from "@/features/quotations/schemas/quotation-form-schema";
+import { QUOTE_CATEGORY, type QuoteCategoryApi } from "@/features/quotations/constants/quotation-category";
 import {
   getQuotationAdditionalContactIds,
   getQuotationContactId,
@@ -55,13 +56,19 @@ export function quotationAdditionalContactIdsForApi(
   return parseAdditionalContactIds(rows);
 }
 
-export function mapQuotationFormToPayload(values: QuotationFormValues): QuotationCreatePayload {
+export function mapQuotationFormToPayload(
+  values: QuotationFormValues,
+  options?: { quote_category?: QuoteCategoryApi },
+): QuotationCreatePayload {
   const due = values.due_date.trim();
   const orderNum = values.order_number.trim();
   const desc = values.description.trim();
   const sites = (values.sites ?? [])
     .map((raw) => Number.parseInt(raw, 10))
     .filter((id) => Number.isFinite(id) && id > 0);
+  const projectId = parseOptionalId(values.project);
+  const quote_category =
+    options?.quote_category ?? (projectId != null ? QUOTE_CATEGORY.project : QUOTE_CATEGORY.service);
 
   return {
     customer: Number.parseInt(values.customer, 10),
@@ -76,7 +83,8 @@ export function mapQuotationFormToPayload(values: QuotationFormValues): Quotatio
     project_manager: parseOptionalId(values.project_manager),
     technicians: values.technician_ids,
     description: desc || null,
-    project: Number.parseInt(values.project, 10),
+    project: quote_category === QUOTE_CATEGORY.service ? null : projectId,
+    quote_category,
     levels: values.select_all_levels ? [] : values.level_ids,
     select_all_levels: values.select_all_levels,
   };

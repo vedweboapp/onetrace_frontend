@@ -17,6 +17,11 @@ import {
 } from "@/features/quotations/api/quotation.api";
 import { QuotationAdditionalContactsFields } from "@/features/quotations/components/quotation-additional-contacts-fields";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
+import {
+  isProjectQuoteCategory,
+  isServiceQuoteCategory,
+  QUOTE_CATEGORY,
+} from "@/features/quotations/constants/quotation-category";
 import { useQuotationDraftState } from "@/features/quotations/hooks/use-quotation-draft-state";
 import type { ProjectLevelForQuotation, QuotationDetail } from "@/features/quotations/types/quotation.types";
 import type { QuotationDraft } from "@/features/quotations/types/quotation-draft.types";
@@ -135,6 +140,17 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
 
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [existingDetail, setExistingDetail] = React.useState<QuotationDetail | null>(null);
+
+  /** Manual Add quotation = servicequote (no project). `?project=` or edit with project/quote_category = projectquote. */
+  const isServiceQuotation = React.useMemo(() => {
+    if (!isEdit) return createFromProjectId == null;
+    if (!existingDetail) return false;
+    const cat = existingDetail.quote_category ?? existingDetail.category;
+    if (isServiceQuoteCategory(cat)) return true;
+    if (isProjectQuoteCategory(cat)) return false;
+    return getQuotationProjectId(existingDetail.project) == null;
+  }, [isEdit, createFromProjectId, existingDetail]);
+
   const [saving, setSaving] = React.useState(false);
   const [clientOptions, setClientOptions] = React.useState<Option[]>([]);
   const [siteRows, setSiteRows] = React.useState<Site[]>([]);
@@ -167,12 +183,16 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
 
   const schema = React.useMemo(
     () =>
-      createQuotationFormSchema({
-        quoteName: t("validation.quoteName"),
-        customer: t("validation.customer"),
-        sites: t("validation.sites"),
-        project: t("validation.project"),
-      }),
+      createQuotationFormSchema(
+        {
+          quoteName: t("validation.quoteName"),
+          customer: t("validation.customer"),
+          sites: t("validation.sites"),
+          project: t("validation.project"),
+        },
+        // Project required only for project quotations; validated in onSubmit so edit load can flip category.
+        { requireProject: false },
+      ),
     [t],
   );
 
@@ -181,6 +201,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     register,
     reset,
     setValue,
+    setError,
     getValues,
     handleSubmit,
     formState: { errors },
@@ -417,22 +438,37 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
 
   React.useEffect(() => {
     let cancelled = false;
-    if (!projectId || projectId <= 0) {
-      setSiteRows([]);
-      return;
-    }
-    (async () => {
-      try {
-        const { items } = await fetchSitesPage(1, 500, { project: projectId, is_active: true });
-        if (!cancelled) setSiteRows(items);
-      } catch {
-        if (!cancelled) setSiteRows([]);
+    if (isServiceQuotation) {
+      if (!customerId || customerId <= 0) {
+        setSiteRows([]);
+        return;
       }
-    })();
+      (async () => {
+        try {
+          const { items } = await fetchSitesPage(1, 500, { client: customerId, is_active: true });
+          if (!cancelled) setSiteRows(items);
+        } catch {
+          if (!cancelled) setSiteRows([]);
+        }
+      })();
+    } else {
+      if (!projectId || projectId <= 0) {
+        setSiteRows([]);
+        return;
+      }
+      (async () => {
+        try {
+          const { items } = await fetchSitesPage(1, 500, { project: projectId, is_active: true });
+          if (!cancelled) setSiteRows(items);
+        } catch {
+          if (!cancelled) setSiteRows([]);
+        }
+      })();
+    }
     return () => {
       cancelled = true;
     };
-  }, [projectId]);
+  }, [isServiceQuotation, customerId, projectId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -560,11 +596,14 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   );
 
   React.useEffect(() => {
-    if (!projectId || projectId <= 0) return;
+    const sitesSourceReady = isServiceQuotation
+      ? customerId != null && customerId > 0
+      : projectId != null && projectId > 0;
+    if (!sitesSourceReady) return;
     if ((sitesStr ?? []).length > 0) return;
     if (siteOptions.length !== 1) return;
     setValue("sites", [siteOptions[0].value], { shouldValidate: true, shouldDirty: true });
-  }, [projectId, sitesStr, siteOptions, setValue]);
+  }, [isServiceQuotation, customerId, projectId, sitesStr, siteOptions, setValue]);
 
   React.useEffect(() => {
     const selectedSites = getValues("sites") ?? [];
@@ -617,7 +656,10 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     projectId,
     sortedLevelRows,
     editDraftSeed,
-    { preventAutoSeedRef: preventQuoteDraftSeedRef },
+    {
+      preventAutoSeedRef: preventQuoteDraftSeedRef,
+      emptyWhenNoProject: isServiceQuotation,
+    },
   );
 
   setQuoteDraftRef.current = setQuoteDraft;
@@ -640,7 +682,10 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         setProjectRows(projects.items);
         setContactOptions(contacts.items.map((c) => ({ value: String(c.id), label: c.name })));
       }
-      if (reloadProjectId) {
+      if (isServiceQuotation && reloadCustomerId) {
+        const { items } = await fetchSitesPage(1, 500, { client: reloadCustomerId, is_active: true });
+        setSiteRows(items);
+      } else if (reloadProjectId) {
         const { items } = await fetchSitesPage(1, 500, { project: reloadProjectId, is_active: true });
         setSiteRows(items);
       }
@@ -685,7 +730,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
 
   const noClients = clientOptions.length === 0;
   const noProjects = !customerId || projectOptions.length === 0;
-  const canShowLevels = !!projectId && projectId > 0;
+  const canShowLevels = isServiceQuotation ? true : !!projectId && projectId > 0;
 
   const dateFmt = React.useMemo(
     () =>
@@ -699,9 +744,16 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const quoteNameRegister = register("quote_name");
 
   async function onSubmit(values: QuotationFormValues) {
+    if (!isServiceQuotation && parseOptionalId(values.project) == null) {
+      setError("project", { type: "manual", message: t("validation.project") });
+      setFormTab("project");
+      return;
+    }
     setSaving(true);
     try {
-      const basePayload = mapQuotationFormToPayload(values);
+      const basePayload = mapQuotationFormToPayload(values, {
+        quote_category: isServiceQuotation ? QUOTE_CATEGORY.service : QUOTE_CATEGORY.project,
+      });
       let merged = quoteDraft ? mergeQuotationDraftIntoPayload(basePayload, quoteDraft) : basePayload;
       if (isEdit && !quoteDraft && existingDetail?.quote_sections && existingDetail.quote_sections.length > 0) {
         const computedGrand =
@@ -748,7 +800,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
             <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.quotations)}>
               {t("modal.cancel")}
             </AppButton>
-            <AppButton type="submit" form="quotation-form-screen" variant="primary" size="sm" loading={saving} disabled={noProjects}>
+            <AppButton type="submit" form="quotation-form-screen" variant="primary" size="sm" loading={saving} disabled={isServiceQuotation ? noClients : noProjects}>
               {isEdit ? t("page.saveEdit") : t("modal.save")}
             </AppButton>
           </div>
@@ -774,7 +826,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
             ) : null} */}
             <AppTabs
               tabs={[
-                { id: "project", label: t("formTabs.project") },
+                { id: "project", label: t(isServiceQuotation ? "formTabs.details" : "formTabs.project") },
                 { id: "pricing", label: t("formTabs.pricing") },
               ]}
               value={formTab}
@@ -849,6 +901,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                 />
                 <FieldErrorText>{errors.customer?.message}</FieldErrorText>
               </FieldGroup>
+              {!isServiceQuotation ? (
               <FieldGroup label={t("fields.project")} htmlFor="quotation-project" required>
                 <Controller
                   control={control}
@@ -878,6 +931,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                 />
                 <FieldErrorText>{errors.project?.message}</FieldErrorText>
               </FieldGroup>
+              ) : null}
               <FieldGroup label={t("fields.sites")} htmlFor="quotation-sites" required>
                 <Controller
                   control={control}
@@ -889,7 +943,11 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       values={field.value ?? []}
                       onChange={field.onChange}
                       onBlur={field.onBlur}
-                      disabled={saving || !projectId || siteOptions.length === 0}
+                      disabled={
+                        saving ||
+                        (isServiceQuotation ? !customerId : !projectId) ||
+                        siteOptions.length === 0
+                      }
                       placeholder={t("placeholders.site")}
                       listLabel={t("fields.sites")}
                       onAdd={siteQuickCreate.onAdd}
@@ -1080,9 +1138,10 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                   onDraftChange={setQuoteDraft}
                   saving={saving}
                   canShow={canShowLevels}
+                  allowManualLines={isServiceQuotation}
                 />
               </div>
-              <DetailTabStepNav onPrev={() => setFormTab("project")} prevLabel={t("formTabs.prevToProject")} />
+              <DetailTabStepNav onPrev={() => setFormTab("project")} prevLabel={t(isServiceQuotation ? "formTabs.prevToDetails" : "formTabs.prevToProject")} />
             </div>
           </form>
         )}

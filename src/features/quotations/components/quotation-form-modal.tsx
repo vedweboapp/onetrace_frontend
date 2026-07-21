@@ -10,6 +10,7 @@ import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { createQuotation, fetchProjectLevelRowsForQuotation, fetchWorkspaceUsers } from "@/features/quotations/api/quotation.api";
 import { QuotationAdditionalContactsFields } from "@/features/quotations/components/quotation-additional-contacts-fields";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
+import { QUOTE_CATEGORY } from "@/features/quotations/constants/quotation-category";
 import { useQuotationDraftState } from "@/features/quotations/hooks/use-quotation-draft-state";
 import type { ProjectLevelForQuotation } from "@/features/quotations/types/quotation.types";
 import { mergeQuotationDraftIntoPayload } from "@/features/quotations/utils/quotation-draft-payload.util";
@@ -292,7 +293,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
   async function submit(values: QuotationFormValues) {
     setSaving(true);
     try {
-      const base = mapQuotationFormToPayload(values);
+      const base = mapQuotationFormToPayload(values, { quote_category: QUOTE_CATEGORY.project });
       const withDraft = quoteDraft ? mergeQuotationDraftIntoPayload(base, quoteDraft) : base;
       const payload = withDraft;
       const saved = await createQuotation(payload);
@@ -648,6 +649,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
               onDraftChange={setQuoteDraft}
               saving={saving}
               canShow={canShowLevels}
+              allowManualLines={false}
             />
           </div>
           <DetailTabStepNav onPrev={() => setFormTab("project")} prevLabel={t("formTabs.prevToProject")} />

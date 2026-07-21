@@ -34,6 +34,7 @@ export const routes = {
     settingsProjectTypes: "/settings/project-type",
     settingsInstallationTypes: "/settings/installation-type",
     settingsVendorTypes: "/settings/vendor-type",
+    settingsUnitTypes: "/settings/unit-type",
     settingsChecklistTypes: "/settings/checklist-type",
     settingsCustomization: "/settings/customization",
     settingsUsers: "/settings/users",

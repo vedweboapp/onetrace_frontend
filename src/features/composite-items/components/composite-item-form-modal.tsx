@@ -441,25 +441,25 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
       }
     >
       <form id="composite-item-form" className="space-y-5" onSubmit={(e) => void submit(e)}>
-        <div>
-          <FieldLabel htmlFor={nameId} required>
-            {t("name")}
-          </FieldLabel>
-          <input
-            id={nameId}
-            type="text"
-            autoComplete="off"
-            value={name}
-            onChange={(e) => setName(capitalizeFirstLetter(e.target.value))}
-            onBlur={() => setNameTouched(true)}
-            disabled={submitting}
-            placeholder={t("namePlaceholder")}
-            className={surfaceInputClassName}
-          />
-          {nameInvalid ? <p className={fieldErrorTextClassName}>{t("nameError")}</p> : null}
-        </div>
-
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <FieldLabel htmlFor={nameId} required>
+              {t("name")}
+            </FieldLabel>
+            <input
+              id={nameId}
+              type="text"
+              autoComplete="off"
+              value={name}
+              onChange={(e) => setName(capitalizeFirstLetter(e.target.value))}
+              onBlur={() => setNameTouched(true)}
+              disabled={submitting}
+              placeholder={t("namePlaceholder")}
+              className={surfaceInputClassName}
+            />
+            {nameInvalid ? <p className={fieldErrorTextClassName}>{t("nameError")}</p> : null}
+          </div>
+
           <div>
             <FieldLabel htmlFor={skuId} required>
               {t("sku")}
@@ -477,21 +477,22 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
             />
             {skuInvalid ? <p className={fieldErrorTextClassName}>{t("skuError")}</p> : null}
           </div>
-          <div>
-            <FieldLabel htmlFor={qtyId} required>
-              {t("quantity")}
-            </FieldLabel>
-            <input
-              id={qtyId}
-              type="number"
-              inputMode="numeric"
-              value={qty}
-              onChange={(e) => setQty(e.target.value)}
-              disabled={submitting}
-              className={surfaceInputClassName}
-              min={0}
-            />
-          </div>
+        </div>
+
+        <div>
+          <FieldLabel htmlFor={qtyId} required>
+            {t("quantity")}
+          </FieldLabel>
+          <input
+            id={qtyId}
+            type="number"
+            inputMode="numeric"
+            value={qty}
+            onChange={(e) => setQty(e.target.value)}
+            disabled={submitting}
+            className={surfaceInputClassName}
+            min={0}
+          />
         </div>
 
         <div>
@@ -632,7 +633,6 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
             ))}
           </div>
           {componentsInvalid ? <p className={fieldErrorTextClassName}>{t("atLeastOneComponentError")}</p> : null}
-          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t("componentsHint")}</p>
         </div>
       </form>
     </AppModal>

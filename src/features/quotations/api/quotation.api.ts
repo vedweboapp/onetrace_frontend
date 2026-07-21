@@ -4,6 +4,7 @@ import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
 import { QUOTATION_PATHS } from "./quotation.paths";
+import { QUOTE_CATEGORY } from "../constants/quotation-category";
 import type {
   ProjectLevelForQuotation,
   QuotationCreatePayload,
@@ -46,6 +47,8 @@ export type QuotationListFilters = {
   site?: number;
   project?: number;
   status?: string;
+  /** `servicequote` | `projectquote` — omit for all categories. */
+  quote_category?: string;
 };
 
 export async function fetchQuotationsPage(
@@ -64,6 +67,7 @@ export async function fetchQuotationsPage(
   if (typeof filters?.site === "number" && filters.site > 0) params.site = filters.site;
   if (typeof filters?.project === "number" && filters.project > 0) params.project = filters.project;
   if (filters?.status?.trim()) params.status = filters.status.trim();
+  if (filters?.quote_category?.trim()) params.quote_category = filters.quote_category.trim();
 
   const { data } = await api.get<QuotationListResponse>(QUOTATION_PATHS.list, { params });
   assertEnvelopeSuccess(data);
@@ -92,6 +96,7 @@ export async function createQuotationFromProject(projectId: number): Promise<Quo
   const { data } = await api.post<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.list, {
     project: projectId,
     select_all_levels: true,
+    quote_category: QUOTE_CATEGORY.project,
   });
   assertApiSuccess(data);
   return data.data;

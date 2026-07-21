@@ -215,7 +215,7 @@ export function ProjectQuotationsTab({ projectId }: Props) {
       const norm = raw.toLowerCase();
       if (norm === "draft") return tQuotations("quoteStatus.draft");
       if (norm === "sent") return tQuotations("quoteStatus.sent");
-      if (norm === "accepted") return tQuotations("quoteStatus.accepted");
+      if (norm === "approved" || norm === "accepted") return tQuotations("quoteStatus.approved");
       if (norm === "rejected") return tQuotations("quoteStatus.rejected");
       return raw;
     },

@@ -51,6 +51,7 @@ export function DetailCollapsibleSection({
         "overflow-hidden rounded-md border border-slate-200/95 bg-white shadow-sm",
         "dark:border-slate-800 dark:bg-slate-900",
         className,
+      
       )}
     >
       <div

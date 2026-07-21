@@ -25,6 +25,9 @@ export type JobListFilters = {
   is_active?: boolean;
   job_status?: number;
   assigned_worker?: number;
+  job_category?: string;
+
+  job_type?: string;
 };
 
 type JobRequestOptions = {
@@ -36,6 +39,7 @@ export async function fetchJobsPage(
   pageSize = 20,
   filters?: JobListFilters,
   options?: JobRequestOptions,
+  
 ): Promise<{ items: Job[]; pagination: JobListResponse["pagination"] }> {
   const params: Record<string, string | number> = { page, page_size: pageSize };
   const q = filters?.search?.trim();
@@ -46,6 +50,13 @@ export async function fetchJobsPage(
   }
   if (typeof filters?.assigned_worker === "number" && Number.isFinite(filters.assigned_worker)) {
     params.assigned_worker = filters.assigned_worker;
+  }
+  if (filters?.job_category) {
+    params.job_category = filters.job_category;
+  }
+
+  if (filters?.job_type) {
+    params.job_type = filters.job_type;
   }
 
   const { data } = await api.get<JobListResponse>(JOB_PATHS.list, {

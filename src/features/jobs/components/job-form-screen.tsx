@@ -8,7 +8,7 @@ import { useSearchParams } from "next/navigation";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { fetchProjectFormsByProject } from "@/features/forms/api/forms.api";
+import { fetchFormsPage } from "@/features/forms/api/forms.api";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
 import { createJob, fetchJob, updateJob } from "@/features/jobs/api/job.api";
 import { JobFormLevelsSection } from "@/features/jobs/components/job-form-levels-section";
@@ -105,6 +105,8 @@ export function JobFormScreen({ mode, jobId }: Props) {
   const [checklistOptions, setChecklistOptions] = React.useState<Option[]>([]);
   const [checklistLoading, setChecklistLoading] = React.useState(false);
   const [checklistSearch, setChecklistSearch] = React.useState<string>("");
+  const [formSearch, setFormSearch] = React.useState<string>("");
+  const [formsLoading, setFormsLoading] = React.useState(false);
   const [projectTypeId, setProjectTypeId] = React.useState<number | null>(null);
   const [projectLocations, setProjectLocations] = React.useState<Drawing[]>([]);
 
@@ -232,16 +234,10 @@ export function JobFormScreen({ mode, jobId }: Props) {
 
 
   const fetchChecklistOptions = React.useCallback(async (searchTerm?: string) => {
-    if (!projectTypeId) {
-      setChecklistOptions([]);
-      return;
-    }
-
     try {
       setChecklistLoading(true);
       const response = await fetchChecklistTypesPage(1, 100, {
         is_active: true,
-        project_type: projectTypeId,
         search: searchTerm || undefined,
       });
       setChecklistOptions(
@@ -255,7 +251,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
     } finally {
       setChecklistLoading(false);
     }
-  }, [projectTypeId]);
+  }, []);
 
   React.useEffect(() => {
     const timeout = setTimeout(() => {
@@ -279,17 +275,48 @@ export function JobFormScreen({ mode, jobId }: Props) {
   }, [clientId]);
 
   const reloadSites = React.useCallback(async () => {
-    if (!projectId || projectId <= 0) {
+    if (!clientId || clientId <= 0) {
       setSiteOptions([]);
       return;
     }
     try {
-      const { items } = await fetchSitesPage(1, 500, { project: projectId, is_active: true });
+      const { items } = await fetchSitesPage(1, 500, { client: clientId, is_active: true });
       setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name })));
     } catch {
       setSiteOptions([]);
     }
-  }, [projectId]);
+  }, [clientId]);
+
+  React.useEffect(() => {
+    void reloadSites();
+  }, [clientId])
+
+  const reloadForms = React.useCallback(async (searchTerm?: string) => {
+    try {
+      setFormsLoading(true);
+      const { items } = await fetchFormsPage(1, 10, {
+        search: searchTerm || undefined,
+      });
+      setFormOptions((prev) => {
+        const byValue = new Map(prev.map((opt) => [opt.value, opt]));
+        for (const f of items) {
+          byValue.set(String(f.id), { value: String(f.id), label: f.name });
+        }
+        return Array.from(byValue.values());
+      });
+    } catch {
+      // Keep existing options
+    } finally {
+      setFormsLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const timeout = setTimeout(() => {
+      void reloadForms(formSearch);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [formSearch, reloadForms]);
 
   const reloadGroupsAndItems = React.useCallback(async () => {
     try {
@@ -325,6 +352,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
       await reloadClients();
       await reloadProjects();
       await reloadSites();
+      await reloadForms(formSearch);
       await reloadGroupsAndItems();
     },
     onApplySelect: ({ selectTarget, selectId }) => {
@@ -401,25 +429,9 @@ export function JobFormScreen({ mode, jobId }: Props) {
 
   React.useEffect(() => {
     if (!selectedProject || !/^\d+$/.test(selectedProject)) {
-      setSiteOptions([]);
-      setFormOptions([]);
       setProjectTypeId(null);
       return;
     }
-
-    void reloadSites();
-    (async () => {
-      try {
-        const forms = await fetchProjectFormsByProject(Number.parseInt(selectedProject, 10), { silent: true });
-        setFormOptions((prev) => {
-          const byValue = new Map(prev.map((opt) => [opt.value, opt]));
-          for (const f of forms) byValue.set(String(f.id), { value: String(f.id), label: f.name });
-          return Array.from(byValue.values());
-        });
-      } catch {
-        setFormOptions([]);
-      }
-    })();
 
     let cancelled = false;
     (async () => {
@@ -436,7 +448,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [selectedProject, reloadSites]);
+  }, [selectedProject]);
 
   React.useEffect(() => {
     const groupIds = Array.from(
@@ -650,7 +662,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                     </div>
                   )}
                 />
-                <Controller
+                {/* <Controller
                   control={control}
                   name="project"
                   render={({ field }) => (
@@ -676,10 +688,8 @@ export function JobFormScreen({ mode, jobId }: Props) {
                       <FieldErrorText>{errors.project?.message}</FieldErrorText>
                     </div>
                   )}
-                />
-              </FormFieldRow>
+                /> */}
 
-              <FormFieldRow cols="2">
                 <Controller
                   control={control}
                   name="site"
@@ -692,7 +702,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                         value={field.value}
                         onChange={field.onChange}
                         emptyLabel={t("placeholders.site")}
-                        disabled={saving || !projectId}
+                        disabled={saving || !clientId}
                         invalid={!!errors.site}
                         listLabel={t("fields.site")}
                         portaled
@@ -704,6 +714,10 @@ export function JobFormScreen({ mode, jobId }: Props) {
                     </div>
                   )}
                 />
+              </FormFieldRow>
+
+              <FormFieldRow cols="2">
+
                 <Controller
                   control={control}
                   name="forms"
@@ -716,11 +730,12 @@ export function JobFormScreen({ mode, jobId }: Props) {
                           values={field.value ?? []}
                           onChange={(next) => field.onChange(next)}
                           placeholder={t("fields.forms")}
-                          disabled={saving || formOptions.length === 0}
+                          disabled={saving}
                           invalid={!!errors.forms}
                           listLabel={t("fields.forms")}
                           portaled
                           searchable
+                          onSearchChange={setFormSearch}
                           onAdd={openFormsSettings}
                           addAriaLabel={t("placeholders.addForm")}
                           addLabel={t("placeholders.addForm")}
@@ -729,9 +744,6 @@ export function JobFormScreen({ mode, jobId }: Props) {
                     </div>
                   )}
                 />
-              </FormFieldRow>
-
-              <FormFieldRow cols="2">
                 <Controller
                   control={control}
                   name="job_status"
@@ -757,6 +769,10 @@ export function JobFormScreen({ mode, jobId }: Props) {
                     </div>
                   )}
                 />
+              </FormFieldRow>
+
+              <FormFieldRow cols="2">
+
                 <Controller
                   control={control}
                   name="assigned_worker"
@@ -783,35 +799,36 @@ export function JobFormScreen({ mode, jobId }: Props) {
                     </div>
                   )}
                 />
+                <Controller
+                  control={control}
+                  name="checklists"
+                  render={({ field }) => (
+                    <div>
+                      <FieldGroup required label={t("fields.checklists")} htmlFor="job-checklists">
+                        <MultiCheckSelect
+                          id="job-checklists"
+                          options={checklistOptions}
+                          values={field.value ?? []}
+                          onChange={(next) => field.onChange(next)}
+                          onSearchChange={setChecklistSearch}
+                          placeholder={t("fields.selectCheckList")}
+                          disabled={saving || checklistLoading}
+                          invalid={!!errors.checklists}
+                          listLabel={t("fields.checklists")}
+                          portaled
+                          searchable
+                        />
+                        <FieldErrorText>{errors.checklists?.message}</FieldErrorText>
+                      </FieldGroup>
+                    </div>
+                  )}
+                />
               </FormFieldRow>
-              <FormFieldRow>
+              {/* <FormFieldRow>
                 <FormFieldRow cols="2">
-                  <Controller
-                    control={control}
-                    name="checklists"
-                    render={({ field }) => (
-                      <div>
-                        <FieldGroup required label={t("fields.checklists")} htmlFor="job-checklists">
-                          <MultiCheckSelect
-                            id="job-checklists"
-                            options={checklistOptions}
-                            values={field.value ?? []}
-                            onChange={(next) => field.onChange(next)}
-                            onSearchChange={setChecklistSearch}
-                            placeholder={t("fields.selectCheckList")}
-                            disabled={saving || checklistLoading}
-                            invalid={!!errors.checklists}
-                            listLabel={t("fields.checklists")}
-                            portaled
-                            searchable
-                          />
-                          <FieldErrorText>{errors.checklists?.message}</FieldErrorText>
-                        </FieldGroup>
-                      </div>
-                    )}
-                  />
+                  
                 </FormFieldRow>
-              </FormFieldRow>
+              </FormFieldRow> */}
             </section>
 
 

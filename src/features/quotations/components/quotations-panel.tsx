@@ -10,6 +10,10 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { fetchAllQuotationIds, fetchQuotationsPage } from "@/features/quotations/api/quotation.api";
+import {
+  parseQuoteCategoryParam,
+  QUOTE_CATEGORY,
+} from "@/features/quotations/constants/quotation-category";
 import type { QuotationListItem } from "@/features/quotations/types/quotation.types";
 import {
   getQuotationCustomerId,
@@ -87,6 +91,7 @@ export function QuotationsPanel() {
   const siteParam = searchParams.get("site");
   const projectParam = searchParams.get("project");
   const statusParam = searchParams.get("status");
+  const categoryParam = searchParams.get("quote_category");
 
   const customerFilter =
     customerParam && /^\d+$/.test(customerParam) ? Number.parseInt(customerParam, 10) : undefined;
@@ -94,6 +99,7 @@ export function QuotationsPanel() {
   const projectFilter =
     projectParam && /^\d+$/.test(projectParam) ? Number.parseInt(projectParam, 10) : undefined;
   const statusFilter = statusParam?.trim() || undefined;
+  const categoryFilter = parseQuoteCategoryParam(categoryParam);
 
   const [items, setItems] = React.useState<QuotationListItem[]>([]);
   const [pagination, setPagination] = React.useState({
@@ -143,8 +149,17 @@ export function QuotationsPanel() {
     () => [
       { value: "draft", label: t("quoteStatus.draft") },
       { value: "sent", label: t("quoteStatus.sent") },
-      { value: "accepted", label: t("quoteStatus.accepted") },
+      { value: "approved", label: t("quoteStatus.approved") },
       { value: "rejected", label: t("quoteStatus.rejected") },
+    ],
+    [t],
+  );
+
+  const categoryFilterOptions = React.useMemo(
+    () => [
+      { value: "", label: t("filterAllCategories") },
+      { value: QUOTE_CATEGORY.service, label: t("category.service") },
+      { value: QUOTE_CATEGORY.project, label: t("category.project") },
     ],
     [t],
   );
@@ -260,8 +275,9 @@ export function QuotationsPanel() {
           search: search || undefined,
           customer: customerFilter,
           site: siteFilter,
-          project: projectFilter,
+          project: categoryFilter === QUOTE_CATEGORY.project ? projectFilter : undefined,
           status: statusFilter,
+          quote_category: categoryFilter,
         });
         if (!cancelled) {
           setItems(nextItems);
@@ -287,6 +303,7 @@ export function QuotationsPanel() {
     siteFilter,
     projectFilter,
     statusFilter,
+    categoryFilter,
     refreshNonce,
     t,
   ]);
@@ -340,10 +357,11 @@ export function QuotationsPanel() {
       search: search || undefined,
       customer: customerFilter,
       site: siteFilter,
-      project: projectFilter,
+      project: categoryFilter === QUOTE_CATEGORY.project ? projectFilter : undefined,
       status: statusFilter,
+      quote_category: categoryFilter,
     }),
-    [search, customerFilter, siteFilter, projectFilter, statusFilter],
+    [search, customerFilter, siteFilter, projectFilter, statusFilter, categoryFilter],
   );
 
   const massUpdateFields = React.useMemo(
@@ -398,7 +416,7 @@ export function QuotationsPanel() {
     totalRecords: pagination.total_records,
     pageItems: items,
     fetchAllIds,
-    resetDeps: [pageSize, search, customerFilter, siteFilter, projectFilter, statusFilter],
+    resetDeps: [pageSize, search, customerFilter, siteFilter, projectFilter, statusFilter, categoryFilter],
     updateFields: massUpdateFields,
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
@@ -413,7 +431,9 @@ export function QuotationsPanel() {
     siteParam,
     projectParam,
     statusParam,
+    quoteCategoryParam: categoryParam,
   });
+  const showProjectFilter = categoryFilter === QUOTE_CATEGORY.project;
   const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
     loading,
     loadError,
@@ -428,7 +448,7 @@ export function QuotationsPanel() {
     const norm = raw.toLowerCase();
     if (norm === "draft") return t("quoteStatus.draft");
     if (norm === "sent") return t("quoteStatus.sent");
-    if (norm === "accepted") return t("quoteStatus.accepted");
+    if (norm === "approved" || norm === "accepted") return t("quoteStatus.approved");
     if (norm === "rejected") return t("quoteStatus.rejected");
     return raw;
   }, [t]);
@@ -555,21 +575,45 @@ export function QuotationsPanel() {
                 onChange={(v) => setUrl({ site: v || null, page: null }, { replace: true })}
               />
               <CheckmarkSelect
-                listLabel={t("filterProject")}
-                buttonAriaLabel={t("filterProject")}
-                options={projectOptionsForFilter}
-                value={projectParam ?? ""}
-                emptyLabel={t("filterAllProjects")}
+                listLabel={t("filterCategory")}
+                buttonAriaLabel={t("filterCategory")}
+                options={categoryFilterOptions}
+                value={categoryParam ?? ""}
+                emptyLabel={t("filterAllCategories")}
                 portaled
-                searchable
                 clearable
                 clearAriaLabel={tList("clearFilter")}
-                className="w-full min-w-0 sm:w-56"
-                onOpenChange={(open) => {
-                  if (open) setFetchProjectOptions(true);
-                }}
-                onChange={(v) => setUrl({ project: v || null, page: null }, { replace: true })}
+                className="w-full min-w-0 sm:w-44"
+                onChange={(v) =>
+                  setUrl(
+                    {
+                      quote_category: v || null,
+                      // Project filter only applies to project quotes.
+                      project: v === QUOTE_CATEGORY.project ? projectParam : null,
+                      page: null,
+                    },
+                    { replace: true },
+                  )
+                }
               />
+              {showProjectFilter ? (
+                <CheckmarkSelect
+                  listLabel={t("filterProject")}
+                  buttonAriaLabel={t("filterProject")}
+                  options={projectOptionsForFilter}
+                  value={projectParam ?? ""}
+                  emptyLabel={t("filterAllProjects")}
+                  portaled
+                  searchable
+                  clearable
+                  clearAriaLabel={tList("clearFilter")}
+                  className="w-full min-w-0 sm:w-56"
+                  onOpenChange={(open) => {
+                    if (open) setFetchProjectOptions(true);
+                  }}
+                  onChange={(v) => setUrl({ project: v || null, page: null }, { replace: true })}
+                />
+              ) : null}
               <CheckmarkSelect
                 listLabel={t("filterStatus")}
                 buttonAriaLabel={t("filterStatus")}
@@ -577,6 +621,8 @@ export function QuotationsPanel() {
                 value={statusParam ?? ""}
                 emptyLabel={t("filterAllStatuses")}
                 portaled
+                clearable
+                clearAriaLabel={tList("clearFilter")}
                 className="w-full min-w-0 sm:w-44"
                 onChange={(v) => setUrl({ status: v || null, page: null }, { replace: true })}
               />
@@ -624,7 +670,15 @@ export function QuotationsPanel() {
             }}
             onClearFilters={() =>
               setUrl(
-                { search: null, customer: null, site: null, project: null, status: null, page: null },
+                {
+                  search: null,
+                  customer: null,
+                  site: null,
+                  project: null,
+                  status: null,
+                  quote_category: null,
+                  page: null,
+                },
                 { replace: true },
               )
             }
