@@ -1881,6 +1881,8 @@
       "detailLoadError": "Could not load quotation details. Try again.",
       "createdToast": "Quotation created successfully",
       "updatedToast": "Quotation updated successfully",
+      "statusUpdatedToast": "Quotation status updated",
+      "statusUpdateError": "Could not update quotation status. Try again.",
       "saveError": "Could not save the quotation. Check the fields and try again.",
       "noClientsHint": "Add at least one client before you can create a quotation.",
       "filterState": "Active state",
@@ -1906,6 +1908,13 @@
         "sent": "Sent",
         "approved": "Approved",
         "rejected": "Rejected"
+      },
+      "updateStatus": {
+        "action": "Update status",
+        "title": "Update quotation status",
+        "body": "Choose a new status for “{title}”.",
+        "confirm": "Update status",
+        "placeholder": "Select status"
       },
       "table": {
         "quote": "Quote",

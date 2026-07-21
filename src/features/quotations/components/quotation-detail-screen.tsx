@@ -5,9 +5,10 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { createJobFromQuotation } from "@/features/jobs/api/job.api";
-import { fetchQuotation } from "@/features/quotations/api/quotation.api";
+import { fetchQuotation, updateQuotation } from "@/features/quotations/api/quotation.api";
 import { QuotationDetailBody } from "@/features/quotations/components/quotation-detail-body";
 import { QuotationExportDropdown } from "@/features/quotations/components/quotation-export-dropdown";
+import { QuotationUpdateStatusDialog } from "@/features/quotations/components/quotation-update-status-dialog";
 import type { QuotationDetail } from "@/features/quotations/types/quotation.types";
 import {
   getQuotationCustomerId,
@@ -180,26 +181,16 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),
       }}
-      actions={({ detail, listBack }) => (
-        <div className="flex flex-wrap gap-2">
-          <AppButton
-            type="button"
-            variant="secondary"
-            size="sm"
-            loading={creatingJob}
-            disabled={creatingJob}
-            aria-label={t("detail.createJobAria")}
-            onClick={() => void handleCreateJob()}
-          >
-            {t("detail.createJob")}
-          </AppButton>
-          <QuotationExportDropdown quotationId={quotationId} quoteName={detail.quote_name} />
-          <EntityDetailEditButton
-            label={t("edit")}
-            listBack={listBack}
-            fallbackRoute={routes.dashboard.quotations}
-          />
-        </div>
+      actions={({ detail, listBack, retry }) => (
+        <QuotationDetailActions
+          quotationId={quotationId}
+          detail={detail}
+          listBack={listBack}
+          creatingJob={creatingJob}
+          onCreateJob={() => void handleCreateJob()}
+          onStatusSaved={retry}
+          t={t}
+        />
       )}
     >
       {({ detail, dateFmt }) => {
@@ -220,5 +211,73 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         );
       }}
     </EntityDetailScreen>
+  );
+}
+
+function QuotationDetailActions({
+  quotationId,
+  detail,
+  listBack,
+  creatingJob,
+  onCreateJob,
+  onStatusSaved,
+  t,
+}: {
+  quotationId: number;
+  detail: QuotationDetail;
+  listBack: string;
+  creatingJob: boolean;
+  onCreateJob: () => void;
+  onStatusSaved: () => void;
+  t: ReturnType<typeof useTranslations<"Dashboard.quotations">>;
+}) {
+  const [statusOpen, setStatusOpen] = React.useState(false);
+  const [statusSaving, setStatusSaving] = React.useState(false);
+
+  async function handleStatusUpdate(status: string) {
+    setStatusSaving(true);
+    try {
+      await updateQuotation(detail.id, { status });
+      toastSuccess(t("statusUpdatedToast"));
+      setStatusOpen(false);
+      onStatusSaved();
+    } catch (error) {
+      toastApiError(error, t("statusUpdateError"));
+    } finally {
+      setStatusSaving(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      <AppButton type="button" variant="secondary" size="sm" onClick={() => setStatusOpen(true)}>
+        {t("updateStatus.action")}
+      </AppButton>
+      <AppButton
+        type="button"
+        variant="secondary"
+        size="sm"
+        loading={creatingJob}
+        disabled={creatingJob}
+        aria-label={t("detail.createJobAria")}
+        onClick={onCreateJob}
+      >
+        {t("detail.createJob")}
+      </AppButton>
+      <QuotationExportDropdown quotationId={quotationId} quoteName={detail.quote_name} />
+      <EntityDetailEditButton
+        label={t("edit")}
+        listBack={listBack}
+        fallbackRoute={routes.dashboard.quotations}
+      />
+      <QuotationUpdateStatusDialog
+        open={statusOpen}
+        currentStatus={detail.status}
+        quoteName={detail.quote_name}
+        saving={statusSaving}
+        onClose={() => setStatusOpen(false)}
+        onConfirm={(status) => void handleStatusUpdate(status)}
+      />
+    </div>
   );
 }
