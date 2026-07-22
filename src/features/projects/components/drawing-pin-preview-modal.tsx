@@ -240,6 +240,11 @@ interface DrawingPinPreviewModalProps {
   plots: DrawingPlot[];
   drawingFile: string;
   drawingName: string;
+  formSummary?: {
+    label: string;
+    projectFormId: number;
+    submitted?: boolean;
+  } | null;
   projectId?: number;
   drawingId?: number;
   editUrl?: string;
@@ -253,6 +258,7 @@ export function DrawingPinPreviewModal({
   plots,
   drawingFile,
   drawingName,
+  formSummary,
   projectId,
   drawingId,
   editUrl,
@@ -529,6 +535,15 @@ export function DrawingPinPreviewModal({
         return String(formType) === activeInstallationType;
       })
     : formsList;
+  const selectedProjectFormId =
+    pin.formId ??
+    (typeof pin.project_form === "number" ? pin.project_form : null) ??
+    (pin.project_form && typeof pin.project_form === "object" ? pin.project_form.id : null);
+  const selectedAvailableForm = availableForms.find((f) => f.id === selectedProjectFormId);
+  const readonlyFormLabel =
+    selectedAvailableForm?.name ??
+    formSummary?.label ??
+    (pin.project_form && typeof pin.project_form === "object" ? pin.project_form.name : null);
 
   return (
     <AppModal
@@ -1059,12 +1074,38 @@ export function DrawingPinPreviewModal({
                         ))}
                       </select>
                     ) : (
-                      <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 text-right">
-                        {availableForms.find(f =>
-                          f.id === (pin.formId ?? (typeof pin.project_form === "number" ? pin.project_form : null))
-                        )?.name || "-"}
-                      </span>
+                      <div className="flex max-w-[200px] flex-wrap justify-end gap-1.5 text-right">
+                        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {readonlyFormLabel || "-"}
+                        </span>
+                        {formSummary?.projectFormId ? (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            #{formSummary.projectFormId}
+                          </span>
+                        ) : null}
+                        {formSummary?.submitted ? (
+                          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                            Submitted
+                          </span>
+                        ) : null}
+                      </div>
                     )
+                  ) : readonlyFormLabel ? (
+                    <div className="flex max-w-[200px] flex-wrap justify-end gap-1.5 text-right">
+                      <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        {readonlyFormLabel}
+                      </span>
+                      {formSummary?.projectFormId ? (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          #{formSummary.projectFormId}
+                        </span>
+                      ) : null}
+                      {formSummary?.submitted ? (
+                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                          Submitted
+                        </span>
+                      ) : null}
+                    </div>
                   ) : activeInstallationType ? (
                     <span className="text-xs text-amber-600 dark:text-amber-400 font-medium text-right max-w-[180px]">
                       {t("noFormWithInstallationType")}

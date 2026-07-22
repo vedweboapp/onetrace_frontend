@@ -6,7 +6,7 @@ export const PROJECT_PATHS = {
   /** GET /{projectId}/project-forms/ */
   projectFormsList: (projectId: number | string) => `project-forms/?project_id=${projectId}`,
   /** GET /project-forms/{id}/ */
-  projectForms: (id: number | string) => `forms/${id}/metadata/`,
+  projectForms: (id: number | string) => `project-forms/${id}/`,
   /** GET /project-forms/{id}/metadata/ */
   projectFormMetadata: (id: number | string) => `project-forms/${id}/metadata/`,
   /** PUT /project-forms/{id}/update/ */

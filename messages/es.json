@@ -1917,6 +1917,7 @@
         "project": "Proyecto",
         "technicians": "Técnicos",
         "tags": "Etiquetas",
+        "projectCategory": "Categoría",
         "status": "Estado",
         "due": "Vencimiento",
         "created": "Creado"
@@ -2811,7 +2812,12 @@
       "filterAllStatuses": "Todos los estados",
       "filterAssignedWorker": "Técnico asignado",
       "filterAllWorkers": "Todos los técnicos",
+      "filterJobCategory": "Categoría del trabajo",
       "filterAllCategories": "Todas las categorías",
+      "category": {
+        "service": "Servicio",
+        "project": "Proyecto"
+      },
       "massAssign": {
         "assignTo": "Asignar a",
         "apply": "Aplicar",
@@ -3396,7 +3402,8 @@
         "createdAt": "Creado",
         "updatedAt": "Última actualización",
         "createdBy": "Creado por",
-        "projectStatus": "Estado del proyecto"
+        "projectStatus": "Estado del proyecto",
+        "manager": "Gerentes"
       },
       "hints": {
         "sitesMultiSelect": "Selecciona uno o más sitios para este proyecto."
