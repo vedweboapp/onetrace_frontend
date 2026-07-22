@@ -75,8 +75,8 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
         <div
           onClick={() => !readOnly && setIsOpen(!isOpen)}
           className={`
-            min-h-[42px] w-full rounded-[8px] border px-3 py-1.5 flex flex-wrap gap-2 items-center cursor-pointer transition-all
-            ${readOnly ? "bg-gray-100 cursor-not-allowed border-none" : "bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-700"}
+            min-h-[42px] w-full bg rounded-[8px] border px-3 py-1.5 flex flex-wrap gap-2 items-center cursor-pointer transition-all
+            ${readOnly ? "bg-gray-100 dark:bg-slate-800/50  cursor-not-allowed border-none" : "bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-700"}
             ${errors ? "border-red-500" : "hover:border-gray-400"}
             ${isOpen ? "ring-2 ring-primary border-primary" : ""}
           `}

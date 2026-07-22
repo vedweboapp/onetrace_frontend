@@ -536,6 +536,7 @@ export function JobFormLevelsSection({
           plots={previewPinData.plots}
           drawingFile={previewPinData.drawingFile}
           drawingName={previewPinData.drawingName}
+          projectId={projectId}
         />
       ) : null}
     </div>

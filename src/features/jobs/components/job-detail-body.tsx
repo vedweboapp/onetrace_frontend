@@ -259,7 +259,7 @@ function ProjectPinRow({
             </span>
           </button>
         ) : (
-          <span className="text-xs text-slate-500">—</span>
+          <span className="text-xs text-slate-500">{locale === "es" ? "Agregar formulario" : "Add a form"}</span>
         )}
       </div>
       <div>
@@ -295,6 +295,16 @@ function ProjectPinRow({
                     ? "Las listas de verificación deben estar marcadas antes de actualizar el estado."
                     : "Checklists must be marked complete before changing status."
                 );
+                return;
+              }
+              // If the pin has no form at all, prompt to add one
+              if (!form) {
+                toastError(locale === "es" ? "Agregar un formulario antes de cambiar el estado." : "Add a form before changing status.");
+                return;
+              }
+              // If form exists but isn't submitted, block status changes
+              if (!form.submitted) {
+                toastError(locale === "es" ? "El formulario no está enviado. No se puede cambiar el estado." : "Form not submitted. Submit the form before changing status.");
                 return;
               }
               setIsEditingStatus(true);
@@ -603,6 +613,31 @@ export function JobDetailBody({
           ? "Las listas de verificación deben estar marcadas antes de actualizar el estado."
           : "Checklists must be marked complete before changing status."
       );
+      return;
+    }
+    // Find the pin object so we can inspect its form/submission status
+    let foundPin: DrawingPin | null = null;
+    for (const lvl of levels) {
+      const plots = (lvl.plots ?? []) as JobDrawingPlot[];
+      for (const p of plots) {
+        for (const pin of p.pins ?? []) {
+          if (pin.id === pinId) {
+            foundPin = pin;
+            break;
+          }
+        }
+        if (foundPin) break;
+      }
+      if (foundPin) break;
+    }
+
+    const pinForm = foundPin ? getPinForm(foundPin) : null;
+    if (!pinForm) {
+      toastError(locale === "es" ? "Agregar un formulario antes de cambiar el estado." : "Add a form before changing status.");
+      return;
+    }
+    if (!pinForm.submitted) {
+      toastError(locale === "es" ? "El formulario no está enviado. No se puede cambiar el estado." : "Form not submitted. Submit the form before changing status.");
       return;
     }
     // Send only the changed pin to the API: [{ id, status }]
@@ -1001,6 +1036,7 @@ export function JobDetailBody({
           drawingFile={previewPinData.drawingFile}
           drawingName={previewPinData.drawingName}
           formSummary={previewPinData.form}
+          projectId={typeof detail.project === "number" ? detail.project : detail.project?.id}
         />
       )}
       <JobFormChecklistGateModal

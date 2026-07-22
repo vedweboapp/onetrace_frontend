@@ -2,6 +2,8 @@
 
 import React from "react";
 import { Video, StopCircle, Camera, Trash2, Play, X, FileVideo, SwitchCamera } from "lucide-react";
+import { cn } from "@/core/utils/http.util";
+import { AppButton } from "@/shared/ui";
 
 export interface VideoRecorderProps {
   name?: string;
@@ -190,8 +192,8 @@ const VideoRecorder: React.FC<VideoRecorderProps> = ({
     const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
       ? "video/webm;codecs=vp9"
       : MediaRecorder.isTypeSupported("video/webm")
-      ? "video/webm"
-      : "video/mp4";
+        ? "video/webm"
+        : "video/mp4";
 
     const recorder = new MediaRecorder(streamRef.current, { mimeType });
     recorderRef.current = recorder;
@@ -242,7 +244,7 @@ const VideoRecorder: React.FC<VideoRecorderProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-1 w-full">
+    <div className="flex flex-col gap-1 w-full ">
       {label && (
         <label className="text-sm font-medium text-mutedtext">
           {label}
@@ -250,8 +252,14 @@ const VideoRecorder: React.FC<VideoRecorderProps> = ({
       )}
 
       {/* Compact file status row matching input heights */}
-      <div className="flex items-center gap-3 rounded-[8px] border border-gray-300 bg-slate-50 px-3 py-1 min-h-[40px] w-full">
-        <FileVideo className="size-4 shrink-0 text-slate-400" />
+      <div
+        className={cn(
+          "flex items-center gap-3 rounded-[8px] px-3 py-1 min-h-[40px] w-full",
+          readOnly
+            ? "border-none bg-transparent dark:bg-slate-700/20"
+            : "border border-gray-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/20"
+        )}
+      >        <FileVideo className="size-4 shrink-0 text-slate-400" />
         {fileName ? (
           <button
             type="button"
@@ -267,15 +275,16 @@ const VideoRecorder: React.FC<VideoRecorderProps> = ({
           </span>
         )}
         {!readOnly && (
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
+          <div className="flex items-center gap-1.5 shrink-0 dark:bg-slate-700/50">
+            <AppButton
+              variant="primary"
+              size="sm"
+              className="rounded-lg"
               onClick={openDialog}
-              className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 h-[28px]"
             >
               <Camera className="size-3.5" />
               {fileName ? "Re-record" : "Open Camera"}
-            </button>
+            </AppButton>
             {fileName && (
               <button
                 type="button"
@@ -303,7 +312,7 @@ const VideoRecorder: React.FC<VideoRecorderProps> = ({
           />
 
           {/* Dialog panel */}
-          <div className="relative z-10 flex w-full max-w-xl flex-col gap-4 rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="relative z-10 flex w-full max-w-xl flex-col gap-4 rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900/50">
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -365,11 +374,11 @@ const VideoRecorder: React.FC<VideoRecorderProps> = ({
           />
 
           {/* Dialog panel */}
-          <div className="relative z-10 flex w-full max-w-xl flex-col gap-4 rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="relative z-10 flex w-full max-w-xl flex-col gap-4 rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900/50">
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Video className="size-5 text-slate-700" />
+                <Video className="size-5 text-slate-700 dark:bg-slate-200" />
                 <h2 className="text-base font-semibold text-slate-800">Record Video</h2>
               </div>
               <button
