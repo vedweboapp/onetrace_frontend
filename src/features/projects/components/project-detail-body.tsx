@@ -113,10 +113,10 @@ export function ProjectDetailBody({
               </DetailMetricCard>
             ) : null} */}
             <DetailMetricCard label={t("fields.manager")}>
-              {detail.manager_detail?.map((manager,index)=>(
+              {(detail.manager_detail ?? []).map((manager, index) => (
                 <span key={index}>
-                  {manager?.manager?.username } {" "}
-                  {index == detail.manager_detail?.length -1 ? " ": ","}
+                  {manager?.manager?.username} {" "}
+                  {index === (detail.manager_detail?.length ?? 0) - 1 ? " " : ","}
                 </span>
               ))}
             </DetailMetricCard>

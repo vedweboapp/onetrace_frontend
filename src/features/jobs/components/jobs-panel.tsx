@@ -535,7 +535,7 @@ export function JobsPanel() {
     search,
     jobStatusParam,
     assignedWorkerParam,
-    jobCategoryParam,
+    categoryParam: jobCategoryParam,
   });
   const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
     loading,

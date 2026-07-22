@@ -1256,7 +1256,7 @@ const ProjectPinsListTab = ({
   }, []);
 
   const handleCreateJob = async (formData: {
-    start_date: string;
+    start_date: string | null;
     site: string;
     checklists: string[];
     job_status: string;
@@ -1264,11 +1264,12 @@ const ProjectPinsListTab = ({
   }): Promise<void> => {
     setIsSubmitting(true);
     try {
+      const safeStartDate = formData.start_date?.trim() ? formData.start_date : undefined;
       const res = await createJobFromLocation({
         project: Number(id),
         pin_ids: jobEligiblePinIds,
         site: formData.site ? Number(formData.site) : undefined,
-        start_date: formData.start_date,
+        start_date: safeStartDate,
         assigned_worker: formData.assigned_worker
           ? Number(formData.assigned_worker)
           : undefined,
