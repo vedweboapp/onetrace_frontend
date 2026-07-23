@@ -559,8 +559,8 @@ export function DrawingPinPreviewModal({
     >
       <div className="grid grid-cols-1 md:grid-cols-10 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/20">
 
-        {/* Left Column (MAP) - 70% or 100% width */}
-        <div className={`relative ${detailsOpen ? "md:col-span-7 border-r" : "md:col-span-10"} border-b md:border-b-0 border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden`}>
+        {/* Left Column (MAP) - 60% or 100% width */}
+        <div className={`relative ${detailsOpen ? "md:col-span-6 border-r" : "md:col-span-10"} border-b md:border-b-0 border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden`}>
           {loading && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm dark:bg-slate-900/70">
               <div className="flex flex-col items-center gap-2">
@@ -736,9 +736,9 @@ export function DrawingPinPreviewModal({
           </div>
         </div>
 
-        {/* Right Column (FIELDS) - 30% width */}
+        {/* Right Column (FIELDS) - 40% width */}
         {detailsOpen && (
-          <div className="md:col-span-3 bg-white dark:bg-slate-900 flex flex-col max-h-[70vh] overflow-hidden border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800">
+          <div className="md:col-span-4 bg-white dark:bg-slate-900 flex flex-col max-h-[70vh] overflow-hidden border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800">
             {/* Header/Title with EDIT and CLOSE buttons */}
             <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800/80 gap-3">
               <div className="min-w-0 flex-1">

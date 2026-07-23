@@ -44,11 +44,11 @@ import {
   getQuotationSiteIds,
   quotationNestedSiteToSite,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
-import { siteToAddressMapPoint } from "@/features/quotations/utils/quotation-site-map.util";
+import { siteHasMapableLocation, siteToAddressMapPoint } from "@/features/quotations/utils/quotation-site-map.util";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
-import { fetchSitesPage } from "@/features/sites/api/site.api";
+import { fetchSite, fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
 import { fetchTagsPage } from "@/features/tags/api/tag.api";
 import type { Tag } from "@/features/tags/types/tag.types";
@@ -556,11 +556,23 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return merged;
   }, [siteRows, isEdit, existingDetail]);
 
-  const selectedSitesForMap = React.useMemo(() => {
-    const ids = (sitesStr ?? [])
+  const selectedSiteIdsKey = React.useMemo(() => {
+    return (sitesStr ?? [])
       .map((raw) => Number.parseInt(String(raw).trim(), 10))
-      .filter((id) => Number.isFinite(id) && id > 0);
-    if (ids.length === 0) return [];
+      .filter((id) => Number.isFinite(id) && id > 0)
+      .join(",");
+  }, [sitesStr]);
+
+  const [selectedSitesForMap, setSelectedSitesForMap] = React.useState<Site[]>([]);
+
+  React.useEffect(() => {
+    const ids = selectedSiteIdsKey
+      ? selectedSiteIdsKey.split(",").map((raw) => Number.parseInt(raw, 10)).filter((id) => Number.isFinite(id) && id > 0)
+      : [];
+    if (ids.length === 0) {
+      setSelectedSitesForMap([]);
+      return;
+    }
 
     const clientIdForSnapshot =
       customerId != null && customerId > 0
@@ -569,26 +581,45 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
           ? getQuotationCustomerId(existingDetail.customer) ?? 0
           : 0;
 
-    return ids
-      .map((id) => {
-        const fromRows = siteRows.find((s) => s.id === id) ?? null;
-        if (fromRows) return fromRows;
-        if (isEdit && existingDetail && getQuotationSiteId(existingDetail.site) === id && clientIdForSnapshot > 0) {
-          const nested = getQuotationNestedSite(existingDetail.site);
-          if (nested) return quotationNestedSiteToSite(nested, clientIdForSnapshot);
-        }
-        const fromSnapshots = [
-          ...(existingDetail?.site_snapshots ?? []),
-          ...(existingDetail?.site_snapshot ? [existingDetail.site_snapshot] : []),
-        ];
-        const snap = fromSnapshots.find((row) => row.id === id);
-        if (snap && clientIdForSnapshot > 0) {
-          return quotationNestedSiteToSite(snap, clientIdForSnapshot);
-        }
-        return null;
-      })
-      .filter((row): row is Site => row != null);
-  }, [sitesStr, siteRows, isEdit, existingDetail, customerId]);
+    let cancelled = false;
+    void (async () => {
+      const rows = await Promise.all(
+        ids.map(async (id) => {
+          const fromRows = siteRows.find((s) => s.id === id) ?? null;
+          if (fromRows && siteHasMapableLocation(fromRows)) return fromRows;
+
+          if (isEdit && existingDetail && getQuotationSiteId(existingDetail.site) === id && clientIdForSnapshot > 0) {
+            const nested = getQuotationNestedSite(existingDetail.site);
+            if (nested && siteHasMapableLocation(nested)) {
+              return quotationNestedSiteToSite(nested, clientIdForSnapshot);
+            }
+          }
+
+          const fromSnapshots = [
+            ...(existingDetail?.site_snapshots ?? []),
+            ...(existingDetail?.site_snapshot ? [existingDetail.site_snapshot] : []),
+          ];
+          const snap = fromSnapshots.find((row) => row.id === id);
+          if (snap && clientIdForSnapshot > 0 && siteHasMapableLocation(snap)) {
+            return quotationNestedSiteToSite(snap, clientIdForSnapshot);
+          }
+
+          try {
+            return await fetchSite(id);
+          } catch {
+            return fromRows;
+          }
+        }),
+      );
+      if (!cancelled) {
+        setSelectedSitesForMap(rows.filter((row): row is Site => row != null));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSiteIdsKey, siteRows, isEdit, existingDetail, customerId]);
 
   const selectedSiteMapPoints = React.useMemo(
     () => selectedSitesForMap.map((site) => siteToAddressMapPoint(site)),
