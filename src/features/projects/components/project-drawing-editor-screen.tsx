@@ -1413,7 +1413,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     const plotsPayload = toPayload(localPlots, formData);
 
     // Append the JSON payload as a string field
-    formData.append('payload', JSON.stringify({name: drawingName,plots: plotsPayload }));
+    formData.append('payload', JSON.stringify({ name: drawingName, plots: plotsPayload }));
 
     // Send multipart/form-data to the backend
     const updated = await updateDrawingPlots(projectId, drawingId, formData);
@@ -1725,16 +1725,21 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                 <X className="size-4" />
               </button>
             </div>
-            <input
-              ref={nameInputRef}
-              value={plotNameDraft}
-              onChange={(e) => setPlotNameDraft(e.target.value)}
-              placeholder={t("plotNamePlaceholder")}
-              className={surfaceInputClassName}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void savePlotFromModal();
-              }}
-            />
+            <div className="space-y-2">
+              <input
+                ref={nameInputRef}
+                value={plotNameDraft}
+                onChange={(e) => setPlotNameDraft(e.target.value)}
+                placeholder={t("plotNamePlaceholder")}
+                className={surfaceInputClassName}
+                maxLength={20}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void savePlotFromModal();
+                }}
+              />
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 flex items-end justify-end">{plotNameDraft.length}/20</span>
+            </div>
+
             <div className="my-4">
               <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                 Select Color
@@ -1803,7 +1808,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       >
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-              <input
+            <input
               type="text"
               // disabled
               className="border-0 border-b border-transparent outline-none focus:border-b-blue-500 truncate text-lg font-semibold text-slate-900 dark:text-slate-50"
@@ -2225,7 +2230,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                             }}
                           >
                             {isHovered && <PinTooltip pin={pin} productName={productName} quantity={pinQuantity} />}
-                            <div className={cn("relative duration-200 origin-bottom", innerScaleClass, "cursor-grab")}> 
+                            <div className={cn("relative duration-200 origin-bottom", innerScaleClass, "cursor-grab")}>
                               {isFocused ? (
                                 <div className="absolute left-1/2 top-full -translate-x-1/2 mt-1 h-2 w-10 rounded-full bg-black blur-sm" />
                               ) : null}
@@ -2360,50 +2365,50 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                             const fileType = name.split('.').pop()?.toUpperCase() || 'FILE';
                             return (
                               <div key={idx} className="flex items-center justify-between gap-2 px-3 py-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-lg">
-                              <div className="flex flex-col min-w-0">
-                                <p className="text-xs truncate font-semibold text-red-900 dark:text-red-200">{name}</p>
-                                <p className="text-[10px] text-red-700 dark:text-red-300">{fileType}</p>
+                                <div className="flex flex-col min-w-0">
+                                  <p className="text-xs truncate font-semibold text-red-900 dark:text-red-200">{name}</p>
+                                  <p className="text-[10px] text-red-700 dark:text-red-300">{fileType}</p>
+                                </div>
+                                <button
+                                  type="button"
+                                  disabled={!url}
+                                  className="text-[10px] font-semibold text-red-600 hover:text-red-700 hover:underline disabled:text-slate-400 disabled:cursor-not-allowed dark:text-red-400 dark:hover:text-red-300 transition-colors bg-transparent border-none p-0 flex items-center gap-0.5 cursor-pointer flex-shrink-0"
+                                  onClick={async () => {
+                                    if (!url) return;
+                                    if (url.startsWith("blob:") || url.startsWith("data:")) {
+                                      const link = document.createElement("a");
+                                      link.href = url;
+                                      link.download = name;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                      return;
+                                    }
+                                    try {
+                                      const response = await fetch(url);
+                                      const blob = await response.blob();
+                                      const blobUrl = URL.createObjectURL(blob);
+                                      const link = document.createElement("a");
+                                      link.href = blobUrl;
+                                      link.download = name;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                      URL.revokeObjectURL(blobUrl);
+                                    } catch (error) {
+                                      console.error("Failed to download file:", error);
+                                      window.open(url, "_blank");
+                                    }
+                                  }}
+                                >
+                                  <Download className="h-3 w-3" />
+                                </button>
                               </div>
-                              <button
-                                type="button"
-                                disabled={!url}
-                                className="text-[10px] font-semibold text-red-600 hover:text-red-700 hover:underline disabled:text-slate-400 disabled:cursor-not-allowed dark:text-red-400 dark:hover:text-red-300 transition-colors bg-transparent border-none p-0 flex items-center gap-0.5 cursor-pointer flex-shrink-0"
-                                onClick={async () => {
-                                  if (!url) return;
-                                  if (url.startsWith("blob:") || url.startsWith("data:")) {
-                                    const link = document.createElement("a");
-                                    link.href = url;
-                                    link.download = name;
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
-                                    return;
-                                  }
-                                  try {
-                                    const response = await fetch(url);
-                                    const blob = await response.blob();
-                                    const blobUrl = URL.createObjectURL(blob);
-                                    const link = document.createElement("a");
-                                    link.href = blobUrl;
-                                    link.download = name;
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
-                                    URL.revokeObjectURL(blobUrl);
-                                  } catch (error) {
-                                    console.error("Failed to download file:", error);
-                                    window.open(url, "_blank");
-                                  }
-                                }}
-                              >
-                                <Download className="h-3 w-3" />
-                              </button>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ) : null;
+                    ) : null;
                   })()}
 
                   <DetailRow
