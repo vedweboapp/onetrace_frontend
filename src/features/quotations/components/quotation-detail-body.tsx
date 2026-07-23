@@ -27,6 +27,7 @@ import {
   siteToAddressMapPoint,
 } from "@/features/quotations/utils/quotation-site-map.util";
 import { seedDraftFromQuoteSections } from "@/features/quotations/utils/quotation-draft-seed.util";
+import { quotationStatusLabel } from "@/features/quotations/utils/quotation-status.util";
 import type { Site } from "@/features/sites/types/site.types";
 import {
   DetailSystemMetadataSection,
@@ -251,21 +252,12 @@ export function QuotationDetailBody({
   const desc = detail.description?.trim() ?? "";
   const modifiedAt = detail.modified_at ?? detail.created_at;
 
-  function quoteStatusLabel(code: string | null | undefined) {
-    const raw = code == null ? "" : String(code).trim();
-    if (!raw) return "—";
-    const c = raw.toLowerCase();
-    if (c === "draft") return t("quoteStatus.draft");
-    if (c === "sent") return t("quoteStatus.sent");
-    if (c === "approved" || c === "accepted") return t("quoteStatus.approved");
-    if (c === "rejected") return t("quoteStatus.rejected");
-    return raw;
-  }
-
   const overviewCard = (
     <DetailPanelCard title={t("detail.sectionOverview")}>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <DetailMetricCard label={t("table.status")}>{quoteStatusLabel(detail.status)}</DetailMetricCard>
+        <DetailMetricCard label={t("table.status")}>
+          {quotationStatusLabel(detail.status, t)}
+        </DetailMetricCard>
         <DetailMetricCard label={t("fields.quoteName")}>{detail.quote_name}</DetailMetricCard>
         <DetailMetricCard label={t("fields.customer")}>
           {customerId != null ? (

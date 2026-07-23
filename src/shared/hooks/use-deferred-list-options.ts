@@ -4,7 +4,6 @@ import * as React from "react";
 
 export type DeferredListOption = { value: string; label: string };
 
-/** Fetches select options once when `enabled` becomes true (e.g. filter opened or mass actions). */
 export function useDeferredListOptions(
   load: () => Promise<DeferredListOption[]>,
   enabled: boolean,

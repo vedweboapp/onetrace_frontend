@@ -9,7 +9,7 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchVendorTypesPage } from "@/features/vendor-types/api/vendor-type.api";
 import { createVendor, fetchVendor, updateVendor } from "@/features/vendors/api/vendor.api";
-import { VendorAddressesFields } from "@/features/vendors/components/vendor-addresses-fields";
+import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
 import { createVendorFormSchema, type VendorFormValues } from "@/features/vendors/schemas/vendor-form-schema";
 import {
   emptyVendorFormDefaults,
@@ -69,6 +69,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
         state: t("validation.state"),
         city: t("validation.city"),
         pincode: t("validation.pincode"),
+        addressType: t("validation.addressType"),
         addressesMin: t("validation.addressesMin"),
       }),
     [t],
@@ -166,18 +167,41 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
           </div>
         ) : (
           <form id="vendor-upsert-screen-form" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(submit)}>
-            <FieldGroup label={t("fields.name")} htmlFor="vendor-name" required>
-              <input
-                id="vendor-name"
-                className={cn(surfaceInputClassName, errors.name && "border-red-500")}
-                {...register("name", {
-                  onChange: (e) => {
-                    e.target.value = capitalizeFirstLetter(e.target.value);
-                  },
-                })}
+            <FormFieldRow cols="2">
+              <FieldGroup label={t("fields.name")} htmlFor="vendor-name" required>
+                <input
+                  id="vendor-name"
+                  className={cn(surfaceInputClassName, errors.name && "border-red-500")}
+                  {...register("name", {
+                    onChange: (e) => {
+                      e.target.value = capitalizeFirstLetter(e.target.value);
+                    },
+                  })}
+                />
+                <FieldErrorText>{errors.name?.message}</FieldErrorText>
+              </FieldGroup>
+
+              <Controller
+                control={control}
+                name="type"
+                render={({ field }) => (
+                  <FieldGroup label={t("fields.type")} htmlFor="vendor-type">
+                    <CheckmarkSelect
+                      id="vendor-type"
+                      options={typeOptions}
+                      value={field.value}
+                      onChange={field.onChange}
+                      emptyLabel={t("placeholders.type")}
+                      disabled={saving || typeOptions.length === 0}
+                      invalid={!!errors.type}
+                      listLabel={t("fields.type")}
+                      portaled
+                    />
+                    <FieldErrorText>{errors.type?.message}</FieldErrorText>
+                  </FieldGroup>
+                )}
               />
-              <FieldErrorText>{errors.name?.message}</FieldErrorText>
-            </FieldGroup>
+            </FormFieldRow>
 
             <FormFieldRow cols="2">
               <FieldGroup label={t("fields.email")} htmlFor="vendor-email" required>
@@ -199,33 +223,34 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
               />
             </FormFieldRow>
 
-            <Controller
-              control={control}
-              name="type"
-              render={({ field }) => (
-                <FieldGroup label={t("fields.type")} htmlFor="vendor-type">
-                  <CheckmarkSelect
-                    id="vendor-type"
-                    options={typeOptions}
-                    value={field.value}
-                    onChange={field.onChange}
-                    emptyLabel={t("placeholders.type")}
-                    disabled={saving || typeOptions.length === 0}
-                    invalid={!!errors.type}
-                    listLabel={t("fields.type")}
-                    portaled
-                  />
-                  <FieldErrorText>{errors.type?.message}</FieldErrorText>
-                </FieldGroup>
-              )}
-            />
-
-            <VendorAddressesFields
+            <EntityAddressesFields
               control={control}
               register={register}
               setValue={setValue}
               errors={errors}
               disabled={saving}
+              idPrefix="vendor-address"
+              includeGeo
+              labels={{
+                sectionTitle: t("fields.addresses"),
+                add: t("addresses.add"),
+                remove: t("addresses.remove"),
+                primary: t("addresses.primary"),
+                rowLabel: (index) => t("addresses.rowLabel", { index }),
+                addressType: t("fields.addressType"),
+                addressLine1: t("fields.addressLine1"),
+                addressLine2: t("fields.addressLine2"),
+                country: t("fields.country"),
+                state: t("fields.stateProvince"),
+                city: t("fields.city"),
+                pincode: t("fields.pincode"),
+                countryPlaceholder: t("placeholders.country"),
+                statePlaceholder: t("placeholders.state"),
+                cityPlaceholder: t("placeholders.city"),
+                addressTypeBilling: t("addressType.billing"),
+                addressTypeShipping: t("addressType.shipping"),
+                addressTypeOther: t("addressType.other"),
+              }}
             />
           </form>
         )}

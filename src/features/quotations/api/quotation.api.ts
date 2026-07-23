@@ -12,10 +12,13 @@ import type {
   QuotationListItem,
   QuotationListResponse,
   QuotationLevelRef,
+  QuotationUpdatePayload,
   WorkspaceUserRow,
 } from "../types/quotation.types";
 
-function normalizeQuotationWriteBody(body: QuotationCreatePayload): QuotationCreatePayload {
+function normalizeQuotationWriteBody(body: QuotationUpdatePayload): QuotationUpdatePayload {
+  if (!("additional_customer_contact" in body)) return body;
+
   const raw = body.additional_customer_contact as unknown;
   let additional_customer_contact: number[] = [];
   if (Array.isArray(raw)) {
@@ -102,7 +105,7 @@ export async function createQuotationFromProject(projectId: number): Promise<Quo
   return data.data;
 }
 
-export async function updateQuotation(id: number, body: QuotationCreatePayload): Promise<QuotationDetail> {
+export async function updateQuotation(id: number, body: QuotationUpdatePayload): Promise<QuotationDetail> {
   const payload = normalizeQuotationWriteBody(body);
   const { data } = await api.patch<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.detail(id), payload);
   assertApiSuccess(data);

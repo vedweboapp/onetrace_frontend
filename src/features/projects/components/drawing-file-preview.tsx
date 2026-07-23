@@ -28,9 +28,11 @@ type Props = {
   /** PDF first page render width (px). Should match the layout width for sharpness. */
   widthPx: number;
   className?: string;
+  /** Called with (width / height) once the file's natural dimensions are known. */
+  onNaturalAspect?: (ar: number) => void;
 };
 
-export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, className }: Props) {
+export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, className, onNaturalAspect }: Props) {
   const url = React.useMemo(() => resolveDrawingFileUrl(drawingFile), [drawingFile]);
   const [failed, setFailed] = React.useState(false);
 
@@ -63,6 +65,11 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
           width={widthPx}
           renderAnnotationLayer={false}
           renderTextLayer={false}
+          onRenderSuccess={(page) => {
+            if (onNaturalAspect && page.width > 0 && page.height > 0) {
+              onNaturalAspect(page.width / page.height);
+            }
+          }}
         />
       </Document>,
     );
@@ -77,6 +84,12 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
         className="h-full w-full object-cover object-top"
         loading="lazy"
         onError={() => setFailed(true)}
+        onLoad={(e) => {
+          const img = e.currentTarget;
+          if (onNaturalAspect && img.naturalWidth > 0 && img.naturalHeight > 0) {
+            onNaturalAspect(img.naturalWidth / img.naturalHeight);
+          }
+        }}
       />,
     );
   }
@@ -88,6 +101,12 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
       className="h-full w-full object-cover object-top"
       loading="lazy"
       onError={() => setFailed(true)}
+      onLoad={(e) => {
+        const img = e.currentTarget;
+        if (onNaturalAspect && img.naturalWidth > 0 && img.naturalHeight > 0) {
+          onNaturalAspect(img.naturalWidth / img.naturalHeight);
+        }
+      }}
     />,
   );
 }
@@ -97,12 +116,14 @@ type FillProps = {
   fileType?: string | null;
   alt: string;
   className?: string;
+  /** Called with (width / height) once the file's natural dimensions are known. */
+  onNaturalAspect?: (ar: number) => void;
 };
 
 /**
  * Fills the parent (use inside a sized / aspect-ratio container). PDF first page scales to container width.
  */
-export function DrawingFilePreviewFill({ drawingFile, fileType, alt, className }: FillProps) {
+export function DrawingFilePreviewFill({ drawingFile, fileType, alt, className, onNaturalAspect }: FillProps) {
   const wrapRef = React.useRef<HTMLDivElement>(null);
   const [w, setW] = React.useState(320);
 
@@ -124,6 +145,7 @@ export function DrawingFilePreviewFill({ drawingFile, fileType, alt, className }
         alt={alt}
         widthPx={w}
         className="size-full"
+        onNaturalAspect={onNaturalAspect}
       />
     </div>
   );

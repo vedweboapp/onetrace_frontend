@@ -8,7 +8,7 @@ import { resolvePinMarkerAbbreviation } from "@/features/projects/utils/drawing-
 import type { DrawingPin, DrawingPlot, DrawingPinAttachment, DrawingPlotUpsert } from "@/features/projects/types/drawing.types";
 import { AppModal, AppButton } from "@/shared/ui";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
-import { Loader2, MapPinned, LayoutGrid, FileText, Paperclip, X } from "lucide-react";
+import { Loader2, MapPinned, LayoutGrid, FileText, Paperclip, X, Download } from "lucide-react";
 import { fetchDrawingDetail, updateDrawingPlots } from "@/features/projects/api/drawing.api";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
@@ -240,6 +240,11 @@ interface DrawingPinPreviewModalProps {
   plots: DrawingPlot[];
   drawingFile: string;
   drawingName: string;
+  formSummary?: {
+    label: string;
+    projectFormId: number;
+    submitted?: boolean;
+  } | null;
   projectId?: number;
   drawingId?: number;
   editUrl?: string;
@@ -253,6 +258,7 @@ export function DrawingPinPreviewModal({
   plots,
   drawingFile,
   drawingName,
+  formSummary,
   projectId,
   drawingId,
   editUrl,
@@ -529,6 +535,15 @@ export function DrawingPinPreviewModal({
         return String(formType) === activeInstallationType;
       })
     : formsList;
+  const selectedProjectFormId =
+    pin.formId ??
+    (typeof pin.project_form === "number" ? pin.project_form : null) ??
+    (pin.project_form && typeof pin.project_form === "object" ? pin.project_form.id : null);
+  const selectedAvailableForm = availableForms.find((f) => f.id === selectedProjectFormId);
+  const readonlyFormLabel =
+    selectedAvailableForm?.name ??
+    formSummary?.label ??
+    (pin.project_form && typeof pin.project_form === "object" ? pin.project_form.name : null);
 
   return (
     <AppModal
@@ -813,6 +828,70 @@ export function DrawingPinPreviewModal({
                   }}
                 />
 
+                {/* Product Attachments - 2 Column Grid */}
+                {(() => {
+                  const attachments = (activeItemDetail as (typeof activeItemDetail & { attachments?: Array<{ file_url?: string | null; url?: string | null; attachment?: string | null; file?: string | null; file_name?: string | null; name?: string | null; id?: number | null }> }) | null | undefined)?.attachments;
+                  return attachments && attachments.length > 0 ? (
+                    <div className="py-3 border-b border-slate-50 dark:border-slate-800/50">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="text-slate-400">
+                          <Paperclip className="h-[18px] w-[18px]" />
+                        </div>
+                        <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Product Attachments</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {attachments.map((att, idx) => {
+                          const url = att.file_url ?? att.url ?? (typeof att.attachment === "string" ? att.attachment : null) ?? (typeof att.file === "string" ? att.file : null);
+                          const name = att.file_name ?? att.name ?? (att.id != null ? `Attachment #${att.id}` : `Attachment ${idx + 1}`);
+                          const fileType = name.split('.').pop()?.toUpperCase() || 'FILE';
+                          return (
+                            <div key={idx} className="flex items-center justify-between gap-2 px-3 py-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-lg">
+                              <div className="flex flex-col min-w-0">
+                                <p className="text-xs truncate font-semibold text-red-900 dark:text-red-200" title={name}>{name}</p>
+                                <p className="text-[10px] text-red-700 dark:text-red-300">{fileType}</p>
+                              </div>
+                              <button
+                                type="button"
+                                disabled={!url}
+                                className="text-[10px] font-semibold text-red-600 hover:text-red-700 hover:underline disabled:text-slate-400 disabled:cursor-not-allowed dark:text-red-400 dark:hover:text-red-300 transition-colors bg-transparent border-none p-0 flex items-center gap-0.5 cursor-pointer flex-shrink-0"
+                                onClick={async () => {
+                                  if (!url) return;
+                                  if (url.startsWith("blob:") || url.startsWith("data:")) {
+                                    const link = document.createElement("a");
+                                    link.href = url;
+                                    link.download = name;
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                    return;
+                                  }
+                                  try {
+                                    const response = await fetch(url);
+                                    const blob = await response.blob();
+                                    const blobUrl = URL.createObjectURL(blob);
+                                    const link = document.createElement("a");
+                                    link.href = blobUrl;
+                                    link.download = name;
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                    URL.revokeObjectURL(blobUrl);
+                                  } catch (error) {
+                                    console.error("Failed to download file:", error);
+                                    window.open(url, "_blank");
+                                  }
+                                }}
+                              >
+                                <Download className="h-3 w-3" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+
                 {/* 2. Quantity */}
                 <DetailRow
                   icon={QuantityIcon}
@@ -861,7 +940,6 @@ export function DrawingPinPreviewModal({
                   value={plotName}
                   isEditing={false}
                 />
-
                 {/* 6. Level */}
                 <DetailRow
                   icon={LevelIcon}
@@ -938,7 +1016,7 @@ export function DrawingPinPreviewModal({
                     const attachments = (isEditing && pinEditData ? pinEditData.attachments : pin.attachments) ?? [];
                     if (!attachments.length) return <p className="text-sm text-slate-500 text-right">-</p>;
                     return (
-                      <div className="flex flex-col gap-2 w-full">
+                      <div className="grid grid-cols-2 gap-2">
                         {attachments.map((att, idx) => {
                           const url =
                             att.url ??
@@ -948,60 +1026,23 @@ export function DrawingPinPreviewModal({
                             att.data_url ??
                             att.file_data ??
                             (att.file && typeof att.file !== "string" ? URL.createObjectURL(att.file as any) : null);
-                          const name = att.file_name ?? att.name ?? `Attachment ${idx + 1}`;
-                          const ext = name.split(".").pop()?.toLowerCase() ?? "";
-                          const isImage =
-                            (att.content_type ?? "").startsWith("image/") ||
-                            (typeof url === "string" && (url.startsWith("data:image/") || /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(url)));
-                          const isPdf = ext === "pdf";
+                          const name =
+                            att.file_name ??
+                            att.name ??
+                            (att.id != null ? `Attachment #${att.id}` : `Attachment ${idx + 1}`);
+                          const fileType = name.split('.').pop()?.toUpperCase() || 'FILE';
 
                           return (
-                            <div key={idx} className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-2.5">
-                              {/* Thumbnail or file icon */}
-                              {url && isImage ? (
-                                <img src={url} alt={name} className="h-10 w-10 flex-shrink-0 rounded-lg border border-slate-200 object-cover dark:border-slate-700" />
-                              ) : (
-                                <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${isPdf ? "bg-red-50 dark:bg-red-950/30" : "bg-blue-50 dark:bg-blue-950/30"}`}>
-                                  {isPdf ? (
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={isPdf ? "#dc2626" : "#2563eb"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                      <polyline points="14 2 14 8 20 8" />
-                                      <line x1="16" y1="13" x2="8" y2="13" />
-                                      <line x1="16" y1="17" x2="8" y2="17" />
-                                      <polyline points="10 9 9 9 8 9" />
-                                    </svg>
-                                  ) : (
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                      <polyline points="14 2 14 8 20 8" />
-                                    </svg>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* Filename */}
-                              <div className="flex-1 min-w-0">
-                                <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-100" title={name}>{name}</p>
-                                {ext && <p className="text-[10px] text-slate-400 uppercase font-medium">{ext}</p>}
+                            <div key={idx} className={`flex flex-col gap-2 px-3 py-2 border rounded-lg ${isEditing ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/50' : 'bg-slate-50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-700'}`}>
+                              <div className="flex flex-col min-w-0">
+                                <p className={`text-xs truncate font-semibold ${isEditing ? 'text-blue-900 dark:text-blue-200' : 'text-slate-700 dark:text-slate-200'}`} title={name}>{name}</p>
+                                <p className={`text-[10px] ${isEditing ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400'}`}>{fileType}</p>
                               </div>
-
-                              {/* Actions */}
-                              <div className="flex items-center gap-1.5 flex-shrink-0">
-                                {url && (
-                                  <AppButton
-                                    variant="primary"
-                                    size="sm"
-                                    onClick={() => window.open(url, "_blank")}
-                                    className="font-bold text-xs"
-                                  >
-                                    Open
-                                  </AppButton>
-                                )}
-                                {isEditing && (
+                              <div className="flex items-center gap-2 w-full">
+                                {isEditing ? (
                                   <button
                                     type="button"
-                                    title="Remove attachment"
-                                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                                    className="text-[10px] font-semibold text-red-600 hover:text-red-700 hover:underline bg-transparent border-none p-0 cursor-pointer"
                                     onClick={() => {
                                       setPinEditData((prev) => {
                                         if (!prev) return null;
@@ -1011,13 +1052,43 @@ export function DrawingPinPreviewModal({
                                       });
                                     }}
                                   >
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                      <polyline points="3 6 5 6 21 6" />
-                                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                                      <path d="M10 11v6M14 11v6" />
-                                    </svg>
+                                    Remove
                                   </button>
-                                )}
+                                ) : null}
+                                {url ? (
+                                  <button
+                                    type="button"
+                                    className={`text-[10px] font-semibold ${isEditing ? 'text-blue-600 hover:text-blue-700' : 'text-slate-600 hover:text-slate-700'} hover:underline bg-transparent border-none p-0 cursor-pointer flex items-center gap-0.5 flex-shrink-0 ${!isEditing ? 'ml-auto' : ''}`}
+                                    onClick={async () => {
+                                      if (url.startsWith("blob:") || url.startsWith("data:")) {
+                                        const link = document.createElement("a");
+                                        link.href = url;
+                                        link.download = name;
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                        return;
+                                      }
+                                      try {
+                                        const response = await fetch(url);
+                                        const blob = await response.blob();
+                                        const blobUrl = URL.createObjectURL(blob);
+                                        const link = document.createElement("a");
+                                        link.href = blobUrl;
+                                        link.download = name;
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                        URL.revokeObjectURL(blobUrl);
+                                      } catch (error) {
+                                        console.error("Failed to download file:", error);
+                                        window.open(url, "_blank");
+                                      }
+                                    }}
+                                  >
+                                    <Download className="h-3 w-3" />
+                                  </button>
+                                ) : null}
                               </div>
                             </div>
                           );
@@ -1029,10 +1100,10 @@ export function DrawingPinPreviewModal({
               </div>
 
               {/* Form */}
-              <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800/50">
+              <div className="flex items-start justify-between py-3 border-b border-slate-50 dark:border-slate-800/50 gap-3">
                 <div className="flex items-center gap-3">
                   <div className="text-slate-400">
-                    <LayoutGrid className="h-[18px] w-[18px]" />
+                    <FileText className="h-[18px] w-[18px]" />
                   </div>
                   <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Form</span>
                 </div>
@@ -1059,12 +1130,38 @@ export function DrawingPinPreviewModal({
                         ))}
                       </select>
                     ) : (
-                      <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 text-right">
-                        {availableForms.find(f =>
-                          f.id === (pin.formId ?? (typeof pin.project_form === "number" ? pin.project_form : null))
-                        )?.name || "-"}
-                      </span>
+                      <div className="flex max-w-[200px] flex-wrap justify-end gap-1.5 text-right">
+                        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {readonlyFormLabel || "-"}
+                        </span>
+                        {formSummary?.projectFormId ? (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            #{formSummary.projectFormId}
+                          </span>
+                        ) : null}
+                        {formSummary?.submitted ? (
+                          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                            Submitted
+                          </span>
+                        ) : null}
+                      </div>
                     )
+                  ) : readonlyFormLabel ? (
+                    <div className="flex max-w-[200px] flex-wrap justify-end gap-1.5 text-right">
+                      <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        {readonlyFormLabel}
+                      </span>
+                      {formSummary?.projectFormId ? (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          #{formSummary.projectFormId}
+                        </span>
+                      ) : null}
+                      {formSummary?.submitted ? (
+                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                          Submitted
+                        </span>
+                      ) : null}
+                    </div>
                   ) : activeInstallationType ? (
                     <span className="text-xs text-amber-600 dark:text-amber-400 font-medium text-right max-w-[180px]">
                       {t("noFormWithInstallationType")}

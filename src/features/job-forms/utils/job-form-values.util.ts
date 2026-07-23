@@ -285,6 +285,7 @@ export function buildJobFormSubmissionFormData(
     submissionId?: number;
     defaultValues?: Record<string, unknown>;
     job_pin_id?: number;
+    dynamic_form_id?: number | string | null;
   },
 ): FormData {
   const values = mapFormDataToSubmissionValues(formData, sections, extra?.defaultValues);
@@ -300,6 +301,10 @@ export function buildJobFormSubmissionFormData(
   }
   if (hasJobPinId) {
     fd.append("job_pin_id", String(extra.job_pin_id));
+  }
+  // Include dynamic_form_id in the submission if provided
+  if (extra && (extra as any).dynamic_form_id != null && String((extra as any).dynamic_form_id).trim() !== "") {
+    fd.append("dynamic_form_id", String((extra as any).dynamic_form_id));
   }
 
   // Only include the values key if there are changed/dirty fields

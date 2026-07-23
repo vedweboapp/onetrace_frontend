@@ -1,11 +1,10 @@
 import { z } from "zod";
 import {
-  addAddressLocationRefinements,
-  addressFieldsZodShape,
-  type AddressValidationMessages,
-} from "@/shared/utils/address-form-validation.util";
+  createEntityAddressesArraySchema,
+  type EntityAddressFormMessages,
+} from "@/shared/form/entity-address-form.util";
 
-export type PurchaseOrderFormMessages = AddressValidationMessages & {
+export type PurchaseOrderFormMessages = EntityAddressFormMessages & {
   vendor: string;
   lineDescription: string;
   lineQuantity: string;
@@ -28,8 +27,6 @@ const lineItemShape = z.object({
 });
 
 export function createPurchaseOrderFormSchema(messages: PurchaseOrderFormMessages) {
-  const addressShape = addressFieldsZodShape(messages);
-
   return z
     .object({
       vendor: z
@@ -41,16 +38,12 @@ export function createPurchaseOrderFormSchema(messages: PurchaseOrderFormMessage
       project: optionalId(messages.vendor),
       due_date: z.string(),
       payment_terms: z.string(),
-      bill_to: addressShape,
-      ship_to: addressShape,
+      addresses: createEntityAddressesArraySchema(messages),
       vendor_notes: z.string(),
       internal_notes: z.string(),
       line_items: z.array(lineItemShape).min(1, { message: messages.lineDescription }),
     })
     .superRefine((data, ctx) => {
-      addAddressLocationRefinements(data.bill_to, ctx, ["bill_to"], messages);
-      addAddressLocationRefinements(data.ship_to, ctx, ["ship_to"], messages);
-
       data.line_items.forEach((row, index) => {
         const item = row.item.trim();
         if (!item) {

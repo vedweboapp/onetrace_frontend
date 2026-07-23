@@ -79,6 +79,12 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
     return Number.isFinite(n) && n > 0 ? n : undefined;
   }, [jobPinIdParam]);
 
+  const dynamicFormIdParam = searchParams.get("dynamic_form_id");
+  const dynamicFormIdHint = React.useMemo(() => {
+    const v = dynamicFormIdParam ?? undefined;
+    return v && String(v).trim() !== "" ? v : undefined;
+  }, [dynamicFormIdParam]);
+
   const uiMode: UiMode = React.useMemo(() => {
     if (submission && modeParam !== "edit") return "view";
     if (submission && modeParam === "edit") return "edit";
@@ -97,6 +103,7 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
     params.set("back", safeBack);
     if (formNameHint?.trim()) params.set("name", formNameHint.trim());
     if (jobPinIdHint != null) params.set("job_pin_id", String(jobPinIdHint));
+    if (dynamicFormIdHint != null) params.set("dynamic_form_id", String(dynamicFormIdHint));
     const sid = extra?.submissionId ?? submission?.id;
     if (sid != null && sid > 0) params.set("submission_id", String(sid));
     if (extra?.mode) params.set("mode", extra.mode);
@@ -160,11 +167,12 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
     handleSubmit: handleFormSubmit,
   } = useFormHandler<Record<string, unknown>, FormRendererRef>(async (data) => {
     const fd = buildJobFormSubmissionFormData(
-  jobFormId,
-  data,
-  schemaSections,
-  { status: "submitted", defaultValues, job_pin_id: jobPinIdHint  },
-);
+      jobFormId,
+      data,
+      schemaSections,
+      // dynamic_form_id: dynamicFormIdHint
+      { status: "submitted", defaultValues, job_pin_id: jobPinIdHint },
+    );
 
     // Validate that at least one value is present
     const valuesJson = fd.get("values");

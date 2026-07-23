@@ -100,7 +100,7 @@ export function VendorDetailBody({
                 >
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                      {vendorAddressSummary(addr)}
+                      {t(`addressType.${addr.address_type ?? "other"}`)}
                     </span>
                     {addr.is_primary ? (
                       <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
@@ -108,6 +108,7 @@ export function VendorDetailBody({
                       </span>
                     ) : null}
                   </div>
+                  <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">{vendorAddressSummary(addr)}</p>
                   <DetailFormattedAddress
                     line1={addr.address_line_1}
                     line2={addr.address_line_2}

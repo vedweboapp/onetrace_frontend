@@ -13,12 +13,6 @@ dist
 .env
 .env.*
 .env.local
-.env.development
-.env.development.local
-.env.production
-.env.production.local
-.env.test
-.env.test.local
 !.env.example
 
 # Logs & debug
@@ -50,3 +44,6 @@ coverage
 package-lock.json
 
 certificates
+apps-fileview.texmex_20260708.11_p0
+.gitignore
+Displaying .gitignore.

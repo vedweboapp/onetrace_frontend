@@ -10,6 +10,7 @@ import {
   purchaseOrderTotalAmount,
   purchaseOrderVendorLabel,
 } from "@/features/purchase-orders/utils/purchase-order-nested-fields.util";
+import { resolvePurchaseOrderAddresses } from "@/features/purchase-orders/utils/purchase-order-form-map";
 import { formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
@@ -31,28 +32,6 @@ type Props = {
   statusLabel: string;
   activeTab: "overview" | "lineItems";
 };
-
-function AddressBlock({
-  title,
-  address,
-}: {
-  title: string;
-  address: PurchaseOrderDetail["bill_to"];
-}) {
-  return (
-    <DetailPanelCard title={title}>
-      <DetailFormattedAddress
-        line1={address?.address_line_1}
-        line2={address?.address_line_2}
-        city={address?.city}
-        state={address?.state}
-        pincode={address?.zip_code ?? address?.pincode}
-        country={address?.country}
-        emptyMessage="—"
-      />
-    </DetailPanelCard>
-  );
-}
 
 type DisplayLine = {
   key: string;
@@ -113,6 +92,7 @@ export function PurchaseOrderDetailBody({
   const t = useTranslations("Dashboard.purchaseOrders");
   const locale = useLocale();
   const lines = resolveDisplayLines(detail);
+  const addresses = resolvePurchaseOrderAddresses(detail);
   const totalBalance = purchaseOrderTotalAmount(detail);
   const vendorNotes = detail.vendor_notes?.trim() || "";
   const internalNotes = detail.internal_notes?.trim() || "";
@@ -151,10 +131,40 @@ export function PurchaseOrderDetailBody({
               </DetailMetricsGrid>
             </DetailPanelCard>
 
-            <div className="grid gap-4 lg:grid-cols-2">
-              <AddressBlock title={t("fields.billTo")} address={detail.bill_to} />
-              <AddressBlock title={t("fields.shipTo")} address={detail.ship_to} />
-            </div>
+            <DetailPanelCard title={t("fields.addresses")}>
+              {addresses.length === 0 ? (
+                <p className="text-sm text-slate-500 dark:text-slate-400">—</p>
+              ) : (
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {addresses.map((addr, index) => (
+                    <div
+                      key={addr.id ?? `${addr.address_type}-${index}`}
+                      className="space-y-2 rounded-lg border border-slate-200 p-4 dark:border-slate-700"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {t(`addressType.${addr.address_type}`)}
+                        </span>
+                        {addr.is_primary ? (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            {t("addresses.primary")}
+                          </span>
+                        ) : null}
+                      </div>
+                      <DetailFormattedAddress
+                        line1={addr.address_line_1}
+                        line2={addr.address_line_2}
+                        city={addr.city}
+                        state={addr.state}
+                        pincode={addr.pincode}
+                        country={addr.country}
+                        emptyMessage="—"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </DetailPanelCard>
 
             {vendorNotes ? (
               <DetailPanelCard title={t("fields.vendorNotes")}>

@@ -30,7 +30,7 @@ import { formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/i
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
-import { AddressPlaceAutocomplete } from "@/shared/components/maps/address-place-autocomplete";
+import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -40,7 +40,6 @@ import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { buildEntityDetailHrefAfterSave, sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
-  CascadingLocationFields,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
@@ -97,6 +96,9 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
         country: t("validation.country"),
         state: t("validation.state"),
         city: t("validation.city"),
+        pincode: t("validation.pincode"),
+        addressType: t("validation.addressType"),
+        addressesMin: t("validation.addressesMin"),
       }),
     [t],
   );
@@ -402,97 +404,6 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
     return itemOptions.filter((opt) => (itemGroupById.get(Number.parseInt(opt.value, 10)) ?? null) === gid);
   }
 
-  function AddressFields({ prefix }: { prefix: "bill_to" | "ship_to" }) {
-    const countryIsoName = `${prefix}.country_iso` as const;
-    const stateIsoName = `${prefix}.state_iso` as const;
-    const cityName = `${prefix}.city` as const;
-    const countryIso = useWatch({ control, name: countryIsoName });
-    const stateIso = useWatch({ control, name: stateIsoName });
-    const city = useWatch({ control, name: cityName });
-    const addressErrors = errors[prefix];
-    return (
-      <div className="space-y-4">
-        <Controller
-          control={control}
-          name={`${prefix}.address_line_1`}
-          render={({ field }) => (
-            <AddressPlaceAutocomplete
-              id={`${prefix}-line1`}
-              label={t("fields.addressLine1")}
-              required
-              value={field.value ?? ""}
-              onChange={field.onChange}
-              onBlur={field.onBlur}
-              invalid={!!addressErrors?.address_line_1}
-              error={addressErrors?.address_line_1?.message}
-              countryIso={typeof countryIso === "string" ? countryIso : ""}
-              contextCity={typeof city === "string" ? city : ""}
-              onSelectPlace={(place) => {
-                field.onChange(place.line1 || place.label);
-                setValue(`${prefix}.address_line_2`, place.line2 ?? "", { shouldDirty: true });
-                setValue(countryIsoName, place.countryIso ?? "", { shouldDirty: true });
-                setValue(stateIsoName, place.stateIso ?? "", { shouldDirty: true });
-                setValue(cityName, place.city ?? "", { shouldDirty: true });
-                setValue(`${prefix}.pincode`, place.pincode ?? "", { shouldDirty: true });
-              }}
-              disabled={saving}
-            />
-          )}
-        />
-        <Controller
-          control={control}
-          name={`${prefix}.address_line_2`}
-          render={({ field }) => (
-            <FieldGroup label={t("fields.addressLine2")} htmlFor={`${prefix}-line2`}>
-              <input
-                id={`${prefix}-line2`}
-                autoComplete="address-line2"
-                className={surfaceInputClassName}
-                disabled={saving}
-                value={field.value ?? ""}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-              />
-            </FieldGroup>
-          )}
-        />
-        <CascadingLocationFields<PurchaseOrderFormValues>
-          control={control}
-          setValue={setValue}
-          countryIsoName={countryIsoName}
-          stateIsoName={stateIsoName}
-          cityName={cityName}
-          labels={{
-            country: t("fields.country"),
-            state: t("fields.state"),
-            city: t("fields.city"),
-          }}
-          placeholders={{
-            country: t("placeholders.country"),
-            state: t("placeholders.state"),
-            city: t("placeholders.city"),
-          }}
-          disabled={saving}
-          errors={{
-            country: addressErrors?.country_iso?.message,
-            state: addressErrors?.state_iso?.message,
-            city: addressErrors?.city?.message,
-          }}
-          trailingSlot={
-            <FieldGroup label={t("fields.zipCode")} htmlFor={`${prefix}-pincode`}>
-              <input
-                id={`${prefix}-pincode`}
-                className={surfaceInputClassName}
-                disabled={saving}
-                {...register(`${prefix}.pincode`)}
-              />
-            </FieldGroup>
-          }
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="pb-12">
       <DetailPageHeader
@@ -597,19 +508,35 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
             </section>
 
             <section className="space-y-6 pt-1">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {t("sections.addresses")}
-              </h2>
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div>
-                  <h3 className="mb-4 text-sm font-semibold text-slate-900 dark:text-slate-100">{t("fields.billTo")}</h3>
-                  <AddressFields prefix="bill_to" />
-                </div>
-                <div>
-                  <h3 className="mb-4 text-sm font-semibold text-slate-900 dark:text-slate-100">{t("fields.shipTo")}</h3>
-                  <AddressFields prefix="ship_to" />
-                </div>
-              </div>
+              <EntityAddressesFields
+                control={control}
+                register={register}
+                setValue={setValue}
+                errors={errors}
+                disabled={saving}
+                idPrefix="po-address"
+                includeGeo={false}
+                labels={{
+                  sectionTitle: t("fields.addresses"),
+                  add: t("addresses.add"),
+                  remove: t("addresses.remove"),
+                  primary: t("addresses.primary"),
+                  rowLabel: (index) => t("addresses.rowLabel", { index }),
+                  addressType: t("fields.addressType"),
+                  addressLine1: t("fields.addressLine1"),
+                  addressLine2: t("fields.addressLine2"),
+                  country: t("fields.country"),
+                  state: t("fields.state"),
+                  city: t("fields.city"),
+                  pincode: t("fields.zipCode"),
+                  countryPlaceholder: t("placeholders.country"),
+                  statePlaceholder: t("placeholders.state"),
+                  cityPlaceholder: t("placeholders.city"),
+                  addressTypeBilling: t("addressType.billing"),
+                  addressTypeShipping: t("addressType.shipping"),
+                  addressTypeOther: t("addressType.other"),
+                }}
+              />
             </section>
 
             <section className="space-y-6">

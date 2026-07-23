@@ -207,7 +207,7 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
         )}
       </FormFieldRow>
 
-      {showStateSelect ? (
+      {showStateSelect && (showCitySelect || trailingSlot) ? (
         <FormFieldRow cols="2" className="mt-4">
           {showCitySelect ? (
             <FieldGroup

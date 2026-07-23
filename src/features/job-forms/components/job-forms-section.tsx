@@ -62,7 +62,13 @@ export function JobFormsSection({
       typeof form.submitted_form_id === "number" && form.submitted_form_id > 0
         ? form.submitted_form_id
         : null;
-    return submitted && submissionId ? `${hrefBase}&submission_id=${submissionId}` : hrefBase;
+    const dynamicFormId =
+      form.dynamic_form_id != null && String(form.dynamic_form_id).trim() !== ""
+        ? String(form.dynamic_form_id)
+        : null;
+    const dynamicFormIdQuery = dynamicFormId ? `&dynamic_form_id=${encodeURIComponent(dynamicFormId)}` : "";
+    const submissionQuery = submitted && submissionId ? `&submission_id=${submissionId}` : "";
+    return `${hrefBase}${submissionQuery}${dynamicFormIdQuery}`;
   }
 
   function openForm(form: JobFormRef) {

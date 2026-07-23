@@ -55,6 +55,7 @@ function resolveVendorTypeRef(typeId: number): VendorTypeRef | null {
 function normalizeAddressesPayload(addresses: VendorAddressPayload[]) {
   const rows = addresses.map((addr) => ({
     id: allocateVendorAddressMockId(),
+    address_type: addr.address_type ?? "other",
     address_line_1: addr.address_line_1.trim(),
     address_line_2: addr.address_line_2?.trim() || null,
     city: addr.city.trim(),
@@ -84,6 +85,7 @@ export function seedVendorsMockIfEmpty() {
     addresses: [
       {
         id: 1,
+        address_type: "billing",
         address_line_1: "321 Ian Street",
         address_line_2: "Andheri West",
         city: "Tawang",
@@ -96,6 +98,7 @@ export function seedVendorsMockIfEmpty() {
       },
       {
         id: 2,
+        address_type: "shipping",
         address_line_1: "Plot No. 12",
         address_line_2: "Industrial Area",
         city: "Mumbai",

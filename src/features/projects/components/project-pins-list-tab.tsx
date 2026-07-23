@@ -1054,14 +1054,14 @@ const ProjectPinsListTab = ({
     setValue,
     formState: { errors },
   } = useForm<{
-    start_date: string;
+    start_date: string | null;
     site: string;
     checklists: string[];
     job_status: string;
     assigned_worker: string;
   }>({
     defaultValues: {
-      start_date: "",
+      start_date: null,
       site: "",
       checklists: [],
       job_status: "",
@@ -1256,7 +1256,7 @@ const ProjectPinsListTab = ({
   }, []);
 
   const handleCreateJob = async (formData: {
-    start_date: string;
+    start_date: string | null;
     site: string;
     checklists: string[];
     job_status: string;
@@ -1264,11 +1264,12 @@ const ProjectPinsListTab = ({
   }): Promise<void> => {
     setIsSubmitting(true);
     try {
+      const safeStartDate = formData.start_date?.trim() ? formData.start_date : undefined;
       const res = await createJobFromLocation({
         project: Number(id),
         pin_ids: jobEligiblePinIds,
         site: formData.site ? Number(formData.site) : undefined,
-        start_date: formData.start_date,
+        start_date: safeStartDate,
         assigned_worker: formData.assigned_worker
           ? Number(formData.assigned_worker)
           : undefined,
@@ -1362,8 +1363,8 @@ const ProjectPinsListTab = ({
   return (
     <div className="min-w-0 divide-y divide-slate-100 dark:divide-slate-800">
       {dialogVisible && (
-        <div className="fixed inset-0 flex items-center justify-center  bg-black/50 backdrop-blur-sm z-99">
-          <div className="bg-white p-6 rounded-lg dark:bg-slate-950">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-99 px-4">
+          <div className="w-full max-w-md bg-white p-6 rounded-lg dark:bg-slate-950">
             <h2 className="text-lg font-semibold">Create Job</h2>
             <p className="mt-2">
               Are you sure you want to create a job for the selected pins?
@@ -1489,7 +1490,7 @@ const ProjectPinsListTab = ({
                     placeholder={t("selectChecklist") || "Select Checklist"}
                     listLabel={t("checkList")}
                     disabled={checkListLoading}
-                    className="w-full"
+                    className="w-full "
                   />
                 )}
               />
@@ -1731,8 +1732,8 @@ const ProjectPinsListTab = ({
           }
         />
       </div>
-      {selectedIds.size > 0 && <div className="p-4 sm:p-6">
-        <div className="bg-white drak:bg-slate-900/20 p-2 sm:px-4 sm:py-2  border dark:border-slate-700/80  rounded-lg border-slate-200/90 flex items-center justify-between gap-3 overflow-hidden">
+      {selectedIds.size > 0 && <div className="p-4 sm:p-6 mb-2">
+        <div className="bg-white drak:bg-slate-900/20 p-2 sm:px-4 sm:py-2  dark:bg-slate-900/20 border dark:border-slate-700/80  rounded-lg border-slate-200/90 flex items-center justify-between gap-3 overflow-hidden">
           <div className="flex items-center  gap-4">
             <span className="shrink-0 whitespace-nowrap rounded-md bg-[color:var(--dash-accent,#111)]/10 px-2 py-1 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-100">
               {selectedIds.size} {selectedIds.size === 1 ? "pin" : "pins"}{" "}
@@ -1842,7 +1843,7 @@ const ProjectPinsListTab = ({
           </div>
 
 
-          {effectiveSelectedIds.size > 0 && (
+          {effectiveSelectedIds.size > 0 && selectedJobStatus == "false" && selectedQuoteStatus == "approved"  && (
             <AppButton
               variant="primary"
               size="sm"
@@ -1880,7 +1881,7 @@ const ProjectPinsListTab = ({
             onClearFilters={clearFilters}
           />
         ) : (
-          <>
+          <div className="mt-2">
             <label className="inline-flex shrink-0 items-center gap-2 cursor-pointer px-6">
               <GroupCheckbox
                 ids={selectablePinIds}
@@ -1910,12 +1911,7 @@ const ProjectPinsListTab = ({
                   >
                     <div className="flex items-center gap-2">
                       <GroupCheckbox
-                        ids={levelPinIds.filter((id) => {
-                          const plot = level.plots
-                            .flatMap((p) => p.pins)
-                            .find((pin) => pin.id === id);
-                          return plot ? !plot.is_converted_job : true;
-                        })}
+                        ids={levelPinIds}
                         selectedIds={selectedIds}
                         onToggle={handleToggleGroup}
                       />
@@ -1992,7 +1988,7 @@ const ProjectPinsListTab = ({
                 <div ref={sentinelRef} className="h-6" aria-hidden="true" />
               )}
             </div>
-          </>
+          </div>
         )}
       </div>
 

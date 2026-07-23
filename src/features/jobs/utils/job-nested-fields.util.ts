@@ -119,12 +119,18 @@ function normalizeJobFormRef(entry: JobFormRefApiRow): JobFormRef | null {
       ? entry.is_submitted
       : submissionId != null || submittedByStatus;
 
+  const dynamicFormId =
+    entry.dynamic_form_id != null && String(entry.dynamic_form_id).trim() !== ""
+      ? entry.dynamic_form_id
+      : null;
+
   return {
     id: jobFormId,
     name: entry.name ?? entry.project_form_name ?? null,
     project_form_id: projectFormId,
     is_submitted: isSubmitted,
     submitted_form_id: submissionId,
+    dynamic_form_id: dynamicFormId,
   };
 }
 

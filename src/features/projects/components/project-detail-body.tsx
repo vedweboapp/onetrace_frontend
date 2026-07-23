@@ -77,7 +77,7 @@ export function ProjectDetailBody({
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
         <DetailPanelCard title={t("detail.sectionOverview")}>
-          <DetailMetricsGrid className="sm:grid-cols-2">
+          <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-3">
             <DetailMetricCard label={t("table.status")}>
               <WorkflowColourStatusChip row={statusChip} fallbackLabel="—" />
             </DetailMetricCard>
@@ -105,13 +105,21 @@ export function ProjectDetailBody({
             <DetailMetricCard label={t("fields.endDate")}>
               {end ? dateOnlyFmt.format(new Date(`${end}T12:00:00`)) : "—"}
             </DetailMetricCard>
-            {detail.status ? (
+            {/* {detail.status ? (
               <DetailMetricCard label={t("table.status")}>
                 <span className="inline-flex max-w-full truncate rounded-full border border-black/10 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm dark:bg-slate-800 dark:text-slate-200">
                   {detail.status}
                 </span>
               </DetailMetricCard>
-            ) : null}
+            ) : null} */}
+            <DetailMetricCard label={t("fields.manager")}>
+              {(detail.manager_detail ?? []).map((manager, index) => (
+                <span key={index}>
+                  {manager?.manager?.username} {" "}
+                  {index === (detail.manager_detail?.length ?? 0) - 1 ? " " : ","}
+                </span>
+              ))}
+            </DetailMetricCard>
           </DetailMetricsGrid>
         </DetailPanelCard>
 
