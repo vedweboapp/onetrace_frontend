@@ -1402,6 +1402,8 @@
         "name": "Client name",
         "email": "Email",
         "phone": "Phone",
+        "addresses": "Addresses",
+        "addressType": "Address type",
         "addressLine1": "Address line 1",
         "addressLine2": "Address line 2",
         "country": "Country",
@@ -1425,6 +1427,17 @@
         "editTitle": "Edit",
         "editSubtitle": "Update client details and save changes."
       },
+      "addresses": {
+        "add": "Add address",
+        "remove": "Remove",
+        "primary": "Primary",
+        "rowLabel": "Address {index}"
+      },
+      "addressType": {
+        "billing": "Billing",
+        "shipping": "Shipping",
+        "other": "Other"
+      },
       "validation": {
         "generic": "Check the form and try again.",
         "name": "Enter a client name.",
@@ -1434,7 +1447,9 @@
         "country": "Select a country.",
         "state": "Select a state or region.",
         "city": "Enter or select a city.",
-        "pincode": "Enter a postal or ZIP code."
+        "pincode": "Enter a postal or ZIP code.",
+        "addressType": "Select an address type.",
+        "addressesMin": "Add at least one address."
       }
     },
     "vendors": {
@@ -1484,6 +1499,7 @@
         "type": "Vendor type",
         "status": "Status",
         "addresses": "Addresses",
+        "addressType": "Address type",
         "addressLine1": "Address line 1",
         "addressLine2": "Address line 2",
         "country": "Country",
@@ -1505,6 +1521,11 @@
         "remove": "Remove",
         "primary": "Primary",
         "rowLabel": "Address {index}"
+      },
+      "addressType": {
+        "billing": "Billing",
+        "shipping": "Shipping",
+        "other": "Other"
       },
       "detail": {
         "backAria": "Back to vendors",
@@ -1543,7 +1564,8 @@
         "state": "Select a state or region.",
         "city": "Enter or select a city.",
         "pincode": "Enter a postal or ZIP code.",
-        "addressesMin": "Add at least one address."
+        "addressesMin": "Add at least one address.",
+        "addressType": "Select an address type."
       }
     },
     "qrCodes": {
@@ -2379,6 +2401,8 @@
         "dueDate": "Due date",
         "paymentTerms": "Payment terms",
         "status": "Status",
+        "addresses": "Addresses",
+        "addressType": "Address type",
         "billTo": "Bill to",
         "shipTo": "Ship to",
         "addressLine1": "Address line 1",
@@ -2413,10 +2437,21 @@
       },
       "sections": {
         "basic": "Basic information",
-        "addresses": "Bill to & ship to",
+        "addresses": "Addresses",
         "metadata": "Order metadata",
         "lineItems": "Line items",
         "notes": "Notes"
+      },
+      "addresses": {
+        "add": "Add address",
+        "remove": "Remove",
+        "primary": "Primary",
+        "rowLabel": "Address {index}"
+      },
+      "addressType": {
+        "billing": "Billing",
+        "shipping": "Shipping",
+        "other": "Other"
       },
       "lineItems": {
         "productName": "Product name",
@@ -2447,7 +2482,10 @@
         "addressLine1": "Enter address line 1.",
         "country": "Select a country.",
         "state": "Select a state or region.",
-        "city": "Enter or select a city."
+        "city": "Enter or select a city.",
+        "pincode": "Enter a postal or ZIP code.",
+        "addressType": "Select an address type.",
+        "addressesMin": "Add at least one address."
       }
     },
     "materialRequests": {

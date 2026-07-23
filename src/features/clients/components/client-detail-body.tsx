@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import type { Client } from "@/features/clients/types/client.types";
+import { resolveClientAddresses } from "@/features/clients/utils/client-form-map";
 import { DetailEmailLink, DetailPhoneLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
@@ -22,7 +23,7 @@ export function ClientDetailBody({
 }) {
   const t = useTranslations("Dashboard.clients");
   const tMeta = useTranslations("Dashboard.common.detail");
-  const legacyOnly = detail.address?.trim() ?? "";
+  const addresses = resolveClientAddresses(detail);
 
   return (
     <DetailPagePadding>
@@ -35,7 +36,7 @@ export function ClientDetailBody({
               activeLabel={t("status.active")}
               inactiveLabel={t("status.inactive")}
             />
-          
+
             <DetailMetricCard label={t("fields.email")}>
               <DetailEmailLink email={detail.email} />
             </DetailMetricCard>
@@ -45,18 +46,42 @@ export function ClientDetailBody({
           </DetailMetricsGrid>
         </DetailPanelCard>
 
-        <DetailPanelCard title={t("detail.sectionAddress")}>
-          <DetailFormattedAddress
-            line1={detail.address_line_1}
-            line2={detail.address_line_2}
-            city={detail.city}
-            state={detail.state}
-            pincode={detail.pincode}
-            country={detail.country}
-            legacySingleLine={legacyOnly}
-            line2Fallback={t("detail.addressLine2Empty")}
-            emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>}
-          />
+        <DetailPanelCard title={t("fields.addresses")}>
+          {addresses.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>
+          ) : (
+            <ul className="space-y-4">
+              {addresses.map((addr, index) => (
+                <li
+                  key={addr.id ?? `${addr.address_type}-${index}`}
+                  className="rounded-lg border border-slate-100 p-4 dark:border-slate-800"
+                >
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                      {t(`addressType.${addr.address_type}`)}
+                    </span>
+                    {addr.is_primary ? (
+                      <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                        {t("addresses.primary")}
+                      </span>
+                    ) : null}
+                  </div>
+                  <DetailFormattedAddress
+                    line1={addr.address_line_1}
+                    line2={addr.address_line_2}
+                    city={addr.city}
+                    state={addr.state}
+                    pincode={addr.pincode}
+                    country={addr.country}
+                    line2Fallback={t("detail.addressLine2Empty")}
+                    emptyMessage={
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>
+                    }
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
         </DetailPanelCard>
 
         <DetailSystemMetadataSection

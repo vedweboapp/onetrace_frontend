@@ -44,6 +44,27 @@ const DND_TYPE = "application/x-quotation-draft";
 const DUPLICATE_COUNT_MIN = 1;
 const DUPLICATE_COUNT_MAX = 50;
 
+type DraftRowPick = {
+  groupId: string;
+  compositeId: string;
+  /** Catalog quantity entered when adding a composite/item line. */
+  quantity: string;
+};
+
+function normalizeRowPick(raw: Partial<DraftRowPick> | undefined | null): DraftRowPick {
+  return {
+    groupId: typeof raw?.groupId === "string" ? raw.groupId : "",
+    compositeId: typeof raw?.compositeId === "string" ? raw.compositeId : "",
+    quantity: typeof raw?.quantity === "string" && raw.quantity.trim() !== "" ? raw.quantity : "1",
+  };
+}
+
+function parseRowPickQuantity(raw: string): number {
+  const n = Number.parseFloat(String(raw).trim());
+  if (!Number.isFinite(n) || n <= 0) return 1;
+  return n;
+}
+
 function clampDuplicateCount(n: number): number {
   if (!Number.isFinite(n)) return DUPLICATE_COUNT_MIN;
   return Math.min(DUPLICATE_COUNT_MAX, Math.max(DUPLICATE_COUNT_MIN, Math.floor(n)));
@@ -136,8 +157,10 @@ function DraftCompositeAddRow({
   compositeOptions,
   groupId,
   compositeId,
+  quantity,
   onGroupChange,
   onCompositeChange,
+  onQuantityChange,
   onSave,
   saveDisabled,
   showNoItemsMessage,
@@ -155,8 +178,10 @@ function DraftCompositeAddRow({
   compositeOptions: CheckmarkSelectOption[];
   groupId: string;
   compositeId: string;
+  quantity: string;
   onGroupChange: (v: string) => void;
   onCompositeChange: (v: string) => void;
+  onQuantityChange: (v: string) => void;
   onSave: () => void;
   saveDisabled: boolean;
   showNoItemsMessage: boolean;
@@ -170,9 +195,10 @@ function DraftCompositeAddRow({
 }) {
   const tDraw = useTranslations("Dashboard.projects.drawings.editor");
   const t = useTranslations("Dashboard.quotations.draft");
+  const qtyId = `${idPrefix}-qty`;
   return (
     <div className="w-full min-w-0 space-y-1.5" data-draft-composite-add>
-      <div className="flex max-w-3xl min-w-0 flex-row flex-wrap items-end gap-1.5">
+      <div className="flex max-w-4xl min-w-0 flex-row flex-wrap items-end gap-1.5">
         <div className="min-w-0 flex-1 sm:min-w-[11rem]">
           <CheckmarkSelect
             id={`${idPrefix}-group`}
@@ -205,6 +231,21 @@ function DraftCompositeAddRow({
             addAriaLabel={addCompositeAriaLabel}
             addLabel={addCompositeLabel}
             className="w-full"
+          />
+        </div>
+        <div className="w-[5.5rem] shrink-0">
+          <FieldLabel htmlFor={qtyId}>{t("qty")}</FieldLabel>
+          <input
+            id={qtyId}
+            type="number"
+            inputMode="decimal"
+            min={0.01}
+            step="any"
+            value={quantity}
+            onChange={(e) => onQuantityChange(e.target.value)}
+            disabled={saving}
+            className={cn(surfaceInputClassName, "tabular-nums")}
+            aria-label={t("qty")}
           />
         </div>
         <AppButton type="button" variant="secondary" size="sm" disabled={saveDisabled || saving} onClick={onSave}>
@@ -255,7 +296,7 @@ export function QuotationDraftComposer({
   const pathname = usePathname();
 
   const [newSectionName, setNewSectionName] = React.useState("");
-  const [rowPick, setRowPick] = React.useState<Record<string, { groupId: string; compositeId: string }>>({});
+  const [rowPick, setRowPick] = React.useState<Record<string, DraftRowPick>>({});
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [itemRows, setItemRows] = React.useState<Item[]>([]);
   const [groupItemsByGroupId, setGroupItemsByGroupId] = React.useState<Record<string, GroupItemRef[]>>({});
@@ -330,11 +371,17 @@ export function QuotationDraftComposer({
     (saved: unknown) => {
       const data = saved as {
         draft?: QuotationDraft | null;
-        rowPick?: Record<string, { groupId: string; compositeId: string }>;
+        rowPick?: Record<string, Partial<DraftRowPick>>;
         newSectionName?: string;
       };
       if (data.draft !== undefined) onDraftChange(data.draft);
-      if (data.rowPick) setRowPick(data.rowPick);
+      if (data.rowPick) {
+        const next: Record<string, DraftRowPick> = {};
+        for (const [key, value] of Object.entries(data.rowPick)) {
+          next[key] = normalizeRowPick(value);
+        }
+        setRowPick(next);
+      }
       if (typeof data.newSectionName === "string") setNewSectionName(data.newSectionName);
     },
     [onDraftChange],
@@ -346,7 +393,7 @@ export function QuotationDraftComposer({
     if (selectTarget === "group") {
       setRowPick((prev) => ({
         ...prev,
-        [key]: { ...(prev[key] ?? { groupId: "", compositeId: "" }), groupId: selectId, compositeId: "" },
+        [key]: { ...normalizeRowPick(prev[key]), groupId: selectId, compositeId: "" },
       }));
       void fetchGroup(Number.parseInt(selectId, 10))
         .then((row) => {
@@ -357,7 +404,7 @@ export function QuotationDraftComposer({
         });
     } else if (selectTarget === "item") {
       setRowPick((prev) => {
-        const cur = prev[key] ?? { groupId: "", compositeId: "" };
+        const cur = normalizeRowPick(prev[key]);
         return { ...prev, [key]: { ...cur, compositeId: selectId } };
       });
     }
@@ -787,7 +834,7 @@ export function QuotationDraftComposer({
   function handleGroupPickChange(rowKey: string, g: string) {
     setRowPick((prev) => ({
       ...prev,
-      [rowKey]: { ...(prev[rowKey] ?? { groupId: "", compositeId: "" }), groupId: g, compositeId: "" },
+      [rowKey]: { ...normalizeRowPick(prev[rowKey]), groupId: g, compositeId: "" },
     }));
     if (!g) return;
     void fetchGroup(Number.parseInt(g, 10))
@@ -802,7 +849,7 @@ export function QuotationDraftComposer({
   function addCompositeLineForKey(si: number, pi: number | null, sectionId: string, plotId: string | null) {
     if (readOnly) return;
     const key = draftCompositeRowKey(sectionId, plotId);
-    const row = rowPick[key] ?? { groupId: "", compositeId: "" };
+    const row = normalizeRowPick(rowPick[key]);
     const pickVal = row.compositeId;
     if (!pickVal) return;
     const id = Number.parseInt(pickVal, 10);
@@ -811,12 +858,13 @@ export function QuotationDraftComposer({
     const picked = itemRows.find((r) => r.id === id);
     const label = picked?.name ?? opts.find((o) => o.value === pickVal)?.label ?? `Item ${id}`;
     const unit = picked ? parseMoneyValue(picked.selling_price ?? picked.cost_price) : 0;
+    const quantity = parseRowPickQuantity(row.quantity);
     const newLine: QuotationDraftLine = {
       id: newQuotationDraftId("line"),
       pin_id: null,
       composite_item_id: id,
       name: label,
-      quantity: 1,
+      quantity,
       selling_price: unit,
       pin_count: 1,
     };
@@ -976,7 +1024,7 @@ export function QuotationDraftComposer({
         <ul className="space-y-3">
           {draft.sections.map((section, si) => {
             const secKey = draftCompositeRowKey(section.id, null);
-            const secPick = rowPick[secKey] ?? { groupId: "", compositeId: "" };
+            const secPick = normalizeRowPick(rowPick[secKey]);
             const secGroupId = secPick.groupId;
             const secCompositeOpts = getCompositeOptions(secGroupId);
             const secSaveDisabled =
@@ -1182,11 +1230,18 @@ export function QuotationDraftComposer({
                       compositeOptions={secCompositeOpts}
                       groupId={secGroupId}
                       compositeId={secPick.compositeId}
+                      quantity={secPick.quantity}
                       onGroupChange={(g) => handleGroupPickChange(secKey, g)}
                       onCompositeChange={(c) =>
                         setRowPick((prev) => {
-                          const cur = prev[secKey] ?? { groupId: "", compositeId: "" };
+                          const cur = normalizeRowPick(prev[secKey]);
                           return { ...prev, [secKey]: { ...cur, compositeId: c } };
+                        })
+                      }
+                      onQuantityChange={(q) =>
+                        setRowPick((prev) => {
+                          const cur = normalizeRowPick(prev[secKey]);
+                          return { ...prev, [secKey]: { ...cur, quantity: q } };
                         })
                       }
                       onSave={() => addCompositeLineForKey(si, null, section.id, null)}
@@ -1224,7 +1279,7 @@ export function QuotationDraftComposer({
                     <ul className="space-y-2">
                       {section.plots.map((plot, pi) => {
                         const plotKey = draftCompositeRowKey(section.id, plot.id);
-                        const plotPick = rowPick[plotKey] ?? { groupId: "", compositeId: "" };
+                        const plotPick = normalizeRowPick(rowPick[plotKey]);
                         const plotGroupId = plotPick.groupId;
                         const plotCompositeOpts = getCompositeOptions(plotGroupId);
                         const plotSaveDisabled =
@@ -1250,11 +1305,18 @@ export function QuotationDraftComposer({
                               compositeOptions={plotCompositeOpts}
                               groupId={plotGroupId}
                               compositeId={plotPick.compositeId}
+                              quantity={plotPick.quantity}
                               onGroupChange={(g) => handleGroupPickChange(plotKey, g)}
                               onCompositeChange={(c) =>
                                 setRowPick((prev) => {
-                                  const cur = prev[plotKey] ?? { groupId: "", compositeId: "" };
+                                  const cur = normalizeRowPick(prev[plotKey]);
                                   return { ...prev, [plotKey]: { ...cur, compositeId: c } };
+                                })
+                              }
+                              onQuantityChange={(q) =>
+                                setRowPick((prev) => {
+                                  const cur = normalizeRowPick(prev[plotKey]);
+                                  return { ...prev, [plotKey]: { ...cur, quantity: q } };
                                 })
                               }
                               onSave={() => addCompositeLineForKey(si, pi, section.id, plot.id)}
