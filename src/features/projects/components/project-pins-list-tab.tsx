@@ -833,13 +833,23 @@ const ProjectPinsListTab = ({
     setLoadingJobStatuses(true);
     fetchJobStatusesPage(1, 500)
       .then((res) => {
-        if (!cancelled)
-          setJobStatusOptions(
-            res.items.map((s: WorkflowColourStatus) => ({
-              value: String(s.id),
-              label: s.status_name,
-            })),
-          );
+        if (!cancelled) {
+          const options = res.items.map((s: WorkflowColourStatus) => ({
+            value: String(s.id),
+            label: s.status_name,
+          }));
+          setJobStatusOptions(options);
+
+          // Find "To Do" (or "todo") by default from dynamic list
+          const todoOption = options.find((opt) =>
+            opt.label.toLowerCase().includes("to do") || opt.label.toLowerCase().includes("todo"),
+          ) ?? options[0];
+
+          if (todoOption) {
+            setDialogJobStatusId(Number.parseInt(todoOption.value, 10));
+            setValue("job_status", todoOption.value, { shouldValidate: true });
+          }
+        }
       })
       .catch(() => {
         if (!cancelled) setJobStatusOptions([]);
@@ -1816,7 +1826,7 @@ const ProjectPinsListTab = ({
                     onChange={(e) => setSelectedQuantity(e.target.value)}
                     className={cn(
                       surfaceInputClassName,
-                      "w-24 px-3 py-1 text-sm rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100",
+                      "w-24 px-3 h-8 py-1 text-sm rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100",
                     )}
                     placeholder="Qty"
                   />
@@ -1848,6 +1858,15 @@ const ProjectPinsListTab = ({
               variant="primary"
               size="sm"
               onClick={() => {
+                const todoOption = jobStatusOptions.find((opt) =>
+                  opt.label.toLowerCase().includes("to do") || opt.label.toLowerCase().includes("todo"),
+                ) ?? jobStatusOptions[0];
+
+                if (todoOption) {
+                  setDialogJobStatusId(Number.parseInt(todoOption.value, 10));
+                  setValue("job_status", todoOption.value, { shouldValidate: true });
+                }
+
                 if (alreadyJobPins.length > 0) {
                   setJobConflictWarning(true);
                 } else {
