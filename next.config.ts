@@ -7,6 +7,10 @@ const nextPublicApiUrl =
   process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "") ??
   "http://110.225.254.51:5050/api/v1";
 
+const backendApiOrigin =
+  process.env.BACKEND_API_ORIGIN?.trim().replace(/\/$/, "") ??
+  "http://110.225.254.51:5050";
+
 const googleMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
 
 const nextConfig: NextConfig = {
@@ -37,6 +41,14 @@ const nextConfig: NextConfig = {
         source: "/dashboard",
         destination: "/home",
         permanent: true,
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/api/v1/:path*",
+        destination: `${backendApiOrigin}/api/v1/:path*`,
       },
     ];
   },

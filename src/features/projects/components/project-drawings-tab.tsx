@@ -84,6 +84,7 @@ function DrawingGridCard({
   const pinCount = countDrawingPins(row.plots, row.pin_count ?? row.pins_count);
   const hasLocation = Boolean(row.block?.trim() || row.level?.trim());
   const typeLabel = shortFileTypeLabel(row.drawing_file_type);
+  const [naturalAspect, setNaturalAspect] = React.useState<number | null>(null);
 
   return (
     <div
@@ -112,8 +113,9 @@ function DrawingGridCard({
           drawingFile={row.drawing_file}
           fileType={row.drawing_file_type}
           alt=""
+          onNaturalAspect={setNaturalAspect}
         />
-        <DrawingPinThumbnailOverlay plots={row.plots} />
+        <DrawingPinThumbnailOverlay plots={row.plots} naturalAspect={naturalAspect} />
         <div
           className={cn(
             "pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-900/25 via-transparent to-transparent opacity-0 transition-opacity",
@@ -185,6 +187,25 @@ function DrawingGridCard({
         </div>
       </div>
     </div>
+  );
+}
+
+/** Small thumbnail used in the table row — needs its own state for naturalAspect. */
+function DrawingTableRowThumbnail({ row }: { row: Drawing }) {
+  const [naturalAspect, setNaturalAspect] = React.useState<number | null>(null);
+  return (
+    <span className="relative h-12 w-[4.75rem] shrink-0 overflow-hidden border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
+      <DrawingFilePreview
+        key={`${row.id}-${row.drawing_file}`}
+        drawingFile={row.drawing_file}
+        fileType={row.drawing_file_type}
+        alt=""
+        widthPx={76}
+        className="size-full"
+        onNaturalAspect={setNaturalAspect}
+      />
+      <DrawingPinThumbnailOverlay plots={row.plots} naturalAspect={naturalAspect} />
+    </span>
   );
 }
 
@@ -285,17 +306,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     return [
       c.custom("drawing", t("table.drawing"), (row) => (
         <span className="flex min-w-0 items-center gap-3">
-          <span className="relative h-12 w-[4.75rem] shrink-0 overflow-hidden border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
-            <DrawingFilePreview
-              key={`${row.id}-${row.drawing_file}`}
-              drawingFile={row.drawing_file}
-              fileType={row.drawing_file_type}
-              alt=""
-              widthPx={76}
-              className="size-full"
-            />
-            <DrawingPinThumbnailOverlay plots={row.plots} />
-          </span>
+          <DrawingTableRowThumbnail row={row} />
           <span className="min-w-0 truncate font-semibold text-slate-900 dark:text-slate-100">{row.name}</span>
         </span>
       )),

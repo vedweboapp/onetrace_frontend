@@ -1,3 +1,5 @@
+import type { EntityAddress, EntityAddressPayload } from "@/shared/types/entity-address.types";
+
 export type PurchaseOrderUserRef = {
   id: number;
   email?: string | null;
@@ -20,7 +22,9 @@ export type PurchaseOrderContactRef = {
   phone?: string | null;
 };
 
+/** @deprecated Prefer EntityAddress via `addresses`. Kept for legacy API reads. */
 export type PurchaseOrderAddress = {
+  address_type?: string | null;
   address_line_1?: string | null;
   address_line_2?: string | null;
   city?: string | null;
@@ -28,7 +32,11 @@ export type PurchaseOrderAddress = {
   zip_code?: string | null;
   pincode?: string | null;
   country?: string | null;
+  is_primary?: boolean | null;
 };
+
+export type PurchaseOrderEntityAddress = EntityAddress;
+export type PurchaseOrderEntityAddressPayload = EntityAddressPayload;
 
 export type PurchaseOrderCompositeGroupRef = {
   id: number;
@@ -64,6 +72,9 @@ export type PurchaseOrderListItem = {
 
 export type PurchaseOrderDetail = PurchaseOrderListItem & {
   contact?: number | PurchaseOrderContactRef | null;
+  /** Preferred multi-address API shape. */
+  addresses?: PurchaseOrderEntityAddress[] | null;
+  /** Legacy read fallbacks. */
   bill_to?: PurchaseOrderAddress | null;
   ship_to?: PurchaseOrderAddress | null;
   vendor_notes?: string | null;
@@ -89,8 +100,7 @@ export type PurchaseOrderCreatePayload = {
   due_date?: string;
   payment_terms?: string;
   total?: number;
-  bill_to?: PurchaseOrderAddress;
-  ship_to?: PurchaseOrderAddress;
+  addresses?: PurchaseOrderEntityAddressPayload[];
   vendor_notes?: string;
   internal_notes?: string;
   composite_items?: PurchaseOrderCompositeItemPayload[];

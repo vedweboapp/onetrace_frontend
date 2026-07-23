@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Crosshair, FileText, Hand, MapPinned, Maximize, SquareDashed, X, ZoomIn, ZoomOut, LayoutGrid } from "lucide-react";
+import { Crosshair, FileText, Hand, MapPinned, Maximize, SquareDashed, X, ZoomIn, ZoomOut, LayoutGrid, Download } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
@@ -427,7 +427,9 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [detailPin, setDetailPin] = React.useState<DrawingPin | null>(null);
   const [pinEditData, setPinEditData] = React.useState<Partial<DrawingPin>>({});
   const [isPinEditing, setIsPinEditing] = React.useState(false);
+  const [hasPinDraftChanges, setHasPinDraftChanges] = React.useState(false);
   const [savedPinFocus, setSavedPinFocus] = React.useState<{ x: number; y: number } | null>(null);
+  const [pendingPinFocus, setPendingPinFocus] = React.useState<{ x: number; y: number } | null>(null);
   const [hoveredPinId, setHoveredPinId] = React.useState<number | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [pinDeleteConfirmOpen, setPinDeleteConfirmOpen] = React.useState(false);
@@ -441,6 +443,13 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const originalPinStateRef = React.useRef<{ x: number, y: number, plotId: number } | null>(null);
   const draggingVertexRef = React.useRef<{ plotId: number, index: number } | null>(null);
   const [pendingPinScroll, setPendingPinScroll] = React.useState<{ x: number; y: number } | null>(null);
+
+  const updatePinEditData = React.useCallback((updater: React.SetStateAction<Partial<DrawingPin>>) => {
+    setPinEditData((prev) => (typeof updater === "function"
+      ? (updater as (current: Partial<DrawingPin>) => Partial<DrawingPin>)(prev)
+      : updater));
+    setHasPinDraftChanges(true);
+  }, []);
 
   const [pageSize, setPageSize] = React.useState({ width: 1200, height: 900 });
   const pageSizeRef = React.useRef(pageSize);
@@ -465,6 +474,36 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     () => plots.find((p) => String(p.id) === selectedPlotId) ?? null,
     [plots, selectedPlotId],
   );
+
+  const setTemporaryPinFocus = React.useCallback((target: { x: number; y: number } | null) => {
+    if (!target) {
+      setPendingPinFocus(null);
+      return;
+    }
+
+    const normalized = {
+      x: Number(target.x.toFixed(6)),
+      y: Number(target.y.toFixed(6)),
+    };
+
+    setPendingPinFocus(normalized);
+  }, []);
+
+  const persistPinFocus = React.useCallback((target: { x: number; y: number } | null) => {
+    if (!target) {
+      setPendingPinFocus(null);
+      return;
+    }
+
+    const normalized = {
+      x: Number(target.x.toFixed(6)),
+      y: Number(target.y.toFixed(6)),
+    };
+
+    setPendingPinFocus(null);
+    setSavedPinFocus(normalized);
+    savePinFocus(normalized.x, normalized.y, projectId, drawingId);
+  }, [projectId, drawingId]);
 
   React.useEffect(() => {
     if (!selectedPlot) return;
@@ -1374,7 +1413,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     const plotsPayload = toPayload(localPlots, formData);
 
     // Append the JSON payload as a string field
-    formData.append('payload', JSON.stringify({name: drawingName,plots: plotsPayload }));
+    formData.append('payload', JSON.stringify({ name: drawingName, plots: plotsPayload }));
 
     // Send multipart/form-data to the backend
     const updated = await updateDrawingPlots(projectId, drawingId, formData);
@@ -1505,6 +1544,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     );
     setPlots(nextPlots);
     stagePinCoordinates(projectId, drawingId, nextPinId, nextPin.x_coordinate, nextPin.y_coordinate);
+    setTemporaryPinFocus({ x: nextPin.x_coordinate, y: nextPin.y_coordinate });
     setDetailPin(null);
     setDetailPlotId(null);
     setDirty(true);
@@ -1567,7 +1607,10 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         name: nextItem.name,
         sku: nextItem.sku || "",
         is_composite: nextItem.is_composite,
-        installation_type: nextItem?.installation_type ?? null
+        installation_type: nextItem?.installation_type ?? null,
+        ...(typeof (nextItem as CompositeItem & { attachments?: unknown }).attachments !== "undefined"
+          ? { attachments: (nextItem as CompositeItem & { attachments?: unknown }).attachments }
+          : {})
       } : detailPin.item_detail
     };
 
@@ -1579,6 +1622,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setDetailPin(updatedPin as DrawingPin);
     setPinEditData(updatedPin as DrawingPin);
     setIsPinEditing(false);
+    setHasPinDraftChanges(false);
     setDirty(true);
     toastSuccess(t("pinSaved"));
   }
@@ -1595,6 +1639,13 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       toastSuccess(t("savedAll"));
       // Refresh all data from API after successful save
       await loadAllData();
+
+      if (pendingPinFocus) {
+        const focusTarget = pendingPinFocus;
+        savePinFocus(focusTarget.x, focusTarget.y, projectId, drawingId);
+        setSavedPinFocus({ x: focusTarget.x, y: focusTarget.y });
+        setPendingPinFocus(null);
+      }
 
       normalized.forEach((plot) => {
         saveSelectedPlotCoordinates(projectId, drawingId, plot.id, plot.coordinates);
@@ -1674,16 +1725,21 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                 <X className="size-4" />
               </button>
             </div>
-            <input
-              ref={nameInputRef}
-              value={plotNameDraft}
-              onChange={(e) => setPlotNameDraft(e.target.value)}
-              placeholder={t("plotNamePlaceholder")}
-              className={surfaceInputClassName}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void savePlotFromModal();
-              }}
-            />
+            <div className="space-y-2">
+              <input
+                ref={nameInputRef}
+                value={plotNameDraft}
+                onChange={(e) => setPlotNameDraft(e.target.value)}
+                placeholder={t("plotNamePlaceholder")}
+                className={surfaceInputClassName}
+                maxLength={20}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void savePlotFromModal();
+                }}
+              />
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 flex items-end justify-end">{plotNameDraft.length}/20</span>
+            </div>
+
             <div className="my-4">
               <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                 Select Color
@@ -1752,7 +1808,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       >
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-              <input
+            <input
               type="text"
               // disabled
               className="border-0 border-b border-transparent outline-none focus:border-b-blue-500 truncate text-lg font-semibold text-slate-900 dark:text-slate-50"
@@ -2121,7 +2177,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                         const abbreviation = resolvePinMarkerAbbreviation(pin, groupItemAbbrevByKey, productName);
                         const pinQuantity = resolvePinDisplayQuantity(pin);
                         const isHovered = hoveredPinId === pin.id;
-                        const isFocused = savedPinFocus != null && Math.abs(pin.x_coordinate - savedPinFocus.x) < 1e-6 && Math.abs(pin.y_coordinate - savedPinFocus.y) < 1e-6;
+                        const activePinFocus = pendingPinFocus ?? savedPinFocus;
+                        const isFocused = activePinFocus != null && Math.abs(pin.x_coordinate - activePinFocus.x) < 1e-6 && Math.abs(pin.y_coordinate - activePinFocus.y) < 1e-6;
                         const innerScaleClass = draggingPinId === pin.id ? "scale-125" : isHovered ? "scale-110" : "";
 
                         return (
@@ -2157,10 +2214,11 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               setDetailPlotId(null);
                               setDetailPin(pin);
                               setPinEditData(pin);
+                              setHasPinDraftChanges(false);
 
                               if (pin.id > 0) {
                                 // Save backend-persisted pin coordinates so auto-focus works on the next visit
-                                savePinFocus(pin.x_coordinate, pin.y_coordinate, projectId, drawingId);
+                                persistPinFocus({ x: pin.x_coordinate, y: pin.y_coordinate });
                                 saveSelectedPinCoordinates(projectId, drawingId, pin.id, pin.x_coordinate, pin.y_coordinate);
                               } else {
                                 stagePinCoordinates(projectId, drawingId, pin.id, pin.x_coordinate, pin.y_coordinate);
@@ -2172,7 +2230,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                             }}
                           >
                             {isHovered && <PinTooltip pin={pin} productName={productName} quantity={pinQuantity} />}
-                            <div className={cn("relative duration-200 origin-bottom", innerScaleClass, "cursor-grab")}> 
+                            <div className={cn("relative duration-200 origin-bottom", innerScaleClass, "cursor-grab")}>
                               {isFocused ? (
                                 <div className="absolute left-1/2 top-full -translate-x-1/2 mt-1 h-2 w-10 rounded-full bg-black blur-sm" />
                               ) : null}
@@ -2196,6 +2254,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
           setDetailPin(null);
           setPinEditData({});
           setIsPinEditing(false);
+          setHasPinDraftChanges(false);
           setPinDeleteConfirmOpen(false);
         }}
         title={detailPin ? (pinDeleteConfirmOpen ? "Delete Pin?" : `Location #${pinLabels.get(detailPin.id) || (allPins.findIndex(p => p.id === detailPin.id) + 1)}`) : ""}
@@ -2206,14 +2265,19 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
               {isPinEditing ? (
                 <>
                   <button
-                    onClick={() => { setIsPinEditing(false); if (detailPin) setPinEditData(detailPin); }}
+                    onClick={() => {
+                      setIsPinEditing(false);
+                      if (detailPin) setPinEditData(detailPin);
+                      setHasPinDraftChanges(false);
+                    }}
                     className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={() => void savePinChanges()}
-                    className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all shadow-md shadow-blue-100 dark:shadow-none"
+                    disabled={!hasPinDraftChanges || savingPin}
+                    className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all shadow-md shadow-blue-100 dark:shadow-none disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-slate-700"
                   >
                     Save
                   </button>
@@ -2277,15 +2341,82 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     type="select"
                     options={filteredItems.map(i => ({ value: i.id, label: i.name }))}
                     onChange={(val: string) => {
-                      setPinEditData(prev => ({ ...prev, item: parseInt(val) || undefined }));
+                      updatePinEditData({ ...pinEditData, item: parseInt(val) || undefined });
                     }}
                   />
+
+                  {/* Product Attachments - 2 Column Grid */}
+                  {(() => {
+                    const attachments = (detailPin.item_detail as (typeof detailPin.item_detail & { attachments?: Array<{ file_url?: string | null; url?: string | null; attachment?: string | null; file?: string | null; file_name?: string | null; name?: string | null; id?: number | null }> }) | null | undefined)?.attachments;
+                    return attachments && attachments.length > 0 ? (
+                      <div className="py-3 border-b border-slate-50 dark:border-slate-800/50">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="text-slate-400">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21.44 11.05 12 20.5a5 5 0 0 1-7.07-7.07l9.44-9.44a3.5 3.5 0 0 1 4.95 4.95L10.5 16a2 2 0 0 1-2.83-2.83l8.48-8.48" />
+                            </svg>
+                          </div>
+                          <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Product Attachments</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {attachments.map((att, idx) => {
+                            const url = att.file_url ?? att.url ?? (typeof att.attachment === "string" ? att.attachment : null) ?? (typeof att.file === "string" ? att.file : null);
+                            const name = att.file_name ?? att.name ?? (att.id != null ? `Attachment #${att.id}` : `Attachment ${idx + 1}`);
+                            const fileType = name.split('.').pop()?.toUpperCase() || 'FILE';
+                            return (
+                              <div key={idx} className="flex items-center justify-between gap-2 px-3 py-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-lg">
+                                <div className="flex flex-col min-w-0">
+                                  <p className="text-xs truncate font-semibold text-red-900 dark:text-red-200">{name}</p>
+                                  <p className="text-[10px] text-red-700 dark:text-red-300">{fileType}</p>
+                                </div>
+                                <button
+                                  type="button"
+                                  disabled={!url}
+                                  className="text-[10px] font-semibold text-red-600 hover:text-red-700 hover:underline disabled:text-slate-400 disabled:cursor-not-allowed dark:text-red-400 dark:hover:text-red-300 transition-colors bg-transparent border-none p-0 flex items-center gap-0.5 cursor-pointer flex-shrink-0"
+                                  onClick={async () => {
+                                    if (!url) return;
+                                    if (url.startsWith("blob:") || url.startsWith("data:")) {
+                                      const link = document.createElement("a");
+                                      link.href = url;
+                                      link.download = name;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                      return;
+                                    }
+                                    try {
+                                      const response = await fetch(url);
+                                      const blob = await response.blob();
+                                      const blobUrl = URL.createObjectURL(blob);
+                                      const link = document.createElement("a");
+                                      link.href = blobUrl;
+                                      link.download = name;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                      URL.revokeObjectURL(blobUrl);
+                                    } catch (error) {
+                                      console.error("Failed to download file:", error);
+                                      window.open(url, "_blank");
+                                    }
+                                  }}
+                                >
+                                  <Download className="h-3 w-3" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+
                   <DetailRow
                     icon={QuantityIcon}
                     label="Quantity"
                     value={isPinEditing ? (pinEditData.quantity !== undefined ? pinEditData.quantity : (detailPin.quantity ?? 1)) : (detailPin.quantity ?? 1)}
                     isEditing={isPinEditing}
-                    onChange={(val: string) => setPinEditData(prev => ({ ...prev, quantity: val === "" ? ("" as any) : parseInt(val, 10) }))}
+                    onChange={(val: string) => updatePinEditData({ ...pinEditData, quantity: val === "" ? ("" as any) : parseInt(val, 10) })}
                   />
                   <DetailRow
                     icon={StatusIcon}
@@ -2301,7 +2432,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     statusTextColor={detailPin.status_detail?.text_colour || statuses.find(s => s.id === (pinEditData.status || detailPin.status))?.text_colour}
                     onChange={(val: string) => {
                       const s = statuses.find(st => String(st.id) === val);
-                      if (s) setPinEditData(prev => ({ ...prev, status: s.id }));
+                      if (s) updatePinEditData({ ...pinEditData, status: s.id });
                     }}
                   />
                   <DetailRow
@@ -2342,7 +2473,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                           rows={3}
                           className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900"
                           value={String(pinEditData.description ?? detailPin.description ?? "")}
-                          onChange={(e) => setPinEditData((prev) => ({ ...prev, description: e.target.value }))}
+                          onChange={(e) => updatePinEditData({ ...pinEditData, description: e.target.value })}
                         />
                       ) : (
                         <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 whitespace-pre-wrap">
@@ -2375,13 +2506,13 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               if (!files.length) return;
                               void (async () => {
                                 const draftAttachments = await filesToPinAttachments(files);
-                                setPinEditData((prev) => ({
-                                  ...prev,
+                                updatePinEditData({
+                                  ...pinEditData,
                                   attachments: [
-                                    ...(prev.attachments ?? detailPin.attachments ?? []),
+                                    ...(pinEditData.attachments ?? detailPin.attachments ?? []),
                                     ...draftAttachments,
                                   ],
-                                }));
+                                });
                               })();
                               // Allow picking the same file again
                               e.currentTarget.value = "";
@@ -2396,7 +2527,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                         const attachments = (isPinEditing ? pinEditData.attachments : detailPin.attachments) ?? [];
                         if (!attachments.length) return <p className="text-sm text-slate-500">-</p>;
                         return (
-                          <div className="flex flex-wrap gap-3">
+                          <div className="grid grid-cols-2 gap-2">
                             {attachments.map((att, idx) => {
                               const url =
                                 att.url ??
@@ -2410,39 +2541,25 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                                 att.file_name ??
                                 att.name ??
                                 (att.id != null ? `Attachment #${att.id}` : `Attachment ${idx + 1}`);
+                              const fileType = name.split('.').pop()?.toUpperCase() || 'FILE';
                               const isImage =
                                 (att.content_type ?? "").startsWith("image/") ||
                                 (typeof url === "string" && (url.startsWith("data:image/") || /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(url)));
                               return (
-                                <div key={idx} className="flex flex-col items-start gap-1 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950">
-                                  {url && isImage ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={url} alt={name} className="h-16 w-16 rounded-md border border-slate-200 object-cover dark:border-slate-700" />
-                                  ) : null}
-                                  {url ? (
-                                    <a
-                                      href={url}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="max-w-[160px] truncate text-xs font-semibold text-blue-600 hover:underline"
-                                    >
-                                      {name}
-                                    </a>
-                                  ) : (
-                                    <p className="max-w-[160px] truncate text-xs font-semibold text-slate-700 dark:text-slate-200">
-                                      {name}
-                                    </p>
-                                  )}
-                                  <div className="flex items-center gap-2 mt-1 w-full">
+                                <div key={idx} className={`flex flex-col gap-2 px-3 py-2 border rounded-lg ${isPinEditing ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/50' : 'bg-slate-50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-700'}`}>
+                                  <div className="flex flex-col min-w-0">
+                                    <p className={`text-xs truncate font-semibold ${isPinEditing ? 'text-blue-900 dark:text-blue-200' : 'text-slate-700 dark:text-slate-200'}`}>{name}</p>
+                                    <p className={`text-[10px] ${isPinEditing ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400'}`}>{fileType}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2 w-full">
                                     {isPinEditing ? (
                                       <button
                                         type="button"
-                                        className="text-[10px] font-bold text-red-600 hover:text-red-700"
+                                        className="text-[10px] font-semibold text-red-600 hover:text-red-700 hover:underline bg-transparent border-none p-0 cursor-pointer"
                                         onClick={() => {
-                                          setPinEditData((prev) => {
-                                            const curr = (prev.attachments ?? detailPin.attachments ?? []) as DrawingPinAttachment[];
-                                            const next = curr.filter((_, i) => i !== idx);
-                                            return { ...prev, attachments: next };
+                                          updatePinEditData({
+                                            ...pinEditData,
+                                            attachments: ((pinEditData.attachments ?? detailPin.attachments ?? []) as DrawingPinAttachment[]).filter((_, i) => i !== idx),
                                           });
                                         }}
                                       >
@@ -2452,7 +2569,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                                     {url ? (
                                       <button
                                         type="button"
-                                        className="text-[10px] font-bold text-blue-600 hover:text-blue-700 hover:underline bg-transparent border-none p-0 cursor-pointer"
+                                        className={`text-[10px] font-semibold ${isPinEditing ? 'text-blue-600 hover:text-blue-700' : 'text-slate-600 hover:text-slate-700'} hover:underline bg-transparent border-none p-0 cursor-pointer flex items-center gap-0.5 flex-shrink-0 ${!isPinEditing ? 'ml-auto' : ''}`}
                                         onClick={async () => {
                                           if (url.startsWith("blob:") || url.startsWith("data:")) {
                                             const link = document.createElement("a");
@@ -2480,7 +2597,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                                           }
                                         }}
                                       >
-                                        Download
+                                        <Download className="h-3 w-3" />
                                       </button>
                                     ) : null}
                                   </div>
@@ -2492,6 +2609,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                       })()}
                     </div>
                   </div>
+
                   <div className="py-3 border-b border-slate-50 dark:border-slate-800/50">
                     <div className="flex items-center justify-between overflow-hidden">
                       <div className="flex items-center gap-2 flex-shrink-0">
@@ -2506,7 +2624,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               onChange={(e) => {
                                 const value = e.target.value;
                                 if (isPinEditing) {
-                                  setPinEditData(prev => ({ ...prev, formId: value ? Number(value) : null }));
+                                  updatePinEditData({ ...pinEditData, formId: value ? Number(value) : null });
                                 }
                               }}
                               className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 max-w-[200px] text-slate-900 dark:text-slate-100"
@@ -2546,7 +2664,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                       disabled={!isPinEditing}
                       onClick={() => {
                         if (isPinEditing) {
-                          setPinEditData(prev => ({ ...prev, variation: !prev.variation }));
+                          updatePinEditData({ ...pinEditData, variation: !pinEditData.variation });
                         }
                       }}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${(isPinEditing ? pinEditData.variation : detailPin.variation)

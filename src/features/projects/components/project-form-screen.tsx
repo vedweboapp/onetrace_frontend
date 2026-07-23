@@ -76,6 +76,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   const [managerOptions, setManagerOptions] = React.useState<{ value: string; label: string }[]>([]);
   const initialClientsLoaded = React.useRef(false);
   const initialManagersLoaded = React.useRef(false);
+  const previousProjectTypeRef = React.useRef<string | null>(null);
   const schema = React.useMemo(
     () =>
       createProjectFormSchema({
@@ -234,9 +235,20 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   React.useEffect(() => {
     if (!selectedProjectType || !/^\d+$/.test(selectedProjectType)) {
       setFormOptions([]);
-      setValue("form_ids", []);
       return;
     }
+
+    // Only clear form_ids if project type actually changed (not on initial load)
+    if (previousProjectTypeRef.current !== null && previousProjectTypeRef.current !== selectedProjectType) {
+      const currentFormIds = getValues("form_ids");
+      if (currentFormIds && currentFormIds.length > 0) {
+        setValue("form_ids", []);
+      }
+    }
+
+    // Update the ref after processing
+    previousProjectTypeRef.current = selectedProjectType;
+
     let cancelled = false;
     (async () => {
       try {
@@ -245,13 +257,15 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
           setFormOptions(items.map((f) => ({ value: String(f.id), label: f.name })));
         }
       } catch {
-        if (!cancelled) setFormOptions([]);
+        if (!cancelled) {
+          setFormOptions([]);
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [selectedProjectType, setValue]);
+  }, [selectedProjectType, setValue, getValues]);
 
   React.useEffect(() => {
     let cancelled = false;

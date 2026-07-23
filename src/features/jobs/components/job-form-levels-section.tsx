@@ -468,7 +468,7 @@ export function JobFormLevelsSection({
       <div className="space-y-8">
         {locations.map((level) => {
           const levelSelectablePinIds = (level.plots ?? []).flatMap((plot) =>
-            (plot.pins ?? []).filter((pin) => isPinToDoStatus(pin) && !pin.is_converted_job).map((pin) => pin.id),
+            (plot.pins ?? []).filter((pin) => !isPinDisabled(pin)).map((pin) => pin.id),
           );
 
           return (
@@ -536,6 +536,7 @@ export function JobFormLevelsSection({
           plots={previewPinData.plots}
           drawingFile={previewPinData.drawingFile}
           drawingName={previewPinData.drawingName}
+          projectId={projectId}
         />
       ) : null}
     </div>

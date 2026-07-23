@@ -1394,6 +1394,8 @@
         "name": "Nombre del cliente",
         "email": "Correo",
         "phone": "Teléfono",
+        "addresses": "Direcciones",
+        "addressType": "Tipo de dirección",
         "addressLine1": "Línea de dirección 1",
         "addressLine2": "Línea de dirección 2",
         "country": "País",
@@ -1417,6 +1419,17 @@
         "editTitle": "Editar",
         "editSubtitle": "Actualiza los datos del cliente y guarda los cambios."
       },
+      "addresses": {
+        "add": "Añadir dirección",
+        "remove": "Eliminar",
+        "primary": "Principal",
+        "rowLabel": "Dirección {index}"
+      },
+      "addressType": {
+        "billing": "Facturación",
+        "shipping": "Envío",
+        "other": "Otra"
+      },
       "validation": {
         "generic": "Revisa el formulario e inténtalo de nuevo.",
         "name": "Introduce el nombre del cliente.",
@@ -1426,7 +1439,9 @@
         "country": "Selecciona un país.",
         "state": "Selecciona un estado o provincia.",
         "city": "Selecciona o escribe una ciudad.",
-        "pincode": "Introduce un código postal."
+        "pincode": "Introduce un código postal.",
+        "addressType": "Selecciona un tipo de dirección.",
+        "addressesMin": "Añade al menos una dirección."
       }
     },
     "vendors": {
@@ -1476,6 +1491,7 @@
         "type": "Tipo de proveedor",
         "status": "Estado",
         "addresses": "Direcciones",
+        "addressType": "Tipo de dirección",
         "addressLine1": "Línea de dirección 1",
         "addressLine2": "Línea de dirección 2",
         "country": "País",
@@ -1497,6 +1513,11 @@
         "remove": "Eliminar",
         "primary": "Principal",
         "rowLabel": "Dirección {index}"
+      },
+      "addressType": {
+        "billing": "Facturación",
+        "shipping": "Envío",
+        "other": "Otra"
       },
       "detail": {
         "backAria": "Volver a proveedores",
@@ -1535,7 +1556,8 @@
         "state": "Selecciona un estado o provincia.",
         "city": "Selecciona o escribe una ciudad.",
         "pincode": "Introduce un código postal.",
-        "addressesMin": "Añade al menos una dirección."
+        "addressesMin": "Añade al menos una dirección.",
+        "addressType": "Selecciona un tipo de dirección."
       }
     },
     "qrCodes": {
@@ -1875,6 +1897,8 @@
       "detailLoadError": "No se pudieron cargar los detalles de la cotización. Inténtalo de nuevo.",
       "createdToast": "Cotización creada correctamente",
       "updatedToast": "Cotización actualizada correctamente",
+      "statusUpdatedToast": "Estado de la cotización actualizado",
+      "statusUpdateError": "No se pudo actualizar el estado de la cotización. Inténtalo de nuevo.",
       "saveError": "No se pudo guardar la cotización. Revisa los campos e inténtalo de nuevo.",
       "noClientsHint": "Añade al menos un cliente antes de crear una cotización.",
       "filterState": "Estado activo",
@@ -1901,6 +1925,13 @@
         "approved": "Aprobada",
         "rejected": "Rechazada"
       },
+      "updateStatus": {
+        "action": "Actualizar estado",
+        "title": "Actualizar estado de la cotización",
+        "body": "Elige un nuevo estado para “{title}”.",
+        "confirm": "Actualizar estado",
+        "placeholder": "Seleccionar estado"
+      },
       "table": {
         "quote": "Cotización",
         "customer": "Cliente",
@@ -1908,6 +1939,7 @@
         "project": "Proyecto",
         "technicians": "Técnicos",
         "tags": "Etiquetas",
+        "projectCategory": "Categoría",
         "status": "Estado",
         "due": "Vencimiento",
         "created": "Creado"
@@ -2360,6 +2392,8 @@
         "dueDate": "Fecha de vencimiento",
         "paymentTerms": "Condiciones de pago",
         "status": "Estado",
+        "addresses": "Direcciones",
+        "addressType": "Tipo de dirección",
         "billTo": "Facturar a",
         "shipTo": "Enviar a",
         "addressLine1": "Línea de dirección 1",
@@ -2394,10 +2428,21 @@
       },
       "sections": {
         "basic": "Información básica",
-        "addresses": "Facturar y enviar a",
+        "addresses": "Direcciones",
         "metadata": "Metadatos",
         "lineItems": "Líneas",
         "notes": "Notas"
+      },
+      "addresses": {
+        "add": "Añadir dirección",
+        "remove": "Eliminar",
+        "primary": "Principal",
+        "rowLabel": "Dirección {index}"
+      },
+      "addressType": {
+        "billing": "Facturación",
+        "shipping": "Envío",
+        "other": "Otra"
       },
       "lineItems": {
         "productName": "Producto",
@@ -2428,7 +2473,10 @@
         "addressLine1": "Introduce la línea 1 de la dirección.",
         "country": "Selecciona un país.",
         "state": "Selecciona un estado o provincia.",
-        "city": "Selecciona o escribe una ciudad."
+        "city": "Selecciona o escribe una ciudad.",
+        "pincode": "Introduce un código postal.",
+        "addressType": "Selecciona un tipo de dirección.",
+        "addressesMin": "Añade al menos una dirección."
       }
     },
     "materialRequests": {
@@ -2802,7 +2850,12 @@
       "filterAllStatuses": "Todos los estados",
       "filterAssignedWorker": "Técnico asignado",
       "filterAllWorkers": "Todos los técnicos",
+      "filterJobCategory": "Categoría del trabajo",
       "filterAllCategories": "Todas las categorías",
+      "category": {
+        "service": "Servicio",
+        "project": "Proyecto"
+      },
       "massAssign": {
         "assignTo": "Asignar a",
         "apply": "Aplicar",
@@ -3387,7 +3440,8 @@
         "createdAt": "Creado",
         "updatedAt": "Última actualización",
         "createdBy": "Creado por",
-        "projectStatus": "Estado del proyecto"
+        "projectStatus": "Estado del proyecto",
+        "manager": "Gerentes"
       },
       "hints": {
         "sitesMultiSelect": "Selecciona uno o más sitios para este proyecto."

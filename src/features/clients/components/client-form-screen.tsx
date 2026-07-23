@@ -23,15 +23,14 @@ import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
-  AddressFormFields,
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
-  FormFieldSpanFull,
   SurfacePhoneField,
   SurfaceShell,
   surfaceInputClassName,
 } from "@/shared/ui";
+import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
 
 type Props = {
   mode: "create" | "edit";
@@ -66,6 +65,8 @@ export function ClientFormScreen({ mode, clientId }: Props) {
         state: t("validation.state"),
         city: t("validation.city"),
         pincode: t("validation.pincode"),
+        addressType: t("validation.addressType"),
+        addressesMin: t("validation.addressesMin"),
       }),
     [t],
   );
@@ -146,91 +147,77 @@ export function ClientFormScreen({ mode, clientId }: Props) {
           </div>
         ) : (
           <form id="client-upsert-screen-form" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(submit)}>
-            <div>
-            
-                <FieldGroup label={t("fields.name")} htmlFor="client-name" required>
-                  <input
-                    id="client-name"
-                    autoComplete="name"
-                    aria-invalid={errors.name ? true : undefined}
-                    aria-describedby={errors.name ? "client-name-err" : undefined}
-                    className={cn(surfaceInputClassName, errors.name && "border-red-500 dark:border-red-500")}
-                    {...register("name", {
-                      onChange: (e) => {
-                        e.target.value = capitalizeFirstLetter(e.target.value);
-                      },
-                    })}
-                  />
-                  <FieldErrorText id="client-name-err">{errors.name?.message}</FieldErrorText>
-                </FieldGroup>
-              
-            </div>
+            <FormFieldRow cols="2">
+              <FieldGroup label={t("fields.name")} htmlFor="client-name" required>
+                <input
+                  id="client-name"
+                  autoComplete="name"
+                  aria-invalid={errors.name ? true : undefined}
+                  aria-describedby={errors.name ? "client-name-err" : undefined}
+                  className={cn(surfaceInputClassName, errors.name && "border-red-500 dark:border-red-500")}
+                  {...register("name", {
+                    onChange: (e) => {
+                      e.target.value = capitalizeFirstLetter(e.target.value);
+                    },
+                  })}
+                />
+                <FieldErrorText id="client-name-err">{errors.name?.message}</FieldErrorText>
+              </FieldGroup>
+              <FieldGroup label={t("fields.email")} htmlFor="client-email" required>
+                <input
+                  id="client-email"
+                  type="email"
+                  autoComplete="email"
+                  aria-invalid={errors.email ? true : undefined}
+                  aria-describedby={errors.email ? "client-email-err" : undefined}
+                  className={cn(surfaceInputClassName, errors.email && "border-red-500 dark:border-red-500")}
+                  {...register("email")}
+                />
+                <FieldErrorText id="client-email-err">{errors.email?.message}</FieldErrorText>
+              </FieldGroup>
+            </FormFieldRow>
 
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {t("detail.sectionContact")}
-              </h3>
-              <FormFieldRow cols="2" className="mt-3">
-                <FieldGroup label={t("fields.email")} htmlFor="client-email" required>
-                  <input
-                    id="client-email"
-                    type="email"
-                    autoComplete="email"
-                    aria-invalid={errors.email ? true : undefined}
-                    aria-describedby={errors.email ? "client-email-err" : undefined}
-                    className={cn(surfaceInputClassName, errors.email && "border-red-500 dark:border-red-500")}
-                    {...register("email")}
-                  />
-                  <FieldErrorText id="client-email-err">{errors.email?.message}</FieldErrorText>
-                </FieldGroup>
-                {/* <FormFieldSpanFull className="sm:col-span-2 lg:col-span-2"> */}
-                  <SurfacePhoneField
-                    control={control}
-                    name="phone"
-                    id="client-phone"
-                    label={t("fields.phone")}
-                    required
-                    error={errors.phone?.message}
-                    disabled={saving}
-                  />
-                {/* </FormFieldSpanFull> */}
-              </FormFieldRow>
-            </div>
-
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {t("form.section.address")}
-              </h3>
-              <AddressFormFields
-                idPrefix="client"
+            <FormFieldRow cols="2">
+              <SurfacePhoneField
                 control={control}
-                register={register}
-                setValue={setValue}
-                className="mt-3"
+                name="phone"
+                id="client-phone"
+                label={t("fields.phone")}
+                required
+                error={errors.phone?.message}
                 disabled={saving}
-                labels={{
-                  addressLine1: t("fields.addressLine1"),
-                  addressLine2: t("fields.addressLine2"),
-                  country: t("fields.country"),
-                  state: t("fields.stateProvince"),
-                  city: t("fields.city"),
-                  pincode: t("fields.pincode"),
-                }}
-                placeholders={{
-                  country: t("placeholders.country"),
-                  state: t("placeholders.state"),
-                  city: t("placeholders.city"),
-                }}
-                errors={{
-                  address_line_1: errors.address_line_1?.message,
-                  address_line_2: errors.address_line_2?.message,
-                  country_iso: errors.country_iso?.message,
-                  state_iso: errors.state_iso?.message,
-                  city: errors.city?.message,
-                  pincode: errors.pincode?.message,
-                }}
               />
-            </div>
+            </FormFieldRow>
+
+            <EntityAddressesFields
+              control={control}
+              register={register}
+              setValue={setValue}
+              errors={errors}
+              disabled={saving}
+              idPrefix="client-address"
+              includeGeo={false}
+              labels={{
+                sectionTitle: t("fields.addresses"),
+                add: t("addresses.add"),
+                remove: t("addresses.remove"),
+                primary: t("addresses.primary"),
+                rowLabel: (index) => t("addresses.rowLabel", { index }),
+                addressType: t("fields.addressType"),
+                addressLine1: t("fields.addressLine1"),
+                addressLine2: t("fields.addressLine2"),
+                country: t("fields.country"),
+                state: t("fields.stateProvince"),
+                city: t("fields.city"),
+                pincode: t("fields.pincode"),
+                countryPlaceholder: t("placeholders.country"),
+                statePlaceholder: t("placeholders.state"),
+                cityPlaceholder: t("placeholders.city"),
+                addressTypeBilling: t("addressType.billing"),
+                addressTypeShipping: t("addressType.shipping"),
+                addressTypeOther: t("addressType.other"),
+              }}
+            />
           </form>
         )}
       </SurfaceShell>

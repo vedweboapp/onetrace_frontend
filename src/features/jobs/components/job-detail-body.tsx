@@ -49,7 +49,7 @@ import {
 import { routes } from "@/shared/config/routes";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { cn } from "@/core/utils/http.util";
-import { Layers, MapPinned } from "lucide-react";
+import { ChevronRight, Layers, MapPinned } from "lucide-react";
 import { DrawingPinPreviewModal } from "@/features/projects/components/drawing-pin-preview-modal";
 import type { Drawing, DrawingPin, DrawingPlot } from "@/features/projects/types/drawing.types";
 import { useLevelSnapshots, type LevelSnapshotState } from "@/shared/hooks/use-level-snapshots.hook";
@@ -156,7 +156,7 @@ function ProjectPinRow({
   const [isEditingStatus, setIsEditingStatus] = React.useState(false);
 
   return (
-    <div className={cn(PIN_TABLE_ROW_CLASS, "hover:bg-slate-50/90 dark:hover:bg-slate-800/30")}>
+    <div className={cn(PIN_TABLE_ROW_CLASS, "bg-white dark:bg-slate-950 dark:hover:bg-slate-900/80")}> 
       <span className="font-semibold text-slate-500">#{pin.id}</span>
       <div className="flex flex-col min-w-0 pl-4">
         <span className="font-medium text-slate-900 dark:text-slate-100 truncate">{productName}</span>
@@ -259,7 +259,7 @@ function ProjectPinRow({
             </span>
           </button>
         ) : (
-          <span className="text-xs text-slate-500">—</span>
+          <span className="text-xs text-slate-500">{locale === "es" ? "Agregar formulario" : "Add a form"}</span>
         )}
       </div>
       <div>
@@ -297,6 +297,16 @@ function ProjectPinRow({
                 );
                 return;
               }
+              // If the pin has no form at all, prompt to add one
+              if (!form) {
+                toastError(locale === "es" ? "Agregar un formulario antes de cambiar el estado." : "Add a form before changing status.");
+                return;
+              }
+              // If form exists but isn't submitted, block status changes
+              if (!form.submitted) {
+                toastError(locale === "es" ? "El formulario no está enviado. No se puede cambiar el estado." : "Form not submitted. Submit the form before changing status.");
+                return;
+              }
               setIsEditingStatus(true);
             }}
             className="cursor-pointer select-none"
@@ -310,6 +320,91 @@ function ProjectPinRow({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+type PinCategory = {
+  id: string;
+  item_name: string;
+  pins: DrawingPin[];
+};
+
+function PlotPinCategoryGroup({
+  category,
+  expanded,
+  onToggleExpanded,
+  onPreviewPin,
+  getPinForm,
+  checklistsComplete,
+  checklistMarked,
+  onOpenGateModal,
+  onNavigate,
+  pinStatuses,
+  onUpdatePinStatus,
+  drawingFile,
+  drawingFileType,
+  snapshotState,
+  drawingName,
+  plot,
+}: {
+  category: PinCategory;
+  expanded: boolean;
+  onToggleExpanded: () => void;
+  onPreviewPin: (pin: DrawingPin) => void;
+  getPinForm: (pin: DrawingPin) => { label: string; href: string; projectFormId: number; submitted: boolean } | null;
+  checklistsComplete: boolean;
+  checklistMarked: boolean;
+  onOpenGateModal: (href: string, label: string) => void;
+  onNavigate: (href: string) => void;
+  pinStatuses: WorkflowColourStatus[];
+  onUpdatePinStatus: (pinId: number, nextStatusId: number) => void;
+  drawingFile?: string;
+  drawingFileType?: string;
+  snapshotState?: LevelSnapshotState;
+  drawingName?: string;
+  plot: JobDrawingPlot;
+}) {
+  return (
+    <div className="rounded-b-xl border-t border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40">
+      <button
+        type="button"
+        onClick={onToggleExpanded}
+        className="w-full px-4 py-3 flex items-center justify-between gap-3 text-left"
+      >
+        <div className="inline-flex items-center gap-2">
+          <ChevronRight
+            className={cn("h-3 w-3 transition-transform duration-200", expanded && "rotate-90")}
+          />
+          <span className="text-sm font-semibold text-slate-700 dark:text-slate-100">{category.item_name}</span>
+        </div>
+        <span className="text-xs text-slate-500 dark:text-slate-400">
+          {category.pins.length} {category.pins.length === 1 ? "Pin" : "Pins"}
+        </span>
+      </button>
+      {expanded && (
+        <div className="space-y-0">
+          {category.pins.map((pin) => (
+            <ProjectPinRow
+              key={pin.id}
+              pin={pin}
+              form={getPinForm(pin)}
+              onPreview={() => onPreviewPin(pin)}
+              checklistsComplete={checklistsComplete}
+              checklistMarked={checklistMarked}
+              onOpenGateModal={onOpenGateModal}
+              onNavigate={onNavigate}
+              pinStatuses={pinStatuses}
+              onUpdatePinStatus={onUpdatePinStatus}
+              drawingFile={drawingFile}
+              drawingFileType={drawingFileType}
+              snapshotState={snapshotState}
+              plots={[plot as DrawingPlot]}
+              drawingName={drawingName}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -347,6 +442,40 @@ function PlotPinsBlock({
   snapshotState?: LevelSnapshotState;
   drawingName?: string;
 }) {
+  const categorizedPins = React.useMemo(() => {
+    return pins.reduce((acc: PinCategory[], currentPin) => {
+      const categoryId = String(
+        currentPin?.item_detail?.id ?? currentPin?.group_detail?.id ?? "uncategorized",
+      );
+      const existing = acc.find((cat) => cat.id === categoryId);
+      const itemName =
+        currentPin?.item_detail?.name ?? currentPin?.group_detail?.name ?? "Uncategorized";
+      if (existing) {
+        existing.pins.push(currentPin);
+      } else {
+        acc.push({ id: categoryId, item_name: itemName, pins: [currentPin] });
+      }
+      return acc;
+    }, []);
+  }, [pins]);
+
+  const [expandedCategoryIds, setExpandedCategoryIds] = React.useState<Set<string>>(() =>
+    new Set(categorizedPins.map((category) => category.id)),
+  );
+
+  const toggleCategoryExpanded = React.useCallback((categoryId: string) => {
+    setExpandedCategoryIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) next.delete(categoryId);
+      else next.add(categoryId);
+      return next;
+    });
+  }, []);
+
+  React.useEffect(() => {
+    setExpandedCategoryIds(new Set(categorizedPins.map((category) => category.id)));
+  }, [categorizedPins]);
+
   return (
     <div className="w-full overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-700/80 dark:bg-slate-950/30">
       <div className="flex items-center gap-2.5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-4 py-3 dark:border-slate-800 dark:from-slate-900/80 dark:to-slate-950/40">
@@ -364,27 +493,27 @@ function PlotPinsBlock({
         ) : (
           <>
             <ProjectPinTableHeader />
-            <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-              {pins.map((pin) => (
-                <ProjectPinRow
-                  key={pin.id}
-                  pin={pin}
-                  form={getPinForm(pin)}
-                  onPreview={() => onPreviewPin(pin)}
-                  checklistsComplete={checklistsComplete}
-                  checklistMarked={checklistMarked}
-                  onOpenGateModal={onOpenGateModal}
-                  onNavigate={onNavigate}
-                  pinStatuses={pinStatuses}
-                  onUpdatePinStatus={onUpdatePinStatus}
-                  drawingFile={drawingFile}
-                  drawingFileType={drawingFileType}
-                  snapshotState={snapshotState}
-                  plots={[plot as DrawingPlot]}
-                  drawingName={drawingName}
-                />
-              ))}
-            </div>
+            {categorizedPins.map((category) => (
+              <PlotPinCategoryGroup
+                key={category.id}
+                category={category}
+                expanded={expandedCategoryIds.has(category.id)}
+                onToggleExpanded={() => toggleCategoryExpanded(category.id)}
+                onPreviewPin={onPreviewPin}
+                getPinForm={getPinForm}
+                checklistsComplete={checklistsComplete}
+                checklistMarked={checklistMarked}
+                onOpenGateModal={onOpenGateModal}
+                onNavigate={onNavigate}
+                pinStatuses={pinStatuses}
+                onUpdatePinStatus={onUpdatePinStatus}
+                drawingFile={drawingFile}
+                drawingFileType={drawingFileType}
+                snapshotState={snapshotState}
+                drawingName={drawingName}
+                plot={plot}
+              />
+            ))}
           </>
         )}
       </div>
@@ -426,6 +555,7 @@ export function JobDetailBody({
     plots: DrawingPlot[];
     drawingFile: string;
     drawingName: string;
+    form: { label: string; href: string; projectFormId: number; submitted: boolean } | null;
   } | null>(null);
 
   const levels = React.useMemo(() => {
@@ -483,6 +613,31 @@ export function JobDetailBody({
           ? "Las listas de verificación deben estar marcadas antes de actualizar el estado."
           : "Checklists must be marked complete before changing status."
       );
+      return;
+    }
+    // Find the pin object so we can inspect its form/submission status
+    let foundPin: DrawingPin | null = null;
+    for (const lvl of levels) {
+      const plots = (lvl.plots ?? []) as JobDrawingPlot[];
+      for (const p of plots) {
+        for (const pin of p.pins ?? []) {
+          if (pin.id === pinId) {
+            foundPin = pin;
+            break;
+          }
+        }
+        if (foundPin) break;
+      }
+      if (foundPin) break;
+    }
+
+    const pinForm = foundPin ? getPinForm(foundPin) : null;
+    if (!pinForm) {
+      toastError(locale === "es" ? "Agregar un formulario antes de cambiar el estado." : "Add a form before changing status.");
+      return;
+    }
+    if (!pinForm.submitted) {
+      toastError(locale === "es" ? "El formulario no está enviado. No se puede cambiar el estado." : "Form not submitted. Submit the form before changing status.");
       return;
     }
     // Send only the changed pin to the API: [{ id, status }]
@@ -827,6 +982,7 @@ export function JobDetailBody({
                                 plots: [plot as DrawingPlot],
                                 drawingFile: level.drawing_file,
                                 drawingName: level.name,
+                                form: getPinForm(pin),
                               });
                             }}
                             getPinForm={getPinForm}
@@ -879,6 +1035,8 @@ export function JobDetailBody({
           plots={previewPinData.plots}
           drawingFile={previewPinData.drawingFile}
           drawingName={previewPinData.drawingName}
+          formSummary={previewPinData.form}
+          projectId={typeof detail.project === "number" ? detail.project : detail.project?.id}
         />
       )}
       <JobFormChecklistGateModal
