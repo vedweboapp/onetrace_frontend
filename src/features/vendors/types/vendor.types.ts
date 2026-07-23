@@ -1,4 +1,5 @@
 import type { VendorType } from "@/features/vendor-types/types/vendor-type.types";
+import type { EntityAddress, EntityAddressPayload } from "@/shared/types/entity-address.types";
 
 export type VendorUserRef = {
   id: number;
@@ -6,18 +7,8 @@ export type VendorUserRef = {
   username: string;
 };
 
-export type VendorAddress = {
-  id?: number;
-  address_line_1: string;
-  address_line_2?: string | null;
-  city: string;
-  state: string;
-  country: string;
-  pincode: string;
-  latitude?: string | null;
-  longitude?: string | null;
-  is_primary?: boolean;
-};
+export type VendorAddress = EntityAddress;
+export type VendorAddressPayload = EntityAddressPayload;
 
 export type VendorTypeRef = Pick<VendorType, "id" | "name" | "bg_color" | "text_color">;
 
@@ -53,8 +44,6 @@ export type VendorListResponse = {
   data: Vendor[];
   pagination: VendorPagination;
 };
-
-export type VendorAddressPayload = Omit<VendorAddress, "id">;
 
 export type VendorCreatePayload = {
   name: string;

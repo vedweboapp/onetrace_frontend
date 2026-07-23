@@ -1394,6 +1394,8 @@
         "name": "Nombre del cliente",
         "email": "Correo",
         "phone": "Teléfono",
+        "addresses": "Direcciones",
+        "addressType": "Tipo de dirección",
         "addressLine1": "Línea de dirección 1",
         "addressLine2": "Línea de dirección 2",
         "country": "País",
@@ -1417,6 +1419,17 @@
         "editTitle": "Editar",
         "editSubtitle": "Actualiza los datos del cliente y guarda los cambios."
       },
+      "addresses": {
+        "add": "Añadir dirección",
+        "remove": "Eliminar",
+        "primary": "Principal",
+        "rowLabel": "Dirección {index}"
+      },
+      "addressType": {
+        "billing": "Facturación",
+        "shipping": "Envío",
+        "other": "Otra"
+      },
       "validation": {
         "generic": "Revisa el formulario e inténtalo de nuevo.",
         "name": "Introduce el nombre del cliente.",
@@ -1426,7 +1439,9 @@
         "country": "Selecciona un país.",
         "state": "Selecciona un estado o provincia.",
         "city": "Selecciona o escribe una ciudad.",
-        "pincode": "Introduce un código postal."
+        "pincode": "Introduce un código postal.",
+        "addressType": "Selecciona un tipo de dirección.",
+        "addressesMin": "Añade al menos una dirección."
       }
     },
     "vendors": {
@@ -1476,6 +1491,7 @@
         "type": "Tipo de proveedor",
         "status": "Estado",
         "addresses": "Direcciones",
+        "addressType": "Tipo de dirección",
         "addressLine1": "Línea de dirección 1",
         "addressLine2": "Línea de dirección 2",
         "country": "País",
@@ -1497,6 +1513,11 @@
         "remove": "Eliminar",
         "primary": "Principal",
         "rowLabel": "Dirección {index}"
+      },
+      "addressType": {
+        "billing": "Facturación",
+        "shipping": "Envío",
+        "other": "Otra"
       },
       "detail": {
         "backAria": "Volver a proveedores",
@@ -1535,7 +1556,8 @@
         "state": "Selecciona un estado o provincia.",
         "city": "Selecciona o escribe una ciudad.",
         "pincode": "Introduce un código postal.",
-        "addressesMin": "Añade al menos una dirección."
+        "addressesMin": "Añade al menos una dirección.",
+        "addressType": "Selecciona un tipo de dirección."
       }
     },
     "qrCodes": {
@@ -2370,6 +2392,8 @@
         "dueDate": "Fecha de vencimiento",
         "paymentTerms": "Condiciones de pago",
         "status": "Estado",
+        "addresses": "Direcciones",
+        "addressType": "Tipo de dirección",
         "billTo": "Facturar a",
         "shipTo": "Enviar a",
         "addressLine1": "Línea de dirección 1",
@@ -2404,10 +2428,21 @@
       },
       "sections": {
         "basic": "Información básica",
-        "addresses": "Facturar y enviar a",
+        "addresses": "Direcciones",
         "metadata": "Metadatos",
         "lineItems": "Líneas",
         "notes": "Notas"
+      },
+      "addresses": {
+        "add": "Añadir dirección",
+        "remove": "Eliminar",
+        "primary": "Principal",
+        "rowLabel": "Dirección {index}"
+      },
+      "addressType": {
+        "billing": "Facturación",
+        "shipping": "Envío",
+        "other": "Otra"
       },
       "lineItems": {
         "productName": "Producto",
@@ -2438,7 +2473,10 @@
         "addressLine1": "Introduce la línea 1 de la dirección.",
         "country": "Selecciona un país.",
         "state": "Selecciona un estado o provincia.",
-        "city": "Selecciona o escribe una ciudad."
+        "city": "Selecciona o escribe una ciudad.",
+        "pincode": "Introduce un código postal.",
+        "addressType": "Selecciona un tipo de dirección.",
+        "addressesMin": "Añade al menos una dirección."
       }
     },
     "materialRequests": {
