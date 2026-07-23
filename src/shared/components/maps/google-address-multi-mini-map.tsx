@@ -70,9 +70,19 @@ export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: P
   }, []);
 
   React.useEffect(() => {
-    if (!mapReady || !geocoderRef.current || points.length === 0) {
+    if (!mapReady || !geocoderRef.current) {
+      if (points.length === 0) {
+        setResolved([]);
+        setStatus("idle");
+      }
+      return;
+    }
+
+    if (points.length === 0) {
+      for (const m of markersRef.current) m.setMap(null);
+      markersRef.current = [];
       setResolved([]);
-      setStatus(points.length === 0 ? "idle" : "loading");
+      setStatus("idle");
       return;
     }
 
@@ -122,6 +132,7 @@ export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: P
   }, [mapReady, points]);
 
   const fitMapToResolved = React.useCallback((map: google.maps.Map, points: ResolvedPoint[]) => {
+    google.maps.event.trigger(map, "resize");
     if (points.length === 0) return;
 
     if (points.length === 1) {
@@ -134,7 +145,6 @@ export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: P
       }
       map.fitBounds(bounds, 48);
     }
-    google.maps.event.trigger(map, "resize");
   }, []);
 
   React.useEffect(() => {
@@ -154,7 +164,15 @@ export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: P
       markersRef.current.push(marker);
     }
 
-    fitMapToResolved(map, resolved);
+    // Defer fit until layout has applied fill-height sizing (avoids grey tiles).
+    const frame = window.requestAnimationFrame(() => {
+      fitMapToResolved(map, resolved);
+    });
+    const tid = window.setTimeout(() => fitMapToResolved(map, resolved), 80);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(tid);
+    };
   }, [status, resolved, fitMapToResolved]);
 
   React.useEffect(() => {
@@ -163,8 +181,11 @@ export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: P
 
     const ro = new ResizeObserver(() => {
       const map = mapRef.current;
-      if (!map || status !== "ready" || resolved.length === 0) return;
-      fitMapToResolved(map, resolved);
+      if (!map) return;
+      google.maps.event.trigger(map, "resize");
+      if (status === "ready" && resolved.length > 0) {
+        fitMapToResolved(map, resolved);
+      }
     });
     ro.observe(el);
     return () => ro.disconnect();
