@@ -45,12 +45,24 @@
     return undefined;
   }
 
-  function jobFormProjectFormId(entry: JobFormRef | number): string {
+  function jobFormProjectFormId(entry: JobFormRef | unknown): string {
     if (typeof entry === "number") {
       return entry > 0 ? String(entry) : "";
     }
-    const projectFormId = entry.project_form_id ?? entry.id;
-    return typeof projectFormId === "number" && projectFormId > 0 ? String(projectFormId) : "";
+    if (!entry || typeof entry !== "object") return "";
+
+    const rawId =
+      (entry as any).dynamic_form_id ??
+      (entry as any).project_form_id ??
+      (entry as any).form_id ??
+      (typeof (entry as any).dynamic_form === "object" ? (entry as any).dynamic_form?.id : (entry as any).dynamic_form) ??
+      (typeof (entry as any).project_form === "object" ? (entry as any).project_form?.id : (entry as any).project_form) ??
+      (entry as any).id ??
+      (entry as any).job_form_id;
+
+    if (rawId == null) return "";
+    const num = typeof rawId === "number" ? rawId : Number.parseInt(String(rawId), 10);
+    return Number.isFinite(num) && num > 0 ? String(num) : "";
   }
 
   export function jobFormsToFormIds(forms: Job["forms"]): string[] {
@@ -60,13 +72,13 @@
       return forms
         .map((entry) => {
           if (typeof entry === "number" && entry > 0) return String(entry);
-          if (entry && typeof entry === "object") return jobFormProjectFormId(entry as JobFormRef);
+          if (entry && typeof entry === "object") return jobFormProjectFormId(entry);
           return "";
         })
         .filter((id) => id.length > 0);
     }
     if (typeof forms === "object") {
-      const id = jobFormProjectFormId(forms as JobFormRef);
+      const id = jobFormProjectFormId(forms);
       return id ? [id] : [];
     }
     return [];
@@ -74,7 +86,7 @@
 
   export function jobFormSelectOptions(forms: Job["forms"]): Array<{ value: string; label: string }> {
     if (forms == null) return [];
-    const entries: JobFormRef[] = [];
+    const entries: unknown[] = [];
     if (typeof forms === "number" && forms > 0) {
       entries.push({ id: forms, project_form_id: forms });
     } else if (Array.isArray(forms)) {
@@ -82,19 +94,20 @@
         if (typeof entry === "number" && entry > 0) {
           entries.push({ id: entry, project_form_id: entry });
         } else if (entry && typeof entry === "object") {
-          entries.push(entry as JobFormRef);
+          entries.push(entry);
         }
       }
     } else if (typeof forms === "object") {
-      entries.push(forms as JobFormRef);
+      entries.push(forms);
     }
     return entries
       .map((entry) => {
         const value = jobFormProjectFormId(entry);
         if (!value) return null;
+        const name = (entry as any).name ?? (entry as any).project_form_name ?? (entry as any).title;
         return {
           value,
-          label: entry.name?.trim() || `#${value}`,
+          label: typeof name === "string" && name.trim() ? name.trim() : `#${value}`,
         };
       })
       .filter((row): row is { value: string; label: string } => row != null);

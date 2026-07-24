@@ -1,4 +1,5 @@
 import { fetchUsersPage } from "@/features/users/api/user.api";
+import { resolveUserProfileSelectId } from "@/features/users/utils/load-users-by-role.util";
 import { userProfileLabel } from "@/features/jobs/utils/job-nested-fields.util";
 import type {
   DispatchDetail,
@@ -27,7 +28,7 @@ export async function loadDispatchUserLabelById(): Promise<Record<number, string
     const { items } = await fetchUsersPage(1, 500);
     const map: Record<number, string> = {};
     for (const u of items) {
-      map[u.user_detail.id] = userProfileLabel(u);
+      map[resolveUserProfileSelectId(u)] = userProfileLabel(u);
     }
     userLabelCache = map;
     return map;

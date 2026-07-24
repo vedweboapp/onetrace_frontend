@@ -210,7 +210,6 @@ export type QuotationMassUpdateLabels = {
   quoteName: string;
   customer: string;
   site: string;
-  project: string;
   primaryContact: string;
   additionalContact: string;
   siteContact: string;
@@ -231,7 +230,6 @@ export function buildQuotationMassUpdateFields(
   options: {
     clientOptions: CheckmarkSelectOption[];
     siteOptions: CheckmarkSelectOption[];
-    projectOptions: CheckmarkSelectOption[];
     contactOptions: CheckmarkSelectOption[];
     userOptions: CheckmarkSelectOption[];
     tagOptions: CheckmarkSelectOption[];
@@ -243,7 +241,6 @@ export function buildQuotationMassUpdateFields(
     textField("quote_name", labels.quoteName),
     selectField("customer", labels.customer, options.clientOptions, "number"),
     selectField("site", labels.site, options.siteOptions, "number"),
-    selectField("project", labels.project, options.projectOptions, "number"),
     selectField("primary_customer_contact", labels.primaryContact, options.contactOptions, "number"),
     selectField("additional_customer_contact", labels.additionalContact, options.contactOptions, "number"),
     selectField("site_contact", labels.siteContact, options.contactOptions, "number"),

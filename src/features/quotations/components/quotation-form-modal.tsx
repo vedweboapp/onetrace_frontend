@@ -7,7 +7,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
-import { createQuotation, fetchProjectLevelRowsForQuotation, fetchWorkspaceUsers } from "@/features/quotations/api/quotation.api";
+import { createQuotation, fetchProjectLevelRowsForQuotation } from "@/features/quotations/api/quotation.api";
 import { QuotationAdditionalContactsFields } from "@/features/quotations/components/quotation-additional-contacts-fields";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
 import { QUOTE_CATEGORY } from "@/features/quotations/constants/quotation-category";
@@ -27,6 +27,10 @@ import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
+import {
+  fetchUsersForAppRoles,
+  userProfilesToSelectOptions,
+} from "@/features/users/utils/load-users-by-role.util";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
@@ -71,7 +75,9 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
   const [siteRows, setSiteRows] = React.useState<Site[]>([]);
   const [projectRows, setProjectRows] = React.useState<Project[]>([]);
   const [contactOptions, setContactOptions] = React.useState<Option[]>([]);
-  const [userOptions, setUserOptions] = React.useState<Option[]>([]);
+  const [salesOptions, setSalesOptions] = React.useState<Option[]>([]);
+  const [managerOptions, setManagerOptions] = React.useState<Option[]>([]);
+  const [technicianOptions, setTechnicianOptions] = React.useState<Option[]>([]);
   const [levelRows, setLevelRows] = React.useState<ProjectLevelForQuotation[]>([]);
 
   const schema = React.useMemo(
@@ -150,17 +156,18 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     if (!open) return;
     (async () => {
       try {
-        const users = await fetchWorkspaceUsers();
+        const byRole = await fetchUsersForAppRoles(["technician", "sales", "manager"]);
         if (!cancelled) {
-          setUserOptions(
-            users.map((u) => ({
-              value: String(u.id),
-              label: u.username?.trim() || u.email?.trim() || `#${u.id}`,
-            })),
-          );
+          setTechnicianOptions(userProfilesToSelectOptions(byRole.technician ?? []));
+          setSalesOptions(userProfilesToSelectOptions(byRole.sales ?? []));
+          setManagerOptions(userProfilesToSelectOptions(byRole.manager ?? []));
         }
       } catch {
-        if (!cancelled) setUserOptions([]);
+        if (!cancelled) {
+          setTechnicianOptions([]);
+          setSalesOptions([]);
+          setManagerOptions([]);
+        }
       }
     })();
     return () => {
@@ -548,7 +555,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   id="quotation-sales"
                   portaled
                   listLabel={t("fields.salesperson")}
-                  options={userOptions}
+                  options={salesOptions}
                   value={field.value}
                   emptyLabel={t("placeholders.userOptional")}
                   disabled={saving}
@@ -570,7 +577,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   id="quotation-pm"
                   portaled
                   listLabel={t("fields.projectManager")}
-                  options={userOptions}
+                  options={managerOptions}
                   value={field.value}
                   emptyLabel={t("placeholders.userOptional")}
                   disabled={saving}
@@ -596,7 +603,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("hints.tags")}</p>
           </FieldGroup>
           <FieldGroup label={t("fields.technicians")} htmlFor="quotation-modal-technicians">
-            {userOptions.length === 0 ? (
+            {technicianOptions.length === 0 ? (
               <p className="text-sm text-slate-500 dark:text-slate-400">{t("hints.noUsers")}</p>
             ) : (
               <Controller
@@ -605,7 +612,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                 render={({ field }) => (
                   <MultiCheckSelect
                     id="quotation-modal-technicians"
-                    options={userOptions}
+                    options={technicianOptions}
                     values={(field.value ?? []).map(String)}
                     onChange={(next) =>
                       field.onChange(

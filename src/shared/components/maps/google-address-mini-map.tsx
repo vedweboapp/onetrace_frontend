@@ -5,7 +5,13 @@ import { ExternalLink } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { DetailAddressParts } from "@/shared/components/layout/detail-formatted-address";
 import { buildGeocodeRequestSearchParams, hasGeocodeableAddress } from "@/shared/utils/address-geocode-query";
-import { loadGoogleMaps } from "@/shared/utils/google-maps-loader.util";
+import {
+  clearAdvancedMarker,
+  createAdvancedMarker,
+  createGoogleMap,
+  setAdvancedMarkerPosition,
+  type GoogleAdvancedMarker,
+} from "@/shared/utils/google-map-marker.util";
 import { cn } from "@/core/utils/http.util";
 
 function googleMapsTabUrl(lat: number, lon: number): string {
@@ -24,7 +30,7 @@ export function GoogleAddressMiniMap({ addressParts, coordinates, className, map
 
   const containerRef = React.useRef<HTMLDivElement>(null);
   const mapRef = React.useRef<google.maps.Map | null>(null);
-  const markerRef = React.useRef<google.maps.Marker | null>(null);
+  const markerRef = React.useRef<GoogleAdvancedMarker | null>(null);
   const geocoderRef = React.useRef<google.maps.Geocoder | null>(null);
 
   const norm = React.useMemo(
@@ -57,25 +63,21 @@ export function GoogleAddressMiniMap({ addressParts, coordinates, className, map
     if (!el || mapRef.current) return;
 
     let cancelled = false;
-    loadGoogleMaps()
-      .then((google) => {
+    createGoogleMap(el, {
+      center: { lat: 20.5937, lng: 78.9629 },
+      zoom: 5,
+    })
+      .then(({ google, map }) => {
         if (cancelled) return;
         geocoderRef.current = new google.maps.Geocoder();
-        mapRef.current = new google.maps.Map(el, {
-          center: { lat: 20.5937, lng: 78.9629 },
-          zoom: 5,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-          scrollwheel: false,
-        });
+        mapRef.current = map;
         setMapReady(true);
       })
       .catch(() => setStatus("error"));
 
     return () => {
       cancelled = true;
-      markerRef.current?.setMap(null);
+      clearAdvancedMarker(markerRef.current);
       markerRef.current = null;
       mapRef.current = null;
       geocoderRef.current = null;
@@ -134,14 +136,17 @@ export function GoogleAddressMiniMap({ addressParts, coordinates, className, map
     const map = mapRef.current;
     if (!map || status !== "ready" || !latLon) return;
 
-    const pos = { lat: latLon.lat, lng: latLon.lon };
     if (!markerRef.current) {
-      markerRef.current = new google.maps.Marker({ map, position: pos });
+      markerRef.current = createAdvancedMarker({
+        map,
+        lat: latLon.lat,
+        lng: latLon.lon,
+      });
     } else {
-      markerRef.current.setPosition(pos);
-      markerRef.current.setMap(map);
+      setAdvancedMarkerPosition(markerRef.current, latLon.lat, latLon.lon);
+      markerRef.current.map = map;
     }
-    map.setCenter(pos);
+    map.setCenter({ lat: latLon.lat, lng: latLon.lon });
     map.setZoom(16);
     google.maps.event.trigger(map, "resize");
   }, [status, latLon]);

@@ -52,8 +52,10 @@ import { fetchSite, fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
 import { fetchTagsPage } from "@/features/tags/api/tag.api";
 import type { Tag } from "@/features/tags/types/tag.types";
-import { fetchRoles, fetchUsersPage } from "@/features/users/api/user.api";
-import type { UserProfile } from "@/features/users/types/user.types";
+import {
+  fetchUsersForAppRoles,
+  userProfilesToSelectOptions,
+} from "@/features/users/utils/load-users-by-role.util";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -389,39 +391,11 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const [roles, allUsers] = await Promise.all([fetchRoles(), fetchUsersPage(1, 500)]);
-        const roleIdByKey = new Map<string, number>();
-        for (const r of roles) {
-          const roleName = (r.role_name ?? r.name ?? "").toLowerCase();
-          if (!roleName) continue;
-          if (roleName.includes("tech")) roleIdByKey.set("technician", r.id);
-          if (roleName.includes("sale")) roleIdByKey.set("sales", r.id);
-          if (roleName.includes("manager")) roleIdByKey.set("manager", r.id);
-        }
-
-        const toOpt = (u: UserProfile): Option => {
-          const fullName = `${u.user_detail.first_name ?? ""} ${u.user_detail.last_name ?? ""}`.trim();
-          const label = fullName || u.user_detail.email?.trim() || `#${u.user_detail.id}`;
-          return { value: String(u.user_detail.id), label };
-        };
-        const asOpts = (rows: UserProfile[]) => rows.map(toOpt);
-
-        const [techRes, salesRes, managerRes] = await Promise.all([
-          roleIdByKey.get("technician")
-            ? fetchUsersPage(1, 500, { role: roleIdByKey.get("technician")! })
-            : Promise.resolve({ items: allUsers.items, pagination: allUsers.pagination }),
-          roleIdByKey.get("sales")
-            ? fetchUsersPage(1, 500, { role: roleIdByKey.get("sales")! })
-            : Promise.resolve({ items: allUsers.items, pagination: allUsers.pagination }),
-          roleIdByKey.get("manager")
-            ? fetchUsersPage(1, 500, { role: roleIdByKey.get("manager")! })
-            : Promise.resolve({ items: allUsers.items, pagination: allUsers.pagination }),
-        ]);
-
+        const byRole = await fetchUsersForAppRoles(["technician", "sales", "manager"]);
         if (!cancelled) {
-          setTechnicianOptions(asOpts(techRes.items));
-          setSalesOptions(asOpts(salesRes.items));
-          setManagerOptions(asOpts(managerRes.items));
+          setTechnicianOptions(userProfilesToSelectOptions(byRole.technician ?? []));
+          setSalesOptions(userProfilesToSelectOptions(byRole.sales ?? []));
+          setManagerOptions(userProfilesToSelectOptions(byRole.manager ?? []));
         }
       } catch {
         if (!cancelled) {

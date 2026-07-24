@@ -24,10 +24,14 @@ import {
 } from "@/features/quotations/utils/quotation-nested-fields.util";
 import type { Tag } from "@/features/tags/types/tag.types";
 import { fetchTagsPage } from "@/features/tags/api/tag.api";
-import { fetchUsersPage } from "@/features/users/api/user.api";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
+import {
+  fetchUsersForAppRoles,
+  resolveUserProfileSelectId,
+  userProfilesToSelectOptions,
+} from "@/features/users/utils/load-users-by-role.util";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
@@ -121,7 +125,6 @@ export function QuotationsPanel() {
   const [siteRows, setSiteRows] = React.useState<Site[]>([]);
   const [projectRows, setProjectRows] = React.useState<Project[]>([]);
   const [massSiteOptions, setMassSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [massProjectOptions, setMassProjectOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [massContactOptions, setMassContactOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [massTagOptions, setMassTagOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [massUserOptions, setMassUserOptions] = React.useState<{ value: string; label: string }[]>([]);
@@ -212,26 +215,24 @@ export function QuotationsPanel() {
     let cancelled = false;
     (async () => {
       try {
-        const [contactsRes, tagsRes, usersRes, sitesRes, projectsRes] = await Promise.all([
+        const [contactsRes, tagsRes, roleUsers, sitesRes] = await Promise.all([
           fetchContactsPage(1, 500, { is_active: true }),
           fetchTagsPage(1, 500, { is_active: true }),
-          fetchUsersPage(1, 500),
+          fetchUsersForAppRoles(["technician", "manager", "sales"]),
           fetchSitesPage(1, 500, { is_active: true }),
-          fetchProjectsPage(1, 500, { is_active: true }),
         ]);
         if (!cancelled) {
           setMassContactOptions(contactsRes.items.map((c) => ({ value: String(c.id), label: c.name })));
           const tagLabel = (row: Tag) => row.name ?? row.tag_name ?? `#${row.id}`;
           setMassTagOptions(tagsRes.items.map((row) => ({ value: String(row.id), label: tagLabel(row) })));
-          setMassUserOptions(
-            usersRes.items.map((u) => {
-              const fullName = `${u.user_detail.first_name ?? ""} ${u.user_detail.last_name ?? ""}`.trim();
-              const label = fullName || u.user_detail.email?.trim() || `#${u.user_detail.id}`;
-              return { value: String(u.user_detail.id), label };
-            }),
-          );
+          const mergedUsers = [
+            ...(roleUsers.technician ?? []),
+            ...(roleUsers.manager ?? []),
+            ...(roleUsers.sales ?? []),
+          ];
+          const uniqueById = new Map(mergedUsers.map((u) => [resolveUserProfileSelectId(u), u]));
+          setMassUserOptions(userProfilesToSelectOptions([...uniqueById.values()]));
           setMassSiteOptions(sitesRes.items.map((s) => ({ value: String(s.id), label: s.site_name })));
-          setMassProjectOptions(projectsRes.items.map((p) => ({ value: String(p.id), label: p.name })));
           setFetchCustomerOptions(true);
         }
       } catch {
@@ -240,7 +241,6 @@ export function QuotationsPanel() {
           setMassTagOptions([]);
           setMassUserOptions([]);
           setMassSiteOptions([]);
-          setMassProjectOptions([]);
         }
       }
     })();
@@ -370,7 +370,6 @@ export function QuotationsPanel() {
         {
           clientOptions,
           siteOptions: massSiteOptions,
-          projectOptions: massProjectOptions,
           contactOptions: massContactOptions,
           userOptions: massUserOptions,
           tagOptions: massTagOptions,
@@ -380,7 +379,6 @@ export function QuotationsPanel() {
           quoteName: t("fields.quoteName"),
           customer: t("fields.customer"),
           site: t("fields.site"),
-          project: t("fields.project"),
           primaryContact: t("fields.primaryContact"),
           additionalContact: t("fields.additionalContact"),
           siteContact: t("fields.siteContact"),
@@ -400,7 +398,6 @@ export function QuotationsPanel() {
     [
       clientOptions,
       massSiteOptions,
-      massProjectOptions,
       massContactOptions,
       massUserOptions,
       massTagOptions,
