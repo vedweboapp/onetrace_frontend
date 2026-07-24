@@ -14,6 +14,12 @@ export function getGoogleMapsApiKey(): string | null {
   return key && key.length > 0 ? key : null;
 }
 
+/** Map ID required for AdvancedMarkerElement. Falls back to Google demo id. */
+export function getGoogleMapsMapId(): string {
+  const id = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID?.trim();
+  return id && id.length > 0 ? id : "DEMO_MAP_ID";
+}
+
 export function isGoogleMapsEnabled(): boolean {
   return getGoogleMapsApiKey() != null;
 }
@@ -63,7 +69,7 @@ export function loadGoogleMaps(): Promise<typeof google> {
     script.id = scriptId;
     script.async = true;
     script.defer = true;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&libraries=places&callback=__onetraceGoogleMapsInit`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&libraries=places,marker&v=weekly&callback=__onetraceGoogleMapsInit`;
     script.onerror = () => reject(new Error("google_maps_script_failed"));
     document.head.appendChild(script);
   });

@@ -250,6 +250,9 @@ export function jobFormsSummary(job: Pick<Job, "forms">): string {
 }
 
 export function userProfileLabel(u: UserProfile): string {
+  const detailId = u.user_detail?.id;
+  const id =
+    typeof detailId === "number" && Number.isFinite(detailId) && detailId > 0 ? detailId : u.id;
   const full = `${u.user_detail.first_name ?? ""} ${u.user_detail.last_name ?? ""}`.trim();
-  return full || u.user_detail.email?.trim() || `#${u.user_detail.id}`;
+  return full || u.user_detail.email?.trim() || `#${id}`;
 }
