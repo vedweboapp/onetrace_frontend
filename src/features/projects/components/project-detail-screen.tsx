@@ -197,6 +197,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
   return (
     <EntityDetailScreen
       entityId={projectId}
+      className={activeTab === "location" ? "pb-0" : "pb-8 sm:pb-10"}
       listSection="projects"
       listRoute={routes.dashboard.projects}
       loadError={t("detailLoadError")}
@@ -357,6 +358,8 @@ export function ProjectDetailScreen({ projectId }: Props) {
           role="tabpanel"
           id={`project-detail-tab-${activeTab}`}
           aria-labelledby={`project-detail-tab-trigger-${activeTab}`}
+          className={activeTab === "location" ? "overflow-y-auto" : undefined}
+          style={activeTab === "location" ? { maxHeight: "calc(100dvh - 240px)" } : undefined}
         >
           {loading && activeTab === "details" ? (
             <EntityDetailLoadingSkeleton />

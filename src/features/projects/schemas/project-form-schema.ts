@@ -29,10 +29,10 @@ export function createProjectFormSchema(messages: ProjectFormMessages) {
       form_ids: z.array(z.string()).optional(),
       project_status: z.string().optional(),
       start_date: z.string().trim().min(1, messages.startDate),
-      end_date: z.string().trim().min(1, messages.endDate),
+      end_date: z.string().trim().optional(),
       manager_ids: z.array(z.string()).optional(),
     })
-    .refine((d) => d.start_date <= d.end_date, {
+    .refine((d) => !d.start_date || !d.end_date || d.start_date <= d.end_date, {
       message: messages.dateOrder,
       path: ["end_date"],
     });

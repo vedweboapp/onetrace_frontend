@@ -13,7 +13,7 @@ export type ProjectUpsertPayload = {
   sites?: number[];
   form_ids?: number[];
   start_date: string;
-  end_date: string;
+  end_date?: string | null;
   project_status?: number;
   manager_ids?: number[];
 };

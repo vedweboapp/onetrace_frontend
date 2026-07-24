@@ -4,6 +4,7 @@ import * as React from "react";
 import { FileSpreadsheet, FileStack, FileText } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { exportQuotation, type QuotationExportType } from "@/features/quotations/api/quotation.api";
+import { QuotationPdfPreviewModal } from "@/features/quotations/components/quotation-pdf-preview-modal";
 import { toastApiError } from "@/shared/feedback/app-toast";
 import { DetailActionMenuDropdown } from "@/shared/ui/detail-action-menu-dropdown";
 
@@ -14,35 +15,53 @@ type Props = {
 
 export function QuotationExportDropdown({ quotationId, quoteName }: Props) {
   const t = useTranslations("Dashboard.quotations.export");
+  const [pdfPreviewOpen, setPdfPreviewOpen] = React.useState(false);
 
   const items = React.useMemo(
     () =>
       (
         [
-          { id: "pdf" as const, label: t("pdf"), icon: FileText },
+          {
+            id: "pdf" as const,
+            label: t("pdf"),
+            icon: FileText,
+            onSelect: () => {
+              setPdfPreviewOpen(true);
+            },
+          },
           { id: "excel" as const, label: t("excel"), icon: FileSpreadsheet },
           { id: "csv" as const, label: t("csv"), icon: FileStack },
-        ] satisfies { id: QuotationExportType; label: string; icon: typeof FileText }[]
+        ] satisfies { id: QuotationExportType; label: string; icon: typeof FileText; onSelect?: () => void }[]
       ).map((item) => ({
         ...item,
-        onSelect: async () => {
-          try {
-            await exportQuotation(quotationId, item.id, quoteName);
-          } catch (error) {
-            toastApiError(error, t("failed"));
-          }
-        },
+        onSelect:
+          item.onSelect ??
+          (async () => {
+            try {
+              await exportQuotation(quotationId, item.id, quoteName);
+            } catch (error) {
+              toastApiError(error, t("failed"));
+            }
+          }),
       })),
     [quotationId, quoteName, t],
   );
 
   return (
-    <DetailActionMenuDropdown
-      buttonLabel={t("button")}
-      buttonAriaLabel={t("buttonAria")}
-      menuAriaLabel={t("menuAria")}
-      loadingLabel={t("exporting")}
-      items={items}
-    />
+    <>
+      <DetailActionMenuDropdown
+        buttonLabel={t("button")}
+        buttonAriaLabel={t("buttonAria")}
+        menuAriaLabel={t("menuAria")}
+        loadingLabel={t("exporting")}
+        items={items}
+      />
+      <QuotationPdfPreviewModal
+        open={pdfPreviewOpen}
+        quotationId={quotationId}
+        quoteName={quoteName}
+        onClose={() => setPdfPreviewOpen(false)}
+      />
+    </>
   );
 }

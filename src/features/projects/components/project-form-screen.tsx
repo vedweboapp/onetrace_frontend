@@ -598,7 +598,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                   />
                   <FieldErrorText id="project-start-err">{errors.start_date?.message}</FieldErrorText>
                 </FieldGroup>
-                <FieldGroup label={t("fields.endDate")} htmlFor="project-end" required>
+                <FieldGroup label={t("fields.endDate")} htmlFor="project-end">
                   <SurfaceDateInput
                     id="project-end"
                     type="date"
