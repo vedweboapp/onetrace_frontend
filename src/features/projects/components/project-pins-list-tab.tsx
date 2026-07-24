@@ -1853,7 +1853,7 @@ const ProjectPinsListTab = ({
           </div>
 
 
-          {effectiveSelectedIds.size > 0 && selectedJobStatus == "false" && selectedQuoteStatus == "approved"  && (
+          {effectiveSelectedIds.size > 0 && selectedJobStatus == "false" && selectedQuoteStatus == "approved" && (
             <AppButton
               variant="primary"
               size="sm"
