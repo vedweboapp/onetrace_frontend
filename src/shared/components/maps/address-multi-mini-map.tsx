@@ -13,15 +13,21 @@ const GoogleAddressMultiMiniMap = dynamic(
   },
 );
 
+const LeafletAddressMultiMiniMap = dynamic(
+  () =>
+    import("@/shared/components/maps/leaflet-address-multi-mini-map").then((m) => m.LeafletAddressMultiMiniMap),
+  {
+    ssr: false,
+    loading: () => <div className="min-h-[240px] animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />,
+  },
+);
+
 export type AddressMultiMiniMapProps = ComponentProps<typeof GoogleAddressMultiMiniMap>;
 
+/** Uses Google Maps when `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is set; otherwise OpenStreetMap. */
 export function AddressMultiMiniMap(props: AddressMultiMiniMapProps) {
   if (isGoogleMapsEnabled()) {
     return <GoogleAddressMultiMiniMap {...props} />;
   }
-  return (
-    <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-4 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
-      Map unavailable
-    </div>
-  );
+  return <LeafletAddressMultiMiniMap {...props} />;
 }

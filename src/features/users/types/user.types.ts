@@ -5,7 +5,8 @@ export type AppUserRef = {
 };
 
 export type UserDetail = {
-  id: number;
+  /** Present on some API shapes; list endpoints often omit this and only return profile `id`. */
+  id?: number;
   uuid: string;
   first_name: string | null;
   last_name: string | null;

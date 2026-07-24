@@ -1,21 +1,12 @@
-import { fetchRoles, fetchUsersPage } from "@/features/users/api/user.api";
-import { userProfileLabel } from "@/features/jobs/utils/job-nested-fields.util";
+import {
+  fetchUsersForAppRole,
+  userProfilesToSelectOptions,
+} from "@/features/users/utils/load-users-by-role.util";
 
 export type SelectOption = { value: string; label: string };
 
+/** Technicians only: `GET user-profile/?role=<technicianRoleId>`. */
 export async function loadTechnicianOptions(): Promise<SelectOption[]> {
-  const [roles, allUsers] = await Promise.all([fetchRoles(), fetchUsersPage(1, 500)]);
-  const technicianRoleId = roles.find((r) => {
-    const name = (r.role_name ?? r.name ?? "").toLowerCase();
-    return name.includes("tech");
-  })?.id;
-
-  const { items } = technicianRoleId
-    ? await fetchUsersPage(1, 500, { role: technicianRoleId })
-    : allUsers;
-
-  return items.map((u) => ({
-    value: String(u.id),
-    label: userProfileLabel(u),
-  }));
+  const users = await fetchUsersForAppRole("technician");
+  return userProfilesToSelectOptions(users);
 }

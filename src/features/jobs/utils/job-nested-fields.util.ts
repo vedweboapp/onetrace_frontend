@@ -92,18 +92,31 @@ export function jobSiteLabel(site: Job["site"]): string {
 }
 
 function normalizeJobFormRef(entry: JobFormRefApiRow): JobFormRef | null {
+  const dynamicFormId =
+    entry.dynamic_form_id != null && String(entry.dynamic_form_id).trim() !== ""
+      ? entry.dynamic_form_id
+      : null;
+
+  const projectFormId =
+    typeof entry.dynamic_form_id === "number" && entry.dynamic_form_id > 0
+      ? entry.dynamic_form_id
+      : typeof entry.project_form_id === "number" && entry.project_form_id > 0
+        ? entry.project_form_id
+        : typeof dynamicFormId === "string" && /^\d+$/.test(dynamicFormId)
+          ? Number.parseInt(dynamicFormId, 10)
+          : null;
+
   const jobFormId =
     typeof entry.job_form_id === "number" && entry.job_form_id > 0
       ? entry.job_form_id
       : typeof entry.id === "number" && entry.id > 0
         ? entry.id
-        : null;
-  if (jobFormId == null) return null;
+        : projectFormId;
 
-  const projectFormId =
-    typeof entry.project_form_id === "number" && entry.project_form_id > 0
-      ? entry.project_form_id
-      : jobFormId;
+  if (jobFormId == null && projectFormId == null) return null;
+
+  const finalJobFormId = jobFormId ?? projectFormId ?? 0;
+  const finalProjectFormId = projectFormId ?? finalJobFormId;
 
   const submissionId =
     typeof entry.submission_id === "number" && entry.submission_id > 0
@@ -119,15 +132,10 @@ function normalizeJobFormRef(entry: JobFormRefApiRow): JobFormRef | null {
       ? entry.is_submitted
       : submissionId != null || submittedByStatus;
 
-  const dynamicFormId =
-    entry.dynamic_form_id != null && String(entry.dynamic_form_id).trim() !== ""
-      ? entry.dynamic_form_id
-      : null;
-
   return {
-    id: jobFormId,
+    id: finalJobFormId,
     name: entry.name ?? entry.project_form_name ?? null,
-    project_form_id: projectFormId,
+    project_form_id: finalProjectFormId,
     is_submitted: isSubmitted,
     submitted_form_id: submissionId,
     dynamic_form_id: dynamicFormId,
@@ -250,6 +258,9 @@ export function jobFormsSummary(job: Pick<Job, "forms">): string {
 }
 
 export function userProfileLabel(u: UserProfile): string {
+  const detailId = u.user_detail?.id;
+  const id =
+    typeof detailId === "number" && Number.isFinite(detailId) && detailId > 0 ? detailId : u.id;
   const full = `${u.user_detail.first_name ?? ""} ${u.user_detail.last_name ?? ""}`.trim();
-  return full || u.user_detail.email?.trim() || `#${u.user_detail.id}`;
+  return full || u.user_detail.email?.trim() || `#${id}`;
 }
