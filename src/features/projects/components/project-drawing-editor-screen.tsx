@@ -893,69 +893,29 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     return filterForms(compositeItemInstallationType);
   }, [compositeItemInstallationType, filterForms]);
 
-  const updatePinFormId = React.useCallback((pinId: number, formId: number | null) => {
-    setPlots((prevPlots) => {
-      let changed = false;
-      const nextPlots = prevPlots.map((p) => ({
-        ...p,
-        pins: p.pins.map((pin) => {
-          if (pin.id === pinId && pin.formId !== formId) {
-            changed = true;
-            return { ...pin, formId };
-          }
-          return pin;
-        }),
-      }));
-      if (changed) {
-        setDirty(true);
-      }
-      return nextPlots;
-    });
-
-    setDetailPin((prev) => {
-      if (prev && prev.id === pinId && prev.formId !== formId) {
-        return { ...prev, formId };
-      }
-      return prev;
-    });
-  }, []);
-
   React.useEffect(() => {
-    if (!detailPin) return;
+    if (!detailPin || !isPinEditing) return;
     if (!compositeItemInstallationType) return;
 
     const forms = filterForms(compositeItemInstallationType);
-    const currentFormId = isPinEditing ? pinEditData.formId : detailPin.formId;
+    const currentFormId = pinEditData.formId;
 
     if (forms.length === 1) {
       const singleFormId = Number(forms[0]!.value);
       if (currentFormId !== singleFormId) {
-        if (isPinEditing) {
-          setPinEditData((prev) => ({ ...prev, formId: singleFormId }));
-        } else {
-          updatePinFormId(detailPin.id, singleFormId);
-        }
+        setPinEditData((prev) => ({ ...prev, formId: singleFormId }));
       }
     } else if (forms.length === 0) {
       if (currentFormId !== null && currentFormId !== undefined) {
-        if (isPinEditing) {
-          setPinEditData((prev) => ({ ...prev, formId: null }));
-        } else {
-          updatePinFormId(detailPin.id, null);
-        }
+        setPinEditData((prev) => ({ ...prev, formId: null }));
       }
     } else {
       const isValid = forms.some((f) => Number(f.value) === currentFormId);
       if (!isValid && currentFormId !== null && currentFormId !== undefined) {
-        if (isPinEditing) {
-          setPinEditData((prev) => ({ ...prev, formId: null }));
-        } else {
-          updatePinFormId(detailPin.id, null);
-        }
+        setPinEditData((prev) => ({ ...prev, formId: null }));
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detailPin?.id, isPinEditing, compositeItemInstallationType, pinEditData.formId, updatePinFormId]);
+  }, [detailPin?.id, isPinEditing, compositeItemInstallationType, pinEditData.formId, filterForms]);
 
   function requestClose() {
     if (tempPoints.length > 0 && activeTool === "pen") {
@@ -1210,7 +1170,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
         // RESTRICTION: Pin never leaves its plot
         const poly = ownerPlot.coordinates.map(c => percentToPixel(c, ps));
-        if (!inside([x, y], poly)) {
+        if (!insideOrOnBoundary([x, y], poly)) {
           return; // Stop update if moving outside plot boundary
         }
 
@@ -1223,6 +1183,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
               : pin
           )
         })));
+        setDetailPin(prev => (prev && prev.id === pinId ? { ...prev, x_coordinate: pct[0]!, y_coordinate: pct[1]! } : prev));
+        setPinEditData(prev => (prev && prev.id === pinId ? { ...prev, x_coordinate: pct[0]!, y_coordinate: pct[1]! } : prev));
         stagePinCoordinates(projectId, drawingId, pinId, pct[0]!, pct[1]!);
       } else if (vertex !== null) {
         // Validation: Prevent dragging vertex into another plot or crossing boundaries
@@ -1284,17 +1246,18 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     function handleMouseUp() {
       const pinId = draggingPinIdRef.current;
       const vertex = draggingVertexRef.current;
+      const didActuallyDrag = wasDraggingRef.current;
 
       if (pinId !== null) {
         setDraggingPinId(null);
         draggingPinIdRef.current = null;
-        setDirty(true);
+        if (didActuallyDrag) setDirty(true);
       }
 
       if (vertex !== null) {
         setDraggingVertex(null);
         draggingVertexRef.current = null;
-        setDirty(true);
+        if (didActuallyDrag) setDirty(true);
       }
 
       if (pinId !== null || vertex !== null) {
@@ -2090,6 +2053,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               onMouseDown={(e) => {
                                 e.stopPropagation();
                                 if (activeTool === "hand") return;
+                                draggingVertexRef.current = { plotId: plot.id, index: idx };
                                 setDraggingVertex({ plotId: plot.id, index: idx });
                               }}
                               onClick={(e) => e.stopPropagation()}
@@ -2199,6 +2163,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               if (activeTool !== "select") return;
                               e.stopPropagation();
                               e.preventDefault();
+                              draggingPinIdRef.current = pin.id;
                               setDraggingPinId(pin.id);
                               setDragOffset({ x: 0, y: 0 });
                               originalPinStateRef.current = {
