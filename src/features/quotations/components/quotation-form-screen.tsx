@@ -20,6 +20,7 @@ import { QuotationDraftComposer } from "@/features/quotations/components/quotati
 import {
   isProjectQuoteCategory,
   isServiceQuoteCategory,
+  parseQuoteCategoryParam,
   QUOTE_CATEGORY,
 } from "@/features/quotations/constants/quotation-category";
 import { useQuotationDraftState } from "@/features/quotations/hooks/use-quotation-draft-state";
@@ -44,16 +45,18 @@ import {
   getQuotationSiteIds,
   quotationNestedSiteToSite,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
-import { siteToAddressMapPoint } from "@/features/quotations/utils/quotation-site-map.util";
+import { siteHasMapableLocation, siteToAddressMapPoint } from "@/features/quotations/utils/quotation-site-map.util";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
-import { fetchSitesPage } from "@/features/sites/api/site.api";
+import { fetchSite, fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
 import { fetchTagsPage } from "@/features/tags/api/tag.api";
 import type { Tag } from "@/features/tags/types/tag.types";
-import { fetchRoles, fetchUsersPage } from "@/features/users/api/user.api";
-import type { UserProfile } from "@/features/users/types/user.types";
+import {
+  fetchUsersForAppRoles,
+  userProfilesToSelectOptions,
+} from "@/features/users/utils/load-users-by-role.util";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -141,15 +144,24 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [existingDetail, setExistingDetail] = React.useState<QuotationDetail | null>(null);
 
-  /** Manual Add quotation = servicequote (no project). `?project=` or edit with project/quote_category = projectquote. */
+  const createQuoteCategory = React.useMemo(() => {
+    if (isEdit) return undefined;
+    return parseQuoteCategoryParam(searchParams.get("quote_category"));
+  }, [isEdit, searchParams]);
+
+  /** Create: `quote_category` (or `?project=`) selects service vs project UI. Edit: from saved quote. */
   const isServiceQuotation = React.useMemo(() => {
-    if (!isEdit) return createFromProjectId == null;
+    if (!isEdit) {
+      if (createFromProjectId != null) return false;
+      if (createQuoteCategory) return isServiceQuoteCategory(createQuoteCategory);
+      return true;
+    }
     if (!existingDetail) return false;
     const cat = existingDetail.quote_category ?? existingDetail.category;
     if (isServiceQuoteCategory(cat)) return true;
     if (isProjectQuoteCategory(cat)) return false;
     return getQuotationProjectId(existingDetail.project) == null;
-  }, [isEdit, createFromProjectId, existingDetail]);
+  }, [isEdit, createFromProjectId, createQuoteCategory, existingDetail]);
 
   const [saving, setSaving] = React.useState(false);
   const [clientOptions, setClientOptions] = React.useState<Option[]>([]);
@@ -389,39 +401,11 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const [roles, allUsers] = await Promise.all([fetchRoles(), fetchUsersPage(1, 500)]);
-        const roleIdByKey = new Map<string, number>();
-        for (const r of roles) {
-          const roleName = (r.role_name ?? r.name ?? "").toLowerCase();
-          if (!roleName) continue;
-          if (roleName.includes("tech")) roleIdByKey.set("technician", r.id);
-          if (roleName.includes("sale")) roleIdByKey.set("sales", r.id);
-          if (roleName.includes("manager")) roleIdByKey.set("manager", r.id);
-        }
-
-        const toOpt = (u: UserProfile): Option => {
-          const fullName = `${u.user_detail.first_name ?? ""} ${u.user_detail.last_name ?? ""}`.trim();
-          const label = fullName || u.user_detail.email?.trim() || `#${u.user_detail.id}`;
-          return { value: String(u.user_detail.id), label };
-        };
-        const asOpts = (rows: UserProfile[]) => rows.map(toOpt);
-
-        const [techRes, salesRes, managerRes] = await Promise.all([
-          roleIdByKey.get("technician")
-            ? fetchUsersPage(1, 500, { role: roleIdByKey.get("technician")! })
-            : Promise.resolve({ items: allUsers.items, pagination: allUsers.pagination }),
-          roleIdByKey.get("sales")
-            ? fetchUsersPage(1, 500, { role: roleIdByKey.get("sales")! })
-            : Promise.resolve({ items: allUsers.items, pagination: allUsers.pagination }),
-          roleIdByKey.get("manager")
-            ? fetchUsersPage(1, 500, { role: roleIdByKey.get("manager")! })
-            : Promise.resolve({ items: allUsers.items, pagination: allUsers.pagination }),
-        ]);
-
+        const byRole = await fetchUsersForAppRoles(["technician", "sales", "manager"]);
         if (!cancelled) {
-          setTechnicianOptions(asOpts(techRes.items));
-          setSalesOptions(asOpts(salesRes.items));
-          setManagerOptions(asOpts(managerRes.items));
+          setTechnicianOptions(userProfilesToSelectOptions(byRole.technician ?? []));
+          setSalesOptions(userProfilesToSelectOptions(byRole.sales ?? []));
+          setManagerOptions(userProfilesToSelectOptions(byRole.manager ?? []));
         }
       } catch {
         if (!cancelled) {
@@ -556,11 +540,23 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return merged;
   }, [siteRows, isEdit, existingDetail]);
 
-  const selectedSitesForMap = React.useMemo(() => {
-    const ids = (sitesStr ?? [])
+  const selectedSiteIdsKey = React.useMemo(() => {
+    return (sitesStr ?? [])
       .map((raw) => Number.parseInt(String(raw).trim(), 10))
-      .filter((id) => Number.isFinite(id) && id > 0);
-    if (ids.length === 0) return [];
+      .filter((id) => Number.isFinite(id) && id > 0)
+      .join(",");
+  }, [sitesStr]);
+
+  const [selectedSitesForMap, setSelectedSitesForMap] = React.useState<Site[]>([]);
+
+  React.useEffect(() => {
+    const ids = selectedSiteIdsKey
+      ? selectedSiteIdsKey.split(",").map((raw) => Number.parseInt(raw, 10)).filter((id) => Number.isFinite(id) && id > 0)
+      : [];
+    if (ids.length === 0) {
+      setSelectedSitesForMap([]);
+      return;
+    }
 
     const clientIdForSnapshot =
       customerId != null && customerId > 0
@@ -569,26 +565,45 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
           ? getQuotationCustomerId(existingDetail.customer) ?? 0
           : 0;
 
-    return ids
-      .map((id) => {
-        const fromRows = siteRows.find((s) => s.id === id) ?? null;
-        if (fromRows) return fromRows;
-        if (isEdit && existingDetail && getQuotationSiteId(existingDetail.site) === id && clientIdForSnapshot > 0) {
-          const nested = getQuotationNestedSite(existingDetail.site);
-          if (nested) return quotationNestedSiteToSite(nested, clientIdForSnapshot);
-        }
-        const fromSnapshots = [
-          ...(existingDetail?.site_snapshots ?? []),
-          ...(existingDetail?.site_snapshot ? [existingDetail.site_snapshot] : []),
-        ];
-        const snap = fromSnapshots.find((row) => row.id === id);
-        if (snap && clientIdForSnapshot > 0) {
-          return quotationNestedSiteToSite(snap, clientIdForSnapshot);
-        }
-        return null;
-      })
-      .filter((row): row is Site => row != null);
-  }, [sitesStr, siteRows, isEdit, existingDetail, customerId]);
+    let cancelled = false;
+    void (async () => {
+      const rows = await Promise.all(
+        ids.map(async (id) => {
+          const fromRows = siteRows.find((s) => s.id === id) ?? null;
+          if (fromRows && siteHasMapableLocation(fromRows)) return fromRows;
+
+          if (isEdit && existingDetail && getQuotationSiteId(existingDetail.site) === id && clientIdForSnapshot > 0) {
+            const nested = getQuotationNestedSite(existingDetail.site);
+            if (nested && siteHasMapableLocation(nested)) {
+              return quotationNestedSiteToSite(nested, clientIdForSnapshot);
+            }
+          }
+
+          const fromSnapshots = [
+            ...(existingDetail?.site_snapshots ?? []),
+            ...(existingDetail?.site_snapshot ? [existingDetail.site_snapshot] : []),
+          ];
+          const snap = fromSnapshots.find((row) => row.id === id);
+          if (snap && clientIdForSnapshot > 0 && siteHasMapableLocation(snap)) {
+            return quotationNestedSiteToSite(snap, clientIdForSnapshot);
+          }
+
+          try {
+            return await fetchSite(id);
+          } catch {
+            return fromRows;
+          }
+        }),
+      );
+      if (!cancelled) {
+        setSelectedSitesForMap(rows.filter((row): row is Site => row != null));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSiteIdsKey, siteRows, isEdit, existingDetail, customerId]);
 
   const selectedSiteMapPoints = React.useMemo(
     () => selectedSitesForMap.map((site) => siteToAddressMapPoint(site)),

@@ -28,14 +28,14 @@ export function materialRequestWorkerLabel(
   fallbackName?: string,
 ): string {
   if (worker && typeof worker === "object") {
+    const parts = [worker.first_name?.trim(), worker.last_name?.trim()].filter(Boolean);
+    if (parts.length > 0) return parts.join(" ");
     const name = worker.name?.trim();
     if (name) return name;
     const username = worker.username?.trim();
     if (username) return username;
     const email = worker.email?.trim();
     if (email) return email;
-    const parts = [worker.first_name?.trim(), worker.last_name?.trim()].filter(Boolean);
-    if (parts.length > 0) return parts.join(" ");
   }
   if (fallbackName?.trim()) return fallbackName.trim();
   const id = nestedId(worker);
@@ -69,6 +69,7 @@ export function materialRequestJobProjectName(job: MaterialRequestJobRef): strin
 }
 
 export function materialRequestItemProductName(row: MaterialRequestItemRef): string {
+  if (row.item_name?.trim()) return row.item_name.trim();
   const item = row.item;
   if (item && typeof item === "object") return item.name?.trim() || `#${item.id}`;
   if (typeof item === "number") return `#${item}`;
@@ -132,6 +133,9 @@ export function materialRequestItemPendingQty(row: MaterialRequestItemRef): numb
 export function materialRequestItemRestockedQty(row: MaterialRequestItemRef): number {
   if (typeof row.restocked_quantity === "number" && Number.isFinite(row.restocked_quantity)) {
     return row.restocked_quantity;
+  }
+  if (typeof row.returned_quantity === "number" && Number.isFinite(row.returned_quantity)) {
+    return row.returned_quantity;
   }
   return 0;
 }

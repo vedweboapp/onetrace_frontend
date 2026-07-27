@@ -12,6 +12,8 @@ export const routes = {
     contacts: "/contacts",
     sites: "/sites",
     quotations: "/quotations",
+    quotationService: "/quotations?quote_category=servicequote",
+    quotationProject: "/quotations?quote_category=projectquote",
     invoices: "/invoices",
     purchaseOrders: "/purchase-orders",
     jobs: "/jobs",

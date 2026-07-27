@@ -12,6 +12,7 @@ const backendApiOrigin =
   "http://110.225.254.51:5050";
 
 const googleMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
+const googleMapsMapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID?.trim() ?? "";
 
 const nextConfig: NextConfig = {
   skipTrailingSlashRedirect: true,
@@ -19,6 +20,7 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: nextPublicApiUrl,
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: googleMapsKey,
+    NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID: googleMapsMapId,
   },
   async redirects() {
     return [

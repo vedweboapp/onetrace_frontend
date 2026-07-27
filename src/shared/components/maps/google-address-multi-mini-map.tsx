@@ -5,7 +5,12 @@ import { ExternalLink } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { DetailAddressParts } from "@/shared/components/layout/detail-formatted-address";
 import { buildGeocodeRequestSearchParams, hasGeocodeableAddress } from "@/shared/utils/address-geocode-query";
-import { loadGoogleMaps } from "@/shared/utils/google-maps-loader.util";
+import {
+  clearAdvancedMarker,
+  createAdvancedMarker,
+  createGoogleMap,
+  type GoogleAdvancedMarker,
+} from "@/shared/utils/google-map-marker.util";
 import { cn } from "@/core/utils/http.util";
 
 export type AddressMapPoint = {
@@ -31,7 +36,7 @@ export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: P
   const t = useTranslations("Dashboard.common.map");
   const containerRef = React.useRef<HTMLDivElement>(null);
   const mapRef = React.useRef<google.maps.Map | null>(null);
-  const markersRef = React.useRef<google.maps.Marker[]>([]);
+  const markersRef = React.useRef<GoogleAdvancedMarker[]>([]);
   const geocoderRef = React.useRef<google.maps.Geocoder | null>(null);
 
   const [status, setStatus] = React.useState<"idle" | "loading" | "ready" | "notfound" | "error">("idle");
@@ -43,25 +48,21 @@ export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: P
     if (!el || mapRef.current) return;
 
     let cancelled = false;
-    loadGoogleMaps()
-      .then((google) => {
+    createGoogleMap(el, {
+      center: { lat: 20.5937, lng: 78.9629 },
+      zoom: 5,
+    })
+      .then(({ google, map }) => {
         if (cancelled) return;
         geocoderRef.current = new google.maps.Geocoder();
-        mapRef.current = new google.maps.Map(el, {
-          center: { lat: 20.5937, lng: 78.9629 },
-          zoom: 5,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-          scrollwheel: false,
-        });
+        mapRef.current = map;
         setMapReady(true);
       })
       .catch(() => setStatus("error"));
 
     return () => {
       cancelled = true;
-      for (const m of markersRef.current) m.setMap(null);
+      for (const m of markersRef.current) clearAdvancedMarker(m);
       markersRef.current = [];
       mapRef.current = null;
       geocoderRef.current = null;
@@ -70,9 +71,19 @@ export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: P
   }, []);
 
   React.useEffect(() => {
-    if (!mapReady || !geocoderRef.current || points.length === 0) {
+    if (!mapReady || !geocoderRef.current) {
+      if (points.length === 0) {
+        setResolved([]);
+        setStatus("idle");
+      }
+      return;
+    }
+
+    if (points.length === 0) {
+      for (const m of markersRef.current) clearAdvancedMarker(m);
+      markersRef.current = [];
       setResolved([]);
-      setStatus(points.length === 0 ? "idle" : "loading");
+      setStatus("idle");
       return;
     }
 
@@ -121,40 +132,48 @@ export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: P
     };
   }, [mapReady, points]);
 
-  const fitMapToResolved = React.useCallback((map: google.maps.Map, points: ResolvedPoint[]) => {
-    if (points.length === 0) return;
+  const fitMapToResolved = React.useCallback((map: google.maps.Map, nextPoints: ResolvedPoint[]) => {
+    google.maps.event.trigger(map, "resize");
+    if (nextPoints.length === 0) return;
 
-    if (points.length === 1) {
-      map.setCenter({ lat: points[0]!.lat, lng: points[0]!.lon });
+    if (nextPoints.length === 1) {
+      map.setCenter({ lat: nextPoints[0]!.lat, lng: nextPoints[0]!.lon });
       map.setZoom(14);
     } else {
       const bounds = new google.maps.LatLngBounds();
-      for (const point of points) {
+      for (const point of nextPoints) {
         bounds.extend({ lat: point.lat, lng: point.lon });
       }
       map.fitBounds(bounds, 48);
     }
-    google.maps.event.trigger(map, "resize");
   }, []);
 
   React.useEffect(() => {
     const map = mapRef.current;
     if (!map || status !== "ready" || resolved.length === 0) return;
 
-    for (const m of markersRef.current) m.setMap(null);
+    for (const m of markersRef.current) clearAdvancedMarker(m);
     markersRef.current = [];
 
     for (const point of resolved) {
-      const pos = { lat: point.lat, lng: point.lon };
-      const marker = new google.maps.Marker({
-        map,
-        position: pos,
-        title: point.label,
-      });
-      markersRef.current.push(marker);
+      markersRef.current.push(
+        createAdvancedMarker({
+          map,
+          lat: point.lat,
+          lng: point.lon,
+          title: point.label,
+        }),
+      );
     }
 
-    fitMapToResolved(map, resolved);
+    const frame = window.requestAnimationFrame(() => {
+      fitMapToResolved(map, resolved);
+    });
+    const tid = window.setTimeout(() => fitMapToResolved(map, resolved), 80);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(tid);
+    };
   }, [status, resolved, fitMapToResolved]);
 
   React.useEffect(() => {
@@ -163,8 +182,11 @@ export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: P
 
     const ro = new ResizeObserver(() => {
       const map = mapRef.current;
-      if (!map || status !== "ready" || resolved.length === 0) return;
-      fitMapToResolved(map, resolved);
+      if (!map) return;
+      google.maps.event.trigger(map, "resize");
+      if (status === "ready" && resolved.length > 0) {
+        fitMapToResolved(map, resolved);
+      }
     });
     ro.observe(el);
     return () => ro.disconnect();

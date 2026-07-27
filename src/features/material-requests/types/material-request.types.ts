@@ -50,11 +50,16 @@ export type MaterialRequestItemRef = {
   job?: { id: number; title?: string | null; job_details?: string | null } | number | null;
   group?: { id: number; name?: string | null } | null;
   item?: MaterialRequestItemProductRef | number | null;
+  /** Flat name from `material_request_line.item_name`. */
+  item_name?: string | null;
+  item_sku?: string | null;
   /** @deprecated Prefer requested_quantity */
   quantity?: number | null;
   requested_quantity?: number | null;
   dispatched_quantity?: number | null;
   pending_quantity?: number | null;
+  /** Backend return-to-stock qty on the line. */
+  returned_quantity?: number | null;
   restocked_quantity?: number | null;
 };
 
@@ -82,10 +87,14 @@ export type MaterialRequestListItem = {
   id: number;
   request_number: string;
   worker_name?: number | MaterialRequestWorkerRef | null;
+  /** Backend alias for worker — normalized to `worker_name` in API layer. */
+  job_worker?: number | MaterialRequestWorkerRef | null;
   requested_date: string;
   status: string;
   jobs?: MaterialRequestJobRef[];
   items?: MaterialRequestItemRef[];
+  /** Backend alias for lines — normalized to `items` in API layer. */
+  material_request_line?: MaterialRequestItemRef[];
   job_name?: string | null;
   items_count?: number | null;
   notes?: string | null;

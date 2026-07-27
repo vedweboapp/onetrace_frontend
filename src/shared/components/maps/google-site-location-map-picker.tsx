@@ -5,7 +5,14 @@ import { useTranslations } from "next-intl";
 import type { DetailAddressParts } from "@/shared/components/layout/detail-formatted-address";
 import type { PlaceSuggestion } from "@/shared/types/place-suggestion.types";
 import { buildGeocodeRequestSearchParams, hasGeocodeableAddress } from "@/shared/utils/address-geocode-query";
-import { loadGoogleMaps } from "@/shared/utils/google-maps-loader.util";
+import {
+  clearAdvancedMarker,
+  createAdvancedMarker,
+  createGoogleMap,
+  readAdvancedMarkerLatLng,
+  setAdvancedMarkerPosition,
+  type GoogleAdvancedMarker,
+} from "@/shared/utils/google-map-marker.util";
 import { parseGoogleGeocoderResult } from "@/shared/utils/google-place-parse.util";
 import { cn } from "@/core/utils/http.util";
 
@@ -46,7 +53,7 @@ export function GoogleSiteLocationMapPicker({
 
   const containerRef = React.useRef<HTMLDivElement>(null);
   const mapRef = React.useRef<google.maps.Map | null>(null);
-  const markerRef = React.useRef<google.maps.Marker | null>(null);
+  const markerRef = React.useRef<GoogleAdvancedMarker | null>(null);
   const geocoderRef = React.useRef<google.maps.Geocoder | null>(null);
   const coordsForAddressKeyRef = React.useRef<string | null>(null);
   const addressKeyRef = React.useRef("");
@@ -110,31 +117,31 @@ export function GoogleSiteLocationMapPicker({
 
   const placeOrMoveMarker = React.useCallback(
     (map: google.maps.Map, nextLat: number, nextLon: number, draggable: boolean) => {
-      const pos = { lat: nextLat, lng: nextLon };
-
       if (!markerRef.current) {
-        markerRef.current = new google.maps.Marker({
+        markerRef.current = createAdvancedMarker({
           map,
-          position: pos,
+          lat: nextLat,
+          lng: nextLon,
           draggable: draggable && !disabled,
         });
         markerRef.current.addListener("dragend", () => {
           const m = markerRef.current;
           if (!m) return;
-          const ll = m.getPosition();
+          const ll = readAdvancedMarkerLatLng(m);
           if (!ll) return;
-          const next = { lat: ll.lat(), lon: ll.lng() };
+          const next = { lat: ll.lat, lon: ll.lng };
           coordsForAddressKeyRef.current = addressKeyRef.current;
           onCoordinatesChangeRef.current(next.lat, next.lon);
           setGeocoded(next);
           void reverseGeocodeAt(next.lat, next.lon);
         });
       } else {
-        markerRef.current.setPosition(pos);
-        markerRef.current.setDraggable(draggable && !disabled);
+        setAdvancedMarkerPosition(markerRef.current, nextLat, nextLon);
+        markerRef.current.gmpDraggable = draggable && !disabled;
+        markerRef.current.map = map;
       }
 
-      map.setCenter(pos);
+      map.setCenter({ lat: nextLat, lng: nextLon });
       map.setZoom(MAP_ZOOM_PIN);
     },
     [disabled, reverseGeocodeAt],
@@ -204,17 +211,14 @@ export function GoogleSiteLocationMapPicker({
 
     let cancelled = false;
 
-    loadGoogleMaps()
-      .then((google) => {
+    createGoogleMap(el, {
+      center: DEFAULT_CENTER,
+      zoom: 5,
+      fullscreenControl: true,
+    })
+      .then(({ google, map }) => {
         if (cancelled) return;
         geocoderRef.current = new google.maps.Geocoder();
-        const map = new google.maps.Map(el, {
-          center: DEFAULT_CENTER,
-          zoom: 5,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: true,
-        });
         mapRef.current = map;
 
         if (!disabled) {
@@ -239,7 +243,7 @@ export function GoogleSiteLocationMapPicker({
 
     return () => {
       cancelled = true;
-      markerRef.current?.setMap(null);
+      clearAdvancedMarker(markerRef.current);
       markerRef.current = null;
       mapRef.current = null;
       geocoderRef.current = null;
@@ -252,7 +256,7 @@ export function GoogleSiteLocationMapPicker({
     if (!map || !mapReady) return;
 
     if (!displayLatLon) {
-      markerRef.current?.setMap(null);
+      clearAdvancedMarker(markerRef.current);
       markerRef.current = null;
       map.setCenter(DEFAULT_CENTER);
       map.setZoom(5);
