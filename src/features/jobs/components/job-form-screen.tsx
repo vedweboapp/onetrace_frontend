@@ -48,7 +48,6 @@ import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack, mergeUrlQueryP
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { ensureCheckmarkOption } from "@/shared/utils/checkmark-options.util";
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
-import { saveQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
 import {
   AppButton,
   CheckmarkSelect,
@@ -213,21 +212,15 @@ export function JobFormScreen({ mode, jobId }: Props) {
     kind: "item",
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
-  const draftReturnTo = React.useMemo(() => {
-    const qs = searchParams.toString();
-    return qs ? `${pathname}?${qs}` : pathname;
-  }, [pathname, searchParams]);
 
   const openFormsSettings = React.useCallback(() => {
-    saveQuickCreateFormDraft(draftReturnTo, getValues());
     router.push(routes.dashboard.settingsProjectForms);
-  }, [router, draftReturnTo, getValues]);
+  }, [router]);
   const openUsersSettings = React.useCallback(() => {
     const qs = searchParams.toString();
     const current = qs ? `${pathname}?${qs}` : pathname;
-    saveQuickCreateFormDraft(draftReturnTo, getValues());
     router.push(buildPathWithStoredBack(`${routes.dashboard.settingsUsers}/new`, current));
-  }, [router, pathname, searchParams, draftReturnTo, getValues]);
+  }, [router, pathname, searchParams]);
   const openJobStatusSettings = React.useCallback(() => {
     router.push(routes.dashboard.settingsJobStatus);
   }, [router]);
