@@ -29,7 +29,7 @@ type RawMaterialRequest = MaterialRequestListItem & {
   material_request_line?: RawMaterialRequestLine[] | null;
   items?: RawMaterialRequestLine[] | null;
   item_summaries?: MaterialRequestItemSummary[] | null;
-  status?: string | null;
+  status?: string | { id?: number; name?: string; status_name?: string; bg_colour?: string; text_colour?: string } | null;
 };
 
 function asFiniteNumber(value: unknown): number | null {
@@ -113,7 +113,7 @@ export function normalizeMaterialRequestRow(raw: RawMaterialRequest): MaterialRe
     worker_name: worker,
     items,
     jobs,
-    status: typeof raw.status === "string" ? raw.status : raw.status == null ? "" : String(raw.status),
+    status: raw.status,
     item_summaries,
     items_count:
       typeof raw.items_count === "number" && Number.isFinite(raw.items_count)

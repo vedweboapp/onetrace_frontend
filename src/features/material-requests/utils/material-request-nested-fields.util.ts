@@ -19,7 +19,11 @@ export function nestedId(value: number | { id: number } | null | undefined): num
   return undefined;
 }
 
-export function normalizeMaterialRequestStatus(raw: string | null | undefined): string {
+export function normalizeMaterialRequestStatus(raw: string | { name?: string; status_name?: string } | null | undefined): string {
+  if (typeof raw === "object" && raw) {
+    const statusName = raw.name || raw.status_name || "";
+    return statusName.trim().toLowerCase().replace(/\s+/g, "_");
+  }
   return (raw ?? "").trim().toLowerCase().replace(/\s+/g, "_");
 }
 

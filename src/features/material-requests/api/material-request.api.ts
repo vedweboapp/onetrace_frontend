@@ -32,6 +32,7 @@ export type MaterialRequestListFilters = {
   status?: string;
   requested_date?: string;
   worker_name?: string | number;
+  job_id?: string | number;
 };
 
 export async function fetchMaterialRequestsPage(
@@ -46,6 +47,9 @@ export async function fetchMaterialRequestsPage(
   if (filters?.requested_date?.trim()) params.requested_date = filters.requested_date.trim();
   if (filters?.worker_name != null && String(filters.worker_name).trim()) {
     params.worker_name = String(filters.worker_name).trim();
+  }
+  if (filters?.job_id != null && String(filters.job_id).trim()) {
+    params.job_id = String(filters.job_id).trim();
   }
 
   const { data } = await api.get<MaterialRequestListResponse>(

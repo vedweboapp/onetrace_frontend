@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchJob, updateJob } from "@/features/jobs/api/job.api";
 import { JobDetailBody } from "@/features/jobs/components/job-detail-body";
+import { JobMaterialsTab } from "@/features/jobs/components/job-materials-tab";
 import { JobUpdateStatusDialog } from "@/features/jobs/components/job-update-status-dialog";
 import type { Job } from "@/features/jobs/types/job.types";
 import { getJobAssignedWorkerId, getJobStatusId } from "@/features/jobs/utils/job-nested-fields.util";
@@ -16,8 +17,8 @@ import {
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
-import { AppButton } from "@/shared/ui";
+import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
+import { AppButton, AppTabs, DashboardUnderDevelopmentState, type AppTabItem } from "@/shared/ui";
 import { EditButton } from "@/shared/ui/dashboard-action-buttons";
 import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 
@@ -25,11 +26,42 @@ type Props = {
   jobId: number;
 };
 
+type JobDetailTabId = "overview" | "materials" | "dispatch" | "returns";
+
+function isJobDetailTabId(value: string | null): value is JobDetailTabId {
+  return value === "overview" || value === "materials" || value === "dispatch" || value === "returns";
+}
+
 export function JobDetailScreen({ jobId }: Props) {
   const t = useTranslations("Dashboard.jobs");
+  const tHome = useTranslations("Dashboard.home");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [statusOpen, setStatusOpen] = React.useState(false);
   const [statusSaving, setStatusSaving] = React.useState(false);
   const [workerLabelById, setWorkerLabelById] = React.useState<Record<number, string>>({});
+  const tabFromUrl = searchParams.get("tab");
+  const activeTab: JobDetailTabId = isJobDetailTabId(tabFromUrl) ? tabFromUrl : "overview";
+
+  const detailTabs = React.useMemo<AppTabItem[]>(
+    () => [
+      { id: "overview", label: t("detail.tabs.overview") },
+      { id: "materials", label: t("detail.tabs.materials") },
+      { id: "dispatch", label: t("detail.tabs.dispatch") },
+      { id: "returns", label: t("detail.tabs.returns") },
+    ],
+    [t],
+  );
+
+  function handleTabChange(tab: string) {
+    if (!isJobDetailTabId(tab)) return;
+    const nextParams = new URLSearchParams(searchParams.toString());
+    if (tab === "overview") nextParams.delete("tab");
+    else nextParams.set("tab", tab);
+    const query = nextParams.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
 
   React.useEffect(() => {
     let cancelled = false;
@@ -66,6 +98,16 @@ export function JobDetailScreen({ jobId }: Props) {
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),
       }}
+      headerExtension={
+        <AppTabs
+          tabs={detailTabs}
+          value={activeTab}
+          onValueChange={handleTabChange}
+          ariaLabel={t("detail.tabsAria")}
+          panelIdPrefix="job-detail-tab"
+          className="-mx-1 px-1 sm:-mx-0 sm:px-0"
+        />
+      }
       actions={({ detail, listBack, retry }) => (
         <JobDetailActions
           detail={detail}
@@ -83,23 +125,39 @@ export function JobDetailScreen({ jobId }: Props) {
         />
       )}
       renderSurface={({ detail, loading, error, retry, dateFmt }) =>
-        loading ? (
-          <EntityDetailLoadingSkeleton />
-        ) : error ? (
-          <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
-        ) : detail ? (
-          <JobDetailBody
-            detail={detail}
-            dateFmt={dateFmt}
-            workerLabel={
-              (() => {
-                const id = getJobAssignedWorkerId(detail);
-                return id != null ? workerLabelById[id] : undefined;
-              })()
-            }
-            onChecklistsUpdated={retry}
-          />
-        ) : null
+        (
+          <div
+            role="tabpanel"
+            id={`job-detail-tab-${activeTab}`}
+            aria-labelledby={`job-detail-tab-trigger-${activeTab}`}
+          >
+            {loading ? (
+              <EntityDetailLoadingSkeleton />
+            ) : error ? (
+              <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
+            ) : detail && activeTab === "overview" ? (
+              <JobDetailBody
+                detail={detail}
+                dateFmt={dateFmt}
+                workerLabel={
+                  (() => {
+                    const id = getJobAssignedWorkerId(detail);
+                    return id != null ? workerLabelById[id] : undefined;
+                  })()
+                }
+                onChecklistsUpdated={retry}
+              />
+            ) : detail && activeTab === "materials" ? (
+              <JobMaterialsTab detail={detail} />
+            ) : detail && (activeTab === "dispatch" || activeTab === "returns") ? (
+              <DashboardUnderDevelopmentState
+                className="min-h-[calc(100vh-280px)] rounded-none px-4 sm:min-h-[420px] sm:px-6"
+                title={activeTab === "dispatch" ? t("detail.tabs.dispatch") : t("detail.tabs.returns")}
+                description={tHome("body")}
+              />
+            ) : null}
+          </div>
+        )
       }
     />
   );

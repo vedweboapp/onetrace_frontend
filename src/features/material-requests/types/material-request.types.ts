@@ -90,7 +90,7 @@ export type MaterialRequestListItem = {
   /** Backend alias for worker — normalized to `worker_name` in API layer. */
   job_worker?: number | MaterialRequestWorkerRef | null;
   requested_date: string;
-  status: string;
+  status: string | { id?: number; name?: string; status_name?: string; bg_colour?: string; text_colour?: string } | null;
   jobs?: MaterialRequestJobRef[];
   items?: MaterialRequestItemRef[];
   /** Backend alias for lines — normalized to `items` in API layer. */

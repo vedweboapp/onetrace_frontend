@@ -6,14 +6,15 @@ import { cn } from "@/core/utils/http.util";
 import { normalizeMaterialRequestStatus } from "@/features/material-requests/utils/material-request-nested-fields.util";
 
 type Props = {
-  status: string | null | undefined;
+  status: string | { id?: number; name?: string; status_name?: string; bg_colour?: string; text_colour?: string } | null | undefined;
   label?: string;
   statusRow?: Pick<WorkflowColourStatus, "status_name" | "bg_colour" | "text_colour"> | null;
   className?: string;
 };
 
-function fallbackTone(status: string | null | undefined): string {
-  const norm = normalizeMaterialRequestStatus(status);
+function fallbackTone(status: string | { id?: number; name?: string; status_name?: string; bg_colour?: string; text_colour?: string } | null | undefined): string {
+  const statusStr = typeof status === "object" && status ? (status.name || status.status_name) : status;
+  const norm = normalizeMaterialRequestStatus(statusStr);
   if (norm === "dispatched") {
     return "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-950/50 dark:text-emerald-300";
   }
@@ -30,7 +31,8 @@ function fallbackTone(status: string | null | undefined): string {
 }
 
 export function MaterialRequestStatusBadge({ status, label, statusRow, className }: Props) {
-  const displayLabel = label ?? statusRow?.status_name ?? status?.trim() ?? "—";
+  const statusStr = typeof status === "object" && status ? (status.name || status.status_name) : (typeof status === "string" ? status : "");
+  const displayLabel = label ?? statusRow?.status_name ?? statusStr?.trim() ?? "—";
 
   if (statusRow) {
     return (

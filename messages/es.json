@@ -2919,7 +2919,16 @@
         "qrCodeId": "ID del código QR",
         "colCompositeItem": "Ítem compuesto",
         "colUnitPrice": "Precio unitario",
-        "colLineTotal": "Total línea"
+        "colLineTotal": "Total línea",
+        "tabsAria": "Secciones del detalle del trabajo",
+        "tabs": {
+          "overview": "Resumen",
+          "materials": "Materiales",
+          "dispatch": "Envío",
+          "returns": "Devoluciones"
+        },
+        "materialsTitle": "Materiales",
+        "materialsEmpty": "No hay materiales vinculados a este trabajo."
       },
       "updateStatus": {
         "action": "Actualizar estado",

@@ -2929,7 +2929,16 @@
         "qrCodeId": "QR code ID",
         "colCompositeItem": "Composite item",
         "colUnitPrice": "Unit price",
-        "colLineTotal": "Line total"
+        "colLineTotal": "Line total",
+        "tabsAria": "Job detail sections",
+        "tabs": {
+          "overview": "Overview",
+          "materials": "Materials",
+          "dispatch": "Dispatch",
+          "returns": "Returns"
+        },
+        "materialsTitle": "Materials",
+        "materialsEmpty": "No materials are linked to this job."
       },
       "updateStatus": {
         "action": "Update status",
