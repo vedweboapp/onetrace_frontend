@@ -20,6 +20,7 @@ import { QuotationDraftComposer } from "@/features/quotations/components/quotati
 import {
   isProjectQuoteCategory,
   isServiceQuoteCategory,
+  parseQuoteCategoryParam,
   QUOTE_CATEGORY,
 } from "@/features/quotations/constants/quotation-category";
 import { useQuotationDraftState } from "@/features/quotations/hooks/use-quotation-draft-state";
@@ -143,15 +144,24 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [existingDetail, setExistingDetail] = React.useState<QuotationDetail | null>(null);
 
-  /** Manual Add quotation = servicequote (no project). `?project=` or edit with project/quote_category = projectquote. */
+  const createQuoteCategory = React.useMemo(() => {
+    if (isEdit) return undefined;
+    return parseQuoteCategoryParam(searchParams.get("quote_category"));
+  }, [isEdit, searchParams]);
+
+  /** Create: `quote_category` (or `?project=`) selects service vs project UI. Edit: from saved quote. */
   const isServiceQuotation = React.useMemo(() => {
-    if (!isEdit) return createFromProjectId == null;
+    if (!isEdit) {
+      if (createFromProjectId != null) return false;
+      if (createQuoteCategory) return isServiceQuoteCategory(createQuoteCategory);
+      return true;
+    }
     if (!existingDetail) return false;
     const cat = existingDetail.quote_category ?? existingDetail.category;
     if (isServiceQuoteCategory(cat)) return true;
     if (isProjectQuoteCategory(cat)) return false;
     return getQuotationProjectId(existingDetail.project) == null;
-  }, [isEdit, createFromProjectId, existingDetail]);
+  }, [isEdit, createFromProjectId, createQuoteCategory, existingDetail]);
 
   const [saving, setSaving] = React.useState(false);
   const [clientOptions, setClientOptions] = React.useState<Option[]>([]);

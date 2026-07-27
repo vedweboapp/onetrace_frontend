@@ -38,10 +38,11 @@ export function readBackHrefForPath(destinationPath: string): string | null {
   }
 }
 
-/** Navigate to `destinationPath` and remember `backHref` for the back button (clean URL). */
+/** Navigate to `destinationPath` and remember `backHref` for the back button (sessionStorage, not `?back=`). */
 export function buildPathWithStoredBack(destinationPath: string, backHref: string): string {
   storeBackHrefForPath(destinationPath, backHref);
-  return destinationPath.split("?")[0]?.split("#")[0] ?? destinationPath;
+  // Keep intentional query params (e.g. quote_category, project, tab); drop hash only.
+  return destinationPath.split("#")[0] ?? destinationPath;
 }
 
 export function buildDetailHrefWithListReturn(detailPath: string, currentListHref: string, entityId: number): string {

@@ -3,7 +3,7 @@
 import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 
 import * as React from "react";
-import { Calendar, Package, Pencil, Plus } from "lucide-react";
+import { Calendar, Package } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -27,13 +27,10 @@ import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-st
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
-  AddButton,
-  AppButton,
   CheckmarkSelect,
   DataTablePaginationBar,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
-  DataTableRowActionsMenu,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
@@ -42,7 +39,7 @@ import {
   SurfaceDateInput,
   SurfaceShell,
 } from "@/shared/ui";
-import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
@@ -112,17 +109,6 @@ export function MaterialRequestsPanel() {
   }, []);
 
   const { options: workerOptions } = useDeferredListOptions(loadWorkerOptions, fetchWorkerOptions);
-
-  const openCreate = React.useCallback(() => {
-    router.push(buildPathWithStoredBack(`${pathname}/new`, listHref));
-  }, [listHref, pathname, router]);
-
-  const openEdit = React.useCallback(
-    (id: number) => {
-      router.push(buildPathWithStoredBack(`${pathname}/${id}/edit`, listHref));
-    },
-    [listHref, pathname, router],
-  );
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -275,7 +261,7 @@ export function MaterialRequestsPanel() {
       //   />
       // )),
     ];
-  }, [t, tList, dateFmt, workerLabelById, statusLabel, statusRowFor, openEdit, massSel.tableColumn]);
+  }, [t, tList, dateFmt, workerLabelById, statusLabel, statusRowFor, massSel.tableColumn]);
 
   return (
     <div className="space-y-4">
@@ -286,7 +272,6 @@ export function MaterialRequestsPanel() {
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
-          action={<AddButton type="button" onClick={openCreate} />}
           controls={
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <ListPageSearchField
@@ -375,12 +360,6 @@ export function MaterialRequestsPanel() {
               iconName: "clients",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
-              action: (
-                <AppButton type="button" variant="primary" size="sm" onClick={openCreate}>
-                  <Plus className="size-4" strokeWidth={2.5} aria-hidden />
-                  {t("createRequest")}
-                </AppButton>
-              ),
             }}
             onClearFilters={() =>
               setUrl(

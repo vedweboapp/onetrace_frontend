@@ -20,6 +20,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { Link, usePathname } from "@/i18n/navigation";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 import { useAuthStore } from "@/features/auth/store/auth.store";
@@ -27,6 +28,10 @@ import { useDashboardAppearanceStore } from "@/features/settings/personal-profil
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import { resolveDashboardAccent } from "@/features/dashboard/utils/accent-resolve.util";
 import { dashboardContentHorizontalGutterClassName } from "@/shared/config/dashboard-shell";
+import {
+  isProjectQuoteCategory,
+  parseQuoteCategoryParam,
+} from "@/features/quotations/constants/quotation-category";
 import { routes } from "@/shared/config/routes";
 import { cn } from "@/core/utils/http.util";
 import { useShallow } from "zustand/react/shallow";
@@ -51,6 +56,7 @@ export function DashboardHeader() {
   const tNav = useTranslations("Dashboard.sidebar");
   const tSettingsNav = useTranslations("Dashboard.settingsNav");
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const user = useAuthStore((s) => s.user);
   const accentSlice = useDashboardAppearanceStore(
     useShallow((s) => ({
@@ -74,6 +80,8 @@ export function DashboardHeader() {
   const contactsHref = routes.dashboard.contacts;
   const sitesHref = routes.dashboard.sites;
   const quotationsHref = routes.dashboard.quotations;
+  const quotationServiceHref = routes.dashboard.quotationService;
+  const quotationProjectHref = routes.dashboard.quotationProject;
   const invoicesHref = routes.dashboard.invoices;
   const purchaseOrdersHref = routes.dashboard.purchaseOrders;
   const jobsHref = routes.dashboard.jobs;
@@ -111,6 +119,13 @@ export function DashboardHeader() {
   const sitesActive = pathname === sitesHref || pathname.startsWith(`${sitesHref}/`);
   const quotationsActive =
     pathname === quotationsHref || pathname.startsWith(`${quotationsHref}/`);
+  const quoteCategory = quotationsActive
+    ? parseQuoteCategoryParam(searchParams.get("quote_category"))
+    : undefined;
+  const quotationServiceActive =
+    quotationsActive &&
+    (quoteCategory == null ? pathname === quotationsHref : !isProjectQuoteCategory(quoteCategory));
+  const quotationProjectActive = quotationsActive && isProjectQuoteCategory(quoteCategory);
   const invoicesActive =
     pathname === invoicesHref || pathname.startsWith(`${invoicesHref}/`);
   const purchaseOrdersActive =
@@ -165,7 +180,11 @@ export function DashboardHeader() {
     : projectsActive
       ? tNav("projects")
       : quotationsActive
-        ? tNav("quotations")
+        ? quotationProjectActive
+          ? tNav("quotationProject")
+          : quotationServiceActive && pathname === quotationsHref
+            ? tNav("quotationService")
+            : tNav("quotations")
         : invoicesActive
           ? tNav("invoices")
           : purchaseOrdersActive
@@ -432,15 +451,32 @@ export function DashboardHeader() {
               {tNav("sites")}
             </Link>
             <Link
-              href={quotationsHref}
+              href={quotationServiceHref}
               className={cn(
                 "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
-                quotationsActive ? resolved.navActiveClassName : mobileInactive(),
+                quotationServiceActive && pathname === quotationsHref
+                  ? resolved.navActiveClassName
+                  : mobileInactive(),
               )}
-              style={quotationsActive ? resolved.navActiveStyle : undefined}
+              style={
+                quotationServiceActive && pathname === quotationsHref
+                  ? resolved.navActiveStyle
+                  : undefined
+              }
             >
               <FileText className="size-3.5" strokeWidth={1.75} />
-              {tNav("quotations")}
+              {tNav("quotationService")}
+            </Link>
+            <Link
+              href={quotationProjectHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                quotationProjectActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={quotationProjectActive ? resolved.navActiveStyle : undefined}
+            >
+              <FileText className="size-3.5" strokeWidth={1.75} />
+              {tNav("quotationProject")}
             </Link>
             <Link
               href={jobsHref}

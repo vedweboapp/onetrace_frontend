@@ -136,8 +136,11 @@ export function QuotationsPanel() {
 
   const { options: clientOptions } = useDeferredListOptions(loadCustomerOptions, fetchCustomerOptions);
   const openCreate = React.useCallback(() => {
-    router.push(buildPathWithStoredBack(`${pathname}/new`, listHref));
-  }, [listHref, pathname, router]);
+    const cat = categoryFilter ?? QUOTE_CATEGORY.service;
+    router.push(
+      buildPathWithStoredBack(`${pathname}/new?quote_category=${encodeURIComponent(cat)}`, listHref),
+    );
+  }, [categoryFilter, listHref, pathname, router]);
 
   const openEdit = React.useCallback(
     (id: number) => {
@@ -158,14 +161,13 @@ export function QuotationsPanel() {
     [t],
   );
 
-  const categoryFilterOptions = React.useMemo(
-    () => [
-      { value: "", label: t("filterAllCategories") },
-      { value: QUOTE_CATEGORY.service, label: t("category.service") },
-      { value: QUOTE_CATEGORY.project, label: t("category.project") },
-    ],
-    [t],
-  );
+  React.useEffect(() => {
+    if (categoryFilter) return;
+    const p = new URLSearchParams(searchParams.toString());
+    p.set("quote_category", QUOTE_CATEGORY.service);
+    const qs = p.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`);
+  }, [categoryFilter, pathname, router, searchParams]);
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -266,6 +268,7 @@ export function QuotationsPanel() {
   }, [customerFilter]);
 
   React.useEffect(() => {
+    if (!categoryFilter) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -428,7 +431,6 @@ export function QuotationsPanel() {
     siteParam,
     projectParam,
     statusParam,
-    quoteCategoryParam: categoryParam,
   });
   const showProjectFilter = categoryFilter === QUOTE_CATEGORY.project;
   const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
@@ -571,28 +573,6 @@ export function QuotationsPanel() {
                 }}
                 onChange={(v) => setUrl({ site: v || null, page: null }, { replace: true })}
               />
-              <CheckmarkSelect
-                listLabel={t("filterCategory")}
-                buttonAriaLabel={t("filterCategory")}
-                options={categoryFilterOptions}
-                value={categoryParam ?? ""}
-                emptyLabel={t("filterAllCategories")}
-                portaled
-                clearable
-                clearAriaLabel={tList("clearFilter")}
-                className="w-full min-w-0 sm:w-44"
-                onChange={(v) =>
-                  setUrl(
-                    {
-                      quote_category: v || null,
-                      // Project filter only applies to project quotes.
-                      project: v === QUOTE_CATEGORY.project ? projectParam : null,
-                      page: null,
-                    },
-                    { replace: true },
-                  )
-                }
-              />
               {showProjectFilter ? (
                 <CheckmarkSelect
                   listLabel={t("filterProject")}
@@ -673,7 +653,6 @@ export function QuotationsPanel() {
                   site: null,
                   project: null,
                   status: null,
-                  quote_category: null,
                   page: null,
                 },
                 { replace: true },

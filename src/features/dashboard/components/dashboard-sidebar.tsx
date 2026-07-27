@@ -6,10 +6,16 @@ import { BookUser, Building2, ClipboardList, Plug, Settings, FileText, FolderKan
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import { resolveDashboardAccent } from "@/features/dashboard/utils/accent-resolve.util";
+import {
+  isProjectQuoteCategory,
+  isServiceQuoteCategory,
+  parseQuoteCategoryParam,
+} from "@/features/quotations/constants/quotation-category";
 import { routes } from "@/shared/config/routes";
 import { cn } from "@/core/utils/http.util";
 import { useShallow } from "zustand/react/shallow";
@@ -148,12 +154,16 @@ function DashboardMainSidebar({
 }) {
   const t = useTranslations("Dashboard.sidebar");
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [itemsOpen, setItemsOpen] = React.useState(false);
+  const [quotesOpen, setQuotesOpen] = React.useState(false);
   const clientsHref = routes.dashboard.clients;
   const vendorsHref = routes.dashboard.vendors;
   const contactsHref = routes.dashboard.contacts;
   const sitesHref = routes.dashboard.sites;
   const quotationsHref = routes.dashboard.quotations;
+  const quotationServiceHref = routes.dashboard.quotationService;
+  const quotationProjectHref = routes.dashboard.quotationProject;
   const invoicesHref = routes.dashboard.invoices;
   const purchaseOrdersHref = routes.dashboard.purchaseOrders;
   const jobsHref = routes.dashboard.jobs;
@@ -176,6 +186,17 @@ function DashboardMainSidebar({
   const sitesActive = pathname === sitesHref || pathname.startsWith(`${sitesHref}/`);
   const quotationsActive =
     pathname === quotationsHref || pathname.startsWith(`${quotationsHref}/`);
+  const quoteCategory = React.useMemo(() => {
+    if (!quotationsActive) return undefined;
+    return parseQuoteCategoryParam(searchParams.get("quote_category"));
+  }, [quotationsActive, searchParams]);
+  const quotationServiceActive =
+    quotationsActive &&
+    (quoteCategory == null
+      ? pathname === quotationsHref
+      : isServiceQuoteCategory(quoteCategory));
+  const quotationProjectActive =
+    quotationsActive && isProjectQuoteCategory(quoteCategory);
   const invoicesActive =
     pathname === invoicesHref || pathname.startsWith(`${invoicesHref}/`);
   const purchaseOrdersActive =
@@ -197,6 +218,9 @@ function DashboardMainSidebar({
   React.useEffect(() => {
     if (itemsSectionActive) setItemsOpen(true);
   }, [itemsSectionActive]);
+  React.useEffect(() => {
+    if (quotationsActive) setQuotesOpen(true);
+  }, [quotationsActive]);
 
   return (
     <>
@@ -249,14 +273,69 @@ function DashboardMainSidebar({
           expanded={expanded}
           resolved={resolved}
         />
-        <SidebarNavLink
-          href={quotationsHref}
-          active={quotationsActive}
-          label={t("quotations")}
-          icon={FileText}
-          expanded={expanded}
-          resolved={resolved}
-        />
+        {expanded ? (
+          <div
+            className="pt-0"
+            onMouseEnter={() => setQuotesOpen(true)}
+            onMouseLeave={() => {
+              if (!quotationsActive) setQuotesOpen(false);
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setQuotesOpen((v) => !v)}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition",
+                quotationsActive ? resolved.navActiveClassName : navInactive(),
+              )}
+              style={quotationsActive ? resolved.navActiveStyle : undefined}
+              aria-expanded={quotesOpen}
+            >
+              <FileText
+                className={cn(
+                  "size-[18px] shrink-0",
+                  quotationsActive ? "opacity-95" : "text-slate-600 dark:text-slate-300",
+                )}
+                strokeWidth={1.75}
+                aria-hidden
+              />
+              <span className="truncate">{t("quotations")}</span>
+            </button>
+            <div
+              className={cn(
+                "mt-1.5 space-y-1 overflow-hidden",
+                "max-h-0 opacity-0 transition-all duration-150",
+                quotesOpen && "max-h-40 opacity-100",
+              )}
+            >
+              <SidebarSubNavLink
+                href={quotationServiceHref}
+                active={quotationServiceActive}
+                label={t("quotationService")}
+                expanded
+                resolved={resolved}
+                subtleActive
+              />
+              <SidebarSubNavLink
+                href={quotationProjectHref}
+                active={quotationProjectActive}
+                label={t("quotationProject")}
+                expanded
+                resolved={resolved}
+                subtleActive
+              />
+            </div>
+          </div>
+        ) : (
+          <SidebarNavLink
+            href={quotationServiceHref}
+            active={quotationsActive}
+            label={t("quotations")}
+            icon={FileText}
+            expanded={expanded}
+            resolved={resolved}
+          />
+        )}
         <SidebarNavLink
           href={invoicesHref}
           active={invoicesActive}
