@@ -172,8 +172,10 @@ export type JobCreatePayload = {
   client?: number;
   project?: number;
   site?: number;
+  job_category?: string;
   job_meta?: JobMetaPayload;
   checklists?: number[];
+  pin_ids?: number[];
 };
 
 /** Backend creates a job from a quotation (minimal body). */

@@ -200,6 +200,8 @@
       "invoices": "Facturas",
       "purchaseOrders": "Órdenes de compra",
       "jobs": "Trabajos",
+      "serviceJob": "Trabajo de Servicio",
+      "projectJob": "Trabajo de Proyecto",
       "qrCodes": "Códigos QR",
       "projects": "Proyectos",
       "groups": "Grupos",
@@ -2996,7 +2998,8 @@
         "loadError": "No se pudieron cargar los niveles. Inténtalo de nuevo.",
         "loadingMore": "Cargando más niveles…",
         "noPlotsInLevel": "No hay parcelas en este nivel.",
-        "emptyLoaded": "Este proyecto aún no tiene niveles."
+        "emptyLoaded": "Este proyecto aún no tiene niveles.",
+        "noPinsAvailable": "No hay pines disponibles."
       },
       "lineItems": {
         "qty": "Cant.",

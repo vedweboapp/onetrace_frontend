@@ -142,11 +142,15 @@ export function MultiCheckSelect({
     [resolvedOptions, selectedMap],
   );
   const filteredOptions = React.useMemo(() => {
+    if (onSearchChange && query.trim()) {
+      const q = query.trim().toLowerCase();
+      return options.filter((o) => o.label.toLowerCase().includes(q));
+    }
     if (onSearchChange) return resolvedOptions;
     const q = query.trim().toLowerCase();
     if (!q) return resolvedOptions;
     return resolvedOptions.filter((o) => o.label.toLowerCase().includes(q));
-  }, [resolvedOptions, query, onSearchChange]);
+  }, [resolvedOptions, options, query, onSearchChange]);
 
   const updatePlacement = React.useCallback(() => {
     const el = triggerRef.current;

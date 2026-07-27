@@ -5,6 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { BookUser, Building2, ClipboardList, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Tag, Truck, UserRound } from "lucide-react";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
@@ -194,6 +195,20 @@ function DashboardMainSidebar({
   const itemsActive = pathname === itemsHref || pathname.startsWith(`${itemsHref}/`);
   const compositeActive = pathname === compositeHref || pathname.startsWith(`${compositeHref}/`);
   const itemsSectionActive = itemsActive || compositeActive;
+  const searchParams = useSearchParams();
+  const toggleSidebar = useDashboardSidebarStore((s) => s.toggleSidebar);
+  const [jobsOpen, setJobsOpen] = React.useState(false);
+  const serviceJobHref = `${routes.dashboard.jobs}?job_category=servicejob`;
+  const projectJobHref = `${routes.dashboard.jobs}?job_category=projectjob`;
+  const currentJobCategory = searchParams.get("job_category");
+  // Active when on jobs list with matching category, OR on any jobs sub-page (new/edit/detail) with matching category
+  const serviceJobActive = jobsActive && currentJobCategory === "servicejob";
+  const projectJobActive = jobsActive && currentJobCategory === "projectjob";
+
+  React.useEffect(() => {
+    if (jobsActive) setJobsOpen(true);
+  }, [jobsActive]);
+
   React.useEffect(() => {
     if (itemsSectionActive) setItemsOpen(true);
   }, [itemsSectionActive]);
@@ -273,14 +288,80 @@ function DashboardMainSidebar({
           expanded={expanded}
           resolved={resolved}
         />
-        <SidebarNavLink
-          href={jobsHref}
-          active={jobsActive}
-          label={t("jobs")}
-          icon={ListTodo}
-          expanded={expanded}
-          resolved={resolved}
-        />
+        {expanded ? (
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setJobsOpen((v) => !v)}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition",
+                jobsActive
+                  ? resolved.navActiveClassName
+                  : navInactive(),
+              )}
+              style={jobsActive ? resolved.navActiveStyle : undefined}
+              aria-expanded={jobsOpen}
+            >
+              <ListTodo
+                className={cn(
+                  "size-[18px] shrink-0",
+                  jobsActive ? "opacity-95" : "text-slate-600 dark:text-slate-300",
+                )}
+                strokeWidth={1.75}
+                aria-hidden
+              />
+              <span className="truncate">{t("jobs")}</span>
+            </button>
+            <div
+              className={cn(
+                "mt-1.5 space-y-1 overflow-hidden",
+                "max-h-0 opacity-0 transition-all duration-150",
+                jobsOpen && "max-h-40 opacity-100",
+              )}
+            >
+              <SidebarSubNavLink
+                href={serviceJobHref}
+                active={serviceJobActive}
+                label={t("serviceJob")}
+                expanded
+                resolved={resolved}
+                subtleActive
+              />
+              <SidebarSubNavLink
+                href={projectJobHref}
+                active={projectJobActive}
+                label={t("projectJob")}
+                expanded
+                resolved={resolved}
+                subtleActive
+              />
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              toggleSidebar();
+              setJobsOpen(true);
+            }}
+            title={t("jobs")}
+            className={cn(
+              "flex items-center rounded-lg text-sm font-medium transition mx-auto size-9 justify-center p-0",
+              jobsActive ? resolved.navActiveClassName : navInactive(),
+            )}
+            style={jobsActive ? resolved.navActiveStyle : undefined}
+          >
+            <ListTodo
+              className={cn(
+                "size-[18px] shrink-0",
+                jobsActive ? "opacity-95" : "text-slate-600 dark:text-slate-300",
+              )}
+              strokeWidth={1.75}
+              aria-hidden
+            />
+            <span className="sr-only">{t("jobs")}</span>
+          </button>
+        )}
         <SidebarNavLink
           href={qrCodesHref}
           active={qrCodesActive}

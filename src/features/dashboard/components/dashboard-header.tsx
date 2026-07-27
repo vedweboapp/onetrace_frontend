@@ -19,6 +19,7 @@ import {
   QrCode,
   UserRound,
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
@@ -51,6 +52,7 @@ export function DashboardHeader() {
   const tNav = useTranslations("Dashboard.sidebar");
   const tSettingsNav = useTranslations("Dashboard.settingsNav");
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const user = useAuthStore((s) => s.user);
   const accentSlice = useDashboardAppearanceStore(
     useShallow((s) => ({
@@ -443,15 +445,30 @@ export function DashboardHeader() {
               {tNav("quotations")}
             </Link>
             <Link
-              href={jobsHref}
+              href={`${jobsHref}?job_category=servicejob`}
               className={cn(
                 "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
-                jobsActive ? resolved.navActiveClassName : mobileInactive(),
+                jobsActive && searchParams.get("job_category") === "servicejob"
+                  ? resolved.navActiveClassName
+                  : mobileInactive(),
               )}
-              style={jobsActive ? resolved.navActiveStyle : undefined}
+              style={jobsActive && searchParams.get("job_category") === "servicejob" ? resolved.navActiveStyle : undefined}
             >
               <ListTodo className="size-3.5" strokeWidth={1.75} />
-              {tNav("jobs")}
+              {tNav("serviceJob")}
+            </Link>
+            <Link
+              href={`${jobsHref}?job_category=projectjob`}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                jobsActive && searchParams.get("job_category") === "projectjob"
+                  ? resolved.navActiveClassName
+                  : mobileInactive(),
+              )}
+              style={jobsActive && searchParams.get("job_category") === "projectjob" ? resolved.navActiveStyle : undefined}
+            >
+              <ListTodo className="size-3.5" strokeWidth={1.75} />
+              {tNav("projectJob")}
             </Link>
             <Link
               href={qrCodesHref}

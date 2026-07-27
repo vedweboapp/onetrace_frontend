@@ -26,6 +26,7 @@ export function createJobFormSchema(messages: JobFormMessages) {
       client: optionalPositiveId(messages.optionalId),
       project: optionalPositiveId(messages.optionalId),
       site: optionalPositiveId(messages.optionalId),
+      job_category: z.string().optional(),
       assigned_worker: z
         .string()
         .trim()

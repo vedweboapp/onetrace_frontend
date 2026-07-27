@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchJob, updateJob } from "@/features/jobs/api/job.api";
 import { JobDetailBody } from "@/features/jobs/components/job-detail-body";
 import { JobUpdateStatusDialog } from "@/features/jobs/components/job-update-status-dialog";
@@ -9,7 +11,6 @@ import type { Job } from "@/features/jobs/types/job.types";
 import { getJobAssignedWorkerId, getJobStatusId } from "@/features/jobs/utils/job-nested-fields.util";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import {
-  EntityDetailEditButton,
   EntityDetailErrorState,
   EntityDetailLoadingSkeleton,
   EntityDetailScreen,
@@ -17,6 +18,8 @@ import {
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton } from "@/shared/ui";
+import { EditButton } from "@/shared/ui/dashboard-action-buttons";
+import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 
 type Props = {
   jobId: number;
@@ -123,6 +126,21 @@ function JobDetailActions({
   setStatusSaving: (v: boolean) => void;
   t: ReturnType<typeof useTranslations<"Dashboard.jobs">>;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  function openEdit() {
+    const jobCategory =
+      searchParams.get("job_category")?.trim() ||
+      (typeof detail.job_category === "string" ? detail.job_category.trim() : "");
+    const editPath = buildPathWithStoredBack(`${pathname}/edit`, listBack);
+    const targetUrl = jobCategory
+      ? `${editPath}?job_category=${encodeURIComponent(jobCategory)}`
+      : editPath;
+    router.push(targetUrl);
+  }
+
   async function handleStatusUpdate(jobStatusId: number) {
     setStatusSaving(true);
     try {
@@ -141,11 +159,7 @@ function JobDetailActions({
       <AppButton type="button" variant="secondary" size="sm" onClick={onOpenStatus}>
         {t("updateStatus.action")}
       </AppButton>
-      <EntityDetailEditButton
-        label={t("detail.editWithIcon")}
-        listBack={listBack}
-        fallbackRoute={routes.dashboard.jobs}
-      />
+      <EditButton onClick={openEdit}>{t("detail.editWithIcon")}</EditButton>
       <JobUpdateStatusDialog
         open={statusOpen}
         currentStatusId={getJobStatusId(detail)}

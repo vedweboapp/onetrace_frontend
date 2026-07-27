@@ -208,6 +208,8 @@
       "invoices": "Invoices",
       "purchaseOrders": "Purchase orders",
       "jobs": "Jobs",
+      "serviceJob": "Service Job",
+      "projectJob": "Project Job",
       "qrCodes": "QR codes",
       "projects": "Projects",
       "groups": "Groups",
@@ -3007,7 +3009,8 @@
         "loadError": "Could not load levels. Try again.",
         "loadingMore": "Loading more levels…",
         "noPlotsInLevel": "No plots in this level.",
-        "emptyLoaded": "No levels returned for this project yet."
+        "emptyLoaded": "No levels returned for this project yet.",
+        "noPinsAvailable": "No pins available."
       },
       "lineItems": {
         "qty": "Qty",

@@ -234,6 +234,9 @@ function PlotPinsBlock({
     [pins, isPinDisabled],
   );
 
+  // If the plot has no pins, don't render it at all
+  if (pins.length === 0) return null;
+
   return (
     <div className="min-w-0 w-full rounded-xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-700/80 dark:bg-slate-950/30">
       <div className="flex items-center gap-2.5 border-b border-slate-100 bg-linear-to-r from-slate-50 to-white px-4 py-3 dark:border-slate-800 dark:from-slate-900/80 dark:to-slate-950/40">
@@ -281,6 +284,7 @@ type Props = {
   onSelectedPinIdsChange: (ids: Set<number>) => void;
   onLocationsChange: (locations: Drawing[]) => void;
   disabled?: boolean;
+  includeConvertedPins?: boolean;
 };
 
 export function JobFormLevelsSection({
@@ -290,6 +294,7 @@ export function JobFormLevelsSection({
   onSelectedPinIdsChange,
   onLocationsChange,
   disabled = false,
+  includeConvertedPins = false,
 }: Props) {
   const t = useTranslations("Dashboard.jobs.levelsHierarchy");
 
@@ -340,7 +345,11 @@ export function JobFormLevelsSection({
       setLoadError(null);
 
       try {
-        const { items, pagination: p } = await fetchDrawingsPage(projectId, page, pageSize);
+        const drawingFilters: Record<string, unknown> = { quote_status: "approved" };
+        if (!includeConvertedPins) {
+          drawingFilters.is_converted_job = false;
+        }
+        const { items, pagination: p } = await fetchDrawingsPage(projectId, page, pageSize, undefined, drawingFilters);
         if (cancelled) return;
         // Compute next outside the setter — calling onLocationsChange (which updates
         // parent state) inside a setState updater causes the React "setState during
@@ -373,7 +382,7 @@ export function JobFormLevelsSection({
     return () => {
       cancelled = true;
     };
-  }, [onLocationsChange, page, pageSize, projectId, t]);
+  }, [includeConvertedPins, onLocationsChange, page, pageSize, projectId, t]);
 
   React.useEffect(() => {
     setPage(1);
@@ -467,6 +476,14 @@ export function JobFormLevelsSection({
 
       <div className="space-y-8">
         {locations.map((level) => {
+          // Count total pins across all plots for this level
+          const levelTotalPins = (level.plots ?? []).reduce(
+            (sum, plot) => sum + (plot.pins ?? []).length,
+            0,
+          );
+          // If this level has no pins at all, skip rendering it
+          if (levelTotalPins === 0) return null;
+
           const levelSelectablePinIds = (level.plots ?? []).flatMap((plot) =>
             (plot.pins ?? []).filter((pin) => !isPinDisabled(pin)).map((pin) => pin.id),
           );
@@ -485,36 +502,43 @@ export function JobFormLevelsSection({
                 </h3>
               </div>
               <div className="space-y-4">
-                {(level.plots ?? []).length === 0 ? (
-                  <p className="pl-9 text-sm text-slate-500 dark:text-slate-400">{t("noPlotsInLevel")}</p>
-                ) : (
-                  (level.plots ?? []).map((plot) => (
-                    <PlotPinsBlock
-                      key={`${level.id}-${plot.id}`}
-                      plotName={plot.name}
-                      pins={plot.pins ?? []}
-                      selectedIds={selectedPinIds}
-                      drawingFile={level.drawing_file}
-                      drawingFileType={level.drawing_file_type}
-                      snapshotState={levelSnapshots.get(level.id)}
-                      isPinDisabled={isPinDisabled}
-                      onTogglePlot={handleToggleGroup}
-                      onTogglePin={handleTogglePin}
-                      onPreviewPin={(pin) => {
-                        setPreviewPinData({
-                          pin,
-                          plots: [plot],
-                          drawingFile: level.drawing_file,
-                          drawingName: level.name,
-                        });
-                      }}
-                    />
-                  ))
-                )}
+                {(level.plots ?? []).map((plot) => (
+                  <PlotPinsBlock
+                    key={`${level.id}-${plot.id}`}
+                    plotName={plot.name}
+                    pins={plot.pins ?? []}
+                    selectedIds={selectedPinIds}
+                    drawingFile={level.drawing_file}
+                    drawingFileType={level.drawing_file_type}
+                    snapshotState={levelSnapshots.get(level.id)}
+                    isPinDisabled={isPinDisabled}
+                    onTogglePlot={handleToggleGroup}
+                    onTogglePin={handleTogglePin}
+                    onPreviewPin={(pin) => {
+                      setPreviewPinData({
+                        pin,
+                        plots: [plot],
+                        drawingFile: level.drawing_file,
+                        drawingName: level.name,
+                      });
+                    }}
+                  />
+                ))}
               </div>
             </section>
           );
         })}
+
+        {/* Show "No pins available" when locations loaded but none have pins */}
+        {locations.length > 0 &&
+          locations.every((level) =>
+            (level.plots ?? []).every((plot) => (plot.pins ?? []).length === 0),
+          ) ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50/50 px-6 py-10 text-center dark:border-slate-700 dark:bg-slate-900/30">
+            <MapPinned className="mb-3 size-8 text-slate-400 dark:text-slate-500" />
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t("noPinsAvailable")}</p>
+          </div>
+        ) : null}
 
         {locations.length === 0 && initialJobLevels.length > 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">{t("emptyLoaded")}</p>

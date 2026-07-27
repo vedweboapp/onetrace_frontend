@@ -26,6 +26,7 @@ import {
   extractJobLevelsFromJob,
   jobWasCreatedFromPins,
 } from "@/features/jobs/utils/job-levels.util";
+import { jobChecklistEntries } from "@/features/jobs/utils/job-nested-fields.util";
 import type { JobLevelSnapshot } from "@/features/jobs/types/job.types";
 import type { JobUpdatePayload } from "@/features/jobs/types/job.types";
 import type { Drawing } from "@/features/projects/types/drawing.types";
@@ -43,7 +44,7 @@ import { DetailPageHeader } from "@/shared/components/layout/detail-page-header"
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
-import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack, sanitizeJobsBackHref } from "@/shared/utils/detail-from-list.util";
+import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack, mergeUrlQueryParam, sanitizeJobsBackHref } from "@/shared/utils/detail-from-list.util";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { ensureCheckmarkOption } from "@/shared/utils/checkmark-options.util";
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
@@ -107,6 +108,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
   const [checklistSearch, setChecklistSearch] = React.useState<string>("");
   const [formSearch, setFormSearch] = React.useState<string>("");
   const [formsLoading, setFormsLoading] = React.useState(false);
+  const [projectSearch, setProjectSearch] = React.useState<string>("");
   const [projectTypeId, setProjectTypeId] = React.useState<number | null>(null);
   const [projectLocations, setProjectLocations] = React.useState<Drawing[]>([]);
 
@@ -126,6 +128,8 @@ export function JobFormScreen({ mode, jobId }: Props) {
     [t],
   );
 
+  const jobCategoryFromUrl = searchParams.get("job_category") ?? "";
+
   const {
     control,
     register,
@@ -136,9 +140,14 @@ export function JobFormScreen({ mode, jobId }: Props) {
     formState: { errors },
   } = useForm<JobFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: emptyJobFormDefaults(),
+    defaultValues: emptyJobFormDefaults(isEdit ? undefined : jobCategoryFromUrl),
   });
   const { fields, append, remove } = useFieldArray({ control, name: "job_meta_items" });
+
+  const watchedCategory = useWatch({ control, name: "job_category" });
+  const jobCategory = watchedCategory || jobCategoryFromUrl;
+  const rawCategory = (jobCategory ?? "").toLowerCase().replace(/[^a-z]/g, "");
+  const isProjectJob = rawCategory === "projectjob";
 
   const selectedClient = useWatch({ control, name: "client" });
   const selectedProject = useWatch({ control, name: "project" });
@@ -234,24 +243,37 @@ export function JobFormScreen({ mode, jobId }: Props) {
 
 
   const fetchChecklistOptions = React.useCallback(async (searchTerm?: string) => {
+    if (isProjectJob && !projectTypeId) {
+      setChecklistOptions([]);
+      if (!isEdit) {
+        setValue("checklists", [], { shouldDirty: true });
+      }
+      return;
+    }
+
     try {
       setChecklistLoading(true);
       const response = await fetchChecklistTypesPage(1, 100, {
         is_active: true,
+        project_type: isProjectJob ? projectTypeId ?? undefined : undefined,
         search: searchTerm || undefined,
       });
-      setChecklistOptions(
-        response.items.map((item) => ({
-          value: String(item.id),
-          label: item.title ?? `Checklist #${item.id}`,
-        })),
-      );
+      setChecklistOptions((prev) => {
+        const byValue = new Map(isProjectJob ? [] : prev.map((opt) => [opt.value, opt]));
+        for (const item of response.items) {
+          byValue.set(String(item.id), {
+            value: String(item.id),
+            label: item.title ?? `Checklist #${item.id}`,
+          });
+        }
+        return Array.from(byValue.values());
+      });
     } catch {
-      setChecklistOptions([]);
+      // Keep existing options
     } finally {
       setChecklistLoading(false);
     }
-  }, []);
+  }, [isEdit, isProjectJob, projectTypeId, setValue]);
 
   React.useEffect(() => {
     const timeout = setTimeout(() => {
@@ -261,18 +283,35 @@ export function JobFormScreen({ mode, jobId }: Props) {
   }, [checklistSearch, fetchChecklistOptions]);
 
 
-  const reloadProjects = React.useCallback(async () => {
+  const reloadProjects = React.useCallback(async (searchTerm?: string) => {
     if (!clientId || clientId <= 0) {
       setProjectOptions([]);
       return;
     }
     try {
-      const { items } = await fetchProjectsPage(1, 500, { client: clientId, is_active: true });
-      setProjectOptions(items.map((p) => ({ value: String(p.id), label: p.name })));
+      const { items } = await fetchProjectsPage(1, 500, {
+        client: clientId,
+        is_active: true,
+        search: searchTerm || undefined,
+      });
+      setProjectOptions((prev) => {
+        const byValue = new Map(prev.map((opt) => [opt.value, opt]));
+        for (const p of items) {
+          byValue.set(String(p.id), { value: String(p.id), label: p.name });
+        }
+        return Array.from(byValue.values());
+      });
     } catch {
-      setProjectOptions([]);
+      // Keep existing options
     }
   }, [clientId]);
+
+  React.useEffect(() => {
+    const timeout = setTimeout(() => {
+      void reloadProjects(projectSearch);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [projectSearch, reloadProjects]);
 
   const reloadSites = React.useCallback(async () => {
     if (!clientId || clientId <= 0) {
@@ -288,15 +327,15 @@ export function JobFormScreen({ mode, jobId }: Props) {
   }, [clientId]);
 
   React.useEffect(() => {
+    if (isProjectJob) return;
     void reloadSites();
-  }, [clientId])
+  }, [clientId, reloadSites, isProjectJob]);
 
   const reloadForms = React.useCallback(async (searchTerm?: string) => {
+    if (isProjectJob) return;
     try {
       setFormsLoading(true);
-      const { items } = await fetchFormsPage(1, 10, {
-        search: searchTerm || undefined,
-      });
+      const { items } = await fetchFormsPage(1, 500, { search: searchTerm || undefined }, { silent: true });
       setFormOptions((prev) => {
         const byValue = new Map(prev.map((opt) => [opt.value, opt]));
         for (const f of items) {
@@ -309,14 +348,15 @@ export function JobFormScreen({ mode, jobId }: Props) {
     } finally {
       setFormsLoading(false);
     }
-  }, []);
+  }, [isProjectJob]);
 
   React.useEffect(() => {
+    if (isProjectJob) return;
     const timeout = setTimeout(() => {
       void reloadForms(formSearch);
     }, 300);
     return () => clearTimeout(timeout);
-  }, [formSearch, reloadForms]);
+  }, [formSearch, reloadForms, isProjectJob]);
 
   const reloadGroupsAndItems = React.useCallback(async () => {
     try {
@@ -430,7 +470,20 @@ export function JobFormScreen({ mode, jobId }: Props) {
   React.useEffect(() => {
     if (!selectedProject || !/^\d+$/.test(selectedProject)) {
       setProjectTypeId(null);
+      if (isProjectJob && !isEdit) {
+        setValue("checklists", [], { shouldDirty: true });
+      }
+      if (isProjectJob) {
+        setSiteOptions([]);
+      }
       return;
+    }
+
+    if (isProjectJob) {
+      setProjectTypeId(null);
+      if (!isEdit) {
+        setValue("checklists", [], { shouldDirty: true });
+      }
     }
 
     let cancelled = false;
@@ -439,16 +492,35 @@ export function JobFormScreen({ mode, jobId }: Props) {
         const project = await fetchProject(Number.parseInt(selectedProject, 10));
         if (!cancelled) {
           setProjectTypeId(getProjectTypeId(project));
+          if (isProjectJob) {
+            const siteOpts: Option[] = [];
+            if (Array.isArray(project.sites)) {
+              for (const entry of project.sites) {
+                if (typeof entry === "number" && Number.isFinite(entry) && entry > 0) {
+                  siteOpts.push({ value: String(entry), label: `Site #${entry}` });
+                } else if (entry && typeof entry === "object" && typeof entry.id === "number") {
+                  const label = entry.site_name?.trim() || `Site #${entry.id}`;
+                  siteOpts.push({ value: String(entry.id), label });
+                }
+              }
+            }
+            setSiteOptions(siteOpts);
+          }
         }
       } catch {
-        if (!cancelled) setProjectTypeId(null);
+        if (!cancelled) {
+          setProjectTypeId(null);
+          if (isProjectJob) {
+            setSiteOptions([]);
+          }
+        }
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [selectedProject]);
+  }, [isEdit, selectedProject, isProjectJob, setValue]);
 
   React.useEffect(() => {
     const groupIds = Array.from(
@@ -515,15 +587,42 @@ export function JobFormScreen({ mode, jobId }: Props) {
           reset(jobToFormDefaults(row));
           const levels = extractJobLevelsFromJob(row);
           const fromPins = jobWasCreatedFromPins(row);
+          const loadedCategoryNorm = (row.job_category ?? jobCategoryFromUrl ?? "")
+            .toLowerCase()
+            .replace(/[^a-z]/g, "");
+          const isLoadedProjectJob = loadedCategoryNorm === "projectjob";
           setJobFromPins(fromPins);
           setInitialJobLevels(levels);
-          setSelectedPinIds(fromPins ? collectPinIdsFromJobLevels(levels) : new Set());
+          setSelectedPinIds(
+            isLoadedProjectJob || fromPins ? collectPinIdsFromJobLevels(levels) : new Set(),
+          );
           setProjectLocations([]);
+          if (row.project && typeof row.project === "object" && "id" in row.project && typeof row.project.id === "number") {
+            const pId = String(row.project.id);
+            const pName = (row.project as { name?: string }).name || `Project #${pId}`;
+            setProjectOptions((prev) => {
+              const byValue = new Map(prev.map((opt) => [opt.value, opt]));
+              byValue.set(pId, { value: pId, label: pName });
+              return Array.from(byValue.values());
+            });
+          }
           const assignedForms = jobFormSelectOptions(row.forms);
           if (assignedForms.length > 0) {
             setFormOptions((prev) => {
               const byValue = new Map(prev.map((opt) => [opt.value, opt]));
               for (const opt of assignedForms) byValue.set(opt.value, opt);
+              return Array.from(byValue.values());
+            });
+          }
+          const checklistEntries = jobChecklistEntries(row);
+          if (checklistEntries.length > 0) {
+            setChecklistOptions((prev) => {
+              const byValue = new Map(prev.map((opt) => [opt.value, opt]));
+              for (const c of checklistEntries) {
+                if (c.id != null) {
+                  byValue.set(String(c.id), { value: String(c.id), label: c.title ?? `Checklist #${c.id}` });
+                }
+              }
               return Array.from(byValue.values());
             });
           }
@@ -537,23 +636,42 @@ export function JobFormScreen({ mode, jobId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [jobId, isEdit, reset, t]);
+  }, [jobCategoryFromUrl, jobId, isEdit, reset, t]);
 
   async function submit(values: JobFormValues) {
     setSaving(true);
     try {
       if (isEdit && jobId) {
         const updatePayload: JobUpdatePayload = mapJobFormToPayload(values);
-        if (jobFromPins) {
+        if (jobFromPins || isProjectJob) {
           updatePayload.pin_ids = Array.from(selectedPinIds);
         }
         const saved = await updateJob(jobId, updatePayload);
         toastSuccess(t("updatedToast"));
-        router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.jobs, saved.id, listBack));
+        const jobCategory =
+          jobCategoryFromUrl ||
+          values.job_category?.trim() ||
+          (typeof saved.job_category === "string" ? saved.job_category.trim() : "");
+        const detailHref = buildEntityDetailHrefAfterSave(routes.dashboard.jobs, saved.id, listBack);
+        router.replace(
+          jobCategory ? mergeUrlQueryParam(detailHref, "job_category", jobCategory) : detailHref,
+        );
         return;
       }
 
-      const saved = await createJob(mapJobFormToPayload(values));
+      const createPayload = mapJobFormToPayload(values);
+      // Always carry the category from URL param when creating (form hidden field may have been wiped)
+      if (!createPayload.job_category && jobCategoryFromUrl) {
+        createPayload.job_category = jobCategoryFromUrl;
+      }
+      if (isProjectJob) {
+        delete createPayload.job_meta;
+        delete createPayload.forms;
+      }
+      if (selectedPinIds.size > 0) {
+        createPayload.pin_ids = Array.from(selectedPinIds);
+      }
+      const saved = await createJob(createPayload);
       toastSuccess(t("createdToast"));
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.jobs, saved.id, listBack));
     } catch (error) {
@@ -633,7 +751,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
               <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {t("sections.relations")}
               </h2>
-              <FormFieldRow cols="2">
+              <FormFieldRow cols={isProjectJob ? "3" : "2"}>
                 <Controller
                   control={control}
                   name="client"
@@ -662,33 +780,37 @@ export function JobFormScreen({ mode, jobId }: Props) {
                     </div>
                   )}
                 />
-                {/* <Controller
-                  control={control}
-                  name="project"
-                  render={({ field }) => (
-                    <div>
-                      <CheckmarkSelect
-                        id="job-project"
-                        label={t("fields.project")}
-                        options={projectOptions}
-                        value={field.value}
-                        onChange={(v) => {
-                          field.onChange(v);
-                          setValue("site", "");
-                        }}
-                        emptyLabel={t("placeholders.project")}
-                        disabled={saving || !clientId}
-                        invalid={!!errors.project}
-                        listLabel={t("fields.project")}
-                        portaled
-                        searchable
-                        onAdd={projectQuickCreate.onAdd}
-                        addAriaLabel={projectQuickCreate.addAriaLabel}
-                      />
-                      <FieldErrorText>{errors.project?.message}</FieldErrorText>
-                    </div>
-                  )}
-                /> */}
+                {isProjectJob && (
+                  <Controller
+                    control={control}
+                    name="project"
+                    render={({ field }) => (
+                      <div>
+                        <CheckmarkSelect
+                          id="job-project"
+                          label={t("fields.project")}
+                          options={projectOptions}
+                          value={field.value}
+                          onChange={(v) => {
+                            field.onChange(v);
+                            setValue("site", "");
+                            setValue("checklists", [], { shouldDirty: true });
+                          }}
+                          emptyLabel={t("placeholders.project")}
+                          disabled={saving || !clientId}
+                          invalid={!!errors.project}
+                          listLabel={t("fields.project")}
+                          portaled
+                          searchable
+                          onSearchChange={setProjectSearch}
+                          onAdd={projectQuickCreate.onAdd}
+                          addAriaLabel={projectQuickCreate.addAriaLabel}
+                        />
+                        <FieldErrorText>{errors.project?.message}</FieldErrorText>
+                      </div>
+                    )}
+                  />
+                )}
 
                 <Controller
                   control={control}
@@ -702,7 +824,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                         value={field.value}
                         onChange={field.onChange}
                         emptyLabel={t("placeholders.site")}
-                        disabled={saving || !clientId}
+                        disabled={saving || (isProjectJob ? !selectedProject : !clientId)}
                         invalid={!!errors.site}
                         listLabel={t("fields.site")}
                         portaled
@@ -716,34 +838,38 @@ export function JobFormScreen({ mode, jobId }: Props) {
                 />
               </FormFieldRow>
 
-              <FormFieldRow cols="2">
+              {!isProjectJob && (
+                <FormFieldRow cols="1">
+                  <Controller
+                    control={control}
+                    name="forms"
+                    render={({ field }) => (
+                      <div>
+                        <FieldGroup label={t("fields.forms")} htmlFor="job-forms">
+                          <MultiCheckSelect
+                            id="job-forms"
+                            options={formOptions}
+                            values={field.value ?? []}
+                            onChange={(next) => field.onChange(next)}
+                            placeholder={t("fields.forms")}
+                            disabled={saving}
+                            invalid={!!errors.forms}
+                            listLabel={t("fields.forms")}
+                            portaled
+                            searchable
+                            onSearchChange={setFormSearch}
+                            onAdd={openFormsSettings}
+                            addAriaLabel={t("placeholders.addForm")}
+                            addLabel={t("placeholders.addForm")}
+                          />
+                        </FieldGroup>
+                      </div>
+                    )}
+                  />
+                </FormFieldRow>
+              )}
 
-                <Controller
-                  control={control}
-                  name="forms"
-                  render={({ field }) => (
-                    <div>
-                      <FieldGroup label={t("fields.forms")} htmlFor="job-forms">
-                        <MultiCheckSelect
-                          id="job-forms"
-                          options={formOptions}
-                          values={field.value ?? []}
-                          onChange={(next) => field.onChange(next)}
-                          placeholder={t("fields.forms")}
-                          disabled={saving}
-                          invalid={!!errors.forms}
-                          listLabel={t("fields.forms")}
-                          portaled
-                          searchable
-                          onSearchChange={setFormSearch}
-                          onAdd={openFormsSettings}
-                          addAriaLabel={t("placeholders.addForm")}
-                          addLabel={t("placeholders.addForm")}
-                        />
-                      </FieldGroup>
-                    </div>
-                  )}
-                />
+              <FormFieldRow cols="3">
                 <Controller
                   control={control}
                   name="job_status"
@@ -769,9 +895,6 @@ export function JobFormScreen({ mode, jobId }: Props) {
                     </div>
                   )}
                 />
-              </FormFieldRow>
-
-              <FormFieldRow cols="2">
 
                 <Controller
                   control={control}
@@ -799,6 +922,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                     </div>
                   )}
                 />
+
                 <Controller
                   control={control}
                   name="checklists"
@@ -812,7 +936,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                           onChange={(next) => field.onChange(next)}
                           onSearchChange={setChecklistSearch}
                           placeholder={t("fields.selectCheckList")}
-                          disabled={saving || checklistLoading}
+                          disabled={saving || checklistLoading || (isProjectJob && !projectTypeId)}
                           invalid={!!errors.checklists}
                           listLabel={t("fields.checklists")}
                           portaled
@@ -851,225 +975,228 @@ export function JobFormScreen({ mode, jobId }: Props) {
               </FormFieldRow>
             </section>
 
-            <section className="space-y-6">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  {t("sections.jobMeta")}
-                </h2>
-                <AppButton
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  disabled={saving}
-                  onClick={() =>
-                    append({
-                      group: "",
-                      group_name: "",
-                      item: "",
-                      item_name: "",
-                      quantity: "1",
-                      rate: "",
-                    })
-                  }
-                >
-                  <Plus className="size-4" aria-hidden />
-                  {t("lineItems.addItem")}
-                </AppButton>
-              </div>
-              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-                <table className="w-full min-w-[720px] text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
-                      <th className="px-3 py-2">{tGroups("title")}</th>
-                      <th className="px-3 py-2">
-                        {tItems("title")}
-                        <RequiredMark />
-                      </th>
-                      <th className="px-3 py-2">{t("lineItems.qty")}</th>
-                      <th className="px-3 py-2">{t("lineItems.rate")}</th>
-                      <th className="px-3 py-2">{t("lineItems.amount")}</th>
-                      <th className="px-3 py-2 w-12" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fields.map((field, index) => {
-                      const row = jobMetaItems[index];
-                      const qty = parseMoneyValue(row?.quantity);
-                      const rate = parseMoneyValue(row?.rate);
-                      const amount = qty * rate;
-                      const filteredItems = checkmarkOptionsExcludingUsed(
-                        ensureCheckmarkOption(
-                          itemOptionsForGroup(row?.group ?? ""),
+            {!isProjectJob && (
+              <section className="space-y-6">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    {t("sections.jobMeta")}
+                  </h2>
+                  <AppButton
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    disabled={saving}
+                    onClick={() =>
+                      append({
+                        group: "",
+                        group_name: "",
+                        item: "",
+                        item_name: "",
+                        quantity: "1",
+                        rate: "",
+                      })
+                    }
+                  >
+                    <Plus className="size-4" aria-hidden />
+                    {t("lineItems.addItem")}
+                  </AppButton>
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                  <table className="w-full min-w-[720px] text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
+                        <th className="px-3 py-2">{tGroups("title")}</th>
+                        <th className="px-3 py-2">
+                          {tItems("title")}
+                          <RequiredMark />
+                        </th>
+                        <th className="px-3 py-2">{t("lineItems.qty")}</th>
+                        <th className="px-3 py-2">{t("lineItems.rate")}</th>
+                        <th className="px-3 py-2">{t("lineItems.amount")}</th>
+                        <th className="px-3 py-2 w-12" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fields.map((field, index) => {
+                        const row = jobMetaItems[index];
+                        const qty = parseMoneyValue(row?.quantity);
+                        const rate = parseMoneyValue(row?.rate);
+                        const amount = qty * rate;
+                        const filteredItems = checkmarkOptionsExcludingUsed(
+                          ensureCheckmarkOption(
+                            itemOptionsForGroup(row?.group ?? ""),
+                            row?.item ?? "",
+                            row?.item_name,
+                          ),
+                          usedJobItemIds,
                           row?.item ?? "",
-                          row?.item_name,
-                        ),
-                        usedJobItemIds,
-                        row?.item ?? "",
-                      );
-                      return (
-                        <tr key={field.id} className="border-b border-slate-100 dark:border-slate-800">
-                          <td className="px-3 py-2 align-top">
-                            <Controller
-                              control={control}
-                              name={`job_meta_items.${index}.group`}
-                              render={({ field: groupField }) => (
-                                <CheckmarkSelect
-                                  options={groupOptions}
-                                  value={groupField.value}
-                                  fallbackLabel={row?.group_name}
-                                  onChange={(v) => {
-                                    groupField.onChange(v);
-                                    setValue(`job_meta_items.${index}.group_name`, v ? (groupLabelById.get(v) ?? "") : "", {
-                                      shouldDirty: true,
-                                    });
-                                    setValue(`job_meta_items.${index}.item`, "", { shouldDirty: true });
-                                    setValue(`job_meta_items.${index}.item_name`, "", { shouldDirty: true });
-                                    setValue(`job_meta_items.${index}.rate`, "", { shouldDirty: true });
-                                  }}
-                                  emptyLabel={t("placeholders.plotGroup")}
-                                  disabled={saving}
-                                  portaled
-                                  searchable
-                                  size="sm"
-                                  clearable
-                                  className="h-8"
-                                  onAdd={groupQuickCreate.onAdd}
-                                  addAriaLabel={groupQuickCreate.addAriaLabel}
-                                />
-                              )}
-                            />
-                          </td>
-                          <td className="px-3 py-2 align-top">
-                            <div className="space-y-2">
+                        );
+                        return (
+                          <tr key={field.id} className="border-b border-slate-100 dark:border-slate-800">
+                            <td className="px-3 py-2 align-top">
                               <Controller
                                 control={control}
-                                name={`job_meta_items.${index}.item`}
-                                render={({ field: itemField }) => (
+                                name={`job_meta_items.${index}.group`}
+                                render={({ field: groupField }) => (
                                   <CheckmarkSelect
-                                    options={filteredItems}
-                                    value={itemField.value}
-                                    fallbackLabel={row?.item_name}
-                                    invalid={!!errors.job_meta_items?.[index]?.item}
+                                    options={groupOptions}
+                                    value={groupField.value}
+                                    fallbackLabel={row?.group_name}
                                     onChange={(v) => {
-                                      itemField.onChange(v);
-                                      setValue(
-                                        `job_meta_items.${index}.item_name`,
-                                        v ? (itemLabelById.get(v) ?? "") : "",
-                                        { shouldDirty: true },
-                                      );
-                                      if (v && /^\d+$/.test(v)) {
-                                        const itemId = Number.parseInt(v, 10);
-                                        const price = itemPriceById.get(itemId);
-                                        const linkedGroupId = itemGroupById.get(itemId);
-                                        if (linkedGroupId != null && linkedGroupId > 0) {
-                                          const groupKey = String(linkedGroupId);
-                                          setValue(`job_meta_items.${index}.group`, groupKey, {
-                                            shouldDirty: true,
-                                          });
-                                          setValue(
-                                            `job_meta_items.${index}.group_name`,
-                                            groupLabelById.get(groupKey) ?? "",
-                                            { shouldDirty: true },
-                                          );
-                                        }
-                                        const currentQty = parseMoneyValue(jobMetaItems[index]?.quantity);
-                                        if (!Number.isFinite(currentQty) || currentQty <= 0) {
-                                          setValue(`job_meta_items.${index}.quantity`, "1", {
-                                            shouldDirty: true,
-                                          });
-                                        }
-                                        if (price != null && Number.isFinite(price)) {
-                                          setValue(`job_meta_items.${index}.rate`, String(price), {
-                                            shouldDirty: true,
-                                          });
-                                        }
-                                      }
+                                      groupField.onChange(v);
+                                      setValue(`job_meta_items.${index}.group_name`, v ? (groupLabelById.get(v) ?? "") : "", {
+                                        shouldDirty: true,
+                                      });
+                                      setValue(`job_meta_items.${index}.item`, "", { shouldDirty: true });
+                                      setValue(`job_meta_items.${index}.item_name`, "", { shouldDirty: true });
+                                      setValue(`job_meta_items.${index}.rate`, "", { shouldDirty: true });
                                     }}
-                                    emptyLabel={t("placeholders.compositeItem")}
+                                    emptyLabel={t("placeholders.plotGroup")}
                                     disabled={saving}
                                     portaled
                                     searchable
                                     size="sm"
+                                    clearable
                                     className="h-8"
-                                    onAdd={itemQuickCreate.onAdd}
-                                    addAriaLabel={itemQuickCreate.addAriaLabel}
+                                    onAdd={groupQuickCreate.onAdd}
+                                    addAriaLabel={groupQuickCreate.addAriaLabel}
                                   />
                                 )}
                               />
-                              <FieldErrorText>{errors.job_meta_items?.[index]?.item?.message}</FieldErrorText>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 align-top">
-                            <input
-                              type="number"
-                              min={0}
-                              step="any"
-                              aria-invalid={errors.job_meta_items?.[index]?.quantity ? true : undefined}
-                              className={cn(
-                                surfaceInputClassName,
-                                "h-8 w-24 px-2.5 text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
-                                errors.job_meta_items?.[index]?.quantity && "border-red-500",
-                              )}
-                              disabled={saving}
-                              {...register(`job_meta_items.${index}.quantity`)}
-                            />
-                            <FieldErrorText>{errors.job_meta_items?.[index]?.quantity?.message}</FieldErrorText>
-                          </td>
-                          <td className="px-3 py-2 align-top">
-                            <input
-                              className={cn(surfaceInputClassName, "h-8 w-28 px-2.5 text-sm")}
-                              readOnly
-                              tabIndex={-1}
-                              aria-readonly
-                              {...register(`job_meta_items.${index}.rate`)}
-                            />
-                          </td>
-                          <td className="px-3 py-2 align-middle">
-                            <div className="flex h-8 items-center tabular-nums font-medium">
-                              {formatMoneyDisplay(amount, locale)}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 align-top">
-                            <AppButton
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              disabled={saving || fields.length <= 1}
-                              onClick={() => remove(index)}
-                              aria-label={t("lineItems.remove")}
-                            >
-                              <Trash2 className="size-4 text-red-600" aria-hidden />
-                            </AppButton>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {isEdit && jobFromPins && projectId ? (
-                <section className="space-y-4">
-                  <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    {t("sections.levels")}
-                  </h2>
-                  <JobFormLevelsSection
-                    projectId={projectId}
-                    initialJobLevels={initialJobLevels}
-                    selectedPinIds={selectedPinIds}
-                    onSelectedPinIdsChange={setSelectedPinIds}
-                    onLocationsChange={handleProjectLocationsChange}
-                    disabled={saving}
-                  />
-                </section>
-              ) : null}
-              <div className="ml-auto max-w-xs rounded-xl border border-slate-200 p-3 dark:border-slate-700">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">{t("fields.scopeTotal")}</span>
-                  <span className="text-xl font-bold tabular-nums">{formatMoneyDisplay(scopeTotal, locale)}</span>
+                            </td>
+                            <td className="px-3 py-2 align-top">
+                              <div className="space-y-2">
+                                <Controller
+                                  control={control}
+                                  name={`job_meta_items.${index}.item`}
+                                  render={({ field: itemField }) => (
+                                    <CheckmarkSelect
+                                      options={filteredItems}
+                                      value={itemField.value}
+                                      fallbackLabel={row?.item_name}
+                                      invalid={!!errors.job_meta_items?.[index]?.item}
+                                      onChange={(v) => {
+                                        itemField.onChange(v);
+                                        setValue(
+                                          `job_meta_items.${index}.item_name`,
+                                          v ? (itemLabelById.get(v) ?? "") : "",
+                                          { shouldDirty: true },
+                                        );
+                                        if (v && /^\d+$/.test(v)) {
+                                          const itemId = Number.parseInt(v, 10);
+                                          const price = itemPriceById.get(itemId);
+                                          const linkedGroupId = itemGroupById.get(itemId);
+                                          if (linkedGroupId != null && linkedGroupId > 0) {
+                                            const groupKey = String(linkedGroupId);
+                                            setValue(`job_meta_items.${index}.group`, groupKey, {
+                                              shouldDirty: true,
+                                            });
+                                            setValue(
+                                              `job_meta_items.${index}.group_name`,
+                                              groupLabelById.get(groupKey) ?? "",
+                                              { shouldDirty: true },
+                                            );
+                                          }
+                                          const currentQty = parseMoneyValue(jobMetaItems[index]?.quantity);
+                                          if (!Number.isFinite(currentQty) || currentQty <= 0) {
+                                            setValue(`job_meta_items.${index}.quantity`, "1", {
+                                              shouldDirty: true,
+                                            });
+                                          }
+                                          if (price != null && Number.isFinite(price)) {
+                                            setValue(`job_meta_items.${index}.rate`, String(price), {
+                                              shouldDirty: true,
+                                            });
+                                          }
+                                        }
+                                      }}
+                                      emptyLabel={t("placeholders.compositeItem")}
+                                      disabled={saving}
+                                      portaled
+                                      searchable
+                                      size="sm"
+                                      className="h-8"
+                                      onAdd={itemQuickCreate.onAdd}
+                                      addAriaLabel={itemQuickCreate.addAriaLabel}
+                                    />
+                                  )}
+                                />
+                                <FieldErrorText>{errors.job_meta_items?.[index]?.item?.message}</FieldErrorText>
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 align-top">
+                              <input
+                                type="number"
+                                min={0}
+                                step="any"
+                                aria-invalid={errors.job_meta_items?.[index]?.quantity ? true : undefined}
+                                className={cn(
+                                  surfaceInputClassName,
+                                  "h-8 w-24 px-2.5 text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                                  errors.job_meta_items?.[index]?.quantity && "border-red-500",
+                                )}
+                                disabled={saving}
+                                {...register(`job_meta_items.${index}.quantity`)}
+                              />
+                              <FieldErrorText>{errors.job_meta_items?.[index]?.quantity?.message}</FieldErrorText>
+                            </td>
+                            <td className="px-3 py-2 align-top">
+                              <input
+                                className={cn(surfaceInputClassName, "h-8 w-28 px-2.5 text-sm")}
+                                readOnly
+                                tabIndex={-1}
+                                aria-readonly
+                                {...register(`job_meta_items.${index}.rate`)}
+                              />
+                            </td>
+                            <td className="px-3 py-2 align-middle">
+                              <div className="flex h-8 items-center tabular-nums font-medium">
+                                {formatMoneyDisplay(amount, locale)}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 align-top">
+                              <AppButton
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                disabled={saving || fields.length <= 1}
+                                onClick={() => remove(index)}
+                                aria-label={t("lineItems.remove")}
+                              >
+                                <Trash2 className="size-4 text-red-600" aria-hidden />
+                              </AppButton>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-            </section>
+                <div className="ml-auto max-w-xs rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">{t("fields.scopeTotal")}</span>
+                    <span className="text-xl font-bold tabular-nums">{formatMoneyDisplay(scopeTotal, locale)}</span>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {(isEdit && jobFromPins && projectId) || (isProjectJob && projectId) ? (
+              <section className="space-y-4">
+                <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  {t("sections.levels")}
+                </h2>
+                <JobFormLevelsSection
+                  projectId={projectId}
+                  initialJobLevels={initialJobLevels}
+                  selectedPinIds={selectedPinIds}
+                  onSelectedPinIdsChange={setSelectedPinIds}
+                  onLocationsChange={handleProjectLocationsChange}
+                  disabled={saving}
+                  includeConvertedPins={isEdit && isProjectJob}
+                />
+              </section>
+            ) : null}
           </form>
         )}
       </SurfaceShell>
