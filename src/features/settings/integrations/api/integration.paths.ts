@@ -2,6 +2,7 @@ export const INTEGRATION_PATHS = {
   zohoConnect: "integrations/zoho/connect/",
   zohoCallback: "integrations/zoho/callback/",
   zohoKeyMapping: "integrations/zoho/key-mapping/",
+  zohoPullAllRecords: "integrations/zoho/pull-all-records/",
   zohoWebhookSetup: "integrations/zoho/webhook-setup/",
   zohoConnection: "integrations/zoho/connection/",
 } as const;
