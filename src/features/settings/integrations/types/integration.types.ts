@@ -12,6 +12,7 @@ export type ZohoCallbackParams = {
 };
 
 export type ZohoFieldMapping = {
+  internal_model?: string | null;
   internal_field: string;
   inetrnal_field?: string;
   internal_field_label: string | null;
@@ -64,7 +65,6 @@ export type ZohoKeyMappingData = {
 
 export type ZohoSaveKeyMappingPayload = {
   resource: string;
-  pull_historical_data: boolean;
   mappings: ZohoFieldMapping[];
 };
 

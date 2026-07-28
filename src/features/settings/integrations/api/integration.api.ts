@@ -123,6 +123,30 @@ export async function saveZohoKeyMapping(
   };
 }
 
+export async function pullZohoHistoricalRecords(
+  resource: string = ZOHO_DEFAULT_RESOURCE,
+): Promise<{ success?: boolean; message?: string }> {
+  const { data } = await api.post<
+    ApiEnvelope<{ message?: string }> | { success?: boolean; message?: string }
+  >(INTEGRATION_PATHS.zohoPullAllRecords, {
+    resource,
+  });
+
+  if (data && typeof data === "object" && "success" in data && data.success === false) {
+    assertApiSuccess(data as ApiEnvelope<{ message?: string }>);
+  }
+
+  const raw = data as { success?: boolean; message?: string } & ApiEnvelope<{ message?: string }>;
+  const nested = raw.data && typeof raw.data === "object" ? raw.data : null;
+  return {
+    success: raw.success ?? true,
+    message:
+      (typeof raw.message === "string" ? raw.message : undefined) ??
+      (nested && typeof nested.message === "string" ? nested.message : undefined) ??
+      "Historical data pull started",
+  };
+}
+
 export async function fetchZohoWebhookSetup(
   resource: string = ZOHO_DEFAULT_RESOURCE,
 ): Promise<ZohoWebhookSetupData> {
