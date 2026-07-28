@@ -11,7 +11,7 @@ const STATUS_STYLES: Record<DispatchReturnRequestStatus, string> = {
 
 type Props = {
   status: DispatchReturnRequestStatus;
-  label: string;
+  label?: string;
 };
 
 export function ReturnRequestStatusBadge({ status, label }: Props) {
@@ -22,7 +22,7 @@ export function ReturnRequestStatusBadge({ status, label }: Props) {
         STATUS_STYLES[status] ?? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
       )}
     >
-      {label}
+      {label ?? status}
     </span>
   );
 }

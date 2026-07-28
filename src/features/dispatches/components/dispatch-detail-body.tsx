@@ -4,9 +4,8 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailUserAttribution, normalizeDetailAuditUser } from "@/shared/components/entity/entity-detail-fields";
-import type { DispatchDetail, DispatchLineSummary } from "@/features/dispatches/types/dispatch.types";
+import type { DispatchDetail } from "@/features/dispatches/types/dispatch.types";
 import { dispatchWorkerLabel } from "@/features/dispatches/utils/dispatch-display.util";
-import { DispatchedQuantityCell } from "@/shared/components/quantity/dispatched-quantity-cell";
 import {
   quantityTableCellClass,
   quantityTableHeaderClass,
@@ -20,7 +19,6 @@ import {
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
-import { cn } from "@/core/utils/http.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 
 type Props = {
@@ -29,25 +27,8 @@ type Props = {
   dueFmt: Intl.DateTimeFormat;
 };
 
-function lineRowsFromDetail(detail: DispatchDetail): DispatchLineSummary[] {
-  if (detail.line_summaries?.length) return detail.line_summaries;
-  return detail.lines.map((line) => ({
-    group_key: line.is_extra ? `extra:item:${line.item.id}` : `item:${line.item.id}`,
-    item_id: line.item.id,
-    item_name: line.item.name?.trim() || "—",
-    is_extra: line.is_extra,
-    requested_quantity: line.requested_quantity,
-    pending_quantity: line.pending_quantity,
-    dispatched_quantity: line.dispatched_quantity,
-    fulfilled_quantity: Math.max(0, line.dispatched_quantity - line.extra_quantity),
-    surplus_quantity: line.extra_quantity,
-    restocked_quantity: line.restocked_quantity,
-  }));
-}
-
 export function DispatchDetailBody({ detail, dateFmt, dueFmt }: Props) {
   const t = useTranslations("Dashboard.dispatches");
-  const lineRows = React.useMemo(() => lineRowsFromDetail(detail), [detail]);
 
   return (
     <DetailPagePadding>
@@ -92,44 +73,42 @@ export function DispatchDetailBody({ detail, dateFmt, dueFmt }: Props) {
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
                 <th className="px-3 py-2">{t("table.materialItem")}</th>
-                <th className={quantityTableHeaderClass}>{t("table.requested")}</th>
-                <th className={quantityTableHeaderClass}>{t("table.pending")}</th>
-                <th className={quantityTableHeaderClass}>{t("table.dispatched")}</th>
+                <th className="px-3 py-2">{t("table.sku")}</th>
+                <th className={quantityTableHeaderClass}>{t("table.qty")}</th>
+                <th className="px-3 py-2 text-right sm:pr-6">{t("table.isExtra")}</th>
               </tr>
             </thead>
             <tbody>
-              {lineRows.length === 0 ? (
+              {detail.lines.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-3 py-6 text-center text-slate-500">
                     {t("detail.noItems")}
                   </td>
                 </tr>
               ) : (
-                lineRows.map((row) => (
-                  <tr key={row.group_key} className="border-b border-slate-100 dark:border-slate-800">
-                    <td className="px-3 py-3">
-                      <span className="font-medium text-slate-900 dark:text-slate-100">{row.item_name}</span>
-                      {row.is_extra ? (
-                        <span className="mt-1 block text-xs font-medium text-amber-600 dark:text-amber-400">
-                          {t("detail.extraItem")}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className={cn(quantityTableCellClass, "font-medium")}>
-                      <QuantityWithUnits value={row.requested_quantity} unitsLabel={t("units")} />
-                    </td>
-                    <td className={quantityTableCellClass}>
-                      <QuantityWithUnits value={row.pending_quantity} unitsLabel={t("units")} />
-                    </td>
-                    <td className={quantityTableCellClass}>
-                      <DispatchedQuantityCell
-                        fulfilled={row.fulfilled_quantity}
-                        surplus={row.surplus_quantity}
-                        unitsLabel={t("units")}
-                      />
-                    </td>
-                  </tr>
-                ))
+                detail.lines.map((row) => {
+                  const itemName = row.item_name || (typeof row.item === "object" ? row.item?.name : "") || "—";
+                  const itemSku = row.item_sku || (typeof row.item === "object" ? row.item?.sku : "") || "—";
+                  const quantity = row.quantity ?? row.dispatched_quantity ?? 0;
+                  const isExtra = row.is_extra;
+
+                  return (
+                    <tr key={row.id} className="border-b border-slate-100 dark:border-slate-800">
+                      <td className="px-3 py-3">
+                        <span className="font-medium text-slate-900 dark:text-slate-100">{itemName}</span>
+                      </td>
+                      <td className="px-3 py-3 text-slate-600 dark:text-slate-400 tabular-nums">
+                        {itemSku}
+                      </td>
+                      <td className={quantityTableCellClass}>
+                        <QuantityWithUnits value={quantity} unitsLabel={t("units")} />
+                      </td>
+                      <td className="px-3 py-3 text-right font-medium sm:pr-6 text-slate-900 dark:text-slate-100">
+                        {isExtra ? t("table.yes") : t("table.no")}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

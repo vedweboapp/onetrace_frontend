@@ -67,6 +67,7 @@ export type CreateDispatchFromMaterialRequestInput = {
   jobName?: string | null;
   workerName: DispatchDetail["worker_name"];
   dispatchedBy?: DispatchUserRef;
+  dispatchDate?: string | null;
   lines: CreateDispatchLineInput[];
 };
 
@@ -196,7 +197,7 @@ export function createDispatchFromMaterialRequestMock(input: CreateDispatchFromM
     material_request_id: input.materialRequestId,
     material_request_number: input.materialRequestNumber,
     job_name: input.jobName ?? null,
-    dispatch_date: now.slice(0, 10),
+    dispatch_date: input.dispatchDate?.trim() || now.slice(0, 10),
     status: "dispatched",
     worker_name: input.workerName,
     dispatch_to: workerLabel(input.workerName),

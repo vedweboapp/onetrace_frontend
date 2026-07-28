@@ -7,6 +7,8 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchJob, updateJob } from "@/features/jobs/api/job.api";
 import { JobDetailBody } from "@/features/jobs/components/job-detail-body";
 import { JobMaterialsTab } from "@/features/jobs/components/job-materials-tab";
+import { JobDispatchTab } from "@/features/jobs/components/job-dispatch-tab";
+import { JobReturnsTab } from "@/features/jobs/components/job-returns-tab";
 import { JobUpdateStatusDialog } from "@/features/jobs/components/job-update-status-dialog";
 import type { Job } from "@/features/jobs/types/job.types";
 import { getJobAssignedWorkerId, getJobStatusId } from "@/features/jobs/utils/job-nested-fields.util";
@@ -18,7 +20,7 @@ import {
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
-import { AppButton, AppTabs, DashboardUnderDevelopmentState, type AppTabItem } from "@/shared/ui";
+import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
 import { EditButton } from "@/shared/ui/dashboard-action-buttons";
 import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 
@@ -34,7 +36,6 @@ function isJobDetailTabId(value: string | null): value is JobDetailTabId {
 
 export function JobDetailScreen({ jobId }: Props) {
   const t = useTranslations("Dashboard.jobs");
-  const tHome = useTranslations("Dashboard.home");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -149,12 +150,10 @@ export function JobDetailScreen({ jobId }: Props) {
               />
             ) : detail && activeTab === "materials" ? (
               <JobMaterialsTab detail={detail} />
-            ) : detail && (activeTab === "dispatch" || activeTab === "returns") ? (
-              <DashboardUnderDevelopmentState
-                className="min-h-[calc(100vh-280px)] rounded-none px-4 sm:min-h-[420px] sm:px-6"
-                title={activeTab === "dispatch" ? t("detail.tabs.dispatch") : t("detail.tabs.returns")}
-                description={tHome("body")}
-              />
+            ) : detail && activeTab === "dispatch" ? (
+              <JobDispatchTab detail={detail} />
+            ) : detail && activeTab === "returns" ? (
+              <JobReturnsTab detail={detail} />
             ) : null}
           </div>
         )

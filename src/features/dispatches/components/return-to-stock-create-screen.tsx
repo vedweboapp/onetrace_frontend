@@ -7,10 +7,9 @@ import { useRouter } from "@/i18n/navigation";
 import { DetailEntityLink } from "@/shared/components/entity";
 import {
   createDispatchReturnRequest,
-  fetchDispatchesPage,
   fetchWorkerReturnMaterials,
 } from "@/features/dispatches/api/dispatch.api";
-import type { DispatchReturnType, WorkerReturnDatePreset } from "@/features/dispatches/types/dispatch.types";
+import type { DispatchReturnType } from "@/features/dispatches/types/dispatch.types";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import { cn } from "@/core/utils/http.util";
 import { toastSuccess, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
@@ -20,7 +19,6 @@ import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util"
 import {
   AppButton,
   CheckmarkSelect,
-  SurfaceDateInput,
   SurfaceShell,
   surfaceInputClassName,
   surfaceTextareaClassName,
@@ -32,9 +30,7 @@ import {
   QuantityWithUnits,
 } from "@/shared/components/quantity/quantity-table-columns";
 
-function lineDraftKey(groupKey: string): string {
-  return groupKey;
-}
+
 
 type LineDraft = {
   returnQty: string;
@@ -61,34 +57,12 @@ export function ReturnToStockCreateScreen({
   const [workerId, setWorkerId] = React.useState(
     initialWorkerId != null && initialWorkerId > 0 ? String(initialWorkerId) : "",
   );
-  const [datePreset, setDatePreset] = React.useState<WorkerReturnDatePreset>("till_today");
-  const [dateFrom, setDateFrom] = React.useState("");
-  const [dateTo, setDateTo] = React.useState("");
-  const [materialRequestId, setMaterialRequestId] = React.useState(
-    initialMaterialRequestId != null && initialMaterialRequestId > 0
-      ? String(initialMaterialRequestId)
-      : "",
-  );
   const [workerOptions, setWorkerOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [mrOptions, setMrOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
-  const [materials, setMaterials] = React.useState<Awaited<ReturnType<typeof fetchWorkerReturnMaterials>> | null>(
-    null,
-  );
+  const [materials, setMaterials] = React.useState<MappedDispatch[] | null>(null);
   const [drafts, setDrafts] = React.useState<Record<string, LineDraft>>({});
-
-  const datePresetOptions = React.useMemo(
-    () => [
-      { value: "till_today", label: t("return.dateTillToday") },
-      { value: "till_yesterday", label: t("return.dateTillYesterday") },
-      { value: "this_week", label: t("return.dateTillThisWeek") },
-      { value: "custom", label: t("return.dateCustom") },
-      { value: "material_request", label: t("return.dateByMaterialRequest") },
-    ],
-    [t],
-  );
 
   const returnTypeOptions = React.useMemo(
     () => [
@@ -113,49 +87,11 @@ export function ReturnToStockCreateScreen({
     };
   }, []);
 
-  React.useEffect(() => {
-    const id = Number.parseInt(workerId, 10);
-    if (!Number.isFinite(id) || id <= 0) {
-      setMrOptions([]);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items } = await fetchDispatchesPage(1, 500, { worker_name: id });
-        if (cancelled) return;
-        const seen = new Set<number>();
-        const options: { value: string; label: string }[] = [];
-        for (const row of items) {
-          if (row.material_request_id <= 0 || seen.has(row.material_request_id)) continue;
-          seen.add(row.material_request_id);
-          options.push({
-            value: String(row.material_request_id),
-            label: row.material_request_number?.trim() || `MR #${row.material_request_id}`,
-          });
-        }
-        setMrOptions(options);
-      } catch (error) {
-        if (!cancelled) setMrOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [workerId]);
-
   async function loadMaterials() {
     const worker = Number.parseInt(workerId, 10);
     if (!Number.isFinite(worker) || worker <= 0) {
       setLoadError(t("return.workerRequired"));
       return;
-    }
-    if (datePreset === "material_request") {
-      const mr = Number.parseInt(materialRequestId, 10);
-      if (!Number.isFinite(mr) || mr <= 0) {
-        setLoadError(t("return.materialRequestRequired"));
-        return;
-      }
     }
 
     setLoading(true);
@@ -163,21 +99,19 @@ export function ReturnToStockCreateScreen({
     try {
       const data = await fetchWorkerReturnMaterials({
         worker_name: worker,
-        date_preset: datePreset,
-        date_from: datePreset === "custom" ? dateFrom || undefined : undefined,
-        date_to: datePreset === "custom" ? dateTo || undefined : undefined,
-        material_request_id:
-          datePreset === "material_request" ? Number.parseInt(materialRequestId, 10) : undefined,
       });
-      setMaterials(data);
+      const mapped = mapDispatches(data);
+      setMaterials(mapped);
       const initial: Record<string, LineDraft> = {};
-      for (const line of data.lines) {
-        const key = lineDraftKey(line.group_key);
-        initial[key] = {
-          returnQty: "",
-          returnType: "unused",
-          reason: "",
-        };
+      for (const d of mapped) {
+        for (const line of d.lines || []) {
+          const key = `dispatch:${d.id}:line:${line.id}`;
+          initial[key] = {
+            returnQty: "",
+            returnType: "unused",
+            reason: "",
+          };
+        }
       }
       setDrafts(initial);
     } catch (error) {
@@ -198,27 +132,48 @@ export function ReturnToStockCreateScreen({
     setDrafts((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
   }
 
+  const flatLines = React.useMemo(() => {
+    if (!materials) return [];
+    return materials.flatMap((d) =>
+      (d.lines || []).map((line) => {
+        const dispatchedQty = line.quantity ?? 0;
+        const returnedQty = line.restocked_quantity ?? 0;
+        const returnableQty = Math.max(0, dispatchedQty - returnedQty);
+
+        return {
+          ...line,
+          dispatch_id: d.id,
+          dispatch_order_number: d.dispatch_order_number,
+          dispatched_quantity: dispatchedQty,
+          returned_quantity: returnedQty,
+          returnable_quantity: returnableQty,
+          draftKey: `dispatch:${d.id}:line:${line.id}`,
+        };
+      })
+    );
+  }, [materials]);
+
   async function handleSubmitRequest() {
     const worker = Number.parseInt(workerId, 10);
     if (!materials || !Number.isFinite(worker)) return;
 
-    const groups = materials.lines.flatMap((row) => {
-      const draft = drafts[lineDraftKey(row.group_key)];
+    const lines = flatLines.flatMap((row) => {
+      const draft = drafts[row.draftKey];
       const quantity = Number.parseFloat(draft?.returnQty?.trim() ?? "");
       if (!Number.isFinite(quantity) || quantity <= 0) return [];
       return [{
-        group_key: row.group_key,
+        dispatch_line: row.id,
         quantity,
         return_type: draft?.returnType ?? "unused",
         reason: draft?.reason?.trim() || undefined,
       }];
     });
 
-    if (groups.length === 0) return;
+    if (lines.length === 0) return;
 
     setSubmitting(true);
     try {
-      await createDispatchReturnRequest({ worker_name: worker, groups });
+      await createDispatchReturnRequest({ worker_name: worker, lines });
       toastSuccess(t("return.requestSubmittedToast"));
       router.replace(listBack);
     } finally {
@@ -226,8 +181,8 @@ export function ReturnToStockCreateScreen({
     }
   }
 
-  const canSubmitRequest = materials?.lines.some((row) => {
-    const qty = Number.parseFloat(drafts[lineDraftKey(row.group_key)]?.returnQty?.trim() ?? "");
+  const canSubmitRequest = flatLines.some((row) => {
+    const qty = Number.parseFloat(drafts[row.draftKey]?.returnQty?.trim() ?? "");
     return Number.isFinite(qty) && qty > 0;
   });
 
@@ -284,65 +239,6 @@ export function ReturnToStockCreateScreen({
                   onChange={setWorkerId}
                 />
               </div>
-              <div className="min-w-[10rem] flex-1 sm:max-w-xs">
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {t("return.dateFilter")}
-                </label>
-                <CheckmarkSelect
-                  listLabel={t("return.dateFilter")}
-                  buttonAriaLabel={t("return.dateFilter")}
-                  options={datePresetOptions}
-                  value={datePreset}
-                  portaled
-                  searchable={false}
-                  className="w-full"
-                  onChange={(v) => setDatePreset((v as WorkerReturnDatePreset) || "till_today")}
-                />
-              </div>
-              {datePreset === "custom" ? (
-                <>
-                  <div className="min-w-[10rem] flex-1 sm:max-w-xs">
-                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {t("return.dateFrom")}
-                    </label>
-                    <SurfaceDateInput
-                      type="date"
-                      value={dateFrom}
-                      className="w-full"
-                      onChange={(e) => setDateFrom(e.target.value)}
-                    />
-                  </div>
-                  <div className="min-w-[10rem] flex-1 sm:max-w-xs">
-                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {t("return.dateTo")}
-                    </label>
-                    <SurfaceDateInput
-                      type="date"
-                      value={dateTo}
-                      className="w-full"
-                      onChange={(e) => setDateTo(e.target.value)}
-                    />
-                  </div>
-                </>
-              ) : null}
-              {datePreset === "material_request" ? (
-                <div className="min-w-[10rem] flex-1 sm:max-w-xs">
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    {t("fields.materialRequest")}
-                  </label>
-                  <CheckmarkSelect
-                    listLabel={t("fields.materialRequest")}
-                    buttonAriaLabel={t("fields.materialRequest")}
-                    options={mrOptions}
-                    value={materialRequestId}
-                    emptyLabel={t("return.selectMaterialRequest")}
-                    portaled
-                    searchable
-                    className="w-full"
-                    onChange={setMaterialRequestId}
-                  />
-                </div>
-              ) : null}
               <AppButton
                 type="button"
                 variant="secondary"
@@ -364,112 +260,182 @@ export function ReturnToStockCreateScreen({
               <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
             </div>
           ) : !materials ? (
-            <p className="text-sm text-slate-500">{t("return.selectFiltersHint")}</p>
-          ) : materials.lines.length === 0 ? (
+            <p className="text-sm text-slate-500">{t("return.selectWorkerHint")}</p>
+          ) : flatLines.length === 0 ? (
             <p className="rounded-xl border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-700">
               {t("return.empty")}
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-              <table className="w-full min-w-[960px] text-left text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
-                    <th className="px-3 py-2">{t("table.materialItem")}</th>
-                    <th className="px-3 py-2">{t("return.source")}</th>
-                    <th className={quantityTableHeaderClass}>{t("table.extra")}</th>
-                    <th className={quantityTableHeaderClass}>{t("return.alreadyReturned")}</th>
-                    <th className={quantityTableHeaderClass}>{t("return.returnQty")}</th>
-                    <th className="px-3 py-2">{t("return.returnType")}</th>
-                    <th className="px-3 py-2">{t("return.reason")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {materials.lines.map((row) => {
-                    const key = lineDraftKey(row.group_key);
-                    const draft = drafts[key] ?? { returnQty: "", returnType: "unused" as const, reason: "" };
-                    return (
-                      <tr key={key} className="border-b border-slate-100 dark:border-slate-800">
-                        <td className="px-3 py-3">
-                          <p className="font-medium text-slate-900 dark:text-slate-100">
-                            {row.item_name?.trim() || `#${row.item_id}`}
-                          </p>
-                          {!row.is_extra && row.dispatched_quantity > 0 ? (
-                            <span className="mt-0.5 block text-xs font-medium text-amber-600 dark:text-amber-400">
-                              {t("return.surplusQty", { qty: row.dispatched_quantity })}
-                            </span>
-                          ) : null}
-                        </td>
-                        <td className="px-3 py-3">
-                          {row.is_extra ? (
-                            <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                              {t("return.sourceExtra")}
-                            </span>
-                          ) : row.material_request_id != null && row.material_request_id > 0 ? (
-                            <DetailEntityLink
-                              href={`${routes.dashboard.materialRequests}/${row.material_request_id}`}
-                              className="font-medium text-slate-800 underline-offset-2 hover:underline dark:text-slate-200"
-                            >
-                              {row.material_request_number?.trim() || `#${row.material_request_id}`}
-                            </DetailEntityLink>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td className={cn(quantityTableCellClass, "font-medium")}>
-                          <QuantityWithUnits value={row.dispatched_quantity} unitsLabel={t("units")} />
-                        </td>
-                        <td className={cn(quantityTableCellClass, "text-slate-500")}>
-                          <QuantityWithUnits value={row.returned_quantity} unitsLabel={t("units")} />
-                        </td>
-                        <td className={quantityTableInputCellClass}>
-                          <input
-                            type="number"
-                            min={0}
-                            max={row.returnable_quantity}
-                            step="any"
-                            value={draft.returnQty}
-                            disabled={submitting}
-                            className={cn(compactInputClass, "mx-auto w-20 text-center")}
-                            onChange={(e) => updateDraft(key, { returnQty: e.target.value })}
-                          />
-                        </td>
-                        <td className="px-3 py-3">
-                          <CheckmarkSelect
-                            listLabel={t("return.returnType")}
-                            buttonAriaLabel={t("return.returnType")}
-                            options={returnTypeOptions}
-                            value={draft.returnType}
-                            portaled
-                            searchable={false}
-                            size="sm"
-                            disabled={submitting}
-                            className="min-w-[9rem]"
-                            onChange={(v) =>
-                              updateDraft(key, {
-                                returnType: (v === "faulty" ? "faulty" : "unused") as DispatchReturnType,
-                              })
-                            }
-                          />
-                        </td>
-                        <td className="min-w-[12rem] px-3 py-3">
-                          <textarea
-                            rows={1}
-                            value={draft.reason}
-                            disabled={submitting}
-                            placeholder={t("return.reasonPlaceholder")}
-                            className={cn(surfaceTextareaClassName, "min-h-9 resize-none py-1.5 text-sm")}
-                            onChange={(e) => updateDraft(key, { reason: e.target.value })}
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="space-y-6">
+              {materials.map((d) => {
+                if (!d.lines || d.lines.length === 0) return null;
+
+                return (
+                  <div key={d.id} className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                    <div className="border-b border-slate-200 bg-slate-50/50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/40 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                          Dispatch Record
+                        </span>
+                        <DetailEntityLink
+                          href={`${routes.dashboard.dispatches}/${d.id}`}
+                          className="font-bold text-slate-900 hover:underline dark:text-slate-100"
+                        >
+                          {d.dispatch_order_number}
+                        </DetailEntityLink>
+                      </div>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                        {d.dispatch_date}
+                      </span>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[900px] text-left text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
+                            <th className="px-4 py-2">{t("table.materialItem")}</th>
+                            <th className={cn(quantityTableHeaderClass, "px-4 py-2")}>{t("table.extra")}</th>
+                            <th className={cn(quantityTableHeaderClass, "px-4 py-2")}>{t("return.alreadyReturned")}</th>
+                            <th className={cn(quantityTableHeaderClass, "w-28 px-4 py-2")}>{t("return.returnQty")}</th>
+                            <th className="px-4 py-2 w-44">{t("return.returnType")}</th>
+                            <th className="px-4 py-2">{t("return.reason")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {d.lines.map((row) => {
+                            const key = `dispatch:${d.id}:line:${row.id}`;
+                            const draft = drafts[key] ?? { returnQty: "", returnType: "unused" as const, reason: "" };
+
+                            const dispatchedQty = row.quantity ?? 0;
+                            const returnedQty = row.restocked_quantity ?? 0;
+                            const returnableQty = Math.max(0, dispatchedQty - returnedQty);
+
+                            return (
+                              <tr key={key} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                                <td className="px-4 py-3">
+                                  <p className="font-medium text-slate-900 dark:text-slate-100">
+                                    {row.item_name?.trim() || `#${row.item}`}
+                                  </p>
+                                  {!row.is_extra && dispatchedQty > 0 ? (
+                                    <span className="mt-0.5 block text-xs font-medium text-amber-600 dark:text-amber-400">
+                                      {t("return.surplusQty", { qty: dispatchedQty })}
+                                    </span>
+                                  ) : null}
+                                </td>
+                                <td className={cn(quantityTableCellClass, "px-4 py-3 font-medium")}>
+                                  <QuantityWithUnits value={dispatchedQty} unitsLabel={t("units")} />
+                                </td>
+                                <td className={cn(quantityTableCellClass, "px-4 py-3 text-slate-500")}>
+                                  <QuantityWithUnits value={returnedQty} unitsLabel={t("units")} />
+                                </td>
+                                <td className={cn(quantityTableInputCellClass, "px-4 py-3")}>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={returnableQty}
+                                    step="any"
+                                    value={draft.returnQty}
+                                    disabled={submitting}
+                                    className={cn(compactInputClass, "mx-auto w-20 text-center")}
+                                    onChange={(e) => updateDraft(key, { returnQty: e.target.value })}
+                                  />
+                                </td>
+                                <td className="px-4 py-3">
+                                  <CheckmarkSelect
+                                    listLabel={t("return.returnType")}
+                                    buttonAriaLabel={t("return.returnType")}
+                                    options={returnTypeOptions}
+                                    value={draft.returnType}
+                                    portaled
+                                    searchable={false}
+                                    size="sm"
+                                    disabled={submitting}
+                                    className="w-full"
+                                    onChange={(v) =>
+                                      updateDraft(key, {
+                                        returnType: (v === "faulty" ? "faulty" : "unused") as DispatchReturnType,
+                                      })
+                                    }
+                                  />
+                                </td>
+                                <td className="px-4 py-3">
+                                  <textarea
+                                    rows={1}
+                                    value={draft.reason}
+                                    disabled={submitting}
+                                    placeholder={t("return.reasonPlaceholder")}
+                                    className={cn(surfaceTextareaClassName, "min-h-9 resize-none py-1.5 text-sm w-full")}
+                                    onChange={(e) => updateDraft(key, { reason: e.target.value })}
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       </SurfaceShell>
     </div>
   );
+}
+
+type RawDispatch = any; // replace with real API type
+type MappedDispatch = {
+  id: number;
+  dispatch_order_number: string;
+  dispatch_date: string;
+  notes?: string | null;
+  material_request?: number | null;
+  organization?: number | null;
+  worker: { id: number; first_name?: string; last_name?: string; username?: string; email?: string } | null;
+  workerLabel: string;
+  total_qty: number;
+  lines: Array<{
+    id: number;
+    material_request_line?: number;
+    item: number;
+    item_name?: string | null;
+    item_sku?: string | null;
+    quantity?: number;
+    restocked_quantity?: number;
+    is_extra?: boolean;
+    remarks?: string | null;
+  }>;
+};
+
+function workerLabelFrom(w: any): string {
+  if (!w) return "—";
+  const full = `${w.first_name ?? ""} ${w.last_name ?? ""}`.trim();
+  return full || w.name || w.username || w.email || `#${w.id}`;
+}
+
+function mapDispatches(raw: RawDispatch[]): MappedDispatch[] {
+  return raw.map((d) => ({
+    id: d.id,
+    dispatch_order_number: d.dispatch_order_number,
+    dispatch_date: d.dispatch_date,
+    notes: d.notes ?? null,
+    material_request: d.material_request ?? null,
+    organization: d.organization ?? null,
+    worker: d.worker ?? null,
+    workerLabel: workerLabelFrom(d.worker ?? d.worker_name ?? d.worker_name),
+    total_qty: Array.isArray(d.lines) ? d.lines.length : 0,
+    lines: (d.lines ?? []).map((l: any) => ({
+      id: l.id,
+      material_request_line: l.material_request_line ?? null,
+      item: l.item,
+      item_name: l.item_name ?? null,
+      item_sku: l.item_sku ?? null,
+      quantity: l.quantity ?? 0,
+      restocked_quantity: l.restocked_quantity ?? 0,
+      is_extra: !!l.is_extra,
+      remarks: l.remarks ?? null,
+    })),
+  }));
 }

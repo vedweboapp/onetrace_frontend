@@ -28,23 +28,29 @@ export type DispatchLineRestockEntry = {
 
 export type DispatchLineItem = {
   id: number;
-  line_key: string;
+  line_key?: string;
   material_request_line_id?: number | null;
+  material_request_line?: number | null;
   job?: DispatchJobRef | null;
-  item: {
+  item: number | {
     id: number;
     name?: string | null;
+    sku?: string | null;
     stock_quantity?: number | null;
   };
+  item_name?: string | null;
+  item_sku?: string | null;
+  quantity?: number;
   worker_name?: number | DispatchWorkerRef | null;
-  requested_quantity: number;
-  dispatched_quantity: number;
-  pending_quantity: number;
-  extra_quantity: number;
-  restocked_quantity: number;
-  restock_history: DispatchLineRestockEntry[];
+  requested_quantity?: number;
+  dispatched_quantity?: number;
+  pending_quantity?: number;
+  extra_quantity?: number;
+  restocked_quantity?: number;
+  restock_history?: DispatchLineRestockEntry[];
   is_extra: boolean;
   dispatched_at?: string | null;
+  remarks?: string | null;
 };
 
 export type DispatchLogEntry = {
@@ -217,12 +223,15 @@ export type WorkerReturnMaterialsData = {
 export type DispatchReturnRequestStatus = "pending" | "completed" | "rejected";
 
 export type DispatchReturnRequestLine = {
-  dispatch_id: number;
-  dispatch_order_number: string;
-  line_id: number;
-  item_id: number;
+  id: number;
+  dispatch_line: number;
+  item: { id: number; name: string; sku?: string | null } | null;
+  // Normalized helpers (populated by API normalizer)
+  item_id?: number;
   item_name?: string | null;
-  job_name?: string | null;
+  dispatch_id?: number;
+  dispatch_order_number?: string;
+  dispatch_quantity?: number;
   quantity: number;
   return_type: DispatchReturnType;
   reason?: string | null;
@@ -231,16 +240,22 @@ export type DispatchReturnRequestLine = {
 export type DispatchReturnRequest = {
   id: number;
   request_number: string;
-  worker_name: number | DispatchWorkerRef;
+  /** API returns `worker` (object or null); normalized to worker_name for legacy UI compat */
+  worker_name: number | DispatchWorkerRef | null;
+  worker?: DispatchWorkerRef | null;
   status: DispatchReturnRequestStatus;
+  /** API key is `return_request_line`; normalized to `lines` */
   lines: DispatchReturnRequestLine[];
+  return_request_line?: DispatchReturnRequestLine[];
   requested_at: string;
   completed_at?: string | null;
+  created_at?: string | null;
 };
 
 export type CreateDispatchReturnRequestLineInput = {
-  dispatch_id: number;
-  line_id: number;
+  dispatch_id?: number;
+  line_id?: number;
+  dispatch_line?: number;
   quantity: number;
   return_type: DispatchReturnType;
   reason?: string;
@@ -267,4 +282,5 @@ export type DispatchReturnRequestListFilters = {
   date_from?: string;
   date_to?: string;
   material_request_id?: number;
+  job?: number;
 };
