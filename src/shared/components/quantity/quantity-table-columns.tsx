@@ -10,7 +10,7 @@ export const quantityTableCellClass = "px-3 py-3 text-center whitespace-nowrap t
 export const quantityTableInputCellClass = "px-3 py-3 text-center whitespace-nowrap";
 
 type QuantityWithUnitsProps = {
-  value: number;
+  value?: number | null | string;
   unitsLabel: string;
   className?: string;
   showDashWhenZero?: boolean;
@@ -22,12 +22,22 @@ export function QuantityWithUnits({
   className,
   showDashWhenZero = false,
 }: QuantityWithUnitsProps) {
-  if (showDashWhenZero && value <= 0) {
+  if (value == null) {
     return <span className={cn("text-slate-500", className)}>—</span>;
   }
+
+  const num = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(num)) {
+    return <span className={cn("text-slate-500", className)}>—</span>;
+  }
+
+  if (showDashWhenZero && num <= 0) {
+    return <span className={cn("text-slate-500", className)}>—</span>;
+  }
+
   return (
     <span className={cn("tabular-nums", className)}>
-      {value.toFixed(0)} {unitsLabel}
+      {num.toFixed(0)} {unitsLabel}
     </span>
   );
 }

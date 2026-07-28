@@ -39,7 +39,7 @@ export function JobMaterialsTab({ detail }: Props) {
       setLoadingMaterialRequests(true);
       setLoadError(null);
       try {
-        const { items } = await fetchMaterialRequestsPage(1, 50, { job_id: detail.id });
+        const { items } = await fetchMaterialRequestsPage(1, 50, { job: detail.id });
         if (!cancelled) {
           setMaterialRequests(items);
         }
