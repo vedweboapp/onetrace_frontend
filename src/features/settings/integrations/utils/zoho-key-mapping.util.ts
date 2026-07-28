@@ -228,8 +228,8 @@ export function rowsToMappings(
     const externalMatch = findFieldInGroups(externalGroups, external_field, row.externalGroup);
 
     mappings.push({
+      internal_model: externalMatch?.group.internal_model ?? internalMatch?.group.internal_model ?? null,
       internal_field,
-      inetrnal_field: internal_field,
       internal_field_label: internalMatch?.field.label ?? null,
       internal_group: internalMatch?.group.group ?? (row.internalGroup || null),
       external_field,
