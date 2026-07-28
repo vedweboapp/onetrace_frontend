@@ -656,8 +656,8 @@ export async function dispatchMaterialRequestMock(
         title: "Materials dispatched",
         description:
           extraCount > 0
-            ? `Dispatch ${dispatch.dispatch_number}: ${dispatchedUnits} units including ${extraCount} extra item(s).`
-            : `Dispatch ${dispatch.dispatch_number}: ${dispatchedUnits} units.`,
+            ? `Dispatch ${dispatch.dispatch_order_number}: ${dispatchedUnits} units including ${extraCount} extra item(s).`
+            : `Dispatch ${dispatch.dispatch_order_number}: ${dispatchedUnits} units.`,
         occurred_at: now,
         tag: "dispatch",
         dispatch_id: dispatch.id,

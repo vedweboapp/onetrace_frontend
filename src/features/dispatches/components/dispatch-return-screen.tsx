@@ -148,7 +148,7 @@ export function DispatchReturnScreen({ dispatchId }: Props) {
         subtitle={
           returnData
             ? t("return.pageSubtitle", {
-                dispatch: returnData.dispatch_number,
+                dispatch: returnData.dispatch_order_number,
                 request: returnData.material_request_number?.trim() || `#${returnData.material_request_id}`,
               })
             : t("return.pageSubtitleGeneric")
@@ -220,7 +220,7 @@ export function DispatchReturnScreen({ dispatchId }: Props) {
                 </div>
                 <div>
                   <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t("table.dispatchId")}</dt>
-                  <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">{returnData.dispatch_number}</dd>
+                  <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">{returnData.dispatch_order_number}</dd>
                 </div>
               </dl>
             </div>

@@ -1,15 +1,15 @@
 export const DISPATCH_RETURN_REQUEST_PATHS = {
-  list: "dispatch-return-requests",
-  detail: (id: number) => `dispatch-return-requests/${id}`,
-  complete: (id: number) => `dispatch-return-requests/${id}/complete`,
+  list: "return-request",
+  detail: (id: number) => `return-request/${id}`,
+  complete: (id: number) => `return-request/${id}/complete`,
 } as const;
 
 export const DISPATCH_PATHS = {
-  list: "dispatches",
-  detail: (id: number) => `dispatches/${id}`,
-  logs: (id: number) => `dispatches/${id}/logs`,
-  restock: (id: number) => `dispatches/${id}/restock`,
-  returnItems: (id: number) => `dispatches/${id}/return-items`,
-  returnToStock: (id: number) => `dispatches/${id}/return-to-stock`,
-  workerReturnMaterials: "dispatches/worker-return-materials",
+  list: "dispatch",
+  detail: (id: number) => `dispatch/${id}`,
+  logs: (id: number) => `dispatch/${id}/logs`,
+  restock: (id: number) => `dispatch/${id}/restock`,
+  returnItems: (id: number) => `dispatch/${id}/return-items`,
+  returnToStock: (id: number) => `dispatch/${id}/return-to-stock`,
+  workerReturnMaterials: "dispatch/worker-return-materials",
 } as const;

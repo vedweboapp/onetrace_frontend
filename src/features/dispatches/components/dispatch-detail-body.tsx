@@ -56,7 +56,7 @@ export function DispatchDetailBody({ detail, dateFmt, dueFmt }: Props) {
         <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-3">
           <DetailMetricCard label={t("fields.dispatchId")}>
             <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">
-              {detail.dispatch_number}
+              {detail.dispatch_order_number}
             </span>
           </DetailMetricCard>
           <DetailMetricCard label={t("fields.dispatchTo")}>

@@ -16,7 +16,7 @@ import type {
 
 export async function GET(request: Request) {
   if (!dispatchMockRoutesEnabled()) {
-    return proxyDispatchToBackend(request, "dispatch-return-requests/");
+    return proxyDispatchToBackend(request, "return-request/");
   }
 
   const url = new URL(request.url);
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   if (!dispatchMockRoutesEnabled()) {
-    return proxyDispatchToBackend(request, "dispatch-return-requests/");
+    return proxyDispatchToBackend(request, "return-request/");
   }
 
   let body: CreateDispatchReturnRequestPayload;

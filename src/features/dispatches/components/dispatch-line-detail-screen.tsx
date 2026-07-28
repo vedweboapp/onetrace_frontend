@@ -93,7 +93,7 @@ export function DispatchLineDetailScreen({ dispatchId, lineId }: Props) {
     <div className="pb-12">
       <DetailPageHeader
         title={title}
-        subtitle={detail?.dispatch_number ? t("detail.lineSubtitle", { dispatch: detail.dispatch_number }) : undefined}
+        subtitle={detail?.dispatch_order_number ? t("detail.lineSubtitle", { dispatch: detail.dispatch_order_number }) : undefined}
         backHref={safeBack}
         backAriaLabel={t("detail.lineBackAria")}
       />

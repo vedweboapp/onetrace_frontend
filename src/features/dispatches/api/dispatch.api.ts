@@ -43,6 +43,26 @@ function assertEnvelopeSuccess(envelope: { success: boolean; message?: string })
   }
 }
 
+function normalizeDispatchOrderNumber<T extends { dispatch_order_number?: string; dispatch_number?: string }>(row: T): T {
+  const dispatchOrderNumber = row.dispatch_order_number?.trim() || row.dispatch_number?.trim() || "";
+  return {
+    ...row,
+    dispatch_order_number: dispatchOrderNumber,
+  };
+}
+
+function normalizeDispatchListItem(row: DispatchListItem): DispatchListItem {
+  return normalizeDispatchOrderNumber(row);
+}
+
+function normalizeDispatchDetail(row: DispatchDetail): DispatchDetail {
+  return normalizeDispatchOrderNumber(row);
+}
+
+function normalizeDispatchReturnItemsData(row: DispatchReturnItemsData): DispatchReturnItemsData {
+  return normalizeDispatchOrderNumber(row);
+}
+
 export type DispatchListFilters = {
   search?: string;
   status?: string;
@@ -65,13 +85,16 @@ export async function fetchDispatchesPage(
 
   const { data } = await api.get<DispatchListResponse>(resolveDispatchRequestUrl(DISPATCH_PATHS.list), { params });
   assertEnvelopeSuccess(data);
-  return { items: data.data, pagination: data.pagination };
+  return {
+    items: data.data.map((row) => normalizeDispatchListItem(row)),
+    pagination: data.pagination,
+  };
 }
 
 export async function fetchDispatch(id: number): Promise<DispatchDetail> {
   const { data } = await api.get<ApiEnvelope<DispatchDetail>>(resolveDispatchRequestUrl(DISPATCH_PATHS.detail(id)));
   assertApiSuccess(data);
-  return data.data;
+  return normalizeDispatchDetail(data.data);
 }
 
 export async function fetchDispatchLogs(id: number): Promise<DispatchLogEntry[]> {
@@ -148,7 +171,7 @@ export async function fetchDispatchReturnItems(id: number): Promise<DispatchRetu
     resolveDispatchRequestUrl(DISPATCH_PATHS.returnItems(id)),
   );
   assertApiSuccess(data);
-  return data.data;
+  return normalizeDispatchReturnItemsData(data.data);
 }
  
 export async function returnDispatchToStock(
