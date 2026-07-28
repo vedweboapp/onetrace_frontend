@@ -15,6 +15,10 @@ import type {
   MaterialRequestRestockPayload,
   MaterialRequestUpdatePayload,
 } from "../types/material-request.types";
+import {
+  normalizeMaterialRequestListItems,
+  normalizeMaterialRequestRow,
+} from "../utils/material-request-normalize.util";
 
 function assertEnvelopeSuccess(envelope: { success: boolean; message?: string }) {
   if (!envelope.success) {
@@ -28,6 +32,8 @@ export type MaterialRequestListFilters = {
   status?: string;
   requested_date?: string;
   worker_name?: string | number;
+  job?: string | number;
+  job_id?: string | number;
 };
 
 export async function fetchMaterialRequestsPage(
@@ -44,12 +50,21 @@ export async function fetchMaterialRequestsPage(
     params.worker_name = String(filters.worker_name).trim();
   }
 
+  const jobFilter = filters?.job ?? filters?.job_id;
+  if (jobFilter != null && String(jobFilter).trim()) {
+    params.job = String(jobFilter).trim();
+  }
+
   const { data } = await api.get<MaterialRequestListResponse>(
     resolveMaterialRequestRequestUrl(MATERIAL_REQUEST_PATHS.list),
     { params },
   );
   assertEnvelopeSuccess(data);
-  return { items: data.data, pagination: data.pagination };
+  const rows = Array.isArray(data.data) ? data.data : [];
+  return {
+    items: normalizeMaterialRequestListItems(rows),
+    pagination: data.pagination,
+  };
 }
 
 export async function fetchAllMaterialRequestIds(filters?: MaterialRequestListFilters): Promise<number[]> {
@@ -67,7 +82,7 @@ export async function fetchMaterialRequest(
     },
   );
   assertApiSuccess(data);
-  return data.data;
+  return normalizeMaterialRequestRow(data.data);
 }
 
 export async function dispatchMaterialRequest(
@@ -83,7 +98,7 @@ export async function dispatchMaterialRequest(
     payload,
   );
   assertApiSuccess(data);
-  return data.data;
+  return normalizeMaterialRequestRow(data.data);
 }
 
 export async function createMaterialRequest(body: MaterialRequestCreatePayload): Promise<MaterialRequestDetail> {
@@ -92,7 +107,7 @@ export async function createMaterialRequest(body: MaterialRequestCreatePayload):
     body,
   );
   assertApiSuccess(data);
-  return data.data;
+  return normalizeMaterialRequestRow(data.data);
 }
 
 export async function updateMaterialRequest(
@@ -104,7 +119,7 @@ export async function updateMaterialRequest(
     body,
   );
   assertApiSuccess(data);
-  return data.data;
+  return normalizeMaterialRequestRow(data.data);
 }
 
 export async function fetchMaterialRequestLogs(id: number): Promise<MaterialRequestLogEntry[]> {
@@ -124,5 +139,5 @@ export async function restockMaterialRequest(
     payload,
   );
   assertApiSuccess(data);
-  return data.data;
+  return normalizeMaterialRequestRow(data.data);
 }

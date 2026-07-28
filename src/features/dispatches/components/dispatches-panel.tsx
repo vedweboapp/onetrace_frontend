@@ -114,7 +114,7 @@ export function DispatchesPanel() {
   const tableColumns = React.useMemo(() => {
     const c = entityCol<DispatchListItem>();
     return [
-      c.primary("dispatch_number", t("table.dispatchId"), (r) => r.dispatch_number),
+      c.primary("dispatch_order_number", t("table.dispatchId"), (r) => r.dispatch_order_number),
       c.date("dispatch_date", t("table.dispatchDate"), (r) => r.dispatch_date, dateFmt),
       c.truncate("worker_name", t("table.workerName"), (r) => dispatchWorkerLabel(r.worker_name)),
       c.tabular(
@@ -195,7 +195,7 @@ export function DispatchesPanel() {
                   key={row.id}
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
-                  title={row.dispatch_number}
+                  title={row.dispatch_order_number}
                   subtitle={dispatchWorkerLabel(row.worker_name)}
                   meta={
                     <span className="block truncate">

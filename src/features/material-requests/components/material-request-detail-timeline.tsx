@@ -3,7 +3,11 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { DetailEntityLink } from "@/shared/components/entity";
-import { fetchMaterialRequestLogs } from "@/features/material-requests/api/material-request.api";
+import { fetchAuditTrails } from "@/features/audit-trails/api/audit-trail.api";
+import {
+  auditTrailToMaterialRequestLogEntry,
+  filterAuditTrailsForObject,
+} from "@/features/audit-trails/utils/audit-trail-display.util";
 import type { MaterialRequestLogEntry } from "@/features/material-requests/types/material-request.types";
 import { DetailPagePadding, DetailPanelCard } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
@@ -13,6 +17,8 @@ type Props = {
   materialRequestId: number;
   dateFmt: Intl.DateTimeFormat;
 };
+
+const MATERIAL_REQUEST_AUDIT_MODULE = "materialrequest";
 
 export function MaterialRequestDetailTimeline({ materialRequestId, dateFmt }: Props) {
   const t = useTranslations("Dashboard.materialRequests");
@@ -26,8 +32,13 @@ export function MaterialRequestDetailTimeline({ materialRequestId, dateFmt }: Pr
       setLoading(true);
       setError(null);
       try {
-        const rows = await fetchMaterialRequestLogs(materialRequestId);
-        if (!cancelled) setLogs(rows);
+        const rows = await fetchAuditTrails({
+          module: MATERIAL_REQUEST_AUDIT_MODULE,
+          object_id: materialRequestId,
+        });
+        if (cancelled) return;
+        const scoped = filterAuditTrailsForObject(rows, materialRequestId);
+        setLogs(scoped.map(auditTrailToMaterialRequestLogEntry));
       } catch {
         if (!cancelled) setError(t("detailLoadError"));
       } finally {

@@ -15,28 +15,50 @@ export type ZohoFieldMapping = {
   internal_field: string;
   inetrnal_field?: string;
   internal_field_label: string | null;
+  internal_group?: string | null;
   external_field: string;
   external_field_label: string | null;
+  external_group?: string | null;
 };
 
-export type ZohoFieldSchema = {
+export type ZohoFieldDef = {
   field: string;
   label: string;
   type: string;
   required?: boolean;
 };
 
+/** Flat field schema (legacy) or a single field inside a group. */
+export type ZohoFieldSchema = ZohoFieldDef;
+
+/** Grouped field catalog from key-mapping API. */
+export type ZohoFieldGroup = {
+  group: string;
+  label: string;
+  internal_model?: string | null;
+  fields: ZohoFieldDef[];
+  /**
+   * Some key-mapping responses incorrectly nest field defs under `type`
+   * instead of `fields` (e.g. Client general). Normalized in API layer.
+   */
+  type?: ZohoFieldDef[] | string;
+};
+
 export type ZohoExistingMapping = {
+  external_group?: string | null;
+  external_field: string;
+  external_field_label: string | null;
+  internal_model?: string | null;
+  internal_group?: string | null;
   internal_field?: string;
   inetrnal_field?: string;
   internal_field_label: string | null;
-  external_field: string;
-  external_field_label: string | null;
+  is_required?: boolean;
 };
 
 export type ZohoKeyMappingData = {
-  external_fields: ZohoFieldSchema[];
-  internal_fields: ZohoFieldSchema[];
+  external_fields: ZohoFieldGroup[];
+  internal_fields: ZohoFieldGroup[];
   existing_mapping: ZohoExistingMapping[];
 };
 
@@ -85,6 +107,10 @@ export type ZohoConnectionDetails = {
 
 export type ZohoMappingRow = {
   id: string;
-  externalField: string;
+  internalGroup: string;
   internalField: string;
+  externalGroup: string;
+  externalField: string;
+  /** Required SimHo fields seeded from the catalog — field cannot be cleared. */
+  required?: boolean;
 };

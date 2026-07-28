@@ -8,8 +8,8 @@ import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status
 export type MaterialStatusCatalog = {
   byKey: Record<string, WorkflowColourStatus>;
   options: { value: string; label: string }[];
-  labelFor: (code: string | null | undefined) => string;
-  rowFor: (code: string | null | undefined) => WorkflowColourStatus | null;
+  labelFor: (code: string | { name?: string; status_name?: string } | null | undefined) => string;
+  rowFor: (code: string | { name?: string; status_name?: string } | null | undefined) => WorkflowColourStatus | null;
   loading: boolean;
 };
 
@@ -24,13 +24,14 @@ export function buildMaterialStatusCatalog(items: WorkflowColourStatus[]): Omit<
     options.push({ value: key, label: row.status_name });
   }
 
-  const labelFor = (code: string | null | undefined): string => {
+  const labelFor = (code: string | { name?: string; status_name?: string } | null | undefined): string => {
     const key = normalizeMaterialRequestStatus(code);
     if (!key) return "—";
-    return byKey[key]?.status_name ?? code?.trim() ?? "—";
+    const statusName = typeof code === "object" && code ? (code.name || code.status_name) : code;
+    return byKey[key]?.status_name ?? (typeof statusName === "string" ? statusName.trim() : "—");
   };
 
-  const rowFor = (code: string | null | undefined): WorkflowColourStatus | null => {
+  const rowFor = (code: string | { name?: string; status_name?: string } | null | undefined): WorkflowColourStatus | null => {
     const key = normalizeMaterialRequestStatus(code);
     if (!key) return null;
     return byKey[key] ?? null;

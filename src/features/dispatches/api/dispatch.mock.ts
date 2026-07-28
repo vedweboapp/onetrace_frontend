@@ -81,7 +81,7 @@ function workerLabel(worker: DispatchDetail["worker_name"]): string {
 function toListItem(detail: DispatchDetail): DispatchListItem {
   return {
     id: detail.id,
-    dispatch_number: detail.dispatch_number,
+    dispatch_order_number: detail.dispatch_order_number,
     material_request_id: detail.material_request_id,
     material_request_number: detail.material_request_number,
     job_name: detail.job_name,
@@ -115,7 +115,7 @@ function matchesFilters(row: DispatchDetail, filters?: DispatchListFilters): boo
   if (!filters) return true;
   const q = filters.search?.trim().toLowerCase();
   if (q) {
-    const hay = [row.dispatch_number, row.job_name, row.material_request_number, workerLabel(row.worker_name)]
+    const hay = [row.dispatch_order_number, row.job_name, row.material_request_number, workerLabel(row.worker_name)]
       .join(" ")
       .toLowerCase();
     if (!hay.includes(q)) return false;
@@ -192,7 +192,7 @@ export function createDispatchFromMaterialRequestMock(input: CreateDispatchFromM
 
   const detail: DispatchDetail = {
     id,
-    dispatch_number: `DSP-${String(id).padStart(5, "0")}`,
+    dispatch_order_number: `DSP-${String(id).padStart(5, "0")}`,
     material_request_id: input.materialRequestId,
     material_request_number: input.materialRequestNumber,
     job_name: input.jobName ?? null,
@@ -276,7 +276,7 @@ export async function createDispatchReturnRequestMock(
 
     lines.push({
       dispatch_id: detail.id,
-      dispatch_number: detail.dispatch_number,
+      dispatch_order_number: detail.dispatch_order_number,
       line_id: line.id,
       item_id: line.item.id,
       item_name: line.item.name?.trim() || null,
@@ -438,7 +438,7 @@ export async function restockDispatchMock(
         {
           id: `log-${Date.now()}-${line.line_key}`,
           title: returnType === "faulty" ? "Faulty item returned" : "Items returned to stock",
-          description: `${detail.dispatch_number}: ${line.item.name ?? `Item #${line.item.id}`} — ${applied} unit(s) (${reasonLabel}) returned.`,
+          description: `${detail.dispatch_order_number}: ${line.item.name ?? `Item #${line.item.id}`} — ${applied} unit(s) (${reasonLabel}) returned.`,
           occurred_at: now,
           tag: "return_to_stock",
           dispatch_id: dispatchId,

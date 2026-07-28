@@ -3,6 +3,7 @@ import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { INTEGRATION_PATHS, ZOHO_DEFAULT_RESOURCE } from "./integration.paths";
+import { normalizeFieldGroups } from "../utils/zoho-key-mapping.util";
 import type {
   ZohoCallbackParams,
   ZohoConnectResponse,
@@ -88,8 +89,8 @@ export async function fetchZohoKeyMapping(
 
   const payload = unwrapPayload<ZohoKeyMappingData>(data);
   return {
-    external_fields: Array.isArray(payload.external_fields) ? payload.external_fields : [],
-    internal_fields: Array.isArray(payload.internal_fields) ? payload.internal_fields : [],
+    external_fields: normalizeFieldGroups(payload.external_fields),
+    internal_fields: normalizeFieldGroups(payload.internal_fields),
     existing_mapping: Array.isArray(payload.existing_mapping) ? payload.existing_mapping : [],
   };
 }

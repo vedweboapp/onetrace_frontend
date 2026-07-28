@@ -11,7 +11,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function POST(request: Request, context: RouteContext) {
   const { id: rawId } = await context.params;
   if (!dispatchMockRoutesEnabled()) {
-    return proxyDispatchToBackend(request, `dispatch-return-requests/${rawId}/complete/`);
+    return proxyDispatchToBackend(request, `return-request/${rawId}/complete/`);
   }
 
   const id = Number.parseInt(rawId, 10);

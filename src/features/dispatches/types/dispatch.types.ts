@@ -87,7 +87,7 @@ export type DispatchReturnItem = {
 
 export type DispatchReturnItemsData = {
   dispatch_id: number;
-  dispatch_number: string;
+  dispatch_order_number: string;
   material_request_id: number;
   material_request_number?: string | null;
   worker_name?: number | DispatchWorkerRef | null;
@@ -114,7 +114,7 @@ export type DispatchReturnToStockPayload = {
 
 export type DispatchListItem = {
   id: number;
-  dispatch_number: string;
+  dispatch_order_number: string;
   material_request_id: number;
   material_request_number?: string | null;
   job_name?: string | null;
@@ -218,7 +218,7 @@ export type DispatchReturnRequestStatus = "pending" | "completed" | "rejected";
 
 export type DispatchReturnRequestLine = {
   dispatch_id: number;
-  dispatch_number: string;
+  dispatch_order_number: string;
   line_id: number;
   item_id: number;
   item_name?: string | null;

@@ -10,7 +10,6 @@ import type { MaterialRequestDetail } from "@/features/material-requests/types/m
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import { useMaterialStatusCatalog } from "@/features/material-status/hooks/use-material-status-catalog";
 import {
-  EntityDetailEditButton,
   EntityDetailErrorState,
   EntityDetailLoadingSkeleton,
   EntityDetailScreen,
@@ -107,11 +106,6 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
           >
             {t("actions.dispatch")}
           </AppButton>
-          <EntityDetailEditButton
-            listBack={listBack}
-            fallbackRoute={routes.dashboard.materialRequests}
-            label={t("edit")}
-          />
         </div>
       )}
       renderSurface={({ detail, loading, error, retry, dateFmt }) => (

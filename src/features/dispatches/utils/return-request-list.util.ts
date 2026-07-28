@@ -87,7 +87,7 @@ export function filterReturnRequests(
         row.request_number,
         worker,
         ...row.lines.map((line) => line.item_name?.trim() ?? ""),
-        ...row.lines.map((line) => line.dispatch_number),
+        ...row.lines.map((line) => line.dispatch_order_number),
       ]
         .join(" ")
         .toLowerCase();

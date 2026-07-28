@@ -304,17 +304,17 @@ export function ProjectsPanel() {
       }),
       c.text("start", t("table.start"), (r) => formatDay(r.start_date)),
       c.text("end", t("table.end"), (r) => formatDay(r.end_date)),
-      c.truncate(
-        "description",
-        t("table.description"),
-        (r) => (r.description?.trim() ? r.description : "—"),
-        {
-          title: (r) => r.description?.trim() || undefined,
-          maxWidth: "lg",
-          headerClassName: "min-w-[8rem]",
-          cellClassName: "max-w-[14rem] lg:max-w-xs xl:max-w-md",
-        },
-      ),
+      // c.truncate(
+      //   "description",
+      //   t("table.description"),
+      //   (r) => (r.description?.trim() ? r.description : "—"),
+      //   {
+      //     title: (r) => r.description?.trim() || undefined,
+      //     maxWidth: "lg",
+      //     headerClassName: "min-w-[8rem]",
+      //     cellClassName: "max-w-[14rem] lg:max-w-xs xl:max-w-md",
+      //   },
+      // ),
       c.custom("status", t("table.status"), (r) => {
         const ps = r.project_status;
         if (ps && typeof ps === "object" && ps.name?.trim()) {

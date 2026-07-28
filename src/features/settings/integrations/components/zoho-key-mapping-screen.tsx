@@ -5,24 +5,39 @@ import { ArrowRight, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
-import { ZOHO_DEFAULT_RESOURCE, ZOHO_RESOURCES, type ZohoResource } from "@/features/settings/integrations/api/integration.paths";
-import { fetchZohoKeyMapping, saveZohoKeyMapping } from "@/features/settings/integrations/api/integration.api";
-import type { ZohoMappingRow, ZohoFieldSchema } from "@/features/settings/integrations/types/integration.types";
 import {
-  existingMappingToRows,
+  ZOHO_DEFAULT_RESOURCE,
+  ZOHO_RESOURCES,
+  type ZohoResource,
+} from "@/features/settings/integrations/api/integration.paths";
+import {
+  fetchZohoKeyMapping,
+  saveZohoKeyMapping,
+} from "@/features/settings/integrations/api/integration.api";
+import type {
+  ZohoFieldGroup,
+  ZohoMappingRow,
+} from "@/features/settings/integrations/types/integration.types";
+import {
+  buildGroupedMappingRows,
+  findFieldInGroups,
+  groupFieldsToSelectOptions,
   nextZohoMappingRowId,
   rowsToMappings,
-  toSelectOptions,
-  sortInternalFields,
+  sortFieldsInGroup,
+  sortGroups,
 } from "@/features/settings/integrations/utils/zoho-key-mapping.util";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import {
+  toastError,
+  toastSuccess,
+  toastApiError,
+  getApiErrorDisplayMessage,
+} from "@/shared/feedback/app-toast";
 import { AppButton, CheckmarkSelect, SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import { DetailCollapsibleSection } from "@/shared/components/layout/detail-collapsible-section";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
-
-
 
 function HistoricalDataToggle({
   checked,
@@ -39,7 +54,6 @@ function HistoricalDataToggle({
 }) {
   return (
     <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-900/50">
-
       <div className="min-w-0">
         <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{label}</p>
         <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">{hint}</p>
@@ -69,16 +83,16 @@ function HistoricalDataToggle({
 }
 
 const MAPPING_ROW_GRID =
-  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)_2.75rem] lg:items-start";
+  "grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_2.5rem_minmax(0,1fr)_2.5rem] lg:items-center";
 
 function MappingArrow() {
   return (
-    <div className="flex items-center justify-center lg:justify-center">
+    <div className="flex items-center justify-center">
       <span
-        className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500"
+        className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500"
         aria-hidden
       >
-        <ArrowRight className="size-4" />
+        <ArrowRight className="size-3.5" />
       </span>
     </div>
   );
@@ -96,6 +110,22 @@ function areTypesCompatible(typeA: string | undefined, typeB: string | undefined
     return true;
   }
   return false;
+}
+
+function inferZohoGroupByInternal(
+  internalGroups: ZohoFieldGroup[],
+  externalGroups: ZohoFieldGroup[],
+  mappingRows: ZohoMappingRow[],
+): Record<string, string> {
+  const next: Record<string, string> = {};
+  const defaultZoho = externalGroups[0]?.group ?? "";
+  for (const group of internalGroups) {
+    const fromRows = mappingRows.find(
+      (r) => r.internalGroup === group.group && r.externalGroup.trim(),
+    )?.externalGroup;
+    next[group.group] = fromRows?.trim() || defaultZoho;
+  }
+  return next;
 }
 
 export type ZohoKeyMappingFormProps = {
@@ -119,10 +149,10 @@ export function ZohoKeyMappingForm({
   const [saving, setSaving] = React.useState(false);
   const [pullHistoricalData, setPullHistoricalData] = React.useState(true);
   const [rows, setRows] = React.useState<ZohoMappingRow[]>([]);
-  const [externalFields, setExternalFields] = React.useState<ZohoFieldSchema[]>([]);
-  const [internalFields, setInternalFields] = React.useState<ZohoFieldSchema[]>([]);
-  const [externalOptions, setExternalOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [internalOptions, setInternalOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [externalGroups, setExternalGroups] = React.useState<ZohoFieldGroup[]>([]);
+  const [internalGroups, setInternalGroups] = React.useState<ZohoFieldGroup[]>([]);
+  /** Zoho group selected once per SimHo section. */
+  const [zohoGroupByInternal, setZohoGroupByInternal] = React.useState<Record<string, string>>({});
 
   React.useEffect(() => {
     let cancelled = false;
@@ -132,12 +162,19 @@ export function ZohoKeyMappingForm({
       try {
         const data = await fetchZohoKeyMapping(resource);
         if (cancelled) return;
-        const sortedInternalFields = sortInternalFields(data.internal_fields);
-        setExternalFields(data.external_fields);
-        setInternalFields(sortedInternalFields);
-        setExternalOptions(toSelectOptions(data.external_fields));
-        setInternalOptions(toSelectOptions(sortedInternalFields));
-        setRows(existingMappingToRows(data.existing_mapping));
+        const nextInternal = sortGroups(data.internal_fields);
+        const nextExternal = sortGroups(data.external_fields);
+        const nextRows = buildGroupedMappingRows(nextInternal, data.existing_mapping);
+        const zohoByInternal = inferZohoGroupByInternal(nextInternal, nextExternal, nextRows);
+        setInternalGroups(nextInternal);
+        setExternalGroups(nextExternal);
+        setZohoGroupByInternal(zohoByInternal);
+        setRows(
+          nextRows.map((row) => ({
+            ...row,
+            externalGroup: row.externalGroup.trim() || zohoByInternal[row.internalGroup] || "",
+          })),
+        );
       } catch (error) {
         if (!cancelled) setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
       } finally {
@@ -149,23 +186,53 @@ export function ZohoKeyMappingForm({
     };
   }, [resource, t]);
 
-  function updateRow(rowId: string, patch: Partial<Pick<ZohoMappingRow, "externalField" | "internalField">>) {
+  const externalGroupOptions = React.useMemo(
+    () => externalGroups.map((g) => ({ value: g.group, label: g.label || g.group })),
+    [externalGroups],
+  );
+
+  function updateRow(
+    rowId: string,
+    patch: Partial<Pick<ZohoMappingRow, "externalField" | "externalGroup" | "internalField">>,
+  ) {
     setRows((prev) => prev.map((row) => (row.id === rowId ? { ...row, ...patch } : row)));
   }
 
-  function addRow() {
-    setRows((prev) => [...prev, { id: nextZohoMappingRowId(), internalField: "", externalField: "" }]);
+  function setSectionZohoGroup(internalGroup: string, zohoGroup: string) {
+    setZohoGroupByInternal((prev) => ({ ...prev, [internalGroup]: zohoGroup }));
+    setRows((prev) =>
+      prev.map((row) =>
+        row.internalGroup === internalGroup
+          ? { ...row, externalGroup: zohoGroup, externalField: "" }
+          : row,
+      ),
+    );
+  }
+
+  function addRow(internalGroup: string) {
+    const zohoGroup = zohoGroupByInternal[internalGroup] ?? externalGroups[0]?.group ?? "";
+    setRows((prev) => [
+      ...prev,
+      {
+        id: nextZohoMappingRowId(),
+        internalGroup,
+        internalField: "",
+        externalGroup: zohoGroup,
+        externalField: "",
+      },
+    ]);
   }
 
   function removeRow(rowId: string) {
     setRows((prev) => {
-      const next = prev.filter((row) => row.id !== rowId);
-      return next.length > 0 ? next : [{ id: nextZohoMappingRowId(), externalField: "", internalField: "" }];
+      const target = prev.find((r) => r.id === rowId);
+      if (target?.required) return prev;
+      return prev.filter((row) => row.id !== rowId);
     });
   }
 
   async function handleSave() {
-    const mappings = rowsToMappings(rows, internalOptions, externalOptions);
+    const mappings = rowsToMappings(rows, internalGroups, externalGroups);
     if (mappings.length === 0) {
       toastError(t("mappingRequired"));
       return;
@@ -209,8 +276,8 @@ export function ZohoKeyMappingForm({
       {loading ? (
         <div className="space-y-3">
           <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-          <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-          <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+          <div className="h-24 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+          <div className="h-24 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
         </div>
       ) : loadError ? (
         <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>
@@ -223,102 +290,178 @@ export function ZohoKeyMappingForm({
                 MAPPING_ROW_GRID,
               )}
             >
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t("internalField")}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                {t("columnOnetrace")}
+              </p>
               <span className="hidden lg:block" aria-hidden />
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t("externalField")}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                {t("columnZoho")}
+              </p>
               <span className="hidden lg:block" aria-hidden />
             </div>
+
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {rows.map((row) => {
-                const currentSimhoField = internalFields.find((f) => f.field === row.internalField);
-                const currentSimhoType = currentSimhoField?.type;
-
-                const currentZohoField = externalFields.find((f) => f.field === row.externalField);
-                const currentZohoType = currentZohoField?.type;
-
-                const filteredInternalOptions = internalOptions.filter((opt) => {
-                  const isSelectedInOtherRow = rows.some((r) => r.id !== row.id && r.internalField === opt.value);
-                  if (isSelectedInOtherRow) return false;
-
-                  if (currentZohoType) {
-                    const optField = internalFields.find((f) => f.field === opt.value);
-                    if (optField && !areTypesCompatible(optField.type, currentZohoType)) {
-                      return false;
-                    }
-                  }
-                  return true;
-                });
-
-                const filteredExternalOptions = externalOptions.filter((opt) => {
-                  const isSelectedInOtherRow = rows.some((r) => r.id !== row.id && r.externalField === opt.value);
-                  if (isSelectedInOtherRow) return false;
-
-                  if (currentSimhoType) {
-                    const optField = externalFields.find((f) => f.field === opt.value);
-                    if (optField && !areTypesCompatible(optField.type, currentSimhoType)) {
-                      return false;
-                    }
-                  }
-                  return true;
-                });
+              {internalGroups.map((group) => {
+                const groupRows = rows.filter((r) => r.internalGroup === group.group);
+                const zohoGroupKey = zohoGroupByInternal[group.group] ?? "";
+                const selectedZohoGroup = externalGroups.find((g) => g.group === zohoGroupKey);
+                const unusedInternalOptions = groupFieldsToSelectOptions([group]).filter(
+                  (opt) => !groupRows.some((r) => r.internalField === opt.value),
+                );
 
                 return (
-                  <div key={row.id} className={cn("px-4 py-4", MAPPING_ROW_GRID, "lg:items-center")}>
-                    <div className="min-w-0">
+                  <section key={group.group} className="bg-white dark:bg-slate-950">
+                    {/* Group selected once at top — not repeated per field */}
+                    <div className={cn("border-b border-slate-100 px-4 py-3 dark:border-slate-800", MAPPING_ROW_GRID)}>
+                      <div className="flex min-h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100">
+                        {group.label}
+                      </div>
+                      <MappingArrow />
                       <CheckmarkSelect
                         className="w-full min-w-0"
-                        options={filteredInternalOptions}
-                        value={row.internalField}
-                        onChange={(value) => updateRow(row.id, { internalField: value })}
-                        emptyLabel={t("selectInternal")}
-                        listLabel={t("internalField")}
+                        options={externalGroupOptions}
+                        value={zohoGroupKey}
+                        onChange={(value) => setSectionZohoGroup(group.group, value)}
+                        emptyLabel={t("selectExternalGroup")}
+                        listLabel={t("selectExternalGroup")}
                         portaled
                         searchable
                         size="sm"
-                        disabled={saving}
+                        disabled={saving || externalGroups.length === 0}
                       />
+                      <span className="hidden lg:block" aria-hidden />
                     </div>
 
-                    <MappingArrow />
+                    {groupRows.map((row) => {
+                      const currentSimho = findFieldInGroups(
+                        internalGroups,
+                        row.internalField,
+                        row.internalGroup,
+                      );
+                      const currentSimhoType = currentSimho?.field.type;
+                      const zohoFieldOptions = sortFieldsInGroup(selectedZohoGroup?.fields ?? [])
+                        .filter((f) => {
+                          const usedElsewhere = rows.some(
+                            (r) =>
+                              r.id !== row.id &&
+                              r.externalGroup === zohoGroupKey &&
+                              r.externalField === f.field,
+                          );
+                          if (usedElsewhere) return false;
+                          if (currentSimhoType && !areTypesCompatible(f.type, currentSimhoType)) {
+                            return false;
+                          }
+                          return true;
+                        })
+                        .map((f) => ({ value: f.field, label: f.label || f.field }));
 
-                    <div className="min-w-0">
-                      <CheckmarkSelect
-                        className="w-full min-w-0"
-                        options={filteredExternalOptions}
-                        value={row.externalField}
-                        onChange={(value) => updateRow(row.id, { externalField: value })}
-                        emptyLabel={t("selectExternal")}
-                        listLabel={t("externalField")}
-                        portaled
-                        searchable
-                        size="sm"
-                        disabled={saving}
-                      />
-                    </div>
+                      const rowInternalOptions = groupFieldsToSelectOptions([group]).filter(
+                        (opt) => {
+                          const usedElsewhere = rows.some(
+                            (r) =>
+                              r.id !== row.id &&
+                              r.internalGroup === group.group &&
+                              r.internalField === opt.value,
+                          );
+                          return !usedElsewhere;
+                        },
+                      );
 
-                    <div className="flex justify-end lg:justify-center">
+                      return (
+                        <div key={row.id} className={cn("px-4 py-3", MAPPING_ROW_GRID)}>
+                          <div className="min-w-0">
+                            {row.required && row.internalField ? (
+                              <div className="flex min-h-9 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100">
+                                <span className="min-w-0 truncate">
+                                  {currentSimho?.field.label || row.internalField}
+                                </span>
+                                <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                  {t("requiredBadge")}
+                                </span>
+                              </div>
+                            ) : (
+                              <CheckmarkSelect
+                                className="w-full min-w-0"
+                                options={rowInternalOptions}
+                                value={row.internalField}
+                                onChange={(value) => updateRow(row.id, { internalField: value })}
+                                emptyLabel={t("selectInternal")}
+                                listLabel={t("columnOnetrace")}
+                                portaled
+                                searchable
+                                size="sm"
+                                disabled={saving}
+                              />
+                            )}
+                          </div>
+
+                          <MappingArrow />
+
+                          <div className="min-w-0">
+                            <CheckmarkSelect
+                              className="w-full min-w-0"
+                              options={zohoFieldOptions}
+                              value={row.externalField}
+                              onChange={(value) =>
+                                updateRow(row.id, {
+                                  externalField: value,
+                                  externalGroup: zohoGroupKey,
+                                })
+                              }
+                              emptyLabel={
+                                zohoGroupKey ? t("selectExternal") : t("selectExternalGroupFirst")
+                              }
+                              listLabel={t("columnZoho")}
+                              portaled
+                              searchable
+                              size="sm"
+                              disabled={saving || !zohoGroupKey}
+                            />
+                          </div>
+
+                          <div className="flex justify-end lg:justify-center">
+                            {!row.required ? (
+                              <AppButton
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="size-9 shrink-0 p-0 text-slate-500 hover:text-red-600 dark:hover:text-red-400"
+                                disabled={saving}
+                                aria-label={t("removeRow")}
+                                onClick={() => removeRow(row.id)}
+                              >
+                                <Trash2 className="size-4" aria-hidden />
+                              </AppButton>
+                            ) : (
+                              <span className="hidden size-9 lg:block" aria-hidden />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    <div className="flex justify-start px-4 py-3">
                       <AppButton
                         type="button"
-                        variant="ghost"
+                        variant="secondary"
                         size="sm"
-                        className="size-9 shrink-0 p-0 text-slate-500 hover:text-red-600 dark:hover:text-red-400"
-                        disabled={saving}
-                        aria-label={t("removeRow")}
-                        onClick={() => removeRow(row.id)}
+                        disabled={
+                          saving ||
+                          !zohoGroupKey ||
+                          group.fields.length === 0 ||
+                          unusedInternalOptions.length === 0
+                        }
+                        onClick={() => addRow(group.group)}
                       >
-                        <Trash2 className="size-4" aria-hidden />
+                        <Plus className="size-4" aria-hidden />
+                        {t("addRow")}
                       </AppButton>
                     </div>
-                  </div>
+                  </section>
                 );
               })}
             </div>
           </div>
-
-          <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={addRow}>
-            <Plus className="size-4" aria-hidden />
-            {t("addRow")}
-          </AppButton>
 
           <HistoricalDataToggle
             checked={pullHistoricalData}

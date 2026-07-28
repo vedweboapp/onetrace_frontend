@@ -84,7 +84,7 @@ export function ReturnToStockDetailBody({ detail, dueFmt }: Props) {
                         href={`${routes.dashboard.dispatches}/${line.dispatch_id}`}
                         className="font-medium text-slate-800 underline-offset-2 hover:underline dark:text-slate-200"
                       >
-                        {line.dispatch_number}
+                        {line.dispatch_order_number}
                       </DetailEntityLink>
                     </td>
                     <td className={quantityTableCellClass}>

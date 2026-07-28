@@ -36,7 +36,7 @@ export function DispatchDetailScreen({ dispatchId }: Props) {
       }}
       loadError={t("detailLoadError")}
       fetch={fetchDispatch}
-      getTitle={(detail) => detail.dispatch_number}
+      getTitle={(detail) => detail.dispatch_order_number}
     >
       {({ detail, dateFmt }) => (
         <DispatchDetailBody detail={detail} dateFmt={dateFmt} dueFmt={dueFmt} />

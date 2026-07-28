@@ -12,7 +12,7 @@ export async function GET(request: Request, context: RouteContext) {
   const { id: rawId } = await context.params;
 
   if (!dispatchMockRoutesEnabled()) {
-    return proxyDispatchToBackend(request, `dispatch-return-requests/${rawId}/`);
+    return proxyDispatchToBackend(request, `return-request/${rawId}/`);
   }
 
   const id = Number.parseInt(rawId, 10);

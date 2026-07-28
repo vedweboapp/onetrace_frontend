@@ -24,7 +24,7 @@ export function mapProjectFormToPayload(values: ProjectFormValues): ProjectUpser
     form_ids,
     manager_ids,
     start_date: values.start_date.trim(),
-    end_date: values.end_date.trim(),
+    end_date: values.end_date?.trim() ? values.end_date.trim() : null,
     project_status: values.project_status ? Number.parseInt(values.project_status, 10) : undefined,
   };
 }

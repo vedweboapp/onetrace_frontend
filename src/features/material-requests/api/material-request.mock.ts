@@ -64,7 +64,12 @@ function recomputeStatus(detail: MaterialRequestDetail, record: MaterialRequestM
     if (requested - dispatched > 0.0001) anyPending = true;
   }
 
-  if (!anyDispatched) return detail.status;
+  if (!anyDispatched) {
+    if (typeof detail.status === "object" && detail.status) {
+      return detail.status.name || detail.status.status_name || "pending";
+    }
+    return (typeof detail.status === "string" ? detail.status : null) || "pending";
+  }
   if (!anyPending) return "dispatched";
   return "partially_dispatched";
 }
@@ -492,10 +497,21 @@ export async function updateMaterialRequestMock(
     throw new Error(`Mock material request ${id} not found`);
   }
 
+  let statusValue: string | undefined;
+  if (body.status) {
+    statusValue = body.status;
+  } else if (existing.status) {
+    if (typeof existing.status === "object") {
+      statusValue = existing.status.name || existing.status.status_name || undefined;
+    } else if (typeof existing.status === "string") {
+      statusValue = existing.status;
+    }
+  }
+
   const mergedPayload: MaterialRequestCreatePayload = {
     worker_name: body.worker_name ?? nestedId(existing.worker_name) ?? 0,
     requested_date: body.requested_date ?? existing.requested_date,
-    status: body.status ?? existing.status,
+    status: statusValue,
     jobs: body.jobs ?? existing.jobs?.map((j) => ({ job: j.id })) ?? [],
     items: body.items,
     notes: body.notes ?? existing.notes ?? undefined,
@@ -640,8 +656,8 @@ export async function dispatchMaterialRequestMock(
         title: "Materials dispatched",
         description:
           extraCount > 0
-            ? `Dispatch ${dispatch.dispatch_number}: ${dispatchedUnits} units including ${extraCount} extra item(s).`
-            : `Dispatch ${dispatch.dispatch_number}: ${dispatchedUnits} units.`,
+            ? `Dispatch ${dispatch.dispatch_order_number}: ${dispatchedUnits} units including ${extraCount} extra item(s).`
+            : `Dispatch ${dispatch.dispatch_order_number}: ${dispatchedUnits} units.`,
         occurred_at: now,
         tag: "dispatch",
         dispatch_id: dispatch.id,

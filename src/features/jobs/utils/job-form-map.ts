@@ -125,8 +125,10 @@
       start_date: htmlDatetimeLocalToIso(values.start_date),
     };
 
+    const categoryNorm = (values.job_category ?? "").toLowerCase().replace(/[^a-z]/g, "");
+
     const forms = parseFormIdList(values.forms);
-    if (forms != null) payload.forms = forms;
+    if (forms != null && categoryNorm !== "projectjob") payload.forms = forms;
 
     const checklists = parseFormIdList(values.checklists ?? []);
     if (checklists != null) payload.checklists = checklists;
@@ -143,12 +145,18 @@
     const site = parseOptionalIdField(values.site);
     if (site != null) payload.site = site;
 
-    if (job_meta) payload.job_meta = job_meta;
+    if (values.job_category?.trim()) {
+      payload.job_category = values.job_category.trim();
+    }
+
+    if (job_meta && categoryNorm !== "projectjob") {
+      payload.job_meta = job_meta;
+    }
 
     return payload;
   }
 
-  export function emptyJobFormDefaults(): JobFormValues {
+  export function emptyJobFormDefaults(category?: string): JobFormValues {
     return {
       description: "",
       forms: [],
@@ -159,6 +167,7 @@
       site: "",
       assigned_worker: "",
       start_date: "",
+      job_category: category ?? "",
       job_meta_items: [{ group: "", group_name: "", item: "", item_name: "", quantity: "", rate: "" }],
     };
   }
@@ -221,6 +230,7 @@
       checklists: jobChecklistEntries(job).map((c) => String(c.id)),
       assigned_worker: String(getJobAssignedWorkerId(job) ?? ""),
       start_date: formatApiDateTimeForHtmlDatetimeLocal(job.start_date),
+      job_category: job.job_category ?? "",
       job_meta_items:
         compositeItems.length > 0
           ? compositeItems

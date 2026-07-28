@@ -47,7 +47,7 @@ import {
   ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
-import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack, storeBackHrefForPath } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
@@ -67,13 +67,6 @@ export function JobsPanel() {
     return `${pathname}${qs ? `?${qs}` : ""}`;
   }, [pathname, searchParams]);
 
-  const openJobDetail = React.useCallback(
-    (id: number) => {
-      router.push(buildDetailHrefWithListReturn(`${pathname}/${id}`, listHref, id));
-    },
-    [listHref, pathname, router],
-  );
-
   const {
     page,
     pageSize,
@@ -88,8 +81,20 @@ export function JobsPanel() {
   const jobStatusParam = searchParams.get("job_status");
   const assignedWorkerParam = searchParams.get("assigned_worker");
   const jobCategoryParam = searchParams.get("job_category") ?? "";
-  const [selectedJobCategory, setSelectedJobCategory] = React.useState(jobCategoryParam);
   const jobTypeParam = searchParams.get("job_type") ?? "";
+  const isProjectJob =
+    jobCategoryParam.toLowerCase().replace(/[^a-z]/g, "") === "projectjob";
+
+  const openJobDetail = React.useCallback(
+    (id: number) => {
+      const detailPath = buildDetailHrefWithListReturn(`${pathname}/${id}`, listHref, id);
+      const targetUrl = jobCategoryParam
+        ? `${detailPath}?job_category=${encodeURIComponent(jobCategoryParam)}`
+        : detailPath;
+      router.push(targetUrl);
+    },
+    [jobCategoryParam, listHref, pathname, router],
+  );
 
   const jobStatusFilter =
     jobStatusParam && /^\d+$/.test(jobStatusParam) ? Number.parseInt(jobStatusParam, 10) : undefined;
@@ -134,9 +139,9 @@ export function JobsPanel() {
       job_status: jobStatusFilter,
       assigned_worker: assignedWorkerFilter,
       job_type: jobTypeParam || undefined,
-      job_category: selectedJobCategory || undefined,
+      job_category: jobCategoryParam || undefined,
     }),
-    [search, jobStatusFilter, assignedWorkerFilter, jobTypeParam, selectedJobCategory],
+    [search, jobStatusFilter, assignedWorkerFilter, jobTypeParam, jobCategoryParam],
   );
 
   const fetchAllIds = React.useCallback(
@@ -162,7 +167,7 @@ export function JobsPanel() {
     totalRecords: pagination.total_records,
     pageItems: items,
     fetchAllIds,
-    resetDeps: [pageSize, search, jobStatusFilter, assignedWorkerFilter, jobTypeParam, selectedJobCategory],
+    resetDeps: [pageSize, search, jobStatusFilter, assignedWorkerFilter, jobTypeParam, jobCategoryParam],
     updateFields: [],
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
@@ -263,17 +268,6 @@ export function JobsPanel() {
       return jobProjectLabel(row.project, id != null ? projectLabelById[id] : undefined);
     },
     [projectLabelById],
-  );
-
-  const jobCategoryDisplay = React.useCallback(
-    (row: Job) => {
-      const category = typeof row.job_category === "string" ? row.job_category.trim() : "";
-      if (!category) return "—";
-      if (category === "servicejob") return t("category.service");
-      if (category === "projectjob") return t("category.project");
-      return category;
-    },
-    [t],
   );
 
   const commitSearch = React.useCallback(
@@ -395,7 +389,7 @@ export function JobsPanel() {
           job_status: jobStatusFilter,
           assigned_worker: assignedWorkerFilter,
           job_type: jobTypeParam || undefined,
-          job_category: selectedJobCategory || undefined,
+          job_category: jobCategoryParam || undefined,
         });
         if (!cancelled) {
           setItems(nextItems);
@@ -417,7 +411,7 @@ export function JobsPanel() {
     page,
     pageSize,
     search,
-    selectedJobCategory,
+    jobCategoryParam,
     jobStatusFilter,
     assignedWorkerFilter,
     jobTypeParam,
@@ -426,11 +420,22 @@ export function JobsPanel() {
   ]);
 
   function openCreate() {
-    router.push(buildPathWithStoredBack(`${pathname}/new`, listHref));
+    const newPath = `${pathname}/new`;
+    // Store the back href manually because buildPathWithStoredBack strips query strings
+    storeBackHrefForPath(newPath, listHref);
+    // Navigate with the job_category param so the create form and sidebar stay in sync
+    const targetUrl = jobCategoryParam
+      ? `${newPath}?job_category=${encodeURIComponent(jobCategoryParam)}`
+      : newPath;
+    router.push(targetUrl);
   }
 
   function openEdit(row: Job) {
-    router.push(buildPathWithStoredBack(`${pathname}/${row.id}/edit`, listHref));
+    const editPath = buildPathWithStoredBack(`${pathname}/${row.id}/edit`, listHref);
+    const targetUrl = jobCategoryParam
+      ? `${editPath}?job_category=${encodeURIComponent(jobCategoryParam)}`
+      : editPath;
+    router.push(targetUrl);
   }
 
   async function confirmDelete() {
@@ -497,12 +502,13 @@ export function JobsPanel() {
       c.truncate("client", t("fields.client"), (r) => jobClientDisplay(r), {
         title: (r) => jobClientDisplay(r),
       }),
-      c.truncate("project", t("fields.project"), (r) => jobProjectDisplay(r), {
-        title: (r) => jobProjectDisplay(r),
-      }),
-      c.truncate("projectCategory", t("table.projectCategory"), (r) => jobCategoryDisplay(r), {
-        title: (r) => jobCategoryDisplay(r),
-      }),
+      ...(isProjectJob
+        ? [
+            c.truncate("project", t("fields.project"), (r) => jobProjectDisplay(r), {
+              title: (r) => jobProjectDisplay(r),
+            }),
+          ]
+        : []),
       // c.actions("actions", t("table.actions"), (row) => (
       //   <DataTableRowActionsMenu
       //     menuAriaLabel={tList("openRowActions")}
@@ -527,6 +533,7 @@ export function JobsPanel() {
     workerLabelById,
     jobClientDisplay,
     jobProjectDisplay,
+    isProjectJob,
     statusById,
     mass,
   ]);
@@ -535,7 +542,6 @@ export function JobsPanel() {
     search,
     jobStatusParam,
     assignedWorkerParam,
-    categoryParam: jobCategoryParam,
   });
   const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
     loading,
@@ -546,14 +552,9 @@ export function JobsPanel() {
   const pageRange = getListPageRange(pagination);
 
   function clearFilters() {
-    setUrl({ search: null, job_status: null, assigned_worker: null, job_type: null, job_category: null, page: null }, { replace: true });
-    setSelectedJobCategory("");
+    setUrl({ search: null, job_status: null, assigned_worker: null, job_type: null, page: null }, { replace: true });
   }
-  const JobCategoryOptions = [
-    { value: "", label: t("filterAllCategories") },
-    { value: "servicejob", label: t("category.service") },
-    { value: "projectjob", label: t("category.project") },
-  ];
+
   return (
     <div className="space-y-4">
       {!hideListChrome ? (
@@ -602,21 +603,6 @@ export function JobsPanel() {
                   if (open) setFetchFilterOptions(true);
                 }}
                 onChange={(v) => setUrl({ assigned_worker: v || null, page: null }, { replace: true })}
-              />
-              <CheckmarkSelect
-                listLabel={t("filterJobCategory")}
-                buttonAriaLabel={t("filterJobCategory")}
-                options={JobCategoryOptions}
-                value={selectedJobCategory}
-                emptyLabel={t("filterAllCategories")}
-                portaled
-                searchable
-                clearable
-                className="w-full min-w-0 sm:w-44"
-                onChange={(e) => {
-                  setSelectedJobCategory(e);
-                  setUrl({ job_category: e || null, page: null }, { replace: true });
-                }}
               />
             </div>
           }

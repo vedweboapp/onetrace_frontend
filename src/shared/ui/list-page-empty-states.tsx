@@ -11,7 +11,7 @@ export type ListPageOnboardingEmptyProps = {
   icon?: LucideIcon;
   title: string;
   description: string;
-  action: React.ReactNode;
+  action?: React.ReactNode;
   compact?: boolean;
 };
 

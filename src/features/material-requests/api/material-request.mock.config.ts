@@ -9,6 +9,6 @@
  *   - Open DevTools → Network → filter "material-requests" to copy payload/response.
  *
  * When `false`:
- *   - Same route handlers proxy to the backend from `NEXT_PUBLIC_API_URL`.
+ *   - Client calls hit `NEXT_PUBLIC_API_URL` directly (`material-requests/...`).
  */
-export const MATERIAL_REQUEST_USE_MOCK = true;
+export const MATERIAL_REQUEST_USE_MOCK = false;

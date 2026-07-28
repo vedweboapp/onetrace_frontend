@@ -1106,14 +1106,12 @@ const ProjectPinsListTab = ({
               );
             });
             return { ...plot, pins };
-          });
+          })
+          .filter((p) => p.pins.length > 0); // always hide plots with no pins
 
-        const finalPlots = searchActive
-          ? plots.filter((p) => p.pins.length > 0)
-          : plots;
-        return { ...level, plots: finalPlots };
+        return { ...level, plots };
       })
-      .filter((level) => (searchActive ? level.plots.length > 0 : true));
+      .filter((level) => level.plots.length > 0); // always hide levels with no plots
   }, [locations, search, levelFilter, plotFilter]);
 
   const levelOptions = useMemo(
@@ -1371,7 +1369,7 @@ const ProjectPinsListTab = ({
     },
   ];
   return (
-    <div className="min-w-0 divide-y divide-slate-100 dark:divide-slate-800">
+    <div className="min-w-0">
       {dialogVisible && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-99 px-4">
           <div className="w-full max-w-md bg-white p-6 rounded-lg dark:bg-slate-950">
@@ -1669,6 +1667,9 @@ const ProjectPinsListTab = ({
         </div>
       )}
 
+      {/* ── Sticky header: title + filters + bulk action ── */}
+      <div className="sticky top-0 z-10 shrink-0 divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-950">
+
       <div className="px-4 py-4 sm:px-6">
         <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">
           {t("title")}
@@ -1853,7 +1854,7 @@ const ProjectPinsListTab = ({
           </div>
 
 
-          {effectiveSelectedIds.size > 0 && selectedJobStatus == "false" && selectedQuoteStatus == "approved" && (
+          {effectiveSelectedIds.size > 0  && selectedQuoteStatus == "approved" && (
             <AppButton
               variant="primary"
               size="sm"
@@ -1880,6 +1881,9 @@ const ProjectPinsListTab = ({
         </div>
       </div>}
 
+      </div>{/* end sticky header */}
+
+      {/* ── Scrollable content ── */}
       <div>
         {loadError && locations.length === 0 ? (
           <p className="px-4 py-10 text-center text-sm text-red-600 dark:text-red-400 sm:px-6">
@@ -2044,3 +2048,4 @@ const ProjectPinsListTab = ({
 };
 
 export default ProjectPinsListTab;
+

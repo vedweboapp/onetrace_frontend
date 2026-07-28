@@ -28,7 +28,7 @@ export function buildDispatchReturnItems(detail: DispatchDetail): DispatchReturn
 
   return {
     dispatch_id: detail.id,
-    dispatch_number: detail.dispatch_number,
+    dispatch_order_number: detail.dispatch_order_number,
     material_request_id: detail.material_request_id,
     material_request_number: detail.material_request_number,
     worker_name: detail.worker_name,
