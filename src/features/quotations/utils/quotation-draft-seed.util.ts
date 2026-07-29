@@ -15,6 +15,7 @@ function pinsFromProjectPlot(plot: NonNullable<ProjectLevelForQuotation["plots"]
     quantity: a.totalQty,
     selling_price: a.unitPrice,
     pin_count: a.pinCount,
+    source_pins: a.sourcePins,
   }));
 }
 
@@ -30,6 +31,9 @@ export function seedDraftFromSortedLevels(sortedLevels: ProjectLevelForQuotation
       id: newQuotationDraftId("plot"),
       plot_id: typeof p.id === "number" && p.id > 0 ? p.id : null,
       name: typeof p.name === "string" && p.name.trim() ? p.name.trim() : `Plot ${p.id}`,
+      coordinates: Array.isArray(p.coordinates) ? p.coordinates : null,
+      plot_border: typeof p.plot_border === "string" ? p.plot_border : null,
+      plot_bg: typeof p.plot_bg === "string" ? p.plot_bg : null,
       pins: pinsFromProjectPlot(p),
     }));
 
@@ -37,6 +41,12 @@ export function seedDraftFromSortedLevels(sortedLevels: ProjectLevelForQuotation
       id: newQuotationDraftId("sec"),
       level_id: typeof lv.id === "number" && lv.id > 0 ? lv.id : null,
       name: typeof lv.name === "string" && lv.name.trim() ? lv.name.trim() : `Section ${lv.id}`,
+      drawing_file: typeof lv.drawing_file === "string" ? lv.drawing_file : null,
+      drawing_file_type: typeof lv.drawing_file_type === "string" ? lv.drawing_file_type : null,
+      drawing_file_size: typeof lv.drawing_file_size === "number" ? lv.drawing_file_size : null,
+      block: typeof lv.block === "string" ? lv.block : null,
+      level: typeof lv.level === "string" ? lv.level : null,
+      order: typeof lv.order === "number" ? lv.order : null,
       included: true,
       section_pins: [],
       plots,
@@ -62,6 +72,7 @@ function mapQuoteApiPinsToDraft(pins: QuotationQuoteSectionPin[]): QuotationDraf
       quantity: p.quantity,
       selling_price: p.selling_price,
       pin_count: 1,
+      source_pins: Array.isArray(p.source_pins) ? p.source_pins : [],
     }));
 }
 
@@ -80,6 +91,9 @@ function splitSectionPlots(plots: QuotationQuoteSectionPlot[]): { sectionPins: Q
         id: newQuotationDraftId("plot"),
         plot_id: typeof p.plot_id === "number" && p.plot_id > 0 ? p.plot_id : null,
         name: typeof p.name === "string" && p.name.trim() ? p.name.trim() : `Plot ${p.plot_id ?? ""}`,
+        coordinates: Array.isArray(p.coordinates) ? p.coordinates : null,
+        plot_border: typeof p.plot_border === "string" ? p.plot_border : null,
+        plot_bg: typeof p.plot_bg === "string" ? p.plot_bg : null,
         pins: mapQuoteApiPinsToDraft(apiPins),
       });
     }
@@ -99,6 +113,12 @@ export function seedDraftFromQuoteSections(quoteSections: QuotationQuoteSection[
       id: newQuotationDraftId("sec"),
       level_id: typeof sec.level_id === "number" && sec.level_id > 0 ? sec.level_id : null,
       name: typeof sec.name === "string" && sec.name.trim() ? sec.name.trim() : "Section",
+      drawing_file: typeof sec.drawing_file === "string" ? sec.drawing_file : null,
+      drawing_file_type: typeof sec.drawing_file_type === "string" ? sec.drawing_file_type : null,
+      drawing_file_size: typeof sec.drawing_file_size === "number" ? sec.drawing_file_size : null,
+      block: typeof sec.block === "string" ? sec.block : null,
+      level: typeof sec.level === "string" ? sec.level : null,
+      order: typeof sec.order === "number" ? sec.order : null,
       included: true,
       section_pins: sectionPins,
       plots,
