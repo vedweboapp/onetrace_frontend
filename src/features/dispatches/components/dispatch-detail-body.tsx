@@ -58,7 +58,7 @@ export function DispatchDetailBody({ detail, dateFmt, dueFmt }: Props) {
                 href={`${routes.dashboard.materialRequests}/${detail.material_request_id}`}
                 className="font-semibold text-slate-900 underline-offset-2 hover:underline dark:text-slate-100"
               >
-                {detail.material_request_number?.trim() || t("fields.materialRequest")}
+                {detail.material_request_number?.trim() || `#${detail.material_request_id}`}
               </DetailEntityLink>
             ) : (
               "—"

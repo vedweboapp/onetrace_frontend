@@ -137,7 +137,7 @@ export function ReturnToStockCreateScreen({
     return materials.flatMap((d) =>
       (d.lines || []).map((line) => {
         const dispatchedQty = line.quantity ?? 0;
-        const returnedQty = line.restocked_quantity ?? 0;
+        const returnedQty = line.returned_quantity ?? 0;
         const returnableQty = Math.max(0, dispatchedQty - returnedQty);
 
         return {
@@ -173,7 +173,7 @@ export function ReturnToStockCreateScreen({
 
     setSubmitting(true);
     try {
-      await createDispatchReturnRequest({ worker_name: worker, lines });
+      await createDispatchReturnRequest({ lines });
       toastSuccess(t("return.requestSubmittedToast"));
       router.replace(listBack);
     } finally {
@@ -307,7 +307,7 @@ export function ReturnToStockCreateScreen({
                             const draft = drafts[key] ?? { returnQty: "", returnType: "unused" as const, reason: "" };
 
                             const dispatchedQty = row.quantity ?? 0;
-                            const returnedQty = row.restocked_quantity ?? 0;
+                            const returnedQty = row.returned_quantity ?? 0;
                             const returnableQty = Math.max(0, dispatchedQty - returnedQty);
 
                             return (
@@ -329,16 +329,30 @@ export function ReturnToStockCreateScreen({
                                   <QuantityWithUnits value={returnedQty} unitsLabel={t("units")} />
                                 </td>
                                 <td className={cn(quantityTableInputCellClass, "px-4 py-3")}>
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    max={returnableQty}
-                                    step="any"
-                                    value={draft.returnQty}
-                                    disabled={submitting}
-                                    className={cn(compactInputClass, "mx-auto w-20 text-center")}
-                                    onChange={(e) => updateDraft(key, { returnQty: e.target.value })}
-                                  />
+                                  {returnableQty <= 0 ? (
+                                    <span className="flex justify-center text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                      All returned
+                                    </span>
+                                  ) : (
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={returnableQty}
+                                      step="any"
+                                      value={draft.returnQty}
+                                      disabled={submitting}
+                                      className={cn(compactInputClass, "mx-auto w-20 text-center")}
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        const num = Number.parseFloat(v);
+                                        if (num > returnableQty) {
+                                          updateDraft(key, { returnQty: String(returnableQty) });
+                                        } else {
+                                          updateDraft(key, { returnQty: v });
+                                        }
+                                      }}
+                                    />
+                                  )}
                                 </td>
                                 <td className="px-4 py-3">
                                   <CheckmarkSelect
@@ -403,7 +417,7 @@ type MappedDispatch = {
     item_name?: string | null;
     item_sku?: string | null;
     quantity?: number;
-    restocked_quantity?: number;
+    returned_quantity?: number;
     is_extra?: boolean;
     remarks?: string | null;
   }>;
@@ -426,16 +440,18 @@ function mapDispatches(raw: RawDispatch[]): MappedDispatch[] {
     worker: d.worker ?? null,
     workerLabel: workerLabelFrom(d.worker ?? d.worker_name ?? d.worker_name),
     total_qty: Array.isArray(d.lines) ? d.lines.length : 0,
-    lines: (d.lines ?? []).map((l: any) => ({
-      id: l.id,
-      material_request_line: l.material_request_line ?? null,
-      item: l.item,
-      item_name: l.item_name ?? null,
-      item_sku: l.item_sku ?? null,
-      quantity: l.quantity ?? 0,
-      restocked_quantity: l.restocked_quantity ?? 0,
-      is_extra: !!l.is_extra,
-      remarks: l.remarks ?? null,
-    })),
+    lines: (d.lines ?? [])
+      .filter((l: any) => l.is_extra)
+      .map((l: any) => ({
+        id: l.id,
+        material_request_line: l.material_request_line ?? null,
+        item: l.item,
+        item_name: l.item_name ?? null,
+        item_sku: l.item_sku ?? null,
+        quantity: l.quantity ?? 0,
+        returned_quantity: l.returned_quantity ?? 0,
+        is_extra: !!l.is_extra,
+        remarks: l.remarks ?? null,
+      })),
   }));
 }

@@ -243,7 +243,7 @@ export async function createDispatchReturnRequestMock(
     const workerMaterials = buildWorkerReturnMaterials(
       listDispatchMockEntities(),
       {
-        worker_name: payload.worker_name,
+        worker_name: 1,
         date_preset: "custom",
         date_from: "2000-01-01",
         date_to: "2099-12-31",
@@ -261,27 +261,42 @@ export async function createDispatchReturnRequestMock(
   for (const input of requestLines) {
     const qty = Math.max(0, input.quantity);
     if (qty <= 0) continue;
-    const detail = getDispatchMockEntity(input.dispatch_id);
+    const dispatchId =
+      input.dispatch_id ??
+      (input.dispatch_line
+        ? listDispatchMockEntities().find((d) =>
+            d.lines.some((l) => l.id === input.dispatch_line),
+          )?.id
+        : undefined);
+
+    if (!dispatchId) continue;
+    const detail = getDispatchMockEntity(dispatchId);
     if (!detail) continue;
-    const line = detail.lines.find((row) => row.id === input.line_id);
+
+    const lineId = input.line_id ?? input.dispatch_line;
+    const line = detail.lines.find((row) => row.id === lineId);
     if (!line) continue;
 
-    const returnable = Math.max(0, line.dispatched_quantity - line.restocked_quantity);
+    const returnable = Math.max(0, (line.dispatched_quantity ?? 0) - (line.restocked_quantity ?? 0));
     const pending = listDispatchReturnRequestMocks()
       .filter((r) => r.status === "pending")
       .flatMap((r) => r.lines)
-      .filter((l) => l.dispatch_id === input.dispatch_id && l.line_id === input.line_id)
+      .filter((l) => l.dispatch_id === dispatchId && l.dispatch_line === lineId)
       .reduce((sum, l) => sum + l.quantity, 0);
     const applied = Math.min(qty, Math.max(0, returnable - pending));
     if (applied <= 0) continue;
 
+    const itemId = typeof line.item === "number" ? line.item : line.item.id;
+    const itemName = typeof line.item === "number" ? line.item_name : line.item.name;
+
     lines.push({
+      id: Date.now() + Math.floor(Math.random() * 1000),
       dispatch_id: detail.id,
       dispatch_order_number: detail.dispatch_order_number,
-      line_id: line.id,
-      item_id: line.item.id,
-      item_name: line.item.name?.trim() || null,
-      job_name: line.job?.title?.trim() || null,
+      dispatch_line: line.id,
+      item_id: itemId,
+      item: { id: itemId, name: itemName ?? "" },
+      item_name: itemName?.trim() || null,
       quantity: applied,
       return_type: input.return_type,
       reason: input.reason?.trim() || null,
@@ -291,7 +306,7 @@ export async function createDispatchReturnRequestMock(
   if (lines.length === 0) throw new Error("No valid return lines in request");
 
   const workerRef =
-    getDispatchMockEntity(lines[0].dispatch_id)?.worker_name ?? payload.worker_name;
+    getDispatchMockEntity(lines[0].dispatch_id ?? 0)?.worker_name ?? 1;
 
   const request: DispatchReturnRequest = {
     id,
@@ -328,13 +343,14 @@ export async function completeDispatchReturnRequestMock(requestId: number): Prom
 
   const byDispatch = new Map<number, DispatchReturnToStockPayload["lines"]>();
   for (const line of request.lines) {
-    const bucket = byDispatch.get(line.dispatch_id) ?? [];
+    const dispId = line.dispatch_id ?? 0;
+    const bucket = byDispatch.get(dispId) ?? [];
     bucket.push({
-      line_id: line.line_id,
+      line_id: line.dispatch_line,
       quantity: line.quantity,
       return_type: line.return_type,
     });
-    byDispatch.set(line.dispatch_id, bucket);
+    byDispatch.set(dispId, bucket);
   }
 
   for (const [dispatchId, lines] of byDispatch) {

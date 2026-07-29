@@ -32,7 +32,7 @@ export type DispatchLineItem = {
   material_request_line_id?: number | null;
   material_request_line?: number | null;
   job?: DispatchJobRef | null;
-  item: number | {
+  item: {
     id: number;
     name?: string | null;
     sku?: string | null;
@@ -42,12 +42,12 @@ export type DispatchLineItem = {
   item_sku?: string | null;
   quantity?: number;
   worker_name?: number | DispatchWorkerRef | null;
-  requested_quantity?: number;
-  dispatched_quantity?: number;
-  pending_quantity?: number;
-  extra_quantity?: number;
-  restocked_quantity?: number;
-  restock_history?: DispatchLineRestockEntry[];
+  requested_quantity: number;
+  dispatched_quantity: number;
+  pending_quantity: number;
+  extra_quantity: number;
+  restocked_quantity: number;
+  restock_history: DispatchLineRestockEntry[];
   is_extra: boolean;
   dispatched_at?: string | null;
   remarks?: string | null;
@@ -269,7 +269,7 @@ export type CreateDispatchReturnGroupInput = {
 };
 
 export type CreateDispatchReturnRequestPayload = {
-  worker_name: number;
+  worker_name?: number;
   lines?: CreateDispatchReturnRequestLineInput[];
   groups?: CreateDispatchReturnGroupInput[];
 };

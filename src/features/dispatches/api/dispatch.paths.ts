@@ -2,6 +2,8 @@ export const DISPATCH_RETURN_REQUEST_PATHS = {
   list: "return-request",
   detail: (id: number) => `return-request/${id}`,
   complete: (id: number) => `return-request/${id}/complete`,
+  approve: (id: number) => `return-request/${id}/approve/`,
+  reject: (id: number) => `return-request/${id}/reject/`,
 } as const;
 
 export const DISPATCH_PATHS = {

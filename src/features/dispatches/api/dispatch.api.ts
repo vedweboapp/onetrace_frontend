@@ -52,11 +52,40 @@ function normalizeDispatchOrderNumber<T extends { dispatch_order_number?: string
 }
 
 function normalizeDispatchListItem(row: DispatchListItem): DispatchListItem {
-  return normalizeDispatchOrderNumber(row);
+  const norm = normalizeDispatchOrderNumber(row) as any;
+  return {
+    ...norm,
+    worker_name: norm.worker ?? norm.worker_name,
+    material_request_id: norm.material_request ?? norm.material_request_id,
+  };
+}
+
+function normalizeDispatchLine(l: any) {
+  const rawItem = l.item;
+  const item =
+    rawItem != null && typeof rawItem === "object"
+      ? { id: rawItem.id, name: rawItem.name ?? null, sku: rawItem.sku ?? null, stock_quantity: rawItem.stock_quantity ?? null }
+      : { id: typeof rawItem === "number" ? rawItem : 0, name: l.item_name ?? null, sku: l.item_sku ?? null, stock_quantity: null };
+  return {
+    ...l,
+    item,
+    requested_quantity: l.requested_quantity ?? 0,
+    dispatched_quantity: l.dispatched_quantity ?? 0,
+    pending_quantity: l.pending_quantity ?? 0,
+    extra_quantity: l.extra_quantity ?? 0,
+    restocked_quantity: l.restocked_quantity ?? 0,
+    restock_history: l.restock_history ?? [],
+  };
 }
 
 function normalizeDispatchDetail(row: DispatchDetail): DispatchDetail {
-  return normalizeDispatchOrderNumber(row);
+  const norm = normalizeDispatchOrderNumber(row) as any;
+  return {
+    ...norm,
+    worker_name: norm.worker ?? norm.worker_name,
+    material_request_id: norm.material_request ?? norm.material_request_id,
+    lines: Array.isArray(norm.lines) ? norm.lines.map(normalizeDispatchLine) : [],
+  };
 }
 
 function normalizeDispatchReturnItemsData(row: DispatchReturnItemsData): DispatchReturnItemsData {
@@ -124,6 +153,9 @@ export async function fetchWorkerReturnMaterials(
 
 /** Normalize the real API shape → UI-expected shape for DispatchReturnRequest */
 function normalizeReturnRequest(raw: any): DispatchReturnRequest {
+  if (!raw) {
+    return {} as DispatchReturnRequest;
+  }
   const rawLines: any[] = raw.return_request_line ?? raw.lines ?? [];
   const lines = rawLines.map((l: any) => ({
     id: l.id,
@@ -197,6 +229,22 @@ export async function fetchDispatchReturnRequest(id: number): Promise<DispatchRe
 export async function completeDispatchReturnRequest(id: number): Promise<DispatchReturnRequest> {
   const { data } = await api.post<any>(
     resolveDispatchRequestUrl(DISPATCH_RETURN_REQUEST_PATHS.complete(id)),
+  );
+  const raw = data?.success === true ? data.data : data;
+  return normalizeReturnRequest(raw);
+}
+
+export async function approveReturnRequest(id: number): Promise<DispatchReturnRequest> {
+  const { data } = await api.post<any>(
+    resolveDispatchRequestUrl(DISPATCH_RETURN_REQUEST_PATHS.approve(id)),
+  );
+  const raw = data?.success === true ? data.data : data;
+  return normalizeReturnRequest(raw);
+}
+
+export async function rejectReturnRequest(id: number): Promise<DispatchReturnRequest> {
+  const { data } = await api.post<any>(
+    resolveDispatchRequestUrl(DISPATCH_RETURN_REQUEST_PATHS.reject(id)),
   );
   const raw = data?.success === true ? data.data : data;
   return normalizeReturnRequest(raw);

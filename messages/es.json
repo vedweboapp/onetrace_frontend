@@ -2638,7 +2638,9 @@
         "extraItem": "Ítem extra",
         "extraQty": "Cant.",
         "addExtra": "Añadir",
-        "removeExtra": "Eliminar ítem extra"
+        "removeExtra": "Eliminar ítem extra",
+        "sectionNotes": "Notas de despacho",
+        "notesPlaceholder": "Ingrese notas de despacho (opcional)"
       },
       "timeline": {
         "empty": "Aún no hay eventos.",
@@ -2679,6 +2681,7 @@
     "dispatches": {
       "metaTitle": "Envíos",
       "detailMetaTitle": "Detalle del envío",
+      "loadingTitle": "Cargando...",
       "pageTitle": "Envíos",
       "pageSubtitle": "Seguimiento de envíos creados desde solicitudes de material.",
       "searchPlaceholder": "Buscar envíos…",
@@ -2706,7 +2709,11 @@
         "pending": "Pendiente",
         "dispatched": "Enviado",
         "extra": "Extra",
-        "restocked": "Repuesto"
+        "restocked": "Repuesto",
+        "sku": "SKU",
+        "isExtra": "¿Es Extra?",
+        "yes": "Sí",
+        "no": "No"
       },
       "restock": {
         "action": "Reponer",
@@ -2750,7 +2757,7 @@
         "filterAllWorkers": "Todos los trabajadores",
         "searchPlaceholder": "Buscar solicitudes de devolución…",
         "loadMaterials": "Cargar materiales",
-        "selectFiltersHint": "Elija trabajador y filtros, luego cargue materiales.",
+        "selectWorkerHint": "Seleccione un trabajador y cargue materiales.",
         "filteredByDispatch": "Mostrando solo materiales del envío #{id}.",
         "reason": "Motivo",
         "reasonPlaceholder": "¿Por qué se devuelve?",
@@ -2771,8 +2778,8 @@
         "newRequestTitle": "Nueva solicitud de devolución",
         "newRequestSubtitle": "Seleccione un trabajador y los materiales a devolver al inventario.",
         "cancel": "Cancelar",
-        "statusReturnRequest": "Solicitud de devolución",
-        "statusReturnedToStock": "Devuelto al inventario",
+        "statusReturnRequest": "Pendiente",
+        "statusReturnedToStock": "Completado",
         "statusRejected": "Rechazado",
         "returnable": "Devolvible",
         "returnQty": "Cant. a devolver",
@@ -2928,7 +2935,13 @@
           "returns": "Devoluciones"
         },
         "materialsTitle": "Materiales",
-        "materialsEmpty": "No hay materiales vinculados a este trabajo."
+        "materialsEmpty": "No hay materiales vinculados a este trabajo.",
+        "dispatchesTitle": "Envíos",
+        "dispatchesEmpty": "No se han realizado envíos para este trabajo.",
+        "dispatchesLoadError": "Error al cargar los envíos.",
+        "returnsTitle": "Devoluciones",
+        "returnsEmpty": "No se han realizado solicitudes de devolución para este trabajo.",
+        "returnsLoadError": "Error al cargar las devoluciones."
       },
       "updateStatus": {
         "action": "Actualizar estado",

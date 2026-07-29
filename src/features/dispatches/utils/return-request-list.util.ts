@@ -75,7 +75,7 @@ export function filterReturnRequests(
     if (filters.material_request_id != null && filters.material_request_id > 0) {
       const mrId = filters.material_request_id;
       const matches = (row.lines ?? []).some((line) => {
-        const resolved = resolveMaterialRequestId?.(line.dispatch_id);
+        const resolved = resolveMaterialRequestId?.(line.dispatch_id ?? 0);
         return resolved === mrId;
       });
       if (!matches) return false;

@@ -242,7 +242,7 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
     const payload: MaterialRequestDispatchPayload = {
       material_request: detail.id,
       dispatch_date: dispatchDate,
-      notes: notes.trim() || null,
+      notes: notes.trim(),
       // Merge regular lines + extra items into a single lines array
       lines: [
         ...lineEntries,
