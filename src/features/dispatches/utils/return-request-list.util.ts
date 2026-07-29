@@ -9,15 +9,15 @@ import {
 } from "@/features/dispatches/utils/worker-return-date.util";
 
 export function returnRequestLineCount(request: DispatchReturnRequest): number {
-  return request.lines.length;
+  return (request.lines ?? []).length;
 }
 
 export function returnRequestTotalQty(request: DispatchReturnRequest): number {
-  return request.lines.reduce((sum, line) => sum + line.quantity, 0);
+  return (request.lines ?? []).reduce((sum, line) => sum + line.quantity, 0);
 }
 
 export function returnRequestItemSummary(request: DispatchReturnRequest): string {
-  const names = request.lines
+  const names = (request.lines ?? [])
     .map((line) => line.item_name?.trim() || `#${line.item_id}`)
     .filter((name) => name.length > 0);
   if (names.length === 0) return "—";
@@ -74,8 +74,8 @@ export function filterReturnRequests(
 
     if (filters.material_request_id != null && filters.material_request_id > 0) {
       const mrId = filters.material_request_id;
-      const matches = row.lines.some((line) => {
-        const resolved = resolveMaterialRequestId?.(line.dispatch_id);
+      const matches = (row.lines ?? []).some((line) => {
+        const resolved = resolveMaterialRequestId?.(line.dispatch_id ?? 0);
         return resolved === mrId;
       });
       if (!matches) return false;
@@ -86,8 +86,8 @@ export function filterReturnRequests(
       const hay = [
         row.request_number,
         worker,
-        ...row.lines.map((line) => line.item_name?.trim() ?? ""),
-        ...row.lines.map((line) => line.dispatch_order_number),
+        ...(row.lines ?? []).map((line) => line.item_name?.trim() ?? ""),
+        ...(row.lines ?? []).map((line) => line.dispatch_order_number),
       ]
         .join(" ")
         .toLowerCase();

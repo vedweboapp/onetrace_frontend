@@ -59,7 +59,7 @@ function pendingQtyForLine(
   for (const req of pendingRequests) {
     if (req.status !== "pending") continue;
     for (const line of req.lines) {
-      if (line.dispatch_id === dispatchId && line.line_id === lineId) {
+      if (line.dispatch_id === dispatchId && line.dispatch_line === lineId) {
         total += line.quantity;
       }
     }

@@ -2651,7 +2651,9 @@
         "extraItem": "Extra item",
         "extraQty": "Qty",
         "addExtra": "Add",
-        "removeExtra": "Remove extra item"
+        "removeExtra": "Remove extra item",
+        "sectionNotes": "Dispatch notes",
+        "notesPlaceholder": "Enter dispatch notes (optional)"
       },
       "timeline": {
         "empty": "No timeline events yet.",
@@ -2692,6 +2694,7 @@
     "dispatches": {
       "metaTitle": "Dispatches",
       "detailMetaTitle": "Dispatch details",
+      "loadingTitle": "Loading...",
       "pageTitle": "Dispatches",
       "pageSubtitle": "Track material dispatches created from material requests.",
       "searchPlaceholder": "Search dispatches…",
@@ -2719,7 +2722,11 @@
         "pending": "Pending",
         "dispatched": "Dispatched",
         "extra": "Extra",
-        "restocked": "Restocked"
+        "restocked": "Restocked",
+        "sku": "SKU",
+        "isExtra": "Is Extra",
+        "yes": "Yes",
+        "no": "No"
       },
       "restock": {
         "action": "Restock",
@@ -2763,7 +2770,7 @@
         "filterAllWorkers": "All workers",
         "searchPlaceholder": "Search return requests…",
         "loadMaterials": "Load materials",
-        "selectFiltersHint": "Choose a worker and filters, then load materials.",
+        "selectWorkerHint": "Select a worker, then load materials.",
         "filteredByDispatch": "Showing materials for dispatch #{id} only.",
         "reason": "Reason",
         "reasonPlaceholder": "Why is this being returned?",
@@ -2784,8 +2791,8 @@
         "newRequestTitle": "New return request",
         "newRequestSubtitle": "Select a worker and materials to return to stock.",
         "cancel": "Cancel",
-        "statusReturnRequest": "Return request",
-        "statusReturnedToStock": "Returned to stock",
+        "statusReturnRequest": "Pending",
+        "statusReturnedToStock": "Completed",
         "statusRejected": "Rejected",
         "returnable": "Returnable",
         "returnQty": "Return qty",
@@ -2942,7 +2949,13 @@
           "returns": "Returns"
         },
         "materialsTitle": "Materials",
-        "materialsEmpty": "No materials are linked to this job."
+        "materialsEmpty": "No materials are linked to this job.",
+        "dispatchesTitle": "Dispatches",
+        "dispatchesEmpty": "No dispatches have been made for this job.",
+        "dispatchesLoadError": "Failed to load dispatches.",
+        "returnsTitle": "Returns",
+        "returnsEmpty": "No return requests have been made for this job.",
+        "returnsLoadError": "Failed to load returns."
       },
       "updateStatus": {
         "action": "Update status",

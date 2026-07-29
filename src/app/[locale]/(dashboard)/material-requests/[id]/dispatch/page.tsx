@@ -4,8 +4,8 @@ import { getTranslations } from "next-intl/server";
 import { MaterialRequestDispatchScreen } from "@/features/material-requests/components/material-request-dispatch-screen";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("Dashboard.materialRequests");
-  return { title: t("dispatch.pageTitle") };
+  const t = await getTranslations("Dashboard.materialRequests.dispatch");
+  return { title: t("pageTitle") };
 }
 
 type PageProps = {

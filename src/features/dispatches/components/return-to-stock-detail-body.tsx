@@ -37,7 +37,7 @@ export function ReturnToStockDetailBody({ detail, dueFmt }: Props) {
         <DetailPanelCard title={t("return.detail.sectionOverview")}>
           <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-3">
             <DetailMetricCard label={t("table.workerName")}>
-              {dispatchReturnWorkerLabel(detail.worker_name)}
+              {dispatchReturnWorkerLabel(detail.worker_name ?? detail.worker)}
             </DetailMetricCard>
             <DetailMetricCard label={t("return.detail.requestNumber")}>
               <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">
@@ -71,21 +71,32 @@ export function ReturnToStockDetailBody({ detail, dueFmt }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {detail.lines.map((line, index) => (
+                {(detail.lines ?? []).map((line, index) => (
                   <tr
-                    key={`${line.dispatch_id}-${line.line_id}-${index}`}
+                    key={`${line.id ?? index}-${line.dispatch_line}`}
                     className="border-b border-slate-100 dark:border-slate-800"
                   >
-                    <td className="px-3 py-3 font-medium text-slate-900 dark:text-slate-100">
-                      {line.item_name?.trim() || "—"}
-                    </td>
                     <td className="px-3 py-3">
-                      <DetailEntityLink
-                        href={`${routes.dashboard.dispatches}/${line.dispatch_id}`}
-                        className="font-medium text-slate-800 underline-offset-2 hover:underline dark:text-slate-200"
-                      >
-                        {line.dispatch_order_number}
-                      </DetailEntityLink>
+                      <p className="font-medium text-slate-900 dark:text-slate-100">
+                        {line.item_name?.trim() || line.item?.name?.trim() || "—"}
+                      </p>
+                      {(line.item?.sku || line.item_name) && (
+                        <p className="text-xs text-slate-400 dark:text-slate-500">
+                          {line.item?.sku ?? ""}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-slate-600 dark:text-slate-400">
+                      {line.dispatch_order_number ? (
+                        <DetailEntityLink
+                          href={`${routes.dashboard.dispatches}/${line.dispatch_id}`}
+                          className="font-medium text-slate-800 underline-offset-2 hover:underline dark:text-slate-200"
+                        >
+                          {line.dispatch_order_number}
+                        </DetailEntityLink>
+                      ) : (
+                        <span className="text-slate-500">#{line.dispatch_line}</span>
+                      )}
                     </td>
                     <td className={quantityTableCellClass}>
                       <QuantityWithUnits value={line.quantity} unitsLabel={t("units")} />

@@ -59,7 +59,7 @@ export function DispatchesPanel() {
   );
 
   const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } = useListUrlState();
-  const [items, setItems] = React.useState<DispatchListItem[]>([]);
+  const [items, setItems] = React.useState<any[]>([]);
   const [pagination, setPagination] = React.useState({
     total_records: 0,
     total_pages: 1,
@@ -94,7 +94,9 @@ export function DispatchesPanel() {
           search: search.trim() || undefined,
         });
         if (!cancelled) {
-          setItems(rows);
+          // Normalize server rows so UI can rely on `worker`/`worker_name`, `lines`, and `total_qty` shape
+          const { normalizeDispatchList } = await import("@/features/dispatches/utils/dispatch-normalize.util");
+          setItems(normalizeDispatchList(rows as any));
           setPagination(p);
         }
       } catch (error) {
@@ -116,11 +118,21 @@ export function DispatchesPanel() {
     return [
       c.primary("dispatch_order_number", t("table.dispatchId"), (r) => r.dispatch_order_number),
       c.date("dispatch_date", t("table.dispatchDate"), (r) => r.dispatch_date, dateFmt),
-      c.truncate("worker_name", t("table.workerName"), (r) => dispatchWorkerLabel(r.worker_name)),
+      c.truncate(
+        "worker_name",
+        t("table.workerName"),
+        // support responses that include either `worker_name` or `worker` object
+        (r) => dispatchWorkerLabel((r as any).worker_name ?? (r as any).worker),
+      ),
       c.tabular(
         "total_qty",
         t("table.qty"),
-        (r) => `${r.total_qty} ${t("units")}`,
+        (r) => {
+          // prefer server-provided total_qty, but fall back to lines.length when present
+          const lines = (r as any).lines;
+          const qty = Number.isFinite(Number(r.total_qty)) ? Number(r.total_qty) : lines ? (Array.isArray(lines) ? lines.length : 0) : 0;
+          return `${qty} ${t("units")}`;
+        },
         { headerClassName: quantityTableHeaderClass, cellClassName: quantityTableCellClass },
       ),
     ];
@@ -191,43 +203,53 @@ export function DispatchesPanel() {
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>
               {items.map((row) => (
-                <ListPageCard
-                  key={row.id}
-                  dataListRowId={row.id}
-                  className={highlightClassName(row.id)}
-                  title={row.dispatch_order_number}
-                  subtitle={dispatchWorkerLabel(row.worker_name)}
-                  meta={
-                    <span className="block truncate">
-                      {row.material_request_number?.trim() || (row.material_request_id > 0 ? `#${row.material_request_id}` : "—")}
-                    </span>
-                  }
-                  footer={
-                    <div className="flex w-full flex-wrap items-center justify-between gap-3">
-                      <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                        <Calendar className="size-3.5" aria-hidden />
-                        {formatFlexibleApiDate(row.dispatch_date, dateFmt)}
+                <div key={row.id}>
+                  <ListPageCard
+                    dataListRowId={row.id}
+                    className={highlightClassName(row.id)}
+                    title={row.dispatch_order_number}
+                    subtitle={dispatchWorkerLabel((row as any).worker_name ?? (row as any).worker)}
+                    meta={
+                      <span className="block truncate">
+                        {row.material_request_number?.trim() || (row.material_request_id > 0 ? `#${row.material_request_id}` : "—")}
                       </span>
-                      <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                        <Package className="size-3.5" aria-hidden />
-                        {row.total_qty} {t("units")}
-                      </span>
+                    }
+                    footer={
+                      <div className="flex w-full flex-wrap items-center justify-between gap-3">
+                        <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                          <Calendar className="size-3.5" aria-hidden />
+                          {formatFlexibleApiDate(row.dispatch_date, dateFmt)}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                          <Package className="size-3.5" aria-hidden />
+                          {((row as any).lines && Array.isArray((row as any).lines) ? (row as any).lines.length : row.total_qty) ?? 0} {t("units")}
+                        </span>
+                      </div>
+                    }
+                    onCardClick={() => openDetail(row.id)}
+                    menu={
+                      <DataTableRowActionsMenu
+                        menuAriaLabel={tList("openRowActions")}
+                        items={[
+                          {
+                            id: "view",
+                            label: t("actions.view"),
+                            onSelect: () => openDetail(row.id),
+                          },
+                        ]}
+                      />
+                    }
+                  />
+                  {Array.isArray((row as any).lines) ? (
+                    <div className="px-3 pb-3 text-sm text-slate-600">
+                      {(row as any).lines.map((l: any) => (
+                        <div key={l.id} className="py-0.5">
+                          {l.item_name ?? `#${l.item}`}{l.is_extra ? " (extra)" : ""}
+                        </div>
+                      ))}
                     </div>
-                  }
-                  onCardClick={() => openDetail(row.id)}
-                  menu={
-                    <DataTableRowActionsMenu
-                      menuAriaLabel={tList("openRowActions")}
-                      items={[
-                        {
-                          id: "view",
-                          label: t("actions.view"),
-                          onSelect: () => openDetail(row.id),
-                        },
-                      ]}
-                    />
-                  }
-                />
+                  ) : null}
+                </div>
               ))}
             </ListPageCardGrid>
           </div>

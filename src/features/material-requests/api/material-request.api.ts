@@ -5,6 +5,8 @@ import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { resolveMaterialRequestRequestUrl } from "./material-request-http.util";
 import { MATERIAL_REQUEST_PATHS } from "./material-request.paths";
+import { resolveDispatchRequestUrl } from "@/features/dispatches/api/dispatch-http.util";
+import { DISPATCH_PATHS } from "@/features/dispatches/api/dispatch.paths";
 import type { MaterialRequestDispatchPayload } from "../types/material-request-dispatch.types";
 import type {
   MaterialRequestCreatePayload,
@@ -94,7 +96,7 @@ export async function dispatchMaterialRequest(
   void _detail;
   void _itemLabels;
   const { data } = await api.post<ApiEnvelope<MaterialRequestDetail>>(
-    resolveMaterialRequestRequestUrl(MATERIAL_REQUEST_PATHS.dispatch(id)),
+    resolveDispatchRequestUrl(DISPATCH_PATHS.list),
     payload,
   );
   assertApiSuccess(data);
