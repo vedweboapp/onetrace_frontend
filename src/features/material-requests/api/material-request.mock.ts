@@ -531,6 +531,13 @@ export async function dispatchMaterialRequestMock(
   if (!detail) {
     throw new Error(`Mock material request ${id} not found`);
   }
+  if (payload.material_request !== id) {
+    throw new Error(`Invalid material_request reference: expected ${id}`);
+  }
+  if (!payload.dispatch_date?.trim()) {
+    throw new Error("Invalid dispatch_date");
+  }
+
   const itemLabels = await loadItemLabels(authHeader);
   const record = getMaterialRequestMockRecord(detail.id);
   const items = detail.items ?? [];
@@ -538,12 +545,32 @@ export async function dispatchMaterialRequestMock(
 
   const expandedLines: Array<{ line_key: string; quantity: number }> = [];
 
-  for (const line of payload.lines) {
+  for (const line of payload.lines ?? []) {
     const qty = Math.max(0, line.quantity);
     if (qty <= 0) continue;
 
-    if (line.line_key?.trim()) {
-      expandedLines.push({ line_key: line.line_key.trim(), quantity: qty });
+    if (line.material_request_line != null && line.material_request_line > 0) {
+      const rowIndex = items.findIndex((row) => row.id === line.material_request_line);
+      if (rowIndex >= 0) {
+        expandedLines.push({ line_key: materialRequestLineKey(items[rowIndex], rowIndex), quantity: qty });
+        continue;
+      }
+    }
+
+    if (line.item != null && line.item > 0) {
+      const sources = items
+        .map((row, index) => {
+          const itemId = nestedId(row.item);
+          if (itemId !== line.item) return null;
+          const key = materialRequestLineKey(row, index);
+          const requested = materialRequestItemRequestedQty(row);
+          const dispatched = record.lineDispatched[key] ?? materialRequestItemDispatchedQty(row);
+          const pending = Math.max(0, requested - dispatched);
+          return { lineKey: key, pending, requested, alreadyDispatched: dispatched };
+        })
+        .filter((row): row is NonNullable<typeof row> => row != null);
+
+      expandedLines.push(...allocateMaterialRequestDispatchQuantity(sources, qty));
       continue;
     }
 
@@ -561,6 +588,12 @@ export async function dispatchMaterialRequestMock(
         .filter((row): row is NonNullable<typeof row> => row != null);
 
       expandedLines.push(...allocateMaterialRequestDispatchQuantity(sources, qty));
+      continue;
+    }
+
+    if (line.line_key?.trim()) {
+      expandedLines.push({ line_key: line.line_key.trim(), quantity: qty });
+      continue;
     }
   }
 
@@ -570,7 +603,7 @@ export async function dispatchMaterialRequestMock(
   }
 
   const now = new Date().toISOString();
-  for (const extra of payload.extra_items) {
+  for (const extra of payload.extra_items ?? []) {
     const qty = Math.max(0, extra.quantity);
     if (qty <= 0 || extra.item <= 0) continue;
     const itemName = itemLabels[extra.item] ?? `Item #${extra.item}`;
@@ -618,7 +651,7 @@ export async function dispatchMaterialRequestMock(
       });
     }
 
-    for (const extra of payload.extra_items) {
+    for (const extra of payload.extra_items ?? []) {
       const qty = Math.max(0, extra.quantity);
       if (qty <= 0 || extra.item <= 0) continue;
       dispatchLines.push({
@@ -649,7 +682,7 @@ export async function dispatchMaterialRequestMock(
     });
 
     record.dispatchIds = [dispatch.id, ...record.dispatchIds];
-    const extraCount = payload.extra_items.filter((e) => e.quantity > 0).length;
+    const extraCount = (payload.extra_items ?? []).filter((e) => e.quantity > 0).length;
     record.logs = [
       {
         id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
