@@ -363,7 +363,7 @@ export function ReturnToStockCreateScreen({
                                     portaled
                                     searchable={false}
                                     size="sm"
-                                    disabled={submitting}
+                                    disabled={submitting || returnableQty <= 0}
                                     className="w-full"
                                     onChange={(v) =>
                                       updateDraft(key, {
@@ -376,7 +376,7 @@ export function ReturnToStockCreateScreen({
                                   <textarea
                                     rows={1}
                                     value={draft.reason}
-                                    disabled={submitting}
+                                    disabled={submitting || returnableQty <= 0}
                                     placeholder={t("return.reasonPlaceholder")}
                                     className={cn(surfaceTextareaClassName, "min-h-9 resize-none py-1.5 text-sm w-full")}
                                     onChange={(e) => updateDraft(key, { reason: e.target.value })}

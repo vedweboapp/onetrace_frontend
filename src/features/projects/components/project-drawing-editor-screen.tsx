@@ -400,6 +400,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [filePath, setFilePath] = React.useState("");
   const [plots, setPlots] = React.useState<LocalPlot[]>([]);
   const [selectedPlotId, setSelectedPlotId] = React.useState<string>("");
+  const [hoveredPlotId, setHoveredPlotId] = React.useState<string | null>(null);
   const [activeTool, setActiveTool] = React.useState<Tool>("select");
   const [dirty, setDirty] = React.useState(false);
   const [zoom, setZoom] = React.useState(1);
@@ -563,7 +564,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         setDrawingName(detail.name);
         setFilePath(detail.drawing_file);
         setPlots(normalized);
-        setSelectedPlotId((prev) => prev || (normalized[0] ? String(normalized[0].id) : ""));
+        setSelectedPlotId((prev) => prev);
       } else {
         toastError(t("loadError"));
       }
@@ -1880,6 +1881,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               strokeWidth={isSelected ? 3.5 : 2}
                               strokeDasharray="5 4"
                               className="cursor-pointer transition-all"
+                              onMouseEnter={() => setHoveredPlotId(String(plot.id))}
+                              onMouseLeave={() => setHoveredPlotId(null)}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (activeTool === "pin") {
@@ -1906,6 +1909,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               stroke={plot.plot_border || "#059669"}
                               strokeWidth={3}
                               className="cursor-pointer"
+                              onMouseEnter={() => setHoveredPlotId(String(plot.id))}
+                              onMouseLeave={() => setHoveredPlotId(null)}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (activeTool === "pin") {
@@ -1968,19 +1973,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               <line x1={maxX} y1={minY} x2={minX} y2={maxY} stroke={plot.plot_border || "#059669"} strokeWidth={2.5} />
                             </g>
                           ) : null}
-                          <g className="pointer-events-none">
-                            <rect
-                              x={labelX - badgeWidth / 2}
-                              y={Math.max(8, labelY - 12)}
-                              width={badgeWidth}
-                              height={24}
-                              rx={12}
-                              fill="rgba(15,23,42,0.9)"
-                            />
-                            <text x={labelX} y={Math.max(24, labelY + 4)} fill="white" fontSize={12} fontWeight={700} textAnchor="middle">
-                              {labelText}
-                            </text>
-                          </g>
                         </g>
                       );
                     })}
@@ -2083,6 +2075,41 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                       })}
                     </React.Fragment>
                   ))}
+                  
+                  {/* Plot Labels Layer (Top) */}
+                  <svg
+                    className="absolute left-0 top-0 pointer-events-none"
+                    style={{ zIndex: 300 }}
+                    width={pageSize.width}
+                    height={pageSize.height}
+                    viewBox={`0 0 ${pageSize.width} ${pageSize.height}`}
+                  >
+                    {plots.map((plot) => {
+                      if (hoveredPlotId === String(plot.id)) return null;
+                      const plotPoints = plot.coordinates.map((p) => percentToPixel(p, pageSize));
+                      if (plotPoints.length < 3) return null;
+                      
+                      const [labelX, labelY] = getCentroid(plotPoints);
+                      const labelText = plot.name.length > 24 ? `${plot.name.slice(0, 24)}...` : plot.name;
+                      const badgeWidth = Math.max(90, Math.min(220, labelText.length * 7 + 20));
+                      
+                      return (
+                        <g key={`plot-label-${plot.id}`}>
+                          <rect
+                            x={labelX - badgeWidth / 2}
+                            y={Math.max(8, labelY - 12)}
+                            width={badgeWidth}
+                            height={24}
+                            rx={12}
+                            fill="rgba(15,23,42,0.9)"
+                          />
+                          <text x={labelX} y={Math.max(24, labelY + 4)} fill="white" fontSize={12} fontWeight={700} textAnchor="middle">
+                            {labelText}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </svg>
                 </div>
               </div>
             </div>
