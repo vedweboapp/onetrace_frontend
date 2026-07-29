@@ -22,6 +22,7 @@ function mapDraftPinsToQuotePins(pins: QuotationDraftLine[]): QuotationQuoteSect
       quantity: pin.quantity,
       selling_price: pin.selling_price,
       pins_total,
+      source_pins: Array.isArray(pin.source_pins) ? pin.source_pins : [],
     };
   });
 }
@@ -44,6 +45,9 @@ export function mergeQuotationDraftIntoPayload(base: QuotationCreatePayload, dra
         plot_order: plotOrder++,
         plot_id: null,
         name: SECTION_DIRECT_PLOT_NAME,
+        coordinates: null,
+        plot_border: null,
+        plot_bg: null,
         pins,
         plot_total,
       });
@@ -55,6 +59,9 @@ export function mergeQuotationDraftIntoPayload(base: QuotationCreatePayload, dra
         plot_order: plotOrder++,
         plot_id: plot.plot_id,
         name: plot.name,
+        coordinates: Array.isArray(plot.coordinates) ? plot.coordinates : null,
+        plot_border: typeof plot.plot_border === "string" ? plot.plot_border : null,
+        plot_bg: typeof plot.plot_bg === "string" ? plot.plot_bg : null,
         pins,
         plot_total,
       });
@@ -63,6 +70,12 @@ export function mergeQuotationDraftIntoPayload(base: QuotationCreatePayload, dra
       section_order: si,
       level_id: section.level_id,
       name: capitalizeFirstLetter(section.name ?? ""),
+      drawing_file: typeof section.drawing_file === "string" ? section.drawing_file : null,
+      drawing_file_type: typeof section.drawing_file_type === "string" ? section.drawing_file_type : null,
+      drawing_file_size: typeof section.drawing_file_size === "number" ? section.drawing_file_size : null,
+      block: typeof section.block === "string" ? section.block : null,
+      level: typeof section.level === "string" ? section.level : null,
+      order: typeof section.order === "number" ? section.order : null,
       plots: plotsOut,
       section_total: draftSectionTotal(section),
     };
