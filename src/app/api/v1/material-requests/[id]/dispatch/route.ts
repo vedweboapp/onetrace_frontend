@@ -17,7 +17,7 @@ function parseId(raw: string): number | null {
 export async function POST(request: Request, context: RouteContext) {
   const { id: rawId } = await context.params;
   if (!materialRequestMockRoutesEnabled()) {
-    return proxyMaterialRequestToBackend(request, `material-requests/${rawId}/dispatch/`);
+    return proxyMaterialRequestToBackend(request, `material-requests/${rawId}/dispatch`);
   }
 
   const id = parseId(rawId);

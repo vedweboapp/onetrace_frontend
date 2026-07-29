@@ -60,9 +60,7 @@ export async function POST(request: Request) {
     return dispatchMockJsonError("Invalid JSON body");
   }
 
-  if (!Number.isFinite(body.worker_name) || body.worker_name <= 0) {
-    return dispatchMockJsonError("worker_name is required");
-  }
+
   const hasLines = Array.isArray(body.lines) && body.lines.length > 0;
   const hasGroups = Array.isArray(body.groups) && body.groups.length > 0;
   if (!hasLines && !hasGroups) {

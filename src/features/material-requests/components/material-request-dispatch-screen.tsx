@@ -29,6 +29,10 @@ import { AppButton, CheckmarkSelect, SurfaceShell, surfaceInputClassName } from 
 type LineDraft = {
   key: string;
   itemId: number;
+  /** IDs of the underlying material_request_line rows for this item. */
+  materialRequestLineIds: number[];
+  /** Per-line requested quantities aligned with materialRequestLineIds. */
+  lineRequestedQtys: number[];
   materialName: string;
   requested: number;
   alreadyDispatched: number;
@@ -52,6 +56,7 @@ const compactInputClass = cn(surfaceInputClassName, "h-9 min-h-9 rounded-md px-2
 
 export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
   const t = useTranslations("Dashboard.materialRequests");
+  const dispatchT = useTranslations("Dashboard.materialRequests.dispatch");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -80,6 +85,7 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
   const [lines, setLines] = React.useState<LineDraft[]>([]);
   const [extraDraft, setExtraDraft] = React.useState<ExtraDraft>({ id: "new", item: "", quantity: "" });
   const [extraRows, setExtraRows] = React.useState<ExtraDraft[]>([]);
+  const [notes, setNotes] = React.useState<string>("");
 
   React.useEffect(() => {
     let cancelled = false;
@@ -104,23 +110,46 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
         setItemOptions(options);
         setItemLabelById(labels);
         const summaries = row.item_summaries ?? [];
+        // Build a map from item_id → underlying material_request_line entries
+        const linesByItemId = new Map<number, Array<{ id: number; requested: number }>>();
+        for (const line of row.items ?? []) {
+          const itemId =
+            line.item != null && typeof line.item === "object" && "id" in line.item
+              ? (line.item as { id: number }).id
+              : typeof line.item === "number"
+                ? line.item
+                : null;
+          if (itemId == null || line.id == null) continue;
+          const requested =
+            typeof line.requested_quantity === "number" ? line.requested_quantity
+            : typeof line.quantity === "number" ? line.quantity
+            : 0;
+          const bucket = linesByItemId.get(itemId) ?? [];
+          bucket.push({ id: line.id, requested });
+          linesByItemId.set(itemId, bucket);
+        }
         setLines(
-          summaries.map((itemRow) => ({
-            key: itemRow.group_key,
-            itemId: itemRow.item_id,
-            materialName: itemRow.item_name,
-            requested: itemRow.requested_quantity,
-            alreadyDispatched: itemRow.dispatched_quantity,
-            fulfilled: itemRow.fulfilled_quantity,
-            surplus: itemRow.surplus_quantity,
-            pending: itemRow.pending_quantity,
-            dispatchQty:
-              itemRow.default_dispatch_quantity != null && itemRow.default_dispatch_quantity > 0
-                ? String(itemRow.default_dispatch_quantity)
-                : itemRow.pending_quantity > 0
-                  ? String(itemRow.pending_quantity)
-                  : "",
-          })),
+          summaries.map((itemRow) => {
+            const underlying = linesByItemId.get(itemRow.item_id) ?? [];
+            return {
+              key: itemRow.group_key,
+              itemId: itemRow.item_id,
+              materialRequestLineIds: underlying.map((l) => l.id),
+              lineRequestedQtys: underlying.map((l) => l.requested),
+              materialName: itemRow.item_name,
+              requested: itemRow.requested_quantity,
+              alreadyDispatched: itemRow.dispatched_quantity,
+              fulfilled: itemRow.fulfilled_quantity,
+              surplus: itemRow.surplus_quantity,
+              pending: itemRow.pending_quantity,
+              dispatchQty:
+                itemRow.default_dispatch_quantity != null && itemRow.default_dispatch_quantity > 0
+                  ? String(itemRow.default_dispatch_quantity)
+                  : itemRow.pending_quantity > 0
+                    ? String(itemRow.pending_quantity)
+                    : "",
+            };
+          }),
         );
       } catch (error) {
         if (!cancelled) setLoadError(getApiErrorDisplayMessage(error, t("detailLoadError")));
@@ -157,26 +186,77 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
 
   async function handleSubmit() {
     if (!detail) return;
+    const dispatchDate = new Date().toISOString().slice(0, 10);
+
+    // Build lines: one entry per underlying material_request_line.
+    // If an item maps to multiple lines, split qty proportionally by requested_quantity.
+    const lineEntries = lines.flatMap((row) => {
+      const qty = Number.parseFloat(row.dispatchQty.trim());
+      if (!Number.isFinite(qty) || qty <= 0) return [];
+
+      const lineIds = row.materialRequestLineIds;
+      const lineReqs = row.lineRequestedQtys;
+
+      // When we have individual line IDs, emit one entry per line
+      if (lineIds.length > 0) {
+        const totalReq = lineReqs.reduce((s, q) => s + q, 0);
+        return lineIds.map((lineId, idx) => {
+          // Proportional split; last line gets any rounding remainder
+          const proportion = totalReq > 0 ? lineReqs[idx] / totalReq : 1 / lineIds.length;
+          const lineQty =
+            idx === lineIds.length - 1
+              ? Math.round((qty - lineIds.slice(0, -1).reduce((s, _, i) => {
+                  const p = totalReq > 0 ? lineReqs[i] / totalReq : 1 / lineIds.length;
+                  return s + Math.round(p * qty * 1000) / 1000;
+                }, 0)) * 1000) / 1000
+              : Math.round(proportion * qty * 1000) / 1000;
+          return {
+            material_request_line: lineId,
+            item: row.itemId,
+            quantity: lineQty,
+            is_extra: false,
+          };
+        }).filter((e) => e.quantity > 0);
+      }
+
+      // Fallback: no individual line IDs available (aggregated only)
+      return [{ item: row.itemId, quantity: qty, is_extra: false }];
+    });
+
+    // Extra items: include any rows the user already added, plus the current draft
+    const extraCandidates: ExtraDraft[] = [...extraRows];
+    const draftItem = extraDraft.item.trim();
+    const draftQty = Number.parseFloat(extraDraft.quantity.trim());
+    if (draftItem && Number.isFinite(draftQty) && draftQty > 0) {
+      extraCandidates.push({ id: extraDraft.id ?? `draft-${Date.now()}`, item: draftItem, quantity: String(draftQty) });
+    }
+
+    const validExtra = extraCandidates
+      .map((row) => ({
+        item: Number.parseInt(row.item, 10),
+        quantity: Number.parseFloat(row.quantity.trim()),
+        is_extra: true,
+      }))
+      .filter((row) => Number.isFinite(row.item) && row.item > 0 && Number.isFinite(row.quantity) && row.quantity > 0);
+
     const payload: MaterialRequestDispatchPayload = {
-      lines: lines.flatMap((row) => {
-        const qty = Number.parseFloat(row.dispatchQty.trim());
-        if (!Number.isFinite(qty) || qty <= 0) return [];
-        return [{ item_id: row.itemId, quantity: qty }];
-      }),
-      extra_items: extraRows
-        .map((row) => ({
-          item: Number.parseInt(row.item, 10),
-          quantity: Number.parseFloat(row.quantity.trim()),
-        }))
-        .filter((row) => Number.isFinite(row.item) && row.item > 0 && Number.isFinite(row.quantity) && row.quantity > 0),
+      material_request: detail.id,
+      dispatch_date: dispatchDate,
+      notes: notes.trim(),
+      // Merge regular lines + extra items into a single lines array
+      lines: [
+        ...lineEntries,
+        ...validExtra.map((e) => ({ item: e.item, quantity: e.quantity, is_extra: true })),
+      ],
+      extra_items: validExtra,
     };
 
-    if (payload.lines.length === 0 && payload.extra_items.length === 0) return;
+    if (payload.lines.length === 0 && (payload.extra_items?.length ?? 0) === 0) return;
 
     setSaving(true);
     try {
       await dispatchMaterialRequest(detail.id, detail, payload, itemLabelById);
-      toastSuccess(t("dispatch.successToast"));
+      toastSuccess(dispatchT("successToast"));
       router.replace(buildPathWithStoredBack(detailHref, listHref));
     } finally {
       setSaving(false);
@@ -206,14 +286,14 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
   return (
     <div className="pb-12">
       <DetailPageHeader
-        title={t("dispatch.pageTitle")}
+        title={dispatchT("pageTitle")}
         subtitle={
           detail
-            ? t("dispatch.pageSubtitle", { requestNumber: detail.request_number })
-            : t("dispatch.pageSubtitleGeneric")
+            ? dispatchT("pageSubtitle", { requestNumber: detail.request_number })
+            : dispatchT("pageSubtitleGeneric")
         }
         backHref={safeBack}
-        backAriaLabel={t("dispatch.backAria")}
+        backAriaLabel={dispatchT("backAria")}
         actions={
           <div className="flex items-center gap-2">
             <AppButton
@@ -233,7 +313,7 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
               disabled={!canSubmit || saving || loading || !detail}
               onClick={() => void handleSubmit()}
             >
-              {t("dispatch.confirm")}
+              {dispatchT("confirm")}
             </AppButton>
           </div>
         }
@@ -249,19 +329,19 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
           <p className="p-6 text-sm text-red-600 dark:text-red-400">{loadError}</p>
         ) : (
           <div className="space-y-8 p-4 sm:p-6">
-            <p className="text-sm text-slate-600 dark:text-slate-400">{t("dispatch.pageHint")}</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">{dispatchT("pageHint")}</p>
 
             <section className="space-y-2">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">{t("dispatch.sectionLines")}</h2>
+              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">{dispatchT("sectionLines")}</h2>
               <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
                 <table className="w-full min-w-[720px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
                       <th className="px-3 py-2">{t("lineItems.itemDetails")}</th>
-                      <th className={quantityTableHeaderClass}>{t("dispatch.requested")}</th>
-                      <th className={quantityTableHeaderClass}>{t("dispatch.dispatched")}</th>
-                      <th className={quantityTableHeaderClass}>{t("dispatch.pending")}</th>
-                      <th className={cn(quantityTableHeaderClass, "w-36")}>{t("dispatch.dispatchNow")}</th>
+                      <th className={quantityTableHeaderClass}>{dispatchT("requested")}</th>
+                      <th className={quantityTableHeaderClass}>{dispatchT("dispatched")}</th>
+                      <th className={quantityTableHeaderClass}>{dispatchT("pending")}</th>
+                      <th className={cn(quantityTableHeaderClass, "w-36")}>{dispatchT("dispatchNow")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -322,12 +402,12 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">{t("dispatch.sectionExtra")}</h2>
+              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">{dispatchT("sectionExtra")}</h2>
               <div className="flex flex-wrap items-end gap-2">
                 <div className="min-w-[12rem] flex-1">
                   <CheckmarkSelect
-                    listLabel={t("dispatch.extraItem")}
-                    buttonAriaLabel={t("dispatch.extraItem")}
+                    listLabel={dispatchT("extraItem")}
+                    buttonAriaLabel={dispatchT("extraItem")}
                     options={extraItemOptions}
                     value={extraDraft.item}
                     emptyLabel={t("placeholders.item")}
@@ -344,13 +424,13 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
                   step="any"
                   value={extraDraft.quantity}
                   disabled={saving}
-                  placeholder={t("dispatch.extraQty")}
+                  placeholder={dispatchT("extraQty")}
                   className={cn(compactInputClass, "w-24")}
                   onChange={(e) => setExtraDraft((prev) => ({ ...prev, quantity: e.target.value }))}
                 />
                 <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={addExtraRow}>
                   <Plus className="size-4" aria-hidden />
-                  {t("dispatch.addExtra")}
+                  {dispatchT("addExtra")}
                 </AppButton>
               </div>
               {extraRows.length > 0 ? (
@@ -368,7 +448,7 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
                           variant="ghost"
                           size="sm"
                           disabled={saving}
-                          aria-label={t("dispatch.removeExtra")}
+                          aria-label={dispatchT("removeExtra")}
                           onClick={() => removeExtraRow(row.id)}
                         >
                           <Trash2 className="size-4" aria-hidden />
@@ -378,6 +458,17 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
                   })}
                 </ul>
               ) : null}
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">{dispatchT("sectionNotes")}</h2>
+              <textarea
+                value={notes}
+                disabled={saving}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder={dispatchT("notesPlaceholder")}
+                className={cn(surfaceInputClassName, "min-h-[120px] w-full rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700")}
+              />
             </section>
           </div>
         )}
