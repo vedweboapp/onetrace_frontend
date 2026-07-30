@@ -3,7 +3,6 @@ import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
-import { resolvePurchaseOrderRequestUrl } from "./purchase-order-http.util";
 import { PURCHASE_ORDER_PATHS } from "./purchase-order.paths";
 import type {
   PurchaseOrderCreatePayload,
@@ -42,7 +41,7 @@ export async function fetchPurchaseOrdersPage(
   if (filters?.due_date?.trim()) params.due_date = filters.due_date.trim();
 
   const { data } = await api.get<PurchaseOrderListResponse>(
-    resolvePurchaseOrderRequestUrl(PURCHASE_ORDER_PATHS.list),
+    PURCHASE_ORDER_PATHS.list,
     { params },
   );
   assertEnvelopeSuccess(data);
@@ -54,7 +53,7 @@ export async function fetchAllPurchaseOrderIds(filters?: PurchaseOrderListFilter
 }
 
 export async function fetchPurchaseOrder(id: number, options?: { silent?: boolean }): Promise<PurchaseOrderDetail> {
-  const { data } = await api.get<ApiEnvelope<PurchaseOrderDetail>>(resolvePurchaseOrderRequestUrl(PURCHASE_ORDER_PATHS.detail(id)), {
+  const { data } = await api.get<ApiEnvelope<PurchaseOrderDetail>>(PURCHASE_ORDER_PATHS.detail(id), {
     skipErrorToast: options?.silent === true,
   });
   assertApiSuccess(data);
@@ -63,7 +62,7 @@ export async function fetchPurchaseOrder(id: number, options?: { silent?: boolea
 
 export async function createPurchaseOrder(body: PurchaseOrderCreatePayload): Promise<PurchaseOrderDetail> {
   const { data } = await api.post<ApiEnvelope<PurchaseOrderDetail>>(
-    resolvePurchaseOrderRequestUrl(PURCHASE_ORDER_PATHS.list),
+    PURCHASE_ORDER_PATHS.list,
     body,
   );
   assertApiSuccess(data);
@@ -75,7 +74,7 @@ export async function updatePurchaseOrder(
   body: PurchaseOrderUpdatePayload,
 ): Promise<PurchaseOrderDetail> {
   const { data } = await api.patch<ApiEnvelope<PurchaseOrderDetail>>(
-    resolvePurchaseOrderRequestUrl(PURCHASE_ORDER_PATHS.detail(id)),
+    PURCHASE_ORDER_PATHS.detail(id),
     body,
   );
   assertApiSuccess(data);
@@ -83,6 +82,6 @@ export async function updatePurchaseOrder(
 }
 
 export async function deletePurchaseOrder(id: number): Promise<void> {
-  const { data } = await api.delete<ApiEnvelope<null>>(resolvePurchaseOrderRequestUrl(PURCHASE_ORDER_PATHS.detail(id)));
+  const { data } = await api.delete<ApiEnvelope<null>>(PURCHASE_ORDER_PATHS.detail(id));
   assertApiSuccess(data);
 }

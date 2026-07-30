@@ -1,10 +1,13 @@
 "use client";
 
+import * as React from "react";
 import type { ReactNode } from "react";
-import type { Control, FieldPath, FieldValues } from "react-hook-form";
-import PhoneInput from "react-phone-number-input/react-hook-form";
-import type { Country } from "react-phone-number-input";
+import type { Control, FieldPath, FieldValues, RegisterOptions } from "react-hook-form";
+import { useController } from "react-hook-form";
+import PhoneInput from "react-phone-number-input";
+import type { Country, Value } from "react-phone-number-input";
 import { cn } from "@/core/utils/http.util";
+import { normalizePhoneForPhoneInput } from "@/shared/utils/phone-input.util";
 import { FieldErrorText, FieldLabel } from "./field-primitives";
 import { SurfacePhoneCountrySelect } from "./surface-phone-country-select";
 
@@ -24,7 +27,7 @@ export type SurfacePhoneFieldProps<TFieldValues extends FieldValues> = {
   placeholder?: string;
   className?: string;
   limitMaxLength?: boolean;
-  rules?: any;
+  rules?: RegisterOptions<TFieldValues, FieldPath<TFieldValues>>;
 };
 
 export function SurfacePhoneField<TFieldValues extends FieldValues>({
@@ -42,8 +45,20 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
   limitMaxLength = true,
   rules,
 }: SurfacePhoneFieldProps<TFieldValues>) {
+  const { field } = useController({ control, name, rules });
+  const { value, onChange, onBlur, name: fieldName, ref } = field;
   const errId = error ? `${id}-error` : undefined;
   const described = [describedBy, errId].filter(Boolean).join(" ") || undefined;
+
+  const displayValue = React.useMemo(
+    () => normalizePhoneForPhoneInput(typeof value === "string" ? value : ""),
+    [value],
+  );
+
+  React.useEffect(() => {
+    const raw = typeof value === "string" ? value : "";
+    if (raw && raw !== displayValue) onChange(displayValue);
+  }, [displayValue, onChange, value]);
 
   return (
     <div className={cn("surface-phone-root", className)}>
@@ -51,9 +66,9 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
         {label}
       </FieldLabel>
       <PhoneInput
-        control={control}
-        name={name}
-        rules={rules}
+        value={displayValue as Value}
+        onChange={(next) => onChange(next ?? "")}
+        onBlur={onBlur}
         international
         limitMaxLength={limitMaxLength}
         defaultCountry={defaultCountry}
@@ -66,6 +81,8 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
         )}
         numberInputProps={{
           id,
+          name: fieldName,
+          ref,
           "aria-invalid": error ? true : undefined,
           "aria-describedby": described,
         }}

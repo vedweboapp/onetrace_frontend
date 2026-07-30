@@ -424,6 +424,11 @@
           "title": "Vendors",
           "mappingDescription": "Match Zoho vendor fields to your SimHo vendor fields.",
           "toggleSection": "Toggle vendors section"
+        },
+        "purchase_orders": {
+          "title": "Purchase orders",
+          "mappingDescription": "Match Zoho purchase order fields to your SimHo purchase order fields.",
+          "toggleSection": "Toggle purchase orders section"
         }
       },
       "zohoIntegrationGuide": {
@@ -1602,6 +1607,7 @@
       "deletedToast": "QR code deleted",
       "cardAssignedJob": "Assigned to job #{id}",
       "cardNotAssigned": "Not assigned to a job",
+      "cardBatch": "Batch {batch}",
       "cardScans": "{count, plural, one {# scan} other {# scans}}",
       "status": {
         "assigned": "Assigned",
@@ -1610,6 +1616,7 @@
       "table": {
         "qrImage": "QR code",
         "qrCodeId": "QR ID",
+        "batchNumber": "Batch no.",
         "status": "Status",
         "assignedJob": "Assigned job",
         "scanCount": "Scans",
@@ -1625,7 +1632,19 @@
         "submit": "Generate",
         "cancel": "Cancel",
         "successToast": "QR codes generated successfully",
-        "validationCount": "Enter a valid number of QR codes."
+        "validationCount": "Enter a valid number of QR codes.",
+        "result": {
+          "title": "Generated batch details",
+          "close": "Close",
+          "downloadCsv": "Download CSV",
+          "downloadSuccess": "CSV download started",
+          "downloadError": "Could not download QR code CSV. Try again.",
+          "batchNumber": "Batch number",
+          "quantity": "Quantity",
+          "createdAt": "Created",
+          "createdBy": "Created by",
+          "codesCount": "{count, plural, one {# QR code generated} other {# QR codes generated}}"
+        }
       },
       "detail": {
         "loadingTitle": "Loading…",
@@ -2471,8 +2490,9 @@
         "productName": "Product name",
         "group": "Group",
         "qty": "Qty",
-        "rate": "Rate",
-        "listPrice": "List price",
+        "rate": "Unit price",
+        "amount": "Amount",
+        "listPrice": "Unit price",
         "addItem": "Add item",
         "remove": "Remove line",
         "selectProduct": "Select product…",
@@ -2965,6 +2985,29 @@
         "placeholder": "Select status",
         "loading": "Loading statuses…"
       },
+      "qualityAssurance": {
+        "label": "Quality ensured?",
+        "yes": "Yes",
+        "no": "No",
+        "rejectTitle": "Reject quality assurance",
+        "rejectBody": "Add a short note explaining why this work is rejected.",
+        "remarks": "Remarks",
+        "remarksPlaceholder": "e.g. Work not completed properly.",
+        "remarksRequired": "Remarks are required to reject.",
+        "cancel": "Cancel",
+        "rejectConfirm": "Reject",
+        "approvedToast": "Quality assurance approved",
+        "rejectedToast": "Quality assurance rejected",
+        "error": "Could not submit quality assurance. Try again.",
+        "sectionTitle": "Quality assurance",
+        "status": "Status",
+        "statusApproved": "Approved",
+        "statusRejected": "Rejected",
+        "statusPending": "Pending",
+        "approvedAt": "Approved at",
+        "approvedBy": "Approved by",
+        "column": "QA"
+      },
       "forms": {
         "sectionTitle": "Forms",
         "pageTitle": "Job form",
@@ -3160,6 +3203,26 @@
       "emptyTitle": "No projects yet",
       "emptyDescription": "Create your first project to begin planning and tracking work.",
       "loadError": "Could not load projects. Try again.",
+      "pins": {
+        "pageTitle": "Pin details",
+        "backAria": "Back",
+        "loadError": "Could not load this pin. Try again.",
+        "pinDetails": "Pin details",
+        "assignedForm": "Assigned form",
+        "product": "Product",
+        "quantity": "Quantity",
+        "status": "Status",
+        "variation": "Variation",
+        "location": "Location",
+        "coordinates": "Coordinates",
+        "form": "Form",
+        "description": "Description",
+        "yes": "Yes",
+        "no": "No",
+        "noFormAssigned": "No form assigned to this pin.",
+        "formSubmitted": "Submitted",
+        "formNotSubmitted": "Not submitted"
+      },
       "missingOrganization": "No workspace organization on this session. Sign out and sign in again, or contact support.",
       "createdToast": "Project created successfully",
       "updatedToast": "Project updated successfully",

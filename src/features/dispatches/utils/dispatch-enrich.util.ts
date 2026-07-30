@@ -8,18 +8,6 @@ import type {
   DispatchWorkerRef,
 } from "@/features/dispatches/types/dispatch.types";
 
-export const DEFAULT_MOCK_DISPATCH_USER: DispatchUserRef = {
-  id: 1,
-  name: "Admin",
-  email: "admin@yopmail.com",
-  username: "admin",
-};
-
-export function resolveMockDispatchedBy(authHeader?: string | null): DispatchUserRef {
-  void authHeader;
-  return DEFAULT_MOCK_DISPATCH_USER;
-}
-
 let userLabelCache: Record<number, string> | null = null;
 
 export async function loadDispatchUserLabelById(): Promise<Record<number, string>> {

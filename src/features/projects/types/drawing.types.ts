@@ -1,5 +1,6 @@
-import type { ProjectPagination } from "./project.types";
+import type { QualityAssuranceRecord } from "@/features/jobs/types/quality-assurance.types";
 import type { ItemInstallationTypeRef } from "@/features/items/types/item.types";
+import type { ProjectPagination } from "./project.types";
 
 export type DrawingUserRef = {
   id: number;
@@ -77,6 +78,7 @@ export type DrawingPin = {
     bg_colour: string;
     text_colour: string;
   } | null;
+  quality_assurance?: QualityAssuranceRecord | null;
 };
 
 export type DrawingPinAttachment = {
