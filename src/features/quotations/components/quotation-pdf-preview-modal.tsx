@@ -154,7 +154,6 @@ function PlotTable({
               <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600 }}>Item / Description</th>
               <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, width: 80 }}>Variation</th>
               <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, width: 70 }}>Quantity</th>
-              <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, width: 80 }}>Status</th>
               <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, width: 90 }}>Pin Link</th>
             </tr>
           </thead>
@@ -165,7 +164,6 @@ function PlotTable({
                   ? `#${sp.location}`
                   : sp.pin_id != null ? `Pin #${sp.pin_id}` : `#${pinIdx + 1}`;
               const itemName = sp.name || group.name || "Item";
-              const statusName = sp.status_name || "Placed";
               const pinKey = getQuotationPinSnapshotKey(sectionIdx, plotIdx, pinGroupIdx, pinIdx);
               const qty = sp.quantity ?? group.quantity ?? 1;
               const isVariation = sp.variation ?? false;
@@ -192,13 +190,6 @@ function PlotTable({
                   </td>
                   <td style={{ padding: "8px 10px", textAlign: "center", color: "#374151" }}>{variationText}</td>
                   <td style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, color: "#374151" }}>{qty}</td>
-                  <td style={{ padding: "8px 10px", textAlign: "center" }}>
-                    <span style={{
-                      display: "inline-block", borderRadius: 3, padding: "2px 8px",
-                      fontSize: 10, fontWeight: 600, background: "#f1f5f9", color: "#475569",
-                      border: "1px solid #e2e8f0",
-                    }}>{statusName}</span>
-                  </td>
                   <td style={{ padding: "8px 10px", textAlign: "center" }}>
                     {pinLink ? (
                       <a
