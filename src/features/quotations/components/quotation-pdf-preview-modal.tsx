@@ -149,10 +149,13 @@ function PlotTable({
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
           <thead>
             <tr style={{ background: "#334155", color: "white" }}>
-              <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, width: 140 }}>Snapshot</th>
+              <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, width: 130 }}>Snapshot</th>
               <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, width: 80 }}>Location</th>
               <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600 }}>Item / Description</th>
-              <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, width: 90 }}>Status</th>
+              <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, width: 80 }}>Variation</th>
+              <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, width: 70 }}>Quantity</th>
+              <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, width: 80 }}>Status</th>
+              <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, width: 90 }}>Pin Link</th>
             </tr>
           </thead>
           <tbody>
@@ -164,6 +167,13 @@ function PlotTable({
               const itemName = sp.name || group.name || "Item";
               const statusName = sp.status_name || "Placed";
               const pinKey = getQuotationPinSnapshotKey(sectionIdx, plotIdx, pinGroupIdx, pinIdx);
+              const qty = sp.quantity ?? group.quantity ?? 1;
+              const isVariation = sp.variation ?? false;
+              const variationText = isVariation ? "Yes" : "No";
+
+              const frontendAddr = process.env.NEXT_PUBLIC_FRONTEND_ADDRESS || "http://localhost:3000";
+              const pinLink = sp.pin_id ? `${frontendAddr}/placeholder-public-pin/preview/${sp.pin_id}` : null;
+
               return (
                 <tr key={rowIdx} style={{ borderTop: "1px solid #f1f5f9", background: rowIdx % 2 === 1 ? "#f8fafc" : "white" }}>
                   <td style={{ padding: "8px 10px" }}>
@@ -180,12 +190,28 @@ function PlotTable({
                       <div style={{ color: "#6b7280", marginTop: 2, fontSize: 10 }}>{(sp as any).description}</div>
                     )}
                   </td>
+                  <td style={{ padding: "8px 10px", textAlign: "center", color: "#374151" }}>{variationText}</td>
+                  <td style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, color: "#374151" }}>{qty}</td>
                   <td style={{ padding: "8px 10px", textAlign: "center" }}>
                     <span style={{
                       display: "inline-block", borderRadius: 3, padding: "2px 8px",
                       fontSize: 10, fontWeight: 600, background: "#f1f5f9", color: "#475569",
                       border: "1px solid #e2e8f0",
                     }}>{statusName}</span>
+                  </td>
+                  <td style={{ padding: "8px 10px", textAlign: "center" }}>
+                    {pinLink ? (
+                      <a
+                        href={pinLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: "#2563eb", textDecoration: "underline", fontWeight: 500 }}
+                      >
+                        View
+                      </a>
+                    ) : (
+                      <span style={{ color: "#94a3b8" }}>—</span>
+                    )}
                   </td>
                 </tr>
               );
@@ -260,6 +286,116 @@ function SectionBlock({
         </div>
       </div>
       <div style={{ borderTop: "1px dashed #e2e8f0", marginTop: 8 }} />
+    </div>
+  );
+}
+
+/* ── Terms Section ───────────────────────────────────── */
+
+function TermsSection() {
+  return (
+    <div style={{ marginTop: 24, fontSize: 11, color: "#374151", lineHeight: 1.6 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "#111827", marginBottom: 12 }}>Description</div>
+
+      <div style={{ fontWeight: 600, marginTop: 10 }}>1. Definitions & Interpretation</div>
+      <div style={{ color: "#4b5563" }}>
+        "Red 5" means Red 05 Ltd. "Client" means the company or person to whom the accompanying
+        quotation is addressed. "Works" means the fire stopping services described in the quotation.
+      </div>
+
+      <div style={{ fontWeight: 600, marginTop: 10 }}>2. Basis of Quotation</div>
+      <div style={{ color: "#4b5563" }}>
+        2.1 Any purchase order or instruction from the Client shall constitute acceptance of both the quotation
+        and these Conditions. 2.2 No other terms shall apply unless agreed in writing by a Red 5 director.
+      </div>
+
+      <div style={{ fontWeight: 600, marginTop: 10 }}>3. Scope of Works</div>
+      <div style={{ color: "#4b5563" }}>
+        The quotation covers only the following items, undertaken strictly in accordance with the fire-strategy
+        drawings supplied by the Client and the manufacturers' tested details:
+        <ol type="1" style={{ paddingLeft: 20, marginTop: 4, marginBottom: 4 }}>
+          <li>Mastic-seal cable and pipe penetrations within ceiling voids in plots and communal areas.
+              Any work additional to mastic seals within bin/bike stores may need to be reviewed
+              (price currently not included, but may not be required).</li>
+          <li>Seal service-entry penetrations from communal areas into plots.</li>
+          <li>Seal SVP penetrations through ceilings by wrap and compound in concrete slab zones.</li>
+          <li>Seal sleeves to low-profile ducting. Ducting passing through the ceiling of top floor
+              plots to be confirmed (price currently not included, but may not be required).</li>
+          <li>Install intumescent putty pads to electrical back boxes and mastic seal to radiator back boxes.</li>
+          <li>Record every installation (location reference, photographs, unique sticker ID) and provide a
+              flattened PDF report on completion.</li>
+          <li>Deliver toolbox talks with relevant trades to coordinate installation strategy prior to first fix.</li>
+        </ol>
+        Cost for riser cupboard floor seals has been omitted. Please note if GRP grates are to be installed,
+        some firestopping may be required to seal the hollowcore slab edge prior to the installation of grates.
+        Any item not expressly listed above is excluded.
+      </div>
+
+      <div style={{ fontWeight: 600, marginTop: 10 }}>4. Drawings, Specifications & Design Responsibility</div>
+      <div style={{ color: "#4b5563" }}>
+        4.1 Fire lines are as indicated on the latest issue of the fire-strategy drawings provided by the
+        Client's site team. 4.2 Red 5 does not accept design responsibility. Our installations are executed
+        strictly to the supplied fire-strategy drawings and to third-party test evidence. 4.3 Where the
+        drawings change after acceptance of the quotation, Red 5 reserves the right to re-price affected elements.
+      </div>
+
+      <div style={{ fontWeight: 600, marginTop: 10 }}>5. Programme & Working Hours</div>
+      <div style={{ color: "#4b5563" }}>
+        5.1 Unless otherwise agreed, Works will be performed Monday–Friday 08:00 – 16:00. 5.2 Saturday working
+        is available by prior agreement. 5.3 The Client shall ensure areas are ready, accessible and free from
+        obstruction when Red 5 arrives. 5.4 Site attendance is subject to a minimum order value of £500.00.
+      </div>
+
+      <div style={{ fontWeight: 600, marginTop: 10 }}>6. Access, Facilities & Site Conditions</div>
+      <div style={{ color: "#4b5563" }}>
+        The Client shall provide at no cost to Red 5: a safe, dry storage area for materials and small tools
+        near the workface; 110V or 230V power and potable water within reasonable distance; access to suitable
+        skips or bins for disposal; adequate welfare facilities.
+      </div>
+
+      <div style={{ fontWeight: 600, marginTop: 10 }}>7. Variations & Additional Costs</div>
+      <div style={{ color: "#4b5563" }}>
+        7.1 If prerequisite fire-stopping provisions (e.g. clearances, framing, or services layout) are not
+        met by preceding trades, the Client must either rectify the issue or instruct Red 5 to employ variation
+        systems. 7.2 Significant damage to our installations that requires extra works may incur a variation
+        process. 7.3 Such variations will attract additional cost and/or programme impact, notified via a
+        written Variation Quotation prior to execution.
+      </div>
+
+      <div style={{ fontWeight: 600, marginTop: 10 }}>8. Quality Assurance & Reporting</div>
+      <div style={{ color: "#4b5563" }}>
+        8.1 All materials carry current third-party certification (e.g. IFC, UL-EU, CERTIFIRE). 8.2 Installation
+        operatives undergo regular training and operate under the BM Trada fire stopping scheme. 8.3 On
+        completion, Red 5 will issue an installation register and photographic record.
+      </div>
+
+      <div style={{ fontWeight: 600, marginTop: 10 }}>9. Health, Safety & Environmental</div>
+      <div style={{ color: "#4b5563" }}>
+        Red 5 works in accordance with the CDM Regulations 2015, the Management of Health & Safety at Work
+        Regulations 1999, and our ISO 45001 OH&S management system. Operatives will attend the Client's site
+        induction and abide by site rules.
+      </div>
+
+      <div style={{ fontWeight: 600, marginTop: 10 }}>10. Payment Terms</div>
+      <div style={{ color: "#4b5563" }}>
+        10.1 Unless stated otherwise in the quotation, invoices shall be submitted monthly in arrears for
+        Works completed on site. 10.2 Payment is due within 30 days of invoice date. 10.3 Red 5 reserves the
+        right to charge statutory late payment interest under the Late Payment of Commercial Debts (Interest)
+        Act 1998.
+      </div>
+
+      <div style={{ fontWeight: 600, marginTop: 10 }}>11. Limitation of Liability & Confidentiality</div>
+      <div style={{ color: "#4b5563" }}>
+        11.1 Red 5 shall not be liable for delay or non-performance caused by circumstances beyond its
+        reasonable control. 11.2 Each party shall keep confidential all technical or commercial information
+        received from the other and shall use such information solely for the purpose of the contract.
+      </div>
+
+      <div style={{ fontWeight: 600, marginTop: 10 }}>12. Force Majeure</div>
+      <div style={{ color: "#4b5563" }}>
+        Neither party shall be liable for delay or failure to perform its obligations where such delay or
+        failure results from events beyond its reasonable control.
+      </div>
     </div>
   );
 }
@@ -349,6 +485,9 @@ function DocumentBody({ data, pinSnapshots, sections }: DocumentBodyProps) {
             </div>
           </div>
         )}
+
+        {/* Terms & Conditions / Definitions */}
+        <TermsSection />
 
         {/* Summary */}
         {sections.length > 0 && (
