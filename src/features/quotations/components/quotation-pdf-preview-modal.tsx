@@ -438,7 +438,7 @@ function useDownloadPdf(quoteName: string | undefined, quotationId: number) {
 
       try {
         const [html2canvas, { default: jsPDF }] = await Promise.all([
-          import("html2canvas").then((m) => m.default),
+          import("html2canvas-pro").then((m) => m.default),
           import("jspdf"),
         ]);
 
