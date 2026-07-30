@@ -2,31 +2,32 @@
 
 import * as React from "react";
 import { Download, Loader2 } from "lucide-react";
-import { fetchQuotation, exportQuotation } from "@/features/quotations/api/quotation.api";
-import type { QuotationDetail, QuotationQuoteSection } from "@/features/quotations/types/quotation.types";
-import { toastApiError } from "@/shared/feedback/app-toast";
+import { fetchQuotation } from "@/features/quotations/api/quotation.api";
+import type {
+  QuotationDetail,
+  QuotationQuoteSection,
+  QuotationQuoteSectionPin,
+  QuotationQuoteSectionSourcePin,
+} from "@/features/quotations/types/quotation.types";
 import { AppButton, AppModal } from "@/shared/ui";
+import {
+  generateQuotationPinSnapshots,
+  extractPinSnapshotTasks,
+  getQuotationPinSnapshotKey,
+} from "@/features/quotations/utils/quotation-pin-snapshot.util";
 
-/* ─── helpers ─────────────────────────────────────────────── */
-
-function esc(v: unknown): string {
-  const s = v == null ? "" : String(v);
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+/* ── helpers ─────────────────────────────────────────── */
 
 function fmtMoney(value: number | string | null | undefined): string {
   const n = Number(value ?? 0);
-  return Number.isFinite(n)
-    ? n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const formatted = Number.isFinite(n)
+    ? n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : "0.00";
+  return `\u00A3${formatted}`;
 }
 
 function fmtDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "\u2014";
   try {
     return new Date(iso).toLocaleDateString("en-GB", {
       day: "2-digit",
@@ -38,431 +39,452 @@ function fmtDate(iso: string | null | undefined): string {
   }
 }
 
-/* ─── HTML builder ─────────────────────────────────────────── */
+/* ── Snapshot cell ──────────────────────────────────── */
 
-interface SiteAny {
-  site_name?: string;
-  address_line_1?: string | null;
-  address_line_2?: string | null;
-  city?: string | null;
-  state?: string | null;
-  country?: string | null;
-  pincode?: string | null;
+function PinSnapshotCellComponent({
+  pinKey,
+  pinSnapshots,
+  locationLabel,
+}: {
+  pinKey: string;
+  pinSnapshots: Map<string, string>;
+  locationLabel?: string | number | null;
+}) {
+  const dataUrl = pinSnapshots.get(pinKey);
+
+  return (
+    <div
+      style={{
+        width: 130,
+        height: 90,
+        flexShrink: 0,
+        position: "relative",
+        overflow: "hidden",
+        background: "#f1f5f9",
+        border: "1px solid #e2e8f0",
+        borderRadius: 4,
+      }}
+    >
+      {dataUrl ? (
+        <img
+          src={dataUrl}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          alt={locationLabel ? `Pin location ${locationLabel}` : "Pin snapshot"}
+        />
+      ) : (
+        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <span style={{ fontSize: 10, color: "#94a3b8" }}>No snapshot</span>
+        </div>
+      )}
+    </div>
+  );
 }
 
-interface ContactAny {
-  id?: number;
-  name?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  address_line_1?: string | null;
-  address_line_2?: string | null;
-  city?: string | null;
-  state?: string | null;
-  country?: string | null;
-  pincode?: string | null;
+const PinSnapshotCell = React.memo(PinSnapshotCellComponent);
+
+/* ── Build pin rows from section ─────────────────────── */
+
+type PinRow = {
+  sp: QuotationQuoteSectionSourcePin;
+  group: QuotationQuoteSectionPin;
+  pinIdx: number;
+  pinGroupIdx: number;
+};
+
+function buildPinRows(section: QuotationQuoteSection) {
+  const allRows: { plotName: string; rows: PinRow[]; plotSubtotal: number; plotVat: number; plotTotal: number }[] = [];
+  for (let plotIdx = 0; plotIdx < section.plots.length; plotIdx++) {
+    const plot = section.plots[plotIdx];
+    const plotSubtotal = plot.plot_total ?? 0;
+    const plotVat = plotSubtotal * 0.2;
+    const plotTotal = plotSubtotal + plotVat;
+    const rows: PinRow[] = [];
+    const pins = plot.pins ?? [];
+    for (let groupIdx = 0; groupIdx < pins.length; groupIdx++) {
+      const group = pins[groupIdx];
+      const sourcePins = group.source_pins ?? [];
+      if (sourcePins.length > 0) {
+        sourcePins.forEach((sp, spIdx) => rows.push({ sp, group, pinIdx: spIdx, pinGroupIdx: groupIdx }));
+      } else {
+        rows.push({
+          sp: { pin_id: null, x_coordinate: null, y_coordinate: null, name: group.name, status_name: null, location: null } as QuotationQuoteSectionSourcePin,
+          group,
+          pinIdx: 0,
+          pinGroupIdx: groupIdx,
+        });
+      }
+    }
+    allRows.push({ plotName: plot.name, rows, plotSubtotal, plotVat, plotTotal });
+  }
+  return allRows;
 }
 
-function buildPdfHtml(data: QuotationDetail): string {
-  /* ── extract fields ── */
-  const customer = (typeof data.customer === "object" && data.customer !== null
-    ? data.customer
-    : {}) as { name?: string; phone?: string };
+/* ── Plot table ───────────────────────────────────────── */
 
-  const contact = (typeof data.primary_customer_contact === "object" &&
-    data.primary_customer_contact !== null
-    ? data.primary_customer_contact
-    : {}) as ContactAny;
+function PlotTable({
+  sectionIdx,
+  plotIdx,
+  plotName,
+  rows,
+  plotSubtotal,
+  plotVat,
+  plotTotal,
+  pinSnapshots,
+}: {
+  sectionIdx: number;
+  plotIdx: number;
+  plotName: string;
+  rows: PinRow[];
+  plotSubtotal: number;
+  plotVat: number;
+  plotTotal: number;
+  pinSnapshots: Map<string, string>;
+}) {
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontSize: 10, fontWeight: 600, color: "#64748b", textTransform: "uppercase", marginBottom: 6, marginLeft: 4 }}>
+        {plotName}
+      </div>
+      <div style={{ border: "1px solid #e2e8f0", borderRadius: 6, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+          <thead>
+            <tr style={{ background: "#334155", color: "white" }}>
+              <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, width: 140 }}>Snapshot</th>
+              <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, width: 80 }}>Location</th>
+              <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600 }}>Item / Description</th>
+              <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, width: 90 }}>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ sp, group, pinIdx, pinGroupIdx }, rowIdx) => {
+              const locText =
+                sp.location != null && String(sp.location).trim() !== ""
+                  ? `#${sp.location}`
+                  : sp.pin_id != null ? `Pin #${sp.pin_id}` : `#${pinIdx + 1}`;
+              const itemName = sp.name || group.name || "Item";
+              const statusName = sp.status_name || "Placed";
+              const pinKey = getQuotationPinSnapshotKey(sectionIdx, plotIdx, pinGroupIdx, pinIdx);
+              return (
+                <tr key={rowIdx} style={{ borderTop: "1px solid #f1f5f9", background: rowIdx % 2 === 1 ? "#f8fafc" : "white" }}>
+                  <td style={{ padding: "8px 10px" }}>
+                    <PinSnapshotCell
+                      pinKey={pinKey}
+                      pinSnapshots={pinSnapshots}
+                      locationLabel={sp.location}
+                    />
+                  </td>
+                  <td style={{ padding: "8px 10px", fontWeight: 600, color: "#374151" }}>{locText}</td>
+                  <td style={{ padding: "8px 10px" }}>
+                    <div style={{ fontWeight: 600, color: "#111827" }}>{itemName}</div>
+                    {(sp as any).description && (
+                      <div style={{ color: "#6b7280", marginTop: 2, fontSize: 10 }}>{(sp as any).description}</div>
+                    )}
+                  </td>
+                  <td style={{ padding: "8px 10px", textAlign: "center" }}>
+                    <span style={{
+                      display: "inline-block", borderRadius: 3, padding: "2px 8px",
+                      fontSize: 10, fontWeight: 600, background: "#f1f5f9", color: "#475569",
+                      border: "1px solid #e2e8f0",
+                    }}>{statusName}</span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {/* Plot totals */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+        <div style={{ minWidth: 220, border: "1px solid #e2e8f0", borderRadius: 4, overflow: "hidden", fontSize: 11 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 10px", background: "#f8fafc" }}>
+            <span style={{ color: "#64748b", fontWeight: 500 }}>Sub-Total ex VAT</span>
+            <span style={{ fontWeight: 600 }}>{fmtMoney(plotSubtotal)}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 10px", borderTop: "1px solid #e2e8f0" }}>
+            <span style={{ color: "#64748b", fontWeight: 500 }}>VAT (20%)</span>
+            <span style={{ fontWeight: 600 }}>{fmtMoney(plotVat)}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 10px", borderTop: "1px solid #e2e8f0", background: "#e2e8f0" }}>
+            <span style={{ fontWeight: 700, color: "#111827" }}>Total inc VAT</span>
+            <span style={{ fontWeight: 700, color: "#111827" }}>{fmtMoney(plotTotal)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-  const sites = (data.sites ?? []) as SiteAny[];
-  const primarySite = sites[0] ?? {};
+/* ── Section block ───────────────────────────────────── */
 
-  const sections: QuotationQuoteSection[] = data.quote_sections ?? [];
+function SectionBlock({
+  sectionIdx,
+  section,
+  pinSnapshots,
+}: {
+  sectionIdx: number;
+  section: QuotationQuoteSection;
+  pinSnapshots: Map<string, string>;
+}) {
+  const grandTotal = section.section_total ?? 0;
+  const vat = grandTotal * 0.2;
+  const total = grandTotal + vat;
+  const plots = buildPinRows(section);
+
+  return (
+    <div style={{ marginTop: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <div style={{ width: 4, height: 20, borderRadius: 99, background: "#334155" }} />
+        <h3 style={{ fontSize: 12, fontWeight: 700, color: "#1e293b", textTransform: "uppercase", letterSpacing: "0.05em", margin: 0 }}>
+          {section.name}
+        </h3>
+      </div>
+      {plots.map((p, i) => (
+        <PlotTable
+          key={i}
+          sectionIdx={sectionIdx}
+          plotIdx={i}
+          plotName={p.plotName}
+          rows={p.rows}
+          plotSubtotal={p.plotSubtotal}
+          plotVat={p.plotVat}
+          plotTotal={p.plotTotal}
+          pinSnapshots={pinSnapshots}
+        />
+      ))}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4, marginBottom: 16 }}>
+        <div style={{ minWidth: 220, border: "1px solid #334155", borderRadius: 6, overflow: "hidden", background: "#334155", color: "white", fontSize: 11 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 10px" }}>
+            <span style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>Section Total inc VAT</span>
+            <span style={{ fontWeight: 700 }}>{fmtMoney(total)}</span>
+          </div>
+        </div>
+      </div>
+      <div style={{ borderTop: "1px dashed #e2e8f0", marginTop: 8 }} />
+    </div>
+  );
+}
+
+/* ── Document body (shared by preview + hidden export render) ── */
+
+type DocumentBodyProps = {
+  data: QuotationDetail;
+  pinSnapshots: Map<string, string>;
+  sections: QuotationQuoteSection[];
+};
+
+function DocumentBody({ data, pinSnapshots, sections }: DocumentBodyProps) {
   const grandTotalExVat = sections.reduce((s, sec) => s + (sec.section_total ?? 0), 0);
   const vatAmount = grandTotalExVat * 0.2;
   const grandTotalIncVat = grandTotalExVat + vatAmount;
+  const quoteNumber = data.quotation_serial_number || (data as any).order_number || "\u2014";
+  const customer = typeof data.customer === "object" && data.customer !== null ? (data.customer as any) : {};
+  const contact = typeof data.primary_customer_contact === "object" && data.primary_customer_contact !== null
+    ? (data.primary_customer_contact as any) : {};
+  const sites = (data.sites ?? []) as any[];
+  const primarySite = sites[0] ?? {};
 
-  const quoteNumber = esc(data.quotation_serial_number || data.order_number || "—");
-  const quoteDate = esc(fmtDate(data.created_at));
-  const validFor = data.due_date ? esc(fmtDate(data.due_date)) : "30 Days";
+  return (
+    <div style={{ background: "white", width: "100%", fontFamily: "system-ui, -apple-system, sans-serif", color: "#0f172a" }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "24px 32px 20px", borderBottom: "1px solid #f1f5f9" }}>
+        <div style={{ background: "#0f172a", border: "1px solid #475569", padding: "8px 14px", borderRadius: 4 }}>
+          <span style={{ color: "#94a3b8", fontSize: 22, fontWeight: 700, letterSpacing: "-0.05em" }}>
+            RED<span style={{ color: "white" }}>5</span>
+          </span>
+        </div>
+        <div style={{ textAlign: "right", fontSize: 11, color: "#475569", lineHeight: 1.6 }}>
+          <div style={{ fontWeight: 700, fontSize: 12, color: "#111827", marginBottom: 2 }}>Red 05 Limited</div>
+          Unit C, Norton Road Business Park<br />
+          Newhaven, East Sussex, BN9 0FN<br />
+          Tel. 01273 525525 · www.red5.ltd
+        </div>
+      </div>
 
-  /* customer address block */
-  const customerName = esc(customer.name ?? "—");
-  const customerPhone = esc(customer.phone ?? "—");
-  const cAddrLine1 = esc(contact.address_line_1 ?? primarySite.address_line_1 ?? "");
-  const cAddrLine2 = esc(contact.address_line_2 ?? primarySite.address_line_2 ?? "");
-  const cCity = esc(contact.city ?? primarySite.city ?? "");
-  const cState = esc(contact.state ?? primarySite.state ?? "");
-  const cPincode = esc(contact.pincode ?? primarySite.pincode ?? "");
+      <div style={{ padding: "24px 32px" }}>
+        {/* Title */}
+        <div style={{ textAlign: "right", fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 20 }}>
+          CUSTOMER ESTIMATE NO. {quoteNumber}
+        </div>
 
-  /* site address block */
-  const sAddrLine1 = esc(primarySite.address_line_1 ?? "");
-  const sAddrLine2 = esc(primarySite.address_line_2 ?? "");
-  const sCity = esc(primarySite.city ?? "");
-  const sState = esc(primarySite.state ?? "");
-  const sPincode = esc(primarySite.pincode ?? "");
-
-  /* ── summary rows ── */
-  const summaryRows = sections
-    .map(
-      (sec) => `
-      <tr>
-        <td><strong>${esc(sec.name)}</strong></td>
-        <td>£${esc(fmtMoney(sec.section_total))}</td>
-      </tr>`,
-    )
-    .join("");
-
-  /* ── section / plot pages ── */
-  const sectionPages = sections
-    .map((sec) =>
-      (sec.plots ?? [])
-        .map((plot) => {
-          const pins = plot.pins ?? [];
-          const itemRows = pins
-            .map(
-              (pin) => `
-            <tr>
-              <td>${esc(pin.name || "—")}</td>
-              <td>${esc(pin.quantity ?? 1)}</td>
-            </tr>`,
-            )
-            .join("");
-          const plotSubtotal = plot.plot_total ?? 0;
-          const plotVat = plotSubtotal * 0.2;
-          const plotTotal = plotSubtotal + plotVat;
-
-          return `
-          <div class="section-page">
-            <div class="section-title">${esc(sec.name)} - ${esc(plot.name)}</div>
-            <table class="product-table">
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th>Quantity</th>
-                </tr>
-              </thead>
-              <tbody>${itemRows}</tbody>
-            </table>
-            <div class="subtotal-box">
-              <table>
-                <tr><td>Sub-Total ex VAT</td><td>£${esc(fmtMoney(plotSubtotal))}</td></tr>
-                <tr><td>VAT (20%)</td><td>£${esc(fmtMoney(plotVat))}</td></tr>
-                <tr class="total-row"><td>Total inc VAT</td><td>£${esc(fmtMoney(plotTotal))}</td></tr>
-              </table>
-            </div>
-          </div>`;
-        })
-        .join(""),
-    )
-    .join("");
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Customer Estimate</title>
-<style>
-@page { size: A4; margin: 0; }
-@media print {
-  body { background: #fff !important; padding: 0 !important; }
-  .page-card { box-shadow: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; padding: 15mm 14mm 20mm 14mm !important; }
-}
-html, body {
-  background-color: #525659;
-  margin: 0;
-  padding: 0;
-}
-body {
-  font-family: 'Helvetica','Arial',sans-serif;
-  font-size: 9pt;
-  color: #000;
-  line-height: 1.4;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  box-sizing: border-box;
-  min-height: 100vh;
-  width: 100%;
-}
-.page-card {
-  background-color: #ffffff;
-  width: 100%;
-  padding: 15mm 14mm 20mm 14mm;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  box-sizing: border-box;
-  border-radius: 2px;
-}
-.page-header { width: 100%; border-collapse: collapse; margin-bottom: 5mm; border-bottom: 0.5pt solid #eee; background-color: white; }
-.header-left { vertical-align: top; width: 50mm; padding-bottom: 2mm; }
-.header-right { vertical-align: top; text-align: right; padding-bottom: 2mm; }
-.logo-box { width: 42mm; height: 15mm; background-color: #222 !important; border: 0.6mm solid #999; display: table-cell; vertical-align: middle; text-align: center; }
-.logo-text { font-size: 32pt; font-weight: bold; color: #999; letter-spacing: -1px; }
-.logo-text .bold { font-weight: bold; color: #fff; }
-.company-info { text-align: right; font-size: 9pt; }
-.company-info .company-name { font-weight: bold; font-size: 10pt; margin-bottom: 2mm; }
-.company-info .address { line-height: 1.5; }
-.first-page-content { margin-top: 1mm; }
-.estimate-title { font-size: 14pt; font-weight: bold; text-align: right; margin-bottom: 5mm; }
-.customer-section { display: flex; justify-content: space-between; margin-bottom: 1mm; }
-.customer-address { width: 45%; font-size: 9pt; line-height: 1.6; }
-.info-box { width: 50%; background-color: #eee; padding: 8pt; font-size: 8pt; border-radius: 8px; }
-.info-box table { width: 100%; border-collapse: collapse; }
-.info-box td { padding: 2.5pt; vertical-align: top; }
-.info-box td:first-child { font-weight: bold; width: 25mm; }
-.terms-section { margin-top: 1mm; }
-.terms-title { font-size: 11pt; font-weight: bold; margin-bottom: 6pt; }
-.term-heading { font-size: 9pt; font-weight: bold; margin-top: 10pt; margin-bottom: 4pt; }
-.term-content { font-size: 9pt; text-align: justify; margin-bottom: 8pt; line-height: 1.5; }
-.summary-section { margin-top: 5mm; page-break-inside: avoid; }
-.summary-table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1pt solid #ccc; border-radius: 8px; overflow: hidden; }
-.summary-table thead { background-color: #e6e6e6; }
-.summary-table th { font-weight: bold; padding: 5pt; text-align: left; border-bottom: 1pt solid #ccc; border-right: 1pt solid #ccc; }
-.summary-table th:last-child { border-right: none; }
-.summary-table td { padding: 5pt; border-bottom: 1pt solid #ccc; border-right: 1pt solid #ccc; }
-.summary-table td:last-child { border-right: none; }
-.summary-table tr:last-child td { border-bottom: none; }
-.summary-table td:last-child { text-align: right; font-weight: bold; }
-.totals-box { width: 50%; margin-left: auto; }
-.totals-box table { width: 100%; border-collapse: collapse; }
-.totals-box td { padding: 4pt 8pt; text-align: right; border: 1pt solid #ccc; }
-.totals-box td:first-child { font-weight: bold; border: none; text-align: right; }
-.totals-box .grand-total { font-weight: bold; font-size: 10pt; }
-.section-page { page-break-before: always; margin-top: 5mm; }
-.section-title { font-size: 10pt; font-weight: bold; margin-bottom: 8pt; color: #000; }
-.product-table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1pt solid #eee; border-radius: 8px; overflow: hidden; }
-.product-table thead { background-color: #999; color: #fff; }
-.product-table th { padding: 5pt 8pt; text-align: left; font-weight: bold; font-size: 9pt; border-right: 1pt solid #eee; }
-.product-table th:last-child { border-right: none; }
-.product-table td { padding: 5pt 8pt; border-top: 1pt solid #eee; border-right: 1pt solid #eee; font-size: 9pt; }
-.product-table td:last-child { border-right: none; text-align: center; }
-.subtotal-box { width: 45%; margin-left: auto; }
-.subtotal-box table { width: 100%; border-collapse: collapse; font-size: 9pt; }
-.subtotal-box td { padding: 4pt 8pt; text-align: right; border: 1pt solid #ccc; }
-.subtotal-box td:first-child { font-weight: bold; border: none; text-align: right; }
-.subtotal-box .total-row { font-weight: bold; }
-.payment-page { page-break-before: always; margin-top: 5mm; }
-.payment-header { display: flex; justify-content: space-between; align-items: center; margin-top: 20mm; }
-.payment-title { font-size: 14pt; font-weight: bold; }
-.quote-badge { background-color: #999; color: #fff; padding: 8pt 16pt; font-size: 8pt; font-weight: bold; text-align: center; border-radius: 5px; }
-.payment-methods { display: flex; justify-content: space-between; margin-top: 20mm; }
-.payment-method { width: 48%; }
-.payment-icon-container { display: flex; align-items: center; }
-.payment-method-title { font-size: 12pt; font-weight: bold; }
-.payment-details { font-size: 9pt; line-height: 1.6; }
-.payment-label { display: inline-block; width: 60pt; }
-.payment-value { font-weight: bold; }
-.icon-computer { width: 40pt; height: 40pt; margin-right: 10pt; }
-.icon-credit-card { width: 40pt; height: 40pt; margin-right: 10pt; }
-.bold { font-weight: bold; }
-.term-content ol { list-style-type: decimal; padding-left: 20px; margin-left: 20px; }
-.term-content li { margin-bottom: 4px; }
-</style>
-</head>
-<body>
-<div class="page-card">
-<table style="width:100%;border-collapse:collapse;">
-  <thead>
-    <tr>
-      <td>
-        <table class="page-header">
-          <tr>
-            <td class="header-left">
-              <div class="logo-box">
-                <span class="logo-text">RED<span class="bold">5</span></span>
-              </div>
-            </td>
-            <td class="header-right">
-              <div class="company-info">
-                <div class="company-name">Red 05 Limited</div>
-                <div class="address">
-                  Unit C, Norton Road Business Park<br/>
-                  Newhaven<br/>
-                  East Sussex<br/>
-                  BN9 0FN<br/>
-                  Tel. 01273 525525<br/>
-                  www.red5.ltd
-                </div>
-              </div>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <!-- PAGE 1 -->
-        <div class="first-page-content">
-          <div class="estimate-title">CUSTOMER ESTIMATE NO. ${quoteNumber}</div>
-          <div class="customer-section">
-            <div class="customer-address">
-              ${customerName}<br/>
-              ${cAddrLine1}<br/>
-              ${cAddrLine2}<br/>
-              ${cCity}<br/>
-              ${cState}<br/>
-              ${cPincode}
-            </div>
-            <div class="info-box">
-              <table>
-                <tr><td>Quote No:</td><td>${quoteNumber}</td></tr>
-                <tr>
-                  <td>Site Address:</td>
-                  <td>${sAddrLine1}<br/>${sAddrLine2}<br/>${sCity}<br/>${sState}<br/>${sPincode}</td>
-                </tr>
-                <tr><td>Phone:</td><td>${customerPhone}</td></tr>
-                <tr><td>Date:</td><td>${quoteDate}</td></tr>
-                <tr><td>Valid For:</td><td>${validFor}</td></tr>
-              </table>
-            </div>
+        {/* Customer / Info */}
+        <div style={{ display: "flex", gap: 20, marginBottom: 24 }}>
+          <div style={{ flex: 1, fontSize: 11, color: "#374151", lineHeight: 1.6 }}>
+            <div style={{ fontWeight: 600 }}>{customer.name || "\u2014"}</div>
+            <div>{contact.address_line_1 || primarySite.address_line_1}</div>
+            <div>{contact.city || primarySite.city}</div>
+            <div>{contact.state || primarySite.state}</div>
           </div>
-
-          <!-- Terms & Conditions -->
-          <div class="terms-section">
-            <div class="terms-title">Description</div>
-            <div class="term-heading">1. Definitions &amp; Interpretation</div>
-            <div class="term-content">
-              <span class="bold">"Red 5"</span> means Red 05 Ltd. <span class="bold">"Client"</span> means the company or person to whom the accompanying quotation is addressed. <span class="bold">"Works"</span> means the fire stopping services described in the quotation.
-            </div>
-            <div class="term-heading">2. Basis of Quotation</div>
-            <div class="term-content">
-              2.1 Any purchase order or instruction from the Client shall constitute acceptance of both the quotation and these Conditions. 2.2 No other terms shall apply unless agreed in writing by a Red 5 director.
-            </div>
-            <div class="term-heading">3. Scope of Works</div>
-            <div class="term-content">
-              The quotation covers only the following items, undertaken strictly in accordance with the fire-strategy drawings supplied by the Client and the manufacturers' tested details:<br/><br/>
-              <ol type="1">
-                <li>Mastic-seal cable and pipe penetrations within ceiling voids in plots and communal areas. <span style="font-style:italic;font-weight:bold;">Any work additional to mastic seals within bin/bike stores may need to be reviewed (price currently not included, but may not be required).</span></li>
-                <li>Seal service-entry penetrations from communal areas into plots.</li>
-                <li>Seal SVP penetrations through ceilings by wrap and compound in concrete slab zones.</li>
-                <li>Seal sleeves to low-profile ducting. <span style="font-style:italic;font-weight:bold;">Ducting passing through the ceiling of top floor plots to be confirmed (price currently not included, but may not be required).</span></li>
-                <li>Install intumescent putty pads to electrical back boxes and mastic seal to radiator back boxes.</li>
-                <li>Record every installation (location reference, photographs, unique sticker ID) and provide a flattened PDF report on completion.</li>
-                <li>Deliver toolbox talks with relevant trades to coordinate installation strategy prior to first fix.</li>
-              </ol>
-              <br/>
-              <span style="font-style:italic;font-weight:bold;">Cost for riser cupboard floor seals has been omitted. Please note if GRP grates are to be installed, some firestopping may be required to seal the hollowcore slab edge prior to the installation of grates.</span><br/><br/>
-              <span>Any item not expressly listed above is excluded.</span>
-            </div>
-            <div class="term-heading">4. Drawings, Specifications &amp; Design Responsibility</div>
-            <div class="term-content">
-              4.1 Fire lines are as indicated on the latest issue of the fire-strategy drawings provided by the Client's site team.
-            </div>
+          <div style={{ minWidth: 220, background: "#f1f5f9", borderRadius: 8, padding: 12, fontSize: 11, color: "#374151" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <tbody>
+                {[
+                  ["Quote No:", quoteNumber],
+                  ["Site:", primarySite.site_name || primarySite.address_line_1 || "\u2014"],
+                  ["Phone:", customer.phone || "\u2014"],
+                  ["Date:", fmtDate(data.created_at)],
+                  ["Valid For:", data.due_date ? fmtDate(data.due_date) : "30 Days"],
+                ].map(([label, val]) => (
+                  <tr key={label}>
+                    <td style={{ fontWeight: 600, paddingRight: 10, paddingTop: 2, paddingBottom: 2, whiteSpace: "nowrap" }}>{label}</td>
+                    <td>{val}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <!-- PAGE 2: Terms continued + Summary -->
-        <div style="margin-top:1mm;">
-          <div class="term-content">
-            4.2 Red 5 does not accept design responsibility. Our installations are executed strictly to the supplied fire-strategy drawings and to third-party test evidence. 4.3 Where the drawings change after acceptance of the quotation, Red 5 reserves the right to re-price affected elements.
+        {/* Description */}
+        {data.description && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>
+              Description / Scope of Work
+            </div>
+            <div style={{
+              padding: 12, background: "#f8fafc", borderRadius: 8,
+              border: "1px solid #e2e8f0", fontSize: 11, color: "#374151",
+              whiteSpace: "pre-line", lineHeight: 1.6,
+            }}>
+              {data.description}
+            </div>
           </div>
-          <div class="term-heading">5. Programme &amp; Working Hours</div>
-          <div class="term-content">
-            5.1 Unless otherwise agreed, Works will be performed Monday–Friday 08:00 – 16:00. 5.2 Saturday working is available by prior agreement. 5.3 The Client shall ensure areas are ready, accessible and free from obstruction when Red 5 arrives. 5.4 Site attendance is subject to a minimum order value of £500.00.
-          </div>
-          <div class="term-heading">6. Access, Facilities &amp; Site Conditions</div>
-          <div class="term-content">
-            The Client shall provide at no cost to Red 5: A safe, dry, storage area for materials and small tools near the workface. 110 V or 230 V power and potable water within reasonable distance. Access to suitable skips or bins for disposal. Adequate welfare facilities.
-          </div>
-          <div class="term-heading">7. Variations &amp; Additional Costs</div>
-          <div class="term-content">
-            7.1 If prerequisite fire-stopping provisions (e.g. clearances, framing, or services layout) are not met by preceding trades, the Client must either rectify the issue or instruct Red 5 to employ variation systems. 7.2 Significant damage to our installations that requires extra works may incur a variation process. 7.3 Such variations will attract additional cost and/or programme impact, notified via a written Variation Quotation prior to execution.
-          </div>
-          <div class="term-heading">8. Quality Assurance &amp; Reporting</div>
-          <div class="term-content">
-            8.1 All materials carry current third-party certification (e.g. IFC, UL-EU, CERTIFIRE). 8.2 Installation operatives undergo regular training and operate under the BM Trada fire stopping scheme. 8.3 On completion, Red 5 will issue an installation register and photographic record.
-          </div>
-          <div class="term-heading">9. Health, Safety &amp; Environmental</div>
-          <div class="term-content">
-            Red 5 works in accordance with the CDM Regulations 2015, the Management of Health &amp; Safety at Work Regulations 1999, and our ISO 45001 OH&amp;S management system. Operatives will attend the Client's site induction and abide by site rules.
-          </div>
-          <div class="term-heading">10. Payment Terms</div>
-          <div class="term-content">
-            10.1 Unless stated otherwise in the quotation, invoices shall be submitted monthly in arrears for Works completed on site. 10.2 Payment is due within 30 days of invoice date. 10.3 Red 5 reserves the right to charge statutory late payment interest under the Late Payment of Commercial Debts (Interest) Act 1998.
-          </div>
-          <div class="term-heading">11. Limitation of Liability &amp; Confidentiality</div>
-          <div class="term-content">
-            11.1 Red 5 shall not be liable for delay or non-performance caused by circumstances beyond its reasonable control. 11.2 Each party shall keep confidential all technical or commercial information received from the other and shall use such information solely for the purpose of the contract.
-          </div>
-          <div class="term-heading">12. Force Majeure</div>
-          <div class="term-content">
-            Neither party shall be liable for delay or failure to perform its obligations where such delay or failure results from events beyond its reasonable control.
-          </div>
+        )}
 
-          <!-- Summary Table -->
-          <div class="summary-section">
-            <table class="summary-table">
-              <thead>
-                <tr><th colspan="2">Summary</th></tr>
-              </thead>
-              <tbody>${summaryRows}</tbody>
-            </table>
-            <div class="totals-box">
-              <table>
-                <tr><td>Sub-Total ex VAT</td><td>£${esc(fmtMoney(grandTotalExVat))}</td></tr>
-                <tr><td>VAT (20%)</td><td>£${esc(fmtMoney(vatAmount))}</td></tr>
-                <tr class="grand-total"><td>Total inc VAT</td><td>£${esc(fmtMoney(grandTotalIncVat))}</td></tr>
+        {/* Summary */}
+        {sections.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#111827", marginBottom: 8 }}>Summary</div>
+            <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden", fontSize: 11 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#f1f5f9" }}>
+                    <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, color: "#374151" }}>Section</th>
+                    <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, color: "#374151" }}>Total ex VAT</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sections.map((sec, i) => (
+                    <tr key={i} style={{ borderTop: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "8px 10px", fontWeight: 500 }}>{sec.name}</td>
+                      <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600 }}>{fmtMoney(sec.section_total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
               </table>
             </div>
-          </div>
-
-          ${sectionPages}
-
-          <!-- FINAL PAGE: How To Pay -->
-          <div class="payment-page">
-            <div class="payment-header">
-              <div class="payment-title">How To Pay</div>
-              <div class="quote-badge">QUOTATION NO. ${quoteNumber}</div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+              <div style={{ minWidth: 220, border: "1px solid #e2e8f0", borderRadius: 4, overflow: "hidden", fontSize: 11 }}>
+                {[
+                  ["Sub-Total ex VAT", fmtMoney(grandTotalExVat), "#f8fafc", "#64748b"],
+                  ["VAT (20%)", fmtMoney(vatAmount), "white", "#64748b"],
+                  ["Total inc VAT", fmtMoney(grandTotalIncVat), "#334155", "white"],
+                ].map(([label, val, bg, color]) => (
+                  <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "5px 10px", background: bg, borderTop: label !== "Sub-Total ex VAT" ? "1px solid #e2e8f0" : undefined }}>
+                    <span style={{ color, fontWeight: label === "Total inc VAT" ? 700 : 500 }}>{label}</span>
+                    <span style={{ color, fontWeight: 600 }}>{val}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div class="payment-methods">
-              <div class="payment-method">
-                <div class="payment-icon-container">
-                  <svg class="icon-computer" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="10" y="15" width="80" height="50" rx="4" fill="#f5f5f5" stroke="#ccc" stroke-width="2"/>
-                    <rect x="15" y="20" width="70" height="40" fill="#fff" stroke="#ddd" stroke-width="1"/>
-                    <path d="M 35 35 L 55 50 L 55 45 L 50 45 Z" fill="#ccc"/>
-                    <rect x="45" y="65" width="10" height="10" fill="#ccc"/>
-                    <rect x="35" y="75" width="30" height="5" fill="#ccc"/>
-                  </svg>
-                  <div><div class="payment-method-title">Direct Deposit</div></div>
-                </div>
-                <div class="payment-details">
-                  <div><span class="payment-label">Bank</span><span class="payment-value">Virgin Business Banking</span></div>
-                  <div><span class="payment-label">Acc. Name</span><span class="payment-value">Red 05 Ltd</span></div>
-                  <div><span class="payment-label">Sort Code</span><span class="payment-value">82-61-37</span></div>
-                  <div><span class="payment-label">Acc. No.</span><span class="payment-value">30580090</span></div>
-                </div>
-              </div>
-              <div class="payment-method">
-                <div class="payment-icon-container">
-                  <svg class="icon-credit-card" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="10" y="25" width="80" height="50" rx="6" fill="#ebebeb" stroke="#b4b4b4" stroke-width="2"/>
-                    <rect x="10" y="35" width="80" height="15" fill="#c8c8c8"/>
-                    <rect x="65" y="55" width="15" height="10" fill="#f5f5f5" stroke="#ddd" stroke-width="1"/>
-                  </svg>
-                  <div><div class="payment-method-title">Credit Card (MasterCard or Visa)</div></div>
-                </div>
-                <div class="payment-details">
-                  <div><em>Call</em> <span class="payment-value">01273 525525</span> <em>to pay over the phone.</em></div>
-                </div>
-              </div>
+          </div>
+        )}
+
+        {/* Sections */}
+        {sections.map((sec, secIdx) => (
+          <SectionBlock key={secIdx} sectionIdx={secIdx} section={sec} pinSnapshots={pinSnapshots} />
+        ))}
+
+        {/* How to pay */}
+        <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid #e2e8f0" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>How To Pay</div>
+            <div style={{ background: "#475569", color: "white", fontSize: 11, fontWeight: 700, padding: "5px 14px", borderRadius: 4 }}>
+              QUOTATION NO. {quoteNumber}
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, fontSize: 11, color: "#374151" }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Direct Deposit</div>
+              {[["Bank:", "Virgin Business Banking"], ["Acc. Name:", "Red 05 Ltd"], ["Sort Code:", "82-61-37"], ["Acc. No.:", "30580090"]].map(([k, v]) => (
+                <div key={k}><span style={{ display: "inline-block", width: 90, fontWeight: 600 }}>{k}</span>{v}</div>
+              ))}
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Credit Card (MasterCard or Visa)</div>
+              <div style={{ color: "#64748b" }}>Call <span style={{ fontWeight: 700, color: "#111827" }}>01273 525525</span> to pay over the phone.</div>
             </div>
           </div>
         </div>
-      </td>
-    </tr>
-  </tbody>
-</table>
-</div>
-</body>
-</html>`;
+      </div>
+    </div>
+  );
 }
 
-/* ─── Modal ───────────────────────────────────────────────── */
+/* ── Download hook ──────────────────────────────────── */
+
+type DownloadState = "idle" | "capturing" | "done";
+
+function useDownloadPdf(quoteName: string | undefined, quotationId: number) {
+  const [state, setState] = React.useState<DownloadState>("idle");
+  const [error, setError] = React.useState<string | null>(null);
+
+  const download = React.useCallback(
+    async () => {
+      setState("capturing");
+      setError(null);
+
+      // Wait two animation frames for canvas renders to settle
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+      try {
+        const [html2canvas, { default: jsPDF }] = await Promise.all([
+          import("html2canvas").then((m) => m.default),
+          import("jspdf"),
+        ]);
+
+        const el = document.getElementById("quotation-export-render");
+        if (!el) throw new Error("Export render element not found");
+
+        const canvas = await html2canvas(el, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: "#ffffff",
+          width: el.scrollWidth,
+          height: el.scrollHeight,
+          windowWidth: el.scrollWidth,
+          scrollX: 0,
+          scrollY: 0,
+          logging: false,
+        });
+
+        const imgData = canvas.toDataURL("image/jpeg", 0.92);
+        const pdfW = 210; // A4 mm
+        const pdfH = (canvas.height / canvas.width) * pdfW;
+        const pdf = new jsPDF({ orientation: pdfH > pdfW ? "portrait" : "landscape", unit: "mm", format: [pdfW, pdfH] });
+        pdf.addImage(imgData, "JPEG", 0, 0, pdfW, pdfH, undefined, "FAST");
+
+        const filename = quoteName
+          ? `${quoteName.replace(/[/\\?%*:|"<>]/g, "").trim().replace(/\s+/g, "-").slice(0, 80)}.pdf`
+          : `quotation-${quotationId}.pdf`;
+
+        pdf.save(filename);
+        setState("done");
+      } catch (err) {
+        console.error("[PDF Download]", err);
+        setError("Failed to generate PDF. Please try again.");
+        setState("idle");
+      } finally {
+        setTimeout(() => setState("idle"), 2000);
+      }
+    },
+    [quoteName, quotationId],
+  );
+
+  return { state, error, download };
+}
+
+/* ── Modal ───────────────────────────────────────────── */
 
 type Props = {
   open: boolean;
@@ -473,77 +495,122 @@ type Props = {
 
 export function QuotationPdfPreviewModal({ open, quotationId, quoteName, onClose }: Props) {
   const [loading, setLoading] = React.useState(false);
-  const [exporting, setExporting] = React.useState(false);
-  const [htmlContent, setHtmlContent] = React.useState<string | null>(null);
+  const [quoteDetail, setQuoteDetail] = React.useState<QuotationDetail | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
-  /* Fetch real data when modal opens and build HTML */
+  // Upfront snapshot generation state
+  const [generationStatus, setGenerationStatus] = React.useState<"idle" | "generating" | "success" | "error">("idle");
+  const [generationProgress, setGenerationProgress] = React.useState<{ completed: number; total: number }>({
+    completed: 0,
+    total: 0,
+  });
+  const [pinSnapshots, setPinSnapshots] = React.useState<Map<string, string>>(new Map());
+  const [generationError, setGenerationError] = React.useState<string | null>(null);
+
+  const { state: dlState, error: dlError, download } = useDownloadPdf(quoteName, quotationId);
+
+  // Fetch quotation data
   React.useEffect(() => {
     if (!open) {
-      setHtmlContent(null);
+      setQuoteDetail(null);
       setError(null);
+      setGenerationStatus("idle");
+      setGenerationProgress({ completed: 0, total: 0 });
+      setPinSnapshots(new Map());
+      setGenerationError(null);
       return;
     }
     let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await fetchQuotation(quotationId);
-        if (!cancelled) {
-          setHtmlContent(buildPdfHtml(result));
-        }
-      } catch {
-        if (!cancelled) setError("Failed to load quotation data. Please try again.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
+    setLoading(true);
+    setError(null);
+    fetchQuotation(quotationId)
+      .then((result) => { if (!cancelled) setQuoteDetail(result); })
+      .catch(() => { if (!cancelled) setError("Failed to load quotation data. Please try again."); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [open, quotationId]);
+
+  // Upfront snapshot generation pass
+  React.useEffect(() => {
+    if (!quoteDetail) return;
+
+    const tasks = extractPinSnapshotTasks(quoteDetail.quote_sections ?? []);
+    if (tasks.length === 0) {
+      setPinSnapshots(new Map());
+      setGenerationProgress({ completed: 0, total: 0 });
+      setGenerationStatus("success");
+      return;
+    }
+
+    let cancelled = false;
+    setPinSnapshots(new Map());
+    setGenerationStatus("generating");
+    setGenerationProgress({ completed: 0, total: tasks.length });
+
+    generateQuotationPinSnapshots(
+      quoteDetail.quote_sections ?? [],
+      (key, dataUrl) => {
+        if (cancelled) return;
+        setPinSnapshots((prev) => {
+          const next = new Map(prev);
+          next.set(key, dataUrl);
+          return next;
+        });
+        setGenerationProgress((prev) => ({ ...prev, completed: prev.completed + 1 }));
+      },
+      () => cancelled
+    )
+      .then(() => {
+        if (cancelled) return;
+        setGenerationStatus("success");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("Upfront pin snapshot generation failed:", err);
+        setGenerationStatus("error");
+        setGenerationError("Failed to prepare preview snapshots. Please try again.");
+      });
+
     return () => {
       cancelled = true;
     };
-  }, [open, quotationId]);
+  }, [quoteDetail]);
 
-  async function handleExport() {
-    setExporting(true);
-    try {
-      await exportQuotation(quotationId, "pdf", quoteName);
-    } catch (err) {
-      toastApiError(err, "PDF export failed");
-    } finally {
-      setExporting(false);
-    }
-  }
+  const isCapturing = dlState === "capturing";
+  const isBusy = isCapturing;
+
+  const progressPercent = generationProgress.total > 0
+    ? Math.round((generationProgress.completed / generationProgress.total) * 100)
+    : 0;
+
+  const buttonLabel = isCapturing
+    ? "Generating PDF…"
+    : dlState === "done"
+    ? "Downloaded!"
+    : "Download PDF";
 
   return (
     <AppModal
       open={open}
-      onClose={!exporting ? onClose : () => undefined}
+      onClose={!isBusy ? onClose : () => undefined}
       title="PDF Preview"
       size="5xl"
-      isBusy={exporting}
-      closeOnBackdrop={!exporting}
+      closeOnBackdrop={!isBusy}
       footer={
         <>
-          <AppButton
-            type="button"
-            variant="secondary"
-            size="sm"
-            disabled={exporting}
-            onClick={onClose}
-          >
+          <AppButton type="button" variant="secondary" size="sm" disabled={isBusy} onClick={onClose}>
             Close
           </AppButton>
           <AppButton
             type="button"
             variant="primary"
             size="sm"
-            loading={exporting}
-            disabled={loading || !!error || !htmlContent || exporting}
-            onClick={() => void handleExport()}
+            loading={isBusy}
+            disabled={loading || !!error || !quoteDetail || generationStatus !== "success" || isBusy}
+            onClick={() => void download()}
           >
             <Download className="mr-1.5 size-4" />
-            Export PDF
+            {buttonLabel}
           </AppButton>
         </>
       }
@@ -551,9 +618,7 @@ export function QuotationPdfPreviewModal({ open, quotationId, quoteName, onClose
       {loading && (
         <div className="flex min-h-[400px] flex-col items-center justify-center gap-3">
           <Loader2 className="size-8 animate-spin text-slate-400" />
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Loading quotation data&hellip;
-          </p>
+          <p className="text-sm text-slate-500">Loading quotation&hellip;</p>
         </div>
       )}
 
@@ -563,14 +628,71 @@ export function QuotationPdfPreviewModal({ open, quotationId, quoteName, onClose
         </div>
       )}
 
-      {!loading && !error && htmlContent && (
-        <iframe
-          title="Quotation PDF Preview"
-          srcDoc={htmlContent}
-          className="h-[74vh] w-full rounded-lg border border-slate-700 bg-[#525659]"
-          sandbox="allow-same-origin"
-          style={{ display: "block" }}
-        />
+      {!loading && !error && generationStatus === "generating" && (
+        <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 px-6 text-center">
+          <Loader2 className="size-8 animate-spin text-[#334155]" />
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-slate-700">Preparing snapshots…</p>
+            <p className="text-xs text-slate-500">
+              {generationProgress.completed} of {generationProgress.total} completed
+            </p>
+          </div>
+          <div className="w-full max-w-xs bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+            <div
+              className="bg-[#334155] h-full transition-all duration-300 ease-out"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {!loading && !error && generationStatus === "error" && (
+        <div className="flex min-h-[400px] flex-col items-center justify-center gap-2">
+          <p className="text-sm text-red-500">{generationError || "Failed to prepare snapshots."}</p>
+        </div>
+      )}
+
+      {!loading && !error && generationStatus === "success" && quoteDetail && (
+        <>
+          {dlError && (
+            <div className="mx-4 mb-2 rounded border border-red-200 bg-red-50 px-3 py-2">
+              <p className="text-xs text-red-600">{dlError}</p>
+            </div>
+          )}
+
+          <div className="h-[74vh] overflow-y-auto rounded-lg border border-slate-700">
+            <div className="bg-[#525659] min-h-full p-5 flex flex-col items-center">
+              <div className="bg-white w-full max-w-4xl rounded shadow-xl overflow-hidden">
+                <DocumentBody
+                  data={quoteDetail}
+                  pinSnapshots={pinSnapshots}
+                  sections={quoteDetail.quote_sections ?? []}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Hidden export renderer for html2canvas */}
+          <div
+            id="quotation-export-render"
+            aria-hidden="true"
+            style={{
+              position: "fixed",
+              left: -9999,
+              top: 0,
+              width: 1060,
+              zIndex: -1,
+              pointerEvents: "none",
+              background: "white",
+            }}
+          >
+            <DocumentBody
+              data={quoteDetail}
+              pinSnapshots={pinSnapshots}
+              sections={quoteDetail.quote_sections ?? []}
+            />
+          </div>
+        </>
       )}
     </AppModal>
   );
