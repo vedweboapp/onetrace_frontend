@@ -285,13 +285,13 @@ function SectionBlock({
 
 function TermsSection() {
   return (
-    <div style={{ marginTop: 24, fontSize: 11, color: "#374151", lineHeight: 1.6 }}>
+    <div style={{ marginTop: 24, fontSize: 14, color: "#374151", lineHeight: 1.6 }}>
       <div style={{ fontSize: 13, fontWeight: 700, color: "#111827", marginBottom: 12 }}>Description</div>
 
       <div style={{ fontWeight: 600, marginTop: 10 }}>1. Definitions & Interpretation</div>
       <div style={{ color: "#4b5563" }}>
-        "Red 5" means Red 05 Ltd. "Client" means the company or person to whom the accompanying
-        quotation is addressed. "Works" means the fire stopping services described in the quotation.
+        <span className="font-bold">"Red 5" </span> means Red 05 Ltd.  <span className="font-bold">"Client"</span> means the company or person to whom the accompanying
+        quotation is addressed. <span className="font-bold">"Works"</span> means the fire stopping services described in the quotation.
       </div>
 
       <div style={{ fontWeight: 600, marginTop: 10 }}>2. Basis of Quotation</div>
@@ -304,22 +304,22 @@ function TermsSection() {
       <div style={{ color: "#4b5563" }}>
         The quotation covers only the following items, undertaken strictly in accordance with the fire-strategy
         drawings supplied by the Client and the manufacturers' tested details:
-        <ol type="1" style={{ paddingLeft: 20, marginTop: 4, marginBottom: 4 }}>
+        <ol type="1" style={{ paddingLeft: 20, marginTop: 4, marginBottom: 4 , listStyle: "decimal"}}>
           <li>Mastic-seal cable and pipe penetrations within ceiling voids in plots and communal areas.
-              Any work additional to mastic seals within bin/bike stores may need to be reviewed
-              (price currently not included, but may not be required).</li>
+            <span className="font-bold">Any work additional to mastic seals within bin/bike stores may need to be reviewed
+            (price currently not included, but may not be required).</span></li>
           <li>Seal service-entry penetrations from communal areas into plots.</li>
           <li>Seal SVP penetrations through ceilings by wrap and compound in concrete slab zones.</li>
-          <li>Seal sleeves to low-profile ducting. Ducting passing through the ceiling of top floor
-              plots to be confirmed (price currently not included, but may not be required).</li>
+          <li>Seal sleeves to low-profile ducting. <span className="font-bold">Ducting passing through the ceiling of top floor
+            <span></span>plots to be confirmed (price currently not included, but may not be required).</span> </li>
           <li>Install intumescent putty pads to electrical back boxes and mastic seal to radiator back boxes.</li>
           <li>Record every installation (location reference, photographs, unique sticker ID) and provide a
-              flattened PDF report on completion.</li>
+            flattened PDF report on completion.</li>
           <li>Deliver toolbox talks with relevant trades to coordinate installation strategy prior to first fix.</li>
         </ol>
-        Cost for riser cupboard floor seals has been omitted. Please note if GRP grates are to be installed,
+       <span className="font-bold">Cost for riser cupboard floor seals has been omitted. Please note if GRP grates are to be installed,
         some firestopping may be required to seal the hollowcore slab edge prior to the installation of grates.
-        Any item not expressly listed above is excluded.
+        Any item not expressly listed above is excluded.</span>
       </div>
 
       <div style={{ fontWeight: 600, marginTop: 10 }}>4. Drawings, Specifications & Design Responsibility</div>
@@ -734,8 +734,8 @@ export function QuotationPdfPreviewModal({ open, quotationId, quoteName, onClose
   const buttonLabel = isCapturing
     ? "Generating PDF…"
     : dlState === "done"
-    ? "Downloaded!"
-    : "Download PDF";
+      ? "Downloaded!"
+      : "Download PDF";
 
   return (
     <AppModal
