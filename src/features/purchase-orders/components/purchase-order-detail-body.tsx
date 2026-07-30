@@ -11,7 +11,7 @@ import {
   purchaseOrderVendorLabel,
 } from "@/features/purchase-orders/utils/purchase-order-nested-fields.util";
 import { resolvePurchaseOrderAddresses } from "@/features/purchase-orders/utils/purchase-order-form-map";
-import { formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
+import { computeLineAmount, formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
@@ -38,7 +38,8 @@ type DisplayLine = {
   productName: string;
   groupName: string;
   qty: number;
-  listPrice: number;
+  unitPrice: number;
+  amount: number;
 };
 
 function compositeLineToDisplay(row: PurchaseOrderCompositeItem, index: number): DisplayLine {
@@ -59,17 +60,21 @@ function compositeLineToDisplay(row: PurchaseOrderCompositeItem, index: number):
         : typeof item === "number"
           ? item
           : index;
-  const total =
+  const amount =
     row.amount != null && Number.isFinite(row.amount)
       ? row.amount
       : parseMoneyValue(row.line_total);
-  const listPrice = qty > 0 && total > 0 ? total / qty : parseMoneyValue(typeof item === "object" ? item?.selling_price : null);
+  const unitPrice =
+    qty > 0 && amount > 0
+      ? amount / qty
+      : parseMoneyValue(typeof item === "object" ? item?.selling_price : null);
   return {
     key: `composite-${itemId}-${index}`,
     productName,
     groupName,
     qty,
-    listPrice,
+    unitPrice,
+    amount: amount > 0 ? amount : computeLineAmount(qty, unitPrice),
   };
 }
 
@@ -198,19 +203,20 @@ export function PurchaseOrderDetailBody({
           <>
             <DetailPanelCard title={t("detail.sectionLineItems")}>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px] text-left text-sm">
+                <table className="w-full min-w-[720px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700">
                       <th className="pb-2 pr-3">{t("lineItems.productName")}</th>
                       <th className="pb-2 pr-3">{t("lineItems.group")}</th>
                       <th className="pb-2 pr-3 text-right">{t("lineItems.qty")}</th>
-                      <th className="pb-2 text-right">{t("lineItems.listPrice")}</th>
+                      <th className="pb-2 pr-3 text-right">{t("lineItems.rate")}</th>
+                      <th className="pb-2 text-right">{t("lineItems.amount")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {lines.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="py-6 text-center text-slate-500">
+                        <td colSpan={5} className="py-6 text-center text-slate-500">
                           {t("lineItems.empty")}
                         </td>
                       </tr>
@@ -222,8 +228,11 @@ export function PurchaseOrderDetailBody({
                           </td>
                           <td className="py-3 pr-3 text-slate-600 dark:text-slate-400">{row.groupName}</td>
                           <td className="py-3 pr-3 text-right tabular-nums">{row.qty.toFixed(2)}</td>
+                          <td className="py-3 pr-3 text-right tabular-nums">
+                            {formatMoneyDisplay(row.unitPrice, locale)}
+                          </td>
                           <td className="py-3 text-right tabular-nums">
-                            {formatMoneyDisplay(row.listPrice, locale)}
+                            {formatMoneyDisplay(row.amount, locale)}
                           </td>
                         </tr>
                       ))

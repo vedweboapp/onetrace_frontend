@@ -7,6 +7,6 @@ export const INTEGRATION_PATHS = {
   zohoConnection: "integrations/zoho/connection/",
 } as const;
 
-export const ZOHO_RESOURCES = ["items", "customers", "vendors"] as const;
+export const ZOHO_RESOURCES = ["items", "customers", "vendors", "purchase_orders"] as const;
 export type ZohoResource = (typeof ZOHO_RESOURCES)[number];
 export const ZOHO_DEFAULT_RESOURCE: ZohoResource = "items";

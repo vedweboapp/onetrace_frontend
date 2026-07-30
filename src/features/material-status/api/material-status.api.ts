@@ -8,7 +8,6 @@ import type {
   WorkflowColourStatusListResponse,
   WorkflowColourStatusUpdatePayload,
 } from "@/shared/types/workflow-colour-status.types";
-import { resolveMaterialStatusRequestUrl } from "./material-status-http.util";
 import { MATERIAL_STATUS_PATHS } from "./material-status.paths";
 
 function assertEnvelopeSuccess(envelope: { success: boolean; message?: string }) {
@@ -88,7 +87,7 @@ export async function fetchMaterialStatusesPage(
   if (filters?.is_active !== undefined) params.is_active = filters.is_active;
 
   const { data } = await api.get<WorkflowColourStatusListResponse>(
-    resolveMaterialStatusRequestUrl(MATERIAL_STATUS_PATHS.list),
+    MATERIAL_STATUS_PATHS.list,
     { params },
   );
   assertEnvelopeSuccess(data);
@@ -100,7 +99,7 @@ export async function fetchMaterialStatusesPage(
 
 export async function fetchMaterialStatus(id: number): Promise<WorkflowColourStatus> {
   const { data } = await api.get<ApiEnvelope<MaterialStatusApiRow>>(
-    resolveMaterialStatusRequestUrl(MATERIAL_STATUS_PATHS.detail(id)),
+    MATERIAL_STATUS_PATHS.detail(id),
   );
   assertApiSuccess(data);
   return normalizeMaterialStatusRow(data.data);
@@ -110,7 +109,7 @@ export async function createMaterialStatus(
   body: WorkflowColourStatusCreatePayload,
 ): Promise<WorkflowColourStatus> {
   const { data } = await api.post<ApiEnvelope<MaterialStatusApiRow>>(
-    resolveMaterialStatusRequestUrl(MATERIAL_STATUS_PATHS.list),
+    MATERIAL_STATUS_PATHS.list,
     toWriteBody(body),
   );
   assertApiSuccess(data);
@@ -122,7 +121,7 @@ export async function updateMaterialStatus(
   body: WorkflowColourStatusUpdatePayload,
 ): Promise<WorkflowColourStatus> {
   const { data } = await api.patch<ApiEnvelope<MaterialStatusApiRow>>(
-    resolveMaterialStatusRequestUrl(MATERIAL_STATUS_PATHS.detail(id)),
+    MATERIAL_STATUS_PATHS.detail(id),
     toPatchBody(body),
   );
   assertApiSuccess(data);
@@ -131,7 +130,7 @@ export async function updateMaterialStatus(
 
 export async function deleteMaterialStatus(id: number): Promise<void> {
   const { data } = await api.delete<ApiEnvelope<unknown>>(
-    resolveMaterialStatusRequestUrl(MATERIAL_STATUS_PATHS.detail(id)),
+    MATERIAL_STATUS_PATHS.detail(id),
   );
   assertEnvelopeSuccess(data);
 }

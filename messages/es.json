@@ -416,6 +416,11 @@
           "title": "Proveedores",
           "mappingDescription": "Relaciona los campos de proveedores de Zoho con los campos de proveedores de SimHo.",
           "toggleSection": "Mostrar u ocultar sección de proveedores"
+        },
+        "purchase_orders": {
+          "title": "Órdenes de compra",
+          "mappingDescription": "Relaciona los campos de órdenes de compra de Zoho con los campos de órdenes de compra de SimHo.",
+          "toggleSection": "Mostrar u ocultar sección de órdenes de compra"
         }
       },
       "zohoIntegrationGuide": {
@@ -1594,6 +1599,7 @@
       "deletedToast": "Código QR eliminado",
       "cardAssignedJob": "Asignado al trabajo #{id}",
       "cardNotAssigned": "Sin asignar a un trabajo",
+      "cardBatch": "Lote {batch}",
       "cardScans": "{count, plural, one {# escaneo} other {# escaneos}}",
       "status": {
         "assigned": "Asignado",
@@ -1602,6 +1608,7 @@
       "table": {
         "qrImage": "Código QR",
         "qrCodeId": "ID QR",
+        "batchNumber": "N.º de lote",
         "status": "Estado",
         "assignedJob": "Trabajo asignado",
         "scanCount": "Escaneos",
@@ -1617,7 +1624,19 @@
         "submit": "Generar",
         "cancel": "Cancelar",
         "successToast": "Códigos QR generados correctamente",
-        "validationCount": "Introduce una cantidad válida de códigos QR."
+        "validationCount": "Introduce una cantidad válida de códigos QR.",
+        "result": {
+          "title": "Detalles del lote generado",
+          "close": "Cerrar",
+          "downloadCsv": "Descargar CSV",
+          "downloadSuccess": "La descarga del CSV ha comenzado",
+          "downloadError": "No se pudo descargar el CSV de códigos QR. Inténtalo de nuevo.",
+          "batchNumber": "Número de lote",
+          "quantity": "Cantidad",
+          "createdAt": "Creado",
+          "createdBy": "Creado por",
+          "codesCount": "{count, plural, one {# código QR generado} other {# códigos QR generados}}"
+        }
       },
       "detail": {
         "loadingTitle": "Cargando…",
@@ -2462,8 +2481,9 @@
         "productName": "Producto",
         "group": "Grupo",
         "qty": "Cant.",
-        "rate": "Tarifa",
-        "listPrice": "Precio de lista",
+        "rate": "Precio unitario",
+        "amount": "Importe",
+        "listPrice": "Precio unitario",
         "addItem": "Añadir línea",
         "remove": "Eliminar línea",
         "selectProduct": "Seleccionar producto…",
@@ -2955,6 +2975,29 @@
         "placeholder": "Seleccionar estado",
         "loading": "Cargando estados…"
       },
+      "qualityAssurance": {
+        "label": "¿Calidad asegurada?",
+        "yes": "Sí",
+        "no": "No",
+        "rejectTitle": "Rechazar control de calidad",
+        "rejectBody": "Añade una breve nota explicando por qué se rechaza este trabajo.",
+        "remarks": "Observaciones",
+        "remarksPlaceholder": "p. ej. El trabajo no se completó correctamente.",
+        "remarksRequired": "Las observaciones son obligatorias para rechazar.",
+        "cancel": "Cancelar",
+        "rejectConfirm": "Rechazar",
+        "approvedToast": "Control de calidad aprobado",
+        "rejectedToast": "Control de calidad rechazado",
+        "error": "No se pudo enviar el control de calidad. Inténtalo de nuevo.",
+        "sectionTitle": "Control de calidad",
+        "status": "Estado",
+        "statusApproved": "Aprobado",
+        "statusRejected": "Rechazado",
+        "statusPending": "Pendiente",
+        "approvedAt": "Aprobado el",
+        "approvedBy": "Aprobado por",
+        "column": "QA"
+      },
       "forms": {
         "sectionTitle": "Formularios",
         "pageTitle": "Formulario del trabajo",
@@ -3149,6 +3192,26 @@
       "emptyTitle": "Aún no hay proyectos",
       "emptyDescription": "Crea tu primer proyecto para empezar a planificar y dar seguimiento.",
       "loadError": "No se pudieron cargar los proyectos. Inténtalo de nuevo.",
+      "pins": {
+        "pageTitle": "Detalles del pin",
+        "backAria": "Volver",
+        "loadError": "No se pudo cargar este pin. Inténtalo de nuevo.",
+        "pinDetails": "Detalles del pin",
+        "assignedForm": "Formulario asignado",
+        "product": "Producto",
+        "quantity": "Cantidad",
+        "status": "Estado",
+        "variation": "Variación",
+        "location": "Ubicación",
+        "coordinates": "Coordenadas",
+        "form": "Formulario",
+        "description": "Descripción",
+        "yes": "Sí",
+        "no": "No",
+        "noFormAssigned": "No hay formulario asignado a este pin.",
+        "formSubmitted": "Enviado",
+        "formNotSubmitted": "No enviado"
+      },
       "missingOrganization": "No hay organización de espacio de trabajo en esta sesión. Cierra sesión y vuelve a entrar, o contacta con soporte.",
       "createdToast": "Proyecto creado correctamente",
       "updatedToast": "Proyecto actualizado correctamente",

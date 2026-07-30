@@ -249,6 +249,14 @@ interface DrawingPinPreviewModalProps {
   drawingId?: number;
   editUrl?: string;
   onSaveSuccess?: (updatedPin: DrawingPin) => void;
+  /** Render as page content (no AppModal). Used by pin detail full page. */
+  embedded?: boolean;
+  /** Hide the form row in details when the page already shows FormRenderer. */
+  hideFormRow?: boolean;
+  /** Show details panel only (no blueprint map). */
+  hideDrawing?: boolean;
+  /** Extra content rendered at the end of the details panel (e.g. QA). */
+  detailsFooter?: React.ReactNode;
 }
 
 export function DrawingPinPreviewModal({
@@ -263,6 +271,10 @@ export function DrawingPinPreviewModal({
   drawingId,
   editUrl,
   onSaveSuccess,
+  embedded = false,
+  hideFormRow = false,
+  hideDrawing = false,
+  detailsFooter,
 }: DrawingPinPreviewModalProps) {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const t = useTranslations("Dashboard.projects.drawings.editor");
@@ -280,10 +292,10 @@ export function DrawingPinPreviewModal({
   React.useEffect(() => {
     if (open) {
       setPageSize(null);
-      setLoading(true);
+      setLoading(!hideDrawing);
       setIsPanning(false);
     }
-  }, [open, drawingFile]);
+  }, [open, drawingFile, hideDrawing]);
 
   // Centering scroll viewport on pin after page size is resolved
   React.useEffect(() => {
@@ -369,9 +381,9 @@ export function DrawingPinPreviewModal({
     if (open) {
       setIsEditing(false);
       setPinEditData(null);
-      setDetailsOpen(false);
+      setDetailsOpen(embedded || hideDrawing);
     }
-  }, [open]);
+  }, [open, embedded, hideDrawing, pin?.id]);
 
   async function filesToPinAttachments(files: File[]): Promise<DrawingPinAttachment[]> {
     if (!files.length) return [];
@@ -545,21 +557,24 @@ export function DrawingPinPreviewModal({
     formSummary?.label ??
     (pin.project_form && typeof pin.project_form === "object" ? pin.project_form.name : null);
 
-  return (
-    <AppModal
-      open={open}
-      onClose={onClose}
-      title={
-        <div className="flex items-center gap-2">
-          <span>Pin #{pin.id} Preview</span>
-          <span className="text-xs font-normal text-slate-500">({drawingName})</span>
-        </div>
-      }
-      size="5xl"
-    >
-      <div className="grid grid-cols-1 md:grid-cols-10 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/20">
+  const mapScrollClass = embedded
+    ? "relative min-h-[50vh] h-full w-full overflow-hidden p-6 md:p-8 cursor-grab select-none flex-1"
+    : "relative max-h-[70vh] min-h-[50vh] w-full overflow-hidden p-8 md:p-12 cursor-grab select-none flex-1";
+  const detailsPaneClass = hideDrawing
+    ? "md:col-span-10 bg-white dark:bg-slate-900 flex flex-col min-h-0 h-full overflow-hidden"
+    : embedded
+      ? "md:col-span-4 bg-white dark:bg-slate-900 flex flex-col min-h-0 h-full overflow-hidden border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800"
+      : "md:col-span-4 bg-white dark:bg-slate-900 flex flex-col max-h-[70vh] overflow-hidden border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800";
+
+  const body = (
+      <div
+        className={`grid grid-cols-1 md:grid-cols-10 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/20 ${
+          embedded ? "min-h-[calc(100dvh-11rem)] h-full" : ""
+        }`}
+      >
 
         {/* Left Column (MAP) - 60% or 100% width */}
+        {!hideDrawing ? (
         <div className={`relative ${detailsOpen ? "md:col-span-6 border-r" : "md:col-span-10"} border-b md:border-b-0 border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden`}>
           {loading && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm dark:bg-slate-900/70">
@@ -572,7 +587,7 @@ export function DrawingPinPreviewModal({
 
           <div
             ref={scrollContainerRef}
-            className="relative max-h-[70vh] min-h-[50vh] w-full overflow-hidden p-8 md:p-12 cursor-grab select-none flex-1"
+            className={mapScrollClass}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
           >
@@ -735,10 +750,11 @@ export function DrawingPinPreviewModal({
             )}
           </div>
         </div>
+        ) : null}
 
         {/* Right Column (FIELDS) - 40% width */}
         {detailsOpen && (
-          <div className="md:col-span-4 bg-white dark:bg-slate-900 flex flex-col max-h-[70vh] overflow-hidden border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800">
+          <div className={detailsPaneClass}>
             {/* Header/Title with EDIT and CLOSE buttons */}
             <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800/80 gap-3">
               <div className="min-w-0 flex-1">
@@ -794,16 +810,18 @@ export function DrawingPinPreviewModal({
                   </div>
                 )}
 
-                <button
-                  onClick={() => {
-                    setIsEditing(false);
-                    setDetailsOpen(false);
-                  }}
-                  title="Close details"
-                  className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                {!embedded ? (
+                  <button
+                    onClick={() => {
+                      setIsEditing(false);
+                      setDetailsOpen(false);
+                    }}
+                    title="Close details"
+                    className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                ) : null}
               </div>
             </div>
 
@@ -1100,6 +1118,7 @@ export function DrawingPinPreviewModal({
               </div>
 
               {/* Form */}
+              {!hideFormRow ? (
               <div className="flex items-start justify-between py-3 border-b border-slate-50 dark:border-slate-800/50 gap-3">
                 <div className="flex items-center gap-3">
                   <div className="text-slate-400">
@@ -1169,6 +1188,7 @@ export function DrawingPinPreviewModal({
                   ) : null}
                 </div>
               </div>
+              ) : null}
 
               {/* Variation */}
               <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800/50">
@@ -1217,11 +1237,34 @@ export function DrawingPinPreviewModal({
                 </div>
               </div>
             </div>
+
+            {detailsFooter ? (
+              <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800/60">
+                {detailsFooter}
+              </div>
+            ) : null}
           </div>
         </div>
       )}
 
       </div>
+  );
+
+  if (embedded) return body;
+
+  return (
+    <AppModal
+      open={open}
+      onClose={onClose}
+      title={
+        <div className="flex items-center gap-2">
+          <span>Pin #{pin.id} Preview</span>
+          <span className="text-xs font-normal text-slate-500">({drawingName})</span>
+        </div>
+      }
+      size="5xl"
+    >
+      {body}
     </AppModal>
   );
 }

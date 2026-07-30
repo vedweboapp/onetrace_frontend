@@ -181,8 +181,6 @@ export function buildGroupedMappingRows(
   }
 
   for (const group of internalGroups) {
-    const isGeneral = group.group.trim().toLowerCase() === "general";
-    if (!isGeneral) continue;
     for (const field of sortFieldsInGroup(group.fields)) {
       if (!field.required) continue;
       const key = `${group.group}::${field.field}`;
@@ -220,7 +218,14 @@ export function rowsToMappings(
     const external_field = row.externalField.trim();
     const internal_field = row.internalField.trim();
     if (!external_field || !internal_field) continue;
-    const key = `${external_field}::${internal_field}`;
+
+    // Include groups so billing/shipping/other can reuse the same field names.
+    const key = [
+      row.externalGroup.trim(),
+      external_field,
+      row.internalGroup.trim(),
+      internal_field,
+    ].join("::");
     if (seen.has(key)) continue;
     seen.add(key);
 
@@ -228,7 +233,10 @@ export function rowsToMappings(
     const externalMatch = findFieldInGroups(externalGroups, external_field, row.externalGroup);
 
     mappings.push({
-      internal_model: externalMatch?.group.internal_model ?? internalMatch?.group.internal_model ?? null,
+      internal_model:
+        internalMatch?.group.internal_model ??
+        externalMatch?.group.internal_model ??
+        null,
       internal_field,
       internal_field_label: internalMatch?.field.label ?? null,
       internal_group: internalMatch?.group.group ?? (row.internalGroup || null),

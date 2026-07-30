@@ -53,6 +53,11 @@ export function QrCodeDetailBody({ detail, dateFmt }: Props) {
 
         <DetailPanelCard title={t("detail.sectionDetails")}>
           <DetailMetricsGrid>
+            <DetailMetricCard label={t("table.batchNumber")}>
+              <span className="font-mono">
+                {detail.batch_detail?.batch_number?.trim() || "—"}
+              </span>
+            </DetailMetricCard>
             <DetailMetricCard label={t("table.lastScanned")}>
               <span>{formatOptionalDate(detail.last_scanned_at, dateFmt)}</span>
             </DetailMetricCard>
