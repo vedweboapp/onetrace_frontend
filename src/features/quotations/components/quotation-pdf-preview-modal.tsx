@@ -603,6 +603,24 @@ function useDownloadPdf(quoteName: string | undefined, quotationId: number) {
         const pdf = new jsPDF({ orientation: pdfH > pdfW ? "portrait" : "landscape", unit: "mm", format: [pdfW, pdfH] });
         pdf.addImage(imgData, "JPEG", 0, 0, pdfW, pdfH, undefined, "FAST");
 
+        // Add embedded link annotations over captured image
+        const containerRect = el.getBoundingClientRect();
+        const scale = pdfW / (containerRect.width || el.scrollWidth || 1060);
+        const linkElements = el.querySelectorAll<HTMLAnchorElement>("a[href]");
+
+        linkElements.forEach((linkEl) => {
+          const href = linkEl.getAttribute("href");
+          if (!href || href === "#") return;
+          const rect = linkEl.getBoundingClientRect();
+          const x = (rect.left - containerRect.left) * scale;
+          const y = (rect.top - containerRect.top) * scale;
+          const w = rect.width * scale;
+          const h = rect.height * scale;
+          if (w > 0 && h > 0) {
+            pdf.link(x, y, w, h, { url: href });
+          }
+        });
+
         const filename = quoteName
           ? `${quoteName.replace(/[/\\?%*:|"<>]/g, "").trim().replace(/\s+/g, "-").slice(0, 80)}.pdf`
           : `quotation-${quotationId}.pdf`;
