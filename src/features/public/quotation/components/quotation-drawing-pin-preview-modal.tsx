@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import * as React from "react";
-import { Document, Page, pdfjs } from "react-pdf";
+import { Document, Page } from "react-pdf";
 import { useTranslations } from "next-intl";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
 import { resolvePinMarkerAbbreviation } from "@/features/projects/utils/drawing-pin-display.util";
@@ -16,15 +16,10 @@ import { fetchProjectFormsPage } from "@/features/projects/api/project.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import type { PinStatus } from "@/features/pin-status/types/pin-status.types";
 import type { FormListItem } from "@/features/forms/types/form.types";
+import "@/shared/utils/pdfjs-worker";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-
-// Set PDF JS global worker Src using the recommended Next.js import path.
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url,
-).toString();
 
 const PLOT_PALETTE = [
   { border: "#059669", bg: "#0596690D" },  // Green
