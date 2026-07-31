@@ -1,7 +1,10 @@
 import { pdfjs } from "react-pdf";
 import api from "@/core/api/axios";
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url,
+).toString();
 
 export type LevelSnapshot = {
   objectUrl: string;

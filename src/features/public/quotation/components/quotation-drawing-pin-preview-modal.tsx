@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { Document, Page, pdfjs } from "react-pdf";
@@ -36,7 +36,7 @@ const PLOT_PALETTE = [
   { border: "#DC2626", bg: "#DC26260D" },  // Red
 ];
 
-// ─── Pin Detail Icons ────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Pin Detail Icons ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 const PackageIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
@@ -418,7 +418,7 @@ export function DrawingPinPreviewModal({
 
       const formData = new FormData();
 
-      // Build pin payload — only the fields the user can edit
+      // Build pin payload ΓÇö only the fields the user can edit
       const newAttachments = (pinEditData.attachments ?? pin.attachments ?? []) as DrawingPinAttachment[];
       const attachmentFileKey = "plots[0][pins][0][attachments]";
       let attachFileIdx = 0;
@@ -441,7 +441,7 @@ export function DrawingPinPreviewModal({
         variation: pinEditData.variation ?? pin.variation ?? false,
         location: pin.location,
         description: pinEditData.description ?? pin.description ?? undefined,
-        // Only send existing (server-side) attachments — new files are sent via FormData
+        // Only send existing (server-side) attachments ΓÇö new files are sent via FormData
         attachments: newAttachments.filter((att: any) => !att.file).map((att: any) => ({ id: att.id })),
       };
 
