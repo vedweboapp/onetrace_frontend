@@ -37,6 +37,7 @@ import { Controller, useForm } from "react-hook-form";
 import { DrawingPinPreviewModal } from "./drawing-pin-preview-modal";
 import { useRouter } from "@/i18n/navigation";
 import { routes } from "@/shared/config/routes";
+import { buildProjectDetailTabHref } from "@/shared/utils/detail-from-list.util";
 import { DrawingFilePreviewFill } from "@/features/projects/components/drawing-file-preview";
 import { DrawingPinThumbnailOverlay } from "@/features/projects/components/drawing-pin-thumbnail-overlay";
 import { DrawingFilePreview } from "@/features/projects/components/drawing-file-preview";
@@ -2011,7 +2012,7 @@ const ProjectPinsListTab = ({
                               onOpenPinDetail={(pin) => {
                                 router.push(
                                   `${routes.dashboard.projectPinDetail(id, pin.id, level.id)}&back=${encodeURIComponent(
-                                    `${routes.dashboard.projects}/${id}`,
+                                    buildProjectDetailTabHref(Number(id), "location"),
                                   )}`,
                                 );
                               }}

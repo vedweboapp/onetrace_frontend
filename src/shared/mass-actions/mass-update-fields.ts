@@ -83,7 +83,7 @@ export function buildJobMassUpdateFields(
     selectField("project", labels.project, options.projectOptions, "number"),
     selectField("site", labels.site, options.siteOptions, "number"),
   ];
-  if (opts?.includeForms !== false) {
+  if (opts?.includeForms) {
     fields.push(selectField("forms", labels.forms, options.formOptions, "number"));
   }
   fields.push(

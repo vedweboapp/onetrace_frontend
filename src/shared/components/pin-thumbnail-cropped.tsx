@@ -58,7 +58,7 @@ type Props = {
   alt?: string;
 };
 
-export function PinThumbnailCropped({
+function PinThumbnailCroppedComponent({
   snapshotUrl,
   snapshotWidth,
   snapshotHeight,
@@ -130,6 +130,7 @@ export function PinThumbnailCropped({
         canvas.height = bitmap.height;
         const ctx = canvas.getContext("2d");
         if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(bitmap, 0, 0);
         }
         bitmap.close();
@@ -174,3 +175,6 @@ export function PinThumbnailCropped({
     </div>
   );
 }
+
+export const PinThumbnailCropped = React.memo(PinThumbnailCroppedComponent);
+
