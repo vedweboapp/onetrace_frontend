@@ -2,17 +2,13 @@
 
 import * as React from "react";
 import { FileText } from "lucide-react";
-import { Document, Page, pdfjs } from "react-pdf";
+import { Document, Page } from "react-pdf";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
 import { cn } from "@/core/utils/http.util";
+import "@/shared/utils/pdfjs-worker";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url,
-).toString();
 
 function isPdfFile(file: string, fileType?: string | null): boolean {
   if (fileType?.toLowerCase().includes("pdf")) return true;

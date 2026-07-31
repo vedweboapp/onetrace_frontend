@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Crosshair, FileText, Hand, MapPinned, Maximize, SquareDashed, X, ZoomIn, ZoomOut, LayoutGrid, Download } from "lucide-react";
-import { Document, Page, pdfjs } from "react-pdf";
+import { Document, Page } from "react-pdf";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { fetchDrawingDetail, updateDrawingPlots } from "@/features/projects/api/drawing.api";
@@ -36,15 +36,11 @@ import { AppButton, CheckmarkSelect, ConfirmDialog, DetailPanel, SurfaceShell, s
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import DrawingBottomToolbar from "./drawing-bottom-toolbar";
 import PlotToolbar from "./plot-toolbar";
+import "@/shared/utils/pdfjs-worker";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import { fetchProjectFormsPage } from "../api/project.api";
-
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url,
-).toString();
 
 type Props = {
   projectId: number;
