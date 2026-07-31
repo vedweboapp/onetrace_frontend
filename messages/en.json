@@ -265,6 +265,7 @@
       "users": "Users",
       "personalProfile": "Personal Profile",
       "companySettings": "Company Settings",
+      "documentation": "Documentation",
       "formBuilder": "Form Builder",
       "projectForms": "Project forms",
       "modules": "Modules",
@@ -511,7 +512,52 @@
       "AddEmail": "Add Email",
       "AddAddress": "Add Address",
       "Addresses": "Addresses",
-      "Primary": "Primary"
+      "Primary": "Primary",
+      "fields": {
+        "address1": "Address 1",
+        "address2": "Address 2",
+        "country": "Country",
+        "state": "State",
+        "city": "City",
+        "pincode": "Pin Code"
+      },
+      "placeholders": {
+        "country": "Select country",
+        "state": "Select state",
+        "city": "Select city"
+      }
+    },
+    "settingsDocumentation": {
+      "pageTitle": "Documentation",
+      "pageDescription": "A guided overview of user flows and settings behavior in the application.",
+      "profile": {
+        "title": "Personal profile flow",
+        "description": "This section explains how the personal profile screen loads, edits, and submits user details.",
+        "flow": {
+          "load": "Load the signed-in user profile from the API and render the profile form when data is ready.",
+          "edit": "Toggle edit mode to enable the personal profile form fields.",
+          "save": "Submit a PATCH request with top-level emails, phones, and addresses arrays plus nested user_detail fields.",
+          "addresses": "Addresses are collected as a top-level array, with each item using invite-style address field names and normalized country/state values."
+        }
+      },
+      "publicQuotation": {
+        "title": "Public quotation flow",
+        "description": "This section covers how the public quotation page resolves a token and loads quotation pin preview data.",
+        "flow": {
+          "token": "Read token or pinDetailsKey from URL search params to determine whether to fetch live pin details or load stored payload.",
+          "payload": "For numeric tokens, fetch public pin details from the API; for non-numeric tokens, load client-side stored quotation scope payload.",
+          "preview": "Render the quotation pin preview modal with plot and drawing data once the payload is available."
+        }
+      },
+      "settings": {
+        "title": "Relevant settings sections",
+        "description": "The main settings area includes profile, documentation, company settings, modules, project forms, customization, users, and integrations.",
+        "flow": {
+          "personalProfile": "Access the personal profile page through Settings → Personal Profile to update contact and address details.",
+          "integration": "Connect and configure Zoho integration under Settings → Integrations, then follow callback/connection/key mapping flows.",
+          "documentation": "Use this documentation page to review user flows and understand how core settings routes behave."
+        }
+      }
     },
     "settingsAppearance": {
       "workPrefrence": "WORK PREFREFRENCE",
