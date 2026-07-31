@@ -30,10 +30,16 @@ function resolveApiBaseUrl(): string {
   return resolvePublicApiBaseUrl();
 }
 
-/** Django APPEND_SLASH requires POST/PATCH/PUT paths to end with `/`. */
 function ensureTrailingSlashUrl(url: string): string {
   const trimmed = url.trim();
   if (!trimmed || trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return trimmed;
+
+  // Do not append trailing slash to files with extensions (e.g. .pdf, .png, .jpg, .svg)
+  const pathWithoutQuery = trimmed.split("?")[0].split("#")[0];
+  const lastSegment = pathWithoutQuery.split("/").pop() || "";
+  if (lastSegment.includes(".") && !lastSegment.endsWith(".")) {
+    return trimmed;
+  }
 
   // Absolute URLs — mutate pathname only.
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
@@ -67,7 +73,12 @@ const baseURL = resolveApiBaseUrl();
 function rejectIfEnvelopeFailed(
   response: AxiosResponse,
 ): AxiosResponse | Promise<never> {
-  if (response.config.responseType === "blob") return response;
+  if (
+    response.config.responseType === "blob" ||
+    response.config.responseType === "arraybuffer"
+  ) {
+    return response;
+  }
   const d = response.data;
   if (
     d &&

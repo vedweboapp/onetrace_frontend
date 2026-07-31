@@ -5,7 +5,6 @@ import { Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { fetchProjectFormsByProject } from "@/features/forms/api/forms.api";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
 import { deleteJob } from "@/features/jobs/api/job.api";
 import { jobAssignedWorkerLabel, jobClientLabel } from "@/features/jobs/utils/job-nested-fields.util";
@@ -86,7 +85,6 @@ export function ProjectJobsTab({ projectId }: Props) {
   const [massClientOptions, setMassClientOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [massProjectOptions, setMassProjectOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [massSiteOptions, setMassSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [massFormOptions, setMassFormOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [workerOptions, setWorkerOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [statusById, setStatusById] = React.useState<
     Record<number, { status_name: string; bg_colour: string; text_colour: string }>
@@ -172,7 +170,7 @@ export function ProjectJobsTab({ projectId }: Props) {
           clientOptions: massClientOptions,
           projectOptions: massProjectOptions,
           siteOptions: massSiteOptions,
-          formOptions: massFormOptions,
+          formOptions: [],
         },
         {
           title: tJobs("fields.title"),
@@ -184,9 +182,9 @@ export function ProjectJobsTab({ projectId }: Props) {
           jobStatus: tJobs("fields.jobStatus"),
           startDate: tJobs("fields.startDate"),
         },
-        { includeForms: true },
+        { includeForms: false },
       ),
-    [jobStatusOptions, massClientOptions, massProjectOptions, massSiteOptions, massFormOptions, tJobs],
+    [jobStatusOptions, massClientOptions, massProjectOptions, massSiteOptions, tJobs],
   );
 
   const mass = useEntityListMassActions({
@@ -243,36 +241,28 @@ export function ProjectJobsTab({ projectId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const [clients, projects, sites, forms] = await Promise.all([
+        const [clients, projects, sites] = await Promise.all([
           fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
           fetchProjectsPage(1, 500, { is_active: true }),
           fetchSitesPage(1, 500, { is_active: true }),
-          fetchProjectFormsByProject(projectId, { silent: true }),
         ]);
         if (cancelled) return;
 
         setMassClientOptions(clients.items.map((client) => ({ value: String(client.id), label: client.name })));
         setMassProjectOptions(projects.items.map((project) => ({ value: String(project.id), label: project.name })));
         setMassSiteOptions(sites.items.map((site) => ({ value: String(site.id), label: site.site_name })));
-        setMassFormOptions(
-          forms.map((form) => ({
-            value: String(form.id),
-            label: form.name?.trim() || `#${form.id}`,
-          })),
-        );
       } catch {
         if (!cancelled) {
           setMassClientOptions([]);
           setMassProjectOptions([]);
           setMassSiteOptions([]);
-          setMassFormOptions([]);
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [fetchMassOptions, projectId]);
+  }, [fetchMassOptions]);
 
   React.useEffect(() => {
     if (mass.selectedCount > 0) setFetchMassOptions(true);

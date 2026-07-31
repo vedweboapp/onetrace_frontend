@@ -128,6 +128,7 @@ export type QuotationQuoteSectionSourcePin = {
   project_form_name?: string | null;
   submission_id?: number | null;
   submission_status?: string | null;
+  variation?: boolean | null;
 };
 
 /** Pin row on a quote section plot (create/update quotation scope). */

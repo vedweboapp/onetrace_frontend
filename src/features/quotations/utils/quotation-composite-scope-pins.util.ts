@@ -1,5 +1,7 @@
 "use client";
 
+import type { DrawingPin, DrawingPlot } from "@/features/projects/types/drawing.types";
+
 const STORAGE_PREFIX = "onetrace:quotation:scope-pins:";
 
 export type QuotationScopePinDetailRow = {
@@ -9,13 +11,20 @@ export type QuotationScopePinDetailRow = {
   pins_order: number;
   pins_total: number;
   selling_price: number;
+  x_coordinate?: number | null;
+  y_coordinate?: number | null;
 };
 
 export type QuotationScopePinDetailPayload = {
   title: string;
   sectionLabel?: string;
   plotLabel?: string;
+  drawingFile?: string | null;
+  drawingFileType?: string | null;
   rows: QuotationScopePinDetailRow[];
+  selectedPin?: DrawingPin | null;
+  plots?: DrawingPlot[];
+  drawingName?: string;
 };
 
 export function saveQuotationScopePinDetails(payload: QuotationScopePinDetailPayload): string | null {

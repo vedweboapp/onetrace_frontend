@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { fetchProjectFormsByProject } from "@/features/forms/api/forms.api";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
 import { deleteJob, fetchAllJobIds, fetchJobsPage } from "@/features/jobs/api/job.api";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
@@ -125,7 +124,6 @@ export function JobsPanel() {
   const [massClientOptions, setMassClientOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [massProjectOptions, setMassProjectOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [massSiteOptions, setMassSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [massFormOptions, setMassFormOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [statusById, setStatusById] = React.useState<Record<number, { status_name: string; bg_colour: string; text_colour: string }>>({});
 
   const [deleteOpen, setDeleteOpen] = React.useState(false);
@@ -172,28 +170,6 @@ export function JobsPanel() {
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
 
-  const jobProjectByIdRef = React.useRef<Map<number, number | null>>(new Map());
-
-  React.useEffect(() => {
-    for (const job of items) {
-      jobProjectByIdRef.current.set(job.id, getJobProjectId(job.project));
-    }
-  }, [items]);
-
-  const sharedMassUpdateProjectId = React.useMemo(() => {
-    if (mass.selectedCount === 0) return null;
-    const projectIds = new Set<number | null>();
-    for (const id of mass.selection.selectedIds) {
-      if (!jobProjectByIdRef.current.has(id)) return null;
-      projectIds.add(jobProjectByIdRef.current.get(id) ?? null);
-    }
-    if (projectIds.size !== 1) return null;
-    const only = [...projectIds][0];
-    return only != null && only > 0 ? only : null;
-  }, [mass.selectedCount, mass.selection.selectedIds, items]);
-
-  const includeFormsInMassUpdate = sharedMassUpdateProjectId != null;
-
   const massUpdateFields = React.useMemo(
     () =>
       buildJobMassUpdateFields(
@@ -202,7 +178,7 @@ export function JobsPanel() {
           clientOptions: massClientOptions,
           projectOptions: massProjectOptions,
           siteOptions: massSiteOptions,
-          formOptions: massFormOptions,
+          formOptions: [],
         },
         {
           title: t("fields.title"),
@@ -214,15 +190,13 @@ export function JobsPanel() {
           jobStatus: t("fields.jobStatus"),
           startDate: t("fields.startDate"),
         },
-        { includeForms: includeFormsInMassUpdate },
+        { includeForms: false },
       ),
     [
       jobStatusOptions,
       massClientOptions,
       massProjectOptions,
       massSiteOptions,
-      massFormOptions,
-      includeFormsInMassUpdate,
       t,
     ],
   );
@@ -351,32 +325,6 @@ export function JobsPanel() {
       setFetchFilterOptions(true);
     }
   }, [mass.selectedCount]);
-
-  React.useEffect(() => {
-    if (!sharedMassUpdateProjectId) {
-      setMassFormOptions([]);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const forms = await fetchProjectFormsByProject(sharedMassUpdateProjectId, { silent: true });
-        if (!cancelled) {
-          setMassFormOptions(
-            forms.map((f) => ({
-              value: String(f.id),
-              label: f.name?.trim() || `#${f.id}`,
-            })),
-          );
-        }
-      } catch (error) {
-        if (!cancelled) setMassFormOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [sharedMassUpdateProjectId]);
 
   React.useEffect(() => {
     let cancelled = false;
