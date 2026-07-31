@@ -154,7 +154,7 @@ function PlotTable({
               <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600 }}>Item / Description</th>
               <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, width: 80 }}>Variation</th>
               <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, width: 70 }}>Quantity</th>
-              <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, width: 90 }}>Pin Link</th>
+              {/* <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, width: 90 }}>Pin Link</th> */}
             </tr>
           </thead>
           <tbody>
@@ -175,11 +175,22 @@ function PlotTable({
               return (
                 <tr key={rowIdx} style={{ borderTop: "1px solid #f1f5f9", background: rowIdx % 2 === 1 ? "#f8fafc" : "white" }}>
                   <td style={{ padding: "8px 10px" }}>
-                    <PinSnapshotCell
+                   {pinLink && (
+                      <a
+                        href={pinLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: "#2563eb", textDecoration: "underline", fontWeight: 500 }}
+                      >
+                        <PinSnapshotCell
                       pinKey={pinKey}
                       pinSnapshots={pinSnapshots}
                       locationLabel={sp.location}
                     />
+                      </a>
+                      )
+                    }
+                  
                   </td>
                   <td style={{ padding: "8px 10px", fontWeight: 600, color: "#374151" }}>{locText}</td>
                   <td style={{ padding: "8px 10px" }}>
@@ -190,7 +201,7 @@ function PlotTable({
                   </td>
                   <td style={{ padding: "8px 10px", textAlign: "center", color: "#374151" }}>{variationText}</td>
                   <td style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, color: "#374151" }}>{qty}</td>
-                  <td style={{ padding: "8px 10px", textAlign: "center" }}>
+                  {/* <td style={{ padding: "8px 10px", textAlign: "center" }}>
                     {pinLink ? (
                       <a
                         href={pinLink}
@@ -203,7 +214,7 @@ function PlotTable({
                     ) : (
                       <span style={{ color: "#94a3b8" }}>—</span>
                     )}
-                  </td>
+                  </td> */}
                 </tr>
               );
             })}

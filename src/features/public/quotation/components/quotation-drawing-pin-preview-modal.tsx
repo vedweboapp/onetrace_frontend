@@ -566,8 +566,8 @@ export function DrawingPinPreviewModal({
   const detailsPaneClass = hideDrawing
     ? "md:col-span-10 bg-white dark:bg-slate-900 flex flex-col min-h-0 h-full overflow-hidden"
     : embedded
-      ? "md:col-span-4 bg-white dark:bg-slate-900 flex flex-col min-h-0 h-full overflow-hidden border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800"
-      : "md:col-span-4 bg-white dark:bg-slate-900 flex flex-col max-h-[70vh] overflow-hidden border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800";
+      ? "md:col-span-3 bg-white dark:bg-slate-900 flex flex-col min-h-0 h-full overflow-hidden border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800"
+      : "md:col-span-3 bg-white dark:bg-slate-900 flex flex-col max-h-[70vh] overflow-hidden border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800";
 
   const body = (
       <div
@@ -578,7 +578,7 @@ export function DrawingPinPreviewModal({
 
         {/* Left Column (MAP) - 60% or 100% width */}
         {!hideDrawing ? (
-        <div className={`relative ${detailsOpen ? "md:col-span-6 border-r" : "md:col-span-10"} border-b md:border-b-0 border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden`}>
+        <div className={`relative ${detailsOpen ? "md:col-span-7 border-r" : "md:col-span-10"} border-b md:border-b-0 border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden`}>
           {loading && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm dark:bg-slate-900/70">
               <div className="flex flex-col items-center gap-2">
