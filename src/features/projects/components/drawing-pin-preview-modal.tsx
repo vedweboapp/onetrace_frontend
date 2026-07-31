@@ -16,6 +16,7 @@ import { fetchProjectFormsPage } from "@/features/projects/api/project.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import type { PinStatus } from "@/features/pin-status/types/pin-status.types";
 import type { FormListItem } from "@/features/forms/types/form.types";
+import { useAuthenticatedPdfFile } from "@/features/projects/hooks/use-authenticated-pdf-file";
 import "@/shared/utils/pdfjs-worker";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -286,6 +287,10 @@ export function DrawingPinPreviewModal({
 
   const normalizedFileUrl = React.useMemo(() => resolveDrawingFileUrl(drawingFile), [drawingFile]);
   const isPdf = /\.pdf(\?|$)/i.test(drawingFile) || /\.pdf(\?|$)/i.test(normalizedFileUrl);
+  const { file: pdfFile, failed: pdfFailed } = useAuthenticatedPdfFile(
+    normalizedFileUrl,
+    open && isPdf && !hideDrawing,
+  );
 
   React.useEffect(() => {
     if (open) {
@@ -294,6 +299,12 @@ export function DrawingPinPreviewModal({
       setIsPanning(false);
     }
   }, [open, drawingFile, hideDrawing]);
+
+  React.useEffect(() => {
+    if (!pdfFailed || hideDrawing) return;
+    setLoading(false);
+    toastError("Failed to render blueprint PDF drawing");
+  }, [pdfFailed, hideDrawing]);
 
   // Centering scroll viewport on pin after page size is resolved
   React.useEffect(() => {
@@ -602,25 +613,29 @@ export function DrawingPinPreviewModal({
                 }
               >
                 {isPdf ? (
-                  <Document
-                    file={normalizedFileUrl}
-                    onLoadError={() => {
-                      setLoading(false);
-                      toastError("Failed to render blueprint PDF drawing");
-                    }}
-                    onLoadSuccess={() => setLoading(false)}
-                  >
-                    <Page
-                      pageNumber={1}
-                      scale={1.2}
-                      renderAnnotationLayer={false}
-                      renderTextLayer={false}
-                      onLoadSuccess={(page) => {
-                        const vp = page.getViewport({ scale: 1.2 });
-                        setPageSize({ width: Math.round(vp.width), height: Math.round(vp.height) });
+                  pdfFile ? (
+                    <Document
+                      file={pdfFile}
+                      loading={null}
+                      error={null}
+                      onLoadError={() => {
+                        setLoading(false);
+                        toastError("Failed to render blueprint PDF drawing");
                       }}
-                    />
-                  </Document>
+                      onLoadSuccess={() => setLoading(false)}
+                    >
+                      <Page
+                        pageNumber={1}
+                        scale={1.2}
+                        renderAnnotationLayer={false}
+                        renderTextLayer={false}
+                        onLoadSuccess={(page) => {
+                          const vp = page.getViewport({ scale: 1.2 });
+                          setPageSize({ width: Math.round(vp.width), height: Math.round(vp.height) });
+                        }}
+                      />
+                    </Document>
+                  ) : null
                 ) : (
                   <img
                     src={normalizedFileUrl}
