@@ -3221,7 +3221,8 @@
         "no": "No",
         "noFormAssigned": "No form assigned to this pin.",
         "formSubmitted": "Submitted",
-        "formNotSubmitted": "Not submitted"
+        "formNotSubmitted": "Not submitted",
+        "formImages": "Form images"
       },
       "missingOrganization": "No workspace organization on this session. Sign out and sign in again, or contact support.",
       "createdToast": "Project created successfully",

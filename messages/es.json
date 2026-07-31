@@ -3210,7 +3210,8 @@
         "no": "No",
         "noFormAssigned": "No hay formulario asignado a este pin.",
         "formSubmitted": "Enviado",
-        "formNotSubmitted": "No enviado"
+        "formNotSubmitted": "No enviado",
+        "formImages": "Imágenes del formulario"
       },
       "missingOrganization": "No hay organización de espacio de trabajo en esta sesión. Cierra sesión y vuelve a entrar, o contacta con soporte.",
       "createdToast": "Proyecto creado correctamente",

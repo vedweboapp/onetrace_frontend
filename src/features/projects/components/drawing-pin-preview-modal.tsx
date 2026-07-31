@@ -561,7 +561,7 @@ export function DrawingPinPreviewModal({
     ? "relative min-h-[50vh] h-full w-full overflow-hidden p-6 md:p-8 cursor-grab select-none flex-1"
     : "relative max-h-[70vh] min-h-[50vh] w-full overflow-hidden p-8 md:p-12 cursor-grab select-none flex-1";
   const detailsPaneClass = hideDrawing
-    ? "md:col-span-10 bg-white dark:bg-slate-900 flex flex-col min-h-0 h-full overflow-hidden"
+    ? "md:col-span-10 bg-white dark:bg-slate-900 flex flex-col min-h-0 overflow-hidden"
     : embedded
       ? "md:col-span-4 bg-white dark:bg-slate-900 flex flex-col min-h-0 h-full overflow-hidden border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800"
       : "md:col-span-4 bg-white dark:bg-slate-900 flex flex-col max-h-[70vh] overflow-hidden border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800";
@@ -569,7 +569,7 @@ export function DrawingPinPreviewModal({
   const body = (
       <div
         className={`grid grid-cols-1 md:grid-cols-10 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/20 ${
-          embedded ? "min-h-[calc(100dvh-11rem)] h-full" : ""
+          embedded && !hideDrawing ? "min-h-[calc(100dvh-11rem)] h-full" : ""
         }`}
       >
 
