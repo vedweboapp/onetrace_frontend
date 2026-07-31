@@ -51,6 +51,10 @@ import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { cn } from "@/core/utils/http.util";
 import { ChevronRight, Layers, MapPinned } from "lucide-react";
 import { DrawingPinPreviewModal } from "@/features/projects/components/drawing-pin-preview-modal";
+import { JobQualityAssuranceControls } from "@/features/jobs/components/job-quality-assurance-controls";
+import { QualityAssuranceDetailGrid } from "@/features/jobs/components/quality-assurance-status";
+import { isQualityAssuranceDecided } from "@/features/jobs/types/quality-assurance.types";
+import { resolvePinFormMeta } from "@/features/projects/utils/pin-form-meta.util";
 import type { Drawing, DrawingPin, DrawingPlot } from "@/features/projects/types/drawing.types";
 import { useLevelSnapshots, type LevelSnapshotState } from "@/shared/hooks/use-level-snapshots.hook";
 import { PinThumbnailCropped } from "@/shared/components/pin-thumbnail-cropped";
@@ -71,7 +75,7 @@ type JobDrawingLevel = {
 };
 
 const PIN_TABLE_GRID =
-  "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,4rem)_minmax(0,1.2fr)_minmax(0,5.5rem)_minmax(0,0.5fr)_minmax(0,0.4fr)_minmax(0,0.8fr)_minmax(0,0.5fr)_minmax(0,3rem)] items-center gap-x-3 sm:gap-x-4";
+  "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,3.5rem)_minmax(0,1.1fr)_minmax(0,5rem)_minmax(0,0.45fr)_minmax(0,0.35fr)_minmax(0,0.75fr)_minmax(0,0.45fr)_minmax(0,4.5rem)] items-center gap-x-3 sm:gap-x-4";
 
 const PIN_TABLE_HEADER_CLASS = cn(
   PIN_TABLE_GRID,
@@ -102,6 +106,7 @@ function PinStatusChip({ pin }: { pin: DrawingPin }) {
 function ProjectPinTableHeader() {
   const locale = useLocale();
   const isEs = locale === "es";
+  const tQa = useTranslations("Dashboard.jobs.qualityAssurance");
   return (
     <div className={PIN_TABLE_HEADER_CLASS}>
       <span>Pin ID</span>
@@ -111,6 +116,7 @@ function ProjectPinTableHeader() {
       <span>Quantity</span>
       <span>Form</span>
       <span>Status</span>
+      <span>{tQa("column")}</span>
     </div>
   );
 }
@@ -119,6 +125,7 @@ function ProjectPinRow({
   pin,
   form,
   onPreview,
+  onOpenDetail,
   checklistsComplete,
   checklistMarked,
   onOpenGateModal,
@@ -130,10 +137,13 @@ function ProjectPinRow({
   snapshotState,
   plots,
   drawingName,
+  jobId,
+  onQaSuccess,
 }: {
   pin: DrawingPin;
   form?: { label: string; href: string; projectFormId: number; submitted: boolean } | null;
   onPreview: () => void;
+  onOpenDetail: () => void;
   checklistsComplete: boolean;
   checklistMarked: boolean;
   onOpenGateModal: (href: string, label: string) => void;
@@ -145,6 +155,8 @@ function ProjectPinRow({
   snapshotState?: LevelSnapshotState;
   plots: DrawingPlot[];
   drawingName?: string;
+  jobId: number;
+  onQaSuccess?: () => void;
 }) {
   const locale = useLocale();
   const isEs = locale === "es";
@@ -156,7 +168,18 @@ function ProjectPinRow({
   const [isEditingStatus, setIsEditingStatus] = React.useState(false);
 
   return (
-    <div className={cn(PIN_TABLE_ROW_CLASS, "bg-white dark:bg-slate-950 dark:hover:bg-slate-900/80")}> 
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpenDetail}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpenDetail();
+        }
+      }}
+      className={cn(PIN_TABLE_ROW_CLASS, "cursor-pointer bg-white dark:bg-slate-950 dark:hover:bg-slate-900/80")}
+    > 
       <span className="font-semibold text-slate-500">#{pin.id}</span>
       <div className="flex flex-col min-w-0 pl-4">
         <span className="font-medium text-slate-900 dark:text-slate-100 truncate">{productName}</span>
@@ -228,13 +251,14 @@ function ProjectPinRow({
         {form ? (
           <button
             type="button"
-            onClick={() => {
-              if (form.submitted || checklistsComplete) {
-                onNavigate(form.href);
-              } else {
-                onOpenGateModal(form.href, form.label);
-              }
-            }}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (form.submitted || checklistsComplete) {
+              onNavigate(form.href);
+            } else {
+              onOpenGateModal(form.href, form.label);
+            }
+          }}
             className={cn(
               "inline-flex min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-full border px-2.5 py-1 text-xs font-semibold transition text-left",
               !form.submitted && !checklistsComplete
@@ -267,6 +291,7 @@ function ProjectPinRow({
           <select
             autoFocus
             value={pin.status ?? pin.status_detail?.id ?? ""}
+            onClick={(e) => e.stopPropagation()}
             onBlur={() => setIsEditingStatus(false)}
             onChange={(e) => {
               const val = e.target.value;
@@ -288,6 +313,7 @@ function ProjectPinRow({
           </select>
         ) : (
           <div
+            onClick={(e) => e.stopPropagation()}
             onDoubleClick={() => {
               if (!checklistMarked) {
                 toastError(
@@ -320,6 +346,15 @@ function ProjectPinRow({
           </div>
         )}
       </div>
+      <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+        <JobQualityAssuranceControls
+          jobId={jobId}
+          pinIds={[pin.id]}
+          existing={pin.quality_assurance}
+          variant="compact"
+          onSuccess={onQaSuccess}
+        />
+      </div>
     </div>
   );
 }
@@ -335,6 +370,7 @@ function PlotPinCategoryGroup({
   expanded,
   onToggleExpanded,
   onPreviewPin,
+  onOpenPinDetail,
   getPinForm,
   checklistsComplete,
   checklistMarked,
@@ -347,11 +383,14 @@ function PlotPinCategoryGroup({
   snapshotState,
   drawingName,
   plot,
+  jobId,
+  onQaSuccess,
 }: {
   category: PinCategory;
   expanded: boolean;
   onToggleExpanded: () => void;
   onPreviewPin: (pin: DrawingPin) => void;
+  onOpenPinDetail: (pin: DrawingPin) => void;
   getPinForm: (pin: DrawingPin) => { label: string; href: string; projectFormId: number; submitted: boolean } | null;
   checklistsComplete: boolean;
   checklistMarked: boolean;
@@ -364,6 +403,8 @@ function PlotPinCategoryGroup({
   snapshotState?: LevelSnapshotState;
   drawingName?: string;
   plot: JobDrawingPlot;
+  jobId: number;
+  onQaSuccess?: () => void;
 }) {
   return (
     <div className="rounded-b-xl border-t border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40">
@@ -390,6 +431,7 @@ function PlotPinCategoryGroup({
               pin={pin}
               form={getPinForm(pin)}
               onPreview={() => onPreviewPin(pin)}
+              onOpenDetail={() => onOpenPinDetail(pin)}
               checklistsComplete={checklistsComplete}
               checklistMarked={checklistMarked}
               onOpenGateModal={onOpenGateModal}
@@ -401,6 +443,8 @@ function PlotPinCategoryGroup({
               snapshotState={snapshotState}
               plots={[plot as DrawingPlot]}
               drawingName={drawingName}
+              jobId={jobId}
+              onQaSuccess={onQaSuccess}
             />
           ))}
         </div>
@@ -414,6 +458,7 @@ function PlotPinsBlock({
   plotName,
   pins,
   onPreviewPin,
+  onOpenPinDetail,
   getPinForm,
   checklistsComplete,
   checklistMarked,
@@ -425,11 +470,14 @@ function PlotPinsBlock({
   drawingFileType,
   snapshotState,
   drawingName,
+  jobId,
+  onQaSuccess,
 }: {
   plot: JobDrawingPlot;
   plotName: string;
   pins: DrawingPin[];
   onPreviewPin: (pin: DrawingPin) => void;
+  onOpenPinDetail: (pin: DrawingPin) => void;
   getPinForm: (pin: DrawingPin) => { label: string; href: string; projectFormId: number; submitted: boolean } | null;
   checklistsComplete: boolean;
   checklistMarked: boolean;
@@ -441,6 +489,8 @@ function PlotPinsBlock({
   drawingFileType?: string;
   snapshotState?: LevelSnapshotState;
   drawingName?: string;
+  jobId: number;
+  onQaSuccess?: () => void;
 }) {
   const categorizedPins = React.useMemo(() => {
     return pins.reduce((acc: PinCategory[], currentPin) => {
@@ -500,6 +550,7 @@ function PlotPinsBlock({
                 expanded={expandedCategoryIds.has(category.id)}
                 onToggleExpanded={() => toggleCategoryExpanded(category.id)}
                 onPreviewPin={onPreviewPin}
+                onOpenPinDetail={onOpenPinDetail}
                 getPinForm={getPinForm}
                 checklistsComplete={checklistsComplete}
                 checklistMarked={checklistMarked}
@@ -512,6 +563,8 @@ function PlotPinsBlock({
                 snapshotState={snapshotState}
                 drawingName={drawingName}
                 plot={plot}
+                jobId={jobId}
+                onQaSuccess={onQaSuccess}
               />
             ))}
           </>
@@ -655,55 +708,18 @@ export function JobDetailBody({
 
   const getPinForm = React.useCallback(
     (pin: DrawingPin) => {
-      const pinProjectForm =
-        pin.project_form && typeof pin.project_form === "object"
-          ? pin.project_form
-          : null;
-      const pinProjectFormId =
-        typeof pin.formId === "number"
-          ? pin.formId
-          : typeof pin.project_form === "number"
-          ? pin.project_form
-          : pinProjectForm
-          ? pinProjectForm.id
-          : null;
-      if (pinProjectFormId == null) return null;
+      const meta = resolvePinFormMeta(pin, { formEntries });
+      if (!meta) return null;
 
-      const form = formEntries.find(
-        (entry) => entry.project_form_id === pinProjectFormId || entry.id === pinProjectFormId,
-      );
-
-      const projectFormName = pinProjectForm?.name || undefined;
-      const label = form?.name?.trim() || projectFormName || `#${pinProjectFormId}`;
-      const jobFormId = form?.id ?? pinProjectFormId;
-      const projectFormId = form?.project_form_id ?? pinProjectFormId;
-
-      const apiSubmissionId = pinProjectForm?.submission_id;
-      const apiSubmissionStatus = pinProjectForm?.submission_status;
-
-      const submissionId =
-        typeof apiSubmissionId === "number" && apiSubmissionId > 0
-          ? apiSubmissionId
-          : typeof form?.submitted_form_id === "number" && form.submitted_form_id > 0
-          ? form.submitted_form_id
-          : null;
-
-      const submitted =
-        (typeof apiSubmissionStatus === "string" && apiSubmissionStatus.toLowerCase() === "submitted") ||
-        (form != null &&
-          (typeof form.is_submitted === "boolean"
-            ? form.is_submitted
-            : typeof form.submitted_form_id === "number" && form.submitted_form_id > 0));
-
-      const baseHref = `${routes.dashboard.jobFormFill(detail.id, projectFormId, jobFormId)}&name=${encodeURIComponent(
-        label,
+      const baseHref = `${routes.dashboard.jobFormFill(detail.id, meta.projectFormId, meta.jobFormId)}&name=${encodeURIComponent(
+        meta.label,
       )}&back=${encodeURIComponent(`${routes.dashboard.jobs}/${detail.id}`)}&job_pin_id=${Number(pin.job_pin_id)}`;
 
       return {
-        label,
-        href: submitted && submissionId ? `${baseHref}&submission_id=${submissionId}` : baseHref,
-        projectFormId,
-        submitted,
+        label: meta.label,
+        href: meta.submitted && meta.submissionId ? `${baseHref}&submission_id=${meta.submissionId}` : baseHref,
+        projectFormId: meta.projectFormId,
+        submitted: meta.submitted,
       };
     },
     [detail.id, formEntries],
@@ -764,6 +780,12 @@ export function JobDetailBody({
             </DetailMetricCard> */}
           </DetailMetricsGrid>
         </DetailPanelCard>
+
+        {isQualityAssuranceDecided(detail.job_quality_assurance) && detail.job_quality_assurance ? (
+          <DetailPanelCard title={t("qualityAssurance.sectionTitle")} collapsible={false}>
+            <QualityAssuranceDetailGrid record={detail.job_quality_assurance} dateFmt={dateFmt} />
+          </DetailPanelCard>
+        ) : null}
 
         <DetailPanelCard title={t("detail.sectionRelations")}>
           <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-3">
@@ -985,6 +1007,13 @@ export function JobDetailBody({
                                 form: getPinForm(pin),
                               });
                             }}
+                            onOpenPinDetail={(pin) => {
+                              router.push(
+                                `${routes.dashboard.jobPinDetail(detail.id, pin.id)}?back=${encodeURIComponent(
+                                  `${routes.dashboard.jobs}/${detail.id}`,
+                                )}`,
+                              );
+                            }}
                             getPinForm={getPinForm}
                             checklistsComplete={checklistsComplete}
                             checklistMarked={checklistMarked}
@@ -1000,6 +1029,8 @@ export function JobDetailBody({
                             drawingFileType={level.drawing_file_type}
                             snapshotState={levelSnapshots.get(level.id)}
                             drawingName={level.name}
+                            jobId={detail.id}
+                            onQaSuccess={onChecklistsUpdated}
                           />
                         ))
                       )}

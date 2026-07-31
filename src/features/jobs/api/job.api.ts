@@ -122,3 +122,15 @@ export async function deleteJob(id: number): Promise<void> {
   assertApiSuccess(data);
 }
 
+export type JobQualityAssurancePayload =
+  | { status: "approved"; pin_ids?: number[] }
+  | { status: "rejected"; remarks: string; pin_ids?: number[] };
+
+export async function submitJobQualityAssurance(
+  jobId: number,
+  body: JobQualityAssurancePayload,
+): Promise<void> {
+  const { data } = await api.post<ApiEnvelope<unknown>>(JOB_PATHS.qualityAssurance(jobId), body);
+  assertApiSuccess(data);
+}
+
