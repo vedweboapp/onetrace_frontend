@@ -170,7 +170,7 @@ function PlotTable({
               const variationText = isVariation ? "Yes" : "No";
 
               const frontendAddr = process.env.NEXT_PUBLIC_FRONTEND_ADDRESS || "http://localhost:3000";
-              const pinLink = sp.pin_id ? `${frontendAddr}/placeholder-public-pin/preview/${sp.pin_id}` : null;
+              const pinLink = sp.pin_id ? `${frontendAddr}/public/quotation?&token=${sp.pin_id}` : null;
 
               return (
                 <tr key={rowIdx} style={{ borderTop: "1px solid #f1f5f9", background: rowIdx % 2 === 1 ? "#f8fafc" : "white" }}>

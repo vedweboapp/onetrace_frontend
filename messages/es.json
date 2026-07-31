@@ -123,6 +123,30 @@
     "description": "La página que buscas no existe.",
     "home": "Volver al inicio"
   },
+  "Public": {
+    "quotation": {
+      "pageTitle": "Detalles del pin",
+      "pageDescription": "Vista previa de los datos y la ubicación del pin para cotizaciones.",
+      "eyebrow": "Detalles del pin",
+      "title": "Detalles del pin",
+      "loading": "Cargando detalles del pin…",
+      "notFound": "No se pudieron cargar los detalles del pin. Verifica el enlace e inténtalo de nuevo.",
+      "summary": "Resumen",
+      "totalQuantity": "Cantidad total",
+      "totalAmount": "Monto total",
+      "context": "Contexto",
+      "shared": "Compartido",
+      "selectedPin": "Pin seleccionado",
+      "product": "Producto",
+      "quantity": "Cantidad",
+      "unitPrice": "Precio unitario",
+      "lineTotal": "Total de línea",
+      "drawingHint": "Vista previa de la posición del pin en el plano.",
+      "drawingPreviewAlt": "Vista previa del plano con el pin",
+      "pinMarker": "Marcador de pin",
+      "pinPreviewUnavailable": "Vista previa del pin no disponible"
+    }
+  },
   "Dashboard": {
     "quickCreate": {
       "add": {

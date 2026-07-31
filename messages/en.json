@@ -131,6 +131,30 @@
     "description": "The page you are looking for does not exist.",
     "home": "Back to home"
   },
+  "Public": {
+    "quotation": {
+      "pageTitle": "Pin details",
+      "pageDescription": "Preview pin data and location for quotations.",
+      "eyebrow": "Pin details",
+      "title": "Pin details",
+      "loading": "Loading pin details…",
+      "notFound": "Could not load pin details. Please check the link and try again.",
+      "summary": "Summary",
+      "totalQuantity": "Total quantity",
+      "totalAmount": "Total amount",
+      "context": "Context",
+      "shared": "Shared",
+      "selectedPin": "Selected pin",
+      "product": "Product",
+      "quantity": "Quantity",
+      "unitPrice": "Unit price",
+      "lineTotal": "Line total",
+      "drawingHint": "Preview pin position on the drawing.",
+      "drawingPreviewAlt": "Pin drawing preview",
+      "pinMarker": "Pin marker",
+      "pinPreviewUnavailable": "Pin preview unavailable"
+    }
+  },
   "Dashboard": {
     "quickCreate": {
       "add": {

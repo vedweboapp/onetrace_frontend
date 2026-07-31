@@ -9,12 +9,16 @@ export type QuotationScopePinDetailRow = {
   pins_order: number;
   pins_total: number;
   selling_price: number;
+  x_coordinate?: number | null;
+  y_coordinate?: number | null;
 };
 
 export type QuotationScopePinDetailPayload = {
   title: string;
   sectionLabel?: string;
   plotLabel?: string;
+  drawingFile?: string | null;
+  drawingFileType?: string | null;
   rows: QuotationScopePinDetailRow[];
 };
 
