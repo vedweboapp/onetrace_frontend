@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { Document, Page, pdfjs } from "react-pdf";
@@ -36,7 +36,7 @@ const PLOT_PALETTE = [
   { border: "#DC2626", bg: "#DC26260D" },  // Red
 ];
 
-// ─── Pin Detail Icons ────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Pin Detail Icons ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 const PackageIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
@@ -418,7 +418,7 @@ export function DrawingPinPreviewModal({
 
       const formData = new FormData();
 
-      // Build pin payload — only the fields the user can edit
+      // Build pin payload ΓÇö only the fields the user can edit
       const newAttachments = (pinEditData.attachments ?? pin.attachments ?? []) as DrawingPinAttachment[];
       const attachmentFileKey = "plots[0][pins][0][attachments]";
       let attachFileIdx = 0;
@@ -441,7 +441,7 @@ export function DrawingPinPreviewModal({
         variation: pinEditData.variation ?? pin.variation ?? false,
         location: pin.location,
         description: pinEditData.description ?? pin.description ?? undefined,
-        // Only send existing (server-side) attachments — new files are sent via FormData
+        // Only send existing (server-side) attachments ΓÇö new files are sent via FormData
         attachments: newAttachments.filter((att: any) => !att.file).map((att: any) => ({ id: att.id })),
       };
 
@@ -564,21 +564,21 @@ export function DrawingPinPreviewModal({
     ? "relative min-h-[50vh] h-full w-full overflow-hidden p-6 md:p-8 cursor-grab select-none flex-1"
     : "relative max-h-[70vh] min-h-[50vh] w-full overflow-hidden p-8 md:p-12 cursor-grab select-none flex-1";
   const detailsPaneClass = hideDrawing
-    ? "md:col-span-10 bg-white dark:bg-slate-900 flex flex-col min-h-0 overflow-hidden"
+    ? "md:col-span-10 bg-white dark:bg-slate-900 flex flex-col min-h-0 h-full overflow-hidden"
     : embedded
-      ? "md:col-span-4 bg-white dark:bg-slate-900 flex flex-col min-h-0 h-full overflow-hidden border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800"
-      : "md:col-span-4 bg-white dark:bg-slate-900 flex flex-col max-h-[70vh] overflow-hidden border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800";
+      ? "md:col-span-3 bg-white dark:bg-slate-900 flex flex-col min-h-0 h-full overflow-hidden border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800"
+      : "md:col-span-3 bg-white dark:bg-slate-900 flex flex-col max-h-[70vh] overflow-hidden border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800";
 
   const body = (
       <div
         className={`grid grid-cols-1 md:grid-cols-10 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/20 ${
-          embedded && !hideDrawing ? "min-h-[calc(100dvh-11rem)] h-full" : ""
+          embedded ? "min-h-[calc(100dvh-11rem)] h-full" : ""
         }`}
       >
 
         {/* Left Column (MAP) - 60% or 100% width */}
         {!hideDrawing ? (
-        <div className={`relative ${detailsOpen ? "md:col-span-6 border-r" : "md:col-span-10"} border-b md:border-b-0 border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden`}>
+        <div className={`relative ${detailsOpen ? "md:col-span-7 border-r" : "md:col-span-10"} border-b md:border-b-0 border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden`}>
           {loading && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm dark:bg-slate-900/70">
               <div className="flex flex-col items-center gap-2">
