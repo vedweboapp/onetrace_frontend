@@ -26,7 +26,6 @@ import {
   nextZohoMappingRowId,
   rowsToMappings,
   sortFieldsInGroup,
-  sortGroups,
 } from "@/features/settings/integrations/utils/zoho-key-mapping.util";
 import { routes } from "@/shared/config/routes";
 import {
@@ -120,8 +119,8 @@ export function ZohoKeyMappingForm({
       try {
         const data = await fetchZohoKeyMapping(resource);
         if (cancelled) return;
-        const nextInternal = sortGroups(data.internal_fields);
-        const nextExternal = sortGroups(data.external_fields);
+        const nextInternal = data.internal_fields;
+        const nextExternal = data.external_fields;
         const nextRows = buildGroupedMappingRows(nextInternal, data.existing_mapping);
         const zohoByInternal = inferZohoGroupByInternal(nextInternal, nextExternal, nextRows);
         setInternalGroups(nextInternal);

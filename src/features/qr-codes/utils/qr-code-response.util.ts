@@ -1,6 +1,6 @@
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
-import type { QrCode, QrCodePagination } from "../types/qr-code.types";
+import type { QrCode, QrCodeGenerateResult, QrCodePagination } from "../types/qr-code.types";
 
 /** Django REST framework paginated list (`count`, `results`, `next`, `previous`). */
 export type QrCodeDrfListResponse = {
@@ -19,6 +19,14 @@ export type QrCodeEnvelopeListResponse = {
 
 export function normalizeQrCode(row: QrCode): QrCode {
   return { ...row };
+}
+
+function normalizeQrCodeGenerateResult(row: QrCodeGenerateResult, message?: string): QrCodeGenerateResult {
+  return {
+    batch: { ...row.batch },
+    qr_codes: Array.isArray(row.qr_codes) ? row.qr_codes.map(normalizeQrCode) : [],
+    message,
+  };
 }
 
 function isDrfListResponse(data: unknown): data is QrCodeDrfListResponse {
@@ -89,26 +97,59 @@ export function parseQrCodeEntity(data: unknown): QrCode {
   throw new ApiBusinessError("Unexpected QR code response");
 }
 
-export function parseQrCodeGenerateResponse(data: unknown): QrCode[] {
-  if (Array.isArray(data)) {
-    return data.map((row) => normalizeQrCode(row as QrCode));
-  }
+export function parseQrCodeGenerateResponse(data: unknown): QrCodeGenerateResult {
   if (typeof data !== "object" || data === null) {
     throw new ApiBusinessError("Unexpected QR generate response");
   }
   if ("success" in data) {
-    const envelope = data as ApiEnvelope<QrCode[]>;
-    if (!envelope.success || !Array.isArray(envelope.data)) {
+    const envelope = data as ApiEnvelope<QrCodeGenerateResult | QrCode[]>;
+    if (!envelope.success || envelope.data == null) {
       const msg = typeof envelope.message === "string" ? envelope.message : "Request failed";
       throw new ApiBusinessError(msg);
     }
-    return envelope.data.map(normalizeQrCode);
+    if (
+      typeof envelope.data === "object" &&
+      envelope.data !== null &&
+      "batch" in envelope.data &&
+      "qr_codes" in envelope.data
+    ) {
+      return normalizeQrCodeGenerateResult(envelope.data as QrCodeGenerateResult, envelope.message);
+    }
+    if (Array.isArray(envelope.data)) {
+      return {
+        batch: {
+          id: 0,
+          batch_number: "",
+          quantity: envelope.data.length,
+          created_at: "",
+          created_by: null,
+        },
+        qr_codes: envelope.data.map(normalizeQrCode),
+        message: envelope.message,
+      };
+    }
   }
-  if ("data" in data && Array.isArray((data as { data: QrCode[] }).data)) {
-    return (data as { data: QrCode[] }).data.map(normalizeQrCode);
+  if (
+    "data" in data &&
+    typeof (data as { data?: unknown }).data === "object" &&
+    (data as { data?: unknown }).data !== null &&
+    "batch" in ((data as { data: QrCodeGenerateResult }).data) &&
+    "qr_codes" in ((data as { data: QrCodeGenerateResult }).data)
+  ) {
+    const body = data as { data: QrCodeGenerateResult; message?: string };
+    return normalizeQrCodeGenerateResult(body.data, body.message);
   }
   if ("results" in data && Array.isArray((data as QrCodeDrfListResponse).results)) {
-    return (data as QrCodeDrfListResponse).results.map(normalizeQrCode);
+    return {
+      batch: {
+        id: 0,
+        batch_number: "",
+        quantity: (data as QrCodeDrfListResponse).results.length,
+        created_at: "",
+        created_by: null,
+      },
+      qr_codes: (data as QrCodeDrfListResponse).results.map(normalizeQrCode),
+    };
   }
   throw new ApiBusinessError("Unexpected QR generate response");
 }

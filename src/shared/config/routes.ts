@@ -19,8 +19,16 @@ export const routes = {
     jobs: "/jobs",
     jobFormFill: (jobId: number | string, formId: number | string, job_form_id: number | string) =>
       `/jobs/${jobId}/form?formId=${formId}&job_form_id=${job_form_id}`,
+    jobPinDetail: (jobId: number | string, pinId: number | string) =>
+      `/jobs/${jobId}/pins/${pinId}`,
     qrCodes: "/qr-codes",
     projects: "/projects",
+    projectPinDetail: (projectId: number | string, pinId: number | string, drawingId?: number | string) => {
+      const base = `/projects/${projectId}/pins/${pinId}`;
+      return drawingId != null && String(drawingId).trim() !== ""
+        ? `${base}?drawingId=${drawingId}`
+        : base;
+    },
     groups: "/groups",
     items: "/items",
     compositeItems: "/composite-items",

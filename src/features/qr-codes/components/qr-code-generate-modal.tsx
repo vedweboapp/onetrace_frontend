@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { generateQrCodes } from "@/features/qr-codes/api/qr-code.api";
+import type { QrCodeGenerateResult } from "@/features/qr-codes/types/qr-code.types";
 import { AppButton, AppModal, FieldLabel, surfaceInputClassName } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
@@ -13,7 +14,7 @@ const MAX_COUNT = 500;
 type Props = {
   open: boolean;
   onClose: () => void;
-  onGenerated: () => void;
+  onGenerated: (result: QrCodeGenerateResult) => void;
 };
 
 export function QrCodeGenerateModal({ open, onClose, onGenerated }: Props) {
@@ -36,9 +37,9 @@ export function QrCodeGenerateModal({ open, onClose, onGenerated }: Props) {
     }
     setSaving(true);
     try {
-      await generateQrCodes({ number_of_qr_codes: n });
-      toastSuccess(t("generate.successToast"));
-      onGenerated();
+      const result = await generateQrCodes({ number_of_qr_codes: n });
+      toastSuccess(result.message ?? t("generate.successToast"));
+      onGenerated(result);
       onClose();
     } finally {
       setSaving(false);

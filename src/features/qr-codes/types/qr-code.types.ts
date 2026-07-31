@@ -2,8 +2,14 @@ export type QrCodeStatus = "assigned" | "not_assigned";
 
 export type QrCodeUserRef = {
   id: number;
-  email: string;
-  username: string;
+  email?: string | null;
+  username?: string | null;
+  name?: string | null;
+};
+
+export type QrCodeBatchDetail = {
+  id: number;
+  batch_number: string;
 };
 
 export type QrCode = {
@@ -19,6 +25,8 @@ export type QrCode = {
   modified_at: string | null;
   created_by?: QrCodeUserRef | null;
   modified_by?: QrCodeUserRef | null;
+  assigned_to_detail?: unknown;
+  batch_detail?: QrCodeBatchDetail | null;
 };
 
 export type QrCodePagination = {
@@ -41,8 +49,22 @@ export type QrCodeGeneratePayload = {
   number_of_qr_codes: number;
 };
 
+export type QrCodeBatch = {
+  id: number;
+  batch_number: string;
+  quantity: number;
+  created_at: string;
+  created_by?: QrCodeUserRef | null;
+};
+
+export type QrCodeGenerateResult = {
+  batch: QrCodeBatch;
+  qr_codes: QrCode[];
+  message?: string;
+};
+
 export type QrCodeGenerateResponse = {
   success: boolean;
   message: string;
-  data: QrCode[];
+  data: QrCodeGenerateResult;
 };

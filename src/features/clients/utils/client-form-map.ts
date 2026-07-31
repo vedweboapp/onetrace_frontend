@@ -7,21 +7,7 @@ import {
   normalizePrimaryEntityAddresses,
 } from "@/shared/form/entity-address-form.util";
 import type { EntityAddress } from "@/shared/types/entity-address.types";
-
-function normalizePhoneForPhoneInput(raw: string | null | undefined): string {
-  const value = (raw ?? "").trim();
-  if (!value) return "";
-  if (value.startsWith("+")) return value;
-
-  const digits = value.replace(/\D/g, "");
-  if (!digits) return "";
-
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
-  if (digits.length === 11 && digits.startsWith("0")) return `+1${digits.slice(1)}`;
-
-  return `+${digits}`;
-}
+import { normalizePhoneForPhoneInput } from "@/shared/utils/phone-input.util";
 
 /** Prefer API `addresses[]`; fall back to legacy flat / single-line address. */
 export function resolveClientAddresses(client: Client): EntityAddress[] {

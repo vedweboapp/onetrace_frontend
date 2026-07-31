@@ -8,7 +8,12 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { deleteQrCode, fetchAllQrCodeIds, fetchQrCodesPage } from "@/features/qr-codes/api/qr-code.api";
 import { fetchJobsPage } from "@/features/jobs/api/job.api";
 import { QrCodeGenerateModal } from "@/features/qr-codes/components/qr-code-generate-modal";
-import type { QrCode as QrCodeRecord, QrCodeStatus } from "@/features/qr-codes/types/qr-code.types";
+import { QrCodeGenerateResultModal } from "@/features/qr-codes/components/qr-code-generate-result-modal";
+import type {
+  QrCode as QrCodeRecord,
+  QrCodeGenerateResult,
+  QrCodeStatus,
+} from "@/features/qr-codes/types/qr-code.types";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
@@ -92,6 +97,8 @@ export function QrCodesPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [generateOpen, setGenerateOpen] = React.useState(false);
+  const [generateResultOpen, setGenerateResultOpen] = React.useState(false);
+  const [generateResult, setGenerateResult] = React.useState<QrCodeGenerateResult | null>(null);
 
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deletingRow, setDeletingRow] = React.useState<QrCodeRecord | null>(null);
@@ -232,6 +239,9 @@ export function QrCodesPanel() {
       c.primary("qr_code_id", t("table.qrCodeId"), (r) => (
         <span className="font-mono text-sm">{r.qr_code_id}</span>
       )),
+      c.truncate("batch", t("table.batchNumber"), (r) =>
+        r.batch_detail?.batch_number?.trim() || "—",
+      ),
       c.truncate("status", t("table.status"), (r) =>
         isQrAssigned(r) ? t("status.assigned") : t("status.notAssigned"),
       ),
@@ -369,9 +379,16 @@ export function QrCodesPanel() {
                     className={highlightClassName(row.id)}
                     title={row.qr_code_id}
                     subtitle={
-                      row.assigned_to_id != null && row.assigned_to_id > 0
-                        ? t("cardAssignedJob", { id: row.assigned_to_id })
-                        : t("cardNotAssigned")
+                      [
+                        row.batch_detail?.batch_number?.trim()
+                          ? t("cardBatch", { batch: row.batch_detail.batch_number.trim() })
+                          : null,
+                        row.assigned_to_id != null && row.assigned_to_id > 0
+                          ? t("cardAssignedJob", { id: row.assigned_to_id })
+                          : t("cardNotAssigned"),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")
                     }
                     footer={
                       <div className="flex w-full flex-wrap items-center justify-between gap-3">
@@ -462,7 +479,17 @@ export function QrCodesPanel() {
       <QrCodeGenerateModal
         open={generateOpen}
         onClose={() => setGenerateOpen(false)}
-        onGenerated={() => setRefreshNonce((n) => n + 1)}
+        onGenerated={(result) => {
+          setGenerateResult(result);
+          setGenerateResultOpen(true);
+          setRefreshNonce((n) => n + 1);
+        }}
+      />
+
+      <QrCodeGenerateResultModal
+        open={generateResultOpen}
+        result={generateResult}
+        onClose={() => setGenerateResultOpen(false)}
       />
 
       <ConfirmDialog

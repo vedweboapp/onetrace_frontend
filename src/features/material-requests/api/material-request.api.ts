@@ -3,9 +3,7 @@ import { ApiBusinessError } from "@/core/errors/api-business-error";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
-import { resolveMaterialRequestRequestUrl } from "./material-request-http.util";
 import { MATERIAL_REQUEST_PATHS } from "./material-request.paths";
-import { resolveDispatchRequestUrl } from "@/features/dispatches/api/dispatch-http.util";
 import { DISPATCH_PATHS } from "@/features/dispatches/api/dispatch.paths";
 import type { MaterialRequestDispatchPayload } from "../types/material-request-dispatch.types";
 import type {
@@ -58,7 +56,7 @@ export async function fetchMaterialRequestsPage(
   }
 
   const { data } = await api.get<MaterialRequestListResponse>(
-    resolveMaterialRequestRequestUrl(MATERIAL_REQUEST_PATHS.list),
+    MATERIAL_REQUEST_PATHS.list,
     { params },
   );
   assertEnvelopeSuccess(data);
@@ -78,7 +76,7 @@ export async function fetchMaterialRequest(
   options?: { silent?: boolean },
 ): Promise<MaterialRequestDetail> {
   const { data } = await api.get<ApiEnvelope<MaterialRequestDetail>>(
-    resolveMaterialRequestRequestUrl(MATERIAL_REQUEST_PATHS.detail(id)),
+    MATERIAL_REQUEST_PATHS.detail(id),
     {
       skipErrorToast: options?.silent === true,
     },
@@ -96,7 +94,7 @@ export async function dispatchMaterialRequest(
   void _detail;
   void _itemLabels;
   const { data } = await api.post<ApiEnvelope<MaterialRequestDetail>>(
-    resolveDispatchRequestUrl(DISPATCH_PATHS.list),
+    DISPATCH_PATHS.list,
     payload,
   );
   assertApiSuccess(data);
@@ -105,7 +103,7 @@ export async function dispatchMaterialRequest(
 
 export async function createMaterialRequest(body: MaterialRequestCreatePayload): Promise<MaterialRequestDetail> {
   const { data } = await api.post<ApiEnvelope<MaterialRequestDetail>>(
-    resolveMaterialRequestRequestUrl(MATERIAL_REQUEST_PATHS.list),
+    MATERIAL_REQUEST_PATHS.list,
     body,
   );
   assertApiSuccess(data);
@@ -117,7 +115,7 @@ export async function updateMaterialRequest(
   body: MaterialRequestUpdatePayload,
 ): Promise<MaterialRequestDetail> {
   const { data } = await api.patch<ApiEnvelope<MaterialRequestDetail>>(
-    resolveMaterialRequestRequestUrl(MATERIAL_REQUEST_PATHS.detail(id)),
+    MATERIAL_REQUEST_PATHS.detail(id),
     body,
   );
   assertApiSuccess(data);
@@ -126,7 +124,7 @@ export async function updateMaterialRequest(
 
 export async function fetchMaterialRequestLogs(id: number): Promise<MaterialRequestLogEntry[]> {
   const { data } = await api.get<ApiEnvelope<MaterialRequestLogEntry[]>>(
-    resolveMaterialRequestRequestUrl(MATERIAL_REQUEST_PATHS.logs(id)),
+    MATERIAL_REQUEST_PATHS.logs(id),
   );
   assertApiSuccess(data);
   return data.data;
@@ -137,7 +135,7 @@ export async function restockMaterialRequest(
   payload: MaterialRequestRestockPayload,
 ): Promise<MaterialRequestDetail> {
   const { data } = await api.post<ApiEnvelope<MaterialRequestDetail>>(
-    resolveMaterialRequestRequestUrl(MATERIAL_REQUEST_PATHS.restock(id)),
+    MATERIAL_REQUEST_PATHS.restock(id),
     payload,
   );
   assertApiSuccess(data);

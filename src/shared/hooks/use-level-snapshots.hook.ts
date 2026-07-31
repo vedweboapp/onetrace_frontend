@@ -36,12 +36,16 @@ export function useLevelSnapshots(locations: Drawing[]) {
       }
     }
 
+
     // Release URLs that are no longer in locations
     for (const prevUrl of activeUrlsRef.current) {
       if (!nextUrls.has(prevUrl)) {
         releaseLevelSnapshot(prevUrl);
       }
     }
+    
+    
+    
     activeUrlsRef.current = nextUrls;
 
     // Trigger loads and manage state

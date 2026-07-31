@@ -62,6 +62,12 @@ export type QuotationPinItemDetail = {
 
 export type QuotationPlotPin = {
   id: number;
+  x_coordinate?: number | null;
+  y_coordinate?: number | null;
+  status?: number | null;
+  status_id?: number | null;
+  status_name?: string | null;
+  coordinates?: number[][] | null;
   quantity?: number | null;
   item_detail?: QuotationPinItemDetail | null;
   composite_item_name?: string;
@@ -70,6 +76,15 @@ export type QuotationPlotPin = {
   price?: number | string | null;
   selling_price?: number | string | null;
   amount?: number | string | null;
+  description?: string | null;
+  location?: number | string | null;
+  project_form?: number | { id?: number; name?: string | null; submission_id?: number | null; submission_status?: string | null } | null;
+  status_detail?: {
+    id?: number | null;
+    status_name?: string | null;
+    bg_colour?: string | null;
+    text_colour?: string | null;
+  } | null;
 };
 
 /** Level list row returned by `GET project/:id/level/` (includes plots + pins). */
@@ -77,9 +92,17 @@ export type ProjectLevelForQuotation = {
   id: number;
   name: string;
   order?: number | null;
+  drawing_file?: string | null;
+  drawing_file_size?: number | null;
+  drawing_file_type?: string | null;
+  block?: string | null;
+  level?: string | null;
   plots?: Array<{
     id: number;
     name: string;
+    coordinates?: number[][] | null;
+    plot_border?: string | null;
+    plot_bg?: string | null;
     pins?: QuotationPlotPin[];
   }>;
 };
@@ -87,6 +110,24 @@ export type ProjectLevelForQuotation = {
 export type QuotationProjectRef = {
   id: number;
   name: string;
+};
+
+export type QuotationQuoteSectionSourcePin = {
+  pin_id: number | null;
+  x_coordinate?: number | null;
+  y_coordinate?: number | null;
+  status?: number | null;
+  status_id?: number | null;
+  status_name?: string | null;
+  quantity?: number | null;
+  composite_item_id?: number | null;
+  name?: string | null;
+  description?: string | null;
+  location?: number | string | null;
+  project_form_id?: number | null;
+  project_form_name?: string | null;
+  submission_id?: number | null;
+  submission_status?: string | null;
 };
 
 /** Pin row on a quote section plot (create/update quotation scope). */
@@ -99,12 +140,16 @@ export type QuotationQuoteSectionPin = {
   quantity: number;
   selling_price: number;
   pins_total: number;
+  source_pins?: QuotationQuoteSectionSourcePin[];
 };
 
 export type QuotationQuoteSectionPlot = {
   plot_order: number;
   plot_id: number | null;
   name: string;
+  coordinates?: number[][] | null;
+  plot_border?: string | null;
+  plot_bg?: string | null;
   /** Present on new API; omitted or legacy `lines` handled by `getQuotePlotPinsForDisplay`. */
   pins?: QuotationQuoteSectionPin[];
   plot_total: number;
@@ -115,6 +160,12 @@ export type QuotationQuoteSection = {
   /** Project level (drawing) id when this section maps to the levels API; null for quote-only sections. */
   level_id: number | null;
   name: string;
+  drawing_file?: string | null;
+  drawing_file_type?: string | null;
+  drawing_file_size?: number | null;
+  block?: string | null;
+  level?: string | null;
+  order?: number | null;
   plots: QuotationQuoteSectionPlot[];
   section_total: number;
 };

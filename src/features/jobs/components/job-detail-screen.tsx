@@ -10,7 +10,9 @@ import { JobMaterialsTab } from "@/features/jobs/components/job-materials-tab";
 import { JobDispatchTab } from "@/features/jobs/components/job-dispatch-tab";
 import { JobReturnsTab } from "@/features/jobs/components/job-returns-tab";
 import { JobUpdateStatusDialog } from "@/features/jobs/components/job-update-status-dialog";
+import { JobQualityAssuranceControls } from "@/features/jobs/components/job-quality-assurance-controls";
 import type { Job } from "@/features/jobs/types/job.types";
+import { isQualityAssuranceDecided } from "@/features/jobs/types/quality-assurance.types";
 import { getJobAssignedWorkerId, getJobStatusId } from "@/features/jobs/utils/job-nested-fields.util";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import {
@@ -23,6 +25,14 @@ import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
 import { EditButton } from "@/shared/ui/dashboard-action-buttons";
 import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
+
+function normalizeJobCategory(value: string | null | undefined): string {
+  return (value ?? "").toLowerCase().replace(/[^a-z]/g, "");
+}
+
+function isServiceJobCategory(value: string | null | undefined): boolean {
+  return normalizeJobCategory(value) === "servicejob";
+}
 
 type Props = {
   jobId: number;
@@ -198,6 +208,11 @@ function JobDetailActions({
     router.push(targetUrl);
   }
 
+  const showQualityAssurance =
+    (isServiceJobCategory(searchParams.get("job_category")) ||
+      isServiceJobCategory(detail.job_category)) &&
+    !isQualityAssuranceDecided(detail.job_quality_assurance);
+
   async function handleStatusUpdate(jobStatusId: number) {
     setStatusSaving(true);
     try {
@@ -212,7 +227,10 @@ function JobDetailActions({
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap items-center gap-2">
+      {showQualityAssurance ? (
+        <JobQualityAssuranceControls jobId={detail.id} onSuccess={onStatusSaved} />
+      ) : null}
       <AppButton type="button" variant="secondary" size="sm" onClick={onOpenStatus}>
         {t("updateStatus.action")}
       </AppButton>

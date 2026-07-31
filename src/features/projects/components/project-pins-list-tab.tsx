@@ -218,6 +218,7 @@ function PlotPinCategoryGroup({
   onTogglePin,
   onToggleCategory,
   onPreviewPin: onPreviewPinProp,
+  onOpenPinDetail,
   expanded,
   onToggleExpanded,
   drawingFile,
@@ -232,6 +233,7 @@ function PlotPinCategoryGroup({
   onTogglePin: (id: number) => void;
   onToggleCategory: (ids: number[]) => void;
   onPreviewPin: (pin: DrawingPin) => void;
+  onOpenPinDetail: (pin: DrawingPin) => void;
   expanded: boolean;
   onToggleExpanded: () => void;
   drawingFile?: string;
@@ -306,6 +308,7 @@ function PlotPinCategoryGroup({
               plots={[plot]}
               onToggle={() => onTogglePin(pin.id)}
               onPreview={() => onPreviewPinProp(pin)}
+              onOpenDetail={() => onOpenPinDetail(pin)}
               resolveFormName={resolveFormName}
             />
           ))}
@@ -367,6 +370,7 @@ function ProjectPinRow({
   disabled,
   onToggle,
   onPreview,
+  onOpenDetail,
   drawingFile,
   drawingFileType,
   snapshotState,
@@ -379,6 +383,7 @@ function ProjectPinRow({
   disabled: boolean;
   onToggle: () => void;
   onPreview: () => void;
+  onOpenDetail: () => void;
   drawingFile?: string;
   drawingFileType?: string;
   snapshotState?: LevelSnapshotState;
@@ -400,8 +405,17 @@ function ProjectPinRow({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpenDetail}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpenDetail();
+        }
+      }}
       className={cn(
-        "min-w-0",
+        "min-w-0 cursor-pointer",
         PIN_TABLE_ROW_CLASS,
         disabled
           ? "bg-slate-50/60 dark:bg-slate-950/40"
@@ -418,6 +432,7 @@ function ProjectPinRow({
             : SELECTION_CHECKBOX_CLASS_NAME,
         )}
         checked={selected}
+        onClick={(e) => e.stopPropagation()}
         onChange={onToggle}
       />
 
@@ -531,6 +546,7 @@ function PlotPinsBlock({
   onTogglePin,
   onToggleCategory,
   onPreviewPin,
+  onOpenPinDetail,
   drawingFile,
   drawingFileType,
   snapshotState,
@@ -545,6 +561,7 @@ function PlotPinsBlock({
   onTogglePin: (id: number) => void;
   onToggleCategory: (ids: number[]) => void;
   onPreviewPin: (pin: DrawingPin) => void;
+  onOpenPinDetail: (pin: DrawingPin) => void;
   drawingFile?: string;
   drawingFileType?: string;
   snapshotState?: LevelSnapshotState;
@@ -686,6 +703,7 @@ function PlotPinsBlock({
                 onTogglePin={onTogglePin}
                 onToggleCategory={handleToggleCategory}
                 onPreviewPin={onPreviewPin}
+                onOpenPinDetail={onOpenPinDetail}
                 expanded={expandedCategoryIds.has(category.id)}
                 onToggleExpanded={() => toggleCategoryExpanded(category.id)}
                 drawingFile={drawingFile}
@@ -1989,6 +2007,13 @@ const ProjectPinsListTab = ({
                                   drawingName: level.name,
                                   drawingId: level.id,
                                 });
+                              }}
+                              onOpenPinDetail={(pin) => {
+                                router.push(
+                                  `${routes.dashboard.projectPinDetail(id, pin.id, level.id)}&back=${encodeURIComponent(
+                                    `${routes.dashboard.projects}/${id}`,
+                                  )}`,
+                                );
                               }}
                             />
                           ))

@@ -1,7 +1,12 @@
 import api from "@/core/api/axios";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
 import { QR_CODE_PATHS } from "./qr-code.paths";
-import type { QrCode, QrCodeGeneratePayload, QrCodePagination } from "../types/qr-code.types";
+import type {
+  QrCode,
+  QrCodeGeneratePayload,
+  QrCodeGenerateResult,
+  QrCodePagination,
+} from "../types/qr-code.types";
 import type { QrCodeStatus } from "../types/qr-code.types";
 import {
   parseQrCodeDeleteResponse,
@@ -52,9 +57,51 @@ export async function fetchQrCode(id: number, options?: QrCodeRequestOptions): P
   return parseQrCodeEntity(data);
 }
 
-export async function generateQrCodes(body: QrCodeGeneratePayload): Promise<QrCode[]> {
+function parseFilenameFromContentDisposition(header: string | undefined): string | null {
+  if (!header) return null;
+  const utf = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (utf?.[1]) {
+    try {
+      return decodeURIComponent(utf[1]).trim();
+    } catch {
+      return utf[1].trim();
+    }
+  }
+  const basic = /filename="([^"]+)"/i.exec(header);
+  if (basic?.[1]) return basic[1].trim();
+  const loose = /filename=([^;\s]+)/i.exec(header);
+  if (loose?.[1]) return loose[1].replace(/^["']|["']$/g, "").trim();
+  return null;
+}
+
+export async function generateQrCodes(body: QrCodeGeneratePayload): Promise<QrCodeGenerateResult> {
   const { data } = await api.post<unknown>(QR_CODE_PATHS.generate, body);
   return parseQrCodeGenerateResponse(data);
+}
+
+export async function downloadQrCodesCsv(batchId: number, batchNumber?: string | null): Promise<void> {
+  const res = await api.get<Blob>(QR_CODE_PATHS.list, {
+    params: { download_type: "csv", batch_id: batchId },
+    responseType: "blob",
+    skipErrorToast: true,
+    headers: { Accept: "text/csv,*/*" },
+  });
+
+  const header = typeof res.headers?.["content-disposition"] === "string" ? res.headers["content-disposition"] : undefined;
+  const parsed = parseFilenameFromContentDisposition(header);
+  const safeBatch =
+    (batchNumber?.trim() ?? "")
+      .replace(/[/\\?%*:|"<>]/g, "")
+      .replace(/\s+/g, "-")
+      .slice(0, 80) || `qr-batch-${batchId}`;
+  const filename = parsed ?? `${safeBatch}.csv`;
+
+  const url = URL.createObjectURL(res.data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export async function deleteQrCode(id: number): Promise<void> {

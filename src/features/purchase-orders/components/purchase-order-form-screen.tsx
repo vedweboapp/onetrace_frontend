@@ -26,7 +26,7 @@ import {
   mapPurchaseOrderFormToPayload,
   purchaseOrderToFormDefaults,
 } from "@/features/purchase-orders/utils/purchase-order-form-map";
-import { formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
+import { computeLineAmount, formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
@@ -583,7 +583,7 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
                 </AppButton>
               </div>
               <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-                <table className="w-full min-w-[720px] text-left text-sm">
+                <table className="w-full min-w-[820px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
                       <th className="px-3 py-2">{tGroups("title")}</th>
@@ -593,6 +593,7 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
                       </th>
                       <th className="px-3 py-2">{t("lineItems.qty")}</th>
                       <th className="px-3 py-2">{t("lineItems.rate")}</th>
+                      <th className="px-3 py-2">{t("lineItems.amount")}</th>
                       <th className="px-3 py-2 w-12" />
                     </tr>
                   </thead>
@@ -600,6 +601,10 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
                     {fields.map((field, index) => {
                       const row = lineItems[index];
                       const filteredItems = itemOptionsForGroup(row?.group ?? "");
+                      const lineAmount = computeLineAmount(
+                        parseMoneyValue(row?.quantity),
+                        parseMoneyValue(row?.rate),
+                      );
                       return (
                         <tr key={field.id} className="border-b border-slate-100 dark:border-slate-800">
                           <td className="px-3 py-2 align-top">
@@ -713,8 +718,20 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
                               readOnly
                               tabIndex={-1}
                               aria-readonly
+                              aria-label={t("lineItems.rate")}
                               {...register(`line_items.${index}.rate`)}
                             />
+                          </td>
+                          <td className="px-3 py-2 align-top">
+                            <div
+                              className={cn(
+                                surfaceInputClassName,
+                                "flex h-8 w-32 items-center px-2.5 text-sm tabular-nums text-slate-900 dark:text-slate-100",
+                              )}
+                              aria-label={t("lineItems.amount")}
+                            >
+                              {formatMoneyDisplay(lineAmount, locale)}
+                            </div>
                           </td>
                           <td className="px-3 py-2 align-top">
                             <AppButton

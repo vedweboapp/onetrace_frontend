@@ -1,4 +1,5 @@
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
+import type { QualityAssuranceRecord } from "./quality-assurance.types";
 
 export type JobUserRef = {
   id: number;
@@ -222,6 +223,7 @@ export type Job = {
   qr_code?: JobQrCodeRef | null;
   job_category?: string | null;
   job_meta?: JobMetaPayload | JobMetaLegacyPayload | null;
+  job_quality_assurance?: QualityAssuranceRecord | null;
 };
 
 export type JobPagination = {

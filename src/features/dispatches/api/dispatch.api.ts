@@ -2,7 +2,6 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
-import { resolveDispatchRequestUrl } from "./dispatch-http.util";
 import { DISPATCH_PATHS } from "./dispatch.paths";
 import { DISPATCH_RETURN_REQUEST_PATHS } from "./dispatch.paths";
 import type {
@@ -114,7 +113,7 @@ export async function fetchDispatchesPage(
   if (filters?.material_request_id != null) params.material_request_id = filters.material_request_id;
   if (filters?.job != null) params.job = filters.job;
 
-  const { data } = await api.get<DispatchListResponse>(resolveDispatchRequestUrl(DISPATCH_PATHS.list), { params });
+  const { data } = await api.get<DispatchListResponse>(DISPATCH_PATHS.list, { params });
   assertEnvelopeSuccess(data);
   return {
     items: data.data.map((row) => normalizeDispatchListItem(row)),
@@ -123,14 +122,14 @@ export async function fetchDispatchesPage(
 }
 
 export async function fetchDispatch(id: number): Promise<DispatchDetail> {
-  const { data } = await api.get<ApiEnvelope<DispatchDetail>>(resolveDispatchRequestUrl(DISPATCH_PATHS.detail(id)));
+  const { data } = await api.get<ApiEnvelope<DispatchDetail>>(DISPATCH_PATHS.detail(id));
   assertApiSuccess(data);
   return normalizeDispatchDetail(data.data);
 }
 
 export async function fetchDispatchLogs(id: number): Promise<DispatchLogEntry[]> {
   const { data } = await api.get<ApiEnvelope<DispatchLogEntry[]>>(
-    resolveDispatchRequestUrl(DISPATCH_PATHS.logs(id)),
+    DISPATCH_PATHS.logs(id),
   );
   assertApiSuccess(data);
   return data.data;
@@ -144,7 +143,7 @@ export async function fetchWorkerReturnMaterials(
   if (filters.material_request_id != null) params.material_request_id = filters.material_request_id;
 
   const { data } = await api.get<ApiEnvelope<DispatchDetail[]>>(
-    resolveDispatchRequestUrl(DISPATCH_PATHS.list),
+    DISPATCH_PATHS.list,
     { params },
   );
   assertApiSuccess(data);
@@ -186,7 +185,7 @@ export async function createDispatchReturnRequest(
   payload: CreateDispatchReturnRequestPayload,
 ): Promise<DispatchReturnRequest> {
   const { data } = await api.post<any>(
-    resolveDispatchRequestUrl(DISPATCH_RETURN_REQUEST_PATHS.list),
+    DISPATCH_RETURN_REQUEST_PATHS.list,
     payload,
   );
   const raw = data?.success === true ? data.data : data;
@@ -205,7 +204,7 @@ export async function fetchDispatchReturnRequests(
   if (filters?.job != null) params.job = filters.job;
 
   const { data } = await api.get<any>(
-    resolveDispatchRequestUrl(DISPATCH_RETURN_REQUEST_PATHS.list),
+    DISPATCH_RETURN_REQUEST_PATHS.list,
     { params },
   );
   // This API returns { success, data: [...] } envelope OR raw array
@@ -219,7 +218,7 @@ export async function fetchDispatchReturnRequests(
 
 export async function fetchDispatchReturnRequest(id: number): Promise<DispatchReturnRequest> {
   const { data } = await api.get<any>(
-    resolveDispatchRequestUrl(DISPATCH_RETURN_REQUEST_PATHS.detail(id)),
+    DISPATCH_RETURN_REQUEST_PATHS.detail(id),
   );
   // API returns the object directly (no { success, data } envelope)
   const raw = data?.success === true ? data.data : data;
@@ -228,7 +227,7 @@ export async function fetchDispatchReturnRequest(id: number): Promise<DispatchRe
 
 export async function completeDispatchReturnRequest(id: number): Promise<DispatchReturnRequest> {
   const { data } = await api.post<any>(
-    resolveDispatchRequestUrl(DISPATCH_RETURN_REQUEST_PATHS.complete(id)),
+    DISPATCH_RETURN_REQUEST_PATHS.complete(id),
   );
   const raw = data?.success === true ? data.data : data;
   return normalizeReturnRequest(raw);
@@ -236,7 +235,7 @@ export async function completeDispatchReturnRequest(id: number): Promise<Dispatc
 
 export async function approveReturnRequest(id: number): Promise<DispatchReturnRequest> {
   const { data } = await api.post<any>(
-    resolveDispatchRequestUrl(DISPATCH_RETURN_REQUEST_PATHS.approve(id)),
+    DISPATCH_RETURN_REQUEST_PATHS.approve(id),
   );
   const raw = data?.success === true ? data.data : data;
   return normalizeReturnRequest(raw);
@@ -244,7 +243,7 @@ export async function approveReturnRequest(id: number): Promise<DispatchReturnRe
 
 export async function rejectReturnRequest(id: number): Promise<DispatchReturnRequest> {
   const { data } = await api.post<any>(
-    resolveDispatchRequestUrl(DISPATCH_RETURN_REQUEST_PATHS.reject(id)),
+    DISPATCH_RETURN_REQUEST_PATHS.reject(id),
   );
   const raw = data?.success === true ? data.data : data;
   return normalizeReturnRequest(raw);
@@ -252,7 +251,7 @@ export async function rejectReturnRequest(id: number): Promise<DispatchReturnReq
 
 export async function fetchDispatchReturnItems(id: number): Promise<DispatchReturnItemsData> {
   const { data } = await api.get<ApiEnvelope<DispatchReturnItemsData>>(
-    resolveDispatchRequestUrl(DISPATCH_PATHS.returnItems(id)),
+    DISPATCH_PATHS.returnItems(id),
   );
   assertApiSuccess(data);
   return normalizeDispatchReturnItemsData(data.data);
@@ -263,7 +262,7 @@ export async function returnDispatchToStock(
   payload: DispatchReturnToStockPayload,
 ): Promise<DispatchDetail> {
   const { data } = await api.post<ApiEnvelope<DispatchDetail>>(
-    resolveDispatchRequestUrl(DISPATCH_PATHS.returnToStock(id)),
+    DISPATCH_PATHS.returnToStock(id),
     payload,
   );
   assertApiSuccess(data);
@@ -272,7 +271,7 @@ export async function returnDispatchToStock(
 
 export async function restockDispatch(id: number, payload: DispatchRestockPayload): Promise<DispatchDetail> {
   const { data } = await api.post<ApiEnvelope<DispatchDetail>>(
-    resolveDispatchRequestUrl(DISPATCH_PATHS.restock(id)),
+    DISPATCH_PATHS.restock(id),
     payload,
   );
   assertApiSuccess(data);

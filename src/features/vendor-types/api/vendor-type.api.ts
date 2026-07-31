@@ -2,7 +2,6 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
-import { resolveVendorTypeRequestUrl } from "./vendor-type-http.util";
 import { VENDOR_TYPE_PATHS } from "./vendor-type.paths";
 import type {
   VendorType,
@@ -65,7 +64,7 @@ export async function fetchVendorTypesPage(
   if (q) params.search = q;
   if (typeof filters?.is_active === "boolean") params.is_active = String(filters.is_active);
 
-  const { data } = await api.get<VendorTypeListResponse>(resolveVendorTypeRequestUrl(VENDOR_TYPE_PATHS.list), {
+  const { data } = await api.get<VendorTypeListResponse>(VENDOR_TYPE_PATHS.list, {
     params,
   });
   assertEnvelopeSuccess(data);
@@ -73,14 +72,14 @@ export async function fetchVendorTypesPage(
 }
 
 export async function fetchVendorType(id: number): Promise<VendorType> {
-  const { data } = await api.get<ApiEnvelope<VendorType>>(resolveVendorTypeRequestUrl(VENDOR_TYPE_PATHS.detail(id)));
+  const { data } = await api.get<ApiEnvelope<VendorType>>(VENDOR_TYPE_PATHS.detail(id));
   assertApiSuccess(data);
   return normalizeVendorType(data.data as VendorTypeApiRow);
 }
 
 export async function createVendorType(body: VendorTypeCreatePayload): Promise<VendorType> {
   const { data } = await api.post<ApiEnvelope<VendorType>>(
-    resolveVendorTypeRequestUrl(VENDOR_TYPE_PATHS.list),
+    VENDOR_TYPE_PATHS.list,
     toVendorTypeWritePayload(body),
   );
   assertApiSuccess(data);
@@ -89,7 +88,7 @@ export async function createVendorType(body: VendorTypeCreatePayload): Promise<V
 
 export async function updateVendorType(id: number, body: VendorTypeUpdatePayload): Promise<VendorType> {
   const { data } = await api.patch<ApiEnvelope<VendorType>>(
-    resolveVendorTypeRequestUrl(VENDOR_TYPE_PATHS.detail(id)),
+    VENDOR_TYPE_PATHS.detail(id),
     toVendorTypeWritePayload(body),
   );
   assertApiSuccess(data);
@@ -97,6 +96,6 @@ export async function updateVendorType(id: number, body: VendorTypeUpdatePayload
 }
 
 export async function deleteVendorType(id: number): Promise<void> {
-  const { data } = await api.delete<ApiEnvelope<unknown>>(resolveVendorTypeRequestUrl(VENDOR_TYPE_PATHS.detail(id)));
+  const { data } = await api.delete<ApiEnvelope<unknown>>(VENDOR_TYPE_PATHS.detail(id));
   assertEnvelopeSuccess(data);
 }
