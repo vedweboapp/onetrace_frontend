@@ -229,13 +229,15 @@
       "contacts": "Contacts",
       "sites": "Sites",
       "quotations": "Quotes",
-      "quotationService": "Service Quote",
-      "quotationProject": "Project Quote",
+      "quotationService": "Service Quotes",
+      "quotationProject": "Project Quotes",
       "invoices": "Invoices",
       "purchaseOrders": "Purchase orders",
       "jobs": "Jobs",
-      "serviceJob": "Service",
-      "projectJob": "Project",
+      "serviceJob": "Service Jobs",
+      "projectJob": "Project Jobs",
+      "flyoutService": "Service",
+      "flyoutProject": "Project",
       "qrCodes": "QR codes",
       "projects": "Projects",
       "groups": "Groups",
@@ -265,6 +267,7 @@
       "users": "Users",
       "personalProfile": "Personal Profile",
       "companySettings": "Company Settings",
+      "documentation": "Documentation",
       "formBuilder": "Form Builder",
       "projectForms": "Project forms",
       "modules": "Modules",
@@ -453,6 +456,11 @@
           "title": "Purchase orders",
           "mappingDescription": "Match Zoho purchase order fields to your SimHo purchase order fields.",
           "toggleSection": "Toggle purchase orders section"
+        },
+        "invoices": {
+          "title": "Invoices",
+          "mappingDescription": "Match Zoho invoice fields to your SimHo invoice fields.",
+          "toggleSection": "Toggle invoices section"
         }
       },
       "zohoIntegrationGuide": {
@@ -511,7 +519,52 @@
       "AddEmail": "Add Email",
       "AddAddress": "Add Address",
       "Addresses": "Addresses",
-      "Primary": "Primary"
+      "Primary": "Primary",
+      "fields": {
+        "address1": "Address 1",
+        "address2": "Address 2",
+        "country": "Country",
+        "state": "State",
+        "city": "City",
+        "pincode": "Pin Code"
+      },
+      "placeholders": {
+        "country": "Select country",
+        "state": "Select state",
+        "city": "Select city"
+      }
+    },
+    "settingsDocumentation": {
+      "pageTitle": "Documentation",
+      "pageDescription": "A guided overview of user flows and settings behavior in the application.",
+      "profile": {
+        "title": "Personal profile flow",
+        "description": "This section explains how the personal profile screen loads, edits, and submits user details.",
+        "flow": {
+          "load": "Load the signed-in user profile from the API and render the profile form when data is ready.",
+          "edit": "Toggle edit mode to enable the personal profile form fields.",
+          "save": "Submit a PATCH request with top-level emails, phones, and addresses arrays plus nested user_detail fields.",
+          "addresses": "Addresses are collected as a top-level array, with each item using invite-style address field names and normalized country/state values."
+        }
+      },
+      "publicQuotation": {
+        "title": "Public quotation flow",
+        "description": "This section covers how the public quotation page resolves a token and loads quotation pin preview data.",
+        "flow": {
+          "token": "Read token or pinDetailsKey from URL search params to determine whether to fetch live pin details or load stored payload.",
+          "payload": "For numeric tokens, fetch public pin details from the API; for non-numeric tokens, load client-side stored quotation scope payload.",
+          "preview": "Render the quotation pin preview modal with plot and drawing data once the payload is available."
+        }
+      },
+      "settings": {
+        "title": "Relevant settings sections",
+        "description": "The main settings area includes profile, documentation, company settings, modules, project forms, customization, users, and integrations.",
+        "flow": {
+          "personalProfile": "Access the personal profile page through Settings → Personal Profile to update contact and address details.",
+          "integration": "Connect and configure Zoho integration under Settings → Integrations, then follow callback/connection/key mapping flows.",
+          "documentation": "Use this documentation page to review user flows and understand how core settings routes behave."
+        }
+      }
     },
     "settingsAppearance": {
       "workPrefrence": "WORK PREFREFRENCE",
@@ -2307,6 +2360,8 @@
         "dueDate": "Due date",
         "paymentTerms": "Payment terms",
         "status": "Status",
+        "addresses": "Addresses",
+        "addressType": "Address type",
         "billTo": "Bill to",
         "shipTo": "Ship to",
         "addressLine1": "Address line 1",
@@ -2345,10 +2400,21 @@
       },
       "sections": {
         "basic": "Basic information",
-        "addresses": "Bill to & ship to",
+        "addresses": "Addresses",
         "metadata": "Invoice metadata",
         "lineItems": "Line items",
         "notes": "Notes & terms"
+      },
+      "addresses": {
+        "add": "Add address",
+        "remove": "Remove",
+        "primary": "Primary",
+        "rowLabel": "Address {index}"
+      },
+      "addressType": {
+        "billing": "Billing",
+        "shipping": "Shipping",
+        "other": "Other"
       },
       "lineItems": {
         "productName": "Product name",
@@ -2390,7 +2456,10 @@
         "addressLine1": "Enter address line 1.",
         "country": "Select a country.",
         "state": "Select a state or region.",
-        "city": "Enter or select a city."
+        "city": "Enter or select a city.",
+        "pincode": "Enter a postal or ZIP code.",
+        "addressType": "Select an address type.",
+        "addressesMin": "Add at least one address."
       }
     },
     "purchaseOrders": {
@@ -3010,9 +3079,11 @@
         "loading": "Loading statuses…"
       },
       "qualityAssurance": {
-        "label": "Quality ensured?",
-        "yes": "Yes",
-        "no": "No",
+        "label": "Quality assurance",
+        "approve": "Approve",
+        "reject": "Reject",
+        "yes": "Approve",
+        "no": "Reject",
         "rejectTitle": "Reject quality assurance",
         "rejectBody": "Add a short note explaining why this work is rejected.",
         "remarks": "Remarks",
@@ -3030,7 +3101,11 @@
         "statusPending": "Pending",
         "approvedAt": "Approved at",
         "approvedBy": "Approved by",
-        "column": "QA"
+        "column": "QA",
+        "selectAll": "Select all",
+        "selectedCount": "{count} selected",
+        "bulkApprove": "Approve",
+        "bulkReject": "Reject"
       },
       "forms": {
         "sectionTitle": "Forms",

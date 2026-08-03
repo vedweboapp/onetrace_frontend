@@ -1,4 +1,4 @@
-/** Shared multi-address model for clients, vendors, and purchase orders. */
+/** Shared multi-address model for clients, vendors, purchase orders, and invoices. */
 export type EntityAddressType = "billing" | "shipping" | "other";
 
 export const ENTITY_ADDRESS_TYPES: EntityAddressType[] = ["billing", "shipping", "other"];

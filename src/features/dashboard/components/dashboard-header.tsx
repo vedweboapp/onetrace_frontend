@@ -131,6 +131,11 @@ export function DashboardHeader() {
   const purchaseOrdersActive =
     pathname === purchaseOrdersHref || pathname.startsWith(`${purchaseOrdersHref}/`);
   const jobsActive = pathname === jobsHref || pathname.startsWith(`${jobsHref}/`);
+  const jobCategoryParam = jobsActive
+    ? (searchParams.get("job_category") ?? "").toLowerCase().replace(/[^a-z]/g, "")
+    : "";
+  const serviceJobActive = jobsActive && jobCategoryParam === "servicejob";
+  const projectJobActive = jobsActive && jobCategoryParam === "projectjob";
   const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
@@ -182,7 +187,7 @@ export function DashboardHeader() {
       : quotationsActive
         ? quotationProjectActive
           ? tNav("quotationProject")
-          : quotationServiceActive && pathname === quotationsHref
+          : quotationServiceActive
             ? tNav("quotationService")
             : tNav("quotations")
         : invoicesActive
@@ -190,7 +195,11 @@ export function DashboardHeader() {
           : purchaseOrdersActive
             ? tNav("purchaseOrders")
             : jobsActive
-            ? tNav("jobs")
+            ? projectJobActive
+              ? tNav("projectJob")
+              : serviceJobActive
+                ? tNav("serviceJob")
+                : tNav("jobs")
             : qrCodesActive
               ? tNav("qrCodes")
               : sitesActive
@@ -482,11 +491,9 @@ export function DashboardHeader() {
               href={`${jobsHref}?job_category=servicejob`}
               className={cn(
                 "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
-                jobsActive && searchParams.get("job_category") === "servicejob"
-                  ? resolved.navActiveClassName
-                  : mobileInactive(),
+                serviceJobActive ? resolved.navActiveClassName : mobileInactive(),
               )}
-              style={jobsActive && searchParams.get("job_category") === "servicejob" ? resolved.navActiveStyle : undefined}
+              style={serviceJobActive ? resolved.navActiveStyle : undefined}
             >
               <ListTodo className="size-3.5" strokeWidth={1.75} />
               {tNav("serviceJob")}
@@ -495,11 +502,9 @@ export function DashboardHeader() {
               href={`${jobsHref}?job_category=projectjob`}
               className={cn(
                 "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
-                jobsActive && searchParams.get("job_category") === "projectjob"
-                  ? resolved.navActiveClassName
-                  : mobileInactive(),
+                projectJobActive ? resolved.navActiveClassName : mobileInactive(),
               )}
-              style={jobsActive && searchParams.get("job_category") === "projectjob" ? resolved.navActiveStyle : undefined}
+              style={projectJobActive ? resolved.navActiveStyle : undefined}
             >
               <ListTodo className="size-3.5" strokeWidth={1.75} />
               {tNav("projectJob")}

@@ -37,6 +37,9 @@ Thumbs.db
 # Testing
 coverage
 
+# Local / client documentation (do not push)
+docs/
+
 # TypeScript
 *.tsbuildinfo
 
@@ -45,5 +48,3 @@ package-lock.json
 
 certificates
 apps-fileview.texmex_20260708.11_p0
-.gitignore
-Displaying .gitignore.

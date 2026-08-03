@@ -3,7 +3,7 @@ import ProfilePictureUploader from "@/shared/components/profile-picture-uploader
 import Input from "@/shared/form/components/input";
 import Select from "@/shared/form/components/select";
 import TextBox from "@/shared/form/components/text-box";
-import { AppButton, SurfacePhoneField } from "@/shared/ui";
+import { AppButton, CascadingLocationFields, FieldGroup, SurfacePhoneField } from "@/shared/ui";
 import FormSectionCard from "@/shared/ui/form-section-card";
 import {
     BookUser,
@@ -17,11 +17,39 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
+import { City, Country, State } from "country-state-city"; 
 import { Inputs } from "../types/types";
 import { updatePersonalProfile } from "../api/personal-profile.api";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useTranslations } from "next-intl";
 import { id } from "zod/v4/locales";
+
+const normalizeCountryIso = (rawCountry: string) => {
+    const normalized = (rawCountry ?? "").trim();
+    if (!normalized) return "";
+
+    const byCode = Country.getCountryByCode(normalized);
+    if (byCode) return byCode.isoCode;
+
+    const byName = Country.getAllCountries().find(
+        (country) => country.name.trim().toLowerCase() === normalized.toLowerCase(),
+    );
+    return byName?.isoCode ?? "";
+};
+
+const normalizeStateIso = (countryIso: string, rawState: string) => {
+    const normalized = (rawState ?? "").trim();
+    if (!countryIso || !normalized) return "";
+
+    const subdivisions = State.getStatesOfCountry(countryIso);
+    const byCode = subdivisions.find((state) => state.isoCode === normalized);
+    if (byCode) return byCode.isoCode;
+
+    const byName = subdivisions.find(
+        (state) => state.name.trim().toLowerCase() === normalized.toLowerCase(),
+    );
+    return byName?.isoCode ?? "";
+};
 
 const PersonalProfileForm = ({
     isEditing,
@@ -66,8 +94,12 @@ const PersonalProfileForm = ({
             phones: [{ phone: "", is_primary: true }],
             addresses: [
                 {
-                    address:
-                        "123 Market Street, Suite 400\nSan Francisco, CA 94105\nUnited States",
+                    address1: "",
+                    address2: "",
+                    country_iso: "",
+                    state_iso: "",
+                    city: "",
+                    pincode: "",
                     is_primary: true,
                 },
             ],
@@ -99,23 +131,41 @@ const PersonalProfileForm = ({
                 phones: initialData?.phones?.map((phone: any) => ({
                     id: phone?.id,
                     phone: phone?.phone,
-                    is_primary: phone?.is_primary
+                    is_primary: phone?.is_primary,
                 })),
                 joiningDate: initialData.created_at?.split("T")[0] || "",
                 role: "Senior Driver",
                 date_of_birth: initialData?.user_detail?.date_of_birth,
-                addresses: [
-                    {
-                        address:
-                            "123 Market Street, Suite 400\nSan Francisco, CA 94105\nUnited States",
-                        is_primary: true,
-                    },
-                ],
-            });
+                addresses: initialData?.addresses?.length
+                    ? initialData.addresses.map((address: any) => {
+                          const rawCountry = (address?.country_iso ?? address?.country ?? "").trim();
+                          const countryIso = normalizeCountryIso(rawCountry);
+                          const rawState = (address?.state_iso ?? address?.state ?? "").trim();
+                          const stateIso = normalizeStateIso(countryIso || rawCountry, rawState);
 
-            if (initialData.user_detail?.user_image) {
-                setImage(initialData.user_detail.user_image);
-            }
+                          return {
+                              id: address?.id,
+                              address1: address?.address1 ?? address?.address_1 ?? "",
+                              address2: address?.address2 ?? address?.address_2 ?? "",
+                              country_iso: countryIso || rawCountry,
+                              state_iso: stateIso || rawState,
+                              city: address?.city ?? "",
+                              pincode: address?.pincode ?? "",
+                              is_primary: address?.is_primary || false,
+                          };
+                      })
+                    : [
+                          {
+                              address1: "",
+                              address2: "",
+                              country_iso: "",
+                              state_iso: "",
+                              city: "",
+                              pincode: "",
+                              is_primary: true,
+                          },
+                      ],
+            });
         }
     }, [initialData, reset]);
 
@@ -202,12 +252,42 @@ const PersonalProfileForm = ({
                             is_primary: p.is_primary || false,
                         })) || [],
                 addresses:
-                    data.addresses?.filter((a) => a.address)?.map((adress) => {
-                        return {
-                            address: adress.address,
-                            is_primary: adress.is_primary
-                        }
-                    })
+                    data.addresses
+                        ?.filter(
+                            (a) =>
+                                a.address1 ||
+                                a.address2 ||
+                                a.country_iso ||
+                                a.state_iso ||
+                                a.city ||
+                                a.pincode,
+                        )
+                        ?.map((address) => {
+                            const country = Country.getCountryByCode(address.country_iso ?? "");
+                            const subdivisions = address.country_iso
+                                ? State.getStatesOfCountry(address.country_iso)
+                                : [];
+                            const stateTrimmed = (address.state_iso ?? "").trim();
+                            const stateName = subdivisions.length > 0
+                                ? subdivisions.find((s) => s.isoCode === stateTrimmed)?.name ?? stateTrimmed
+                                : stateTrimmed;
+                            const cities =
+                                subdivisions.length > 0 && stateTrimmed
+                                    ? City.getCitiesOfState(address.country_iso ?? "", stateTrimmed)
+                                    : [];
+                            const cityName = cities.length > 0 ? (address.city ?? "").trim() : address.city ?? "";
+
+                            return {
+                                ...(address?.id ? { id: address.id } : {}),
+                                address1: address.address1,
+                                address2: address.address2,
+                                country: country?.name ?? address.country_iso ?? "",
+                                state: stateName,
+                                city: cityName,
+                                pincode: address.pincode ?? "",
+                                is_primary: address.is_primary || false,
+                            };
+                        }) || []
             };
             formData.append("data", JSON.stringify(payload));
             // Convert image to base64 if it's a new file
@@ -477,7 +557,15 @@ const PersonalProfileForm = ({
                                     variant="ghost"
                                     size="sm"
                                     onClick={() =>
-                                        appendAddress({ address: "", is_primary: false })
+                                        appendAddress({
+                                            address1: "",
+                                            address2: "",
+                                            country_iso: "",
+                                            state_iso: "",
+                                            city: "",
+                                            pincode: "",
+                                            is_primary: false,
+                                        })
                                     }
                                     className="gap-2"
                                 >
@@ -501,12 +589,66 @@ const PersonalProfileForm = ({
                                         <Home size={22} className="text-slate-400" />
                                     </div>
                                     <div className="flex-1 space-y-3">
-                                        <TextBox
-                                            register={register(`addresses.${index}.address` as const)}
-                                            placeholder="Enter full address"
-                                            rows={3}
-                                            className="bg-white/80"
-                                            readOnly={!isEditing}
+                                        <div className="grid gap-4 sm:grid-cols-2">
+                                            <FieldGroup
+                                                label={t("fields.address1")}
+                                                htmlFor={`address1-${field.id}`}
+                                            >
+                                                <Input
+                                                    id={`address1-${field.id}`}
+                                                    className="bg-white/80"
+                                                    readOnly={!isEditing}
+                                                    {...register(`addresses.${index}.address1` as const)}
+                                                />
+                                            </FieldGroup>
+                                            <FieldGroup
+                                                label={t("fields.address2")}
+                                                htmlFor={`address2-${field.id}`}
+                                            >
+                                                <Input
+                                                    id={`address2-${field.id}`}
+                                                    className="bg-white/80"
+                                                    readOnly={!isEditing}
+                                                    {...register(`addresses.${index}.address2` as const)}
+                                                />
+                                            </FieldGroup>
+                                        </div>
+                                        <CascadingLocationFields
+                                            control={control}
+                                            setValue={setValue}
+                                            countryIsoName={`addresses.${index}.country_iso` as const}
+                                            stateIsoName={`addresses.${index}.state_iso` as const}
+                                            cityName={`addresses.${index}.city` as const}
+                                            labels={{
+                                                country: t("fields.country"),
+                                                state: t("fields.state"),
+                                                city: t("fields.city"),
+                                            }}
+                                            placeholders={{
+                                                country: t("placeholders.country"),
+                                                state: t("placeholders.state"),
+                                                city: t("placeholders.city"),
+                                            }}
+                                            disabled={!isEditing}
+                                            errors={{
+                                                country: undefined,
+                                                state: undefined,
+                                                city: undefined,
+                                            }}
+                                            trailingSlot={
+                                                <FieldGroup
+                                                    label={t("fields.pincode")}
+                                                    htmlFor={`address-pincode-${field.id}`}
+                                                    required
+                                                >
+                                                    <Input
+                                                        id={`address-pincode-${field.id}`}
+                                                        className="bg-white/80"
+                                                        readOnly={!isEditing}
+                                                        {...register(`addresses.${index}.pincode` as const)}
+                                                    />
+                                                </FieldGroup>
+                                            }
                                         />
                                     </div>
                                     {isEditing && (

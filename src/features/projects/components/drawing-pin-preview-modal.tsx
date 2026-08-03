@@ -5,6 +5,7 @@ import { Document, Page } from "react-pdf";
 import { useTranslations } from "next-intl";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
 import { resolvePinMarkerAbbreviation } from "@/features/projects/utils/drawing-pin-display.util";
+import { resolvePinProjectFormId } from "@/features/projects/utils/pin-form-meta.util";
 import type { DrawingPin, DrawingPlot, DrawingPinAttachment, DrawingPlotUpsert } from "@/features/projects/types/drawing.types";
 import { AppModal, AppButton } from "@/shared/ui";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
@@ -16,6 +17,7 @@ import { fetchProjectFormsPage } from "@/features/projects/api/project.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import type { PinStatus } from "@/features/pin-status/types/pin-status.types";
 import type { FormListItem } from "@/features/forms/types/form.types";
+import { useAuthenticatedPdfFile } from "@/features/projects/hooks/use-authenticated-pdf-file";
 import "@/shared/utils/pdfjs-worker";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -286,6 +288,10 @@ export function DrawingPinPreviewModal({
 
   const normalizedFileUrl = React.useMemo(() => resolveDrawingFileUrl(drawingFile), [drawingFile]);
   const isPdf = /\.pdf(\?|$)/i.test(drawingFile) || /\.pdf(\?|$)/i.test(normalizedFileUrl);
+  const { file: pdfFile, failed: pdfFailed } = useAuthenticatedPdfFile(
+    normalizedFileUrl,
+    open && isPdf && !hideDrawing,
+  );
 
   React.useEffect(() => {
     if (open) {
@@ -294,6 +300,12 @@ export function DrawingPinPreviewModal({
       setIsPanning(false);
     }
   }, [open, drawingFile, hideDrawing]);
+
+  React.useEffect(() => {
+    if (!pdfFailed || hideDrawing) return;
+    setLoading(false);
+    toastError("Failed to render blueprint PDF drawing");
+  }, [pdfFailed, hideDrawing]);
 
   // Centering scroll viewport on pin after page size is resolved
   React.useEffect(() => {
@@ -546,10 +558,27 @@ export function DrawingPinPreviewModal({
       })
     : formsList;
   const selectedProjectFormId =
-    pin.formId ??
-    (typeof pin.project_form === "number" ? pin.project_form : null) ??
-    (pin.project_form && typeof pin.project_form === "object" ? pin.project_form.id : null);
-  const selectedAvailableForm = availableForms.find((f) => f.id === selectedProjectFormId);
+    (isEditing && pinEditData
+      ? resolvePinProjectFormId(pinEditData) ??
+        (typeof pinEditData.formId === "number" ? pinEditData.formId : null)
+      : null) ??
+    resolvePinProjectFormId(pin) ??
+    (typeof formSummary?.projectFormId === "number" && formSummary.projectFormId > 0
+      ? formSummary.projectFormId
+      : null);
+  let formsForSelect = availableForms;
+  if (selectedProjectFormId != null && !availableForms.some((f) => f.id === selectedProjectFormId)) {
+    const fromAll = formsList.find((f) => f.id === selectedProjectFormId);
+    if (fromAll) {
+      formsForSelect = [fromAll, ...availableForms];
+    } else if (formSummary?.label && formSummary.projectFormId === selectedProjectFormId) {
+      formsForSelect = [
+        { id: selectedProjectFormId, name: formSummary.label } as FormListItem,
+        ...availableForms,
+      ];
+    }
+  }
+  const selectedAvailableForm = formsForSelect.find((f) => f.id === selectedProjectFormId);
   const readonlyFormLabel =
     selectedAvailableForm?.name ??
     formSummary?.label ??
@@ -602,25 +631,29 @@ export function DrawingPinPreviewModal({
                 }
               >
                 {isPdf ? (
-                  <Document
-                    file={normalizedFileUrl}
-                    onLoadError={() => {
-                      setLoading(false);
-                      toastError("Failed to render blueprint PDF drawing");
-                    }}
-                    onLoadSuccess={() => setLoading(false)}
-                  >
-                    <Page
-                      pageNumber={1}
-                      scale={1.2}
-                      renderAnnotationLayer={false}
-                      renderTextLayer={false}
-                      onLoadSuccess={(page) => {
-                        const vp = page.getViewport({ scale: 1.2 });
-                        setPageSize({ width: Math.round(vp.width), height: Math.round(vp.height) });
+                  pdfFile ? (
+                    <Document
+                      file={pdfFile}
+                      loading={null}
+                      error={null}
+                      onLoadError={() => {
+                        setLoading(false);
+                        toastError("Failed to render blueprint PDF drawing");
                       }}
-                    />
-                  </Document>
+                      onLoadSuccess={() => setLoading(false)}
+                    >
+                      <Page
+                        pageNumber={1}
+                        scale={1.2}
+                        renderAnnotationLayer={false}
+                        renderTextLayer={false}
+                        onLoadSuccess={(page) => {
+                          const vp = page.getViewport({ scale: 1.2 });
+                          setPageSize({ width: Math.round(vp.width), height: Math.round(vp.height) });
+                        }}
+                      />
+                    </Document>
+                  ) : null
                 ) : (
                   <img
                     src={normalizedFileUrl}
@@ -791,9 +824,16 @@ export function DrawingPinPreviewModal({
                       <button
                         onClick={() => {
                           const normalizedFormId =
-                            pin.formId ??
-                            (typeof pin.project_form === "number" ? pin.project_form : null);
-                          setPinEditData({ ...pin, formId: normalizedFormId });
+                            resolvePinProjectFormId(pin) ??
+                            (typeof formSummary?.projectFormId === "number" &&
+                            formSummary.projectFormId > 0
+                              ? formSummary.projectFormId
+                              : null);
+                          setPinEditData({
+                            ...pin,
+                            formId: normalizedFormId,
+                            project_form: normalizedFormId,
+                          });
                           setIsEditing(true);
                         }}
                         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
@@ -1125,14 +1165,10 @@ export function DrawingPinPreviewModal({
                   <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Form</span>
                 </div>
                 <div className="flex-1 flex justify-end">
-                  {availableForms.length > 0 ? (
+                  {formsForSelect.length > 0 || selectedProjectFormId != null ? (
                     isEditing && pinEditData ? (
                       <select
-                        value={String(
-                          pinEditData.formId ??
-                          (typeof pinEditData.project_form === "number" ? pinEditData.project_form : null) ??
-                          ""
-                        )}
+                        value={String(selectedProjectFormId ?? "")}
                         onChange={(e) => {
                           const value = e.target.value;
                           setPinEditData(prev => prev ? ({ ...prev, formId: value ? Number(value) : null, project_form: value ? Number(value) : null }) : null);
@@ -1140,7 +1176,7 @@ export function DrawingPinPreviewModal({
                         className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 max-w-[200px]"
                       >
                         <option value="">Select Form</option>
-                        {availableForms.map((opt) => (
+                        {formsForSelect.map((opt) => (
                           <option key={opt.id} value={opt.id}>
                             {opt.name}
                           </option>

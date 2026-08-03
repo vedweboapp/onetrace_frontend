@@ -5,7 +5,13 @@ export type PersonalProfileHeaderTabKey = {
 export type ContactEmail = { email: string; is_primary?: boolean; id?:string | number };
 export type ContactPhone = { phone: string; label?: string; is_primary?: boolean; id?: string| number };
 export type ContactAddress = {
-    address: string;
+    id?: string | number;
+    address1: string;
+    address2?: string;
+    country_iso?: string;
+    state_iso?: string;
+    city?: string;
+    pincode?: string;
     is_primary?: boolean;
 };
 

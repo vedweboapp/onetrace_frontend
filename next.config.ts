@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import mdx from "@next/mdx";
 
+const withMDX = mdx({ extension: /\.mdx$/ });
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextPublicApiUrl =
@@ -15,6 +17,7 @@ const googleMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
 const googleMapsMapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID?.trim() ?? "";
 
 const nextConfig: NextConfig = {
+  pageExtensions: ["ts", "tsx", "mdx"],
   skipTrailingSlashRedirect: true,
   allowedDevOrigins: ["ineffectual-stephania-immemorially.ngrok-free.dev"],
   env: {
@@ -28,6 +31,7 @@ const nextConfig: NextConfig = {
         source: "/:locale(en|es)/dashboard/:path*",
         destination: "/:path*",
         permanent: true,
+        
       },
       {
         source: "/:locale(en|es)/dashboard",
@@ -56,4 +60,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withNextIntl(nextConfig);
+export default withNextIntl(withMDX(nextConfig));

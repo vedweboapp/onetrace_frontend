@@ -8,6 +8,17 @@ export type PinFormMeta = {
   submitted: boolean;
 };
 
+/** Resolve the assigned project form id from pin fields (formId / project_form). */
+export function resolvePinProjectFormId(pin: DrawingPin): number | null {
+  if (typeof pin.formId === "number" && pin.formId > 0) return pin.formId;
+  if (typeof pin.project_form === "number" && pin.project_form > 0) return pin.project_form;
+  if (pin.project_form && typeof pin.project_form === "object") {
+    const id = pin.project_form.id;
+    if (typeof id === "number" && id > 0) return id;
+  }
+  return null;
+}
+
 /** Resolve assigned/submitted form metadata from a drawing pin. */
 export function resolvePinFormMeta(
   pin: DrawingPin,
@@ -24,15 +35,8 @@ export function resolvePinFormMeta(
 ): PinFormMeta | null {
   const pinProjectForm =
     pin.project_form && typeof pin.project_form === "object" ? pin.project_form : null;
-  const pinProjectFormId =
-    typeof pin.formId === "number"
-      ? pin.formId
-      : typeof pin.project_form === "number"
-        ? pin.project_form
-        : pinProjectForm
-          ? pinProjectForm.id
-          : null;
-  if (pinProjectFormId == null || pinProjectFormId <= 0) return null;
+  const pinProjectFormId = resolvePinProjectFormId(pin);
+  if (pinProjectFormId == null) return null;
 
   const form = options?.formEntries?.find(
     (entry) => entry.project_form_id === pinProjectFormId || entry.id === pinProjectFormId,

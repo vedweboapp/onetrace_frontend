@@ -221,13 +221,15 @@
       "contacts": "Contactos",
       "sites": "Sitios",
       "quotations": "Cotizaciones",
-      "quotationService": "Cotizacion de Servicio",
-      "quotationProject": "Cotizacion de Proyecto",
+      "quotationService": "Cotizaciones de Servicio",
+      "quotationProject": "Cotizaciones de Proyecto",
       "invoices": "Facturas",
       "purchaseOrders": "Órdenes de compra",
       "jobs": "Trabajos",
-      "serviceJob": "Trabajo de Servicio",
-      "projectJob": "Trabajo de Proyecto",
+      "serviceJob": "Trabajos de Servicio",
+      "projectJob": "Trabajos de Proyecto",
+      "flyoutService": "Servicio",
+      "flyoutProject": "Proyecto",
       "qrCodes": "Códigos QR",
       "projects": "Proyectos",
       "groups": "Grupos",
@@ -256,9 +258,10 @@
       "checklistTypes": "Tipos de Lista de Verificación",
       "users": "Usuarios",
       "personalProfile": "Perfil personal",
-      "projectForms": "Formularios de proyecto",
       "companySettings": "Ajustes de la empresa",
+      "documentation": "Documentación",
       "formBuilder": "Creador de formularios",
+      "projectForms": "Formularios de proyecto",
       "modules": "Módulos",
       "integrations": "Integraciones",
       "hint": "Personaliza el tema y el color de acento de este espacio.",
@@ -445,6 +448,11 @@
           "title": "Órdenes de compra",
           "mappingDescription": "Relaciona los campos de órdenes de compra de Zoho con los campos de órdenes de compra de SimHo.",
           "toggleSection": "Mostrar u ocultar sección de órdenes de compra"
+        },
+        "invoices": {
+          "title": "Facturas",
+          "mappingDescription": "Relaciona los campos de facturas de Zoho con los campos de facturas de SimHo.",
+          "toggleSection": "Mostrar u ocultar sección de facturas"
         }
       },
       "zohoIntegrationGuide": {
@@ -503,7 +511,52 @@
       "AddEmail": "Añadir correo electrónico",
       "AddAddress": "Añadir dirección",
       "Addresses": "Direcciones",
-      "Primary": "Principal"
+      "Primary": "Principal",
+      "fields": {
+        "address1": "Dirección 1",
+        "address2": "Dirección 2",
+        "country": "País",
+        "state": "Estado",
+        "city": "Ciudad",
+        "pincode": "Código postal"
+      },
+      "placeholders": {
+        "country": "Selecciona un país",
+        "state": "Selecciona un estado",
+        "city": "Selecciona una ciudad"
+      }
+    },
+    "settingsDocumentation": {
+      "pageTitle": "Documentación",
+      "pageDescription": "Una descripción guiada de los flujos de usuario y el comportamiento de la configuración en la aplicación.",
+      "profile": {
+        "title": "Flujo de perfil personal",
+        "description": "Esta sección explica cómo la pantalla de perfil personal carga, edita y envía los detalles del usuario.",
+        "flow": {
+          "load": "Carga el perfil del usuario conectado desde la API y renderiza el formulario cuando los datos están listos.",
+          "edit": "Activa el modo de edición para habilitar los campos del formulario de perfil personal.",
+          "save": "Envía una solicitud PATCH con arrays top-level de emails, teléfonos y direcciones además de campos nested user_detail.",
+          "addresses": "Las direcciones se recopilan como una matriz top-level, con cada elemento usando nombres de campo de dirección al estilo de invitación y valores de país/estado normalizados."
+        }
+      },
+      "publicQuotation": {
+        "title": "Flujo de cotización pública",
+        "description": "Esta sección cubre cómo la página de cotización pública resuelve un token y carga los datos de vista previa del pin de cotización.",
+        "flow": {
+          "token": "Lee token o pinDetailsKey de los parámetros de búsqueda de URL para determinar si se debe obtener detalles de pin en vivo o cargar una carga útil almacenada.",
+          "payload": "Para tokens numéricos, solicita detalles públicos del pin desde la API; para tokens no numéricos, carga la carga útil del alcance de la cotización almacenada del lado del cliente.",
+          "preview": "Renderiza el modal de vista previa del pin de cotización con datos de trazado y dibujo una vez que la carga útil esté disponible."
+        }
+      },
+      "settings": {
+        "title": "Secciones de configuración relevantes",
+        "description": "El área principal de configuración incluye perfil, documentación, ajustes de empresa, módulos, formularios de proyecto, personalización, usuarios e integraciones.",
+        "flow": {
+          "personalProfile": "Accede a la página de perfil personal en Configuración → Perfil personal para actualizar detalles de contacto y dirección.",
+          "integration": "Conecta y configura la integración de Zoho en Configuración → Integraciones, luego sigue los flujos de callback/conexión/mapeo de claves.",
+          "documentation": "Usa esta página de documentación para revisar los flujos de usuario y entender cómo se comportan las rutas principales de configuración."
+        }
+      }
     },
     "settingsAppearance": {
       "workPrefrence": "PREFERENCIA DE TRABAJO",
@@ -2298,6 +2351,8 @@
         "dueDate": "Fecha de vencimiento",
         "paymentTerms": "Condiciones de pago",
         "status": "Estado",
+        "addresses": "Direcciones",
+        "addressType": "Tipo de dirección",
         "billTo": "Facturar a",
         "shipTo": "Enviar a",
         "addressLine1": "Dirección línea 1",
@@ -2336,10 +2391,21 @@
       },
       "sections": {
         "basic": "Información básica",
-        "addresses": "Facturación y envío",
+        "addresses": "Direcciones",
         "metadata": "Datos de la factura",
         "lineItems": "Líneas",
         "notes": "Notas y condiciones"
+      },
+      "addresses": {
+        "add": "Añadir dirección",
+        "remove": "Eliminar",
+        "primary": "Principal",
+        "rowLabel": "Dirección {index}"
+      },
+      "addressType": {
+        "billing": "Facturación",
+        "shipping": "Envío",
+        "other": "Otra"
       },
       "lineItems": {
         "productName": "Producto",
@@ -2381,7 +2447,10 @@
         "addressLine1": "Introduce la dirección línea 1.",
         "country": "Selecciona un país.",
         "state": "Selecciona un estado o región.",
-        "city": "Introduce o selecciona una ciudad."
+        "city": "Introduce o selecciona una ciudad.",
+        "pincode": "Introduce un código postal.",
+        "addressType": "Selecciona un tipo de dirección.",
+        "addressesMin": "Añade al menos una dirección."
       }
     },
     "purchaseOrders": {
@@ -3000,9 +3069,11 @@
         "loading": "Cargando estados…"
       },
       "qualityAssurance": {
-        "label": "¿Calidad asegurada?",
-        "yes": "Sí",
-        "no": "No",
+        "label": "Control de calidad",
+        "approve": "Aprobar",
+        "reject": "Rechazar",
+        "yes": "Aprobar",
+        "no": "Rechazar",
         "rejectTitle": "Rechazar control de calidad",
         "rejectBody": "Añade una breve nota explicando por qué se rechaza este trabajo.",
         "remarks": "Observaciones",
@@ -3020,7 +3091,11 @@
         "statusPending": "Pendiente",
         "approvedAt": "Aprobado el",
         "approvedBy": "Aprobado por",
-        "column": "QA"
+        "column": "QA",
+        "selectAll": "Seleccionar todo",
+        "selectedCount": "{count} seleccionados",
+        "bulkApprove": "Aprobar",
+        "bulkReject": "Rechazar"
       },
       "forms": {
         "sectionTitle": "Formularios",

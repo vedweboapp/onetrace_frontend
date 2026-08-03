@@ -33,7 +33,7 @@ import { routes } from "@/shared/config/routes";
 import { normalizeQuotationScopeBackHref } from "@/features/quotations/utils/quotation-block-scope.util";
 import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { AppButton, SurfaceShell } from "@/shared/ui";
-
+ 
 function parseUnitPrice(detail: CompositeItem): number {
   const n =
     typeof detail.selling_price === "number"

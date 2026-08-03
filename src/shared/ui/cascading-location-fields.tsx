@@ -62,6 +62,7 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
   const stateIsoRaw = useWatch({ control, name: stateIsoName });
   const countryIso = typeof countryIsoRaw === "string" ? countryIsoRaw : "";
   const stateIso = typeof stateIsoRaw === "string" ? stateIsoRaw : "";
+  const cityRaw = useWatch({ control, name: cityName });
 
   const countries = React.useMemo(() => Country.sortByIsoCode(Country.getAllCountries()), []);
 
