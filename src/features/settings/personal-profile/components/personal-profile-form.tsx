@@ -24,6 +24,33 @@ import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useTranslations } from "next-intl";
 import { id } from "zod/v4/locales";
 
+const normalizeCountryIso = (rawCountry: string) => {
+    const normalized = (rawCountry ?? "").trim();
+    if (!normalized) return "";
+
+    const byCode = Country.getCountryByCode(normalized);
+    if (byCode) return byCode.isoCode;
+
+    const byName = Country.getAllCountries().find(
+        (country) => country.name.trim().toLowerCase() === normalized.toLowerCase(),
+    );
+    return byName?.isoCode ?? "";
+};
+
+const normalizeStateIso = (countryIso: string, rawState: string) => {
+    const normalized = (rawState ?? "").trim();
+    if (!countryIso || !normalized) return "";
+
+    const subdivisions = State.getStatesOfCountry(countryIso);
+    const byCode = subdivisions.find((state) => state.isoCode === normalized);
+    if (byCode) return byCode.isoCode;
+
+    const byName = subdivisions.find(
+        (state) => state.name.trim().toLowerCase() === normalized.toLowerCase(),
+    );
+    return byName?.isoCode ?? "";
+};
+
 const PersonalProfileForm = ({
     isEditing,
     initialData,
@@ -111,25 +138,17 @@ const PersonalProfileForm = ({
                 date_of_birth: initialData?.user_detail?.date_of_birth,
                 addresses: initialData?.addresses?.length
                     ? initialData.addresses.map((address: any) => {
-                          const rawCountry = address?.country_iso ?? address?.country ?? "";
-                          const resolvedCountry =
-                              Country.getCountryByCode(rawCountry) ??
-                              Country.getAllCountries().find((c) => c.name === rawCountry);
-                          const countryIso = resolvedCountry?.isoCode ?? "";
-                          const subdivisions = countryIso
-                              ? State.getStatesOfCountry(countryIso)
-                              : [];
-                          const rawState = address?.state_iso ?? address?.state ?? "";
-                          const resolvedState =
-                              subdivisions.find((s) => s.isoCode === rawState || s.name === rawState)?.isoCode ??
-                              rawState;
+                          const rawCountry = (address?.country_iso ?? address?.country ?? "").trim();
+                          const countryIso = normalizeCountryIso(rawCountry);
+                          const rawState = (address?.state_iso ?? address?.state ?? "").trim();
+                          const stateIso = normalizeStateIso(countryIso || rawCountry, rawState);
 
                           return {
                               id: address?.id,
                               address1: address?.address1 ?? address?.address_1 ?? "",
                               address2: address?.address2 ?? address?.address_2 ?? "",
                               country_iso: countryIso || rawCountry,
-                              state_iso: resolvedState,
+                              state_iso: stateIso || rawState,
                               city: address?.city ?? "",
                               pincode: address?.pincode ?? "",
                               is_primary: address?.is_primary || false,
