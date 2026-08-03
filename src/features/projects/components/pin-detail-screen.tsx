@@ -36,6 +36,7 @@ import {
 import { JobQualityAssuranceControls } from "@/features/jobs/components/job-quality-assurance-controls";
 import { QualityAssuranceDetailGrid } from "@/features/jobs/components/quality-assurance-status";
 import { isQualityAssuranceDecided } from "@/features/jobs/types/quality-assurance.types";
+import { isPinEligibleForQualityAssurance } from "@/features/jobs/utils/quality-assurance-eligibility.util";
 import { routes } from "@/shared/config/routes";
 import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
@@ -341,6 +342,8 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
   const pinQa = context?.pin?.quality_assurance ?? null;
   const tQa = useTranslations("Dashboard.jobs.qualityAssurance");
   const qaDecided = isQualityAssuranceDecided(pinQa);
+  const showPinQualityAssurance =
+    context?.pin != null && isPinEligibleForQualityAssurance(context.pin) && !qaDecided;
   const formImages = React.useMemo(
     () => collectFormImagePreviews(schemaSections, defaultValues),
     [schemaSections, defaultValues],
@@ -356,7 +359,7 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
         backAriaLabel={tPins("backAria")}
         subtitle={productName ?? undefined}
         actions={
-          jobId != null && qaPinId != null && !qaDecided ? (
+          jobId != null && qaPinId != null && showPinQualityAssurance ? (
             <JobQualityAssuranceControls
               jobId={jobId}
               pinIds={[qaPinId]}

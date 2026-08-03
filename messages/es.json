@@ -221,13 +221,13 @@
       "contacts": "Contactos",
       "sites": "Sitios",
       "quotations": "Cotizaciones",
-      "quotationService": "Cotizacion de Servicio",
-      "quotationProject": "Cotizacion de Proyecto",
+      "quotationService": "Cotizaciones de Servicio",
+      "quotationProject": "Cotizaciones de Proyecto",
       "invoices": "Facturas",
       "purchaseOrders": "Órdenes de compra",
       "jobs": "Trabajos",
-      "serviceJob": "Trabajo de Servicio",
-      "projectJob": "Trabajo de Proyecto",
+      "serviceJob": "Trabajos de Servicio",
+      "projectJob": "Trabajos de Proyecto",
       "flyoutService": "Servicio",
       "flyoutProject": "Proyecto",
       "qrCodes": "Códigos QR",
@@ -2351,6 +2351,8 @@
         "dueDate": "Fecha de vencimiento",
         "paymentTerms": "Condiciones de pago",
         "status": "Estado",
+        "addresses": "Direcciones",
+        "addressType": "Tipo de dirección",
         "billTo": "Facturar a",
         "shipTo": "Enviar a",
         "addressLine1": "Dirección línea 1",
@@ -2389,10 +2391,21 @@
       },
       "sections": {
         "basic": "Información básica",
-        "addresses": "Facturación y envío",
+        "addresses": "Direcciones",
         "metadata": "Datos de la factura",
         "lineItems": "Líneas",
         "notes": "Notas y condiciones"
+      },
+      "addresses": {
+        "add": "Añadir dirección",
+        "remove": "Eliminar",
+        "primary": "Principal",
+        "rowLabel": "Dirección {index}"
+      },
+      "addressType": {
+        "billing": "Facturación",
+        "shipping": "Envío",
+        "other": "Otra"
       },
       "lineItems": {
         "productName": "Producto",
@@ -2434,7 +2447,10 @@
         "addressLine1": "Introduce la dirección línea 1.",
         "country": "Selecciona un país.",
         "state": "Selecciona un estado o región.",
-        "city": "Introduce o selecciona una ciudad."
+        "city": "Introduce o selecciona una ciudad.",
+        "pincode": "Introduce un código postal.",
+        "addressType": "Selecciona un tipo de dirección.",
+        "addressesMin": "Añade al menos una dirección."
       }
     },
     "purchaseOrders": {
@@ -3053,9 +3069,11 @@
         "loading": "Cargando estados…"
       },
       "qualityAssurance": {
-        "label": "¿Calidad asegurada?",
-        "yes": "Sí",
-        "no": "No",
+        "label": "Control de calidad",
+        "approve": "Aprobar",
+        "reject": "Rechazar",
+        "yes": "Aprobar",
+        "no": "Rechazar",
         "rejectTitle": "Rechazar control de calidad",
         "rejectBody": "Añade una breve nota explicando por qué se rechaza este trabajo.",
         "remarks": "Observaciones",
@@ -3073,7 +3091,11 @@
         "statusPending": "Pendiente",
         "approvedAt": "Aprobado el",
         "approvedBy": "Aprobado por",
-        "column": "QA"
+        "column": "QA",
+        "selectAll": "Seleccionar todo",
+        "selectedCount": "{count} seleccionados",
+        "bulkApprove": "Aprobar",
+        "bulkReject": "Rechazar"
       },
       "forms": {
         "sectionTitle": "Formularios",

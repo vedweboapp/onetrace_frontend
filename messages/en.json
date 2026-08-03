@@ -229,13 +229,13 @@
       "contacts": "Contacts",
       "sites": "Sites",
       "quotations": "Quotes",
-      "quotationService": "Service Quote",
-      "quotationProject": "Project Quote",
+      "quotationService": "Service Quotes",
+      "quotationProject": "Project Quotes",
       "invoices": "Invoices",
       "purchaseOrders": "Purchase orders",
       "jobs": "Jobs",
-      "serviceJob": "Service",
-      "projectJob": "Project",
+      "serviceJob": "Service Jobs",
+      "projectJob": "Project Jobs",
       "flyoutService": "Service",
       "flyoutProject": "Project",
       "qrCodes": "QR codes",
@@ -2360,6 +2360,8 @@
         "dueDate": "Due date",
         "paymentTerms": "Payment terms",
         "status": "Status",
+        "addresses": "Addresses",
+        "addressType": "Address type",
         "billTo": "Bill to",
         "shipTo": "Ship to",
         "addressLine1": "Address line 1",
@@ -2398,10 +2400,21 @@
       },
       "sections": {
         "basic": "Basic information",
-        "addresses": "Bill to & ship to",
+        "addresses": "Addresses",
         "metadata": "Invoice metadata",
         "lineItems": "Line items",
         "notes": "Notes & terms"
+      },
+      "addresses": {
+        "add": "Add address",
+        "remove": "Remove",
+        "primary": "Primary",
+        "rowLabel": "Address {index}"
+      },
+      "addressType": {
+        "billing": "Billing",
+        "shipping": "Shipping",
+        "other": "Other"
       },
       "lineItems": {
         "productName": "Product name",
@@ -2443,7 +2456,10 @@
         "addressLine1": "Enter address line 1.",
         "country": "Select a country.",
         "state": "Select a state or region.",
-        "city": "Enter or select a city."
+        "city": "Enter or select a city.",
+        "pincode": "Enter a postal or ZIP code.",
+        "addressType": "Select an address type.",
+        "addressesMin": "Add at least one address."
       }
     },
     "purchaseOrders": {
@@ -3063,9 +3079,11 @@
         "loading": "Loading statuses…"
       },
       "qualityAssurance": {
-        "label": "Quality ensured?",
-        "yes": "Yes",
-        "no": "No",
+        "label": "Quality assurance",
+        "approve": "Approve",
+        "reject": "Reject",
+        "yes": "Approve",
+        "no": "Reject",
         "rejectTitle": "Reject quality assurance",
         "rejectBody": "Add a short note explaining why this work is rejected.",
         "remarks": "Remarks",
@@ -3083,7 +3101,11 @@
         "statusPending": "Pending",
         "approvedAt": "Approved at",
         "approvedBy": "Approved by",
-        "column": "QA"
+        "column": "QA",
+        "selectAll": "Select all",
+        "selectedCount": "{count} selected",
+        "bulkApprove": "Approve",
+        "bulkReject": "Reject"
       },
       "forms": {
         "sectionTitle": "Forms",
