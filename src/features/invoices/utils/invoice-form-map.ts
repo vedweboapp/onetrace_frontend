@@ -1,17 +1,24 @@
 import { parseFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
-import { Country, State } from "country-state-city";
 import type {
   InvoiceAddress,
   InvoiceCompositeItem,
   InvoiceContactRef,
   InvoiceCreatePayload,
   InvoiceDetail,
+  InvoiceEntityAddress,
   InvoiceLineItem,
 } from "@/features/invoices/types/invoice.types";
 import type { InvoiceFormValues } from "@/features/invoices/schemas/invoice-form-schema";
 import { buildJobMetaPayload, type JobMetaFormRow } from "@/features/jobs/utils/job-meta-payload.util";
 import { computeLineAmount, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
 import { nestedId } from "@/features/invoices/utils/invoice-nested-fields.util";
+import {
+  emptyEntityAddressFormRow,
+  mapEntityAddressApiToFormRow,
+  mapEntityAddressFormRowToPayload,
+  normalizePrimaryEntityAddresses,
+} from "@/shared/form/entity-address-form.util";
+import { normalizeEntityAddressType } from "@/shared/types/entity-address.types";
 
 export function formatApiDateForHtmlDateInput(raw: string | null | undefined): string {
   const d = parseFlexibleApiDate(raw);
@@ -30,42 +37,43 @@ export function htmlDateInputToIso(value: string): string {
   return d.toISOString();
 }
 
-function emptyAddress(): InvoiceFormValues["bill_to"] {
+function legacyAddressToEntity(
+  addr: InvoiceAddress,
+  addressType: "billing" | "shipping",
+  isPrimary: boolean,
+): InvoiceEntityAddress {
   return {
-    address_line_1: "",
-    address_line_2: "",
-    country_iso: "",
-    state_iso: "",
-    city: "",
-    pincode: "",
+    address_type: addressType,
+    address_line_1: addr.address_line_1?.trim() ?? "",
+    address_line_2: addr.address_line_2?.trim() || null,
+    city: addr.city?.trim() ?? "",
+    state: addr.state?.trim() ?? "",
+    country: addr.country?.trim() ?? "",
+    pincode: (addr.pincode ?? addr.zip_code)?.trim() ?? "",
+    is_primary: isPrimary,
   };
 }
 
-function addressFromApi(addr: InvoiceAddress | null | undefined): InvoiceFormValues["bill_to"] {
-  if (!addr) return emptyAddress();
-  return {
-    address_line_1: addr.address_line_1 ?? "",
-    address_line_2: addr.address_line_2 ?? "",
-    country_iso: "",
-    state_iso: "",
-    city: addr.city ?? "",
-    pincode: addr.zip_code ?? addr.pincode ?? "",
-  };
-}
+/** Prefer API `addresses[]`; fall back to legacy bill_to / ship_to / billing_address / shipping_address. */
+export function resolveInvoiceAddresses(invoice: InvoiceDetail): InvoiceEntityAddress[] {
+  if (Array.isArray(invoice.addresses) && invoice.addresses.length > 0) {
+    return invoice.addresses.map((addr) => ({
+      ...addr,
+      address_type: normalizeEntityAddressType(addr.address_type),
+      pincode: addr.pincode ?? "",
+    }));
+  }
 
-function addressToPayload(addr: InvoiceFormValues["bill_to"]): InvoiceAddress | undefined {
-  const hasAny = Object.values(addr).some((v) => v.trim().length > 0);
-  if (!hasAny) return undefined;
-  const countryName = Country.getCountryByCode(addr.country_iso)?.name ?? "";
-  const stateName = State.getStateByCodeAndCountry(addr.state_iso, addr.country_iso)?.name ?? "";
-  return {
-    address_line_1: addr.address_line_1.trim() || null,
-    address_line_2: addr.address_line_2.trim() || null,
-    city: addr.city.trim() || null,
-    state: stateName || null,
-    pincode: addr.pincode.trim() || null,
-    country: countryName || null,
-  };
+  const rows: InvoiceEntityAddress[] = [];
+  const billTo = invoice.bill_to ?? invoice.billing_address;
+  const shipTo = invoice.ship_to ?? invoice.shipping_address;
+  if (billTo) {
+    rows.push(legacyAddressToEntity(billTo, "billing", true));
+  }
+  if (shipTo) {
+    rows.push(legacyAddressToEntity(shipTo, "shipping", rows.length === 0));
+  }
+  return rows;
 }
 
 function newLineId(): string {
@@ -162,13 +170,19 @@ export function mapInvoiceFormToPayload(values: InvoiceFormValues): InvoiceCreat
   const meta = buildJobMetaPayload(values.line_items.map(lineItemToMetaRow));
 
   const contactRaw = values.contact.trim();
-  
+
   const contact =
     contactRaw && /^\d+$/.test(contactRaw) ? Number.parseInt(contactRaw, 10) : undefined;
+
+  const addresses = normalizePrimaryEntityAddresses(values.addresses).map((row) => {
+    const { latitude: _lat, longitude: _lon, ...rest } = mapEntityAddressFormRowToPayload(row);
+    return rest;
+  });
 
   const payload: InvoiceCreatePayload = {
     client: Number.parseInt(values.client, 10),
     total: meta?.total ?? computeFormSubtotal(values.line_items),
+    addresses,
     composite_items: (meta?.composite_items ?? [])
       .filter((row): row is typeof row & { id: number } => typeof row.id === "number")
       .map(({ id, name, group, quantity, amount }) => ({ id, name, group, quantity, amount })),
@@ -181,10 +195,6 @@ export function mapInvoiceFormToPayload(values: InvoiceFormValues): InvoiceCreat
   if (dueRaw) payload.due_date = dueRaw;
   const paymentTerms = values.payment_terms.trim();
   if (paymentTerms) payload.payment_terms = paymentTerms;
-  const billTo = addressToPayload(values.bill_to);
-  if (billTo) payload.bill_to = billTo;
-  const shipTo = addressToPayload(values.ship_to);
-  if (shipTo) payload.ship_to = shipTo;
   const clientNotes = values.client_notes.trim();
   if (clientNotes) payload.client_notes = clientNotes;
   const internalNotes = values.internal_notes.trim();
@@ -200,8 +210,7 @@ export function emptyInvoiceFormDefaults(): InvoiceFormValues {
     project: "",
     due_date: "",
     payment_terms: "net_30",
-    bill_to: emptyAddress(),
-    ship_to: emptyAddress(),
+    addresses: [emptyEntityAddressFormRow({ address_type: "billing", is_primary: true })],
     client_notes: "",
     internal_notes: "",
     line_items: [emptyInvoiceLineItem()],
@@ -209,14 +218,13 @@ export function emptyInvoiceFormDefaults(): InvoiceFormValues {
 }
 
 export function invoiceToFormDefaults(invoice: InvoiceDetail): InvoiceFormValues {
-  const billTo = invoice.bill_to ?? invoice.billing_address;
-  const shipTo = invoice.ship_to ?? invoice.shipping_address;
+  const addresses = resolveInvoiceAddresses(invoice);
   const lines =
     invoice.composite_items && invoice.composite_items.length > 0
       ? invoice.composite_items.map(compositeItemFromApi)
       : invoice.line_items && invoice.line_items.length > 0
-      ? invoice.line_items.map(lineItemFromApi)
-      : [emptyInvoiceLineItem()];
+        ? invoice.line_items.map(lineItemFromApi)
+        : [emptyInvoiceLineItem()];
 
   return {
     client: String(nestedId(invoice.client) ?? ""),
@@ -228,8 +236,10 @@ export function invoiceToFormDefaults(invoice: InvoiceDetail): InvoiceFormValues
     project: String(nestedId(invoice.project) ?? ""),
     due_date: formatApiDateForHtmlDateInput(invoice.due_date),
     payment_terms: invoice.payment_terms ?? "",
-    bill_to: addressFromApi(billTo),
-    ship_to: addressFromApi(shipTo),
+    addresses:
+      addresses.length > 0
+        ? addresses.map((addr) => mapEntityAddressApiToFormRow(addr))
+        : [emptyEntityAddressFormRow({ address_type: "billing", is_primary: true })],
     client_notes: invoice.client_notes ?? "",
     internal_notes: invoice.internal_notes ?? "",
     line_items: lines,

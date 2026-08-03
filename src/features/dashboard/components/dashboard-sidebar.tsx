@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
-import { BookUser, Building2, ClipboardList, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Tag, Truck, UserRound } from "lucide-react";
+import { BookOpen, BookUser, Building2, ClipboardList, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -107,40 +108,138 @@ function SidebarNavLink({
   );
 }
 
-function SidebarSubNavLink({
-  href,
-  active,
+type SidebarFlyoutItem = {
+  href: string;
+  label: string;
+  active: boolean;
+};
+
+function SidebarFlyoutNav({
   label,
+  icon: Icon,
+  active,
   expanded,
   resolved,
-  subtleActive = false,
+  items,
 }: {
-  href: string;
-  active: boolean;
   label: string;
+  icon: LucideIcon;
+  active: boolean;
   expanded: boolean;
   resolved: ReturnType<typeof resolveDashboardAccent>;
-  subtleActive?: boolean;
+  items: SidebarFlyoutItem[];
 }) {
-  const subtleActiveClassName = cn(
-    "bg-slate-100 text-slate-900",
-    "dark:bg-slate-800 dark:text-slate-100",
-  );
+  const triggerRef = React.useRef<HTMLDivElement>(null);
+  const closeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [open, setOpen] = React.useState(false);
+  const [pos, setPos] = React.useState({ top: 0, left: 0 });
+
+  const clearCloseTimer = React.useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
+
+  const updatePos = React.useCallback(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setPos({ top: rect.top, left: rect.right + 6 });
+  }, []);
+
+  const openMenu = React.useCallback(() => {
+    clearCloseTimer();
+    updatePos();
+    setOpen(true);
+  }, [clearCloseTimer, updatePos]);
+
+  const scheduleClose = React.useCallback(() => {
+    clearCloseTimer();
+    closeTimerRef.current = setTimeout(() => setOpen(false), 120);
+  }, [clearCloseTimer]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onScrollOrResize = () => updatePos();
+    window.addEventListener("resize", onScrollOrResize);
+    window.addEventListener("scroll", onScrollOrResize, true);
+    return () => {
+      window.removeEventListener("resize", onScrollOrResize);
+      window.removeEventListener("scroll", onScrollOrResize, true);
+    };
+  }, [open, updatePos]);
+
+  React.useEffect(() => () => clearCloseTimer(), [clearCloseTimer]);
+
+  const panel =
+    open && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            role="menu"
+            aria-label={label}
+            className={cn(
+              "fixed z-[80] w-[9.5rem] rounded-lg border border-slate-200/90 bg-white p-1 shadow-md",
+              "ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
+            )}
+            style={{ top: pos.top, left: pos.left }}
+            onMouseEnter={openMenu}
+            onMouseLeave={scheduleClose}
+          >
+            <div className="flex flex-col gap-0.5">
+              {items.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  role="menuitem"
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "rounded-md px-2.5 py-1.5 text-[13px] font-medium tracking-tight transition",
+                    item.active
+                      ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                      : "text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white",
+                  )}
+                >
+                  <span className="block truncate">{item.label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
-    <Link
-      href={href}
-      title={expanded ? undefined : label}
-      className={cn(
-        "flex items-center rounded-lg border-l-2 text-sm font-medium transition",
-        expanded ? "px-3 py-2 pl-8" : "mx-auto size-9 justify-center p-0",
-        active ? "border-l-[color:var(--dash-accent)]" : "border-l-transparent",
-        active ? (subtleActive ? subtleActiveClassName : resolved.navActiveClassName) : navInactive(),
-      )}
-      style={active && !subtleActive ? resolved.navActiveStyle : undefined}
+    <div
+      ref={triggerRef}
+      className="relative"
+      onMouseEnter={openMenu}
+      onMouseLeave={scheduleClose}
     >
-      {expanded ? <span className="truncate">{label}</span> : <span className="sr-only">{label}</span>}
-    </Link>
+      <button
+        type="button"
+        title={expanded ? undefined : label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={cn(
+          "flex w-full items-center rounded-lg text-sm font-medium transition",
+          expanded ? "gap-3 px-3 py-2.5 text-left" : "mx-auto size-9 justify-center p-0",
+          active ? resolved.navActiveClassName : navInactive(),
+        )}
+        style={active ? resolved.navActiveStyle : undefined}
+      >
+        <Icon
+          className={cn(
+            "size-[18px] shrink-0",
+            active ? "opacity-95" : "text-slate-600 dark:text-slate-300",
+          )}
+          strokeWidth={1.75}
+          aria-hidden
+        />
+        {expanded ? <span className="truncate">{label}</span> : <span className="sr-only">{label}</span>}
+      </button>
+      {panel}
+    </div>
   );
 }
 
@@ -154,8 +253,6 @@ function DashboardMainSidebar({
   const t = useTranslations("Dashboard.sidebar");
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [itemsOpen, setItemsOpen] = React.useState(false);
-  const [quotesOpen, setQuotesOpen] = React.useState(false);
   const clientsHref = routes.dashboard.clients;
   const vendorsHref = routes.dashboard.vendors;
   const contactsHref = routes.dashboard.contacts;
@@ -214,25 +311,11 @@ function DashboardMainSidebar({
   const itemsActive = pathname === itemsHref || pathname.startsWith(`${itemsHref}/`);
   const compositeActive = pathname === compositeHref || pathname.startsWith(`${compositeHref}/`);
   const itemsSectionActive = itemsActive || compositeActive;
-  const toggleSidebar = useDashboardSidebarStore((s) => s.toggleSidebar);
-  const [jobsOpen, setJobsOpen] = React.useState(false);
   const serviceJobHref = `${routes.dashboard.jobs}?job_category=servicejob`;
   const projectJobHref = `${routes.dashboard.jobs}?job_category=projectjob`;
   const currentJobCategory = searchParams.get("job_category");
-  // Active when on jobs list with matching category, OR on any jobs sub-page (new/edit/detail) with matching category
   const serviceJobActive = jobsActive && currentJobCategory === "servicejob";
   const projectJobActive = jobsActive && currentJobCategory === "projectjob";
-
-  React.useEffect(() => {
-    if (jobsActive) setJobsOpen(true);
-  }, [jobsActive]);
-
-  React.useEffect(() => {
-    if (itemsSectionActive) setItemsOpen(true);
-  }, [itemsSectionActive]);
-  React.useEffect(() => {
-    if (quotationsActive) setQuotesOpen(true);
-  }, [quotationsActive]);
 
   return (
     <>
@@ -285,69 +368,25 @@ function DashboardMainSidebar({
           expanded={expanded}
           resolved={resolved}
         />
-        {expanded ? (
-          <div
-            className="pt-0"
-            onMouseEnter={() => setQuotesOpen(true)}
-            onMouseLeave={() => {
-              if (!quotationsActive) setQuotesOpen(false);
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setQuotesOpen((v) => !v)}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition",
-                quotationsActive ? resolved.navActiveClassName : navInactive(),
-              )}
-              style={quotationsActive ? resolved.navActiveStyle : undefined}
-              aria-expanded={quotesOpen}
-            >
-              <FileText
-                className={cn(
-                  "size-[18px] shrink-0",
-                  quotationsActive ? "opacity-95" : "text-slate-600 dark:text-slate-300",
-                )}
-                strokeWidth={1.75}
-                aria-hidden
-              />
-              <span className="truncate">{t("quotations")}</span>
-            </button>
-            <div
-              className={cn(
-                "mt-1.5 space-y-1 overflow-hidden",
-                "max-h-0 opacity-0 transition-all duration-150",
-                quotesOpen && "max-h-40 opacity-100",
-              )}
-            >
-              <SidebarSubNavLink
-                href={quotationServiceHref}
-                active={quotationServiceActive}
-                label={t("quotationService")}
-                expanded
-                resolved={resolved}
-                subtleActive
-              />
-              <SidebarSubNavLink
-                href={quotationProjectHref}
-                active={quotationProjectActive}
-                label={t("quotationProject")}
-                expanded
-                resolved={resolved}
-                subtleActive
-              />
-            </div>
-          </div>
-        ) : (
-          <SidebarNavLink
-            href={quotationServiceHref}
-            active={quotationsActive}
-            label={t("quotations")}
-            icon={FileText}
-            expanded={expanded}
-            resolved={resolved}
-          />
-        )}
+        <SidebarFlyoutNav
+          label={t("quotations")}
+          icon={FileText}
+          active={quotationsActive}
+          expanded={expanded}
+          resolved={resolved}
+          items={[
+            {
+              href: quotationServiceHref,
+              label: t("flyoutService"),
+              active: quotationServiceActive,
+            },
+            {
+              href: quotationProjectHref,
+              label: t("flyoutProject"),
+              active: quotationProjectActive,
+            },
+          ]}
+        />
         <SidebarNavLink
           href={invoicesHref}
           active={invoicesActive}
@@ -364,80 +403,25 @@ function DashboardMainSidebar({
           expanded={expanded}
           resolved={resolved}
         />
-        {expanded ? (
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={() => setJobsOpen((v) => !v)}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition",
-                jobsActive
-                  ? resolved.navActiveClassName
-                  : navInactive(),
-              )}
-              style={jobsActive ? resolved.navActiveStyle : undefined}
-              aria-expanded={jobsOpen}
-            >
-              <ListTodo
-                className={cn(
-                  "size-[18px] shrink-0",
-                  jobsActive ? "opacity-95" : "text-slate-600 dark:text-slate-300",
-                )}
-                strokeWidth={1.75}
-                aria-hidden
-              />
-              <span className="truncate">{t("jobs")}</span>
-            </button>
-            <div
-              className={cn(
-                "mt-1.5 space-y-1 overflow-hidden",
-                "max-h-0 opacity-0 transition-all duration-150",
-                jobsOpen && "max-h-40 opacity-100",
-              )}
-            >
-              <SidebarSubNavLink
-                href={serviceJobHref}
-                active={serviceJobActive}
-                label={t("serviceJob")}
-                expanded
-                resolved={resolved}
-                subtleActive
-              />
-              <SidebarSubNavLink
-                href={projectJobHref}
-                active={projectJobActive}
-                label={t("projectJob")}
-                expanded
-                resolved={resolved}
-                subtleActive
-              />
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              toggleSidebar();
-              setJobsOpen(true);
-            }}
-            title={t("jobs")}
-            className={cn(
-              "flex items-center rounded-lg text-sm font-medium transition mx-auto size-9 justify-center p-0",
-              jobsActive ? resolved.navActiveClassName : navInactive(),
-            )}
-            style={jobsActive ? resolved.navActiveStyle : undefined}
-          >
-            <ListTodo
-              className={cn(
-                "size-[18px] shrink-0",
-                jobsActive ? "opacity-95" : "text-slate-600 dark:text-slate-300",
-              )}
-              strokeWidth={1.75}
-              aria-hidden
-            />
-            <span className="sr-only">{t("jobs")}</span>
-          </button>
-        )}
+        <SidebarFlyoutNav
+          label={t("jobs")}
+          icon={ListTodo}
+          active={jobsActive}
+          expanded={expanded}
+          resolved={resolved}
+          items={[
+            {
+              href: serviceJobHref,
+              label: t("flyoutService"),
+              active: serviceJobActive,
+            },
+            {
+              href: projectJobHref,
+              label: t("flyoutProject"),
+              active: projectJobActive,
+            },
+          ]}
+        />
         <SidebarNavLink
           href={qrCodesHref}
           active={qrCodesActive}
@@ -486,67 +470,25 @@ function DashboardMainSidebar({
           expanded={expanded}
           resolved={resolved}
         />
-        {expanded ? (
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={() => setItemsOpen((v) => !v)}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition",
-                itemsSectionActive
-                  ? resolved.navActiveClassName
-                  : navInactive(),
-              )}
-              style={itemsSectionActive ? resolved.navActiveStyle : undefined}
-              aria-expanded={itemsOpen}
-            >
-              <Package
-                className={cn(
-                  "size-[18px] shrink-0",
-                  itemsSectionActive ? "opacity-95" : "text-slate-600 dark:text-slate-300",
-                )}
-                strokeWidth={1.75}
-                aria-hidden
-              />
-              <span className="truncate">{t("products")}</span>
-            </button>
-            <div
-              className={cn(
-                "mt-1.5 space-y-1 overflow-hidden",
-                "max-h-0 opacity-0 transition-all duration-150",
-                itemsOpen && "max-h-40 opacity-100",
-              )}
-            >
-              <SidebarSubNavLink
-                href={itemsHref}
-                active={itemsActive}
-                label={t("itemsPlain")}
-                expanded
-                resolved={resolved}
-                subtleActive
-              />
-              <SidebarSubNavLink
-                href={compositeHref}
-                active={compositeActive}
-                label={t("compositeItems")}
-                expanded
-                resolved={resolved}
-                subtleActive
-              />
-            </div>
-          </div>
-        ) : (
-          <>
-            <SidebarNavLink
-              href={itemsHref}
-              active={itemsSectionActive}
-              label={t("products")}
-              icon={Package}
-              expanded={expanded}
-              resolved={resolved}
-            />
-          </>
-        )}
+        <SidebarFlyoutNav
+          label={t("products")}
+          icon={Package}
+          active={itemsSectionActive}
+          expanded={expanded}
+          resolved={resolved}
+          items={[
+            {
+              href: itemsHref,
+              label: t("itemsPlain"),
+              active: itemsActive,
+            },
+            {
+              href: compositeHref,
+              label: t("compositeItems"),
+              active: compositeActive,
+            },
+          ]}
+        />
       </nav>
     </>
   );
@@ -577,6 +519,9 @@ function DashboardSettingsSidebar({
     pathname === personalProfileHref || pathname.startsWith(`${personalProfileHref}/`);
   const companySettingsActive =
     pathname === companySettingsHref || pathname.startsWith(`${companySettingsHref}/`);
+  const documentationHref = routes.dashboard.settingsDocumentation;
+  const documentationActive =
+    pathname === documentationHref || pathname.startsWith(`${documentationHref}/`);
   const modulesActive = pathname === modulesHref || pathname.startsWith(`${modulesHref}/`);
   const projectFormsActive = pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
   const integrationsActive =
@@ -607,6 +552,14 @@ function DashboardSettingsSidebar({
           active={companySettingsActive}
           label={t("companySettings")}
           icon={Building2}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={documentationHref}
+          active={documentationActive}
+          label={t("documentation")}
+          icon={BookOpen}
           expanded={expanded}
           resolved={resolved}
         />

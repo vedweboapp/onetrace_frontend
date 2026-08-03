@@ -1,11 +1,10 @@
 import { z } from "zod";
 import {
-  addAddressLocationRefinements,
-  addressFieldsZodShape,
-  type AddressValidationMessages,
-} from "@/shared/utils/address-form-validation.util";
+  createEntityAddressesArraySchema,
+  type EntityAddressFormMessages,
+} from "@/shared/form/entity-address-form.util";
 
-export type InvoiceFormMessages = AddressValidationMessages & {
+export type InvoiceFormMessages = EntityAddressFormMessages & {
   client: string;
   issueDate: string;
   lineDescription: string;
@@ -29,8 +28,6 @@ const lineItemShape = z.object({
 });
 
 export function createInvoiceFormSchema(messages: InvoiceFormMessages) {
-  const addressShape = addressFieldsZodShape(messages);
-
   return z
     .object({
       client: z
@@ -42,16 +39,12 @@ export function createInvoiceFormSchema(messages: InvoiceFormMessages) {
       project: optionalId(messages.client),
       due_date: z.string(),
       payment_terms: z.string(),
-      bill_to: addressShape,
-      ship_to: addressShape,
+      addresses: createEntityAddressesArraySchema(messages),
       client_notes: z.string(),
       internal_notes: z.string(),
       line_items: z.array(lineItemShape).min(1, { message: messages.lineDescription }),
     })
     .superRefine((data, ctx) => {
-      addAddressLocationRefinements(data.bill_to, ctx, ["bill_to"], messages);
-      addAddressLocationRefinements(data.ship_to, ctx, ["ship_to"], messages);
-
       data.line_items.forEach((row, index) => {
         const item = row.item.trim();
         if (!item) {

@@ -1,3 +1,5 @@
+import type { EntityAddress, EntityAddressPayload } from "@/shared/types/entity-address.types";
+
 export type InvoiceUserRef = {
   id: number;
   email?: string | null;
@@ -20,7 +22,9 @@ export type InvoiceContactRef = {
   phone?: string | null;
 };
 
+/** @deprecated Prefer EntityAddress via `addresses`. Kept for legacy API reads. */
 export type InvoiceAddress = {
+  address_type?: string | null;
   address_line_1?: string | null;
   address_line_2?: string | null;
   city?: string | null;
@@ -28,7 +32,11 @@ export type InvoiceAddress = {
   zip_code?: string | null;
   pincode?: string | null;
   country?: string | null;
+  is_primary?: boolean | null;
 };
+
+export type InvoiceEntityAddress = EntityAddress;
+export type InvoiceEntityAddressPayload = EntityAddressPayload;
 
 export type InvoiceLineItem = {
   id?: number;
@@ -85,6 +93,9 @@ export type InvoiceDetail = InvoiceListItem & {
   contact_person?: string | InvoiceContactRef | null;
   due_date?: string | null;
   payment_terms?: string | null;
+  /** Preferred multi-address API shape. */
+  addresses?: InvoiceEntityAddress[] | null;
+  /** Legacy read fallbacks. */
   bill_to?: InvoiceAddress | null;
   ship_to?: InvoiceAddress | null;
   billing_address?: InvoiceAddress | null;
@@ -135,8 +146,7 @@ export type InvoiceCreatePayload = {
   due_date?: string;
   payment_terms?: string;
   total?: number;
-  bill_to?: InvoiceAddress;
-  ship_to?: InvoiceAddress;
+  addresses?: InvoiceEntityAddressPayload[];
   notes_and_terms?: string;
   client_notes?: string;
   internal_notes?: string;
