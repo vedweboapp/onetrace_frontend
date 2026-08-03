@@ -6,10 +6,15 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { createGroup, fetchGroup, updateGroup } from "@/features/groups/api/group.api";
-import type { GroupItemRef } from "@/features/groups/types/group.types";
+import {
+  validateGroupCompositeRows,
+  normalizeGroupAbbreviation,
+  GROUP_ABBREVIATION_MAX_LENGTH,
+  type GroupCompositeRowError,
+} from "@/features/groups/utils/group-composite-rows.util";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
-import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
@@ -41,13 +46,6 @@ type CompositeRow = { id: string; item: string; abbreviation: string };
 
 function nextRowId(): string {
   return `group-comp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function toNumberOrNull(raw: string): number | null {
-  const t = raw.trim();
-  if (!t) return null;
-  const n = Number(t);
-  return Number.isFinite(n) ? n : null;
 }
 
 const COMPOSITE_ITEMS_GRID =
@@ -92,6 +90,7 @@ export function GroupFormScreen({ mode, groupId }: Props) {
   const [submitting, setSubmitting] = React.useState(false);
   const [nameTouched, setNameTouched] = React.useState(false);
   const [itemsTouched, setItemsTouched] = React.useState(false);
+  const [rowErrors, setRowErrors] = React.useState<Record<string, GroupCompositeRowError>>({});
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
 
@@ -215,20 +214,17 @@ export function GroupFormScreen({ mode, groupId }: Props) {
     return next.length > 0 ? next : [{ id: nextRowId(), item: "", abbreviation: "" }];
   }
 
-  function buildCompositeItemsPayload(): GroupItemRef[] | null {
-    const out: GroupItemRef[] = [];
-    const seen = new Set<number>();
-    for (const row of rows) {
-      const id = toNumberOrNull(row.item);
-      const abbreviation = row.abbreviation.trim();
-      const emptyRow = id == null && abbreviation.length === 0;
-      if (emptyRow) continue;
-      if (id == null || abbreviation.length === 0) return null;
-      if (seen.has(id)) return null;
-      seen.add(id);
-      out.push({ item: id, abbreviation });
-    }
-    return out;
+  function clearRowError(rowId: string, field: keyof GroupCompositeRowError) {
+    setRowErrors((prev) => {
+      const current = prev[rowId];
+      if (!current?.[field]) return prev;
+      const next = { ...current, [field]: undefined };
+      if (!next.item && !next.abbreviation) {
+        const { [rowId]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [rowId]: next };
+    });
   }
 
   async function submit(e: React.FormEvent) {
@@ -236,12 +232,19 @@ export function GroupFormScreen({ mode, groupId }: Props) {
     setNameTouched(true);
     setItemsTouched(true);
     if (!name.trim()) return;
-    if (!hasAtLeastOneItem) return;
-    const compositeItems = buildCompositeItemsPayload();
-    if (compositeItems == null) {
-      toastError(tModal("duplicateCompositeItemError"));
+    if (!hasAtLeastOneItem) {
+      setRowErrors({});
       return;
     }
+
+    const { items: compositeItems, errors } = validateGroupCompositeRows(rows, {
+      compositeItemRequired: tModal("compositeItemRequired"),
+      abbreviationRequired: tModal("abbreviationRequired"),
+      abbreviationMaxLength: tModal("abbreviationMaxLength"),
+      duplicateCompositeItem: tModal("duplicateCompositeItemError"),
+    });
+    setRowErrors(errors);
+    if (compositeItems == null) return;
 
     setSubmitting(true);
     try {
@@ -322,9 +325,14 @@ export function GroupFormScreen({ mode, groupId }: Props) {
                     {tModal("compositeItem")}
                     <span className="ml-1 text-red-500">*</span>
                   </span>
-                  <span className={compositeHeaderCellClassName}>{tModal("abbreviation")}</span>
+                  <span className={compositeHeaderCellClassName}>
+                    {tModal("abbreviation")}
+                    <span className="ml-1 text-red-500">*</span>
+                  </span>
                   <span className={compositeHeaderCellClassName} aria-hidden />
-                  {rows.map((row, idx) => (
+                  {rows.map((row, idx) => {
+                    const errors = rowErrors[row.id];
+                    return (
                     <React.Fragment key={row.id}>
                       <div className={compositeItemCellClassName(idx)}>
                         <CheckmarkSelect
@@ -332,11 +340,13 @@ export function GroupFormScreen({ mode, groupId }: Props) {
                           buttonAriaLabel={tModal("compositeItem")}
                           value={row.item}
                           onChange={(value) => {
+                            clearRowError(row.id, "item");
                             setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, item: value } : x)));
                           }}
                           options={compositeOptionsForRow(row.id)}
                           emptyLabel={tModal("compositeItemPlaceholder")}
                           disabled={submitting}
+                          invalid={Boolean(errors?.item)}
                           portaled
                           searchable
                           className="w-full"
@@ -351,20 +361,30 @@ export function GroupFormScreen({ mode, groupId }: Props) {
                           addAriaLabel={compositeQuickCreate.addAriaLabel}
                           addLabel={compositeQuickCreate.addLabel}
                         />
+                        {errors?.item ? <p className={fieldErrorTextClassName}>{errors.item}</p> : null}
                       </div>
                       <div className={compositeAbbreviationCellClassName(idx)}>
                         <input
                           type="text"
                           autoComplete="off"
                           value={row.abbreviation}
+                          maxLength={GROUP_ABBREVIATION_MAX_LENGTH}
                           onChange={(e) => {
-                            const value = e.target.value.toUpperCase();
+                            const value = normalizeGroupAbbreviation(e.target.value);
+                            clearRowError(row.id, "abbreviation");
                             setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, abbreviation: value } : x)));
                           }}
                           disabled={submitting}
                           placeholder={tModal("abbreviationPlaceholder")}
-                          className={cn(surfaceInputClassName, "w-full")}
+                          className={cn(
+                            surfaceInputClassName,
+                            "w-full",
+                            errors?.abbreviation && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
+                          )}
                         />
+                        {errors?.abbreviation ? (
+                          <p className={fieldErrorTextClassName}>{errors.abbreviation}</p>
+                        ) : null}
                       </div>
                       <div className={compositeActionsCellClassName(idx)}>
                         <AppButton
@@ -372,7 +392,13 @@ export function GroupFormScreen({ mode, groupId }: Props) {
                           variant="secondary"
                           size="sm"
                           disabled={submitting || rows.length <= 1}
-                          onClick={() => setRows((prev) => normalizeRows(prev.filter((x) => x.id !== row.id)))}
+                          onClick={() => {
+                            setRowErrors((prev) => {
+                              const { [row.id]: _, ...rest } = prev;
+                              return rest;
+                            });
+                            setRows((prev) => normalizeRows(prev.filter((x) => x.id !== row.id)));
+                          }}
                         >
                           {tModal("removeCompositeItem")}
                         </AppButton>
@@ -389,7 +415,8 @@ export function GroupFormScreen({ mode, groupId }: Props) {
                         ) : null}
                       </div>
                     </React.Fragment>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
               {itemsInvalid ? <p className={fieldErrorTextClassName}>{tModal("atLeastOneCompositeItemError")}</p> : null}

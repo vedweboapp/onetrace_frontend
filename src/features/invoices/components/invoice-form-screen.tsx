@@ -26,6 +26,7 @@ import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
@@ -105,6 +106,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
     reset,
     setValue,
     getValues,
+    setError,
     handleSubmit,
     formState: { errors },
   } = useForm<InvoiceFormValues>({
@@ -391,7 +393,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.invoices, saved.id, listBack));
     } catch (error) {
-      toastApiError(error, isEdit ? t("updateError") : t("createError"));
+      reportFormSubmitApiError(error, setError, isEdit ? t("updateError") : t("createError"));
     } finally {
       setSaving(false);
     }

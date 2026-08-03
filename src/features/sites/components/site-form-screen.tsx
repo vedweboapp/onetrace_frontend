@@ -13,6 +13,7 @@ import { createSiteFormSchema, type SiteFormValues } from "@/features/sites/sche
 import { emptySiteFormDefaults, mapSiteFormToPayload, siteToFormDefaults } from "@/features/sites/utils/site-form-map";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
@@ -78,6 +79,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
     reset,
     setValue,
     getValues,
+    setError,
     handleSubmit,
     formState: { errors },
   } = useForm<SiteFormValues>({
@@ -197,6 +199,8 @@ export function SiteFormScreen({ mode, siteId }: Props) {
          clearQuickCreateFormDraft(draftReturnTo);
        }
       }
+    } catch (error) {
+      reportFormSubmitApiError(error, setError);
     } finally {
       setSaving(false);
     }

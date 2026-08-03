@@ -1319,7 +1319,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setTempPoints([]);
     setNamingPlotOpen(false);
     setDirty(true);
-    toastSuccess(t("plotSaved"));
   }
 
   async function placePin(point: number[], targetPlot?: LocalPlot) {
@@ -1408,7 +1407,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setDetailPin(null);
     setDetailPlotId(null);
     setDirty(true);
-    toastSuccess(t("pinSaved"));
   }
 
   async function saveSelectedPlotName() {
@@ -1422,7 +1420,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setPlots(nextPlots);
     setDetailPlotId(null);
     setDirty(true);
-    toastSuccess(t("plotSaved"));
   }
 
   async function deletePlot(id: number) {
@@ -1484,7 +1481,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setIsPinEditing(false);
     setHasPinDraftChanges(false);
     setDirty(true);
-    toastSuccess(t("pinSaved"));
   }
 
   async function saveAllChanges() {
@@ -2348,7 +2344,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                       </div>
                       <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Description</span>
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       {isPinEditing ? (
                         <textarea
                           rows={3}
@@ -2357,7 +2353,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                           onChange={(e) => updatePinEditData({ ...pinEditData, description: e.target.value })}
                         />
                       ) : (
-                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 whitespace-pre-wrap">
+                        <p className="min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm font-semibold text-slate-900 dark:text-slate-100">
                           {detailPin.description || "-"}
                         </p>
                       )}

@@ -19,6 +19,7 @@ import {
 } from "@/features/projects/utils/project-form-map";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
@@ -98,6 +99,7 @@ export function ProjectFormModal({
     register,
     reset,
     setValue,
+    setError,
     handleSubmit,
     formState: { errors },
   } = useForm<ProjectFormValues>({
@@ -263,6 +265,8 @@ export function ProjectFormModal({
         onClose();
         router.push(buildEntityDetailHrefAfterSave(routes.dashboard.projects, created.id, routes.dashboard.projects));
       }
+    } catch (error) {
+      reportFormSubmitApiError(error, setError);
     } finally {
       setSaving(false);
     }

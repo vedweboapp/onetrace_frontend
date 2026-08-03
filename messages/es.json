@@ -3626,7 +3626,8 @@
       "placeholders": {
         "client": "Seleccionar cliente",
         "site": "Seleccionar sitio",
-        "projectType": "Seleccionar tipo de proyecto"
+        "projectType": "Seleccionar tipo de proyecto",
+        "projectStatus": "Seleccionar estado del proyecto"
       },
       "fields": {
         "name": "Nombre del proyecto",
@@ -3730,6 +3731,9 @@
         "addCompositeItem": "Añadir fila",
         "removeCompositeItem": "Quitar",
         "atLeastOneCompositeItemError": "Selecciona al menos un ítem compuesto.",
+        "compositeItemRequired": "Selecciona un ítem compuesto.",
+        "abbreviationRequired": "Introduce una abreviatura.",
+        "abbreviationMaxLength": "La abreviatura puede tener como máximo 50 caracteres.",
         "duplicateCompositeItemError": "Cada ítem compuesto solo puede añadirse una vez.",
         "createdToast": "Grupo creado",
         "updatedToast": "Grupo actualizado"

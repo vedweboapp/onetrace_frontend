@@ -3641,7 +3641,8 @@
       "placeholders": {
         "client": "Select client",
         "site": "Select site",
-        "projectType": "Select project type"
+        "projectType": "Select project type",
+        "projectStatus": "Select project status"
       },
       "fields": {
         "name": "Project name",
@@ -3745,6 +3746,9 @@
         "addCompositeItem": "Add row",
         "removeCompositeItem": "Remove",
         "atLeastOneCompositeItemError": "Select at least one composite item.",
+        "compositeItemRequired": "Select a composite item.",
+        "abbreviationRequired": "Enter an abbreviation.",
+        "abbreviationMaxLength": "Abbreviation can be at most 50 characters.",
         "duplicateCompositeItemError": "Each composite item can only be added once.",
         "createdToast": "Group created",
         "updatedToast": "Group updated"

@@ -4,10 +4,16 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { createGroup, updateGroup } from "@/features/groups/api/group.api";
-import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
+import type { Group } from "@/features/groups/types/group.types";
+import {
+  validateGroupCompositeRows,
+  normalizeGroupAbbreviation,
+  GROUP_ABBREVIATION_MAX_LENGTH,
+  type GroupCompositeRowError,
+} from "@/features/groups/utils/group-composite-rows.util";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { usePathname } from "@/i18n/navigation";
@@ -37,13 +43,6 @@ type CompositeRow = { id: string; item: string; abbreviation: string };
 
 function nextRowId(): string {
   return `group-comp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function toNumberOrNull(raw: string): number | null {
-  const t = raw.trim();
-  if (!t) return null;
-  const n = Number(t);
-  return Number.isFinite(n) ? n : null;
 }
 
 const COMPOSITE_ITEMS_GRID =
@@ -84,6 +83,7 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
   const [submitting, setSubmitting] = React.useState(false);
   const [nameTouched, setNameTouched] = React.useState(false);
   const [itemsTouched, setItemsTouched] = React.useState(false);
+  const [rowErrors, setRowErrors] = React.useState<Record<string, GroupCompositeRowError>>({});
 
   const nameInvalid = nameTouched && name.trim().length === 0;
   const hasAtLeastOneItem = rows.some((r) => r.item.trim().length > 0);
@@ -144,26 +144,25 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
       setRows([{ id: nextRowId(), item: "", abbreviation: "" }]);
     }
     setNameTouched(false);
+    setItemsTouched(false);
+    setRowErrors({});
   }, [open, mode, group]);
 
   function normalizeRows(next: CompositeRow[]): CompositeRow[] {
     return next.length > 0 ? next : [{ id: nextRowId(), item: "", abbreviation: "" }];
   }
 
-  function buildCompositeItemsPayload(): GroupItemRef[] | null {
-    const out: GroupItemRef[] = [];
-    const seen = new Set<number>();
-    for (const row of rows) {
-      const id = toNumberOrNull(row.item);
-      const abbreviation = row.abbreviation.trim();
-      const emptyRow = id == null && abbreviation.length === 0;
-      if (emptyRow) continue;
-      if (id == null || abbreviation.length === 0) return null;
-      if (seen.has(id)) return null;
-      seen.add(id);
-      out.push({ item: id, abbreviation });
-    }
-    return out;
+  function clearRowError(rowId: string, field: keyof GroupCompositeRowError) {
+    setRowErrors((prev) => {
+      const current = prev[rowId];
+      if (!current?.[field]) return prev;
+      const next = { ...current, [field]: undefined };
+      if (!next.item && !next.abbreviation) {
+        const { [rowId]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [rowId]: next };
+    });
   }
 
   async function submit(e: React.FormEvent) {
@@ -171,12 +170,19 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
     setNameTouched(true);
     setItemsTouched(true);
     if (!name.trim()) return;
-    if (!hasAtLeastOneItem) return;
-    const compositeItems = buildCompositeItemsPayload();
-    if (compositeItems == null) {
-      toastError(t("duplicateCompositeItemError"));
+    if (!hasAtLeastOneItem) {
+      setRowErrors({});
       return;
     }
+
+    const { items: compositeItems, errors } = validateGroupCompositeRows(rows, {
+      compositeItemRequired: t("compositeItemRequired"),
+      abbreviationRequired: t("abbreviationRequired"),
+      abbreviationMaxLength: t("abbreviationMaxLength"),
+      duplicateCompositeItem: t("duplicateCompositeItemError"),
+    });
+    setRowErrors(errors);
+    if (compositeItems == null) return;
 
     setSubmitting(true);
     try {
@@ -188,8 +194,8 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
       onSaved();
       onClose();
       router.push(buildEntityDetailHrefAfterSave(routes.dashboard.groups, saved.id, routes.dashboard.groups));
-    } catch {
-      
+    } catch (error) {
+      toastApiError(error);
     } finally {
       setSubmitting(false);
     }
@@ -253,9 +259,14 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
                 {t("compositeItem")}
                 <span className="ml-1 text-red-500">*</span>
               </span>
-              <span className={compositeHeaderCellClassName}>{t("abbreviation")}</span>
+              <span className={compositeHeaderCellClassName}>
+                {t("abbreviation")}
+                <span className="ml-1 text-red-500">*</span>
+              </span>
               <span className={compositeHeaderCellClassName} aria-hidden />
-              {rows.map((row, idx) => (
+              {rows.map((row, idx) => {
+                const errors = rowErrors[row.id];
+                return (
                 <React.Fragment key={row.id}>
                   <div className={compositeItemCellClassName(idx)}>
                     <CheckmarkSelect
@@ -263,11 +274,13 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
                       buttonAriaLabel={t("compositeItem")}
                       value={row.item}
                       onChange={(value) => {
+                        clearRowError(row.id, "item");
                         setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, item: value } : x)));
                       }}
                       options={compositeOptionsForRow(row.id)}
                       emptyLabel={t("compositeItemPlaceholder")}
                       disabled={submitting}
+                      invalid={Boolean(errors?.item)}
                       portaled
                       searchable
                       className="w-full"
@@ -282,20 +295,30 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
                       addAriaLabel={compositeQuickCreate.addAriaLabel}
                       addLabel={compositeQuickCreate.addLabel}
                     />
+                    {errors?.item ? <p className={fieldErrorTextClassName}>{errors.item}</p> : null}
                   </div>
                   <div className={compositeAbbreviationCellClassName(idx)}>
                     <input
                       type="text"
                       autoComplete="off"
                       value={row.abbreviation}
+                      maxLength={GROUP_ABBREVIATION_MAX_LENGTH}
                       onChange={(e) => {
-                        const value = e.target.value.toUpperCase();
+                        const value = normalizeGroupAbbreviation(e.target.value);
+                        clearRowError(row.id, "abbreviation");
                         setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, abbreviation: value } : x)));
                       }}
                       disabled={submitting}
                       placeholder={t("abbreviationPlaceholder")}
-                      className={cn(surfaceInputClassName, "w-full")}
+                      className={cn(
+                        surfaceInputClassName,
+                        "w-full",
+                        errors?.abbreviation && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
+                      )}
                     />
+                    {errors?.abbreviation ? (
+                      <p className={fieldErrorTextClassName}>{errors.abbreviation}</p>
+                    ) : null}
                   </div>
                   <div className={compositeActionsCellClassName(idx)}>
                     <AppButton
@@ -303,7 +326,13 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
                       variant="secondary"
                       size="sm"
                       disabled={submitting || rows.length <= 1}
-                      onClick={() => setRows((prev) => normalizeRows(prev.filter((x) => x.id !== row.id)))}
+                      onClick={() => {
+                        setRowErrors((prev) => {
+                          const { [row.id]: _, ...rest } = prev;
+                          return rest;
+                        });
+                        setRows((prev) => normalizeRows(prev.filter((x) => x.id !== row.id)));
+                      }}
                     >
                       {t("removeCompositeItem")}
                     </AppButton>
@@ -320,7 +349,8 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
                     ) : null}
                   </div>
                 </React.Fragment>
-              ))}
+                );
+              })}
             </div>
           </div>
           {itemsInvalid ? <p className={fieldErrorTextClassName}>{t("atLeastOneCompositeItemError")}</p> : null}

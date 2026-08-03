@@ -5,6 +5,7 @@ import Select from "@/shared/form/components/select";
 import TextBox from "@/shared/form/components/text-box";
 import { AppButton, CascadingLocationFields, FieldGroup, SurfacePhoneField } from "@/shared/ui";
 import FormSectionCard from "@/shared/ui/form-section-card";
+import { usePhoneCountryFromAddresses } from "@/shared/hooks/use-phone-country-from-address";
 import {
     BookUser,
     Calendar,
@@ -20,7 +21,8 @@ import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { City, Country, State } from "country-state-city"; 
 import { Inputs } from "../types/types";
 import { updatePersonalProfile } from "../api/personal-profile.api";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { useTranslations } from "next-intl";
 import { id } from "zod/v4/locales";
 
@@ -81,6 +83,7 @@ const PersonalProfileForm = ({
         control,
         reset,
         setValue,
+        setError,
         formState: { errors },
     } = useForm<Inputs>({
         defaultValues: {
@@ -88,7 +91,7 @@ const PersonalProfileForm = ({
             lastName: "",
             date_of_birth: "",
             gender: "male",
-            role: "Senior Driver",
+            // role: "Senior Driver",
             joiningDate: "",
             emails: [{ email: "", is_primary: true }],
             phones: [{ phone: "", is_primary: true }],
@@ -134,7 +137,7 @@ const PersonalProfileForm = ({
                     is_primary: phone?.is_primary,
                 })),
                 joiningDate: initialData.created_at?.split("T")[0] || "",
-                role: "Senior Driver",
+                // role: "Senior Driver",
                 date_of_birth: initialData?.user_detail?.date_of_birth,
                 addresses: initialData?.addresses?.length
                     ? initialData.addresses.map((address: any) => {
@@ -279,8 +282,8 @@ const PersonalProfileForm = ({
 
                             return {
                                 ...(address?.id ? { id: address.id } : {}),
-                                address1: address.address1,
-                                address2: address.address2,
+                                address_1: address.address1,
+                                address_2: address.address2,
                                 country: country?.name ?? address.country_iso ?? "",
                                 state: stateName,
                                 city: cityName,
@@ -301,7 +304,7 @@ const PersonalProfileForm = ({
             if (onSuccess) onSuccess();
         } catch (error) {
             console.error("Failed to update profile:", error);
-            toastApiError(error);
+            reportFormSubmitApiError(error, setError);
         } finally {
             setIsSaving(false);
         }
@@ -309,6 +312,7 @@ const PersonalProfileForm = ({
     const watchedEmails = useWatch({ control, name: "emails" });
     const watchedPhones = useWatch({ control, name: "phones" });
     const watchedAddresses = useWatch({ control, name: "addresses" });
+    const phoneCountry = usePhoneCountryFromAddresses(control);
     console.log("emails are here", emailFields)
     if (isLoading) {
         return (
@@ -338,9 +342,9 @@ const PersonalProfileForm = ({
                         {initialData?.user_detail?.first_name || "Alex"}{" "}
                         {initialData?.user_detail?.last_name || "Morgan"}
                     </h1>
-                    <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold w-fit dark:bg-slate-700 dark:text-slate-300">
+                    {/* <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold w-fit dark:bg-slate-700 dark:text-slate-300">
                         {initialData?.role_detail?.name || "Senior Driver"}
-                    </span>
+                    </span> */}
                     <div className="flex gap-5 mt-1">
                         <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
                             <Calendar size={16} />
@@ -354,10 +358,10 @@ const PersonalProfileForm = ({
                                     : "Oct 2023"}
                             </span>
                         </div>
-                        <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+                        {/* <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
                             <MapPin size={16} />
                             <span className="text-sm">Alexandria, Egypt</span>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             </div>
@@ -503,6 +507,7 @@ const PersonalProfileForm = ({
                                                 label=""
                                                 className="flex-1"
                                                 disabled={!isEditing}
+                                                countryIso={phoneCountry}
                                             />
                                             {field?.is_primary && <p className="absolute top-2 right-2  px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold uppercase tracking-tight dark:bg-blue-900/40 dark:text-blue-300">{t("Primary")}</p>}
 

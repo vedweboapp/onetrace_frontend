@@ -10,6 +10,8 @@ interface FieldConfigModalProps {
   initialConfig: any;
   onSave: (config: any) => void;
   onClose: () => void;
+  /** Existing field api_name values (excluding the field being edited). Used for duplicate checks. */
+  existingApiNames?: string[];
 }
 
 function InfoIcon() {
@@ -143,6 +145,7 @@ export default function FieldConfigModal({
   initialConfig,
   onSave,
   onClose,
+  existingApiNames = [],
 }: FieldConfigModalProps) {
   const typeConfig = FIELD_TYPES[fieldType] || FIELD_TYPES.single_line;
   
@@ -305,6 +308,15 @@ export default function FieldConfigModal({
         newErrors[f.key] = `Maximum ${f.maxLength} characters allowed`;
       }
     });
+
+    const apiName = String(finalConfig.api_name ?? "").trim().toLowerCase();
+    if (
+      apiName &&
+      existingApiNames.some((name) => String(name).trim().toLowerCase() === apiName)
+    ) {
+      newErrors.name =
+        "A field with this name already exists. Please use a unique field name.";
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);

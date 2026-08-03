@@ -33,6 +33,7 @@ import {
   jobProjectLabel,
 } from "@/features/material-requests/utils/material-request-job-items.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import {
   DetailCollapsibleSection,
@@ -95,6 +96,7 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
     register,
     reset,
     setValue,
+    setError,
     handleSubmit,
     formState: { errors },
   } = useForm<MaterialRequestFormValues>({
@@ -227,6 +229,8 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
           : await createMaterialRequest(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.materialRequests, saved.id, safeBack));
+    } catch (error) {
+      reportFormSubmitApiError(error, setError);
     } finally {
       setSaving(false);
     }

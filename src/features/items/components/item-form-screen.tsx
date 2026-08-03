@@ -8,6 +8,8 @@ import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { cn } from "@/core/utils/http.util";
 import { createItem, fetchItem, updateItem } from "@/features/items/api/item.api";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
+import { getApiFieldErrorMap } from "@/shared/form/report-form-api-error.util";
+import { markApiErrorToasted } from "@/core/errors/api-error-toast.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
@@ -145,6 +147,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
   const [sell, setSell] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
   const [touched, setTouched] = React.useState<{ name?: boolean; sku?: boolean }>({});
+  const [serverErrors, setServerErrors] = React.useState<{ name?: string; sku?: string }>({});
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
 
@@ -244,10 +247,13 @@ export function ItemFormScreen({ mode, itemId }: Props) {
 
   const nameInvalid = Boolean(touched.name) && name.trim().length === 0;
   const skuInvalid = Boolean(touched.sku) && sku.trim().length === 0;
+  const nameError = nameInvalid ? tModal("nameError") : serverErrors.name;
+  const skuError = skuInvalid ? tModal("skuError") : serverErrors.sku;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setTouched({ name: true, sku: true });
+    setServerErrors({});
 
     const nameTrim = name.trim();
     const skuTrim = sku.trim();
@@ -305,7 +311,13 @@ export function ItemFormScreen({ mode, itemId }: Props) {
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.items, saved.id, safeBack));
     } catch (error) {
-      toastApiError(error, t("loadError"));
+      const fieldErrors = getApiFieldErrorMap(error);
+      if (fieldErrors.name || fieldErrors.sku) {
+        setServerErrors({ name: fieldErrors.name, sku: fieldErrors.sku });
+        markApiErrorToasted(error);
+      } else {
+        toastApiError(error, t("loadError"));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -352,13 +364,16 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                   type="text"
                   autoComplete="off"
                   value={name}
-                  onChange={(e) => setName(capitalizeFirstLetter(e.target.value))}
+                  onChange={(e) => {
+                    setServerErrors((prev) => ({ ...prev, name: undefined }));
+                    setName(capitalizeFirstLetter(e.target.value));
+                  }}
                   onBlur={() => setTouched((p) => ({ ...p, name: true }))}
                   disabled={submitting}
                   placeholder={tModal("namePlaceholder")}
-                  className={cn(surfaceInputClassName, nameInvalid && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
+                  className={cn(surfaceInputClassName, nameError && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
                 />
-                {nameInvalid ? <p className={fieldErrorTextClassName}>{tModal("nameError")}</p> : null}
+                {nameError ? <p className={fieldErrorTextClassName}>{nameError}</p> : null}
               </div>
               <div>
                 <FieldLabel htmlFor={skuId} required>
@@ -369,13 +384,16 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                   type="text"
                   autoComplete="off"
                   value={sku}
-                  onChange={(e) => setSku(e.target.value)}
+                  onChange={(e) => {
+                    setServerErrors((prev) => ({ ...prev, sku: undefined }));
+                    setSku(e.target.value);
+                  }}
                   onBlur={() => setTouched((p) => ({ ...p, sku: true }))}
                   disabled={submitting}
                   placeholder={tModal("skuPlaceholder")}
-                  className={cn(surfaceInputClassName, skuInvalid && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
+                  className={cn(surfaceInputClassName, skuError && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
                 />
-                {skuInvalid ? <p className={fieldErrorTextClassName}>{tModal("skuError")}</p> : null}
+                {skuError ? <p className={fieldErrorTextClassName}>{skuError}</p> : null}
               </div>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

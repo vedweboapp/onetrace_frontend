@@ -10,6 +10,7 @@ import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchVendorTypesPage } from "@/features/vendor-types/api/vendor-type.api";
 import { createVendor, fetchVendor, updateVendor } from "@/features/vendors/api/vendor.api";
 import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
+import { usePhoneCountryFromAddresses } from "@/shared/hooks/use-phone-country-from-address";
 import { createVendorFormSchema, type VendorFormValues } from "@/features/vendors/schemas/vendor-form-schema";
 import {
   emptyVendorFormDefaults,
@@ -18,6 +19,7 @@ import {
 } from "@/features/vendors/utils/vendor-form-map";
 import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
@@ -80,6 +82,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
     register,
     reset,
     setValue,
+    setError,
     handleSubmit,
     formState: { errors },
   } = useForm<VendorFormValues>({
@@ -87,6 +90,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
     defaultValues: emptyVendorFormDefaults(),
   });
 
+  const phoneCountry = usePhoneCountryFromAddresses(control);
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -131,6 +135,8 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
       const saved = isEdit && vendorId ? await updateVendor(vendorId, payload) : await createVendor(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.vendors, saved.id, safeBack));
+    } catch (error) {
+      reportFormSubmitApiError(error, setError);
     } finally {
       setSaving(false);
     }
@@ -220,6 +226,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
                 label={t("fields.phone")}
                 error={errors.phone?.message}
                 disabled={saving}
+                countryIso={phoneCountry}
               />
             </FormFieldRow>
 

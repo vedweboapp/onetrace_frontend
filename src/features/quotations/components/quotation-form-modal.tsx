@@ -32,7 +32,8 @@ import {
   userProfilesToSelectOptions,
 } from "@/features/users/utils/load-users-by-role.util";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { DetailTabStepNav } from "@/shared/components/layout/detail-tab-step-nav";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
@@ -91,7 +92,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     [t],
   );
 
-  const { control, register, reset, setValue, getValues, handleSubmit, formState: { errors } } =
+  const { control, register, reset, setValue, getValues, setError, handleSubmit, formState: { errors } } =
     useForm<QuotationFormValues>({
       resolver: zodResolver(schema),
       defaultValues: emptyQuotationFormDefaults(),
@@ -309,7 +310,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
       onClose();
       router.push(buildEntityDetailHrefAfterSave(routes.dashboard.quotations, saved.id, routes.dashboard.quotations));
     } catch (error) {
-      toastApiError(error, t("saveError"));
+      reportFormSubmitApiError(error, setError, t("saveError"));
     } finally {
       setSaving(false);
     }

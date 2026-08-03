@@ -15,6 +15,7 @@ import {
 } from "@/features/sites/utils/site-form-map";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
@@ -83,6 +84,7 @@ export function SiteFormModal({
     register,
     reset,
     setValue,
+    setError,
     handleSubmit,
     formState: { errors },
   } = useForm<SiteFormValues>({
@@ -125,6 +127,8 @@ export function SiteFormModal({
         onClose();
         router.push(buildEntityDetailHrefAfterSave(routes.dashboard.sites, created.id, routes.dashboard.sites));
       }
+    } catch (error) {
+      reportFormSubmitApiError(error, setError);
     } finally {
       setSaving(false);
     }

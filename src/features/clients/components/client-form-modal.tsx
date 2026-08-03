@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { useForm } from "react-hook-form";
+import { usePhoneCountryFromAddresses } from "@/shared/hooks/use-phone-country-from-address";
 import { createClient, updateClient } from "@/features/clients/api/client.api";
 import { createClientFormSchema, type ClientFormValues } from "@/features/clients/schemas/client-form-schema";
 import type { Client } from "@/features/clients/types/client.types";
@@ -15,6 +16,7 @@ import {
 } from "@/features/clients/utils/client-form-map";
 import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
@@ -68,12 +70,15 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved, onCreate
     register,
     reset,
     setValue,
+    setError,
     handleSubmit,
     formState: { errors },
   } = useForm<ClientFormValues>({
     resolver: zodResolver(schema),
     defaultValues: emptyClientFormDefaults(),
   });
+
+  const phoneCountry = usePhoneCountryFromAddresses(control);
 
   React.useEffect(() => {
     if (!open) return;
@@ -99,6 +104,8 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved, onCreate
         onClose();
         router.push(buildEntityDetailHrefAfterSave(routes.dashboard.clients, created.id, routes.dashboard.clients));
       }
+    } catch (error) {
+      reportFormSubmitApiError(error, setError);
     } finally {
       setSaving(false);
     }
@@ -182,6 +189,7 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved, onCreate
             required
             error={errors.phone?.message}
             disabled={saving}
+            countryIso={phoneCountry}
           />
         </FormFieldRow>
 
