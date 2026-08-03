@@ -59,7 +59,7 @@ import {
 import { isQualityAssuranceDecided } from "@/features/jobs/types/quality-assurance.types";
 import { isPinEligibleForQualityAssurance } from "@/features/jobs/utils/quality-assurance-eligibility.util";
 import { resolvePinFormMeta } from "@/features/projects/utils/pin-form-meta.util";
-import type { DrawingPin, DrawingPlot } from "@/features/projects/types/drawing.types";
+import type { Drawing, DrawingPin, DrawingPlot } from "@/features/projects/types/drawing.types";
 import { useLevelSnapshots, type LevelSnapshotState } from "@/shared/hooks/use-level-snapshots.hook";
 import { PinThumbnailCropped } from "@/shared/components/pin-thumbnail-cropped";
 import { DrawingFilePreviewFill } from "@/features/projects/components/drawing-file-preview";
