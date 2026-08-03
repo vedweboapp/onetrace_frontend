@@ -58,7 +58,8 @@ import {
   userProfilesToSelectOptions,
 } from "@/features/users/utils/load-users-by-role.util";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import {
   DetailPageMapLayout,
@@ -790,7 +791,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.quotations, saved.id, safeBack));
     } catch (error) {
-      toastApiError(error, t("saveError"));
+      reportFormSubmitApiError(error, setError, t("saveError"));
     } finally {
       setSaving(false);
     }

@@ -14,6 +14,7 @@ import type { ContactType } from "@/features/contacts/types/contact.types";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
@@ -22,6 +23,7 @@ import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
+import { usePhoneCountryFromCountryIso } from "@/shared/hooks/use-phone-country-from-address";
 import {
   QUICK_CREATE_CLIENT_PARAM,
   QUICK_CREATE_CONTACT_TYPE_PARAM,
@@ -89,6 +91,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
     reset,
     setValue,
     getValues,
+    setError,
     handleSubmit,
     formState: { errors },
   } = useForm<ContactFormValues>({
@@ -97,6 +100,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
   });
 
   const contactType = useWatch({ control, name: "contact_type" }) ?? "client";
+  const phoneCountry = usePhoneCountryFromCountryIso(control);
 
   const contactTypeOptions = React.useMemo(
     () => [
@@ -214,6 +218,8 @@ export function ContactFormScreen({ mode, contactId }: Props) {
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.contacts, saved.id, safeBack));
+    } catch (error) {
+      reportFormSubmitApiError(error, setError);
     } finally {
       setSaving(false);
     }
@@ -365,6 +371,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
                 required
                 error={errors.phone?.message}
                 disabled={saving}
+                countryIso={phoneCountry}
               />
               <AddressLineAutocompleteFields
                 idPrefix="contact"

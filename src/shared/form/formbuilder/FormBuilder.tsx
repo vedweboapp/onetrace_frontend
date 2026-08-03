@@ -14,7 +14,7 @@ import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-s
 import { routes } from "@/shared/config/routes";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { AppTabs } from "@/shared/ui/app-tabs";
-import { toastSuccess, toastApiError, toastError } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { useTranslations } from "next-intl";
 import api from "@/core/api/axios";
 import FormRenderer, { FormRendererRef } from "./FormRenderer";
@@ -1703,35 +1703,21 @@ export default function FormBuilderLayout({
         <FieldConfigModal
           fieldType={showModal?.type}
           initialConfig={showModal?.config || null}
+          existingApiNames={sections
+            .filter((sec) => !sec.is_deleted)
+            .flatMap((sec) =>
+              sec.fields.filter(
+                (f) =>
+                  !f.is_deleted &&
+                  !(
+                    sec._uid === showModal?.sectionUid &&
+                    f._uid === showModal?._fieldUid
+                  ),
+              ),
+            )
+            .map((f) => f.api_name)
+            .filter((name): name is string => Boolean(name))}
           onSave={(config: any) => {
-            // Collect all existing fields (excluding the field currently being edited) for duplicate check
-            const existingFields = sections
-              .filter((sec) => !sec.is_deleted)
-              .flatMap((sec) =>
-                sec.fields.filter(
-                  (f) =>
-                    !f.is_deleted &&
-                    !(
-                      sec._uid === showModal?.sectionUid &&
-                      f._uid === showModal?._fieldUid
-                    ),
-                ),
-              )
-              .filter((f) => f.api_name);
-
-            const conflictingField = config.api_name
-              ? existingFields.find((f) => f.api_name === config.api_name)
-              : undefined;
-
-            if (conflictingField) {
-              const displayLabel =
-                conflictingField.field_label || conflictingField.api_name;
-              toastError(
-                `A field with the label "${displayLabel}" already exists. Please use a unique field name.`,
-              );
-              return;
-            }
-
             if (showModal._fieldUid) {
               updateFieldInSection(
                 showModal?.sectionUid,
@@ -1741,6 +1727,7 @@ export default function FormBuilderLayout({
             } else {
               addFieldToSection(showModal?.sectionUid, config);
             }
+            setShowModal(null);
           }}
           onClose={() => setShowModal(null)}
         />
