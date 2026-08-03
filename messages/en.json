@@ -236,6 +236,8 @@
       "jobs": "Jobs",
       "serviceJob": "Service",
       "projectJob": "Project",
+      "flyoutService": "Service",
+      "flyoutProject": "Project",
       "qrCodes": "QR codes",
       "projects": "Projects",
       "groups": "Groups",
@@ -454,6 +456,11 @@
           "title": "Purchase orders",
           "mappingDescription": "Match Zoho purchase order fields to your SimHo purchase order fields.",
           "toggleSection": "Toggle purchase orders section"
+        },
+        "invoices": {
+          "title": "Invoices",
+          "mappingDescription": "Match Zoho invoice fields to your SimHo invoice fields.",
+          "toggleSection": "Toggle invoices section"
         }
       },
       "zohoIntegrationGuide": {

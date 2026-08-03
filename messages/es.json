@@ -228,6 +228,8 @@
       "jobs": "Trabajos",
       "serviceJob": "Trabajo de Servicio",
       "projectJob": "Trabajo de Proyecto",
+      "flyoutService": "Servicio",
+      "flyoutProject": "Proyecto",
       "qrCodes": "Códigos QR",
       "projects": "Proyectos",
       "groups": "Grupos",
@@ -446,6 +448,11 @@
           "title": "Órdenes de compra",
           "mappingDescription": "Relaciona los campos de órdenes de compra de Zoho con los campos de órdenes de compra de SimHo.",
           "toggleSection": "Mostrar u ocultar sección de órdenes de compra"
+        },
+        "invoices": {
+          "title": "Facturas",
+          "mappingDescription": "Relaciona los campos de facturas de Zoho con los campos de facturas de SimHo.",
+          "toggleSection": "Mostrar u ocultar sección de facturas"
         }
       },
       "zohoIntegrationGuide": {
