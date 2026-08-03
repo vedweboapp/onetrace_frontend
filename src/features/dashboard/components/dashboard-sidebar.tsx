@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
-import { BookOpen, BookUser, Building2, ClipboardList, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
+import { BookOpen, BookUser, Building2, ChevronRight, ClipboardList, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -108,13 +108,13 @@ function SidebarNavLink({
   );
 }
 
-type SidebarFlyoutItem = {
+type SidebarNestedItem = {
   href: string;
   label: string;
   active: boolean;
 };
 
-function SidebarFlyoutNav({
+function SidebarNestedNav({
   label,
   icon: Icon,
   active,
@@ -127,7 +127,105 @@ function SidebarFlyoutNav({
   active: boolean;
   expanded: boolean;
   resolved: ReturnType<typeof resolveDashboardAccent>;
-  items: SidebarFlyoutItem[];
+  items: SidebarNestedItem[];
+}) {
+  const childActive = items.some((item) => item.active);
+  const [open, setOpen] = React.useState(childActive);
+
+  React.useEffect(() => {
+    if (childActive) setOpen(true);
+  }, [childActive]);
+
+  // Collapsed rail: keep a compact hover menu so children stay reachable.
+  if (!expanded) {
+    return (
+      <SidebarCollapsedFlyout
+        label={label}
+        icon={Icon}
+        active={active}
+        resolved={resolved}
+        items={items}
+      />
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition",
+          active ? resolved.navActiveClassName : navInactive(),
+        )}
+        style={active ? resolved.navActiveStyle : undefined}
+      >
+        <Icon
+          className={cn(
+            "size-[18px] shrink-0",
+            active ? "opacity-95" : "text-slate-600 dark:text-slate-300",
+          )}
+          strokeWidth={1.75}
+          aria-hidden
+        />
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+        <ChevronRight
+          className={cn(
+            "size-3.5 shrink-0 opacity-60 transition-transform duration-200",
+            open && "rotate-90",
+          )}
+          strokeWidth={2}
+          aria-hidden
+        />
+      </button>
+
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows] duration-200 ease-out",
+          open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+        )}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div
+            role="group"
+            aria-label={label}
+            className="ml-4 mt-0.5 flex flex-col gap-0.5 border-l border-slate-200 pl-2.5 dark:border-slate-700"
+          >
+            {items.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "rounded-md px-2.5 py-1.5 text-[13px] font-medium tracking-tight transition",
+                  item.active
+                    ? resolved.navActiveClassName
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white",
+                )}
+                style={item.active ? resolved.navActiveStyle : undefined}
+              >
+                <span className="block truncate">{item.label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SidebarCollapsedFlyout({
+  label,
+  icon: Icon,
+  active,
+  resolved,
+  items,
+}: {
+  label: string;
+  icon: LucideIcon;
+  active: boolean;
+  resolved: ReturnType<typeof resolveDashboardAccent>;
+  items: SidebarNestedItem[];
 }) {
   const triggerRef = React.useRef<HTMLDivElement>(null);
   const closeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -172,43 +270,6 @@ function SidebarFlyoutNav({
 
   React.useEffect(() => () => clearCloseTimer(), [clearCloseTimer]);
 
-  const panel =
-    open && typeof document !== "undefined"
-      ? createPortal(
-          <div
-            role="menu"
-            aria-label={label}
-            className={cn(
-              "fixed z-[80] w-[9.5rem] rounded-lg border border-slate-200/90 bg-white p-1 shadow-md",
-              "ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
-            )}
-            style={{ top: pos.top, left: pos.left }}
-            onMouseEnter={openMenu}
-            onMouseLeave={scheduleClose}
-          >
-            <div className="flex flex-col gap-0.5">
-              {items.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  role="menuitem"
-                  onClick={() => setOpen(false)}
-                  className={cn(
-                    "rounded-md px-2.5 py-1.5 text-[13px] font-medium tracking-tight transition",
-                    item.active
-                      ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
-                      : "text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white",
-                  )}
-                >
-                  <span className="block truncate">{item.label}</span>
-                </Link>
-              ))}
-            </div>
-          </div>,
-          document.body,
-        )
-      : null;
-
   return (
     <div
       ref={triggerRef}
@@ -218,12 +279,11 @@ function SidebarFlyoutNav({
     >
       <button
         type="button"
-        title={expanded ? undefined : label}
+        title={label}
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
-          "flex w-full items-center rounded-lg text-sm font-medium transition",
-          expanded ? "gap-3 px-3 py-2.5 text-left" : "mx-auto size-9 justify-center p-0",
+          "mx-auto flex size-9 items-center justify-center rounded-lg text-sm font-medium transition",
           active ? resolved.navActiveClassName : navInactive(),
         )}
         style={active ? resolved.navActiveStyle : undefined}
@@ -236,9 +296,44 @@ function SidebarFlyoutNav({
           strokeWidth={1.75}
           aria-hidden
         />
-        {expanded ? <span className="truncate">{label}</span> : <span className="sr-only">{label}</span>}
+        <span className="sr-only">{label}</span>
       </button>
-      {panel}
+      {open && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              role="menu"
+              aria-label={label}
+              className={cn(
+                "fixed z-[80] w-[9.5rem] rounded-lg border border-slate-200/90 bg-white p-1 shadow-md",
+                "ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
+              )}
+              style={{ top: pos.top, left: pos.left }}
+              onMouseEnter={openMenu}
+              onMouseLeave={scheduleClose}
+            >
+              <div className="flex flex-col gap-0.5">
+                {items.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    role="menuitem"
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      "rounded-md px-2.5 py-1.5 text-[13px] font-medium tracking-tight transition",
+                      item.active
+                        ? resolved.navActiveClassName
+                        : "text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white",
+                    )}
+                    style={item.active ? resolved.navActiveStyle : undefined}
+                  >
+                    <span className="block truncate">{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
@@ -368,7 +463,7 @@ function DashboardMainSidebar({
           expanded={expanded}
           resolved={resolved}
         />
-        <SidebarFlyoutNav
+        <SidebarNestedNav
           label={t("quotations")}
           icon={FileText}
           active={quotationsActive}
@@ -403,7 +498,7 @@ function DashboardMainSidebar({
           expanded={expanded}
           resolved={resolved}
         />
-        <SidebarFlyoutNav
+        <SidebarNestedNav
           label={t("jobs")}
           icon={ListTodo}
           active={jobsActive}
@@ -470,7 +565,7 @@ function DashboardMainSidebar({
           expanded={expanded}
           resolved={resolved}
         />
-        <SidebarFlyoutNav
+        <SidebarNestedNav
           label={t("products")}
           icon={Package}
           active={itemsSectionActive}

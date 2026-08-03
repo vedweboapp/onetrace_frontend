@@ -23,6 +23,7 @@ import {
 } from "@/features/projects/utils/project-form-map";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
@@ -46,6 +47,7 @@ import {
   surfaceInputClassName,
 } from "@/shared/ui";
 import { fetchProjectStatusesPage } from "@/features/project-status/api/project-status.api";
+import { resolveDefaultProjectStatusId } from "@/features/project-status/utils/project-default-status.util";
 
 
 type Props = {
@@ -97,6 +99,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     reset,
     setValue,
     getValues,
+    setError,
     handleSubmit,
     formState: { errors },
   } = useForm<ProjectFormValues>({
@@ -274,6 +277,12 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
         const { items } = await fetchProjectStatusesPage(1, 500, { is_active: true });
         if (!cancelled) {
           setProjectStatusOptions(items.map((pt) => ({ value: String(pt.id), label: pt.status_name })));
+          if (!isEdit) {
+            const defaultStatusId = resolveDefaultProjectStatusId(items);
+            if (defaultStatusId != null) {
+              setValue("project_status", String(defaultStatusId), { shouldDirty: false });
+            }
+          }
         }
       } catch {
         if (!cancelled) setProjectStatusOptions([]);
@@ -282,7 +291,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isEdit, setValue]);
 
   React.useEffect(() => {
     if (!selectedClient || !/^\d+$/.test(selectedClient)) {
@@ -353,6 +362,8 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.projects, saved.id, safeBack));
+    } catch (error) {
+      reportFormSubmitApiError(error, setError);
     } finally {
       setSaving(false);
     }
@@ -492,9 +503,9 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                         // listLabel={t("fields.projectStatus")}
                         options={projectStatusOptions}
                         value={field.value ?? ""}
-                        // emptyLabel={t("placeholders.projectStatus")}
+                        emptyLabel={t("placeholders.projectStatus")}
                         disabled={saving || projectStatusOptions.length === 0}
-                        // invalid={!!errors.project_status}
+                        invalid={!!errors.project_status}
                         onBlur={field.onBlur}
                         onAdd={() => router.push(routes.dashboard.settingsProjectStatus)}
                         addAriaLabel="Add project status"

@@ -51,6 +51,7 @@ import { AppTabs } from "@/shared/ui";
 import { routes } from "@/shared/config/routes";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { cn } from "@/core/utils/http.util";
+import { once } from "events";
 
 function quotationAssigneeToAudit(
   user: string | number | QuotationUserRef | null | undefined,
@@ -79,6 +80,7 @@ function quotationContactToAudit(
 
 type TechnicianEntry = ReturnType<typeof getQuotationTechnicianEntries>[number];
 type AdditionalContactEntry = ReturnType<typeof getQuotationAdditionalContactEntries>[number];
+ 
 
 function QuotationDetailPeopleSection({
   detail,
@@ -113,6 +115,7 @@ function QuotationDetailPeopleSection({
                   <DetailUserAttribution key={`addl-id-${entry.id}-${index}`} user={{ id: entry.id }} />
                 ) : (
                   <DetailUserAttribution
+
                     key={`addl-${entry.contact.id}-${index}`}
                     user={quotationContactToAudit(entry.contact)}
                   />

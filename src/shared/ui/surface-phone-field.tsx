@@ -7,12 +7,16 @@ import { useController } from "react-hook-form";
 import PhoneInput from "react-phone-number-input";
 import type { Country, Value } from "react-phone-number-input";
 import { cn } from "@/core/utils/http.util";
-import { normalizePhoneForPhoneInput } from "@/shared/utils/phone-input.util";
+import {
+  countryIsoToPhoneCountry,
+  DEFAULT_PHONE_COUNTRY_CODE,
+  normalizePhoneForPhoneInput,
+} from "@/shared/utils/phone-input.util";
 import { FieldErrorText, FieldLabel } from "./field-primitives";
 import { SurfacePhoneCountrySelect } from "./surface-phone-country-select";
 
 /** Default calling code for phone fields across the app (+1 United States). */
-export const DEFAULT_PHONE_COUNTRY: Country = "US";
+export const DEFAULT_PHONE_COUNTRY: Country = DEFAULT_PHONE_COUNTRY_CODE;
 
 export type SurfacePhoneFieldProps<TFieldValues extends FieldValues> = {
   control: Control<TFieldValues>;
@@ -24,6 +28,11 @@ export type SurfacePhoneFieldProps<TFieldValues extends FieldValues> = {
   error?: string | null;
   describedBy?: string;
   defaultCountry?: Country;
+  /**
+   * Address / location ISO country (e.g. from primary address). When set, the phone
+   * flag defaults to this country (and remounts when it changes while the phone is empty).
+   */
+  countryIso?: string | null;
   placeholder?: string;
   className?: string;
   limitMaxLength?: boolean;
@@ -40,6 +49,7 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
   error,
   describedBy,
   defaultCountry = DEFAULT_PHONE_COUNTRY,
+  countryIso,
   placeholder,
   className,
   limitMaxLength = true,
@@ -55,10 +65,16 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
     [value],
   );
 
+  const resolvedCountry =
+    countryIsoToPhoneCountry(countryIso) ?? defaultCountry;
+
   React.useEffect(() => {
     const raw = typeof value === "string" ? value : "";
     if (raw && raw !== displayValue) onChange(displayValue);
   }, [displayValue, onChange, value]);
+
+  // Remount when address country changes and the phone is empty so the flag updates.
+  const phoneInputKey = displayValue ? `${id}-valued` : `${id}-${resolvedCountry}`;
 
   return (
     <div className={cn("surface-phone-root", className)}>
@@ -66,12 +82,13 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
         {label}
       </FieldLabel>
       <PhoneInput
+        key={phoneInputKey}
         value={displayValue as Value}
         onChange={(next) => onChange(next ?? "")}
         onBlur={onBlur}
         international
         limitMaxLength={limitMaxLength}
-        defaultCountry={defaultCountry}
+        defaultCountry={resolvedCountry}
         disabled={disabled}
         placeholder={placeholder}
         countrySelectComponent={SurfacePhoneCountrySelect}

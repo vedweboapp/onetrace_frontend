@@ -5,6 +5,7 @@ import Select from "@/shared/form/components/select";
 import TextBox from "@/shared/form/components/text-box";
 import { AppButton, CascadingLocationFields, FieldGroup, SurfacePhoneField } from "@/shared/ui";
 import FormSectionCard from "@/shared/ui/form-section-card";
+import { usePhoneCountryFromAddresses } from "@/shared/hooks/use-phone-country-from-address";
 import {
     BookUser,
     Calendar,
@@ -20,7 +21,8 @@ import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { City, Country, State } from "country-state-city"; 
 import { Inputs } from "../types/types";
 import { updatePersonalProfile } from "../api/personal-profile.api";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { useTranslations } from "next-intl";
 import { id } from "zod/v4/locales";
 
@@ -81,6 +83,7 @@ const PersonalProfileForm = ({
         control,
         reset,
         setValue,
+        setError,
         formState: { errors },
     } = useForm<Inputs>({
         defaultValues: {
@@ -301,7 +304,7 @@ const PersonalProfileForm = ({
             if (onSuccess) onSuccess();
         } catch (error) {
             console.error("Failed to update profile:", error);
-            toastApiError(error);
+            reportFormSubmitApiError(error, setError);
         } finally {
             setIsSaving(false);
         }
@@ -309,6 +312,7 @@ const PersonalProfileForm = ({
     const watchedEmails = useWatch({ control, name: "emails" });
     const watchedPhones = useWatch({ control, name: "phones" });
     const watchedAddresses = useWatch({ control, name: "addresses" });
+    const phoneCountry = usePhoneCountryFromAddresses(control);
     console.log("emails are here", emailFields)
     if (isLoading) {
         return (
@@ -503,6 +507,7 @@ const PersonalProfileForm = ({
                                                 label=""
                                                 className="flex-1"
                                                 disabled={!isEditing}
+                                                countryIso={phoneCountry}
                                             />
                                             {field?.is_primary && <p className="absolute top-2 right-2  px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold uppercase tracking-tight dark:bg-blue-900/40 dark:text-blue-300">{t("Primary")}</p>}
 

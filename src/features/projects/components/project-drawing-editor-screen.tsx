@@ -1319,7 +1319,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setTempPoints([]);
     setNamingPlotOpen(false);
     setDirty(true);
-    toastSuccess(t("plotSaved"));
   }
 
   async function placePin(point: number[], targetPlot?: LocalPlot) {
@@ -1408,7 +1407,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setDetailPin(null);
     setDetailPlotId(null);
     setDirty(true);
-    toastSuccess(t("pinSaved"));
   }
 
   async function saveSelectedPlotName() {
@@ -1422,7 +1420,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setPlots(nextPlots);
     setDetailPlotId(null);
     setDirty(true);
-    toastSuccess(t("plotSaved"));
   }
 
   async function deletePlot(id: number) {
@@ -1484,7 +1481,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setIsPinEditing(false);
     setHasPinDraftChanges(false);
     setDirty(true);
-    toastSuccess(t("pinSaved"));
   }
 
   async function saveAllChanges() {

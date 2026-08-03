@@ -7,7 +7,7 @@ import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-ur
 import { resolvePinMarkerAbbreviation } from "@/features/projects/utils/drawing-pin-display.util";
 import type { DrawingPin, DrawingPlot, DrawingPinAttachment, DrawingPlotUpsert } from "@/features/projects/types/drawing.types";
 import { AppModal, AppButton } from "@/shared/ui";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError } from "@/shared/feedback/app-toast";
 import { Loader2, MapPinned, LayoutGrid, FileText, Paperclip, X, Download } from "lucide-react";
 import { fetchDrawingDetail, updateDrawingPlots } from "@/features/projects/api/drawing.api";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
@@ -509,7 +509,6 @@ export function DrawingPinPreviewModal({
         }
       }
 
-      toastSuccess("Pin details saved successfully");
       setIsEditing(false);
 
       if (onSaveSuccess && resolvedUpdatedPin) {
