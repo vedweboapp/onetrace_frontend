@@ -1,10 +1,10 @@
+"use client";
+
+import { Link } from "@/i18n/navigation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   MapPin,
   Search,
-  Moon,
-  Sun,
-  Menu,
   X,
   ArrowRight,
   Boxes,
@@ -23,6 +23,7 @@ import {
   ChevronRight,
   type LucideIcon,
 } from "lucide-react";
+import { routes } from "@/shared/config/routes";
 
 /**
  * SimHo Documentation
@@ -79,6 +80,7 @@ type SearchResult = {
   sectionId: string;
   title: string;
   text: string;
+  anchorId: string;
 };
 
 const buildSearchResults = (query: string): SearchResult[] => {
@@ -88,35 +90,44 @@ const buildSearchResults = (query: string): SearchResult[] => {
   const results: SearchResult[] = [];
   const seen = new Set<string>();
 
-  SECTIONS.forEach((section) => {
-    const candidates = [{ text: section.title }, { text: section.dek }];
+  const tryAdd = (sectionId: string, title: string, text: string, anchorId: string) => {
+    if (!text.toLowerCase().includes(normalizedQuery)) return;
+    const key = `${sectionId}:${anchorId}:${text}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    results.push({ sectionId, title, text, anchorId });
+  };
 
-    section.blocks.forEach((block) => {
+  SECTIONS.forEach((section) => {
+    const sectionBaseId = section.id;
+    tryAdd(sectionBaseId, section.title, section.title, sectionBaseId);
+    tryAdd(sectionBaseId, section.title, section.dek, sectionBaseId);
+
+    section.blocks.forEach((block, blockIndex) => {
+      const blockPrefix = `${sectionBaseId}-block-${blockIndex}`;
       switch (block.type) {
         case "p":
         case "label":
         case "h3":
         case "note":
-          candidates.push({ text: block.text });
+          tryAdd(sectionBaseId, section.title, block.text, blockPrefix);
           break;
         case "ul":
         case "ol":
-          block.items.forEach((item) => candidates.push({ text: item }));
+          block.items.forEach((item, itemIndex) => {
+            tryAdd(sectionBaseId, section.title, item, `${blockPrefix}-item-${itemIndex}`);
+          });
           break;
         case "table":
-          block.headers.forEach((header) => candidates.push({ text: header }));
-          block.rows.flat().forEach((cell) => candidates.push({ text: cell }));
+          block.headers.forEach((header, headerIndex) => {
+            tryAdd(sectionBaseId, section.title, header, `${blockPrefix}-header-${headerIndex}`);
+          });
+          block.rows.forEach((row, rowIndex) => {
+            row.forEach((cell, cellIndex) => {
+              tryAdd(sectionBaseId, section.title, cell, `${blockPrefix}-row-${rowIndex}-cell-${cellIndex}`);
+            });
+          });
           break;
-      }
-    });
-
-    candidates.forEach((candidate) => {
-      if (candidate.text.toLowerCase().includes(normalizedQuery)) {
-        const key = `${section.id}:${candidate.text}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          results.push({ sectionId: section.id, title: section.title, text: candidate.text });
-        }
       }
     });
   });
@@ -201,6 +212,13 @@ const SECTIONS: DocSection[] = [
         "Many lists support search, filters, and pagination. Use the back arrow on detail pages to return to the previous screen — for example, pin details return to the project Locations tab when opened from there. Language and appearance can be adjusted under Settings → Personal Profile.",
         "Tips"
       ),
+      h3("2.3 Sidebar navigation tips"),
+      ul([
+        "Quotes, Jobs, and Products open a small hover card on the right — Quotes → Service or Project, Jobs → Service or Project, Products → Items or Composite items.",
+        "Choosing Service or Project keeps the correct category when you work in that list.",
+        "Use the back arrow on detail pages to return to where you came from — for example, pin detail returns to the project Locations tab when opened from there.",
+        "Language and appearance: Settings → Personal Profile.",
+      ]),
     ],
   },
   {
@@ -270,6 +288,18 @@ const SECTIONS: DocSection[] = [
         "Detail — read-only overview, often with tabs.",
         "New / Edit — create or update a record, then save.",
       ]),
+      h3("List tools"),
+      table(
+        ["Tool", "Typical use"],
+        [
+          ["Search", "Find by name, code, or ID"],
+          ["Filters", "Status, client, worker, active/inactive, and more"],
+          ["Card / Table", "Switch layout"],
+          ["Add / Create", "Open the create form"],
+          ["Row actions", "Edit, delete, activate/deactivate, update status"],
+          ["Mass actions", "Select rows → update, delete, or export"],
+        ]
+      ),
       h3("4.2 Mass actions"),
       p("On many lists you can:"),
       ol([
@@ -298,45 +328,148 @@ const SECTIONS: DocSection[] = [
     dek: "Every module, what it's for, and how it's typically used.",
     blocks: [
       h3("5.1 Clients"),
-      p("Purpose — master record for each customer organisation."),
-      label("Typical flow"),
-      ol([
-        "Create a client (name, contact details, address).",
-        "Add contacts and sites from the client detail tabs, or from their own modules.",
-        "Use the client on projects, quotes, invoices, and jobs.",
+      p("Purpose — master record for each customer organisation. Almost every commercial and project flow starts here."),
+      label("List page"),
+      ul([
+        "Search, Active / Inactive filter, Card / Table view",
+        "Add client",
+        "Mass update, mass delete, mass export",
+        "Mass-update examples: name, email, phone, address fields, active",
       ]),
+      label("Create / Edit — important fields"),
+      table(
+        ["Field", "Why it matters"],
+        [
+          ["Client name", "Required identity of the customer"],
+          ["Email / Phone", "Primary communication"],
+          ["Addresses", "Billing, Shipping, Other — line 1/2, country, state, city, postal"],
+          ["Primary address", "Marks the main address used by default"],
+        ]
+      ),
       label("Detail tabs"),
-      p("Overview · Contacts · Sites"),
-      label("Also useful"),
-      p("Activate / deactivate, mass update, export."),
+      table(
+        ["Tab", "What you do"],
+        [
+          ["Overview", "Core client info and addresses"],
+          ["Contacts", "People for this client (+ Add contact)"],
+          ["Sites", "Locations for this client (+ Add site)"],
+        ]
+      ),
+      label("Connected to"),
+      p("Contacts, Sites, Projects, Quotes, Invoices, Jobs."),
+      label("Tips"),
+      ul([
+        "Create the client before contacts, sites, projects, or quotes.",
+        "Prefer deactivate over delete when the client has history.",
+        "Add at least one usable address.",
+      ]),
 
       h3("5.2 Vendors"),
-      p("Purpose — suppliers you buy from."),
-      label("Typical flow"),
-      ol([
-        "Create a vendor, optionally with a vendor type from Settings.",
-        "Add vendor contacts.",
-        "Create purchase orders against the vendor.",
+      p("Purpose — suppliers you buy from. Required for purchase orders and vendor contacts."),
+      label("List page"),
+      ul([
+        "Search, Active / Inactive, Card / Table, Add",
+        "Row actions: edit, activate/deactivate, delete",
+        "No shared mass-action bar on this list",
       ]),
+      label("Create / Edit — important fields"),
+      table(
+        ["Field", "Why it matters"],
+        [
+          ["Vendor name", "Required"],
+          ["Email / Phone", "Communication"],
+          ["Vendor type", "Classification from Settings → Customization"],
+          ["Addresses", "Same pattern as clients"],
+        ]
+      ),
       label("Detail tabs"),
-      p("Details · Contacts"),
+      table(
+        ["Tab", "What you do"],
+        [
+          ["Details", "Overview and locations"],
+          ["Contacts", "Vendor contacts"],
+        ]
+      ),
+      label("Connected to"),
+      p("Vendor Contacts → Purchase Orders → Items / Groups. Vendor types come from Settings."),
+      label("Tips"),
+      ul([
+        "Configure vendor types in Settings first.",
+        "Create the vendor before vendor contacts or POs.",
+      ]),
 
       h3("5.3 Contacts"),
-      p("Purpose — people linked to clients or vendors."),
-      label("How to use"),
+      p("Purpose — people linked to a client or a vendor."),
+      label("List page"),
       ul([
-        "Open Contacts and switch between Client and Vendor contact views.",
-        "Assign contacts when creating quotes, POs, or client/vendor records.",
-        "Prefer creating contacts under the parent client/vendor so relationships stay correct.",
+        "Tabs: Client / Vendor",
+        "Search, Active filter, Client or Vendor filter, Card / Table",
+        "Add, mass update / delete / export",
+      ]),
+      label("Create / Edit — important fields"),
+      table(
+        ["Field", "Why it matters"],
+        [
+          ["Name", "Required"],
+          ["Contact type", "Client contact or Vendor contact"],
+          ["Client or Vendor", "Parent organisation (required)"],
+          ["Email / Phone", "Contact details"],
+          ["Address", "Optional location for the person"],
+        ]
+      ),
+      label("Detail page"),
+      p("Single overview (no multi-tabs): contact details, address, record metadata."),
+      label("Connected to"),
+      p("Quotes (primary / additional / site contact), Invoices, Purchase orders, Site contact persons."),
+      label("Tips"),
+      ul([
+        "Need at least one client (or vendor) before creating a contact.",
+        "Prefer creating contacts from the parent Client or Vendor detail page so the link stays correct.",
       ]),
 
       h3("5.4 Sites"),
-      p("Purpose — physical locations belonging to a client, with address and map."),
-      label("Why it matters"),
-      p("Sites connect clients to projects, quotes, and jobs. Create the client first, then the site(s)."),
+      p("Purpose — physical locations belonging to a client, with address and map. Used by projects, quotes, and jobs."),
+      label("List page"),
+      ul([
+        "Search, Active filter, Client filter, Card / Table",
+        "Add, mass update / delete / export",
+      ]),
+      label("Create / Edit — important fields"),
+      table(
+        ["Field", "Why it matters"],
+        [
+          ["Site name", "Required label for the location"],
+          ["Client", "Owner of the site"],
+          ["Address + map", "Search / pin on map; stores lat / lng"],
+          ["What3words", "Optional precise location helper"],
+          ["Contact persons", "Titles such as Site contact, Finance, Emergency + linked contact"],
+        ]
+      ),
+      label("Detail page"),
+      p("Overview with address, map, and record info."),
+      label("Connected to"),
+      p("Projects, Quotes, Jobs. Always belongs to a Client. Create the client first, then the site(s)."),
+      label("Tips"),
+      ul([
+        "Create the client first.",
+        "Use the map pin (click or drag) so coordinates are correct.",
+        "Do not duplicate the same title + contact pair on one site.",
+      ]),
 
       h3("5.5 Projects — the central hub"),
       p("Purpose — the main delivery container for drawings, pins, jobs, forms, and project quotes."),
+      label("List page"),
+      ul([
+        "Search, Active filter, Card / Table, Add",
+        "Mass update / delete / export",
+        "Mass-update examples: name, client, project type, description, start/end, active",
+      ]),
+      label("Detail header actions"),
+      ul([
+        "Update Status",
+        "Quote — starts a project quote from this project",
+        "Edit / Delete",
+      ]),
       label("Create a project"),
       ol([
         "Go to Projects, then click Add.",
@@ -450,9 +583,45 @@ const SECTIONS: DocSection[] = [
         "Quotes — shows the quotations that are part of this project's jobs; fully developed and in use.",
         "Job Sheets, Docs, Approvals — currently a work in progress.",
       ]),
+      label("Connected to"),
+      p("Client, Sites, Project types/statuses, Forms, Drawings/Pins, Jobs, Quotes, Composites."),
+      label("Tips"),
+      ul([
+        "Need client + at least one project type before creating a project.",
+        "Place plots before pins.",
+        "Complete enough pins before creating an accurate project quote.",
+        "Job Sheets / Docs / Approvals tabs are not ready yet.",
+      ]),
 
       h3("5.6 Quotes"),
-      p("Purpose — commercial proposals."),
+      p("Purpose — commercial proposals. Use the sidebar hover card: Service (lighter client/site focused quote) or Project (scoped from project drawings / pins / composites)."),
+      label("List page"),
+      ul([
+        "Search; filters for client, site, project (project quotes), quote status, category",
+        "Card / Table, Add",
+        "Mass update / delete / export",
+        "Row action: Update status",
+        "Statuses: Draft · Sent · Approved · Rejected",
+      ]),
+      label("Create / Edit — important fields"),
+      table(
+        ["Field", "Why it matters"],
+        [
+          ["Quote name", "Label for the proposal"],
+          ["Client", "Who the quote is for"],
+          ["Site(s)", "Where work applies"],
+          ["Project", "Required for project quotes"],
+          ["Contacts", "Primary / additional / site contacts"],
+          ["Order number / Due date", "Commercial tracking"],
+          ["Salesperson / Project manager / Technicians", "Assignees"],
+          ["Tags / Description", "Classification and notes"],
+        ]
+      ),
+      label("Form structure"),
+      ul([
+        "Project & details (or Details for service)",
+        "Scope & pricing — Service: build sections / plots / composites more freely; Project: include project levels/plots/pins, pricing from composites on pins",
+      ]),
       table(
         ["Type", "Best for"],
         [
@@ -468,32 +637,122 @@ const SECTIONS: DocSection[] = [
         "Review the public pin preview when sharing scoped pin content.",
       ]),
       p("Quotes can be created from the Quotes module or directly from a Project using the Quote action. Status updates and PDF / Excel / CSV export remain available. Project Quote PDFs can include drawing snapshots and hyperlinks that let clients open a public view of scoped pins."),
+      label("Connected to"),
+      p("Client, Site, Project, Contacts, Tags, Composites, Users. Also created from project header Quote. Shown on project Quotes tab."),
+      label("Tips"),
+      ul([
+        "Project quotes need a project with pins already placed for accurate scope.",
+        "Keep Service vs Project category correct via the sidebar flyout.",
+        "Export from the quote detail page.",
+      ]),
 
       h3("5.7 Invoices"),
-      p("Purpose — bill clients."),
-      label("Typical flow"),
-      ol([
-        "Create an invoice linked to the client (and project context when used).",
-        "Add line items on the Line items tab.",
-        "Preview, download PDF, or send.",
-        "Use list mass update / export when processing many invoices.",
+      p("Purpose — bill clients for completed or agreed work."),
+      label("List page"),
+      ul([
+        "Search; Status; Client; Card / Table",
+        "Create Invoice",
+        "Mass update / delete / export",
+        "Statuses: Draft · Sent · Paid · Pending · Overdue",
+      ]),
+      label("Create / Edit — important fields"),
+      table(
+        ["Field", "Why it matters"],
+        [
+          ["Client", "Who is billed"],
+          ["Contact", "Invoice recipient"],
+          ["Invoice number", "Document identity"],
+          ["Project", "Optional project link"],
+          ["Issue / Due dates", "Billing schedule"],
+          ["Payment terms", "Net 7/15/30/45 or Due on receipt"],
+          ["Bill to / Ship to", "Addresses"],
+          ["Notes", "Client-facing and internal"],
+          ["Line items", "Group → product, qty, rate, discount, tax"],
+        ]
+      ),
+      label("Detail tabs"),
+      table(
+        ["Tab", "What you do"],
+        [
+          ["Overview", "Header and totals"],
+          ["Line items", "Product lines"],
+        ]
+      ),
+      p("Actions: Preview, Download PDF, Send, Export."),
+      label("Connected to"),
+      p("Client, Contact, Project, Groups/Items. Can sync via Zoho (invoices resource)."),
+      label("Tips"),
+      ul([
+        "Add clear line items with quantities and rates.",
+        "Validate bill-to / ship-to addresses before sending.",
       ]),
 
       h3("5.8 Purchase orders"),
       p("Purpose — order goods from vendors for projects or catalog items."),
-      label("Typical flow"),
-      ol([
-        "Create a PO with vendor, optional project, and line items (items / groups).",
-        "Enter unit price and quantity — amount is calculated from those values.",
-        "Review Overview and Line items tabs; track status through your purchasing process.",
+      label("List page"),
+      ul([
+        "Search; Status; Vendor; Card / Table",
+        "Create purchase order",
+        "Statuses: Draft · Sent · Approved · Received · Cancelled",
+        "No shared mass-action bar",
+      ]),
+      label("Create / Edit — important fields"),
+      table(
+        ["Field", "Why it matters"],
+        [
+          ["Vendor", "Who you buy from"],
+          ["Contact", "Vendor contact"],
+          ["PO number", "Document identity"],
+          ["Project", "Optional link"],
+          ["Issue / Due dates", "Schedule"],
+          ["Payment terms", "Commercial terms"],
+          ["Addresses", "Billing / shipping / other"],
+          ["Notes", "Vendor and internal notes"],
+          ["Line items", "Group → product, quantity, unit price (amount = unit price × qty)"],
+        ]
+      ),
+      label("Detail tabs"),
+      table(
+        ["Tab", "What you do"],
+        [
+          ["Overview", "Header and totals"],
+          ["Line items", "Ordered products"],
+        ]
+      ),
+      label("Connected to"),
+      p("Vendor → Contacts → PO → Items / Groups / Projects. Zoho can sync purchase orders."),
+      label("Tips"),
+      ul([
+        "Vendor and at least one address are required.",
+        "Each line needs a product.",
       ]),
 
       h3("5.9 Jobs"),
-      p("Purpose — units of field work, split into Service and Project jobs in the sidebar."),
+      p("Purpose — field work units assigned to operatives, split into Service and Project jobs in the sidebar."),
+      label("List page"),
+      ul([
+        "Search; Job status; Assigned worker; Category; Active",
+        "Card / Table, Add",
+        "Mass update / delete / export and Assign worker",
+        "Mass-update fields include title, description, client, project, site, job status, start date (Form is not available in job mass update)",
+      ]),
+      label("Create / Edit — important fields"),
+      table(
+        ["Field", "Why it matters"],
+        [
+          ["Title / Description", "What the job is"],
+          ["Client / Project / Site", "Context"],
+          ["Assigned worker", "Who does the work"],
+          ["Start / End", "Schedule"],
+          ["Job status", "Workflow state"],
+          ["Forms / Checklists", "Field capture requirements"],
+          ["Work scope (project jobs)", "Levels / plots / composites / pins"],
+        ]
+      ),
       label("Create jobs"),
       ul([
-        "From Jobs → New, or",
-        "From a project's Locations tab — create a job from selected pins / locations.",
+        "Jobs → Add (service or project category), or",
+        "Project → Locations → Create Job from selected pins (preferred for project work so pins stay linked).",
       ]),
       label("On the job detail page"),
       table(
@@ -522,14 +781,40 @@ const SECTIONS: DocSection[] = [
         "Once all pins in the job are completed, mark the entire job as complete.",
         "The completed job is then available for review and approval by the administrator or managing director, as part of the quality and completion process.",
       ]),
+      label("Connected to"),
+      p("Client, Project, Site, Forms, Checklists, QR, Composites, Material Requests, Dispatches, Returns, Pin detail."),
+      label("Tips"),
+      ul([
+        "Use the correct Service / Project flyout category.",
+        "Complete checklists before form fill if a checklist gate is enabled.",
+        "Assign a worker so material-request job pickers work correctly.",
+      ]),
 
       h3("5.10 QR codes"),
       p("Purpose — generate batches of QR codes, assign them to jobs, and track scans."),
-      label("Typical flow"),
+      label("List page"),
+      ul([
+        "Search by QR ID; Status (Assigned / Not assigned)",
+        "Card / Table",
+        "Generate QR codes (not a simple Add)",
+        "Mass update / delete / export",
+      ]),
+      label("Generate flow"),
       ol([
-        "Generate a batch (quantity and batch number).",
+        "Enter how many codes to create.",
+        "System creates a batch (batch number shown on list/detail).",
+        "Optionally download CSV.",
         "Assign codes to a job.",
-        "Monitor scan count / last scanned on the list or job.",
+        "Track scan count and last scanned.",
+      ]),
+      label("Detail page"),
+      p("QR image, assignment info, scan activity, link to job when assigned."),
+      label("Connected to"),
+      p("Jobs (job detail can show QR section)."),
+      label("Tips"),
+      ul([
+        "Filter Not assigned to find free codes.",
+        "Generate in batches sized for your field process.",
       ]),
 
       h3("5.11 Groups, Items, Composite items"),
@@ -542,16 +827,64 @@ const SECTIONS: DocSection[] = [
           ["Composite items", "Bundled catalogue lines placed on drawings and quotes"],
         ]
       ),
+      label("Groups"),
+      ul([
+        "List page — search, Card / Table, Add group, mass update / delete / export.",
+        "Create / Edit fields — Group name (bucket label), Composite rows (linked composites + abbreviation).",
+        "Detail page — overview and linked composites (qty / cost / sell where shown).",
+        "Connected to — Composite items; used in the drawing editor and quoting.",
+        "Tips — create groups before composites; abbreviations matter on drawings.",
+      ]),
+      label("Items"),
+      ul([
+        "List page — search, Card / Table, Add, mass update / delete / export; row action Make composite (use carefully).",
+        "Create / Edit fields — Name / SKU (identity), Quantity / Unit (stock measure, unit types from Settings), Cost / Sell (commercial values), Dimensions / Weight (logistics), Attachments (specs / images).",
+        "Connected to — Composite components; Invoice / PO / Material lines; Zoho items sync.",
+        "Tips — keep SKUs unique and clean; use unit types from Settings for consistency.",
+      ]),
+      label("Composite items"),
+      ul([
+        "List page — search, Group filter, Card / Table, Add, mass update / delete / export (including move to group).",
+        "Create / Edit fields — Name / SKU (identity), Group (required catalog bucket), Installation type (drives which forms appear for pins), Unit / Qty (measure), Cost / Sell / Installation cost (pricing, fixed or rate × hours), Components (item + quantity rows), Attachments (guidance documents shown on pins/jobs).",
+        "Connected to — Pins, Quotes, Jobs, Groups, POs. Installation type must align with project forms.",
+        "Tips — create the group first; if the drawing editor says no form matches the installation type, fix Settings / Project forms / Installation type mapping.",
+      ]),
       p("Keep catalog data clean before placing pins or building quotes — pin product names and quote lines come from here."),
 
       h3("5.12 Material Requests → Dispatches → Returns"),
       p("Purpose — move materials from warehouse to field and back."),
+      label("Material Requests"),
+      ul([
+        "Purpose — request materials for a worker's jobs; first step of warehouse fulfilment.",
+        "List page — search; Status; Worker; Requested date; Card / Table; Create material request; mass update / delete / export.",
+        "Statuses — Draft · Pending · Partially dispatched · Dispatched.",
+        "Create fields — Worker (whose jobs to pull from), Requested date (when materials are needed), Notes (warehouse guidance), Jobs (active jobs for that worker), Lines (derived from job work scope, quantities calculated by the system).",
+        "Detail page — Overview (request header and lines), Activity timeline (history of changes), Dispatch button (opens dispatch screen, not a tab).",
+        "Tips — worker must have assigned jobs with composite/work scope; empty job scope means no request lines; after save, use Dispatch from the detail page.",
+      ]),
+      label("Dispatches"),
+      ul([
+        "Purpose — fulfilment records created from material requests (not created as a blank standalone form from the list).",
+        "List page — search; Card / Table; empty state points you to Material Requests; no shared mass-action bar.",
+        "How to dispatch — open a Material Request, click Dispatch, enter dispatch quantity per line (can exceed request → surplus), add extra items if needed, add notes, confirm.",
+        "Detail page — overview, material lines (requested / dispatched / pending / extra), restock history, line detail.",
+        "Tips — always start from a Material Request; surplus and extras are what Returns usually target.",
+      ]),
+      label("Returns"),
+      ul([
+        "Purpose — return unused, surplus, or faulty materials to stock.",
+        "List page — search; Status (Pending / Completed / Rejected); Worker; Date presets; Card / Table; New return request; mass actions: Return to stock (pending) + export.",
+        "Create flow — choose worker and filters (date / MR), load returnable lines (extra and surplus), set reason and return type (Unused / Faulty), submit.",
+        "Detail page — overview + return items; complete the return to put stock back. You can also restock unused dispatched quantity from dispatch / MR restock actions where available.",
+      ]),
       label("Recommended sequence"),
       ol([
         "Material Request — create a request for the job / materials needed; track status using Material Statuses from Settings; open detail → Overview / Dispatch / Timeline.",
         "Dispatch — from the request, dispatch quantities per line; review records under Dispatches.",
         "Returns — return unused materials to stock via Returns, or return actions on a dispatch; job detail also mirrors Materials / Dispatch / Returns for field visibility.",
       ]),
+      label("Connected to"),
+      p("Jobs → Material Request → Dispatches → Returns. Statuses from Material Statuses in Settings."),
     ],
   },
   {
@@ -559,7 +892,7 @@ const SECTIONS: DocSection[] = [
     num: "06",
     title: "End-to-end workflows",
     icon: Workflow,
-    dek: "Five real sequences, start to finish.",
+    dek: "Six real sequences, start to finish.",
     blocks: [
       h3("Workflow A — New client project to field completion"),
       ol([
@@ -596,7 +929,14 @@ const SECTIONS: DocSection[] = [
         "Create a Purchase Order with vendor, project (optional), and line items.",
         "Track fulfilment outside or alongside material request / dispatch processes, as your team defines.",
       ]),
-      h3("Workflow E — QR tracking on a job"),
+      h3("Workflow E — Materials in / out"),
+      ol([
+        "Job has work scope + assigned worker.",
+        "Create a Material Request for that worker's jobs.",
+        "Dispatch quantities (and extras if needed).",
+        "Return surplus / extra / faulty stock and complete to inventory.",
+      ]),
+      h3("Workflow F — QR tracking on a job"),
       ol([
         "Generate a QR batch.",
         "Assign codes to the target job.",
@@ -636,7 +976,8 @@ const SECTIONS: DocSection[] = [
         [
           ["Personal Profile", "Your profile, language, appearance"],
           ["Company Settings", "Organisation-level details"],
-          ["Users", "Create users and assign roles"],
+          ["Users", "Invite users — name, email, phone, gender, role, address"],
+          ["Documentation", "In-app documentation"],
         ]
       ),
       h3("8.2 Customization — statuses & types"),
@@ -649,7 +990,7 @@ const SECTIONS: DocSection[] = [
           ["Unit Types", "Units for catalog items"],
           ["Checklist Types", "Checklists used on jobs"],
           ["Project / Pin / Job / Material Statuses", "Workflow labels and colours"],
-          ["Tags", "Labelling pins and related records"],
+          ["Tags", "Labelling quotes, pins, and related records"],
           ["Titles", "Title options used on projects / related forms"],
         ]
       ),
@@ -662,15 +1003,25 @@ const SECTIONS: DocSection[] = [
         ]
       ),
       p("Design forms here; assign them to pins / jobs in project and job flows."),
-      h3("8.4 Integrations — Zoho Inventory"),
-      p("Connect Zoho Inventory to sync resources such as items, customers / contacts, vendors, and purchase orders."),
-      label("High-level steps"),
+      h3("8.4 Third Party App Integrations — Zoho Inventory"),
+      p("Connect your Zoho Inventory account with SimHo to automatically bring your business records into SimHo."),
+      label("What can sync from Zoho Inventory"),
+      ul([
+        "Items and composite items",
+        "Customers and contacts",
+        "Vendors and contacts",
+        "Purchase orders",
+        "Invoices",
+      ]),
+      label("How to connect Zoho Inventory"),
       ol([
-        "Open Settings → Integrations.",
-        "Connect / authorise Zoho.",
-        "Map Zoho fields to SimHo fields (key mapping) — mapping must be saved before sync is useful.",
-        "Optionally pull historical records.",
-        "Configure webhooks as required so new Zoho changes continue to sync.",
+        "Go to Settings → Integrations → Zoho Inventory → click Connect.",
+        "Sign in to your Zoho account and allow SimHo to access your Zoho Inventory data.",
+        "After connecting, open the Configuration tab.",
+        "Select a module, such as Items, Customers, or Vendors, and map the Zoho fields to the corresponding SimHo fields — for example, Zoho Item Name → SimHo Item Name.",
+        "Click Save Mapping. You must save the required field mappings before records from that module can be synced.",
+        "Click Pull Historical Data for the respective module to import your existing Zoho Inventory records into SimHo.",
+        "The Webhooks tab provides details to set up a webhook in your Zoho Inventory platform, so new or updated records in Zoho Inventory are automatically synced with SimHo.",
       ]),
     ],
   },
@@ -808,29 +1159,41 @@ function Chain({ nodes }: { nodes: string[] }) {
   );
 }
 
-function Block({ block }: { block: Block }) {
+function Block({ block, id, highlightQuery }: { block: Block; id?: string; highlightQuery?: string }) {
   switch (block.type) {
     case "p":
-      return <p className="leading-7 text-slate-600 dark:text-slate-300">{block.text}</p>;
+      return (
+        <p id={id} className="leading-7 text-slate-600 dark:text-slate-300">
+          {highlightMatch(block.text, highlightQuery ?? "")}
+        </p>
+      );
     case "label":
       return (
-        <p className="mt-5 font-mono text-[11px] font-semibold uppercase tracking-wider" style={{ color: ACCENT_COLOR }}>
-          {block.text}
+        <p
+          id={id}
+          className="mt-5 font-mono text-[11px] font-semibold uppercase tracking-wider"
+          style={{ color: ACCENT_COLOR }}
+        >
+          {highlightMatch(block.text, highlightQuery ?? "")}
         </p>
       );
     case "h3":
       return (
-        <h3 className="mt-10 mb-3 scroll-mt-24 text-lg font-semibold text-slate-900 dark:text-white">
-          {block.text}
+        <h3 id={id} className="mt-10 mb-3 scroll-mt-24 text-lg font-semibold text-slate-900 dark:text-white">
+          {highlightMatch(block.text, highlightQuery ?? "")}
         </h3>
       );
     case "ul":
       return (
         <ul className="space-y-2">
           {block.items.map((it, i) => (
-            <li key={i} className="flex gap-3 leading-7 text-slate-600 dark:text-slate-300">
+            <li
+              id={id ? `${id}-item-${i}` : undefined}
+              key={i}
+              className="flex gap-3 leading-7 text-slate-600 dark:text-slate-300"
+            >
               <span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: ACCENT_COLOR }} />
-              <span>{it}</span>
+              <span>{highlightMatch(it, highlightQuery ?? "")}</span>
             </li>
           ))}
         </ul>
@@ -841,7 +1204,12 @@ function Block({ block }: { block: Block }) {
           {block.items.map((it, i) => (
             <li key={i} className="flex gap-3">
               <Pin size="sm">{i + 1}</Pin>
-              <span className="leading-7 text-slate-600 dark:text-slate-300">{it}</span>
+              <span
+                id={id ? `${id}-item-${i}` : undefined}
+                className="leading-7 text-slate-600 dark:text-slate-300"
+              >
+                {highlightMatch(it, highlightQuery ?? "")}
+              </span>
             </li>
           ))}
         </ol>
@@ -852,12 +1220,13 @@ function Block({ block }: { block: Block }) {
           <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60">
-                {block.headers.map((h) => (
+                {block.headers.map((h, j) => (
                   <th
+                    id={id ? `${id}-header-${j}` : undefined}
                     key={h}
                     className="whitespace-nowrap px-4 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
                   >
-                    {h}
+                    {highlightMatch(h, highlightQuery ?? "")}
                   </th>
                 ))}
               </tr>
@@ -870,13 +1239,14 @@ function Block({ block }: { block: Block }) {
                 >
                   {row.map((cell, j) => (
                     <td
+                      id={id ? `${id}-row-${i}-cell-${j}` : undefined}
                       key={j}
                       className={`px-4 py-2.5 align-top leading-6 ${j === 0
                         ? "font-medium text-slate-800 dark:text-slate-100"
                         : "text-slate-600 dark:text-slate-400"
                         }`}
                     >
-                      {cell}
+                      {highlightMatch(cell, highlightQuery ?? "")}
                     </td>
                   ))}
                 </tr>
@@ -888,6 +1258,7 @@ function Block({ block }: { block: Block }) {
     case "note":
       return (
         <div
+          id={id}
           className="flex gap-3 rounded-lg border px-4 py-3.5"
           style={{
             borderColor: "color-mix(in srgb, var(--dash-accent, #111111) 30%, transparent)",
@@ -897,7 +1268,7 @@ function Block({ block }: { block: Block }) {
           <MapPin className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.5} style={{ color: ACCENT_COLOR }} />
           <p className="leading-6 text-sm" style={{ color: ACCENT_COLOR }}>
             {block.title && <span className="font-semibold">{block.title}: </span>}
-            {block.text}
+            {highlightMatch(block.text, highlightQuery ?? "")}
           </p>
         </div>
       );
@@ -1004,13 +1375,13 @@ export default function SimHoDocs() {
   const searchResults = useMemo(() => buildSearchResults(searchQuery), [searchQuery]);
 
   const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" });
     setMobileNavOpen(false);
   };
 
   const handleSearchSubmit = () => {
     if (searchResults[0]) {
-      scrollTo(searchResults[0].sectionId);
+      scrollTo(searchResults[0].anchorId);
       setActive(searchResults[0].sectionId);
       setSearchOpen(false);
     }
@@ -1082,7 +1453,7 @@ export default function SimHoDocs() {
                       <li key={`${result.sectionId}-${result.text}`}>
                         <button
                           onClick={() => {
-                            scrollTo(result.sectionId);
+                            scrollTo(result.anchorId);
                             setActive(result.sectionId);
                             setSearchOpen(false);
                           }}
@@ -1104,26 +1475,37 @@ export default function SimHoDocs() {
           </div>
         ) : null}
 
-        <div className="flex max-w-[1400px]">
+        <div className="flex w-full">
           {/* Sidebar */}
           <aside
             className={`${mobileNavOpen ? "block" : "hidden"
-              } fixed inset-x-0 top-16 z-20 h-[calc(100vh-4rem)] w-full overflow-y-auto border-b border-slate-200 bg-white px-4 py-6 dark:border-slate-800 dark:bg-slate-950 lg:sticky lg:top-16 lg:block lg:h-[calc(100vh-4rem)] lg:w-72 lg:shrink-0 lg:border-b-0 lg:border-r lg:px-6`}
+              } fixed inset-x-0 top-16 z-20 h-[calc(100vh-4rem)] w-full overflow-y-auto border-b border-slate-200 bg-white px-4 py-6 dark:border-slate-800 dark:bg-slate-950 lg:sticky lg:top-2 lg:block lg:h-[calc(100vh-2rem)] lg:w-72 lg:shrink-0 lg:border-b-0 lg:border-r lg:px-6`}
           >
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex items-center justify-between gap-3">
               <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 User guide
               </p>
-              <button
-                onClick={() => {
-                  setSearchQuery("");
-                  setSearchOpen(true);
-                }}
-                className="rounded-full border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
-                aria-label="Open search"
-              >
-                <Search className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMobileNavOpen(false)}
+                  className="rounded-full border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 lg:hidden"
+                  aria-label="Close contents"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSearchOpen(true);
+                  }}
+                  className="rounded-full border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
+                  aria-label="Open search"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+              </div>
             </div>
             <nav className="relative">
               <div className="absolute bottom-2 left-[13px] top-2 w-px border-l-2 border-dashed border-slate-200 dark:border-slate-800" />
@@ -1165,12 +1547,33 @@ export default function SimHoDocs() {
           <main className="min-w-0 flex-1 px-4 py-10 sm:px-8 lg:px-12 w-full flex flex-col items-center">
             {/* Hero */}
             <div className="mb-16 max-w-3xl">
-              <p className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-wider" style={{ color: ACCENT_COLOR }}>
-                Client teams · PMs · Field coordinators · Sales · Warehouse · Admins
-              </p>
-              <h1 className="font-display text-4xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-5xl">
-                SimHo User Guide
-              </h1>
+              <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-wider" style={{ color: ACCENT_COLOR }}>
+                    Client teams · PMs · Field coordinators · Sales · Warehouse · Admins
+                  </p>
+                  <h1 className="font-display text-4xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-5xl">
+                    SimHo User Guide
+                  </h1>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMobileNavOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-700 dark:hover:bg-slate-900 lg:hidden"
+                  >
+                    <ListChecks className="h-4 w-4" />
+                    Contents
+                  </button>
+                  <Link
+                    href={routes.dashboard.root}
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-700 dark:hover:bg-slate-900"
+                  >
+                    <X className="h-4 w-4" aria-hidden />
+                    Close
+                  </Link>
+                </div>
+              </div>
               <p className="mt-4 text-lg leading-8 text-slate-600 dark:text-slate-300">
                 How to use SimHo module by module, how modules connect, and how common
                 day-to-day workflows run end to end.
@@ -1208,20 +1611,20 @@ export default function SimHoDocs() {
                     <div className="mb-6 flex items-start gap-3 border-b border-slate-200 pb-5 dark:border-slate-800">
                       <Pin>{s.num}</Pin>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <Icon className="h-4 w-4" strokeWidth={2} style={{ color: ACCENT_COLOR }} />
-                          <h2 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                            {s.title}
-                          </h2>
-                        </div>
-                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{s.dek}</p>
+                                <div className="flex items-center gap-2">
+                        <Icon className="h-4 w-4" strokeWidth={2} style={{ color: ACCENT_COLOR }} />
+                        <h2 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                          {highlightMatch(s.title, searchQuery)}
+                        </h2>
+                      </div>
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{highlightMatch(s.dek, searchQuery)}</p>
                       </div>
                     </div>
 
                     <div className="space-y-5">
                       {s.id === "module-connections" && <ConnectionDiagram />}
                       {s.blocks.map((b, i) => (
-                        <Block key={i} block={b} />
+                        <Block key={i} id={`${s.id}-block-${i}`} block={b} highlightQuery={searchQuery} />
                       ))}
                     </div>
                   </section>

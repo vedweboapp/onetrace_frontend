@@ -577,9 +577,6 @@ function DashboardSettingsSidebar({
     pathname === personalProfileHref || pathname.startsWith(`${personalProfileHref}/`);
   const companySettingsActive =
     pathname === companySettingsHref || pathname.startsWith(`${companySettingsHref}/`);
-  const documentationHref = routes.dashboard.settingsDocumentation;
-  const documentationActive =
-    pathname === documentationHref || pathname.startsWith(`${documentationHref}/`);
   const modulesActive = pathname === modulesHref || pathname.startsWith(`${modulesHref}/`);
   const projectFormsActive = pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
   const integrationsActive =
@@ -610,14 +607,6 @@ function DashboardSettingsSidebar({
           active={companySettingsActive}
           label={t("companySettings")}
           icon={Building2}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={documentationHref}
-          active={documentationActive}
-          label={t("documentation")}
-          icon={BookOpen}
           expanded={expanded}
           resolved={resolved}
         />
