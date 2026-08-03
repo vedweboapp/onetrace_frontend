@@ -384,6 +384,17 @@ export function DashboardHeader() {
               {tSettingsNav("modules")}
             </Link>
             <Link
+              href={projectFormsHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                projectFormsActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={projectFormsActive ? resolved.navActiveStyle : undefined}
+            >
+              <FileText className="size-3.5" strokeWidth={1.75} />
+              {tSettingsNav("projectForms")}
+            </Link>
+            <Link
               href={customizationHref}
               className={cn(
                 "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",

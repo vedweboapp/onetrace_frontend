@@ -50,7 +50,7 @@ export const routes = {
     settingsUsers: "/settings/users",
     settingsPersonalProfile: "/settings/personal-profile",
     settingsCompanySettings: "/settings/company-settings",
-    settingsDocumentation: "/settings/documentation",
+    documentation: "/documentation",
     settingsModules: "/settings/modules",
     settingsProjectForms: "/settings/project-type-forms",
     settingsIntegrations: "/settings/integrations",

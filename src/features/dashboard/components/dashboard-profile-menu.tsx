@@ -1,11 +1,13 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { BookOpen, LogOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useLogout } from "@/features/auth/hooks/use-logout";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { AppButton } from "@/shared/ui";
+import { Link } from "@/i18n/navigation";
+import { routes } from "@/shared/config/routes";
 import { cn } from "@/core/utils/http.util";
 
 type Props = {
@@ -15,8 +17,10 @@ type Props = {
 
 export function DashboardProfileMenu({ initials, className }: Props) {
   const t = useTranslations("Dashboard.header");
+  const tSettingsNav = useTranslations("Dashboard.settingsNav");
   const user = useAuthStore((s) => s.user);
   const { logout, isLoggingOut } = useLogout();
+  const documentationHref = routes.dashboard.documentation;
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -59,6 +63,15 @@ export function DashboardProfileMenu({ initials, className }: Props) {
           {user?.email ? (
             <p className="truncate px-2 py-1.5 text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
           ) : null}
+          <Link
+            href={documentationHref}
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            <BookOpen className="size-4 shrink-0 text-slate-500 transition group-hover:text-[color:var(--dash-accent)]" strokeWidth={1.75} aria-hidden />
+            {tSettingsNav("documentation")}
+          </Link>
           <AppButton
             type="button"
             role="menuitem"

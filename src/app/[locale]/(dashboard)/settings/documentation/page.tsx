@@ -1,8 +1,6 @@
-"use client"
-import DocumentationPanel from '@/features/settings/documentation/components/documentation-panel'
+import { redirect } from "next/navigation";
+import { routes } from "@/shared/config/routes";
 
-export default function DocumentationPage() {
-  return (
-    <DocumentationPanel />
-  )
+export default function DocumentationRedirect() {
+  redirect(routes.dashboard.documentation);
 }

@@ -290,7 +290,15 @@ export function ReturnToStockCreateScreen({
                     </div>
 
                     <div className="overflow-x-auto">
-                      <table className="w-full min-w-[900px] text-left text-sm">
+                      <table className="w-full min-w-[900px] table-fixed text-left text-sm">
+                        <colgroup>
+                          <col />
+                          <col className="w-28" />
+                          <col className="w-28" />
+                          <col className="w-28" />
+                          <col className="w-44" />
+                          <col className="w-72" />
+                        </colgroup>
                         <thead>
                           <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
                             <th className="px-4 py-2">{t("table.materialItem")}</th>
@@ -372,13 +380,17 @@ export function ReturnToStockCreateScreen({
                                     }
                                   />
                                 </td>
-                                <td className="px-4 py-3">
+                                <td className="px-4 py-2 min-w-0 max-w-[18rem]">
                                   <textarea
                                     rows={1}
+                                    wrap="off"
                                     value={draft.reason}
                                     disabled={submitting || returnableQty <= 0}
                                     placeholder={t("return.reasonPlaceholder")}
-                                    className={cn(surfaceTextareaClassName, "min-h-9 resize-none py-1.5 text-sm w-full")}
+                                    className={cn(
+                                      surfaceTextareaClassName,
+                                      "h-9 min-h-0 w-full max-w-full min-w-0 overflow-x-auto overflow-y-hidden whitespace-nowrap resize-none py-1.5",
+                                    )}
                                     onChange={(e) => updateDraft(key, { reason: e.target.value })}
                                   />
                                 </td>
