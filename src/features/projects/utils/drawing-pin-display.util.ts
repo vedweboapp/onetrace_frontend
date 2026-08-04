@@ -14,6 +14,15 @@ export function initialsFromProductName(name: string): string {
     .toUpperCase();
 }
 
+function resolvePinMarkerAbbreviationFromGroupDetail(pin: DrawingPin): string | undefined {
+  if (!pin.group || !pin.item || !pin.group_detail) return undefined;
+
+  const groupItems = Array.isArray(pin.group_detail.items) ? pin.group_detail.items : [];
+  const matchedItem = groupItems.find((entry) => entry?.item === pin.item || entry?.id === pin.item);
+  const abbreviation = matchedItem?.abbreviation?.trim();
+  return abbreviation ? abbreviation.toUpperCase() : undefined;
+}
+
 export function resolvePinMarkerAbbreviation(
   pin: DrawingPin,
   abbrevByKey: Record<string, string>,
@@ -22,6 +31,9 @@ export function resolvePinMarkerAbbreviation(
   if (pin.group != null && pin.item != null) {
     const fromGroup = abbrevByKey[groupItemAbbrevKey(pin.group, pin.item)]?.trim();
     if (fromGroup) return fromGroup.toUpperCase();
+
+    const fromDetail = resolvePinMarkerAbbreviationFromGroupDetail(pin);
+    if (fromDetail) return fromDetail;
   }
   if (productName && productName !== "PIN") {
     return initialsFromProductName(productName);
