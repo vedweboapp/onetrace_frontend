@@ -4,12 +4,12 @@ import * as React from "react";
 import { FileText } from "lucide-react";
 import { Document, Page } from "react-pdf";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
-import { fetchDrawingPdfData } from "@/features/projects/utils/drawing-file-bytes.util";
 import { cn } from "@/core/utils/http.util";
 import "@/shared/utils/pdfjs-worker";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+import { useAuthenticatedPdfFile } from "@/features/projects/hooks/use-authenticated-pdf-file";
 
 function isPdfFile(file: string, fileType?: string | null): boolean {
   if (fileType?.toLowerCase().includes("pdf")) return true;
@@ -35,42 +35,11 @@ type Props = {
 export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, className, onNaturalAspect }: Props) {
   const url = React.useMemo(() => resolveDrawingFileUrl(drawingFile), [drawingFile]);
   const isPdf = isPdfFile(drawingFile, fileType);
-  const [failed, setFailed] = React.useState(false);
-  const [pdfData, setPdfData] = React.useState<Uint8Array | null>(null);
-  const [pdfLoading, setPdfLoading] = React.useState(isPdf && Boolean(url));
+  const [imgFailed, setImgFailed] = React.useState(false);
+  const { file: pdfFile, loading: pdfLoading, failed: pdfFailed } = useAuthenticatedPdfFile(url, isPdf);
 
-  React.useEffect(() => {
-    setFailed(false);
-    setPdfData(null);
-
-    if (!url || !isPdf) {
-      setPdfLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    setPdfLoading(true);
-
-    fetchDrawingPdfData(url)
-      .then((data) => {
-        if (!cancelled) {
-          setPdfData(data);
-          setPdfLoading(false);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setFailed(true);
-          setPdfLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [url, isPdf]);
-
-  const showFallback = !url || failed || (isPdf && !pdfLoading && !pdfData);
+  const failed = isPdf ? pdfFailed : imgFailed;
+  const showFallback = !url || failed || (isPdf && !pdfLoading && !pdfFile);
 
   const shell = (child: React.ReactNode) => (
     <span
@@ -92,7 +61,7 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
   }
 
   if (isPdf) {
-    if (pdfLoading || !pdfData) {
+    if (pdfLoading || !pdfFile) {
       return shell(
         <span className="flex size-full min-h-9 min-w-9 items-center justify-center">
           <span className="size-[40%] max-h-6 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
@@ -102,8 +71,7 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
 
     return shell(
       <Document
-        file={{ data: pdfData }}
-        onLoadError={() => setFailed(true)}
+        file={pdfFile}
         loading={null}
         error={null}
         className="flex justify-center"
@@ -130,7 +98,7 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
         alt={alt}
         className="h-full w-full object-cover object-top"
         loading="lazy"
-        onError={() => setFailed(true)}
+        onError={() => setImgFailed(true)}
         onLoad={(e) => {
           const img = e.currentTarget;
           if (onNaturalAspect && img.naturalWidth > 0 && img.naturalHeight > 0) {
@@ -147,7 +115,7 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
       alt={alt}
       className="h-full w-full object-cover object-top"
       loading="lazy"
-      onError={() => setFailed(true)}
+      onError={() => setImgFailed(true)}
       onLoad={(e) => {
         const img = e.currentTarget;
         if (onNaturalAspect && img.naturalWidth > 0 && img.naturalHeight > 0) {

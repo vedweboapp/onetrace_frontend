@@ -2,11 +2,11 @@ import { pdfjs } from "react-pdf";
 
 /**
  * Configure PDF.js worker once for react-pdf / pdf snapshot usage.
- * pdfjs-dist must be a direct dependency so Next can resolve the worker file.
+ * Uses unpkg CDN matching pdfjs.version to avoid Next.js asset 404 routing errors.
  */
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url,
-).toString();
+if (typeof window !== "undefined") {
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+}
 
 export { pdfjs };
+

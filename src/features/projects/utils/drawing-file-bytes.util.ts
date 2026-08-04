@@ -4,13 +4,18 @@ const bytesCache = new Map<string, Promise<ArrayBuffer>>();
 
 function looksLikePdf(buffer: ArrayBuffer): boolean {
   if (buffer.byteLength < 5) return false;
-  const header = new Uint8Array(buffer.slice(0, 5));
-  return (
-    header[0] === 0x25 && // %
-    header[1] === 0x50 && // P
-    header[2] === 0x44 && // D
-    header[3] === 0x46 // F
-  );
+  const bytes = new Uint8Array(buffer.slice(0, Math.min(buffer.byteLength, 1024)));
+  for (let i = 0; i <= bytes.length - 4; i++) {
+    if (
+      bytes[i] === 0x25 && // %
+      bytes[i + 1] === 0x50 && // P
+      bytes[i + 2] === 0x44 && // D
+      bytes[i + 3] === 0x46    // F
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** Fetch drawing/media bytes with auth (falls back to plain fetch). Cached by URL. */
@@ -47,5 +52,5 @@ export async function fetchDrawingPdfData(fileUrl: string): Promise<Uint8Array> 
   if (!looksLikePdf(buffer)) {
     throw new Error(`Response is not a PDF: ${fileUrl}`);
   }
-  return new Uint8Array(buffer);
+  return new Uint8Array(buffer.slice(0));
 }

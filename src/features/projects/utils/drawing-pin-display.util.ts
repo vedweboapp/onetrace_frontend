@@ -18,7 +18,7 @@ function resolvePinMarkerAbbreviationFromGroupDetail(pin: DrawingPin): string | 
   if (!pin.group || !pin.item || !pin.group_detail) return undefined;
 
   const groupItems = Array.isArray(pin.group_detail.items) ? pin.group_detail.items : [];
-  const matchedItem = groupItems.find((entry) => entry?.item === pin.item || entry?.id === pin.item);
+  const matchedItem = groupItems.find((entry: any) => entry?.item === pin.item || entry?.id === pin.item);
   const abbreviation = matchedItem?.abbreviation?.trim();
   return abbreviation ? abbreviation.toUpperCase() : undefined;
 }

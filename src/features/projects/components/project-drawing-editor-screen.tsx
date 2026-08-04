@@ -398,6 +398,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [savingAll, setSavingAll] = React.useState(false);
   const [drawingName, setDrawingName] = React.useState("");
   const [filePath, setFilePath] = React.useState("");
+  const [fileType, setFileType] = React.useState<string | null>(null);
   const [plots, setPlots] = React.useState<LocalPlot[]>([]);
   const [selectedPlotId, setSelectedPlotId] = React.useState<string>("");
   const [hoveredPlotId, setHoveredPlotId] = React.useState<string | null>(null);
@@ -494,7 +495,10 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   }, [selectedPlot, projectId, drawingId]);
 
   const normalizedFileUrl = React.useMemo(() => resolveDrawingFileUrl(filePath), [filePath]);
-  const isPdf = /\.pdf(\?|$)/i.test(filePath) || /\.pdf(\?|$)/i.test(normalizedFileUrl);
+  const isPdf = React.useMemo(() => {
+    if (fileType?.toLowerCase().includes("pdf")) return true;
+    return /\.pdf(\?|#|$)/i.test(filePath) || /\.pdf(\?|#|$)/i.test(normalizedFileUrl);
+  }, [filePath, normalizedFileUrl, fileType]);
   const { file: pdfFile, failed: pdfFailed } = useAuthenticatedPdfFile(normalizedFileUrl, isPdf);
 
   React.useEffect(() => {
@@ -568,6 +572,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         applyStableLocations(normalized);
         setDrawingName(detail.name);
         setFilePath(detail.drawing_file);
+        setFileType(detail.drawing_file_type ?? null);
         setPlots(normalized);
         setSelectedPlotId((prev) => prev);
       } else {

@@ -55,12 +55,13 @@ export type verifyOtpBody = {
 }
 export type signUpBody = {
   first_name: string;
-  middle_name?: string;
   last_name: string;
+  company_name: string;
   email: string;
   otp: string;
   password: string;
   phone_number: string;
+  company_size: string;
 }
 export { AUTH_API_PATHS };
 
