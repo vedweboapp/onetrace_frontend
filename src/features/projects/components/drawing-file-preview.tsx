@@ -11,6 +11,34 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import { useAuthenticatedPdfFile } from "@/features/projects/hooks/use-authenticated-pdf-file";
 
+// ── Intersection-observer hook ──────────────────────────────────────────────
+/**
+ * Returns true once the element has entered the viewport (stays true thereafter).
+ * Uses a small root margin so cards start loading just before they become visible.
+ */
+function useInView(ref: React.RefObject<Element | null>, rootMargin = "200px"): boolean {
+  const [inView, setInView] = React.useState(false);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el || inView) return; // already visible — nothing to do
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          observer.disconnect(); // one-shot: no need to watch further
+        }
+      },
+      { rootMargin },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref, rootMargin, inView]);
+
+  return inView;
+}
+
 function isPdfFile(file: string, fileType?: string | null): boolean {
   if (fileType?.toLowerCase().includes("pdf")) return true;
   return /\.pdf(\?|#|$)/i.test(file);
@@ -33,16 +61,28 @@ type Props = {
 };
 
 export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, className, onNaturalAspect }: Props) {
+  const containerRef = React.useRef<HTMLSpanElement>(null);
+  const inView = useInView(containerRef);
+
   const url = React.useMemo(() => resolveDrawingFileUrl(drawingFile), [drawingFile]);
   const isPdf = isPdfFile(drawingFile, fileType);
   const [imgFailed, setImgFailed] = React.useState(false);
-  const { file: pdfFile, loading: pdfLoading, failed: pdfFailed } = useAuthenticatedPdfFile(url, isPdf);
+
+  // Only start the authenticated PDF fetch once the card is in the viewport
+  const { file: pdfFile, loading: pdfLoading, failed: pdfFailed } = useAuthenticatedPdfFile(url, isPdf && inView);
 
   const failed = isPdf ? pdfFailed : imgFailed;
-  const showFallback = !url || failed || (isPdf && !pdfLoading && !pdfFile);
+  const showFallback = !url || failed || (isPdf && inView && !pdfLoading && !pdfFile);
+
+  const skeleton = (
+    <span className="flex size-full min-h-9 min-w-9 items-center justify-center">
+      <span className="size-[40%] max-h-6 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+    </span>
+  );
 
   const shell = (child: React.ReactNode) => (
     <span
+      ref={containerRef}
       className={cn(
         "relative flex shrink-0 items-start justify-center overflow-hidden bg-slate-100 dark:bg-slate-900/80",
         className,
@@ -51,6 +91,11 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
       {child}
     </span>
   );
+
+  // Not yet scrolled into view — show skeleton placeholder, no fetch started
+  if (!inView) {
+    return shell(skeleton);
+  }
 
   if (showFallback) {
     return shell(
@@ -62,11 +107,7 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
 
   if (isPdf) {
     if (pdfLoading || !pdfFile) {
-      return shell(
-        <span className="flex size-full min-h-9 min-w-9 items-center justify-center">
-          <span className="size-[40%] max-h-6 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-        </span>,
-      );
+      return shell(skeleton);
     }
 
     return shell(
@@ -165,3 +206,4 @@ export function DrawingFilePreviewFill({ drawingFile, fileType, alt, className, 
     </div>
   );
 }
+
