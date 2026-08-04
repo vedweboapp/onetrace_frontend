@@ -2,17 +2,14 @@
 
 import * as React from "react";
 import { FileText } from "lucide-react";
-import { Document, Page, pdfjs } from "react-pdf";
+import { Document, Page } from "react-pdf";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
+import { fetchDrawingPdfData } from "@/features/projects/utils/drawing-file-bytes.util";
 import { cn } from "@/core/utils/http.util";
+import "@/shared/utils/pdfjs-worker";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url,
-).toString();
 
 function isPdfFile(file: string, fileType?: string | null): boolean {
   if (fileType?.toLowerCase().includes("pdf")) return true;
@@ -37,9 +34,43 @@ type Props = {
 
 export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, className, onNaturalAspect }: Props) {
   const url = React.useMemo(() => resolveDrawingFileUrl(drawingFile), [drawingFile]);
+  const isPdf = isPdfFile(drawingFile, fileType);
   const [failed, setFailed] = React.useState(false);
+  const [pdfData, setPdfData] = React.useState<Uint8Array | null>(null);
+  const [pdfLoading, setPdfLoading] = React.useState(isPdf && Boolean(url));
 
-  const showFallback = !url || failed;
+  React.useEffect(() => {
+    setFailed(false);
+    setPdfData(null);
+
+    if (!url || !isPdf) {
+      setPdfLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setPdfLoading(true);
+
+    fetchDrawingPdfData(url)
+      .then((data) => {
+        if (!cancelled) {
+          setPdfData(data);
+          setPdfLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFailed(true);
+          setPdfLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [url, isPdf]);
+
+  const showFallback = !url || failed || (isPdf && !pdfLoading && !pdfData);
 
   const shell = (child: React.ReactNode) => (
     <span
@@ -60,9 +91,23 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
     );
   }
 
-  if (isPdfFile(drawingFile, fileType)) {
+  if (isPdf) {
+    if (pdfLoading || !pdfData) {
+      return shell(
+        <span className="flex size-full min-h-9 min-w-9 items-center justify-center">
+          <span className="size-[40%] max-h-6 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+        </span>,
+      );
+    }
+
     return shell(
-      <Document file={url} onLoadError={() => setFailed(true)} className="flex justify-center">
+      <Document
+        file={{ data: pdfData }}
+        onLoadError={() => setFailed(true)}
+        loading={null}
+        error={null}
+        className="flex justify-center"
+      >
         <Page
           pageNumber={1}
           width={widthPx}
@@ -80,7 +125,6 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
 
   if (isImageFile(drawingFile, fileType)) {
     return shell(
-      
       <img
         src={url}
         alt={alt}

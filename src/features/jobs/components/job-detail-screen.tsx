@@ -14,6 +14,7 @@ import { JobQualityAssuranceControls } from "@/features/jobs/components/job-qual
 import type { Job } from "@/features/jobs/types/job.types";
 import { isQualityAssuranceDecided } from "@/features/jobs/types/quality-assurance.types";
 import { getJobAssignedWorkerId, getJobStatusId } from "@/features/jobs/utils/job-nested-fields.util";
+import { isJobStatusCompleted } from "@/features/jobs/utils/quality-assurance-eligibility.util";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import {
   EntityDetailErrorState,
@@ -211,6 +212,7 @@ function JobDetailActions({
   const showQualityAssurance =
     (isServiceJobCategory(searchParams.get("job_category")) ||
       isServiceJobCategory(detail.job_category)) &&
+    isJobStatusCompleted(detail) &&
     !isQualityAssuranceDecided(detail.job_quality_assurance);
 
   async function handleStatusUpdate(jobStatusId: number) {

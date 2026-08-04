@@ -15,7 +15,9 @@ import {
   resolveItemAttachmentLabel,
   resolveItemAttachmentUrl,
 } from "@/features/items/utils/item-attachment-display.util";
-import { toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
+import { getApiFieldErrorMap } from "@/shared/form/report-form-api-error.util";
+import { markApiErrorToasted } from "@/core/errors/api-error-toast.util";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
@@ -180,6 +182,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
 
   const [submitting, setSubmitting] = React.useState(false);
   const [touched, setTouched] = React.useState<{ name?: boolean; sku?: boolean }>({});
+  const [serverErrors, setServerErrors] = React.useState<{ name?: string; sku?: string }>({});
 
   React.useEffect(() => {
     if (!open) return;
@@ -256,10 +259,13 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
 
   const nameInvalid = Boolean(touched.name) && name.trim().length === 0;
   const skuInvalid = Boolean(touched.sku) && sku.trim().length === 0;
+  const nameError = nameInvalid ? t("nameError") : serverErrors.name;
+  const skuError = skuInvalid ? t("skuError") : serverErrors.sku;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setTouched({ name: true, sku: true });
+    setServerErrors({});
 
     const nameTrim = name.trim();
     const skuTrim = sku.trim();
@@ -323,8 +329,14 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
         onClose();
         router.push(buildEntityDetailHrefAfterSave(routes.dashboard.items, created.id, routes.dashboard.items));
       }
-    } catch {
-      /* axios interceptor snackbar */
+    } catch (error) {
+      const fieldErrors = getApiFieldErrorMap(error);
+      if (fieldErrors.name || fieldErrors.sku) {
+        setServerErrors({ name: fieldErrors.name, sku: fieldErrors.sku });
+        markApiErrorToasted(error);
+      } else {
+        toastApiError(error);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -361,13 +373,16 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               type="text"
               autoComplete="off"
               value={name}
-              onChange={(e) => setName(capitalizeFirstLetter(e.target.value))}
+              onChange={(e) => {
+                setServerErrors((prev) => ({ ...prev, name: undefined }));
+                setName(capitalizeFirstLetter(e.target.value));
+              }}
               onBlur={() => setTouched((p) => ({ ...p, name: true }))}
               disabled={submitting}
               placeholder={t("namePlaceholder")}
-              className={cn(surfaceInputClassName, nameInvalid && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
+              className={cn(surfaceInputClassName, nameError && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
             />
-            {nameInvalid ? <p className={fieldErrorTextClassName}>{t("nameError")}</p> : null}
+            {nameError ? <p className={fieldErrorTextClassName}>{nameError}</p> : null}
           </div>
 
           <div>
@@ -379,13 +394,16 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               type="text"
               autoComplete="off"
               value={sku}
-              onChange={(e) => setSku(e.target.value)}
+              onChange={(e) => {
+                setServerErrors((prev) => ({ ...prev, sku: undefined }));
+                setSku(e.target.value);
+              }}
               onBlur={() => setTouched((p) => ({ ...p, sku: true }))}
               disabled={submitting}
               placeholder={t("skuPlaceholder")}
-              className={cn(surfaceInputClassName, skuInvalid && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
+              className={cn(surfaceInputClassName, skuError && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
             />
-            {skuInvalid ? <p className={fieldErrorTextClassName}>{t("skuError")}</p> : null}
+            {skuError ? <p className={fieldErrorTextClassName}>{skuError}</p> : null}
           </div>
         </div>
 

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Crosshair, FileText, Hand, MapPinned, Maximize, SquareDashed, X, ZoomIn, ZoomOut, LayoutGrid, Download } from "lucide-react";
-import { Document, Page, pdfjs } from "react-pdf";
+import { Document, Page } from "react-pdf";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { fetchDrawingDetail, updateDrawingPlots } from "@/features/projects/api/drawing.api";
@@ -36,15 +36,12 @@ import { AppButton, CheckmarkSelect, ConfirmDialog, DetailPanel, SurfaceShell, s
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import DrawingBottomToolbar from "./drawing-bottom-toolbar";
 import PlotToolbar from "./plot-toolbar";
+import { useAuthenticatedPdfFile } from "@/features/projects/hooks/use-authenticated-pdf-file";
+import "@/shared/utils/pdfjs-worker";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import { fetchProjectFormsPage } from "../api/project.api";
-
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url,
-).toString();
 
 type Props = {
   projectId: number;
@@ -498,6 +495,11 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
   const normalizedFileUrl = React.useMemo(() => resolveDrawingFileUrl(filePath), [filePath]);
   const isPdf = /\.pdf(\?|$)/i.test(filePath) || /\.pdf(\?|$)/i.test(normalizedFileUrl);
+  const { file: pdfFile, failed: pdfFailed } = useAuthenticatedPdfFile(normalizedFileUrl, isPdf);
+
+  React.useEffect(() => {
+    if (pdfFailed) toastError(t("pdfRenderError"));
+  }, [pdfFailed, t]);
 
   const groupOptions = React.useMemo(
     () => [{ value: "", label: t("allGroups") }, ...groups.map((g) => ({ value: String(g.id), label: g.name }))],
@@ -1317,7 +1319,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setTempPoints([]);
     setNamingPlotOpen(false);
     setDirty(true);
-    toastSuccess(t("plotSaved"));
   }
 
   async function placePin(point: number[], targetPlot?: LocalPlot) {
@@ -1406,7 +1407,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setDetailPin(null);
     setDetailPlotId(null);
     setDirty(true);
-    toastSuccess(t("pinSaved"));
   }
 
   async function saveSelectedPlotName() {
@@ -1420,7 +1420,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setPlots(nextPlots);
     setDetailPlotId(null);
     setDirty(true);
-    toastSuccess(t("plotSaved"));
   }
 
   async function deletePlot(id: number) {
@@ -1482,7 +1481,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setIsPinEditing(false);
     setHasPinDraftChanges(false);
     setDirty(true);
-    toastSuccess(t("pinSaved"));
   }
 
   async function saveAllChanges() {
@@ -1829,18 +1827,25 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                   }}
                 >
                   {isPdf ? (
-                    <Document file={normalizedFileUrl} onLoadError={() => toastError(t("pdfRenderError"))}>
-                      <Page
-                        pageNumber={1}
-                        scale={1}
-                        renderAnnotationLayer={false}
-                        renderTextLayer={false}
-                        onLoadSuccess={(page) => {
-                          const vp = page.getViewport({ scale: 1 });
-                          setPageSize({ width: Math.round(vp.width), height: Math.round(vp.height) });
-                        }}
-                      />
-                    </Document>
+                    pdfFile ? (
+                      <Document
+                        file={pdfFile}
+                        loading={null}
+                        error={null}
+                        onLoadError={() => toastError(t("pdfRenderError"))}
+                      >
+                        <Page
+                          pageNumber={1}
+                          scale={1}
+                          renderAnnotationLayer={false}
+                          renderTextLayer={false}
+                          onLoadSuccess={(page) => {
+                            const vp = page.getViewport({ scale: 1 });
+                            setPageSize({ width: Math.round(vp.width), height: Math.round(vp.height) });
+                          }}
+                        />
+                      </Document>
+                    ) : null
                   ) : (
                     <img
                       src={normalizedFileUrl}

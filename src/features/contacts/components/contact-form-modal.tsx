@@ -14,10 +14,12 @@ import {
 } from "@/features/contacts/utils/contact-form-map";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { usePhoneCountryFromCountryIso } from "@/shared/hooks/use-phone-country-from-address";
 import {
   AppButton,
   AppModal,
@@ -81,12 +83,15 @@ export function ContactFormModal({
     register,
     reset,
     setValue,
+    setError,
     handleSubmit,
     formState: { errors },
   } = useForm<ContactFormValues>({
     resolver: zodResolver(schema),
     defaultValues: emptyContactFormDefaults(),
   });
+
+  const phoneCountry = usePhoneCountryFromCountryIso(control);
 
   React.useEffect(() => {
     if (!open) return;
@@ -115,6 +120,8 @@ export function ContactFormModal({
       onSaved();
       onClose();
       router.push(buildEntityDetailHrefAfterSave(routes.dashboard.contacts, created.id, routes.dashboard.contacts));
+    } catch (error) {
+      reportFormSubmitApiError(error, setError);
     } finally {
       setSaving(false);
     }
@@ -231,6 +238,7 @@ export function ContactFormModal({
             required
             error={errors.phone?.message}
             disabled={saving}
+            countryIso={phoneCountry}
           />
           <AddressLineAutocompleteFields
             idPrefix="contact"

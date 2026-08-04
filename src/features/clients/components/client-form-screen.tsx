@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
+import { usePhoneCountryFromAddresses } from "@/shared/hooks/use-phone-country-from-address";
 import { createClient, fetchClient, updateClient } from "@/features/clients/api/client.api";
 import { createClientFormSchema, type ClientFormValues } from "@/features/clients/schemas/client-form-schema";
 import {
@@ -16,6 +17,7 @@ import {
 } from "@/features/clients/utils/client-form-map";
 import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
@@ -76,12 +78,15 @@ export function ClientFormScreen({ mode, clientId }: Props) {
     register,
     reset,
     setValue,
+    setError,
     handleSubmit,
     formState: { errors },
   } = useForm<ClientFormValues>({
     resolver: zodResolver(schema),
     defaultValues: emptyClientFormDefaults(),
   });
+
+  const phoneCountry = usePhoneCountryFromAddresses(control);
 
   React.useEffect(() => {
     if (!isEdit || !clientId) return;
@@ -110,6 +115,8 @@ export function ClientFormScreen({ mode, clientId }: Props) {
       const saved = isEdit && clientId ? await updateClient(clientId, payload) : await createClient(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.clients, saved.id, safeBack));
+    } catch (error) {
+      reportFormSubmitApiError(error, setError);
     } finally {
       setSaving(false);
     }
@@ -187,6 +194,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
                 required
                 error={errors.phone?.message}
                 disabled={saving}
+                countryIso={phoneCountry}
               />
             </FormFieldRow>
 

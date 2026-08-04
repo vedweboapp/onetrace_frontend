@@ -221,13 +221,15 @@
       "contacts": "Contactos",
       "sites": "Sitios",
       "quotations": "Cotizaciones",
-      "quotationService": "Cotizacion de Servicio",
-      "quotationProject": "Cotizacion de Proyecto",
+      "quotationService": "Cotizaciones de Servicio",
+      "quotationProject": "Cotizaciones de Proyecto",
       "invoices": "Facturas",
       "purchaseOrders": "Órdenes de compra",
       "jobs": "Trabajos",
-      "serviceJob": "Trabajo de Servicio",
-      "projectJob": "Trabajo de Proyecto",
+      "serviceJob": "Trabajos de Servicio",
+      "projectJob": "Trabajos de Proyecto",
+      "flyoutService": "Servicio",
+      "flyoutProject": "Proyecto",
       "qrCodes": "Códigos QR",
       "projects": "Proyectos",
       "groups": "Grupos",
@@ -446,6 +448,11 @@
           "title": "Órdenes de compra",
           "mappingDescription": "Relaciona los campos de órdenes de compra de Zoho con los campos de órdenes de compra de SimHo.",
           "toggleSection": "Mostrar u ocultar sección de órdenes de compra"
+        },
+        "invoices": {
+          "title": "Facturas",
+          "mappingDescription": "Relaciona los campos de facturas de Zoho con los campos de facturas de SimHo.",
+          "toggleSection": "Mostrar u ocultar sección de facturas"
         }
       },
       "zohoIntegrationGuide": {
@@ -2344,6 +2351,8 @@
         "dueDate": "Fecha de vencimiento",
         "paymentTerms": "Condiciones de pago",
         "status": "Estado",
+        "addresses": "Direcciones",
+        "addressType": "Tipo de dirección",
         "billTo": "Facturar a",
         "shipTo": "Enviar a",
         "addressLine1": "Dirección línea 1",
@@ -2382,10 +2391,21 @@
       },
       "sections": {
         "basic": "Información básica",
-        "addresses": "Facturación y envío",
+        "addresses": "Direcciones",
         "metadata": "Datos de la factura",
         "lineItems": "Líneas",
         "notes": "Notas y condiciones"
+      },
+      "addresses": {
+        "add": "Añadir dirección",
+        "remove": "Eliminar",
+        "primary": "Principal",
+        "rowLabel": "Dirección {index}"
+      },
+      "addressType": {
+        "billing": "Facturación",
+        "shipping": "Envío",
+        "other": "Otra"
       },
       "lineItems": {
         "productName": "Producto",
@@ -2427,7 +2447,10 @@
         "addressLine1": "Introduce la dirección línea 1.",
         "country": "Selecciona un país.",
         "state": "Selecciona un estado o región.",
-        "city": "Introduce o selecciona una ciudad."
+        "city": "Introduce o selecciona una ciudad.",
+        "pincode": "Introduce un código postal.",
+        "addressType": "Selecciona un tipo de dirección.",
+        "addressesMin": "Añade al menos una dirección."
       }
     },
     "purchaseOrders": {
@@ -3046,9 +3069,11 @@
         "loading": "Cargando estados…"
       },
       "qualityAssurance": {
-        "label": "¿Calidad asegurada?",
-        "yes": "Sí",
-        "no": "No",
+        "label": "Control de calidad",
+        "approve": "Aprobar",
+        "reject": "Rechazar",
+        "yes": "Aprobar",
+        "no": "Rechazar",
         "rejectTitle": "Rechazar control de calidad",
         "rejectBody": "Añade una breve nota explicando por qué se rechaza este trabajo.",
         "remarks": "Observaciones",
@@ -3066,7 +3091,11 @@
         "statusPending": "Pendiente",
         "approvedAt": "Aprobado el",
         "approvedBy": "Aprobado por",
-        "column": "QA"
+        "column": "QA",
+        "selectAll": "Seleccionar todo",
+        "selectedCount": "{count} seleccionados",
+        "bulkApprove": "Aprobar",
+        "bulkReject": "Rechazar"
       },
       "forms": {
         "sectionTitle": "Formularios",
@@ -3280,7 +3309,8 @@
         "no": "No",
         "noFormAssigned": "No hay formulario asignado a este pin.",
         "formSubmitted": "Enviado",
-        "formNotSubmitted": "No enviado"
+        "formNotSubmitted": "No enviado",
+        "formImages": "Imágenes del formulario"
       },
       "missingOrganization": "No hay organización de espacio de trabajo en esta sesión. Cierra sesión y vuelve a entrar, o contacta con soporte.",
       "createdToast": "Proyecto creado correctamente",
@@ -3596,7 +3626,8 @@
       "placeholders": {
         "client": "Seleccionar cliente",
         "site": "Seleccionar sitio",
-        "projectType": "Seleccionar tipo de proyecto"
+        "projectType": "Seleccionar tipo de proyecto",
+        "projectStatus": "Seleccionar estado del proyecto"
       },
       "fields": {
         "name": "Nombre del proyecto",
@@ -3700,6 +3731,9 @@
         "addCompositeItem": "Añadir fila",
         "removeCompositeItem": "Quitar",
         "atLeastOneCompositeItemError": "Selecciona al menos un ítem compuesto.",
+        "compositeItemRequired": "Selecciona un ítem compuesto.",
+        "abbreviationRequired": "Introduce una abreviatura.",
+        "abbreviationMaxLength": "La abreviatura puede tener como máximo 50 caracteres.",
         "duplicateCompositeItemError": "Cada ítem compuesto solo puede añadirse una vez.",
         "createdToast": "Grupo creado",
         "updatedToast": "Grupo actualizado"

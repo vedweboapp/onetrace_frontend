@@ -1,10 +1,5 @@
-import { pdfjs } from "react-pdf";
-import api from "@/core/api/axios";
-
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url,
-).toString();
+import { pdfjs } from "@/shared/utils/pdfjs-worker";
+import { fetchDrawingArrayBuffer } from "@/features/projects/utils/drawing-file-bytes.util";
 
 export type LevelSnapshot = {
   objectUrl: string;
@@ -46,22 +41,6 @@ function releaseSlot(): void {
 
 function isPdfUrl(url: string): boolean {
   return /\.pdf(\?|#|$)/i.test(url);
-}
-
-async function fetchDrawingArrayBuffer(fileUrl: string): Promise<ArrayBuffer> {
-  try {
-    const res = await api.get<ArrayBuffer>(fileUrl, {
-      responseType: "arraybuffer",
-      skipErrorToast: true,
-    });
-    return res.data;
-  } catch {
-    const rawRes = await fetch(fileUrl);
-    if (!rawRes.ok) {
-      throw new Error(`HTTP ${rawRes.status} fetching drawing: ${fileUrl}`);
-    }
-    return await rawRes.arrayBuffer();
-  }
 }
 
 export async function getOrCreateLevelSnapshot(fileUrl: string): Promise<LevelSnapshot> {

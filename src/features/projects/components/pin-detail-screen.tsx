@@ -21,6 +21,7 @@ import {
   resolvePinFormMeta,
   type PinFormMeta,
 } from "@/features/projects/utils/pin-form-meta.util";
+import { collectFormImagePreviews } from "@/features/projects/utils/pin-form-images.util";
 import FormRenderer from "@/shared/form/formbuilder/FormRenderer";
 import type { FormRule } from "@/shared/form/formbuilder/form-rules.types";
 import normalizeRules from "@/shared/form/utility/normalizerule";
@@ -35,9 +36,11 @@ import {
 import { JobQualityAssuranceControls } from "@/features/jobs/components/job-quality-assurance-controls";
 import { QualityAssuranceDetailGrid } from "@/features/jobs/components/quality-assurance-status";
 import { isQualityAssuranceDecided } from "@/features/jobs/types/quality-assurance.types";
+import { isPinEligibleForQualityAssurance } from "@/features/jobs/utils/quality-assurance-eligibility.util";
 import { routes } from "@/shared/config/routes";
 import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
+import { buildProjectDetailTabHref } from "@/shared/utils/detail-from-list.util";
 import { Link } from "@/i18n/navigation";
 import { SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
@@ -100,7 +103,7 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
     jobId != null
       ? `${routes.dashboard.jobs}/${jobId}`
       : projectId != null
-        ? `${routes.dashboard.projects}/${projectId}`
+        ? buildProjectDetailTabHref(projectId, "location")
         : routes.dashboard.jobs;
   const safeBack = resolveFormBackUrl(
     searchParams.get("back"),
@@ -339,6 +342,13 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
   const pinQa = context?.pin?.quality_assurance ?? null;
   const tQa = useTranslations("Dashboard.jobs.qualityAssurance");
   const qaDecided = isQualityAssuranceDecided(pinQa);
+  const showPinQualityAssurance =
+    context?.pin != null && isPinEligibleForQualityAssurance(context.pin) && !qaDecided;
+  const formImages = React.useMemo(
+    () => collectFormImagePreviews(schemaSections, defaultValues),
+    [schemaSections, defaultValues],
+  );
+  const columnMaxHeightClass = "lg:max-h-[calc(100dvh-11rem)]";
 
   return (
     <>
@@ -349,7 +359,7 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
         backAriaLabel={tPins("backAria")}
         subtitle={productName ?? undefined}
         actions={
-          jobId != null && qaPinId != null && !qaDecided ? (
+          jobId != null && qaPinId != null && showPinQualityAssurance ? (
             <JobQualityAssuranceControls
               jobId={jobId}
               pinIds={[qaPinId]}
@@ -378,12 +388,12 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
             </div>
           </SurfaceShell>
         ) : (
-          <div className={cn(detailMapFormGridClassName, "items-stretch")}>
+          <div className={cn(detailMapFormGridClassName, "lg:items-start")}>
             <DetailPanelCard
               title={tPins("assignedForm")}
               collapsible={false}
-              className="flex min-h-0 flex-col"
-              bodyClassName="flex min-h-0 flex-1 flex-col"
+              className={cn("flex min-h-0 flex-col overflow-hidden", columnMaxHeightClass)}
+              bodyClassName="flex min-h-0 flex-1 flex-col overflow-y-auto"
             >
               {!formMeta ? (
                 <p className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400">
@@ -398,7 +408,7 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
               ) : formError ? (
                 <p className="text-sm text-red-600 dark:text-red-400">{formError}</p>
               ) : schemaSections.length > 0 ? (
-                <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-950">
+                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-950">
                   <FormRenderer
                     key={rendererKey}
                     schema={schemaSections}
@@ -414,7 +424,12 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
               )}
             </DetailPanelCard>
 
-            <div className="min-h-0 min-w-0">
+            <div
+              className={cn(
+                "min-w-0 lg:sticky lg:top-4 lg:self-start lg:overflow-y-auto",
+                columnMaxHeightClass,
+              )}
+            >
               <DrawingPinPreviewModal
                 open
                 onClose={() => undefined}
@@ -439,12 +454,41 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
                   setReloadToken((n) => n + 1);
                 }}
                 detailsFooter={
-                  qaDecided && pinQa ? (
-                    <div className="space-y-3">
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                        {tQa("sectionTitle")}
-                      </h3>
-                      <QualityAssuranceDetailGrid record={pinQa} dateFmt={dateFmt} />
+                  qaDecided || formImages.length > 0 ? (
+                    <div className="space-y-6">
+                      {qaDecided && pinQa ? (
+                        <div className="space-y-3">
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                            {tQa("sectionTitle")}
+                          </h3>
+                          <QualityAssuranceDetailGrid record={pinQa} dateFmt={dateFmt} />
+                        </div>
+                      ) : null}
+                      {formImages.length > 0 ? (
+                        <div className="space-y-3">
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                            {tPins("formImages")}
+                          </h3>
+                          <div className="grid grid-cols-2 gap-3">
+                            {formImages.map((image) => (
+                              <a
+                                key={image.url}
+                                href={image.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="group overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/50"
+                                title={image.label}
+                              >
+                                <img
+                                  src={image.url}
+                                  alt={image.label}
+                                  className="h-28 w-full object-cover transition group-hover:opacity-90"
+                                />
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   ) : null
                 }
