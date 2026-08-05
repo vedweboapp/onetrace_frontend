@@ -1686,83 +1686,87 @@ const ProjectPinsListTab = ({
         </div>
       )}
 
-      {/* ── Sticky header: title + filters + bulk action ── */}
+      {/* ── Sticky header: title + filters (single responsive row) ── */}
       <div className="sticky top-0 z-10 shrink-0 divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-950">
 
-      <div className="px-4 py-4 ">
-        <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-          {t("title")}
-        </h2>
-        <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
-          {t("subtitle")}
-        </p>
-      </div>
+      <div className="flex min-w-0 flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        {/* Title + subtitle */}
+        <div className="min-w-0 shrink-0">
+          <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+            {t("title")}
+          </h2>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+            {t("subtitle")}
+          </p>
+        </div>
 
-      <div className="flex min-w-0 flex-col gap-3 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center ">
-        <ListPageSearchField
-          value={search}
-          onCommit={commitSearch}
-          placeholder={t("searchPlaceholder")}
-          ariaLabel={t("searchAria")}
-          className="sm:max-w-sm"
-        />
-        <CheckmarkSelect
-          listLabel={t("quoteStatus")}
-          buttonAriaLabel={t("quoteStatus")}
-          options={QuoteFilerOptions}
-          value={selectedQuoteStatus}
-          emptyLabel={t("quoteStatus")}
-          className="w-full min-w-0 sm:w-44"
-          onChange={(o) => {
-            setSelectedQuoteStatus(o);
-          }}
-          clearable
-        />
-        <CheckmarkSelect
-          options={jobStatus}
-          listLabel={t("pinsStatus")}
-          buttonAriaLabel={t("pinsStatus")}
-          emptyLabel={t("pinsStatus")}
-          clearable
-          className="w-full min-w-0 sm:w-44"
-          value={selectedJobStatus}
-          onChange={(e) => {
-            setSelectedJobStatus(e);
-          }}
-        />
-        <CheckmarkSelect
-          listLabel={t("filterLevel")}
-          buttonAriaLabel={t("filterLevel")}
-          options={levelOptions}
-          value={levelFilter != null ? String(levelFilter) : ""}
-          emptyLabel={t("filterAllLevels")}
-          portaled
-          searchable
-          clearable
-          className="w-full min-w-0 sm:w-44"
-          onChange={(v) => {
-            setLevelFilter(v ? Number.parseInt(v, 10) : undefined);
-            setPlotFilter(undefined);
-          }}
-        />
+        {/* Filters — wrap on mobile, single row on sm+ */}
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <ListPageSearchField
+            value={search}
+            onCommit={commitSearch}
+            placeholder={t("searchPlaceholder")}
+            ariaLabel={t("searchAria")}
+            className="w-full min-w-0 sm:w-48"
+          />
+          <CheckmarkSelect
+            listLabel={t("quoteStatus")}
+            buttonAriaLabel={t("quoteStatus")}
+            options={QuoteFilerOptions}
+            value={selectedQuoteStatus}
+            emptyLabel={t("quoteStatus")}
+            className="min-w-0 flex-1 sm:flex-none sm:w-36"
+            onChange={(o) => {
+              setSelectedQuoteStatus(o);
+            }}
+            clearable
+          />
+          <CheckmarkSelect
+            options={jobStatus}
+            listLabel={t("pinsStatus")}
+            buttonAriaLabel={t("pinsStatus")}
+            emptyLabel={t("pinsStatus")}
+            clearable
+            className="min-w-0 flex-1 sm:flex-none sm:w-36"
+            value={selectedJobStatus}
+            onChange={(e) => {
+              setSelectedJobStatus(e);
+            }}
+          />
+          <CheckmarkSelect
+            listLabel={t("filterLevel")}
+            buttonAriaLabel={t("filterLevel")}
+            options={levelOptions}
+            value={levelFilter != null ? String(levelFilter) : ""}
+            emptyLabel={t("filterAllLevels")}
+            portaled
+            searchable
+            clearable
+            className="min-w-0 flex-1 sm:flex-none sm:w-36"
+            onChange={(v) => {
+              setLevelFilter(v ? Number.parseInt(v, 10) : undefined);
+              setPlotFilter(undefined);
+            }}
+          />
 
-        <CheckmarkSelect
-          listLabel={t("filterPlot")}
-          buttonAriaLabel={t("filterPlot")}
-          options={plotOptions}
-          value={plotFilter != null ? String(plotFilter) : ""}
-          emptyLabel={t("filterAllPlots")}
-          portaled
-          searchable
-          clearable
-          disabled={plotOptions.length === 0}
-          className="w-full min-w-0 sm:w-44"
-          onChange={(v) =>
-            setPlotFilter(v ? Number.parseInt(v, 10) : undefined)
-          }
-        />
+          <CheckmarkSelect
+            listLabel={t("filterPlot")}
+            buttonAriaLabel={t("filterPlot")}
+            options={plotOptions}
+            value={plotFilter != null ? String(plotFilter) : ""}
+            emptyLabel={t("filterAllPlots")}
+            portaled
+            searchable
+            clearable
+            disabled={plotOptions.length === 0}
+            className="min-w-0 flex-1 sm:flex-none sm:w-36"
+            onChange={(v) =>
+              setPlotFilter(v ? Number.parseInt(v, 10) : undefined)
+            }
+          />
+        </div>
       </div>
-      {selectedIds.size > 0 && <div className="p-4 sm:p-6 mb-2">
+      {selectedIds.size > 0 && <div className="p-4 mb-2">
         <div className="bg-white drak:bg-slate-900/20 p-2 sm:px-4 sm:py-2  dark:bg-slate-900/20 border dark:border-slate-700/80  rounded-lg border-slate-200/90 flex items-center justify-between gap-3 overflow-hidden">
           <div className="flex items-center  gap-4">
             <span className="shrink-0 whitespace-nowrap rounded-md bg-[color:var(--dash-accent,#111)]/10 px-2 py-1 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-100">
@@ -1924,7 +1928,7 @@ const ProjectPinsListTab = ({
           />
         ) : (
           <div className="mt-2">
-            <label className="inline-flex shrink-0 items-center gap-2 cursor-pointer px-6">
+            <label className="inline-flex shrink-0 items-center gap-2 cursor-pointer px-6 py-2">
               <GroupCheckbox
                 ids={selectablePinIds}
                 selectedIds={effectiveSelectedIds}
@@ -1934,7 +1938,7 @@ const ProjectPinsListTab = ({
                 {allSelected ? "Deselect All" : "Select All"}
               </span>
             </label>
-            <div className="space-y-8 px-4 py-4 sm:px-6 sm:py-6">
+            <div className="space-y-8 px-4 py-4 sm:px-6 sm:py-2">
               {loadError && locations.length > 0 && (
                 <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
                   {loadError}
