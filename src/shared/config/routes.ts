@@ -10,6 +10,8 @@ export const routes = {
     clients: "/clients",
     vendors: "/vendors",
     contacts: "/contacts",
+    contactClient: "/contacts?contact_type=client",
+    contactVendor: "/contacts?contact_type=vendor",
     sites: "/sites",
     quotations: "/quotations",
     quotationService: "/quotations?quote_category=servicequote",

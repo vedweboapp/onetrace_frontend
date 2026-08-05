@@ -78,6 +78,8 @@ export function DashboardHeader() {
   const clientsHref = routes.dashboard.clients;
   const vendorsHref = routes.dashboard.vendors;
   const contactsHref = routes.dashboard.contacts;
+  const contactClientHref = routes.dashboard.contactClient;
+  const contactVendorHref = routes.dashboard.contactVendor;
   const sitesHref = routes.dashboard.sites;
   const quotationsHref = routes.dashboard.quotations;
   const quotationServiceHref = routes.dashboard.quotationService;
@@ -117,6 +119,12 @@ export function DashboardHeader() {
     pathname === vendorsHref || pathname.startsWith(`${vendorsHref}/`);
   const contactsActive =
     pathname === contactsHref || pathname.startsWith(`${contactsHref}/`);
+  const contactTypeParam = contactsActive
+    ? (searchParams.get("contact_type") ?? "").toLowerCase()
+    : "";
+  const contactClientActive =
+    contactsActive && contactTypeParam !== "vendor";
+  const contactVendorActive = contactsActive && contactTypeParam === "vendor";
   const sitesActive = pathname === sitesHref || pathname.startsWith(`${sitesHref}/`);
   const quotationsActive =
     pathname === quotationsHref || pathname.startsWith(`${quotationsHref}/`);
@@ -207,7 +215,9 @@ export function DashboardHeader() {
               : sitesActive
                 ? tNav("sites")
                 : contactsActive
-                  ? tNav("contacts")
+                  ? contactVendorActive
+                    ? tNav("contactVendor")
+                    : tNav("contactClient")
                   : vendorsActive
                     ? tNav("vendors")
                   : clientsActive
@@ -453,15 +463,26 @@ export function DashboardHeader() {
               {tNav("clients")}
             </Link>
             <Link
-              href={contactsHref}
+              href={contactClientHref}
               className={cn(
                 "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
-                contactsActive ? resolved.navActiveClassName : mobileInactive(),
+                contactClientActive ? resolved.navActiveClassName : mobileInactive(),
               )}
-              style={contactsActive ? resolved.navActiveStyle : undefined}
+              style={contactClientActive ? resolved.navActiveStyle : undefined}
             >
               <BookUser className="size-3.5" strokeWidth={1.75} />
-              {tNav("contacts")}
+              {tNav("contactClient")}
+            </Link>
+            <Link
+              href={contactVendorHref}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
+                contactVendorActive ? resolved.navActiveClassName : mobileInactive(),
+              )}
+              style={contactVendorActive ? resolved.navActiveStyle : undefined}
+            >
+              <BookUser className="size-3.5" strokeWidth={1.75} />
+              {tNav("contactVendor")}
             </Link>
             <Link
               href={sitesHref}

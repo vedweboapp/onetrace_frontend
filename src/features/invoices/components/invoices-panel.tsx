@@ -391,15 +391,6 @@ export function InvoicesPanel() {
         />
       ) : null}
 
-      {mass.selectedCount > 0 && !listLoading && !loadError ? (
-        <MassActionBar
-          selectedIds={mass.selectedIds}
-          config={mass.config}
-          updateFields={mass.updateFields}
-          onSuccess={mass.handleMassSuccess}
-        />
-      ) : null}
-
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>

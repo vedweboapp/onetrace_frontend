@@ -401,6 +401,39 @@ export function buildInvoiceMassUpdateFields(
   ];
 }
 
+export type PurchaseOrderMassUpdateLabels = {
+  vendor: string;
+  contact: string;
+  project: string;
+  dueDate: string;
+  paymentTerms: string;
+  status: string;
+  vendorNotes: string;
+  internalNotes: string;
+};
+
+export function buildPurchaseOrderMassUpdateFields(
+  options: {
+    vendorOptions: CheckmarkSelectOption[];
+    contactOptions: CheckmarkSelectOption[];
+    projectOptions: CheckmarkSelectOption[];
+    statusOptions: CheckmarkSelectOption[];
+    paymentTermOptions: CheckmarkSelectOption[];
+  },
+  labels: PurchaseOrderMassUpdateLabels,
+): MassUpdateFieldDef[] {
+  return [
+    selectField("vendor", labels.vendor, options.vendorOptions, "number"),
+    selectField("contact", labels.contact, options.contactOptions, "number"),
+    selectField("project", labels.project, options.projectOptions, "number"),
+    { name: "due_date", label: labels.dueDate, valueType: "date", valueFormat: "date-iso" },
+    selectField("payment_terms", labels.paymentTerms, options.paymentTermOptions),
+    selectField("status", labels.status, options.statusOptions),
+    textareaField("vendor_notes", labels.vendorNotes),
+    textareaField("internal_notes", labels.internalNotes),
+  ];
+}
+
 export type QrCodeMassUpdateLabels = {
   status: string;
   assignedTo: string;

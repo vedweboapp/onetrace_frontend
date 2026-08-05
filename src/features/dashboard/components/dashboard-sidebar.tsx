@@ -351,6 +351,8 @@ function DashboardMainSidebar({
   const clientsHref = routes.dashboard.clients;
   const vendorsHref = routes.dashboard.vendors;
   const contactsHref = routes.dashboard.contacts;
+  const contactClientHref = routes.dashboard.contactClient;
+  const contactVendorHref = routes.dashboard.contactVendor;
   const sitesHref = routes.dashboard.sites;
   const quotationsHref = routes.dashboard.quotations;
   const quotationServiceHref = routes.dashboard.quotationService;
@@ -374,6 +376,12 @@ function DashboardMainSidebar({
     pathname === vendorsHref || pathname.startsWith(`${vendorsHref}/`);
   const contactsActive =
     pathname === contactsHref || pathname.startsWith(`${contactsHref}/`);
+  const contactTypeParam = contactsActive
+    ? (searchParams.get("contact_type") ?? "").toLowerCase()
+    : "";
+  const contactClientActive =
+    contactsActive && contactTypeParam !== "vendor";
+  const contactVendorActive = contactsActive && contactTypeParam === "vendor";
   const sitesActive = pathname === sitesHref || pathname.startsWith(`${sitesHref}/`);
   const quotationsActive =
     pathname === quotationsHref || pathname.startsWith(`${quotationsHref}/`);
@@ -447,13 +455,24 @@ function DashboardMainSidebar({
           expanded={expanded}
           resolved={resolved}
         />
-        <SidebarNavLink
-          href={contactsHref}
-          active={contactsActive}
+        <SidebarNestedNav
           label={t("contacts")}
           icon={BookUser}
+          active={contactsActive}
           expanded={expanded}
           resolved={resolved}
+          items={[
+            {
+              href: contactClientHref,
+              label: t("flyoutClient"),
+              active: contactClientActive,
+            },
+            {
+              href: contactVendorHref,
+              label: t("flyoutVendor"),
+              active: contactVendorActive,
+            },
+          ]}
         />
         <SidebarNavLink
           href={sitesHref}
