@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import { Document, Page } from "react-pdf";
@@ -286,7 +286,7 @@ export function DrawingPinPreviewModal({
   const [scrollStart, setScrollStart] = React.useState({ left: 0, top: 0 });
 
   const normalizedFileUrl = React.useMemo(() => resolveDrawingFileUrl(drawingFile), [drawingFile]);
-  const isPdf = /\.pdf(\?|$)/i.test(drawingFile) || /\.pdf(\?|$)/i.test(normalizedFileUrl);
+  const isPdf = /\.pdf(\?|#|$)/i.test(drawingFile) || /\.pdf(\?|#|$)/i.test(normalizedFileUrl);
   const { file: pdfFile, failed: pdfFailed } = useAuthenticatedPdfFile(
     normalizedFileUrl,
     open && isPdf && !hideDrawing,

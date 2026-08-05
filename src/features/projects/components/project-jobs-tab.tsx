@@ -28,6 +28,13 @@ import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import type { ListEmptyStateKind } from "@/shared/hooks/use-list-active-inactive-empty";
 import {
+  detailTabBodyClassName,
+  detailTabErrorClassName,
+  detailTabFilterBarClassName,
+  detailTabSectionClassName,
+  detailTabTitleClassName,
+} from "@/shared/components/layout/detail-tab-layout";
+import {
   buildJobMassUpdateFields,
   MassActionBar,
   massSelectionColumn,
@@ -415,13 +422,13 @@ export function ProjectJobsTab({ projectId }: Props) {
   }
 
   return (
-    <div className="min-w-0 divide-y divide-slate-100 dark:divide-slate-800">
-      <div className="px-4 py-4 sm:px-6">
+    <div className={detailTabSectionClassName}>
+      <div className={detailTabTitleClassName}>
         <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{t("title")}</h2>
-        <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
+        <p className="mt-0.5 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
       </div>
 
-      <div className="flex min-w-0 flex-col gap-3 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:px-6">
+      <div className={detailTabFilterBarClassName}>
         <ListPageSearchField
           value={search}
           onCommit={commitSearch}
@@ -502,12 +509,12 @@ export function ProjectJobsTab({ projectId }: Props) {
         </div>
       ) : null}
 
-      <div className="p-6">
+      <div className={detailTabBodyClassName}>
         {loadError ? (
-          <p className="px-4 py-10 text-center text-sm text-red-600 dark:text-red-400 sm:px-6">{loadError}</p>
+          <p className={detailTabErrorClassName}>{loadError}</p>
           ) : loading ? (
           <SurfaceShell className="rounded-none border-0">
-            <div className="overflow-auto px-4 py-6 sm:px-6">
+            <div className="overflow-auto">
               <div className="animate-pulse">
                 <DataTableScroll>
                   <DataTable>
