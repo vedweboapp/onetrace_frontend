@@ -1388,7 +1388,7 @@ const ProjectPinsListTab = ({
     },
   ];
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 ">
       {dialogVisible && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-99 px-4">
           <div className="w-full max-w-md bg-white p-6 rounded-lg dark:bg-slate-950">
@@ -1689,7 +1689,7 @@ const ProjectPinsListTab = ({
       {/* ── Sticky header: title + filters + bulk action ── */}
       <div className="sticky top-0 z-10 shrink-0 divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-950">
 
-      <div className="px-4 py-4 sm:px-6">
+      <div className="px-4 py-4 ">
         <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">
           {t("title")}
         </h2>
@@ -1698,7 +1698,7 @@ const ProjectPinsListTab = ({
         </p>
       </div>
 
-      <div className="flex min-w-0 flex-col gap-3 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:px-6">
+      <div className="flex min-w-0 flex-col gap-3 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center ">
         <ListPageSearchField
           value={search}
           onCommit={commitSearch}

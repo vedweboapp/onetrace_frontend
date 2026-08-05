@@ -25,7 +25,8 @@ const ProfilePictureUploader = ({
     const inputRef = useRef<HTMLInputElement | null>(null);
 
     // True only when user has picked a local file — NOT a backend URL string
-    const isLocalFile = image instanceof Blob || image instanceof File;
+    // (File extends Blob, so instanceof Blob covers both)
+    const isLocalFile = image instanceof Blob;
 
     const previewUrl = useMemo(() => {
         if (!image) return "";
