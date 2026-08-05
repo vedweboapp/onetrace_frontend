@@ -89,7 +89,7 @@ export function AppTabs({
             tabIndex={selected ? 0 : -1}
             onClick={() => onValueChange(tab.id)}
             className={cn(
-              "relative shrink-0 whitespace-nowrap px-3 py-2.5 text-sm font-medium outline-none transition-colors",
+              "relative shrink-0 whitespace-nowrap px-2.5 py-1.5 text-sm font-medium outline-none transition-colors",
               "focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-slate-600 dark:focus-visible:ring-offset-slate-950",
               selected
                 ? "text-[color:var(--dash-accent,#111111)]"
@@ -99,7 +99,7 @@ export function AppTabs({
             {tab.label}
             <span
               className={cn(
-                "pointer-events-none absolute inset-x-2 -bottom-px h-0.5 rounded-full transition-opacity",
+                "pointer-events-none absolute inset-x-1.5 -bottom-px h-0.5 rounded-full transition-opacity",
                 "bg-[color:var(--dash-accent,#111111)]",
                 selected ? "opacity-100" : "opacity-0",
               )}

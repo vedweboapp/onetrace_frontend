@@ -87,7 +87,7 @@ export function DetailSectionTitle({ children }: { children: ReactNode }) {
 }
 
 export function DetailPagePadding({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("px-4 py-4 sm:px-6 sm:py-5", className)}>{children}</div>;
+  return <div className={cn("px-4 py-2.5 sm:px-6 sm:py-3", className)}>{children}</div>;
 }
 
 /** White section card for detail pages (overview, address, system metadata, etc.). */

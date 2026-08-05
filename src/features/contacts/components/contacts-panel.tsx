@@ -30,8 +30,6 @@ import {
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
-  AppTabs,
-  type AppTabItem,
 } from "@/shared/ui";
 import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
@@ -81,14 +79,6 @@ export function ContactsPanel() {
   const vendorParam = searchParams.get("vendor");
   const vendorFilter = vendorParam && /^\d+$/.test(vendorParam) ? Number.parseInt(vendorParam, 10) : undefined;
 
-  const listTabs = React.useMemo<AppTabItem[]>(
-    () => [
-      { id: "client", label: t("tabs.client") },
-      { id: "vendor", label: t("tabs.vendor") },
-    ],
-    [t],
-  );
-
   const [items, setItems] = React.useState<Contact[]>([]);
   const [pagination, setPagination] = React.useState({
     total_records: 0,
@@ -120,10 +110,11 @@ export function ContactsPanel() {
 
   const { options: clientOptions } = useDeferredListOptions(loadClientOptions, needsClientOptions);
   const { options: vendorOptions } = useDeferredListOptions(loadVendorOptions, needsVendorOptions);
+
   const openCreate = React.useCallback(() => {
     const params = new URLSearchParams();
     params.set("back", listHref);
-    if (activeContactType === "vendor") params.set("contact_type", "vendor");
+    params.set("contact_type", activeContactType);
     router.push(`${pathname}/new?${params.toString()}`);
   }, [activeContactType, listHref, pathname, router]);
 
@@ -256,7 +247,6 @@ export function ContactsPanel() {
     isActiveParam,
     clientParam: activeContactType === "client" ? clientParam : null,
     vendorParam: activeContactType === "vendor" ? vendorParam : null,
-    contactTypeParam,
   });
   const countInactive = React.useCallback(async () => {
     const { pagination: p } = await fetchContactsPage(1, 1, {
@@ -350,33 +340,8 @@ export function ContactsPanel() {
     ];
   }, [t, tList, dateFmt, parentColumnLabel, parentLabels, togglingId, openEdit, mass, items.length]);
 
-  const switchContactType = React.useCallback(
-    (tab: string) => {
-      const nextType = tab === "vendor" ? "vendor" : "client";
-      setUrl(
-        {
-          contact_type: nextType === "client" ? null : nextType,
-          client: null,
-          vendor: null,
-          page: null,
-        },
-        { replace: true },
-      );
-    },
-    [setUrl],
-  );
-
   return (
     <div className="space-y-4">
-      {!hideListChrome ? (
-        <AppTabs
-          tabs={listTabs}
-          value={activeContactType}
-          onValueChange={switchContactType}
-          ariaLabel={t("tabsAria")}
-          panelIdPrefix="contacts-list-tab"
-        />
-      ) : null}
       {!hideListChrome ? (
         <ListPageHeader
           filtersActive={filtersActive}
@@ -485,7 +450,7 @@ export function ContactsPanel() {
             }}
             onClearFilters={() =>
               setUrl(
-                { search: null, is_active: null, client: null, vendor: null, contact_type: null, page: null },
+                { search: null, is_active: null, client: null, vendor: null, page: null },
                 { replace: true },
               )
             }

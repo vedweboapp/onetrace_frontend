@@ -8,8 +8,11 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import {
+  fetchAllPurchaseOrderIds,
   fetchPurchaseOrdersPage,
 } from "@/features/purchase-orders/api/purchase-order.api";
+import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { PurchaseOrderStatusBadge } from "@/features/purchase-orders/components/purchase-order-status-badge";
 import type { PurchaseOrderListItem } from "@/features/purchase-orders/types/purchase-order.types";
 import {
@@ -46,6 +49,12 @@ import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { useDeferredListOptions } from "@/shared/hooks/use-deferred-list-options";
+import {
+  MassActionBar,
+  buildPurchaseOrderMassUpdateFields,
+  massSelectionColumn,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
 
 export function PurchaseOrdersPanel() {
   const t = useTranslations("Dashboard.purchaseOrders");
@@ -90,7 +99,11 @@ export function PurchaseOrdersPanel() {
   });
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [fetchVendorOptions, setFetchVendorOptions] = React.useState(() => Boolean(vendorParam));
+  const [fetchMassOptions, setFetchMassOptions] = React.useState(false);
+  const [contactOptions, setContactOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [projectOptions, setProjectOptions] = React.useState<{ value: string; label: string }[]>([]);
 
   const loadVendorOptions = React.useCallback(async () => {
     const { items: vendors } = await fetchVendorsPage(1, 500, { is_active: true });
@@ -108,6 +121,17 @@ export function PurchaseOrdersPanel() {
       { value: "approved", label: t("status.approved") },
       { value: "received", label: t("status.received") },
       { value: "cancelled", label: t("status.cancelled") },
+    ],
+    [t],
+  );
+
+  const paymentTermOptions = React.useMemo(
+    () => [
+      { value: "net_7", label: t("paymentTerms.net7") },
+      { value: "net_45", label: t("paymentTerms.net45") },
+      { value: "net_30", label: t("paymentTerms.net30") },
+      { value: "net_15", label: t("paymentTerms.net15") },
+      { value: "due_on_receipt", label: t("paymentTerms.dueOnReceipt") },
     ],
     [t],
   );
@@ -145,6 +169,36 @@ export function PurchaseOrdersPanel() {
   );
 
   React.useEffect(() => {
+    if (!fetchMassOptions) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [contactsRes, projectsRes] = await Promise.all([
+          fetchContactsPage(1, 500, { contact_type: "vendor", is_active: true }),
+          fetchProjectsPage(1, 500, { is_active: true }),
+        ]);
+        if (cancelled) return;
+        setContactOptions(
+          contactsRes.items.map((c) => ({
+            value: String(c.id),
+            label: c.name?.trim() || `#${c.id}`,
+          })),
+        );
+        setProjectOptions(projectsRes.items.map((p) => ({ value: String(p.id), label: p.name })));
+        setFetchVendorOptions(true);
+      } catch {
+        if (!cancelled) {
+          setContactOptions([]);
+          setProjectOptions([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchMassOptions]);
+
+  React.useEffect(() => {
     if (vendorParam) setFetchVendorOptions(true);
   }, [vendorParam]);
 
@@ -175,7 +229,7 @@ export function PurchaseOrdersPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, search, statusFilter, vendorFilter, t]);
+  }, [page, pageSize, search, statusFilter, vendorFilter, refreshNonce, t]);
 
   const vendorLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -195,6 +249,57 @@ export function PurchaseOrdersPanel() {
   });
   const pageRange = getListPageRange(pagination);
 
+  const listFilters = React.useMemo(
+    () => ({
+      search: search || undefined,
+      status: statusFilter,
+      vendor: vendorFilter,
+    }),
+    [search, statusFilter, vendorFilter],
+  );
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildPurchaseOrderMassUpdateFields(
+        {
+          vendorOptions,
+          contactOptions,
+          projectOptions,
+          statusOptions: statusFilterOptions,
+          paymentTermOptions,
+        },
+        {
+          vendor: t("fields.vendorName"),
+          contact: t("fields.contactPerson"),
+          project: t("fields.projectName"),
+          dueDate: t("fields.dueDate"),
+          paymentTerms: t("fields.paymentTerms"),
+          status: t("fields.status"),
+          vendorNotes: t("fields.vendorNotes"),
+          internalNotes: t("fields.internalNotes"),
+        },
+      ),
+    [t, vendorOptions, contactOptions, projectOptions, statusFilterOptions, paymentTermOptions],
+  );
+
+  const fetchAllIds = React.useCallback(() => fetchAllPurchaseOrderIds(listFilters), [listFilters]);
+
+  const mass = useEntityListMassActions({
+    resource: "purchaseOrders",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search, statusFilter, vendorFilter],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
+  React.useEffect(() => {
+    if (mass.selectedCount > 0) setFetchMassOptions(true);
+  }, [mass.selectedCount]);
+
+  const massSel = React.useMemo(() => massSelectionColumn(mass, items.length), [mass, items.length]);
+
   const tableColumns = React.useMemo(() => {
     const c = entityCol<PurchaseOrderListItem>();
     const vendorDisplay = (row: PurchaseOrderListItem) => {
@@ -203,6 +308,7 @@ export function PurchaseOrdersPanel() {
     };
 
     return [
+      massSel.tableColumn,
       c.primary("po", t("table.purchaseOrderNumber"), (r) => r.purchase_order_number),
       c.truncate("vendor", t("table.vendorName"), (r) => vendorDisplay(r), {
         title: (r) => vendorDisplay(r),
@@ -213,14 +319,14 @@ export function PurchaseOrdersPanel() {
       c.custom("status", t("table.status"), (r) => (
         <PurchaseOrderStatusBadge status={r.status} label={statusLabel(r.status)} />
       )),
-      // c.actions("actions", tList("openRowActions"), (row) => (
-      //   <DataTableRowActionsMenu
-      //     menuAriaLabel={tList("openRowActions")}
-      //     items={[{ id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row.id) }]}
-      //   />
-      // )),
+      c.actions("actions", tList("openRowActions"), (row) => (
+        <DataTableRowActionsMenu
+          menuAriaLabel={tList("openRowActions")}
+          items={[{ id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row.id) }]}
+        />
+      )),
     ];
-  }, [t, tList, dateFmt, locale, vendorLabelById, statusLabel, openEdit]);
+  }, [t, tList, dateFmt, locale, vendorLabelById, statusLabel, openEdit, massSel.tableColumn]);
 
   return (
     <div className="space-y-4">
@@ -271,6 +377,15 @@ export function PurchaseOrdersPanel() {
               />
             </div>
           }
+        />
+      ) : null}
+
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
         />
       ) : null}
 
@@ -326,6 +441,7 @@ export function PurchaseOrdersPanel() {
                     key={row.id}
                     dataListRowId={row.id}
                     className={highlightClassName(row.id)}
+                    leading={massSel.cardLeading(row)}
                     title={row.purchase_order_number}
                     subtitle={vendorDisplay}
                     meta={<span className="block min-w-0 truncate">{purchaseOrderProjectLabel(row)}</span>}

@@ -16,6 +16,11 @@ import { formatInstallationTypeLabel } from "@/features/installation-types/utils
 import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
 import { formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
 import { getUnitTypeId, resolveDefaultUnitTypeSelectValue } from "@/features/items/utils/item-unit-type.util";
+import {
+  composeDimensionsInput,
+  formatDimensionsInputAsTyped,
+  parseDimensionsInput,
+} from "@/features/items/utils/item-dimensions-input.util";
 import type { ItemAttachmentWriteRef } from "@/features/items/utils/item-write-form-data.util";
 import {
   hasItemAttachment,
@@ -156,25 +161,6 @@ function dimensionsPayload(
   return { length: lengthN, width: widthN, height: heightN };
 }
 
-function parseDimensionsInput(raw: string): { length: string; width: string; height: string } {
-  // Accept formats like: `22*22*22`, `22 x 22 x 22`, `22X 22 * 22`
-  const parts = raw
-    .split(/[xX*]/g)
-    .map((p) => p.trim())
-    .filter(Boolean);
-  if (parts.length < 3) return { length: "", width: "", height: "" };
-  return { length: parts[0], width: parts[1], height: parts[2] };
-}
-
-function composeDimensionsInput(lengthRaw: string, widthRaw: string, heightRaw: string): string {
-  const l = lengthRaw.trim();
-  const w = widthRaw.trim();
-  const h = heightRaw.trim();
-  if (!l && !w && !h) return "";
-  if (!l || !w || !h) return ""; // keep it consistent with backend "all or nothing"
-  return `${l}*${w}*${h}`;
-}
-
 function weightPayload(valueRaw: string, unitRaw: WeightUnit): { weight?: number; weight_unit?: WeightUnit } {
   const value = toNumberOrNull(valueRaw);
   if (value == null || value < 0) return {};
@@ -193,6 +179,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
 
   const nameId = React.useId();
   const skuId = React.useId();
+  const unitId = React.useId();
   const qtyId = React.useId();
   const costId = React.useId();
   const sellId = React.useId();
@@ -940,25 +927,40 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                 {skuInvalid ? <p className={fieldErrorTextClassName}>{tModal("skuError")}</p> : null}
               </div>
             </div>
-            <div>
-              <FieldLabel htmlFor={qtyId} required>{tModal("quantity")}</FieldLabel>
-              <InputWithEndSelect
-                inputId={qtyId}
-                inputType="number"
-                inputMode="numeric"
-                min={0}
-                inputValue={qty}
-                onInputChange={setQty}
-                disabled={submitting}
-                selectValue={unitType}
-                onSelectChange={setUnitType}
-                selectOptions={unitTypeOptions}
-                selectAriaLabel={tModal("unitType")}
-                selectDisabled={unitTypeOptions.length === 0}
-              />
-              {unitTypesError ? (
-                <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{unitTypesError}</p>
-              ) : null}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <FieldLabel htmlFor={unitId}>{tModal("unitType")}</FieldLabel>
+                <CheckmarkSelect
+                  id={unitId}
+                  listLabel={tModal("unitType")}
+                  buttonAriaLabel={tModal("unitType")}
+                  options={unitTypeOptions}
+                  value={unitType}
+                  emptyLabel={tModal("unitTypePlaceholder")}
+                  disabled={submitting || unitTypeOptions.length === 0}
+                  portaled
+                  searchable
+                  clearable
+                  className="w-full"
+                  onChange={setUnitType}
+                />
+                {unitTypesError ? (
+                  <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{unitTypesError}</p>
+                ) : null}
+              </div>
+              <div>
+                <FieldLabel htmlFor={qtyId} required>{tModal("quantity")}</FieldLabel>
+                <input
+                  id={qtyId}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={qty}
+                  onChange={(e) => setQty(e.target.value)}
+                  disabled={submitting}
+                  className={surfaceInputClassName}
+                />
+              </div>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
@@ -1020,13 +1022,14 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                     <InputWithEndSelect
                       inputId="composite-dimensions"
                       inputValue={dimensionsInput}
-                      onInputChange={(v) => {
-                        setDimensionsInput(v);
-                        const parsed = parseDimensionsInput(v);
-                        setLength(parsed.length);
-                        setWidth(parsed.width);
-                        setHeight(parsed.height);
-                      }}
+                        onInputChange={(v) => {
+                          const formatted = formatDimensionsInputAsTyped(v);
+                          setDimensionsInput(formatted);
+                          const parsed = parseDimensionsInput(formatted);
+                          setLength(parsed.length);
+                          setWidth(parsed.width);
+                          setHeight(parsed.height);
+                        }}
                       inputType="text"
                       disabled={submitting}
                       placeholder={tModal("dimensionsPlaceholder")}

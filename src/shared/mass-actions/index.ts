@@ -33,6 +33,7 @@ export {
   buildJobMassUpdateFields,
   buildMaterialRequestMassUpdateFields,
   buildProjectMassUpdateFields,
+  buildPurchaseOrderMassUpdateFields,
   buildQrCodeMassUpdateFields,
   buildQuotationMassUpdateFields,
   buildSiteMassUpdateFields,

@@ -96,7 +96,7 @@ export function DetailPageHeader({
           <div
             className={cn(
               dashboardContentHorizontalGutterClassName,
-              "border-t border-slate-200 py-2 dark:border-slate-800",
+              "border-t border-slate-200 py-1 dark:border-slate-800",
             )}
           >
             {extension}

@@ -4,12 +4,40 @@ import * as React from "react";
 import { FileText } from "lucide-react";
 import { Document, Page } from "react-pdf";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
-import { fetchDrawingPdfData } from "@/features/projects/utils/drawing-file-bytes.util";
 import { cn } from "@/core/utils/http.util";
 import "@/shared/utils/pdfjs-worker";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+import { useAuthenticatedPdfFile } from "@/features/projects/hooks/use-authenticated-pdf-file";
+
+// ── Intersection-observer hook ──────────────────────────────────────────────
+/**
+ * Returns true once the element has entered the viewport (stays true thereafter).
+ * Uses a small root margin so cards start loading just before they become visible.
+ */
+function useInView(ref: React.RefObject<Element | null>, rootMargin = "200px"): boolean {
+  const [inView, setInView] = React.useState(false);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el || inView) return; // already visible — nothing to do
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          observer.disconnect(); // one-shot: no need to watch further
+        }
+      },
+      { rootMargin },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref, rootMargin, inView]);
+
+  return inView;
+}
 
 function isPdfFile(file: string, fileType?: string | null): boolean {
   if (fileType?.toLowerCase().includes("pdf")) return true;
@@ -33,47 +61,28 @@ type Props = {
 };
 
 export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, className, onNaturalAspect }: Props) {
+  const containerRef = React.useRef<HTMLSpanElement>(null);
+  const inView = useInView(containerRef);
+
   const url = React.useMemo(() => resolveDrawingFileUrl(drawingFile), [drawingFile]);
   const isPdf = isPdfFile(drawingFile, fileType);
-  const [failed, setFailed] = React.useState(false);
-  const [pdfData, setPdfData] = React.useState<Uint8Array | null>(null);
-  const [pdfLoading, setPdfLoading] = React.useState(isPdf && Boolean(url));
+  const [imgFailed, setImgFailed] = React.useState(false);
 
-  React.useEffect(() => {
-    setFailed(false);
-    setPdfData(null);
+  // Only start the authenticated PDF fetch once the card is in the viewport
+  const { file: pdfFile, loading: pdfLoading, failed: pdfFailed } = useAuthenticatedPdfFile(url, isPdf && inView);
 
-    if (!url || !isPdf) {
-      setPdfLoading(false);
-      return;
-    }
+  const failed = isPdf ? pdfFailed : imgFailed;
+  const showFallback = !url || failed || (isPdf && inView && !pdfLoading && !pdfFile);
 
-    let cancelled = false;
-    setPdfLoading(true);
-
-    fetchDrawingPdfData(url)
-      .then((data) => {
-        if (!cancelled) {
-          setPdfData(data);
-          setPdfLoading(false);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setFailed(true);
-          setPdfLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [url, isPdf]);
-
-  const showFallback = !url || failed || (isPdf && !pdfLoading && !pdfData);
+  const skeleton = (
+    <span className="flex size-full min-h-9 min-w-9 items-center justify-center">
+      <span className="size-[40%] max-h-6 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+    </span>
+  );
 
   const shell = (child: React.ReactNode) => (
     <span
+      ref={containerRef}
       className={cn(
         "relative flex shrink-0 items-start justify-center overflow-hidden bg-slate-100 dark:bg-slate-900/80",
         className,
@@ -82,6 +91,11 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
       {child}
     </span>
   );
+
+  // Not yet scrolled into view — show skeleton placeholder, no fetch started
+  if (!inView) {
+    return shell(skeleton);
+  }
 
   if (showFallback) {
     return shell(
@@ -92,18 +106,13 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
   }
 
   if (isPdf) {
-    if (pdfLoading || !pdfData) {
-      return shell(
-        <span className="flex size-full min-h-9 min-w-9 items-center justify-center">
-          <span className="size-[40%] max-h-6 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-        </span>,
-      );
+    if (pdfLoading || !pdfFile) {
+      return shell(skeleton);
     }
 
     return shell(
       <Document
-        file={{ data: pdfData }}
-        onLoadError={() => setFailed(true)}
+        file={pdfFile}
         loading={null}
         error={null}
         className="flex justify-center"
@@ -130,7 +139,7 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
         alt={alt}
         className="h-full w-full object-cover object-top"
         loading="lazy"
-        onError={() => setFailed(true)}
+        onError={() => setImgFailed(true)}
         onLoad={(e) => {
           const img = e.currentTarget;
           if (onNaturalAspect && img.naturalWidth > 0 && img.naturalHeight > 0) {
@@ -147,7 +156,7 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
       alt={alt}
       className="h-full w-full object-cover object-top"
       loading="lazy"
-      onError={() => setFailed(true)}
+      onError={() => setImgFailed(true)}
       onLoad={(e) => {
         const img = e.currentTarget;
         if (onNaturalAspect && img.naturalWidth > 0 && img.naturalHeight > 0) {
@@ -197,3 +206,4 @@ export function DrawingFilePreviewFill({ drawingFile, fileType, alt, className, 
     </div>
   );
 }
+

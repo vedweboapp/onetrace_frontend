@@ -18,6 +18,7 @@ import {
   resolveItemAttachmentUrl,
 } from "@/features/items/utils/item-attachment-display.util";
 import { routes } from "@/shared/config/routes";
+
 import {
   DetailLinkedTable,
   DetailLinkedTableRow,
@@ -76,7 +77,9 @@ export function ItemDetailBody({
   const installationTypeChip = resolveInstallationTypeChipData(detail.installation_type);
   const unitTypeLabel = resolveUnitTypeShortLabel(detail.unit_type, unitTypesById);
   const components = detail.components ?? [];
-  const attachments = (detail.attachments ?? []).filter(hasItemAttachment);
+  const attachments = detail.is_composite
+    ? (detail.attachments ?? []).filter(hasItemAttachment)
+    : [];
   const installationCostValue = moneyDisplay(detail.installation_cost);
   const hasInstallationCost =
     detail.is_composite &&
@@ -226,37 +229,39 @@ export function ItemDetailBody({
           </DetailMetricsGrid>
           </DetailPanelCard>
 
-        <DetailPanelCard title={t("detail.sectionAttachments")}>
-          {attachments.length > 0 ? (
-            <ul className="space-y-2">
-              {attachments.map((row, index) => {
-                const href = resolveItemAttachmentUrl(row);
-                const label = resolveItemAttachmentLabel(row);
-                return (
-                  <li
-                    key={row.id ?? `${label}-${index}`}
-                    className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700"
-                  >
-                    {href ? (
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block truncate text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                      >
-                        {label}
-                      </a>
-                    ) : (
-                      <span className="block truncate text-slate-800 dark:text-slate-100">{label}</span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <p className="text-sm font-normal text-slate-500 dark:text-slate-400">{t("detail.noAttachments")}</p>
-          )}
-        </DetailPanelCard>
+        {detail.is_composite ? (
+          <DetailPanelCard title={t("detail.sectionAttachments")}>
+            {attachments.length > 0 ? (
+              <ul className="space-y-2">
+                {attachments.map((row, index) => {
+                  const href = resolveItemAttachmentUrl(row);
+                  const label = resolveItemAttachmentLabel(row);
+                  return (
+                    <li
+                      key={row.id ?? `${label}-${index}`}
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700"
+                    >
+                      {href ? (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block truncate text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                        >
+                          {label}
+                        </a>
+                      ) : (
+                        <span className="block truncate text-slate-800 dark:text-slate-100">{label}</span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-sm font-normal text-slate-500 dark:text-slate-400">{t("detail.noAttachments")}</p>
+            )}
+          </DetailPanelCard>
+        ) : null}
 
         {detail.is_composite ? (
           <DetailPanelCard title={t("detail.sectionComponents")}>

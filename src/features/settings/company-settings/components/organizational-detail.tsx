@@ -129,29 +129,14 @@ const OrganizationalDetail = React.forwardRef<OrganizationalDetailRef, Organizat
                                     <ProfilePictureUploader
                                         image={value}
                                         setImage={(val: any) => onChange(val)}
+                                        originalImage={initialData?.logo}
                                         readOnly={!isEditing}
                                         size={100}
                                     />
                                 )}
                             />
                             <div className="flex flex-col gap-3">
-                                <p className="text-xs text-gray-500">Upload a square logo (512x512px recommended)</p>
-                                <div className="flex gap-2">
-                                    {/* <button 
-                                        type="button"
-                                        disabled={!isEditing}
-                                        className="px-4 py-2 bg-gray-900 dark:bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        Upload Logo
-                                    </button> */}
-                                    <button 
-                                        type="button"
-                                        disabled={!isEditing}
-                                        className="px-4 py-2 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        Remove
-                                    </button>
-                                </div>
+                                <p className="text-xs text-gray-500">Upload Company logo (512x512px recommended)</p>
                             </div>
                         </div>
                     </div>
@@ -175,15 +160,7 @@ const OrganizationalDetail = React.forwardRef<OrganizationalDetailRef, Organizat
                             errors={errors.size as any}
                             readOnly={!isEditing}
                         />
-                        <div className="md:col-span-2">
-                            <TextBox
-                                label="Company Description"
-                                register={register("description")}
-                                errors={errors.description as any}
-                                readOnly={!isEditing}
-                                rows={3}
-                            />
-                        </div>
+                       
                         <Input
                             label="Website URL"
                             register={register("website")}
@@ -198,6 +175,15 @@ const OrganizationalDetail = React.forwardRef<OrganizationalDetailRef, Organizat
                             errors={errors.timezone as any}
                             readOnly={!isEditing}
                         />
+                         <div className="md:col-span-2">
+                            <TextBox
+                                label="Company Description"
+                                register={register("description")}
+                                errors={errors.description as any}
+                                readOnly={!isEditing}
+                                rows={3}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>

@@ -20,6 +20,13 @@ import {
 import type { Tag } from "@/features/tags/types/tag.types";
 import { entityCol } from "@/shared/components/entity";
 import type { EntityTableColumn } from "@/shared/components/entity";
+import {
+  detailTabBodyClassName,
+  detailTabErrorClassName,
+  detailTabFilterBarClassName,
+  detailTabSectionClassName,
+  detailTabTitleClassName,
+} from "@/shared/components/layout/detail-tab-layout";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
@@ -259,17 +266,17 @@ export function ProjectQuotationsTab({ projectId }: Props) {
   }, [loading, loadError, items.length, hasActiveFilters]);
 
   return (
-    <div className="min-w-0 divide-y divide-slate-100 dark:divide-slate-800">
-      <div className="px-4 py-4 sm:px-6">
+    <div className={detailTabSectionClassName}>
+      <div className={detailTabTitleClassName}>
         <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">
           {t("title")}
         </h2>
-        <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-0.5 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
           {t("subtitle")}
         </p>
       </div>
 
-      <div className="flex min-w-0 flex-col gap-3 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:px-6">
+      <div className={detailTabFilterBarClassName}>
         <ListPageSearchField
           value={search}
           onCommit={commitSearch}
@@ -279,13 +286,13 @@ export function ProjectQuotationsTab({ projectId }: Props) {
         />
       </div>
 
-      <div>
+      <div className={detailTabBodyClassName}>
         {loadError ? (
-          <p className="px-4 py-10 text-center text-sm text-red-600 dark:text-red-400 sm:px-6">
+          <p className={detailTabErrorClassName}>
             {loadError}
           </p>
         ) : loading ? (
-          <div className="space-y-2 px-4 py-6 sm:px-6">
+          <div className="space-y-2">
             <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
             <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
             <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />

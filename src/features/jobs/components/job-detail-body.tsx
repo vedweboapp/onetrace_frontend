@@ -52,10 +52,7 @@ import { cn } from "@/core/utils/http.util";
 import { ChevronRight, Layers, MapPinned } from "lucide-react";
 import { DrawingPinPreviewModal } from "@/features/projects/components/drawing-pin-preview-modal";
 import { JobQualityAssuranceControls } from "@/features/jobs/components/job-quality-assurance-controls";
-import {
-  QualityAssuranceDetailGrid,
-  QualityAssuranceStatusBadge,
-} from "@/features/jobs/components/quality-assurance-status";
+import { QualityAssuranceDetailGrid } from "@/features/jobs/components/quality-assurance-status";
 import { isQualityAssuranceDecided } from "@/features/jobs/types/quality-assurance.types";
 import { isPinEligibleForQualityAssurance } from "@/features/jobs/utils/quality-assurance-eligibility.util";
 import { resolvePinFormMeta } from "@/features/projects/utils/pin-form-meta.util";
@@ -79,7 +76,7 @@ type JobDrawingLevel = {
 };
 
 const PIN_TABLE_GRID =
-  "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,1.75rem)_minmax(0,3.5rem)_minmax(0,1.1fr)_minmax(0,5rem)_minmax(0,0.45fr)_minmax(0,0.35fr)_minmax(0,0.75fr)_minmax(0,0.45fr)_minmax(0,5rem)] items-center gap-x-3 sm:gap-x-4";
+  "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,1.75rem)_minmax(0,3.5rem)_minmax(0,1.1fr)_minmax(0,5rem)_minmax(0,0.45fr)_minmax(0,0.35fr)_minmax(0,0.75fr)_minmax(0,0.45fr)] items-center gap-x-3 sm:gap-x-4";
 
 const PIN_TABLE_HEADER_CLASS = cn(
   PIN_TABLE_GRID,
@@ -155,7 +152,6 @@ function ProjectPinTableHeader({
       <span>Quantity</span>
       <span>Form</span>
       <span>Status</span>
-      <span>{tQa("column")}</span>
     </div>
   );
 }
@@ -205,7 +201,6 @@ function ProjectPinRow({
   const sku = pin.item_detail?.sku;
   const variationText = pin.variation ? (isEs ? "Sí" : "Yes") : (isEs ? "No" : "No");
   const t = useTranslations("Dashboard.jobs.forms");
-  const qaDecided = isQualityAssuranceDecided(pin.quality_assurance);
 
   const [isEditingStatus, setIsEditingStatus] = React.useState(false);
 
@@ -402,9 +397,6 @@ function ProjectPinRow({
             <PinStatusChip pin={pin} />
           </div>
         )}
-      </div>
-      <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-        {qaDecided ? <QualityAssuranceStatusBadge record={pin.quality_assurance} /> : null}
       </div>
     </div>
   );

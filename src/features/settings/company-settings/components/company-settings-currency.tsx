@@ -189,9 +189,9 @@ const CompanySettingsCurrency = ({ initialData, onSaveSuccess }: CompanySettings
   );
 
   return (
-    <div className={`bg-white dark:border-slate-700 dark:bg-slate-900 rounded-xl border border-slate-200/80 p-8 shadow-sm flex flex-col gap-6 mt-2 transition-opacity duration-500 ${isMounted ? "animate-in fade-in duration-500 opacity-100" : "opacity-0"}`}>
+    <div className={`bg-white dark:border-slate-700 dark:bg-slate-900 rounded-xl flex flex-col md: flex-row w-full border border-slate-200/80 p-8 shadow-sm  gap-6 mt-2 transition-opacity duration-500 ${isMounted ? "animate-in fade-in duration-500 opacity-100" : "opacity-0"}`}>
       {/* Home Currency Block */}
-      <div className="space-y-3">
+      <div className="space-y-3 w-full">
         <h3 className="text-lg font-bold text-slate-800 tracking-tight dark:text-slate-200">Home Currency</h3>
         <div className="bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-600 rounded-[8px] p-4 flex items-center gap-4 hover:border-slate-200 transition-colors">
           <div className="size-12 bg-white dark:bg-slate-900 rounded-[8px] border border-slate-200 dark:border-slate-600 flex items-center justify-center shadow-sm">
@@ -207,7 +207,7 @@ const CompanySettingsCurrency = ({ initialData, onSaveSuccess }: CompanySettings
       </div>
 
       {/* Format Block */}
-      <div className="space-y-3">
+      <div className="space-y-3 w-full">
         <h3 className="text-lg font-bold text-slate-800 tracking-tight dark:text-slate-200">Format</h3>
         <div className="bg-slate-50 border dark:bg-slate-800 dark:border-slate-600 border-slate-100 rounded-[8px] p-4 flex items-center justify-between hover:border-slate-200 transition-colors">
           <div>

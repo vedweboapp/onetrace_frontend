@@ -15,6 +15,14 @@ import type { Drawing } from "@/features/projects/types/drawing.types";
 import { countDrawingPins } from "@/features/projects/utils/drawing-list-pins.util";
 import type { ListPageViewMode } from "@/shared/hooks/use-list-url-state";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import {
+  detailTabBodyClassName,
+  detailTabEmptyClassName,
+  detailTabErrorClassName,
+  detailTabFilterBarClassName,
+  detailTabSectionClassName,
+  detailTabToolbarClassName,
+} from "@/shared/components/layout/detail-tab-layout";
 import { cn } from "@/core/utils/http.util";
 import {
   AddButton,
@@ -36,6 +44,29 @@ function formatBytes(bytes: number): string {
   }
   const rounded = i === 0 ? Math.round(v) : v < 10 ? Number(v.toFixed(1)) : Math.round(v);
   return `${rounded} ${units[i]}`;
+}
+
+/**
+ * Defers the mount of a heavy child component until after the first paint.
+ * Returns `true` once the browser is idle / a frame has been committed,
+ * letting the card text render immediately on the first pass.
+ */
+function useDeferredMount(): boolean {
+  const [ready, setReady] = React.useState(false);
+  React.useEffect(() => {
+    if (typeof requestIdleCallback !== "undefined") {
+      const id = requestIdleCallback(() => setReady(true), { timeout: 300 });
+      return () => cancelIdleCallback(id);
+    }
+    // Fallback: two animation frames to guarantee layout + paint are done
+    let raf1: number;
+    let raf2: number;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setReady(true));
+    });
+    return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); };
+  }, []);
+  return ready;
 }
 
 function shortFileTypeLabel(mime: string | undefined): string {
@@ -85,6 +116,8 @@ function DrawingGridCard({
   const hasLocation = Boolean(row.block?.trim() || row.level?.trim());
   const typeLabel = shortFileTypeLabel(row.drawing_file_type);
   const [naturalAspect, setNaturalAspect] = React.useState<number | null>(null);
+  // Defer the heavy preview mount so card text paints on the first frame
+  const previewReady = useDeferredMount();
 
   return (
     <div
@@ -108,14 +141,21 @@ function DrawingGridCard({
       )}
     >
       <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden bg-gradient-to-b from-slate-100 to-slate-200/80 dark:from-slate-900 dark:to-slate-950">
-        <DrawingFilePreviewFill
-          key={`${row.id}-${row.drawing_file}`}
-          drawingFile={row.drawing_file}
-          fileType={row.drawing_file_type}
-          alt=""
-          onNaturalAspect={setNaturalAspect}
-        />
-        <DrawingPinThumbnailOverlay plots={row.plots} naturalAspect={naturalAspect} />
+        {previewReady ? (
+          <>
+            <DrawingFilePreviewFill
+              key={`${row.id}-${row.drawing_file}`}
+              drawingFile={row.drawing_file}
+              fileType={row.drawing_file_type}
+              alt=""
+              onNaturalAspect={setNaturalAspect}
+            />
+            <DrawingPinThumbnailOverlay plots={row.plots} naturalAspect={naturalAspect} />
+          </>
+        ) : (
+          /* Shimmer placeholder shown during first paint */
+          <div className="absolute inset-0 animate-pulse bg-slate-100 dark:bg-slate-900" />
+        )}
         <div
           className={cn(
             "pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-900/25 via-transparent to-transparent opacity-0 transition-opacity",
@@ -193,18 +233,25 @@ function DrawingGridCard({
 /** Small thumbnail used in the table row — needs its own state for naturalAspect. */
 function DrawingTableRowThumbnail({ row }: { row: Drawing }) {
   const [naturalAspect, setNaturalAspect] = React.useState<number | null>(null);
+  const previewReady = useDeferredMount();
   return (
     <span className="relative h-12 w-[4.75rem] shrink-0 overflow-hidden border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
-      <DrawingFilePreview
-        key={`${row.id}-${row.drawing_file}`}
-        drawingFile={row.drawing_file}
-        fileType={row.drawing_file_type}
-        alt=""
-        widthPx={76}
-        className="size-full"
-        onNaturalAspect={setNaturalAspect}
-      />
-      <DrawingPinThumbnailOverlay plots={row.plots} naturalAspect={naturalAspect} />
+      {previewReady ? (
+        <>
+          <DrawingFilePreview
+            key={`${row.id}-${row.drawing_file}`}
+            drawingFile={row.drawing_file}
+            fileType={row.drawing_file_type}
+            alt=""
+            widthPx={76}
+            className="size-full"
+            onNaturalAspect={setNaturalAspect}
+          />
+          <DrawingPinThumbnailOverlay plots={row.plots} naturalAspect={naturalAspect} />
+        </>
+      ) : (
+        <span className="block size-full animate-pulse bg-slate-100 dark:bg-slate-800" />
+      )}
     </span>
   );
 }
@@ -231,14 +278,14 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   }
 
   const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(100);
+  const [pageSize, setPageSize] = React.useState(20);
   const [search, setSearch] = React.useState("");
   const [items, setItems] = React.useState<Drawing[]>([]);
   const [pagination, setPagination] = React.useState({
     total_records: 0,
     total_pages: 1,
     current_page: 1,
-    page_size: 100,
+    page_size: 20,
     next: null as string | null,
     previous: null as string | null,
   });
@@ -374,11 +421,11 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   );
 
   return (
-    <div className="divide-y divide-slate-100 dark:divide-slate-800">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
+    <div className={detailTabSectionClassName}>
+      <div className={detailTabToolbarClassName}>
         <div className="min-w-0">
           <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{t("title")}</h2>
-          <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
+          <p className="mt-0.5 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
         </div>
         <AddButton
           type="button"
@@ -390,7 +437,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
         />
       </div>
 
-      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className={cn(detailTabFilterBarClassName, "sm:justify-between")}>
         <ListPageSearchField
           value={search}
           onCommit={commitSearch}
@@ -402,7 +449,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
       </div>
 
       {loadError ? (
-        <p className="px-4 py-10 text-center text-sm text-red-600 dark:text-red-400 sm:px-6">{loadError}</p>
+        <p className={detailTabErrorClassName}>{loadError}</p>
       ) : loading ? (
         listViewMode === "list" ? (
           <div className="grid grid-cols-1 gap-5 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3 lg:gap-6">
@@ -424,7 +471,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
             ))}
           </div>
         ) : (
-          <div className="space-y-2 px-4 py-6 sm:px-6">
+          <div className={cn("space-y-2", detailTabBodyClassName)}>
             <div className="h-10 animate-pulse bg-slate-100 dark:bg-slate-800" />
             <div className="h-10 animate-pulse bg-slate-100 dark:bg-slate-800" />
             <div className="h-10 animate-pulse bg-slate-100 dark:bg-slate-800" />
@@ -433,7 +480,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
       ) : listViewMode === "list" ? (
         <>
           {items.length === 0 ? (
-            <p className="px-4 py-10 text-center text-sm text-slate-600 dark:text-slate-400 sm:px-6">{t("empty")}</p>
+            <p className={detailTabEmptyClassName}>{t("empty")}</p>
           ) : (
             <div className="grid grid-cols-1 gap-5 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3 lg:gap-6">
               {items.map((row) => (
