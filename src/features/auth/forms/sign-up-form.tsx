@@ -33,6 +33,7 @@ type SignUpInput = {
   otp: string;
   password: string;
   confirm_password: string;
+  terms_and_conditions?: boolean;
 };
 
 interface sendOtpBody {
@@ -107,6 +108,7 @@ const SignUpForm = () => {
         company_size: data.company_size,
         otp: data.otp,
         password: data.password,
+        terms_and_conditions: !!data.terms_and_conditions,
       };
       await signUpHandler(payload as any);
       toastSuccess("Account created! Please log in.");
@@ -336,6 +338,19 @@ const SignUpForm = () => {
               {errors.company_size && (
                 <p className="text-xs text-red-500">{errors.company_size.message}</p>
               )}
+            </div>
+
+            {/* Terms and Conditions (Optional) */}
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="checkbox"
+                id="terms_and_conditions"
+                {...register("terms_and_conditions")}
+                className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
+              />
+              <label htmlFor="terms_and_conditions" className="text-xs text-slate-600 cursor-pointer select-none">
+                I agree to the Terms &amp; Conditions
+              </label>
             </div>
 
             {/* Next → Send OTP */}

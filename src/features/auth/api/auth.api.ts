@@ -62,6 +62,7 @@ export type signUpBody = {
   password: string;
   phone_number: string;
   company_size: string;
+  terms_and_conditions?: boolean;
 }
 export { AUTH_API_PATHS };
 
