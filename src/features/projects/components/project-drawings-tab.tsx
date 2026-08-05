@@ -46,6 +46,29 @@ function formatBytes(bytes: number): string {
   return `${rounded} ${units[i]}`;
 }
 
+/**
+ * Defers the mount of a heavy child component until after the first paint.
+ * Returns `true` once the browser is idle / a frame has been committed,
+ * letting the card text render immediately on the first pass.
+ */
+function useDeferredMount(): boolean {
+  const [ready, setReady] = React.useState(false);
+  React.useEffect(() => {
+    if (typeof requestIdleCallback !== "undefined") {
+      const id = requestIdleCallback(() => setReady(true), { timeout: 300 });
+      return () => cancelIdleCallback(id);
+    }
+    // Fallback: two animation frames to guarantee layout + paint are done
+    let raf1: number;
+    let raf2: number;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setReady(true));
+    });
+    return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); };
+  }, []);
+  return ready;
+}
+
 function shortFileTypeLabel(mime: string | undefined): string {
   const m = mime?.trim() || "";
   if (!m) return "—";
@@ -93,6 +116,8 @@ function DrawingGridCard({
   const hasLocation = Boolean(row.block?.trim() || row.level?.trim());
   const typeLabel = shortFileTypeLabel(row.drawing_file_type);
   const [naturalAspect, setNaturalAspect] = React.useState<number | null>(null);
+  // Defer the heavy preview mount so card text paints on the first frame
+  const previewReady = useDeferredMount();
 
   return (
     <div
@@ -116,14 +141,21 @@ function DrawingGridCard({
       )}
     >
       <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden bg-gradient-to-b from-slate-100 to-slate-200/80 dark:from-slate-900 dark:to-slate-950">
-        <DrawingFilePreviewFill
-          key={`${row.id}-${row.drawing_file}`}
-          drawingFile={row.drawing_file}
-          fileType={row.drawing_file_type}
-          alt=""
-          onNaturalAspect={setNaturalAspect}
-        />
-        <DrawingPinThumbnailOverlay plots={row.plots} naturalAspect={naturalAspect} />
+        {previewReady ? (
+          <>
+            <DrawingFilePreviewFill
+              key={`${row.id}-${row.drawing_file}`}
+              drawingFile={row.drawing_file}
+              fileType={row.drawing_file_type}
+              alt=""
+              onNaturalAspect={setNaturalAspect}
+            />
+            <DrawingPinThumbnailOverlay plots={row.plots} naturalAspect={naturalAspect} />
+          </>
+        ) : (
+          /* Shimmer placeholder shown during first paint */
+          <div className="absolute inset-0 animate-pulse bg-slate-100 dark:bg-slate-900" />
+        )}
         <div
           className={cn(
             "pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-900/25 via-transparent to-transparent opacity-0 transition-opacity",
@@ -201,18 +233,25 @@ function DrawingGridCard({
 /** Small thumbnail used in the table row — needs its own state for naturalAspect. */
 function DrawingTableRowThumbnail({ row }: { row: Drawing }) {
   const [naturalAspect, setNaturalAspect] = React.useState<number | null>(null);
+  const previewReady = useDeferredMount();
   return (
     <span className="relative h-12 w-[4.75rem] shrink-0 overflow-hidden border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
-      <DrawingFilePreview
-        key={`${row.id}-${row.drawing_file}`}
-        drawingFile={row.drawing_file}
-        fileType={row.drawing_file_type}
-        alt=""
-        widthPx={76}
-        className="size-full"
-        onNaturalAspect={setNaturalAspect}
-      />
-      <DrawingPinThumbnailOverlay plots={row.plots} naturalAspect={naturalAspect} />
+      {previewReady ? (
+        <>
+          <DrawingFilePreview
+            key={`${row.id}-${row.drawing_file}`}
+            drawingFile={row.drawing_file}
+            fileType={row.drawing_file_type}
+            alt=""
+            widthPx={76}
+            className="size-full"
+            onNaturalAspect={setNaturalAspect}
+          />
+          <DrawingPinThumbnailOverlay plots={row.plots} naturalAspect={naturalAspect} />
+        </>
+      ) : (
+        <span className="block size-full animate-pulse bg-slate-100 dark:bg-slate-800" />
+      )}
     </span>
   );
 }
@@ -239,14 +278,14 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   }
 
   const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(100);
+  const [pageSize, setPageSize] = React.useState(20);
   const [search, setSearch] = React.useState("");
   const [items, setItems] = React.useState<Drawing[]>([]);
   const [pagination, setPagination] = React.useState({
     total_records: 0,
     total_pages: 1,
     current_page: 1,
-    page_size: 100,
+    page_size: 20,
     next: null as string | null,
     previous: null as string | null,
   });
