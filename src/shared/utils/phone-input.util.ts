@@ -1,5 +1,6 @@
 import type { Country } from "react-phone-number-input";
 import metadata from "libphonenumber-js/max/metadata";
+import { FIELD_MAX_LENGTH } from "@/shared/form/field-max-length.util";
 import {
   getCountryCallingCode,
   isValidPhoneNumber as isValidPhoneNumberWithMeta,
@@ -16,6 +17,8 @@ type NumberingPlanWithTypes = {
 
 /** Default calling code for phone fields across the app (+1 United States). */
 export const DEFAULT_PHONE_COUNTRY_CODE = "US" as const;
+
+const PHONE_E164_MAX_DIGITS = FIELD_MAX_LENGTH.PHONE_DIGITS;
 
 /**
  * Normalize stored/API phone strings into E.164 for react-phone-number-input.
@@ -179,24 +182,24 @@ export function clampPhoneE164ToCountryMax(
   }
 
   if (!countryCode) {
-    return `+${digits.slice(0, 15)}`;
+    return `+${digits.slice(0, PHONE_E164_MAX_DIGITS)}`;
   }
 
   let callingCode: string;
   try {
     callingCode = String(getCountryCallingCode(countryCode, metadata));
   } catch {
-    return `+${digits.slice(0, 15)}`;
+    return `+${digits.slice(0, PHONE_E164_MAX_DIGITS)}`;
   }
 
   // User is editing the country calling code (e.g. "+" → "+9" → "+91"), not the national number.
   if (!digits.startsWith(callingCode)) {
-    return `+${digits.slice(0, 15)}`;
+    return `+${digits.slice(0, PHONE_E164_MAX_DIGITS)}`;
   }
 
   const maxNational = getMaxNationalDigitsForCountry(countryCode);
   if (maxNational == null) {
-    return `+${digits.slice(0, 15)}`;
+    return `+${digits.slice(0, PHONE_E164_MAX_DIGITS)}`;
   }
 
   const national = digits.slice(callingCode.length);

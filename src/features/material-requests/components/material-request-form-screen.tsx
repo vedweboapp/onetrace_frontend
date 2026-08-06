@@ -34,6 +34,7 @@ import {
 } from "@/features/material-requests/utils/material-request-job-items.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
+import { FIELD_MAX_LENGTH, rhfRegisterOptions } from "@/shared/form";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import {
   DetailCollapsibleSection,
@@ -442,7 +443,8 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
                 rows={4}
                 className={surfaceTextareaClassName}
                 disabled={saving}
-                {...register("notes")}
+                maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
+                {...register("notes", rhfRegisterOptions("description"))}
               />
             </FieldGroup>
           </form>
