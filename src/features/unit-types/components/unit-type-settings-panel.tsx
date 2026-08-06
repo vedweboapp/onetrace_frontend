@@ -27,7 +27,7 @@ import {
   parseIsActiveParam,
   useListUrlState,
 } from "@/shared/hooks/use-list-url-state";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
@@ -502,7 +502,7 @@ export function UnitTypeSettingsPanel() {
               value={unitName}
               placeholder={t("modal.unitNamePlaceholder")}
               onChange={(e) => {
-                setUnitName(capitalizeFirstLetter(e.target.value));
+                setUnitName(sanitizeTitleInput(e.target.value));
                 if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
               }}
               className={cn(

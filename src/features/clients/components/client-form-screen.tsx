@@ -15,24 +15,22 @@ import {
   emptyClientFormDefaults,
   mapClientFormToPayload,
 } from "@/features/clients/utils/client-form-map";
-import { cn } from "@/core/utils/http.util";
-import { toastSuccess } from "@/shared/feedback/app-toast";
-import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
+import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
-import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { toastSuccess } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
+import {
+  hrefAfterEntityCreate,
+  QUICK_CREATE_SELECT_TARGET_PARAM,
+} from "@/shared/utils/quick-create-navigation.util";
 import {
   AppButton,
-  FieldErrorText,
-  FieldGroup,
   FormFieldRow,
   SurfacePhoneField,
   SurfaceShell,
-  surfaceInputClassName,
+  SurfaceTextField,
 } from "@/shared/ui";
-import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
 
 type Props = {
   mode: "create" | "edit";
@@ -114,7 +112,14 @@ export function ClientFormScreen({ mode, clientId }: Props) {
     try {
       const saved = isEdit && clientId ? await updateClient(clientId, payload) : await createClient(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.clients, saved.id, safeBack));
+      router.replace(
+        hrefAfterEntityCreate({
+          createdId: saved.id,
+          selectTarget: isEdit ? null : searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
+          backHref: safeBack,
+          listPath: routes.dashboard.clients,
+        }),
+      );
     } catch (error) {
       reportFormSubmitApiError(error, setError);
     } finally {
@@ -156,33 +161,26 @@ export function ClientFormScreen({ mode, clientId }: Props) {
         ) : (
           <form id="client-upsert-screen-form" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(submit)}>
             <FormFieldRow cols="2">
-              <FieldGroup label={t("fields.name")} htmlFor="client-name" required>
-                <input
-                  id="client-name"
-                  autoComplete="name"
-                  aria-invalid={errors.name ? true : undefined}
-                  aria-describedby={errors.name ? "client-name-err" : undefined}
-                  className={cn(surfaceInputClassName, errors.name && "border-red-500 dark:border-red-500")}
-                  {...register("name", {
-                    onChange: (e) => {
-                      e.target.value = capitalizeFirstLetter(e.target.value);
-                    },
-                  })}
-                />
-                <FieldErrorText id="client-name-err">{errors.name?.message}</FieldErrorText>
-              </FieldGroup>
-              <FieldGroup label={t("fields.email")} htmlFor="client-email" required>
-                <input
-                  id="client-email"
-                  type="email"
-                  autoComplete="email"
-                  aria-invalid={errors.email ? true : undefined}
-                  aria-describedby={errors.email ? "client-email-err" : undefined}
-                  className={cn(surfaceInputClassName, errors.email && "border-red-500 dark:border-red-500")}
-                  {...register("email")}
-                />
-                <FieldErrorText id="client-email-err">{errors.email?.message}</FieldErrorText>
-              </FieldGroup>
+              <SurfaceTextField
+                register={register}
+                name="name"
+                id="client-name"
+                label={t("fields.name")}
+                kind="name"
+                required
+                autoComplete="name"
+                error={errors.name?.message}
+              />
+              <SurfaceTextField
+                register={register}
+                name="email"
+                id="client-email"
+                label={t("fields.email")}
+                kind="email"
+                required
+                autoComplete="email"
+                error={errors.email?.message}
+              />
             </FormFieldRow>
 
             <FormFieldRow cols="2">

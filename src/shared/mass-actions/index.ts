@@ -27,6 +27,7 @@ export {
   buildClientMassUpdateFields,
   buildCompositeItemMassUpdateFields,
   buildContactMassUpdateFields,
+  buildVendorMassUpdateFields,
   buildGroupMassUpdateFields,
   buildInvoiceMassUpdateFields,
   buildItemMassUpdateFields,

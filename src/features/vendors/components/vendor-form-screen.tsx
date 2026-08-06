@@ -17,14 +17,16 @@ import {
   mapVendorFormToPayload,
   vendorToFormDefaults,
 } from "@/features/vendors/utils/vendor-form-map";
-import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
-import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
+import {
+  hrefAfterEntityCreate,
+  QUICK_CREATE_SELECT_TARGET_PARAM,
+  resolveFormBackUrl,
+} from "@/shared/utils/quick-create-navigation.util";
 import {
   AppButton,
   CheckmarkSelect,
@@ -32,8 +34,8 @@ import {
   FieldGroup,
   FormFieldRow,
   SurfacePhoneField,
+  SurfaceTextField,
   SurfaceShell,
-  surfaceInputClassName,
 } from "@/shared/ui";
 
 type Props = {
@@ -91,6 +93,12 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
   });
 
   const phoneCountry = usePhoneCountryFromAddresses(control);
+  const tQuick = useTranslations("Dashboard.quickCreate");
+  const vendorTypeQuickAdd = useSettingsQuickAdd({
+    href: routes.dashboard.settingsVendorTypes,
+    addLabel: tQuick("add.vendorType"),
+  });
+
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -134,7 +142,14 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
     try {
       const saved = isEdit && vendorId ? await updateVendor(vendorId, payload) : await createVendor(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.vendors, saved.id, safeBack));
+      router.replace(
+        hrefAfterEntityCreate({
+          createdId: saved.id,
+          selectTarget: isEdit ? null : searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
+          backHref: safeBack,
+          listPath: routes.dashboard.vendors,
+        }),
+      );
     } catch (error) {
       reportFormSubmitApiError(error, setError);
     } finally {
@@ -174,18 +189,16 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
         ) : (
           <form id="vendor-upsert-screen-form" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(submit)}>
             <FormFieldRow cols="2">
-              <FieldGroup label={t("fields.name")} htmlFor="vendor-name" required>
-                <input
-                  id="vendor-name"
-                  className={cn(surfaceInputClassName, errors.name && "border-red-500")}
-                  {...register("name", {
-                    onChange: (e) => {
-                      e.target.value = capitalizeFirstLetter(e.target.value);
-                    },
-                  })}
-                />
-                <FieldErrorText>{errors.name?.message}</FieldErrorText>
-              </FieldGroup>
+              <SurfaceTextField
+                register={register}
+                name="name"
+                id="vendor-name"
+                label={t("fields.name")}
+                kind="name"
+                required
+                autoComplete="name"
+                error={errors.name?.message}
+              />
 
               <Controller
                 control={control}
@@ -202,6 +215,9 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
                       invalid={!!errors.type}
                       listLabel={t("fields.type")}
                       portaled
+                      onAdd={vendorTypeQuickAdd.onAdd}
+                      addAriaLabel={vendorTypeQuickAdd.addAriaLabel}
+                      addLabel={vendorTypeQuickAdd.addLabel}
                     />
                     <FieldErrorText>{errors.type?.message}</FieldErrorText>
                   </FieldGroup>
@@ -210,15 +226,16 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
             </FormFieldRow>
 
             <FormFieldRow cols="2">
-              <FieldGroup label={t("fields.email")} htmlFor="vendor-email" required>
-                <input
-                  id="vendor-email"
-                  type="email"
-                  className={cn(surfaceInputClassName, errors.email && "border-red-500")}
-                  {...register("email")}
-                />
-                <FieldErrorText>{errors.email?.message}</FieldErrorText>
-              </FieldGroup>
+              <SurfaceTextField
+                register={register}
+                name="email"
+                id="vendor-email"
+                label={t("fields.email")}
+                kind="email"
+                required
+                autoComplete="email"
+                error={errors.email?.message}
+              />
               <SurfacePhoneField
                 control={control}
                 name="phone"

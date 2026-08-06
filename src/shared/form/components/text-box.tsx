@@ -1,6 +1,7 @@
 "use client";
 
 import { surfaceTextareaClassName } from "@/shared/ui";
+import { cn } from "@/core/utils/http.util";
 import React from "react";
 
 interface TextBoxProps {
@@ -42,24 +43,16 @@ const TextBox: React.FC<TextBoxProps> = ({
                     rest.placeholder ||
                     `Enter ${typeof label === 'string' ? label.replace(/[*:]/g, "").trim() : ''} here`
                 }
-                className={`
-          rounded-[8px]
-          px-3
-          py-2
-          outline-none
-          w-full
-          resize-none
-          text-slate-900
-          dark:text-white
-          ${readOnly
-                        ? "border-none bg-gray-100 dark:bg-slate-800/50 cursor-not-allowed select-none"
-                        : `bg-white dark:bg-slate-900 border ${errors
-                            ? "border-red-500"
-                            : "border-gray-300 dark:border-slate-700"
-                        } focus:ring-2 focus:ring-blue-500`
-                    }
-          ${className}${surfaceTextareaClassName}
-        `}
+                className={cn(
+                    surfaceTextareaClassName,
+                    // Read-only: override bg, border, and ring; block pointer interaction
+                    readOnly
+                        ? "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 cursor-default pointer-events-none focus:ring-0 focus-visible:ring-0 focus-visible:border-slate-200 select-none"
+                        : errors
+                            ? "border-red-500 focus-visible:ring-red-500/20 focus-visible:border-red-500"
+                            : "",
+                    className,
+                )}
             />
 
             {errors && (
@@ -71,4 +64,4 @@ const TextBox: React.FC<TextBoxProps> = ({
     );
 };
 
-export default TextBox;
+export default TextBox;

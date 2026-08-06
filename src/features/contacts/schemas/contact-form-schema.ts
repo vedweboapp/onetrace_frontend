@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { City, State } from "country-state-city";
-import { isValidPhoneNumber } from "react-phone-number-input/min";
-import { zTrimmedNonEmpty } from "@/shared/form";
+import { isAppValidPhoneNumber } from "@/shared/utils/phone-input.util";
+import { zEmail, zRequiredName, zTrimmedNonEmpty } from "@/shared/form";
 
 export type ContactFormMessages = {
   name: string;
@@ -28,9 +28,9 @@ export function createContactFormSchema(messages: ContactFormMessages) {
   return z
     .object({
       contact_type: z.enum(["client", "vendor"], { message: messages.contactType }),
-      name: zTrimmedNonEmpty(messages.name),
-      email: z.string().trim().email(messages.email),
-      phone: z.string().refine((val) => isValidPhoneNumber(val), {
+      name: zRequiredName(messages.name),
+      email: zEmail(messages.email),
+      phone: z.string().refine((val) => isAppValidPhoneNumber(val), {
         message: messages.phoneInvalid,
       }),
       client: z.string(),

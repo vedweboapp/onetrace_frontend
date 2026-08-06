@@ -13,7 +13,7 @@ import { getApiErrorDisplayMessage, toastSuccess } from "@/shared/feedback/app-t
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
@@ -431,7 +431,7 @@ export function TitleSettingsPanel() {
             value={titleName}
             placeholder={t("modal.titleNamePlaceholder")}
             onChange={(e) => {
-              setTitleName(capitalizeFirstLetter(e.target.value));
+              setTitleName(sanitizeTitleInput(e.target.value));
               if (errors.title) setErrors((prev) => ({ ...prev, title: undefined }));
             }}
             className={cn(

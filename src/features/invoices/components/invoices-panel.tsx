@@ -21,6 +21,7 @@ import {
   normalizeInvoiceStatus,
 } from "@/features/invoices/utils/invoice-nested-fields.util";
 import { formatMoneyDisplay } from "@/features/invoices/utils/invoice-money.util";
+import { useOrgCurrency } from "@/shared/money/use-org-currency";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
@@ -57,6 +58,7 @@ export function InvoicesPanel() {
   const t = useTranslations("Dashboard.invoices");
   const tList = useTranslations("Dashboard.list");
   const locale = useLocale();
+  useOrgCurrency();
   const dateFmt = useDashboardDateFormat({ dateOnly: true });
   const router = useRouter();
   const pathname = usePathname();

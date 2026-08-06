@@ -22,7 +22,7 @@ import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { fetchUsersPage } from "@/features/users/api/user.api";
 import { userProfileLabel } from "@/features/jobs/utils/job-nested-fields.util";
@@ -394,7 +394,7 @@ export function ProjectFormModal({
               className={cn(surfaceInputClassName, errors.name && "border-red-500 dark:border-red-500")}
               {...register("name", {
                 onChange: (e) => {
-                  e.target.value = capitalizeFirstLetter(e.target.value);
+                  e.target.value = sanitizeTitleInput(e.target.value);
                 },
               })}
             />

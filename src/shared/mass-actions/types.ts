@@ -4,7 +4,18 @@ export type MassActionKind = "mass-update" | "mass-delete" | "mass-export";
 
 export type MassExportFormat = "xlsx" | "csv";
 
-export type MassUpdateFieldValueType = "text" | "number" | "select" | "textarea" | "date" | "datetime";
+export type MassUpdateFieldValueType =
+  | "text"
+  | "name"
+  | "title"
+  | "email"
+  | "number"
+  | "phone"
+  | "digits"
+  | "select"
+  | "textarea"
+  | "date"
+  | "datetime";
 
 export type MassUpdateFieldValueFormat = "datetime-iso" | "date-iso";
 
@@ -18,6 +29,8 @@ export type MassUpdateFieldDef = {
   valueCoerce?: "string" | "number" | "boolean";
   /** Optional API serialization (e.g. ISO datetime from `datetime-local`) */
   valueFormat?: MassUpdateFieldValueFormat;
+  /** Max length for `phone` / `digits` inputs */
+  maxLength?: number;
 };
 
 /** Top-level bulk action that maps to a single mass-update field (e.g. assign worker on jobs). */

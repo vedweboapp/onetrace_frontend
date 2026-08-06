@@ -16,7 +16,7 @@ import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { SiteContactPersonsFields } from "@/features/sites/components/site-contact-persons-fields";
 import { SiteLocationFields } from "@/features/sites/components/site-location-fields";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
@@ -261,7 +261,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
                       className={cn(surfaceInputClassName, errors.site_name && "border-red-500 dark:border-red-500")}
                       {...register("site_name", {
                         onChange: (e) => {
-                          e.target.value = capitalizeFirstLetter(e.target.value);
+                          e.target.value = sanitizeTitleInput(e.target.value);
                         },
                       })}
                     />

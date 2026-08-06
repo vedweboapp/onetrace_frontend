@@ -5,7 +5,7 @@ import { FileText, UploadCloud, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { createDrawing } from "@/features/projects/api/drawing.api";
 import { toastSuccess } from "@/shared/feedback/app-toast";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import {
   AppButton,
   AppModal,
@@ -63,7 +63,7 @@ export function DrawingUploadModal({
 
   function toNameFromFile(file: File): string {
     const base = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " ").trim();
-    return capitalizeFirstLetter(base || file.name);
+    return sanitizeTitleInput(base || file.name);
   }
 
   const applyFiles = React.useCallback((incoming: File[]) => {
@@ -214,7 +214,7 @@ export function DrawingUploadModal({
                         autoComplete="off"
                         value={row.name}
                         onChange={(e) => {
-                          const value = capitalizeFirstLetter(e.target.value);
+                          const value = sanitizeTitleInput(e.target.value);
                           setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, name: value } : r)));
                         }}
                         onBlur={() => {

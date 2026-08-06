@@ -6,7 +6,7 @@ import type {
 } from "@/features/quotations/types/quotation.types";
 import type { QuotationDraft, QuotationDraftLine } from "@/features/quotations/types/quotation-draft.types";
 import { draftGrandTotal, draftPinTotal, draftSectionTotal } from "@/features/quotations/utils/quotation-draft-compute.util";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 
 /** Synthetic plot `name` in `quote_sections` when the section has `section_pins` (no drawing plot). */
 export const SECTION_DIRECT_PLOT_NAME = "Section items";
@@ -69,7 +69,7 @@ export function mergeQuotationDraftIntoPayload(base: QuotationCreatePayload, dra
     return {
       section_order: si,
       level_id: section.level_id,
-      name: capitalizeFirstLetter(section.name ?? ""),
+      name: sanitizeTitleInput(section.name ?? ""),
       drawing_file: typeof section.drawing_file === "string" ? section.drawing_file : null,
       drawing_file_type: typeof section.drawing_file_type === "string" ? section.drawing_file_type : null,
       drawing_file_size: typeof section.drawing_file_size === "number" ? section.drawing_file_size : null,

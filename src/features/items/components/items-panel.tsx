@@ -38,26 +38,13 @@ import {
   massSelectionColumn,
   useEntityListMassActions,
 } from "@/shared/mass-actions";
-
-function asNumberMaybe(v: unknown): number | null {
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  if (typeof v === "string" && v.trim()) {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-  }
-  return null;
-}
-
-function moneyDisplay(v: unknown): string {
-  const n = asNumberMaybe(v);
-  if (n == null) return "—";
-  return n.toFixed(2);
-}
+import { useOrgCurrency } from "@/shared/money/use-org-currency";
 
 export function ItemsPanel() {
   const t = useTranslations("Dashboard.items");
   const tComposite = useTranslations("Dashboard.compositeItems");
   const tList = useTranslations("Dashboard.list");
+  const { formatMoneyValue: moneyDisplay } = useOrgCurrency();
   const dateFmt = useDashboardDateFormat();
   const router = useRouter();
   const pathname = usePathname();

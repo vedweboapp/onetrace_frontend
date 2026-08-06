@@ -17,17 +17,18 @@ import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
-import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
+import { buildCurrentPageBackHref, buildEntityDetailHrefAfterSave, mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { usePhoneCountryFromCountryIso } from "@/shared/hooks/use-phone-country-from-address";
 import {
   QUICK_CREATE_CLIENT_PARAM,
   QUICK_CREATE_CONTACT_TYPE_PARAM,
+  QUICK_CREATE_SELECT_TARGET_PARAM,
   QUICK_CREATE_VENDOR_PARAM,
+  hrefAfterEntityCreate,
   resolveFormBackUrl,
 } from "@/shared/utils/quick-create-navigation.util";
 import {
@@ -39,6 +40,7 @@ import {
   FieldGroup,
   FormFieldRow,
   SurfacePhoneField,
+  SurfaceTextField,
   SurfaceShell,
   surfaceInputClassName,
 } from "@/shared/ui";
@@ -102,13 +104,35 @@ export function ContactFormScreen({ mode, contactId }: Props) {
   const contactType = useWatch({ control, name: "contact_type" }) ?? "client";
   const phoneCountry = usePhoneCountryFromCountryIso(control);
 
-  const contactTypeOptions = React.useMemo(
-    () => [
+  /** Client contacts → only Client; Vendor contacts → only Vendor (from URL / loaded record). */
+  const urlContactType = parseContactTypeParam(searchParams.get(QUICK_CREATE_CONTACT_TYPE_PARAM));
+  const lockedContactType: ContactType | null = React.useMemo(() => {
+    if (!isEdit && urlContactType) return urlContactType;
+    if (isEdit && !loadingExisting && (contactType === "client" || contactType === "vendor")) {
+      return contactType;
+    }
+    return null;
+  }, [isEdit, urlContactType, loadingExisting, contactType]);
+
+  React.useEffect(() => {
+    if (!isEdit || loadingExisting) return;
+    const current = (searchParams.get("contact_type") ?? "").toLowerCase();
+    if (current === contactType) return;
+    if (!current && contactType === "client") return;
+    router.replace(
+      mergeUrlQueryParam(buildCurrentPageBackHref(pathname, searchParams), "contact_type", contactType),
+      { scroll: false },
+    );
+  }, [contactType, isEdit, loadingExisting, pathname, router, searchParams]);
+
+  const contactTypeOptions = React.useMemo(() => {
+    const all = [
       { value: "client", label: t("tabs.client") },
       { value: "vendor", label: t("tabs.vendor") },
-    ],
-    [t],
-  );
+    ];
+    if (!lockedContactType) return all;
+    return all.filter((o) => o.value === lockedContactType);
+  }, [t, lockedContactType]);
 
   const reloadClients = React.useCallback(async () => {
     try {
@@ -150,6 +174,10 @@ export function ContactFormScreen({ mode, contactId }: Props) {
     kind: "client",
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
+  const vendorQuickCreate = useQuickCreate({
+    kind: "vendor",
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+  });
 
   React.useEffect(() => {
     if (isEdit) return;
@@ -177,6 +205,11 @@ export function ContactFormScreen({ mode, contactId }: Props) {
       if (selectTarget === "client") {
         setValue("contact_type", "client", { shouldDirty: true, shouldValidate: true });
         setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
+        return;
+      }
+      if (selectTarget === "vendor") {
+        setValue("contact_type", "vendor", { shouldDirty: true, shouldValidate: true });
+        setValue("vendor", selectId, { shouldDirty: true, shouldValidate: true });
       }
     },
   });
@@ -217,7 +250,20 @@ export function ContactFormScreen({ mode, contactId }: Props) {
       const saved = isEdit && contactId ? await updateContact(contactId, payload) : await createContact(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
-      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.contacts, saved.id, safeBack));
+      const selectTarget = searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM);
+      if (!isEdit && selectTarget) {
+        router.replace(
+          hrefAfterEntityCreate({
+            createdId: saved.id,
+            selectTarget,
+            backHref: safeBack,
+            listPath: routes.dashboard.contacts,
+          }),
+        );
+      } else {
+        const detailHref = buildEntityDetailHrefAfterSave(routes.dashboard.contacts, saved.id, safeBack);
+        router.replace(mergeUrlQueryParam(detailHref, "contact_type", values.contact_type));
+      }
     } catch (error) {
       reportFormSubmitApiError(error, setError);
     } finally {
@@ -277,10 +323,11 @@ export function ContactFormScreen({ mode, contactId }: Props) {
                       options={contactTypeOptions}
                       value={field.value}
                       emptyLabel={t("placeholders.contactType")}
-                      disabled={saving}
+                      disabled={saving || !!lockedContactType}
                       invalid={!!errors.contact_type}
                       onBlur={field.onBlur}
                       onChange={(v) => {
+                        if (lockedContactType) return;
                         field.onChange(v === "vendor" ? "vendor" : "client");
                       }}
                     />
@@ -306,6 +353,9 @@ export function ContactFormScreen({ mode, contactId }: Props) {
                         invalid={!!errors.vendor}
                         onBlur={field.onBlur}
                         onChange={field.onChange}
+                        onAdd={vendorQuickCreate.onAdd}
+                        addAriaLabel={vendorQuickCreate.addAriaLabel}
+                        addLabel={vendorQuickCreate.addLabel}
                       />
                     )}
                   />
@@ -338,31 +388,26 @@ export function ContactFormScreen({ mode, contactId }: Props) {
                   <FieldErrorText>{errors.client?.message}</FieldErrorText>
                 </FieldGroup>
               )}
-              <FieldGroup label={t("fields.name")} htmlFor="contact-name" required>
-                <input
-                  id="contact-name"
-                  aria-invalid={errors.name ? true : undefined}
-                  aria-describedby={errors.name ? "contact-name-err" : undefined}
-                  className={cn(surfaceInputClassName, errors.name && "border-red-500 dark:border-red-500")}
-                  {...register("name", {
-                    onChange: (e) => {
-                      e.target.value = capitalizeFirstLetter(e.target.value);
-                    },
-                  })}
-                />
-                <FieldErrorText id="contact-name-err">{errors.name?.message}</FieldErrorText>
-              </FieldGroup>
-              <FieldGroup label={t("fields.email")} htmlFor="contact-email" required>
-                <input
-                  id="contact-email"
-                  type="email"
-                  aria-invalid={errors.email ? true : undefined}
-                  aria-describedby={errors.email ? "contact-email-err" : undefined}
-                  className={cn(surfaceInputClassName, errors.email && "border-red-500 dark:border-red-500")}
-                  {...register("email")}
-                />
-                <FieldErrorText id="contact-email-err">{errors.email?.message}</FieldErrorText>
-              </FieldGroup>
+              <SurfaceTextField
+                register={register}
+                name="name"
+                id="contact-name"
+                label={t("fields.name")}
+                kind="name"
+                required
+                autoComplete="name"
+                error={errors.name?.message}
+              />
+              <SurfaceTextField
+                register={register}
+                name="email"
+                id="contact-email"
+                label={t("fields.email")}
+                kind="email"
+                required
+                autoComplete="email"
+                error={errors.email?.message}
+              />
               <SurfacePhoneField
                 control={control}
                 name="phone"

@@ -1,4 +1,4 @@
-import { Country } from "country-state-city";
+﻿import { Country } from "country-state-city";
 import type { CheckmarkSelectOption } from "@/shared/ui";
 import type { MassUpdateFieldDef } from "./types";
 
@@ -19,12 +19,32 @@ function textField(name: string, label: string): MassUpdateFieldDef {
   return { name, label, valueType: "text" };
 }
 
+function nameField(name: string, label: string): MassUpdateFieldDef {
+  return { name, label, valueType: "name" };
+}
+
+function titleField(name: string, label: string): MassUpdateFieldDef {
+  return { name, label, valueType: "title" };
+}
+
+function emailField(name: string, label: string): MassUpdateFieldDef {
+  return { name, label, valueType: "email" };
+}
+
 function textareaField(name: string, label: string): MassUpdateFieldDef {
   return { name, label, valueType: "textarea" };
 }
 
 function numberField(name: string, label: string): MassUpdateFieldDef {
   return { name, label, valueType: "number" };
+}
+
+function phoneField(name: string, label: string): MassUpdateFieldDef {
+  return { name, label, valueType: "phone", maxLength: 20 };
+}
+
+function digitsField(name: string, label: string, maxLength = 12): MassUpdateFieldDef {
+  return { name, label, valueType: "digits", maxLength };
 }
 
 function selectField(
@@ -50,7 +70,7 @@ function addressFields(labels: {
     selectField("country", labels.country, countryNameSelectOptions()),
     textField("state", labels.state),
     textField("city", labels.city),
-    textField("pincode", labels.pincode),
+    digitsField("pincode", labels.pincode),
   ];
 }
 
@@ -77,7 +97,7 @@ export function buildJobMassUpdateFields(
   opts?: { includeForms?: boolean },
 ): MassUpdateFieldDef[] {
   const fields: MassUpdateFieldDef[] = [
-    textField("title", labels.title),
+    titleField("title", labels.title),
     textareaField("description", labels.description),
     selectField("client", labels.client, options.clientOptions, "number"),
     selectField("project", labels.project, options.projectOptions, "number"),
@@ -115,9 +135,46 @@ export type ClientMassUpdateLabels = {
 
 export function buildClientMassUpdateFields(labels: ClientMassUpdateLabels): MassUpdateFieldDef[] {
   return [
-    textField("name", labels.name),
-    textField("email", labels.email),
-    textField("phone", labels.phone),
+    nameField("name", labels.name),
+    emailField("email", labels.email),
+    phoneField("phone", labels.phone),
+    ...addressFields({
+      addressLine1: labels.addressLine1,
+      addressLine2: labels.addressLine2,
+      country: labels.country,
+      state: labels.state,
+      city: labels.city,
+      pincode: labels.pincode,
+    }),
+    selectField("is_active", labels.isActive, activeInactiveSelectOptions(labels.activeLabel, labels.inactiveLabel), "boolean"),
+  ];
+}
+
+export type VendorMassUpdateLabels = {
+  name: string;
+  email: string;
+  phone: string;
+  type: string;
+  addressLine1: string;
+  addressLine2: string;
+  country: string;
+  state: string;
+  city: string;
+  pincode: string;
+  isActive: string;
+  activeLabel: string;
+  inactiveLabel: string;
+};
+
+export function buildVendorMassUpdateFields(
+  typeOptions: CheckmarkSelectOption[],
+  labels: VendorMassUpdateLabels,
+): MassUpdateFieldDef[] {
+  return [
+    nameField("name", labels.name),
+    emailField("email", labels.email),
+    phoneField("phone", labels.phone),
+    selectField("type", labels.type, typeOptions, "number"),
     ...addressFields({
       addressLine1: labels.addressLine1,
       addressLine2: labels.addressLine2,
@@ -151,9 +208,9 @@ export function buildContactMassUpdateFields(
   labels: ContactMassUpdateLabels,
 ): MassUpdateFieldDef[] {
   return [
-    textField("name", labels.name),
-    textField("email", labels.email),
-    textField("phone", labels.phone),
+    nameField("name", labels.name),
+    emailField("email", labels.email),
+    phoneField("phone", labels.phone),
     selectField("client", labels.client, clientOptions, "number"),
     ...addressFields({
       addressLine1: labels.addressLine1,
@@ -189,7 +246,7 @@ export function buildSiteMassUpdateFields(
   labels: SiteMassUpdateLabels,
 ): MassUpdateFieldDef[] {
   return [
-    textField("site_name", labels.siteName),
+    titleField("site_name", labels.siteName),
     selectField("client", labels.client, clientOptions, "number"),
     ...addressFields({
       addressLine1: labels.addressLine1,
@@ -238,7 +295,7 @@ export function buildQuotationMassUpdateFields(
   labels: QuotationMassUpdateLabels,
 ): MassUpdateFieldDef[] {
   return [
-    textField("quote_name", labels.quoteName),
+    titleField("quote_name", labels.quoteName),
     selectField("customer", labels.customer, options.clientOptions, "number"),
     selectField("site", labels.site, options.siteOptions, "number"),
     selectField("primary_customer_contact", labels.primaryContact, options.contactOptions, "number"),
@@ -265,7 +322,7 @@ export type GroupMassUpdateLabels = {
 
 export function buildGroupMassUpdateFields(labels: GroupMassUpdateLabels): MassUpdateFieldDef[] {
   return [
-    textField("name", labels.name),
+    titleField("name", labels.name),
     selectField("is_active", labels.isActive, activeInactiveSelectOptions(labels.activeLabel, labels.inactiveLabel), "boolean"),
   ];
 }
@@ -305,7 +362,7 @@ export type ItemMassUpdateLabels = {
 
 export function buildItemMassUpdateFields(labels: ItemMassUpdateLabels): MassUpdateFieldDef[] {
   return [
-    textField("name", labels.name),
+    titleField("name", labels.name),
     textField("sku", labels.sku),
     numberField("quantity", labels.quantity),
     numberField("cost_price", labels.costPrice),
@@ -327,7 +384,7 @@ export function buildCompositeItemMassUpdateFields(
   labels: CompositeItemMassUpdateLabels,
 ): MassUpdateFieldDef[] {
   return [
-    textField("name", labels.name),
+    titleField("name", labels.name),
     textField("sku", labels.sku),
     numberField("quantity", labels.quantity),
     numberField("cost_price", labels.costPrice),
@@ -358,7 +415,7 @@ export function buildProjectMassUpdateFields(
   labels: ProjectMassUpdateLabels,
 ): MassUpdateFieldDef[] {
   return [
-    textField("name", labels.name),
+    titleField("name", labels.name),
     selectField("client", labels.client, options.clientOptions, "number"),
     selectField("project_type", labels.projectType, options.projectTypeOptions, "number"),
     textareaField("description", labels.description),

@@ -58,11 +58,18 @@ export type {
   AddressLocationFieldsProps,
 } from "./address-form-fields";
 export { FormFieldRow, FormFieldSpanFull } from "./form-field-grid";
-export { SurfacePhoneField } from "./surface-phone-field";
+export { SurfacePhoneField, DEFAULT_PHONE_COUNTRY } from "./surface-phone-field";
 export type { SurfacePhoneFieldProps } from "./surface-phone-field";
+export { SurfaceTextField } from "./surface-text-field";
+export type { SurfaceTextFieldProps } from "./surface-text-field";
+export { PhoneNumberInput } from "./phone-number-input";
+export type { PhoneNumberInputProps } from "./phone-number-input";
+export { SurfacePhoneCountrySelect } from "./surface-phone-country-select";
+export type { SurfacePhoneCountrySelectProps } from "./surface-phone-country-select";
 export { SurfaceShell } from "./surface-shell";
 export { InputWithEndSelect } from "./input-with-end-select";
 export type { InputWithEndSelectOption } from "./input-with-end-select";
+export { MoneyInput } from "./money-input";
 export { CheckmarkSelect } from "./checkmark-select";
 export type { CheckmarkSelectOption } from "./checkmark-select";
 export { MultiCheckSelect } from "./multi-check-select";

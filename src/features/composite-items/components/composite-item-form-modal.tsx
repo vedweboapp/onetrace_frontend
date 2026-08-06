@@ -26,11 +26,12 @@ import {
   type CheckmarkSelectOption,
   FieldLabel,
   fieldErrorTextClassName,
+  MoneyInput,
   surfaceInputClassName,
 } from "@/shared/ui";
 import { usePathname } from "@/i18n/navigation";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 
 type Props = {
   open: boolean;
@@ -451,7 +452,7 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
               type="text"
               autoComplete="off"
               value={name}
-              onChange={(e) => setName(capitalizeFirstLetter(e.target.value))}
+              onChange={(e) => setName(sanitizeTitleInput(e.target.value))}
               onBlur={() => setNameTouched(true)}
               disabled={submitting}
               placeholder={t("namePlaceholder")}
@@ -522,14 +523,13 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
             <FieldLabel htmlFor={costId} required>
               {t("costPrice")}
             </FieldLabel>
-            <input
+            <MoneyInput
               id={costId}
               type="number"
               inputMode="decimal"
               value={cost}
               onChange={(e) => setCost(e.target.value)}
               disabled={submitting}
-              className={surfaceInputClassName}
               min={0}
               step="0.01"
             />
@@ -538,14 +538,13 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
             <FieldLabel htmlFor={sellId} required>
               {t("sellingPrice")}
             </FieldLabel>
-            <input
+            <MoneyInput
               id={sellId}
               type="number"
               inputMode="decimal"
               value={sell}
               onChange={(e) => setSell(e.target.value)}
               disabled={submitting}
-              className={surfaceInputClassName}
               min={0}
               step="0.01"
             />

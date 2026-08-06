@@ -11,10 +11,14 @@ import { getApiFieldErrorMap } from "@/shared/form/report-form-api-error.util";
 import { markApiErrorToasted } from "@/core/errors/api-error-toast.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
+import {
+  hrefAfterEntityCreate,
+  QUICK_CREATE_SELECT_TARGET_PARAM,
+} from "@/shared/utils/quick-create-navigation.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import type { InputWithEndSelectOption } from "@/shared/ui";
-import { AppButton, CheckmarkSelect, FieldLabel, fieldErrorTextClassName, InputWithEndSelect, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
+import { AppButton, CheckmarkSelect, FieldLabel, fieldErrorTextClassName, InputWithEndSelect, MoneyInput, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
 import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
 import { formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
 import { getUnitTypeId, resolveDefaultUnitTypeSelectValue } from "@/features/items/utils/item-unit-type.util";
@@ -23,6 +27,7 @@ import {
   parseDimensionsInput,
 } from "@/features/items/utils/item-dimensions-input.util";
 import type { DimensionUnit, WeightUnit } from "@/features/items/types/item.types";
+import { useSearchParams } from "next/navigation";
 
 type Props = {
   mode: "create" | "edit";
@@ -64,9 +69,16 @@ function weightPayload(valueRaw: string, unitRaw: WeightUnit): { weight?: number
 export function ItemFormScreen({ mode, itemId }: Props) {
   const t = useTranslations("Dashboard.items");
   const tModal = useTranslations("Dashboard.items.modal");
+  const tQuick = useTranslations("Dashboard.quickCreate");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const safeBack = useFormBackUrl("items", routes.dashboard.items);
   const isEdit = mode === "edit";
+
+  const unitTypeQuickAdd = useSettingsQuickAdd({
+    href: routes.dashboard.settingsUnitTypes,
+    addLabel: tQuick("add.unitType"),
+  });
 
   const nameId = React.useId();
   const skuId = React.useId();
@@ -81,7 +93,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
   const [cost, setCost] = React.useState("");
   const [sell, setSell] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
-  const [touched, setTouched] = React.useState<{ name?: boolean; sku?: boolean }>({});
+  const [touched, setTouched] = React.useState<{ name?: boolean; sku?: boolean; cost?: boolean; sell?: boolean }>({});
   const [serverErrors, setServerErrors] = React.useState<{ name?: string; sku?: string }>({});
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
@@ -175,12 +187,18 @@ export function ItemFormScreen({ mode, itemId }: Props) {
 
   const nameInvalid = Boolean(touched.name) && name.trim().length === 0;
   const skuInvalid = Boolean(touched.sku) && sku.trim().length === 0;
+  const costNPreview = numOrNull(cost);
+  const sellNPreview = numOrNull(sell);
+  const costInvalid = Boolean(touched.cost) && (costNPreview == null || costNPreview < 0);
+  const sellInvalid = Boolean(touched.sell) && (sellNPreview == null || sellNPreview < 0);
   const nameError = nameInvalid ? tModal("nameError") : serverErrors.name;
   const skuError = skuInvalid ? tModal("skuError") : serverErrors.sku;
+  const costError = costInvalid ? tModal("costPriceError") : undefined;
+  const sellError = sellInvalid ? tModal("sellingPriceError") : undefined;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setTouched({ name: true, sku: true });
+    setTouched({ name: true, sku: true, cost: true, sell: true });
     setServerErrors({});
 
     const nameTrim = name.trim();
@@ -188,9 +206,10 @@ export function ItemFormScreen({ mode, itemId }: Props) {
     if (!nameTrim || !skuTrim) return;
 
     const qtyN = numOrNull(qty) ?? 0;
-    const costN = numOrNull(cost) ?? 0;
-    const sellN = numOrNull(sell) ?? 0;
-    if (qtyN < 0 || costN < 0 || sellN < 0) return;
+    const costN = numOrNull(cost);
+    const sellN = numOrNull(sell);
+    if (costN == null || costN < 0 || sellN == null || sellN < 0) return;
+    if (qtyN < 0) return;
 
     setSubmitting(true);
     try {
@@ -229,7 +248,14 @@ export function ItemFormScreen({ mode, itemId }: Props) {
               ...weightFields,
             });
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
-      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.items, saved.id, safeBack));
+      router.replace(
+        hrefAfterEntityCreate({
+          createdId: saved.id,
+          selectTarget: isEdit ? null : searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
+          backHref: safeBack,
+          listPath: routes.dashboard.items,
+        }),
+      );
     } catch (error) {
       const fieldErrors = getApiFieldErrorMap(error);
       if (fieldErrors.name || fieldErrors.sku) {
@@ -286,7 +312,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                   value={name}
                   onChange={(e) => {
                     setServerErrors((prev) => ({ ...prev, name: undefined }));
-                    setName(capitalizeFirstLetter(e.target.value));
+                    setName(sanitizeTitleInput(e.target.value));
                   }}
                   onBlur={() => setTouched((p) => ({ ...p, name: true }))}
                   disabled={submitting}
@@ -332,6 +358,9 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                   clearable
                   className="w-full"
                   onChange={setUnitType}
+                  onAdd={unitTypeQuickAdd.onAdd}
+                  addAriaLabel={unitTypeQuickAdd.addAriaLabel}
+                  addLabel={unitTypeQuickAdd.addLabel}
                 />
                 {unitTypesError ? <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{unitTypesError}</p> : null}
               </div>
@@ -349,12 +378,36 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                 />
               </div>
               <div>
-                <FieldLabel htmlFor={costId}>{tModal("costPrice")}</FieldLabel>
-                <input id={costId} type="number" inputMode="decimal" min={0} step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} disabled={submitting} className={surfaceInputClassName} />
+                <FieldLabel htmlFor={costId} required>{tModal("costPrice")}</FieldLabel>
+                <MoneyInput
+                  id={costId}
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="0.01"
+                  value={cost}
+                  onChange={(e) => setCost(e.target.value)}
+                  onBlur={() => setTouched((p) => ({ ...p, cost: true }))}
+                  disabled={submitting}
+                  invalid={!!costError}
+                />
+                {costError ? <p className={fieldErrorTextClassName}>{costError}</p> : null}
               </div>
               <div>
-                <FieldLabel htmlFor={sellId}>{tModal("sellingPrice")}</FieldLabel>
-                <input id={sellId} type="number" inputMode="decimal" min={0} step="0.01" value={sell} onChange={(e) => setSell(e.target.value)} disabled={submitting} className={surfaceInputClassName} />
+                <FieldLabel htmlFor={sellId} required>{tModal("sellingPrice")}</FieldLabel>
+                <MoneyInput
+                  id={sellId}
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="0.01"
+                  value={sell}
+                  onChange={(e) => setSell(e.target.value)}
+                  onBlur={() => setTouched((p) => ({ ...p, sell: true }))}
+                  disabled={submitting}
+                  invalid={!!sellError}
+                />
+                {sellError ? <p className={fieldErrorTextClassName}>{sellError}</p> : null}
               </div>
             </div>
 

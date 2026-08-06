@@ -134,6 +134,41 @@ export function buildProjectJobsTabHref(projectPathname: string): string {
   return qs ? `${pathOnly}?${qs}` : `${pathOnly}?tab=jobs`;
 }
 
+/** Current page URL (path + query) — use as back target for detail → edit (one step back). */
+export function buildCurrentPageBackHref(
+  pathname: string,
+  searchParams?: { toString(): string } | null,
+): string {
+  const qs = searchParams?.toString().trim();
+  return qs ? `${pathname}?${qs}` : pathname;
+}
+
+/** Parent entity detail URL with a specific tab active (nested list → child detail back links). */
+export function buildEntityDetailTabBackHref(
+  pathname: string,
+  tab: string,
+  searchParams?: { toString(): string } | null,
+): string {
+  const params = new URLSearchParams(searchParams?.toString() ?? "");
+  params.set("tab", tab);
+  const qs = params.toString();
+  return qs ? `${pathname}?${qs}` : `${pathname}?tab=${tab}`;
+}
+
+/** Entity detail → edit, keeping nav context query params (e.g. contact_type, job_category). */
+export function buildEntityEditHrefFromDetail(
+  pathname: string,
+  searchParams?: { toString(): string } | null,
+): string {
+  const params = new URLSearchParams(searchParams?.toString() ?? "");
+  params.delete("highlight");
+  params.delete("back");
+  params.delete("select");
+  params.delete("selectTarget");
+  const qs = params.toString();
+  return qs ? `${pathname}/edit?${qs}` : `${pathname}/edit`;
+}
+
 /** Project detail with a specific tab (and optional row highlight after create). */
 export function buildProjectDetailTabHref(
   projectId: number,

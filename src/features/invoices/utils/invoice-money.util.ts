@@ -1,3 +1,6 @@
+import { formatOrgMoney } from "@/shared/money/format-money.util";
+import { getOrgCurrencySettings } from "@/shared/money/org-currency.store";
+
 export function parseMoneyValue(raw: unknown): number {
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;
   if (typeof raw === "string" && raw.trim()) {
@@ -7,21 +10,9 @@ export function parseMoneyValue(raw: unknown): number {
   return 0;
 }
 
-export function formatMoneyDisplay(amount: number, locale: string, currency = "USD"): string {
-  if (!Number.isFinite(amount)) return "—";
-  try {
-    return new Intl.NumberFormat(locale === "es" ? "es" : "en", {
-      style: "currency",
-      currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  } catch {
-    return new Intl.NumberFormat(locale === "es" ? "es" : "en", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  }
+/** Uses organization home currency from Company Settings. */
+export function formatMoneyDisplay(amount: number, _locale?: string, _currency?: string): string {
+  return formatOrgMoney(amount, getOrgCurrencySettings());
 }
 
 export function computeLineAmount(quantity: number, rate: number): number {

@@ -84,7 +84,7 @@ export function SiteDetailBody({
     <DetailPagePadding>
       <DetailPageMapLayout map={mapNode} mapTitle={t("detail.sectionMap")} showMap>
         <DetailPanelCard title={t("detail.sectionOverview")}>
-          <DetailMetricsGrid>
+          <DetailMetricsGrid compact>
             <DetailStatusMetric
               label={t("fields.status")}
               isActive={detail.is_active}

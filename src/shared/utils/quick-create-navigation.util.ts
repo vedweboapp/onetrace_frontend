@@ -1,7 +1,13 @@
 import type { ContactType } from "@/features/contacts/types/contact.types";
 import { routes } from "@/shared/config/routes";
-import type { QuickCreateKind } from "@/shared/types/quick-create.types";
-import { mergeUrlQueryParam, readBackHrefForPath, sanitizeInternalListBack, storeBackHrefForPath } from "@/shared/utils/detail-from-list.util";
+import { isQuickCreateKind, type QuickCreateKind } from "@/shared/types/quick-create.types";
+import {
+  buildEntityDetailHrefAfterSave,
+  mergeUrlQueryParam,
+  readBackHrefForPath,
+  sanitizeInternalListBack,
+  storeBackHrefForPath,
+} from "@/shared/utils/detail-from-list.util";
 import type { DashboardListSection } from "@/shared/utils/detail-from-list.util";
 
 export const QUICK_CREATE_SELECT_PARAM = "select";
@@ -50,6 +56,8 @@ export function getQuickCreateNewPath(kind: QuickCreateKind): string {
   switch (kind) {
     case "client":
       return `${routes.dashboard.clients}/new`;
+    case "vendor":
+      return `${routes.dashboard.vendors}/new`;
     case "contact":
       return `${routes.dashboard.contacts}/new`;
     case "site":
@@ -91,4 +99,20 @@ export function buildQuickCreateReturnHref(back: string, createdId: number, sele
   let href = mergeUrlQueryParam(back, QUICK_CREATE_SELECT_PARAM, String(createdId));
   href = mergeUrlQueryParam(href, QUICK_CREATE_SELECT_TARGET_PARAM, selectTarget);
   return href;
+}
+
+/**
+ * After create: return to the parent form with `?select=` when launched via quick-create,
+ * otherwise open the new entity detail page.
+ */
+export function hrefAfterEntityCreate(args: {
+  createdId: number;
+  selectTarget: string | null | undefined;
+  backHref: string;
+  listPath: string;
+}): string {
+  if (isQuickCreateKind(args.selectTarget)) {
+    return buildQuickCreateReturnHref(args.backHref, args.createdId, args.selectTarget);
+  }
+  return buildEntityDetailHrefAfterSave(args.listPath, args.createdId, args.backHref);
 }

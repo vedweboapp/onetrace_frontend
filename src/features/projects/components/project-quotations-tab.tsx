@@ -4,7 +4,7 @@ import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { usePathname, useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import { fetchTagsPage } from "@/features/tags/api/tag.api";
@@ -29,7 +29,7 @@ import {
 } from "@/shared/components/layout/detail-tab-layout";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildProjectDetailTabHref } from "@/shared/utils/detail-from-list.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { cn } from "@/core/utils/http.util";
 import {
@@ -99,10 +99,12 @@ export function ProjectQuotationsTab({ projectId }: Props) {
   const dateFmt = useDashboardDateFormat();
   const dueFmt = useDashboardDateFormat({ dateOnly: true });
   const router = useRouter();
-  const pathname = usePathname();
   const { highlightClassName } = useListRowHighlight();
 
-  const listBack = pathname;
+  const listBack = React.useMemo(
+    () => buildProjectDetailTabHref(projectId, "quotations"),
+    [projectId],
+  );
 
   const openDetail = React.useCallback(
     (id: number) => {

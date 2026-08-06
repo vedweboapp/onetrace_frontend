@@ -16,8 +16,7 @@ import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { routes } from "@/shared/config/routes";
-import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { buildEntityDetailHrefAfterSave, mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { usePhoneCountryFromCountryIso } from "@/shared/hooks/use-phone-country-from-address";
 import {
@@ -30,6 +29,7 @@ import {
   FieldGroup,
   FormFieldRow,
   SurfacePhoneField,
+  SurfaceTextField,
   surfaceInputClassName,
 } from "@/shared/ui";
 
@@ -119,7 +119,13 @@ export function ContactFormModal({
       onCreated?.(created);
       onSaved();
       onClose();
-      router.push(buildEntityDetailHrefAfterSave(routes.dashboard.contacts, created.id, routes.dashboard.contacts));
+      router.push(
+        mergeUrlQueryParam(
+          buildEntityDetailHrefAfterSave(routes.dashboard.contacts, created.id, routes.dashboard.contacts),
+          "contact_type",
+          values.contact_type,
+        ),
+      );
     } catch (error) {
       reportFormSubmitApiError(error, setError);
     } finally {
@@ -169,20 +175,16 @@ export function ContactFormModal({
         ) : null}
 
         <FormFieldRow cols="2">
-          <FieldGroup label={t("fields.name")} htmlFor="contact-name" required>
-            <input
-              id="contact-name"
-              aria-invalid={errors.name ? true : undefined}
-              aria-describedby={errors.name ? "contact-name-err" : undefined}
-              className={cn(surfaceInputClassName, errors.name && "border-red-500 dark:border-red-500")}
-              {...register("name", {
-                onChange: (e) => {
-                  e.target.value = capitalizeFirstLetter(e.target.value);
-                },
-              })}
-            />
-            <FieldErrorText id="contact-name-err">{errors.name?.message}</FieldErrorText>
-          </FieldGroup>
+          <SurfaceTextField
+                register={register}
+                name="name"
+                id="contact-name"
+                label={t("fields.name")}
+                kind="name"
+                required
+                autoComplete="name"
+                error={errors.name?.message}
+              />
           {lockClient ? (
             <FieldGroup label={t("fields.client")} htmlFor="contact-client-locked">
               <input
@@ -219,17 +221,16 @@ export function ContactFormModal({
               <FieldErrorText>{errors.client?.message}</FieldErrorText>
             </FieldGroup>
           )}
-          <FieldGroup label={t("fields.email")} htmlFor="contact-email" required>
-            <input
-              id="contact-email"
-              type="email"
-              aria-invalid={errors.email ? true : undefined}
-              aria-describedby={errors.email ? "contact-email-err" : undefined}
-              className={cn(surfaceInputClassName, errors.email && "border-red-500 dark:border-red-500")}
-              {...register("email")}
-            />
-            <FieldErrorText id="contact-email-err">{errors.email?.message}</FieldErrorText>
-          </FieldGroup>
+          <SurfaceTextField
+                register={register}
+                name="email"
+                id="contact-email"
+                label={t("fields.email")}
+                kind="email"
+                required
+                autoComplete="email"
+                error={errors.email?.message}
+              />
           <SurfacePhoneField
             control={control}
             name="phone"

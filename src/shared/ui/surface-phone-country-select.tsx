@@ -205,8 +205,16 @@ export function SurfacePhoneCountrySelect({
                           role="option"
                           aria-selected={isSelected}
                           onClick={() => {
-                            onChange(opt.value === "ZZ" ? undefined : (opt.value as Country));
+                            const next = opt.value === "ZZ" ? undefined : (opt.value as Country);
                             setOpen(false);
+                            queueMicrotask(() => {
+                              onChange(next);
+                              const phoneRoot = triggerRef.current?.closest(".PhoneInput");
+                              const numberInput = phoneRoot?.querySelector(
+                                ".PhoneInputInput",
+                              ) as HTMLInputElement | null;
+                              numberInput?.focus({ preventScroll: true });
+                            });
                           }}
                           className={cn(
                             "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition",

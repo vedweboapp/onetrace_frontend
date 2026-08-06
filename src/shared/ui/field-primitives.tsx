@@ -61,14 +61,16 @@ export function FieldGroup({
   htmlFor,
   required,
   children,
+  className,
 }: {
   label: ReactNode;
   htmlFor?: string;
   required?: boolean;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <div>
+    <div className={className}>
       <FieldLabel htmlFor={htmlFor} required={required}>
         {label}
       </FieldLabel>

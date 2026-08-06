@@ -25,7 +25,7 @@ import {
   resolveFormBackUrl,
 } from "@/shared/utils/quick-create-navigation.util";
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { cn } from "@/core/utils/http.util";
 import {
   AppButton,
@@ -302,7 +302,7 @@ export function GroupFormScreen({ mode, groupId }: Props) {
                 type="text"
                 autoComplete="off"
                 value={name}
-                onChange={(e) => setName(capitalizeFirstLetter(e.target.value))}
+                onChange={(e) => setName(sanitizeTitleInput(e.target.value))}
                 onBlur={() => setNameTouched(true)}
                 disabled={submitting}
                 placeholder={tModal("namePlaceholder")}

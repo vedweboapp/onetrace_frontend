@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { zTrimmedNonEmpty } from "@/shared/form";
+import { isAppValidPhoneNumber } from "@/shared/utils/phone-input.util";
+import { zEmail, zRequiredName } from "@/shared/form";
 import {
   createEntityAddressesArraySchema,
   type EntityAddressFormMessages,
@@ -14,9 +15,11 @@ export type VendorFormMessages = {
 
 export function createVendorFormSchema(messages: VendorFormMessages) {
   return z.object({
-    name: zTrimmedNonEmpty(messages.name),
-    email: zTrimmedNonEmpty(messages.email).email(messages.email),
-    phone: z.string(),
+    name: zRequiredName(messages.name),
+    email: zEmail(messages.email),
+    phone: z.string().refine((val) => isAppValidPhoneNumber(val), {
+      message: messages.phoneInvalid,
+    }),
     type: z
       .string()
       .trim()

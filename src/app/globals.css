@@ -96,6 +96,18 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Number inputs: hide browser increment/decrement spinners; keep type=number validation. */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 @keyframes snackbar-enter {
   from {
     opacity: 0;

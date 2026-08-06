@@ -15,6 +15,7 @@ import { cn } from "@/core/utils/http.util";
 import { toastSuccess, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
+import { useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
 import {
   AppButton,
@@ -50,9 +51,15 @@ export function ReturnToStockCreateScreen({
   initialMaterialRequestId = null,
 }: Props) {
   const t = useTranslations("Dashboard.dispatches");
+  const tQuick = useTranslations("Dashboard.quickCreate");
   const router = useRouter();
   const searchParams = useSearchParams();
   const listBack = resolveFormBackUrl(searchParams.get("back"), "return-to-stock", routes.dashboard.returnToStock);
+
+  const workerQuickAdd = useSettingsQuickAdd({
+    href: `${routes.dashboard.settingsUsers}/new`,
+    addLabel: tQuick("add.user"),
+  });
 
   const [workerId, setWorkerId] = React.useState(
     initialWorkerId != null && initialWorkerId > 0 ? String(initialWorkerId) : "",
@@ -237,6 +244,9 @@ export function ReturnToStockCreateScreen({
                   searchable
                   className="w-full"
                   onChange={setWorkerId}
+                  onAdd={workerQuickAdd.onAdd}
+                  addAriaLabel={workerQuickAdd.addAriaLabel}
+                  addLabel={workerQuickAdd.addLabel}
                 />
               </div>
               <AppButton

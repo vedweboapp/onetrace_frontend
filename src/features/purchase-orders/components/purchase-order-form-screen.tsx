@@ -133,6 +133,14 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
   );
   const groupQuickCreate = useQuickCreate({ kind: "group", getFormDraft: !isEdit ? getFormDraft : undefined });
   const itemQuickCreate = useQuickCreate({ kind: "item", getFormDraft: !isEdit ? getFormDraft : undefined });
+  const vendorQuickCreate = useQuickCreate({ kind: "vendor", getFormDraft: !isEdit ? getFormDraft : undefined });
+  const contactQuickCreate = useQuickCreate({
+    kind: "contact",
+    vendorId,
+    contactType: "vendor",
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+  });
+  const projectQuickCreate = useQuickCreate({ kind: "project", getFormDraft: !isEdit ? getFormDraft : undefined });
 
   const subtotal = React.useMemo(() => computeFormSubtotal(lineItems), [lineItems]);
   const totalBalance = subtotal;
@@ -203,7 +211,7 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
       }
     },
     onApplySelect: ({ selectTarget, selectId }) => {
-      if (selectTarget === "client") {
+      if (selectTarget === "vendor" || selectTarget === "client") {
         setValue("vendor", selectId, { shouldDirty: true, shouldValidate: true });
         setValue("contact", "", { shouldDirty: true });
         return;
@@ -460,6 +468,9 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
                         listLabel={t("fields.vendorName")}
                         portaled
                         searchable
+                        onAdd={vendorQuickCreate.onAdd}
+                        addAriaLabel={vendorQuickCreate.addAriaLabel}
+                        addLabel={vendorQuickCreate.addLabel}
                       />
                       <FieldErrorText>{errors.vendor?.message}</FieldErrorText>
                     </div>
@@ -482,6 +493,9 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
                         portaled
                         searchable
                         clearable
+                        onAdd={contactQuickCreate.onAdd}
+                        addAriaLabel={contactQuickCreate.addAriaLabel}
+                        addLabel={contactQuickCreate.addLabel}
                       />
                     </div>
                   )}
@@ -504,6 +518,9 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
                     searchable
                     clearable
                     className="h-9"
+                    onAdd={projectQuickCreate.onAdd}
+                    addAriaLabel={projectQuickCreate.addAriaLabel}
+                    addLabel={projectQuickCreate.addLabel}
                   />
                 )}
               />

@@ -34,7 +34,7 @@ import {
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { DetailTabStepNav } from "@/shared/components/layout/detail-tab-step-nav";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { routes } from "@/shared/config/routes";
@@ -390,7 +390,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
               {...quoteNameRegister}
               onBlur={(e) => {
                 quoteNameRegister.onBlur(e);
-                const next = capitalizeFirstLetter(e.target.value);
+                const next = sanitizeTitleInput(e.target.value);
                 if (next !== e.target.value) setValue("quote_name", next, { shouldValidate: true });
               }}
             />

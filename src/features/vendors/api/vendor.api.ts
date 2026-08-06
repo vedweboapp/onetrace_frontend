@@ -2,6 +2,7 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import { fetchAllEntityIds } from "@/shared/mass-actions";
 import { VENDOR_PATHS } from "./vendor.paths";
 import type {
   Vendor,
@@ -22,19 +23,34 @@ export type VendorListFilters = {
   is_active?: boolean;
 };
 
+export type VendorRequestOptions = {
+  silent?: boolean;
+};
+
 export async function fetchVendorsPage(
   page = 1,
   pageSize = 20,
   filters?: VendorListFilters,
+  options?: VendorRequestOptions,
 ): Promise<{ items: Vendor[]; pagination: VendorListResponse["pagination"] }> {
   const params: Record<string, string | number> = { page, page_size: pageSize };
   const q = filters?.search?.trim();
   if (q) params.search = q;
   if (typeof filters?.is_active === "boolean") params.is_active = String(filters.is_active);
 
-  const { data } = await api.get<VendorListResponse>(VENDOR_PATHS.list, { params });
+  const { data } = await api.get<VendorListResponse>(VENDOR_PATHS.list, {
+    params,
+    skipErrorToast: options?.silent === true,
+  });
   assertEnvelopeSuccess(data);
   return { items: data.data, pagination: data.pagination };
+}
+
+export async function fetchAllVendorIds(
+  filters?: VendorListFilters,
+  options?: VendorRequestOptions,
+): Promise<number[]> {
+  return fetchAllEntityIds((page, pageSize) => fetchVendorsPage(page, pageSize, filters, options));
 }
 
 export async function fetchVendor(id: number): Promise<Vendor> {

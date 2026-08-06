@@ -159,12 +159,18 @@
     "quickCreate": {
       "add": {
         "client": "Add new client",
+        "vendor": "Add new vendor",
         "contact": "Add new contact",
         "site": "Add new site",
         "project": "Add new project",
         "group": "Add new group",
         "composite-item": "Add new composite item",
-        "item": "Add new item"
+        "item": "Add new item",
+        "vendorType": "Add vendor type",
+        "unitType": "Add unit type",
+        "installationType": "Add installation type",
+        "materialStatus": "Add material status",
+        "user": "Add new user"
       }
     },
     "common": {
@@ -3982,7 +3988,9 @@
         "unitTypePlaceholder": "Select unit",
         "unitTypesLoadError": "Could not load unit types.",
         "costPrice": "Cost price",
+        "costPriceError": "Enter a cost price.",
         "sellingPrice": "Selling price",
+        "sellingPriceError": "Enter a selling price.",
         "fulfilmentDetails": "Fulfilment details",
         "dimensions": "Dimensions",
         "dimensionsPlaceholder": "L*W*H",

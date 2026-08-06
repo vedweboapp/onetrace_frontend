@@ -17,7 +17,6 @@ import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.ut
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { sanitizeInternalListBack, buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
   CascadingLocationFields,
@@ -26,6 +25,7 @@ import {
   FieldGroup,
   FormFieldRow,
   SurfacePhoneField,
+  SurfaceTextField,
   SurfaceShell,
   surfaceInputClassName,
 } from "@/shared/ui";
@@ -140,20 +140,38 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
         ) : (
           <form id="user-upsert-screen-form" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(submit)}>
             <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
-              <FieldGroup label={t("fields.firstName")} htmlFor="user-first-name" required>
-                <input id="user-first-name" aria-invalid={errors.first_name ? true : undefined} className={cn(surfaceInputClassName, errors.first_name && "border-red-500 dark:border-red-500")} {...register("first_name", { onChange: (e) => { e.target.value = capitalizeFirstLetter(e.target.value); } })} />
-                <FieldErrorText>{errors.first_name?.message}</FieldErrorText>
-              </FieldGroup>
-              <FieldGroup label={t("fields.lastName")} htmlFor="user-last-name" required>
-                <input id="user-last-name" aria-invalid={errors.last_name ? true : undefined} className={cn(surfaceInputClassName, errors.last_name && "border-red-500 dark:border-red-500")} {...register("last_name", { onChange: (e) => { e.target.value = capitalizeFirstLetter(e.target.value); } })} />
-                <FieldErrorText>{errors.last_name?.message}</FieldErrorText>
-              </FieldGroup>
+              <SurfaceTextField
+                register={register}
+                name="first_name"
+                id="user-first-name"
+                label={t("fields.firstName")}
+                kind="name"
+                required
+                autoComplete="given-name"
+                error={errors.first_name?.message}
+              />
+              <SurfaceTextField
+                register={register}
+                name="last_name"
+                id="user-last-name"
+                label={t("fields.lastName")}
+                kind="name"
+                required
+                autoComplete="family-name"
+                error={errors.last_name?.message}
+              />
             </FormFieldRow>
             <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
-              <FieldGroup label={t("fields.email")} htmlFor="user-email" required>
-                <input id="user-email" type="email" aria-invalid={errors.email ? true : undefined} className={cn(surfaceInputClassName, errors.email && "border-red-500 dark:border-red-500")} {...register("email")} />
-                <FieldErrorText>{errors.email?.message}</FieldErrorText>
-              </FieldGroup>
+              <SurfaceTextField
+                register={register}
+                name="email"
+                id="user-email"
+                label={t("fields.email")}
+                kind="email"
+                required
+                autoComplete="email"
+                error={errors.email?.message}
+              />
               <SurfacePhoneField
                 control={control}
                 name="phone_number"

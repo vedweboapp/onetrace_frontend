@@ -6,8 +6,8 @@ import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/componen
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import type { Group } from "@/features/groups/types/group.types";
-import { moneyDisplay } from "@/features/groups/utils/group-linked-item-display.util";
 import { routes } from "@/shared/config/routes";
+import { useOrgCurrency } from "@/shared/money/use-org-currency";
 import {
   DetailLinkedTable,
   DetailLinkedTableRow,
@@ -42,6 +42,7 @@ export function GroupDetailBody({
 }) {
   const t = useTranslations("Dashboard.groups");
   const tMeta = useTranslations("Dashboard.common.detail");
+  const { formatMoneyValue: moneyDisplay } = useOrgCurrency();
   const linkedItems = detail.items ?? [];
   const [compositeById, setCompositeById] = React.useState<Map<number, CompositeItem>>(new Map());
 

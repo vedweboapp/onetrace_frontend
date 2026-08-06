@@ -36,7 +36,7 @@ import {
   parseIsActiveParam,
   useListUrlState,
 } from "@/shared/hooks/use-list-url-state";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import {
   applySequencesToItems,
   checklistSequenceUpdates,
@@ -872,7 +872,7 @@ if (editing && initialValues) {
               id="checklist-type-title"
               value={title}
               onChange={(e) => {
-                setTitle(capitalizeFirstLetter(e.target.value));
+                setTitle(sanitizeTitleInput(e.target.value));
                 if (errors.title)
                   setErrors((prev) => ({ ...prev, title: undefined }));
               }}

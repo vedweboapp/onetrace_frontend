@@ -4,16 +4,16 @@ import * as React from "react";
 import type { ReactNode } from "react";
 import type { Control, FieldPath, FieldValues, RegisterOptions } from "react-hook-form";
 import { useController } from "react-hook-form";
-import PhoneInput from "react-phone-number-input";
-import type { Country, Value } from "react-phone-number-input";
+import type { Country } from "react-phone-number-input";
 import { cn } from "@/core/utils/http.util";
 import {
+  clampPhoneE164ToCountryMax,
   countryIsoToPhoneCountry,
   DEFAULT_PHONE_COUNTRY_CODE,
   normalizePhoneForPhoneInput,
 } from "@/shared/utils/phone-input.util";
 import { FieldErrorText, FieldLabel } from "./field-primitives";
-import { SurfacePhoneCountrySelect } from "./surface-phone-country-select";
+import { PhoneNumberInput } from "./phone-number-input";
 
 /** Default calling code for phone fields across the app (+1 United States). */
 export const DEFAULT_PHONE_COUNTRY: Country = DEFAULT_PHONE_COUNTRY_CODE;
@@ -35,6 +35,7 @@ export type SurfacePhoneFieldProps<TFieldValues extends FieldValues> = {
   countryIso?: string | null;
   placeholder?: string;
   className?: string;
+  /** @deprecated Length is always clamped per country; kept for call-site compatibility. */
   limitMaxLength?: boolean;
   rules?: RegisterOptions<TFieldValues, FieldPath<TFieldValues>>;
 };
@@ -52,7 +53,6 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
   countryIso,
   placeholder,
   className,
-  limitMaxLength = true,
   rules,
 }: SurfacePhoneFieldProps<TFieldValues>) {
   const { field } = useController({ control, name, rules });
@@ -60,13 +60,13 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
   const errId = error ? `${id}-error` : undefined;
   const described = [describedBy, errId].filter(Boolean).join(" ") || undefined;
 
-  const displayValue = React.useMemo(
-    () => normalizePhoneForPhoneInput(typeof value === "string" ? value : ""),
-    [value],
-  );
-
   const resolvedCountry =
     countryIsoToPhoneCountry(countryIso) ?? defaultCountry;
+
+  const displayValue = React.useMemo(() => {
+    const normalized = normalizePhoneForPhoneInput(typeof value === "string" ? value : "");
+    return clampPhoneE164ToCountryMax(normalized, resolvedCountry);
+  }, [value, resolvedCountry]);
 
   React.useEffect(() => {
     const raw = typeof value === "string" ? value : "";
@@ -81,17 +81,15 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
       <FieldLabel htmlFor={id} required={required}>
         {label}
       </FieldLabel>
-      <PhoneInput
+      <PhoneNumberInput
         key={phoneInputKey}
-        value={displayValue as Value}
-        onChange={(next) => onChange(next ?? "")}
+        value={displayValue}
+        onChange={onChange}
         onBlur={onBlur}
-        international
-        limitMaxLength={limitMaxLength}
         defaultCountry={resolvedCountry}
         disabled={disabled}
         placeholder={placeholder}
-        countrySelectComponent={SurfacePhoneCountrySelect}
+        inputRef={ref}
         className={cn(
           "mt-1.5",
           error && "ring-2 ring-red-500/30 dark:ring-red-500/25",
@@ -99,7 +97,6 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
         numberInputProps={{
           id,
           name: fieldName,
-          ref,
           "aria-invalid": error ? true : undefined,
           "aria-describedby": described,
         }}
