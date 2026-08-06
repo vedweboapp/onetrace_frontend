@@ -15,6 +15,14 @@ import type { Drawing } from "@/features/projects/types/drawing.types";
 import { countDrawingPins } from "@/features/projects/utils/drawing-list-pins.util";
 import type { ListPageViewMode } from "@/shared/hooks/use-list-url-state";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import {
+  detailTabBodyClassName,
+  detailTabEmptyClassName,
+  detailTabErrorClassName,
+  detailTabFilterBarClassName,
+  detailTabSectionClassName,
+  detailTabToolbarClassName,
+} from "@/shared/components/layout/detail-tab-layout";
 import { cn } from "@/core/utils/http.util";
 import {
   AddButton,
@@ -413,11 +421,11 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   );
 
   return (
-    <div className="divide-y divide-slate-100 dark:divide-slate-800">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
+    <div className={detailTabSectionClassName}>
+      <div className={detailTabToolbarClassName}>
         <div className="min-w-0">
           <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{t("title")}</h2>
-          <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
+          <p className="mt-0.5 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
         </div>
         <AddButton
           type="button"
@@ -429,7 +437,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
         />
       </div>
 
-      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className={cn(detailTabFilterBarClassName, "sm:justify-between")}>
         <ListPageSearchField
           value={search}
           onCommit={commitSearch}
@@ -441,7 +449,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
       </div>
 
       {loadError ? (
-        <p className="px-4 py-10 text-center text-sm text-red-600 dark:text-red-400 sm:px-6">{loadError}</p>
+        <p className={detailTabErrorClassName}>{loadError}</p>
       ) : loading ? (
         listViewMode === "list" ? (
           <div className="grid grid-cols-1 gap-5 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3 lg:gap-6">
@@ -463,7 +471,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
             ))}
           </div>
         ) : (
-          <div className="space-y-2 px-4 py-6 sm:px-6">
+          <div className={cn("space-y-2", detailTabBodyClassName)}>
             <div className="h-10 animate-pulse bg-slate-100 dark:bg-slate-800" />
             <div className="h-10 animate-pulse bg-slate-100 dark:bg-slate-800" />
             <div className="h-10 animate-pulse bg-slate-100 dark:bg-slate-800" />
@@ -472,7 +480,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
       ) : listViewMode === "list" ? (
         <>
           {items.length === 0 ? (
-            <p className="px-4 py-10 text-center text-sm text-slate-600 dark:text-slate-400 sm:px-6">{t("empty")}</p>
+            <p className={detailTabEmptyClassName}>{t("empty")}</p>
           ) : (
             <div className="grid grid-cols-1 gap-5 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3 lg:gap-6">
               {items.map((row) => (

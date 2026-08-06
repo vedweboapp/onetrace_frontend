@@ -2,33 +2,27 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { cn } from "@/core/utils/http.util";
 import { createItem, fetchItem, updateItem } from "@/features/items/api/item.api";
-import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { getApiFieldErrorMap } from "@/shared/form/report-form-api-error.util";
 import { markApiErrorToasted } from "@/core/errors/api-error-toast.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
-import {
-  resolveFormBackUrl,
-} from "@/shared/utils/quick-create-navigation.util";
 import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import type { InputWithEndSelectOption } from "@/shared/ui";
-import { AppButton, FieldLabel, fieldErrorTextClassName, InputWithEndSelect, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
+import { AppButton, CheckmarkSelect, FieldLabel, fieldErrorTextClassName, InputWithEndSelect, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
 import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
 import { formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
 import { getUnitTypeId, resolveDefaultUnitTypeSelectValue } from "@/features/items/utils/item-unit-type.util";
-import type { ItemAttachmentWriteRef } from "@/features/items/utils/item-write-form-data.util";
 import {
-  hasItemAttachment,
-  resolveItemAttachmentLabel,
-  resolveItemAttachmentUrl,
-} from "@/features/items/utils/item-attachment-display.util";
-import type { DimensionUnit, ItemAttachment, WeightUnit } from "@/features/items/types/item.types";
+  formatDimensionsInputAsTyped,
+  parseDimensionsInput,
+} from "@/features/items/utils/item-dimensions-input.util";
+import type { DimensionUnit, WeightUnit } from "@/features/items/types/item.types";
 
 type Props = {
   mode: "create" | "edit";
@@ -40,55 +34,6 @@ function numOrNull(raw: string): number | null {
   if (!t) return null;
   const n = Number(t);
   return Number.isFinite(n) ? n : null;
-}
-
-type AttachmentDraft = {
-  key: string;
-  id?: number;
-  file?: File;
-  file_name?: string;
-  file_url?: string;
-  removed?: boolean;
-};
-
-function nextAttachmentKey(): string {
-  return `att-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function attachmentLabel(draft: AttachmentDraft): string {
-  if (draft.file?.name) return draft.file.name;
-  if (draft.file_name?.trim()) return draft.file_name.trim();
-  return resolveItemAttachmentLabel({
-    id: draft.id,
-    file_name: draft.file_name,
-    file: draft.file_url,
-  });
-}
-
-function attachmentUrl(draft: AttachmentDraft): string | null {
-  return resolveItemAttachmentUrl({ file: draft.file_url, file_url: draft.file_url });
-}
-
-function mapApiAttachments(rows: ItemAttachment[] | null | undefined): AttachmentDraft[] {
-  if (!Array.isArray(rows)) return [];
-  return rows.filter(hasItemAttachment).map((row) => ({
-    key: nextAttachmentKey(),
-    id: row.id,
-    file_name: row.file_name ?? undefined,
-    file_url: resolveItemAttachmentUrl(row) ?? undefined,
-  }));
-}
-
-function buildAttachmentRefs(drafts: AttachmentDraft[]): ItemAttachmentWriteRef[] {
-  const out: ItemAttachmentWriteRef[] = [];
-  for (const draft of drafts) {
-    if (draft.removed && draft.id != null) {
-      out.push({ id: draft.id, is_deleted: true });
-    } else if (draft.file) {
-      out.push({ file: draft.file });
-    }
-  }
-  return out;
 }
 
 function unitTypeIdPayload(unitTypeValue: string): { unit_type?: number } {
@@ -110,16 +55,6 @@ function dimensionsPayload(
   return { length: lengthN, width: widthN, height: heightN };
 }
 
-function parseDimensionsInput(raw: string): { length: string; width: string; height: string } {
-  // Accept formats like: `22*22*22`, `22 x 22 x 22`, `22X 22 * 22`
-  const parts = raw
-    .split(/[xX*]/g)
-    .map((p) => p.trim())
-    .filter(Boolean);
-  if (parts.length < 3) return { length: "", width: "", height: "" };
-  return { length: parts[0], width: parts[1], height: parts[2] };
-}
-
 function weightPayload(valueRaw: string, unitRaw: WeightUnit): { weight?: number; weight_unit?: WeightUnit } {
   const value = numOrNull(valueRaw);
   if (value == null || value < 0) return {};
@@ -130,12 +65,12 @@ export function ItemFormScreen({ mode, itemId }: Props) {
   const t = useTranslations("Dashboard.items");
   const tModal = useTranslations("Dashboard.items.modal");
   const router = useRouter();
-  const searchParams = useSearchParams();
   const safeBack = useFormBackUrl("items", routes.dashboard.items);
   const isEdit = mode === "edit";
 
   const nameId = React.useId();
   const skuId = React.useId();
+  const unitId = React.useId();
   const qtyId = React.useId();
   const costId = React.useId();
   const sellId = React.useId();
@@ -162,10 +97,6 @@ export function ItemFormScreen({ mode, itemId }: Props) {
   const [dimensionsUnit, setDimensionsUnit] = React.useState<DimensionUnit>("cm");
   const [weight, setWeight] = React.useState("");
   const [weightUnit, setWeightUnit] = React.useState<WeightUnit>("kg");
-
-  const [attachmentDrafts, setAttachmentDrafts] = React.useState<AttachmentDraft[]>([]);
-  const initialAttachmentDraftsRef = React.useRef<AttachmentDraft[]>([]);
-  const attachmentInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (!isEdit || !itemId) return;
@@ -206,9 +137,6 @@ export function ItemFormScreen({ mode, itemId }: Props) {
               ? item.weight_unit
               : "kg",
           );
-          const attDrafts = mapApiAttachments(item.attachments);
-          setAttachmentDrafts(attDrafts);
-          initialAttachmentDraftsRef.current = attDrafts.map((d) => ({ ...d }));
           setTouched({});
         }
       } catch {
@@ -276,38 +204,30 @@ export function ItemFormScreen({ mode, itemId }: Props) {
             ? { ...dimensionsFields, dimensions_unit: dimensionsUnit }
             : {};
       const weightFields = weightPayload(weight, weightUnit);
-      const attachmentRefs = buildAttachmentRefs(attachmentDrafts);
 
       const saved =
         isEdit && itemId
-          ? await updateItem(
-              itemId,
-              {
-                name: nameTrim,
-                sku: skuTrim,
-                quantity: qtyN,
-                cost_price: costN,
-                selling_price: sellN,
-                ...unitTypePayload,
-                ...dimensionsUnitPayload,
-                ...weightFields,
-              },
-              { attachmentRefs },
-            )
-          : await createItem(
-              {
-                name: nameTrim,
-                sku: skuTrim,
-                is_composite: false,
-                quantity: qtyN,
-                cost_price: costN,
-                selling_price: sellN,
-                ...unitTypePayload,
-                ...dimensionsUnitPayload,
-                ...weightFields,
-              },
-              { attachmentRefs },
-            );
+          ? await updateItem(itemId, {
+              name: nameTrim,
+              sku: skuTrim,
+              quantity: qtyN,
+              cost_price: costN,
+              selling_price: sellN,
+              ...unitTypePayload,
+              ...dimensionsUnitPayload,
+              ...weightFields,
+            })
+          : await createItem({
+              name: nameTrim,
+              sku: skuTrim,
+              is_composite: false,
+              quantity: qtyN,
+              cost_price: costN,
+              selling_price: sellN,
+              ...unitTypePayload,
+              ...dimensionsUnitPayload,
+              ...weightFields,
+            });
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.items, saved.id, safeBack));
     } catch (error) {
@@ -396,24 +316,37 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                 {skuError ? <p className={fieldErrorTextClassName}>{skuError}</p> : null}
               </div>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <FieldLabel htmlFor={qtyId}>{tModal("quantity")}</FieldLabel>
-                <InputWithEndSelect
-                  inputId={qtyId}
-                  inputType="number"
-                  inputMode="numeric"
-                  min={0}
-                  inputValue={qty}
-                  onInputChange={setQty}
-                  disabled={submitting}
-                  selectValue={unitType}
-                  onSelectChange={setUnitType}
-                  selectOptions={unitTypeOptions}
-                  selectAriaLabel={tModal("unitType")}
-                  selectDisabled={unitTypeOptions.length === 0}
+                <FieldLabel htmlFor={unitId}>{tModal("unitType")}</FieldLabel>
+                <CheckmarkSelect
+                  id={unitId}
+                  listLabel={tModal("unitType")}
+                  buttonAriaLabel={tModal("unitType")}
+                  options={unitTypeOptions}
+                  value={unitType}
+                  emptyLabel={tModal("unitTypePlaceholder")}
+                  disabled={submitting || unitTypeOptions.length === 0}
+                  portaled
+                  searchable
+                  clearable
+                  className="w-full"
+                  onChange={setUnitType}
                 />
                 {unitTypesError ? <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{unitTypesError}</p> : null}
+              </div>
+              <div>
+                <FieldLabel htmlFor={qtyId}>{tModal("quantity")}</FieldLabel>
+                <input
+                  id={qtyId}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={qty}
+                  onChange={(e) => setQty(e.target.value)}
+                  disabled={submitting}
+                  className={surfaceInputClassName}
+                />
               </div>
               <div>
                 <FieldLabel htmlFor={costId}>{tModal("costPrice")}</FieldLabel>
@@ -435,8 +368,9 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                       inputId="item-dimensions"
                       inputValue={dimensionsInput}
                       onInputChange={(v) => {
-                        setDimensionsInput(v);
-                        const parsed = parseDimensionsInput(v);
+                        const formatted = formatDimensionsInputAsTyped(v);
+                        setDimensionsInput(formatted);
+                        const parsed = parseDimensionsInput(formatted);
                         setLength(parsed.length);
                         setWidth(parsed.width);
                         setHeight(parsed.height);
@@ -481,91 +415,6 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                   />
                 </div>
               </div>
-            </div>
-
-            <div className="space-y-3 pt-2">
-              <FieldLabel>{tModal("attachments")}</FieldLabel>
-              <div className="flex items-center gap-2">
-                <input
-                  ref={attachmentInputRef}
-                  type="file"
-                  multiple
-                  className="sr-only"
-                  disabled={submitting}
-                  onChange={(e) => {
-                    const files = e.target.files;
-                    if (!files?.length) return;
-                    const next = Array.from(files).map((file) => ({
-                      key: nextAttachmentKey(),
-                      file,
-                      file_name: file.name,
-                    }));
-                    setAttachmentDrafts((prev) => [...prev, ...next]);
-                    e.currentTarget.value = "";
-                  }}
-                />
-                <AppButton
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={submitting}
-                  onClick={() => attachmentInputRef.current?.click()}
-                >
-                  {tModal("addAttachments")}
-                </AppButton>
-              </div>
-              {(() => {
-                const visible = attachmentDrafts.filter((d) => !d.removed);
-                if (visible.length === 0) return null;
-                return (
-                  <ul className="space-y-2">
-                    {visible.map((draft) => {
-                      const href = attachmentUrl(draft);
-                      return (
-                        <li
-                          key={draft.key}
-                          className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-2.5 py-1.5 text-sm dark:border-slate-700"
-                        >
-                          {href ? (
-                            <a
-                              href={href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="min-w-0 truncate text-[color:var(--dash-accent,#111111)] underline-offset-2 hover:underline"
-                            >
-                              {attachmentLabel(draft)}
-                            </a>
-                          ) : (
-                            <span className="min-w-0 truncate text-slate-800 dark:text-slate-100">
-                              {attachmentLabel(draft)}
-                            </span>
-                          )}
-                          <AppButton
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            className="!px-2"
-                            disabled={submitting}
-                            onClick={() => {
-                              setAttachmentDrafts((prev) =>
-                                prev
-                                  .map((d) => {
-                                    if (d.key !== draft.key) return d;
-                                    if (d.id != null) return { ...d, removed: true };
-                                    return null;
-                                  })
-                                  .filter((d): d is AttachmentDraft => d != null),
-                              );
-                            }}
-                          >
-                            {tModal("removeAttachment")}
-                          </AppButton>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                );
-              })()}
             </div>
           </form>
         )}

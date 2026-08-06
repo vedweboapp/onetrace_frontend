@@ -259,6 +259,8 @@ function DraftCompositeAddRow({
   );
 }
 
+
+
 type DuplicatePrompt =
   | { kind: "section"; si: number }
   | { kind: "plot"; si: number; pi: number }
