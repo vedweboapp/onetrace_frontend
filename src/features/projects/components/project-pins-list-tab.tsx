@@ -33,12 +33,6 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { ChevronRight, Layers, MapPinned } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import type { ListEmptyStateKind } from "@/shared/hooks/use-list-active-inactive-empty";
-import {
-  detailTabBodyClassName,
-  detailTabErrorClassName,
-  detailTabFilterBarClassName,
-  detailTabTitleClassName,
-} from "@/shared/components/layout/detail-tab-layout";
 import { Controller, useForm } from "react-hook-form";
 import { DrawingPinPreviewModal } from "./drawing-pin-preview-modal";
 import { useRouter } from "@/i18n/navigation";
@@ -1275,37 +1269,18 @@ const ProjectPinsListTab = ({
   const hasMorePages =
     pagination.next !== null && page < pagination.total_pages;
 
-  const hasActiveFilters =
-    search.trim() !== "" ||
-    levelFilter != null ||
-    plotFilter != null ||
-    selectedQuoteStatus !== "" ||
-    selectedJobStatus !== "";
-
   const emptyStateKind: ListEmptyStateKind = useMemo(() => {
     if (loading || loadError) return "none";
-    if (filteredLocations.length > 0) return "none";
-    if (hasActiveFilters) return "filtered";
-    return "onboarding";
-  }, [loading, loadError, filteredLocations.length, hasActiveFilters]);
+    if (locations.length === 0) return "onboarding";
+    if (filteredLocations.length === 0) return "filtered";
+    return "none";
+  }, [loading, loadError, locations.length, filteredLocations.length]);
 
   const clearFilters = useCallback(() => {
     setSearch("");
     setLevelFilter(undefined);
     setPlotFilter(undefined);
-    setSelectedQuoteStatus("");
-    setSelectedJobStatus("");
-    setPage(1);
-    setLocations([]);
-    setPagination({
-      total_records: 0,
-      total_pages: 1,
-      current_page: 1,
-      page_size: pageSize,
-      next: null,
-      previous: null,
-    });
-  }, [pageSize]);
+  }, []);
 
   const handleCreateJob = async (formData: {
     start_date: string | null;
@@ -1934,7 +1909,7 @@ const ProjectPinsListTab = ({
       {/* ── Scrollable content ── */}
       <div>
         {loadError && locations.length === 0 ? (
-          <p className={detailTabErrorClassName}>
+          <p className="px-4 py-10 text-center text-sm text-red-600 dark:text-red-400 sm:px-6">
             {loadError}
           </p>
         ) : loading ? (

@@ -16,7 +16,7 @@ import {
     Plus,
     Trash2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { City, Country, State } from "country-state-city"; 
 import { Inputs } from "../types/types";
@@ -25,6 +25,7 @@ import { toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { useTranslations } from "next-intl";
 import { id } from "zod/v4/locales";
+import { set } from "zod";
 
 const normalizeCountryIso = (rawCountry: string) => {
     const normalized = (rawCountry ?? "").trim();
@@ -53,22 +54,29 @@ const normalizeStateIso = (countryIso: string, rawState: string) => {
     return byName?.isoCode ?? "";
 };
 
-const PersonalProfileForm = ({
-    isEditing,
-    initialData,
-    isLoading,
-    onSuccess,
-}: {
-    isEditing: boolean;
-    initialData?: any;
-    isLoading?: boolean;
-    onSuccess?: () => void;
-}) => {
+export interface PersonalProfileFormHandle {
+    submit: () => void;
+    isSaving: boolean;
+}
+
+const PersonalProfileForm = forwardRef<
+    PersonalProfileFormHandle,
+    {
+        isEditing: boolean;
+        initialData?: any;
+        isLoading?: boolean;
+        onSuccess?: () => void;
+        isSaving?: boolean;
+        setIsSaving?: (val: boolean) => void;
+    }
+>(({ isEditing, initialData, isLoading, onSuccess, isSaving: externalIsSaving, setIsSaving: externalSetIsSaving }, ref) => {
     const t = useTranslations("Dashboard.settingsPersonalProfile");
     const [image, setImage] = useState<File | Blob | string | null | undefined>(
         undefined,
     );
-    const [isSaving, setIsSaving] = useState(false);
+    const [localIsSaving, setLocalIsSaving] = useState(false);
+    const isSaving = externalIsSaving ?? localIsSaving;
+    const setIsSaving = externalSetIsSaving ?? setLocalIsSaving;
     const [isMounted, setIsMounted] = useState(false);
     const [deletedEmails, setDeletedEmails] = useState([]);
     const [deletedPhones, setDeletedPhones] = useState([]);
@@ -115,7 +123,7 @@ const PersonalProfileForm = ({
             const rawPhone = initialData.user_detail?.phone_number || "";
             const formattedPhone =
                 rawPhone && !rawPhone.startsWith("+") ? `+${rawPhone}` : rawPhone;
-
+            setImage(initialData.user_detail?.user_image);
             reset({
                 firstName:
                     initialData.user_detail?.user?.first_name ||
@@ -313,6 +321,11 @@ const PersonalProfileForm = ({
     const watchedPhones = useWatch({ control, name: "phones" });
     const watchedAddresses = useWatch({ control, name: "addresses" });
     const phoneCountry = usePhoneCountryFromAddresses(control);
+
+    useImperativeHandle(ref, () => ({
+        submit: () => handleSubmit(handleActualSubmit)(),
+        isSaving,
+    }), [isSaving, handleSubmit, handleActualSubmit]);
     console.log("emails are here", emailFields)
     if (isLoading) {
         return (
@@ -690,20 +703,11 @@ const PersonalProfileForm = ({
                     </div>
                 </div>
             </FormSectionCard>
-            {isEditing && (
-                <div className="flex w-full item-center justify-end">
-                    <AppButton
-                        variant="primary"
-                        size="sm"
-                        type="submit"
-                        disabled={isSaving}
-                    >
-                        {isSaving ? "Saving..." : "Save Changes"}
-                    </AppButton>
-                </div>
-            )}
+
         </form>
     );
-};
+});
+
+PersonalProfileForm.displayName = "PersonalProfileForm";
 
 export default PersonalProfileForm;

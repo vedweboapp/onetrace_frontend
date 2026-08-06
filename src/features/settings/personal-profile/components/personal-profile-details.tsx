@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { useUrlParams } from "@/shared/hooks/use-url-params";
 import { fetchPersonalProfile } from "../api/personal-profile.api";
 import type { PersonalProfileResponse } from "../types/types";
 import PersonalProfileHeader from "./personal-profile-header";
-import PersonalProfileForm from "./personal-profile-form";
+import PersonalProfileForm, { PersonalProfileFormHandle } from "./personal-profile-form";
 import { AppearancePanel } from "./appearance-panel";
 import { useTranslations } from "next-intl";
 
@@ -20,6 +20,8 @@ const PersonalProfileDetails = () => {
   const [profile, setProfile] = useState<PersonalProfileResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const formRef = useRef<PersonalProfileFormHandle>(null);
 
   const loadProfile = useCallback(async () => {
     if (!userId) {
@@ -53,13 +55,15 @@ const PersonalProfileDetails = () => {
     loadProfile();
     setIsEditing(false);
   };
-
+  
   return (
     <div className="flex flex-col gap-4 w-full">
       <PersonalProfileHeader
         isEditing={isEditing}
         setIsEditing={setIsEditing}
         showEdit={activeTab === "profile"}
+        submitHandler={() => formRef.current?.submit()}
+        isSaving={isSaving}
       />
 
       {activeTab === "appearance" ? (
@@ -72,10 +76,13 @@ const PersonalProfileDetails = () => {
         <p className="text-sm font-medium text-red-500">{error}</p>
       ) : (
         <PersonalProfileForm
+          ref={formRef}
           isEditing={isEditing}
           initialData={profile}
           isLoading={isLoading}
           onSuccess={handleSuccess}
+          isSaving={isSaving}
+          setIsSaving={setIsSaving}
         />
       )}
     </div>

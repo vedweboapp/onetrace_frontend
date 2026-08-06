@@ -29,7 +29,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <DashboardSidebar />
         </Suspense>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="sticky top-0 z-20 shrink-0 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+          <div className="sticky top-0 z-30 shrink-0 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
             <Suspense fallback={null}>
               <DashboardHeader />
             </Suspense>

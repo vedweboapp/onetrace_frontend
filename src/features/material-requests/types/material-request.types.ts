@@ -19,6 +19,7 @@ export type MaterialRequestJobRef = {
   id: number;
   title?: string | null;
   project?: { id: number; name?: string | null } | null;
+  serial_number?: string | null;
 };
 
 export type MaterialRequestItemProductRef = {
