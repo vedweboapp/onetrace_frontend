@@ -41,6 +41,7 @@ import { fetchSitesPage } from "@/features/sites/api/site.api";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
+import { FIELD_MAX_LENGTH, rhfRegisterOptions } from "@/shared/form";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
@@ -735,7 +736,8 @@ export function JobFormScreen({ mode, jobId }: Props) {
                   rows={4}
                   className={cn(surfaceTextareaClassName, "min-h-[100px]")}
                   disabled={saving}
-                  {...register("description")}
+                  maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
+                  {...register("description", rhfRegisterOptions("description"))}
                 />
               </FieldGroup>
 

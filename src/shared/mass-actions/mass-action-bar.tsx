@@ -12,7 +12,7 @@ import {
 } from "@/shared/ui";
 import { createMassActionClient } from "./mass-action.api";
 import { buildMassExportPayload, buildMassIdsPayload, buildMassUpdatePayload } from "./mass-action.util";
-import { MASS_UPDATE_PHONE_MAX_LENGTH, sanitizeMassUpdateFieldInput } from "./mass-update-input.util";
+import { MASS_UPDATE_PHONE_MAX_LENGTH, resolveMassUpdateFieldMaxLength, sanitizeMassUpdateFieldInput } from "./mass-update-input.util";
 import type { MassActionConfig, MassActionKind, MassDirectUpdateAction, MassExportFormat, MassUpdateFieldDef } from "./types";
 
 type BarAction = MassActionKind | string;
@@ -348,6 +348,7 @@ export function MassActionBar({
                 <textarea
                   value={fieldValue}
                   rows={1}
+                  maxLength={resolveMassUpdateFieldMaxLength(selectedField)}
                   onChange={(e) => handleFieldValueChange(e.target.value)}
                   disabled={disabled || busy || !fieldName}
                   className={cn(massBarFieldClass, "resize-none py-1.5 leading-tight")}
@@ -393,6 +394,7 @@ export function MassActionBar({
                   inputMode="email"
                   autoComplete="email"
                   value={fieldValue}
+                  maxLength={resolveMassUpdateFieldMaxLength(selectedField)}
                   onChange={(e) => handleFieldValueChange(e.target.value)}
                   disabled={disabled || busy || !fieldName}
                   className={massBarFieldClass}
@@ -402,6 +404,7 @@ export function MassActionBar({
                 <input
                   type="text"
                   value={fieldValue}
+                  maxLength={resolveMassUpdateFieldMaxLength(selectedField)}
                   onChange={(e) => handleFieldValueChange(e.target.value)}
                   disabled={disabled || busy || !fieldName}
                   className={massBarFieldClass}

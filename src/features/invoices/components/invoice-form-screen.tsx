@@ -27,6 +27,7 @@ import { EntityAddressesFields } from "@/shared/components/form/entity-addresses
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
+import { FIELD_MAX_LENGTH, rhfRegisterOptions } from "@/shared/form";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
@@ -790,7 +791,8 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                     rows={3}
                     className={cn(surfaceTextareaClassName, "min-h-[80px]")}
                     disabled={saving}
-                    {...register("client_notes")}
+                    maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
+                    {...register("client_notes", rhfRegisterOptions("description"))}
                   />
                 </FieldGroup>
                 <FieldGroup label={t("fields.internalNotes")} htmlFor="invoice-internal-notes">
@@ -799,7 +801,8 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                     rows={3}
                     className={cn(surfaceTextareaClassName, "min-h-[80px]")}
                     disabled={saving}
-                    {...register("internal_notes")}
+                    maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
+                    {...register("internal_notes", rhfRegisterOptions("description"))}
                   />
                 </FieldGroup>
               </FormFieldRow>

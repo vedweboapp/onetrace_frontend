@@ -1,6 +1,7 @@
 ﻿import { Country } from "country-state-city";
 import type { CheckmarkSelectOption } from "@/shared/ui";
 import type { MassUpdateFieldDef } from "./types";
+import { FIELD_MAX_LENGTH } from "@/shared/form/field-max-length.util";
 
 export function activeInactiveSelectOptions(activeLabel: string, inactiveLabel: string): CheckmarkSelectOption[] {
   return [
@@ -15,24 +16,24 @@ export function countryNameSelectOptions(): CheckmarkSelectOption[] {
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
-function textField(name: string, label: string): MassUpdateFieldDef {
-  return { name, label, valueType: "text" };
+function textField(name: string, label: string, maxLength?: number): MassUpdateFieldDef {
+  return { name, label, valueType: "text", maxLength: maxLength ?? FIELD_MAX_LENGTH.GENERIC_TEXT };
 }
 
 function nameField(name: string, label: string): MassUpdateFieldDef {
-  return { name, label, valueType: "name" };
+  return { name, label, valueType: "name", maxLength: FIELD_MAX_LENGTH.NAME };
 }
 
 function titleField(name: string, label: string): MassUpdateFieldDef {
-  return { name, label, valueType: "title" };
+  return { name, label, valueType: "title", maxLength: FIELD_MAX_LENGTH.TITLE };
 }
 
 function emailField(name: string, label: string): MassUpdateFieldDef {
-  return { name, label, valueType: "email" };
+  return { name, label, valueType: "email", maxLength: FIELD_MAX_LENGTH.EMAIL };
 }
 
-function textareaField(name: string, label: string): MassUpdateFieldDef {
-  return { name, label, valueType: "textarea" };
+function textareaField(name: string, label: string, maxLength?: number): MassUpdateFieldDef {
+  return { name, label, valueType: "textarea", maxLength: maxLength ?? FIELD_MAX_LENGTH.DESCRIPTION };
 }
 
 function numberField(name: string, label: string): MassUpdateFieldDef {
@@ -40,11 +41,11 @@ function numberField(name: string, label: string): MassUpdateFieldDef {
 }
 
 function phoneField(name: string, label: string): MassUpdateFieldDef {
-  return { name, label, valueType: "phone", maxLength: 20 };
+  return { name, label, valueType: "phone", maxLength: FIELD_MAX_LENGTH.PHONE_DIGITS };
 }
 
-function digitsField(name: string, label: string, maxLength = 12): MassUpdateFieldDef {
-  return { name, label, valueType: "digits", maxLength };
+function digitsField(name: string, label: string, maxLength?: number): MassUpdateFieldDef {
+  return { name, label, valueType: "digits", maxLength: maxLength ?? FIELD_MAX_LENGTH.PINCODE };
 }
 
 function selectField(
@@ -65,11 +66,11 @@ function addressFields(labels: {
   pincode: string;
 }): MassUpdateFieldDef[] {
   return [
-    textField("address_line_1", labels.addressLine1),
-    textField("address_line_2", labels.addressLine2),
+    textField("address_line_1", labels.addressLine1, FIELD_MAX_LENGTH.ADDRESS_LINE),
+    textField("address_line_2", labels.addressLine2, FIELD_MAX_LENGTH.ADDRESS_LINE),
     selectField("country", labels.country, countryNameSelectOptions()),
-    textField("state", labels.state),
-    textField("city", labels.city),
+    textField("state", labels.state, FIELD_MAX_LENGTH.CITY),
+    textField("city", labels.city, FIELD_MAX_LENGTH.CITY),
     digitsField("pincode", labels.pincode),
   ];
 }

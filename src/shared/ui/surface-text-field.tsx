@@ -8,6 +8,7 @@ import {
   rhfSanitizeOnChange,
   type FieldInputKind,
 } from "@/shared/form/field-input.util";
+import { getMaxLengthForFieldKind } from "@/shared/form/field-max-length.util";
 import { FieldErrorText, FieldGroup, surfaceInputClassName } from "./field-primitives";
 
 export type SurfaceTextFieldProps<TFieldValues extends FieldValues> = {
@@ -16,7 +17,10 @@ export type SurfaceTextFieldProps<TFieldValues extends FieldValues> = {
   id: string;
   label: ReactNode;
   /** Sanitization kind — `name` blocks digits + capitalizes; `email` lowercases. */
-  kind?: Extract<FieldInputKind, "name" | "title" | "email" | "text">;
+  kind?: Extract<
+    FieldInputKind,
+    "name" | "companyName" | "abbreviation" | "title" | "email" | "text" | "address" | "city"
+  >;
   type?: "text" | "email";
   required?: boolean;
   disabled?: boolean;
@@ -25,6 +29,7 @@ export type SurfaceTextFieldProps<TFieldValues extends FieldValues> = {
   placeholder?: string;
   className?: string;
   inputClassName?: string;
+  maxLength?: number;
 };
 
 /**
@@ -45,11 +50,13 @@ export function SurfaceTextField<TFieldValues extends FieldValues>({
   placeholder,
   className,
   inputClassName,
+  maxLength,
 }: SurfaceTextFieldProps<TFieldValues>) {
   const errId = error ? `${id}-error` : undefined;
   const inputType = type ?? (kind === "email" ? "email" : "text");
+  const resolvedMaxLength = getMaxLengthForFieldKind(kind, maxLength);
   const registration = register(name, {
-    onChange: rhfSanitizeOnChange(kind),
+    onChange: rhfSanitizeOnChange(kind, { maxLength: resolvedMaxLength }),
   });
 
   return (
@@ -60,6 +67,7 @@ export function SurfaceTextField<TFieldValues extends FieldValues>({
         autoComplete={autoComplete}
         disabled={disabled}
         placeholder={placeholder}
+        maxLength={resolvedMaxLength}
         aria-invalid={error ? true : undefined}
         aria-describedby={errId}
         className={cn(surfaceInputClassName, error && "border-red-500 dark:border-red-500", inputClassName)}

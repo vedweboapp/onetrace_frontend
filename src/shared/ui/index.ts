@@ -62,6 +62,8 @@ export { SurfacePhoneField, DEFAULT_PHONE_COUNTRY } from "./surface-phone-field"
 export type { SurfacePhoneFieldProps } from "./surface-phone-field";
 export { SurfaceTextField } from "./surface-text-field";
 export type { SurfaceTextFieldProps } from "./surface-text-field";
+export { SurfaceTextareaField } from "./surface-textarea-field";
+export type { SurfaceTextareaFieldProps } from "./surface-textarea-field";
 export { PhoneNumberInput } from "./phone-number-input";
 export type { PhoneNumberInputProps } from "./phone-number-input";
 export { SurfacePhoneCountrySelect } from "./surface-phone-country-select";

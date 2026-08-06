@@ -194,7 +194,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
                 name="name"
                 id="vendor-name"
                 label={t("fields.name")}
-                kind="name"
+                kind="companyName"
                 required
                 autoComplete="name"
                 error={errors.name?.message}

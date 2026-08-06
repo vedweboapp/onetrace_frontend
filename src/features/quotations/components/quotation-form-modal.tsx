@@ -34,6 +34,7 @@ import {
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
+import { FIELD_MAX_LENGTH, rhfRegisterOptions } from "@/shared/form";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { DetailTabStepNav } from "@/shared/components/layout/detail-tab-step-nav";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
@@ -639,7 +640,8 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
             id="quotation-desc"
             rows={4}
             className={surfaceTextareaClassName}
-            {...register("description")}
+            maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
+            {...register("description", rhfRegisterOptions("description"))}
           />
         </FieldGroup>
         <DetailTabStepNav onNext={() => setFormTab("pricing")} nextLabel={t("formTabs.nextToPricing")} />

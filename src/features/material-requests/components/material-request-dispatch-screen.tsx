@@ -25,6 +25,7 @@ import {
   quantityTableInputCellClass,
 } from "@/shared/components/quantity/quantity-table-columns";
 import { AppButton, CheckmarkSelect, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
+import { FIELD_MAX_LENGTH, sanitizeDescriptionInput } from "@/shared/form";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 
@@ -496,7 +497,8 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
               <textarea
                 value={notes}
                 disabled={saving}
-                onChange={(e) => setNotes(e.target.value)}
+                maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
+                onChange={(e) => setNotes(sanitizeDescriptionInput(e.target.value))}
                 placeholder={dispatchT("notesPlaceholder")}
                 className={cn(surfaceInputClassName, "min-h-[120px] w-full rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700")}
               />

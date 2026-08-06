@@ -1,6 +1,8 @@
 import type { GroupItemRef } from "@/features/groups/types/group.types";
+import { FIELD_MAX_LENGTH } from "@/shared/form/field-max-length.util";
+import { sanitizeAbbreviationInput } from "@/shared/form/field-input.util";
 
-export const GROUP_ABBREVIATION_MAX_LENGTH = 50;
+export const GROUP_ABBREVIATION_MAX_LENGTH = FIELD_MAX_LENGTH.ABBREVIATION;
 
 export type GroupCompositeRowInput = {
   id: string;
@@ -29,7 +31,7 @@ function toNumberOrNull(raw: string): number | null {
 
 /** Normalize abbreviation input: uppercase + hard max length. */
 export function normalizeGroupAbbreviation(raw: string): string {
-  return raw.toUpperCase().slice(0, GROUP_ABBREVIATION_MAX_LENGTH);
+  return sanitizeAbbreviationInput(raw);
 }
 
 /**
@@ -57,8 +59,6 @@ export function validateGroupCompositeRows(
     if (id == null) rowError.item = messages.compositeItemRequired;
     if (abbreviation.length === 0) {
       rowError.abbreviation = messages.abbreviationRequired;
-    } else if (abbreviation.length > GROUP_ABBREVIATION_MAX_LENGTH) {
-      rowError.abbreviation = messages.abbreviationMaxLength;
     }
 
     if (id != null) {

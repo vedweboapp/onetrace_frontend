@@ -155,7 +155,7 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved, onCreate
                 name="name"
                 id="client-name"
                 label={t("fields.name")}
-                kind="name"
+                kind="companyName"
                 required
                 autoComplete="name"
                 error={errors.name?.message}

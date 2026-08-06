@@ -29,7 +29,7 @@ export type MassUpdateFieldDef = {
   valueCoerce?: "string" | "number" | "boolean";
   /** Optional API serialization (e.g. ISO datetime from `datetime-local`) */
   valueFormat?: MassUpdateFieldValueFormat;
-  /** Max length for `phone` / `digits` inputs */
+  /** Max length for text-like bulk-update inputs */
   maxLength?: number;
 };
 

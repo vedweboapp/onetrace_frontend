@@ -17,6 +17,8 @@ import {
   fieldRequiredMarkClassName,
   surfaceInputClassName,
 } from "@/shared/ui/field-primitives";
+import { FIELD_MAX_LENGTH } from "@/shared/form/field-max-length.util";
+import { sanitizeAddressInput } from "@/shared/form/field-input.util";
 
 type Props = {
   id: string;
@@ -36,6 +38,7 @@ type Props = {
   required?: boolean;
   error?: string;
   variant?: "primary" | "secondary";
+  maxLength?: number;
 };
 
 export function AddressPlaceAutocomplete({
@@ -56,6 +59,7 @@ export function AddressPlaceAutocomplete({
   required,
   error,
   variant = "primary",
+  maxLength = FIELD_MAX_LENGTH.ADDRESS_LINE,
 }: Props) {
   const t = useTranslations("Dashboard.sites.location");
   const listId = `${id}-suggestions`;
@@ -251,8 +255,9 @@ export function AddressPlaceAutocomplete({
             : t("searchPlaceholderLine2"))
         }
         value={value}
+        maxLength={maxLength}
         onChange={(e) => {
-          onChange(e.target.value);
+          onChange(sanitizeAddressInput(e.target.value, maxLength));
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
