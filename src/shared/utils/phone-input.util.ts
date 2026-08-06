@@ -3,9 +3,16 @@ import metadata from "libphonenumber-js/max/metadata";
 import {
   getCountryCallingCode,
   isValidPhoneNumber as isValidPhoneNumberWithMeta,
+  isSupportedCountry,
   Metadata,
   parsePhoneNumberFromString,
 } from "libphonenumber-js/core";
+
+/** Undocumented metadata helpers used for MOBILE vs FIXED_LINE length lookup. */
+type NumberingPlanWithTypes = {
+  possibleLengths?: () => number[];
+  type?: (numberType: string) => { possibleLengths?: () => number[] } | undefined;
+};
 
 /** Default calling code for phone fields across the app (+1 United States). */
 export const DEFAULT_PHONE_COUNTRY_CODE = "US" as const;
@@ -74,21 +81,22 @@ export function getMaxNationalDigitsForCountry(country: Country): number | undef
   const key = String(country);
   if (nationalLengthCache.has(key)) return nationalLengthCache.get(key);
 
+  if (!isSupportedCountry(country, metadata)) {
+    nationalLengthCache.set(key, undefined);
+    return undefined;
+  }
+
   try {
     const meta = new Metadata(metadata);
-    if (!meta.hasCountry(country)) {
-      nationalLengthCache.set(key, undefined);
-      return undefined;
-    }
     meta.selectNumberingPlan(country);
-    const plan = meta.numberingPlan;
-    const mobile = plan?.type("MOBILE")?.possibleLengths?.();
+    const plan = meta.numberingPlan as NumberingPlanWithTypes | undefined;
+    const mobile = plan?.type?.("MOBILE")?.possibleLengths?.();
     if (mobile?.length) {
       const max = Math.max(...mobile);
       nationalLengthCache.set(key, max);
       return max;
     }
-    const fixed = plan?.type("FIXED_LINE")?.possibleLengths?.();
+    const fixed = plan?.type?.("FIXED_LINE")?.possibleLengths?.();
     if (fixed?.length) {
       const max = Math.max(...fixed);
       nationalLengthCache.set(key, max);
