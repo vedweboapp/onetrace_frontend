@@ -18,8 +18,8 @@ import { getApiFieldErrorMap } from "@/shared/form/report-form-api-error.util";
 import { markApiErrorToasted } from "@/core/errors/api-error-toast.util";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
-import { AppButton, AppModal, CheckmarkSelect, FieldLabel, fieldErrorTextClassName, InputWithEndSelect, surfaceInputClassName } from "@/shared/ui";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
+import { AppButton, AppModal, CheckmarkSelect, FieldLabel, fieldErrorTextClassName, InputWithEndSelect, MoneyInput, surfaceInputClassName } from "@/shared/ui";
 
 type Props = {
   open: boolean;
@@ -299,7 +299,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               value={name}
               onChange={(e) => {
                 setServerErrors((prev) => ({ ...prev, name: undefined }));
-                setName(capitalizeFirstLetter(e.target.value));
+                setName(sanitizeTitleInput(e.target.value));
               }}
               onBlur={() => setTouched((p) => ({ ...p, name: true }))}
               disabled={submitting}
@@ -365,7 +365,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
           </div>
           <div>
             <FieldLabel htmlFor={costId}>{t("costPrice")}</FieldLabel>
-            <input
+            <MoneyInput
               id={costId}
               type="number"
               inputMode="decimal"
@@ -374,12 +374,11 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               value={cost}
               onChange={(e) => setCost(e.target.value)}
               disabled={submitting}
-              className={surfaceInputClassName}
             />
           </div>
           <div>
             <FieldLabel htmlFor={sellId}>{t("sellingPrice")}</FieldLabel>
-            <input
+            <MoneyInput
               id={sellId}
               type="number"
               inputMode="decimal"
@@ -388,7 +387,6 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               value={sell}
               onChange={(e) => setSell(e.target.value)}
               disabled={submitting}
-              className={surfaceInputClassName}
             />
           </div>
         </div>

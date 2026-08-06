@@ -14,16 +14,16 @@ export const detailMapFillClassName = cn(
 );
 
 export const detailMapSideGridClassName = cn(
-  "grid grid-cols-1 gap-3",
-  "lg:grid-cols-[minmax(0,1fr)_minmax(320px,40%)] lg:items-start lg:gap-4",
-  "xl:grid-cols-[minmax(0,1fr)_minmax(380px,42%)]",
+  "grid grid-cols-1 gap-2",
+  "lg:grid-cols-[minmax(0,1fr)_minmax(300px,38%)] lg:items-start lg:gap-3",
+  "xl:grid-cols-[minmax(0,1fr)_minmax(360px,40%)]",
 );
 
 /** Detail + form layouts where the map column should match the main column height. */
 export const detailMapStretchSideGridClassName = cn(
-  "grid grid-cols-1 gap-3",
-  "lg:grid-cols-[minmax(0,1fr)_minmax(320px,40%)] lg:items-stretch lg:gap-4",
-  "xl:grid-cols-[minmax(0,1fr)_minmax(380px,42%)]",
+  "grid grid-cols-1 gap-2",
+  "lg:grid-cols-[minmax(0,1fr)_minmax(300px,38%)] lg:items-stretch lg:gap-3",
+  "xl:grid-cols-[minmax(0,1fr)_minmax(360px,40%)]",
 );
 
 type DetailMapSideColumnProps = {

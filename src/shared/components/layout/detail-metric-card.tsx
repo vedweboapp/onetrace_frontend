@@ -15,9 +15,39 @@ export const detailRecordSurfaceShellClassName = cn(
 export const detailPageStackClassName = "space-y-2";
 
 /** Responsive grid for label/value pairs inside a detail section */
-export function DetailMetricsGrid({ children, className }: { children: ReactNode; className?: string }) {
+export function DetailMetricsGrid({
+  children,
+  className,
+  compact,
+}: {
+  children: ReactNode;
+  className?: string;
+  /** Pack fields by content width (flex wrap) — avoids wide empty gaps beside maps. */
+  compact?: boolean;
+}) {
+  if (compact) {
+    return (
+      <div
+        className={cn(
+          "flex flex-wrap items-start gap-x-5 gap-y-3 [&>*]:min-w-[8.75rem] [&>*]:max-w-[16rem]",
+          className,
+        )}
+      >
+        {children}
+      </div>
+    );
+  }
+
   return (
-    <div className={cn("grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-2", className)}>{children}</div>
+    <div
+      className={cn(
+        "grid grid-cols-1 gap-3",
+        "sm:grid-cols-[repeat(auto-fill,minmax(8.75rem,1fr))] sm:gap-x-4 sm:gap-y-3",
+        className,
+      )}
+    >
+      {children}
+    </div>
   );
 }
 

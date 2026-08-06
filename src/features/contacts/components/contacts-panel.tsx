@@ -31,7 +31,7 @@ import {
   ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
-import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack, mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { useDeferredListOptions } from "@/shared/hooks/use-deferred-list-options";
@@ -62,13 +62,6 @@ export function ContactsPanel() {
     return `${pathname}${qs ? `?${qs}` : ""}`;
   }, [pathname, searchParams]);
 
-  const openContactDetail = React.useCallback(
-    (id: number) => {
-      router.push(buildDetailHrefWithListReturn(`${pathname}/${id}`, listHref, id));
-    },
-    [listHref, pathname, router],
-  );
-
   const { page, pageSize, listViewMode, search, isActiveParam, setUrl, setPage, setPageSize, setListViewMode } =
     useListUrlState();
   const isActiveFilter = parseIsActiveParam(isActiveParam) ?? true;
@@ -78,6 +71,14 @@ export function ContactsPanel() {
   const clientFilter = clientParam && /^\d+$/.test(clientParam) ? Number.parseInt(clientParam, 10) : undefined;
   const vendorParam = searchParams.get("vendor");
   const vendorFilter = vendorParam && /^\d+$/.test(vendorParam) ? Number.parseInt(vendorParam, 10) : undefined;
+
+  const openContactDetail = React.useCallback(
+    (id: number) => {
+      const detailPath = mergeUrlQueryParam(`${pathname}/${id}`, "contact_type", activeContactType);
+      router.push(buildDetailHrefWithListReturn(detailPath, listHref, id));
+    },
+    [activeContactType, listHref, pathname, router],
+  );
 
   const [items, setItems] = React.useState<Contact[]>([]);
   const [pagination, setPagination] = React.useState({
@@ -120,9 +121,10 @@ export function ContactsPanel() {
 
   const openEdit = React.useCallback(
     (id: number) => {
-      router.push(buildPathWithStoredBack(`${pathname}/${id}/edit`, listHref));
+      const editPath = mergeUrlQueryParam(`${pathname}/${id}/edit`, "contact_type", activeContactType);
+      router.push(buildPathWithStoredBack(editPath, listHref));
     },
-    [listHref, pathname, router],
+    [activeContactType, listHref, pathname, router],
   );
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);

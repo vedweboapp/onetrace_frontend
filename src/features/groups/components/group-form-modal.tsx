@@ -18,7 +18,7 @@ import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { usePathname } from "@/i18n/navigation";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { cn } from "@/core/utils/http.util";
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
 import {
@@ -235,7 +235,7 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
             type="text"
             autoComplete="off"
             value={name}
-            onChange={(e) => setName(capitalizeFirstLetter(e.target.value))}
+            onChange={(e) => setName(sanitizeTitleInput(e.target.value))}
             onBlur={() => setNameTouched(true)}
             disabled={submitting}
             placeholder={t("namePlaceholder")}

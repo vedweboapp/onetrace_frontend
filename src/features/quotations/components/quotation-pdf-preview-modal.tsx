@@ -15,15 +15,13 @@ import {
   extractPinSnapshotTasks,
   getQuotationPinSnapshotKey,
 } from "@/features/quotations/utils/quotation-pin-snapshot.util";
+import { formatOrgMoneyValue } from "@/shared/money/format-money.util";
+import { getOrgCurrencySettings } from "@/shared/money/org-currency.store";
 
 /* ── helpers ─────────────────────────────────────────── */
 
 function fmtMoney(value: number | string | null | undefined): string {
-  const n = Number(value ?? 0);
-  const formatted = Number.isFinite(n)
-    ? n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : "0.00";
-  return `\u00A3${formatted}`;
+  return formatOrgMoneyValue(value ?? 0, getOrgCurrencySettings());
 }
 
 function fmtDate(iso: string | null | undefined): string {

@@ -24,6 +24,7 @@ import {
 } from "@/features/purchase-orders/utils/purchase-order-nested-fields.util";
 import { formatMoneyDisplay } from "@/features/invoices/utils/invoice-money.util";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
+import { useOrgCurrency } from "@/shared/money/use-org-currency";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
@@ -60,6 +61,7 @@ export function PurchaseOrdersPanel() {
   const t = useTranslations("Dashboard.purchaseOrders");
   const tList = useTranslations("Dashboard.list");
   const locale = useLocale();
+  useOrgCurrency();
   const dateFmt = useDashboardDateFormat({ dateOnly: true });
   const router = useRouter();
   const pathname = usePathname();

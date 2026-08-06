@@ -12,6 +12,7 @@ import {
 } from "@/shared/ui";
 import { createMassActionClient } from "./mass-action.api";
 import { buildMassExportPayload, buildMassIdsPayload, buildMassUpdatePayload } from "./mass-action.util";
+import { MASS_UPDATE_PHONE_MAX_LENGTH, sanitizeMassUpdateFieldInput } from "./mass-update-input.util";
 import type { MassActionConfig, MassActionKind, MassDirectUpdateAction, MassExportFormat, MassUpdateFieldDef } from "./types";
 
 type BarAction = MassActionKind | string;
@@ -124,6 +125,13 @@ export function MassActionBar({
       (action === "mass-export" && exportFormat !== "") ||
       (action === "mass-update" && fieldName.trim() !== "" && fieldValue.trim() !== "") ||
       (selectedDirectAction != null && fieldValue.trim() !== ""));
+
+  const handleFieldValueChange = React.useCallback(
+    (raw: string) => {
+      setFieldValue(sanitizeMassUpdateFieldInput(selectedField, raw));
+    },
+    [selectedField],
+  );
 
   async function runMassDelete() {
     setBusy(true);
@@ -340,16 +348,61 @@ export function MassActionBar({
                 <textarea
                   value={fieldValue}
                   rows={1}
-                  onChange={(e) => setFieldValue(e.target.value)}
+                  onChange={(e) => handleFieldValueChange(e.target.value)}
                   disabled={disabled || busy || !fieldName}
                   className={cn(massBarFieldClass, "resize-none py-1.5 leading-tight")}
                   placeholder={t("valuePlaceholder")}
                 />
+              ) : selectedField?.valueType === "phone" ? (
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  value={fieldValue}
+                  maxLength={selectedField.maxLength ?? MASS_UPDATE_PHONE_MAX_LENGTH}
+                  onChange={(e) => handleFieldValueChange(e.target.value)}
+                  disabled={disabled || busy || !fieldName}
+                  className={massBarFieldClass}
+                  placeholder={t("valuePlaceholder")}
+                />
+              ) : selectedField?.valueType === "digits" ? (
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={fieldValue}
+                  maxLength={selectedField.maxLength ?? 12}
+                  onChange={(e) => handleFieldValueChange(e.target.value)}
+                  disabled={disabled || busy || !fieldName}
+                  className={massBarFieldClass}
+                  placeholder={t("valuePlaceholder")}
+                />
+              ) : selectedField?.valueType === "number" ? (
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={fieldValue}
+                  onChange={(e) => handleFieldValueChange(e.target.value)}
+                  disabled={disabled || busy || !fieldName}
+                  className={massBarFieldClass}
+                  placeholder={t("valuePlaceholder")}
+                />
+              ) : selectedField?.valueType === "email" ? (
+                <input
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  value={fieldValue}
+                  onChange={(e) => handleFieldValueChange(e.target.value)}
+                  disabled={disabled || busy || !fieldName}
+                  className={massBarFieldClass}
+                  placeholder={t("valuePlaceholder")}
+                />
               ) : (
                 <input
-                  type={selectedField?.valueType === "number" ? "number" : "text"}
+                  type="text"
                   value={fieldValue}
-                  onChange={(e) => setFieldValue(e.target.value)}
+                  onChange={(e) => handleFieldValueChange(e.target.value)}
                   disabled={disabled || busy || !fieldName}
                   className={massBarFieldClass}
                   placeholder={t("valuePlaceholder")}

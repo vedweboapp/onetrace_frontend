@@ -301,6 +301,16 @@ export function EntityAddressesFields<T extends FieldValues>({
                 }}
               />
 
+              <input
+                type="hidden"
+                {...register(`addresses.${index}.id` as Path<T>, {
+                  setValueAs: (value) => {
+                    if (value === "" || value == null) return undefined;
+                    const parsed = typeof value === "number" ? value : Number(value);
+                    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+                  },
+                })}
+              />
               {includeGeo ? (
                 <>
                   <input type="hidden" {...register(`addresses.${index}.latitude` as Path<T>)} />

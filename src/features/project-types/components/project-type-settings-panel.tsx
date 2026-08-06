@@ -19,7 +19,7 @@ import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } fr
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { routes } from "@/shared/config/routes";
@@ -555,7 +555,7 @@ export function ProjectTypeSettingsPanel() {
               id="project-type-name"
               value={typeName}
               onChange={(e) => {
-                setTypeName(capitalizeFirstLetter(e.target.value));
+                setTypeName(sanitizeTitleInput(e.target.value));
                 if (errors.project_type) setErrors((prev) => ({ ...prev, project_type: undefined }));
               }}
               className={cn(

@@ -25,7 +25,7 @@ import { routes } from "@/shared/config/routes";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
 import { EditButton } from "@/shared/ui/dashboard-action-buttons";
-import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
+import { buildCurrentPageBackHref, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 
 function normalizeJobCategory(value: string | null | undefined): string {
   return (value ?? "").toLowerCase().replace(/[^a-z]/g, "");
@@ -202,7 +202,8 @@ function JobDetailActions({
     const jobCategory =
       searchParams.get("job_category")?.trim() ||
       (typeof detail.job_category === "string" ? detail.job_category.trim() : "");
-    const editPath = buildPathWithStoredBack(`${pathname}/edit`, listBack);
+    const detailBackHref = buildCurrentPageBackHref(pathname, searchParams);
+    const editPath = buildPathWithStoredBack(`${pathname}/edit`, detailBackHref);
     const targetUrl = jobCategory
       ? `${editPath}?job_category=${encodeURIComponent(jobCategory)}`
       : editPath;

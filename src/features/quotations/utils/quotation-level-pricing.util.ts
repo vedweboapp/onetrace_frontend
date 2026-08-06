@@ -3,6 +3,8 @@ import type {
   QuotationPlotPin,
   QuotationQuoteSectionSourcePin,
 } from "@/features/quotations/types/quotation.types";
+import { formatOrgMoney } from "@/shared/money/format-money.util";
+import { getOrgCurrencySettings } from "@/shared/money/org-currency.store";
 
 export type AggregatedCompositeLine = {
   key: string;
@@ -76,12 +78,8 @@ export function parseMoneyValue(raw: unknown): number {
   return 0;
 }
 
-export function formatMoneyDisplay(amount: number, locale: string): string {
-  if (!Number.isFinite(amount)) return "—";
-  return new Intl.NumberFormat(locale === "es" ? "es" : "en", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
+export function formatMoneyDisplay(amount: number, _locale?: string): string {
+  return formatOrgMoney(amount, getOrgCurrencySettings());
 }
 
 function pinDisplayName(pin: QuotationPlotPin): string {

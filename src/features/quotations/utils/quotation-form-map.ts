@@ -13,7 +13,7 @@ import {
   getQuotationTechnicianIds,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
 import { formatApiDateForHtmlDateInput } from "@/shared/utils/api-date-parse.util";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 
 export function parseOptionalId(raw: string): number | null {
   const s = raw.trim();
@@ -73,7 +73,7 @@ export function mapQuotationFormToPayload(
   return {
     customer: Number.parseInt(values.customer, 10),
     sites,
-    quote_name: capitalizeFirstLetter(values.quote_name.trim()),
+    quote_name: sanitizeTitleInput(values.quote_name.trim()),
     primary_customer_contact: parseOptionalId(values.primary_customer_contact),
     additional_customer_contact: quotationAdditionalContactIdsForApi(values.additional_customer_contacts),
     tags: Array.isArray(values.tag_ids) && values.tag_ids.length > 0 ? values.tag_ids : parseTags(values.tags_raw),

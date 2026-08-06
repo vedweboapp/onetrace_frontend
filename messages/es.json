@@ -151,12 +151,18 @@
     "quickCreate": {
       "add": {
         "client": "Añadir nuevo cliente",
+        "vendor": "Añadir nuevo proveedor",
         "contact": "Añadir nuevo contacto",
         "site": "Añadir nuevo sitio",
         "project": "Añadir nuevo proyecto",
         "group": "Añadir nuevo grupo",
         "composite-item": "Añadir nuevo artículo compuesto",
-        "item": "Añadir nuevo artículo"
+        "item": "Añadir nuevo artículo",
+        "vendorType": "Añadir tipo de proveedor",
+        "unitType": "Añadir tipo de unidad",
+        "installationType": "Añadir tipo de instalación",
+        "materialStatus": "Añadir estado de material",
+        "user": "Añadir nuevo usuario"
       }
     },
     "common": {
@@ -3964,7 +3970,9 @@
         "unitTypePlaceholder": "Seleccionar unidad",
         "unitTypesLoadError": "No se pudieron cargar los tipos de unidad.",
         "costPrice": "Precio de coste",
+        "costPriceError": "Introduce un precio de coste.",
         "sellingPrice": "Precio de venta",
+        "sellingPriceError": "Introduce un precio de venta.",
         "fulfilmentDetails": "Detalles de cumplimiento",
         "dimensions": "Dimensiones",
         "dimensionsPlaceholder": "L*A*H",
