@@ -11,13 +11,14 @@ import { LocationSelectorGroup } from "@/shared/form/components/location-selecto
 import { updateOrganizationDetails } from "../api/company-settings.api";
 import { OrganizationDetails } from "../types/types";
 import {
-  buildDirtyOrganizationPatch,
-  hasDirtyFields,
-  ORGANIZATION_TAB_FIELDS,
+    buildDirtyOrganizationPatch,
+    hasDirtyFields,
+    ORGANIZATION_TAB_FIELDS,
 } from "../utils/company-settings-diff.util";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { useTranslations } from "next-intl";
 import { timeZones } from "@/shared/constants/timezones";
+import { cn } from "@/core/utils/http.util";
 
 interface OrganizationalDetailProps {
     isEditing: boolean;
@@ -160,7 +161,7 @@ const OrganizationalDetail = React.forwardRef<OrganizationalDetailRef, Organizat
                             errors={errors.size as any}
                             readOnly={!isEditing}
                         />
-                       
+
                         <Input
                             label="Website URL"
                             register={register("website")}
@@ -175,14 +176,14 @@ const OrganizationalDetail = React.forwardRef<OrganizationalDetailRef, Organizat
                             errors={errors.timezone as any}
                             readOnly={!isEditing}
                         />
-                         <div className="md:col-span-2">
+                        <div className="md:col-span-2">
                             <TextBox
                                 label="Company Description"
                                 register={register("description")}
                                 errors={errors.description as any}
                                 readOnly={!isEditing}
                                 rows={3}
-                            />
+                                    />
                         </div>
                     </div>
                 </div>
