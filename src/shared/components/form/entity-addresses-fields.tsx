@@ -20,6 +20,8 @@ import {
   entityAddressTypeOptions,
   type EntityAddressFormRow,
 } from "@/shared/form/entity-address-form.util";
+import { FIELD_MAX_LENGTH } from "@/shared/form/field-max-length.util";
+import { sanitizeAddressInput, sanitizeDigitsInput } from "@/shared/form/field-input.util";
 import type { PlaceSuggestion } from "@/shared/types/place-suggestion.types";
 import { buildAddressSearchContext } from "@/shared/utils/address-place-form.util";
 import {
@@ -230,6 +232,7 @@ export function EntityAddressesFields<T extends FieldValues>({
                       invalid={Boolean(rowErrors?.address_line_1)}
                       error={rowErrors?.address_line_1 ? String(rowErrors.address_line_1.message ?? "") : undefined}
                       onSelectPlace={(place) => applyPlaceToRow(setValue, index, place)}
+                      maxLength={FIELD_MAX_LENGTH.ADDRESS_LINE}
                     />
                   )}
                 />
@@ -246,8 +249,9 @@ export function EntityAddressesFields<T extends FieldValues>({
                         autoComplete="address-line2"
                         className={surfaceInputClassName}
                         disabled={disabled}
+                        maxLength={FIELD_MAX_LENGTH.ADDRESS_LINE}
                         value={String(f.value ?? "")}
-                        onChange={f.onChange}
+                        onChange={(e) => f.onChange(sanitizeAddressInput(e.target.value))}
                         onBlur={f.onBlur}
                       />
                     </FieldGroup>
@@ -260,8 +264,9 @@ export function EntityAddressesFields<T extends FieldValues>({
                     render={({ field: f }) => (
                       <input
                         id={`${rowIdPrefix}-pincode`}
+                        maxLength={FIELD_MAX_LENGTH.PINCODE}
                         value={String(f.value ?? "")}
-                        onChange={f.onChange}
+                        onChange={(e) => f.onChange(sanitizeDigitsInput(e.target.value))}
                         onBlur={f.onBlur}
                         disabled={disabled}
                         className={cn(

@@ -20,6 +20,7 @@ import {
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
+import { FIELD_MAX_LENGTH, rhfRegisterOptions } from "@/shared/form";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
@@ -516,7 +517,8 @@ export function ProjectFormModal({
               "h-auto min-h-[100px] resize-y py-3 leading-5",
               errors.description && "border-red-500 dark:border-red-500",
             )}
-            {...register("description")}
+            maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
+            {...register("description", rhfRegisterOptions("description"))}
           />
           <FieldErrorText id="project-desc-err">{errors.description?.message}</FieldErrorText>
         </FieldGroup>
