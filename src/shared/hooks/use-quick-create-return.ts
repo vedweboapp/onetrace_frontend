@@ -4,6 +4,7 @@ import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import type { QuickCreateKind } from "@/shared/types/quick-create.types";
+import { isQuickCreateKind } from "@/shared/types/quick-create.types";
 import {
   QUICK_CREATE_SELECT_PARAM,
   QUICK_CREATE_SELECT_TARGET_PARAM,
@@ -53,13 +54,13 @@ export function useQuickCreateReturn({
   React.useEffect(() => {
     if (appliedRef.current) return;
     const selectId = searchParams.get(QUICK_CREATE_SELECT_PARAM);
-    const selectTarget = searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM) as QuickCreateKind | null;
-    if (!selectId || !/^\d+$/.test(selectId) || !selectTarget) return;
+    const selectTargetRaw = searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM);
+    if (!selectId || !/^\d+$/.test(selectId) || !isQuickCreateKind(selectTargetRaw)) return;
 
     appliedRef.current = true;
     void (async () => {
       await onReloadOptions?.();
-      onApplySelect({ selectTarget, selectId });
+      onApplySelect({ selectTarget: selectTargetRaw, selectId });
 
       const params = new URLSearchParams(searchParams.toString());
       params.delete(QUICK_CREATE_SELECT_PARAM);

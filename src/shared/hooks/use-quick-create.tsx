@@ -2,16 +2,21 @@
 
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
-import { usePathname, useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
+import { usePathname, useRouter } from "@/i18n/navigation";
+import type { ContactType } from "@/features/contacts/types/contact.types";
 import type { QuickCreateKind } from "@/shared/types/quick-create.types";
 import { buildQuickCreateNavigateHref } from "@/shared/utils/quick-create-navigation.util";
 import { saveQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 
 export type UseQuickCreateArgs = {
   kind: QuickCreateKind;
-  /** Required for contact, site, and project quick create. */
+  /** Required for client-scoped contact / site / project quick create. */
   clientId?: number;
+  /** Required for vendor-scoped contact quick create. */
+  vendorId?: number;
+  contactType?: ContactType;
   /** When true, the + control is hidden. */
   addDisabled?: boolean;
   /** Override return URL (defaults to current page with query string). */
@@ -23,6 +28,8 @@ export type UseQuickCreateArgs = {
 export function useQuickCreate({
   kind,
   clientId,
+  vendorId,
+  contactType,
   addDisabled = false,
   returnTo: returnToProp,
   getFormDraft,
@@ -32,9 +39,11 @@ export function useQuickCreate({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const needsClient = kind === "contact" || kind === "site" || kind === "project";
+  const needsClient = kind === "site" || (kind === "contact" && contactType !== "vendor");
+  const needsVendor = kind === "contact" && contactType === "vendor";
   const hasClient = !needsClient || (clientId != null && clientId > 0);
-  const canAdd = !addDisabled && hasClient;
+  const hasVendor = !needsVendor || (vendorId != null && vendorId > 0);
+  const canAdd = !addDisabled && hasClient && hasVendor;
 
   const addAriaLabel = t(`add.${kind}`);
   const addLabel = addAriaLabel;
@@ -53,14 +62,53 @@ export function useQuickCreate({
     const href = buildQuickCreateNavigateHref(kind, {
       returnTo,
       clientId: clientId && clientId > 0 ? clientId : undefined,
+      vendorId: vendorId && vendorId > 0 ? vendorId : undefined,
+      contactType,
     });
     router.push(href);
-  }, [canAdd, kind, returnTo, clientId, router, getFormDraft]);
+  }, [canAdd, kind, returnTo, clientId, vendorId, contactType, router, getFormDraft]);
 
   return {
     canAdd,
     onAdd: canAdd ? navigateToCreate : undefined,
     addAriaLabel,
+    addLabel,
+  };
+}
+
+/** + Add that opens a settings (or other) page and returns via stored back href. */
+export function useSettingsQuickAdd(args: {
+  href: string;
+  addLabel: string;
+  addDisabled?: boolean;
+  getFormDraft?: () => unknown;
+  returnTo?: string;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { href, addLabel, addDisabled = false, getFormDraft, returnTo: returnToProp } = args;
+
+  const returnTo = React.useMemo(() => {
+    if (returnToProp) return returnToProp;
+    const qs = searchParams.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  }, [returnToProp, pathname, searchParams]);
+
+  const canAdd = !addDisabled && href.trim().length > 0;
+
+  const navigate = React.useCallback(() => {
+    if (!canAdd) return;
+    if (getFormDraft) {
+      saveQuickCreateFormDraft(returnTo, getFormDraft());
+    }
+    router.push(buildPathWithStoredBack(href, returnTo));
+  }, [canAdd, getFormDraft, returnTo, router, href]);
+
+  return {
+    canAdd,
+    onAdd: canAdd ? navigate : undefined,
+    addAriaLabel: addLabel,
     addLabel,
   };
 }

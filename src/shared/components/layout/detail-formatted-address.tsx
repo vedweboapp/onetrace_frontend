@@ -38,8 +38,11 @@ function buildCityStatePinLine(parts: Pick<DetailAddressParts, "city" | "state" 
 
 type LabeledRowsProps = DetailAddressParts & { line2Fallback?: string };
 
-/** Same breakpoints as record cards: 1 col mobile, 2 columns from `sm` through `lg`. */
-const ADDRESS_FIELD_GRID = cn("grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-2");
+/** Tighter responsive columns — fields pack by content width instead of stretching across the card. */
+const ADDRESS_FIELD_GRID = cn(
+  "grid grid-cols-1 gap-3",
+  "sm:grid-cols-[repeat(auto-fill,minmax(8.75rem,1fr))] sm:gap-x-4 sm:gap-y-3",
+);
 
 function LabeledAddressRows({ line1, line2, city, state, pincode, country, line2Fallback }: LabeledRowsProps) {
   const t = useTranslations("Dashboard.common.address");

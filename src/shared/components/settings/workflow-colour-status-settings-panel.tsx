@@ -35,7 +35,7 @@ import {
   surfaceInputClassName,
 } from "@/shared/ui";
 import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { routes } from "@/shared/config/routes";
@@ -575,7 +575,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
               id={`${formTitleId}-name`}
               value={statusName}
               onChange={(e) => {
-                setStatusName(capitalizeFirstLetter(e.target.value));
+                setStatusName(sanitizeTitleInput(e.target.value));
                 if (errors.status_name) setErrors((prev) => ({ ...prev, status_name: undefined }));
               }}
               className={cn(surfaceInputClassName, errors.status_name && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}

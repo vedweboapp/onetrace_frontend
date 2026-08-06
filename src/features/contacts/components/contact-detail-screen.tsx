@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContact, updateContact } from "@/features/contacts/api/contact.api";
 import { ContactDetailBody } from "@/features/contacts/components/contact-detail-body";
@@ -17,7 +19,8 @@ import {
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
+import { buildCurrentPageBackHref, mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { AppButton } from "@/shared/ui";
 
 type Props = {
@@ -26,6 +29,9 @@ type Props = {
 
 export function ContactDetailScreen({ contactId }: Props) {
   const t = useTranslations("Dashboard.contacts");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
   const [vendorNames, setVendorNames] = React.useState<Record<number, string>>({});
   const [togglingActive, setTogglingActive] = React.useState(false);
@@ -58,6 +64,22 @@ export function ContactDetailScreen({ contactId }: Props) {
     };
   }, []);
 
+  const syncContactTypeInUrl = React.useCallback(
+    (detail: Contact | null) => {
+      if (!detail) return;
+      const type = getContactType(detail);
+      const current = (searchParams.get("contact_type") ?? "").toLowerCase();
+      if (current === type) return;
+      // Client is the default nav state when param is missing; only force when vendor (or mismatched).
+      if (!current && type === "client") return;
+      router.replace(
+        mergeUrlQueryParam(buildCurrentPageBackHref(pathname, searchParams), "contact_type", type),
+        { scroll: false },
+      );
+    },
+    [pathname, router, searchParams],
+  );
+
   function resolveParentNames(detail: Contact) {
     const type = getContactType(detail);
     return {
@@ -75,6 +97,7 @@ export function ContactDetailScreen({ contactId }: Props) {
       loadError={t("detailLoadError")}
       fetch={fetchContact}
       getTitle={(detail) => detail.name}
+      onDetailChange={syncContactTypeInUrl}
       labels={{
         metaTitle: t("detailMetaTitle"),
         backAria: t("detail.backAria"),

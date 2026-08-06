@@ -19,7 +19,6 @@ import { toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
 import {
   AppButton,
   AppModal,
@@ -27,6 +26,7 @@ import {
   FieldGroup,
   FormFieldRow,
   SurfacePhoneField,
+  SurfaceTextField,
   surfaceInputClassName,
 } from "@/shared/ui";
 import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
@@ -150,33 +150,26 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved, onCreate
       <form id={FORM_DOM_ID} className="space-y-6" noValidate onSubmit={handleSubmit(submit)}>
         <div>
           <FormFieldRow cols="2" className="mt-3">
-            <FieldGroup label={t("fields.name")} htmlFor="client-name" required>
-              <input
+            <SurfaceTextField
+                register={register}
+                name="name"
                 id="client-name"
+                label={t("fields.name")}
+                kind="name"
+                required
                 autoComplete="name"
-                aria-invalid={errors.name ? true : undefined}
-                aria-describedby={errors.name ? "client-name-err" : undefined}
-                className={cn(surfaceInputClassName, errors.name && "border-red-500 dark:border-red-500")}
-                {...register("name", {
-                  onChange: (e) => {
-                    e.target.value = capitalizeFirstLetter(e.target.value);
-                  },
-                })}
+                error={errors.name?.message}
               />
-              <FieldErrorText id="client-name-err">{errors.name?.message}</FieldErrorText>
-            </FieldGroup>
-            <FieldGroup label={t("fields.email")} htmlFor="client-email" required>
-              <input
+            <SurfaceTextField
+                register={register}
+                name="email"
                 id="client-email"
-                type="email"
+                label={t("fields.email")}
+                kind="email"
+                required
                 autoComplete="email"
-                aria-invalid={errors.email ? true : undefined}
-                aria-describedby={errors.email ? "client-email-err" : undefined}
-                className={cn(surfaceInputClassName, errors.email && "border-red-500 dark:border-red-500")}
-                {...register("email")}
+                error={errors.email?.message}
               />
-              <FieldErrorText id="client-email-err">{errors.email?.message}</FieldErrorText>
-            </FieldGroup>
           </FormFieldRow>
         </div>
 

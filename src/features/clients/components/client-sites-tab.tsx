@@ -10,7 +10,7 @@ import { EntityDataTable, EntityDetailLoadingSkeleton, entityCol } from "@/share
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildEntityDetailTabBackHref } from "@/shared/utils/detail-from-list.util";
 import { buildQuickCreateNavigateHref } from "@/shared/utils/quick-create-navigation.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
@@ -49,13 +49,11 @@ export function ClientSitesTab({ clientId }: Props) {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
-  const clientDetailHref = pathname;
 
-  const returnTo = React.useMemo(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", "sites");
-    return `${pathname}?${params.toString()}`;
-  }, [pathname, searchParams]);
+  const returnTo = React.useMemo(
+    () => buildEntityDetailTabBackHref(pathname, "sites", searchParams),
+    [pathname, searchParams],
+  );
 
   const columns = React.useMemo(() => {
     const c = entityCol<Site>();
@@ -122,7 +120,7 @@ export function ClientSitesTab({ clientId }: Props) {
   const pageRange = getListPageRange(pagination);
 
   function openSiteDetail(siteId: number) {
-    router.push(buildDetailHrefWithListReturn(`${routes.dashboard.sites}/${siteId}`, clientDetailHref, siteId));
+    router.push(buildDetailHrefWithListReturn(`${routes.dashboard.sites}/${siteId}`, returnTo, siteId));
   }
 
   const addSiteButton = (

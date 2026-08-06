@@ -10,7 +10,7 @@ import { EntityDataTable, EntityDetailLoadingSkeleton, entityCol } from "@/share
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildEntityDetailTabBackHref, mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { buildQuickCreateNavigateHref } from "@/shared/utils/quick-create-navigation.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
@@ -47,13 +47,11 @@ export function EntityContactsTab({ entityType, entityId }: Props) {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
-  const entityDetailHref = pathname;
 
-  const returnTo = React.useMemo(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", "contacts");
-    return `${pathname}?${params.toString()}`;
-  }, [pathname, searchParams]);
+  const returnTo = React.useMemo(
+    () => buildEntityDetailTabBackHref(pathname, "contacts", searchParams),
+    [pathname, searchParams],
+  );
 
   const columns = React.useMemo(() => {
     const c = entityCol<Contact>();
@@ -131,9 +129,12 @@ export function EntityContactsTab({ entityType, entityId }: Props) {
   const pageRange = getListPageRange(pagination);
 
   function openContactDetail(contactId: number) {
-    router.push(
-      buildDetailHrefWithListReturn(`${routes.dashboard.contacts}/${contactId}`, entityDetailHref, contactId),
+    const detailPath = mergeUrlQueryParam(
+      `${routes.dashboard.contacts}/${contactId}`,
+      "contact_type",
+      entityType,
     );
+    router.push(buildDetailHrefWithListReturn(detailPath, returnTo, contactId));
   }
 
   const addContactButton = (

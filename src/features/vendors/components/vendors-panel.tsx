@@ -5,8 +5,9 @@ import { Pencil, Phone, Power, PowerOff, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { deleteVendor, fetchVendorsPage, updateVendor } from "@/features/vendors/api/vendor.api";
+import { deleteVendor, fetchAllVendorIds, fetchVendorsPage, updateVendor } from "@/features/vendors/api/vendor.api";
 import type { Vendor } from "@/features/vendors/types/vendor.types";
+import { fetchVendorTypesPage } from "@/features/vendor-types/api/vendor-type.api";
 import { VendorTypeChip } from "@/features/vendor-types/components/vendor-type-chip";
 import {
   getVendorTypeRow,
@@ -14,11 +15,18 @@ import {
   vendorPrimaryAddress,
 } from "@/features/vendors/utils/vendor-nested-fields.util";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
-import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { useDeferredListOptions } from "@/shared/hooks/use-deferred-list-options";
 import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
 import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
+import {
+  MassActionBar,
+  buildVendorMassUpdateFields,
+  massSelectionColumn,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
 import {
   ActiveStatusBadge,
   AddButton,
@@ -82,7 +90,64 @@ export function VendorsPanel() {
   const [deletingVendor, setDeletingVendor] = React.useState<Vendor | null>(null);
   const [deleting, setDeleting] = React.useState(false);
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
+  const [fetchTypeOptions, setFetchTypeOptions] = React.useState(false);
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
+
+  const loadTypeOptions = React.useCallback(async () => {
+    const { items: types } = await fetchVendorTypesPage(1, 200, { is_active: true });
+    return types.map((row) => ({ value: String(row.id), label: row.name }));
+  }, []);
+
+  const { options: typeOptions } = useDeferredListOptions(loadTypeOptions, fetchTypeOptions);
+
+  const listFilters = React.useMemo(
+    () => ({
+      search: search || undefined,
+      is_active: isActiveFilter,
+    }),
+    [search, isActiveFilter],
+  );
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildVendorMassUpdateFields(typeOptions, {
+        name: t("fields.name"),
+        email: t("fields.email"),
+        phone: t("fields.phone"),
+        type: t("fields.type"),
+        addressLine1: t("fields.addressLine1"),
+        addressLine2: t("fields.addressLine2"),
+        country: t("fields.country"),
+        state: t("fields.stateProvince"),
+        city: t("fields.city"),
+        pincode: t("fields.pincode"),
+        isActive: t("table.status"),
+        activeLabel: t("status.active"),
+        inactiveLabel: t("status.inactive"),
+      }),
+    [t, typeOptions],
+  );
+
+  const fetchAllIds = React.useCallback(
+    () => fetchAllVendorIds(listFilters, { silent: true }),
+    [listFilters],
+  );
+
+  const mass = useEntityListMassActions({
+    resource: "vendors",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search, isActiveFilter],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
+  React.useEffect(() => {
+    if (mass.selectedCount > 0) setFetchTypeOptions(true);
+  }, [mass.selectedCount]);
+
+  const massSel = React.useMemo(() => massSelectionColumn(mass, items.length), [mass, items.length]);
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -189,6 +254,7 @@ export function VendorsPanel() {
   const tableColumns = React.useMemo(() => {
     const c = entityCol<Vendor>();
     return [
+      massSel.tableColumn,
       c.primary("name", t("table.name"), (r) => r.name),
       c.custom("type", t("table.type"), (row) => {
         const typeRow = getVendorTypeRow(row);
@@ -199,11 +265,8 @@ export function VendorsPanel() {
       c.custom("location", t("table.location"), (row) => vendorAddressSummary(vendorPrimaryAddress(row))),
       c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive")),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
-      // c.actions("actions", t("table.actions"), (row) => (
-      //   <DataTableRowActionsMenu menuAriaLabel={tList("openRowActions")} items={rowMenuItems(row)} />
-      // )),
     ];
-  }, [t, tList, dateFmt, rowMenuItems]);
+  }, [t, dateFmt, massSel.tableColumn]);
 
   const hasActiveFilters = hasListActiveFilters({ search, isActiveParam });
   const countInactive = React.useCallback(async () => {
@@ -257,6 +320,15 @@ export function VendorsPanel() {
         />
       ) : null}
 
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
+        />
+      ) : null}
+
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
@@ -297,6 +369,7 @@ export function VendorsPanel() {
                     key={row.id}
                     dataListRowId={row.id}
                     className={highlightClassName(row.id)}
+                    leading={massSel.cardLeading(row)}
                     title={row.name}
                     subtitle={row.email}
                     meta={vendorAddressSummary(vendorPrimaryAddress(row))}

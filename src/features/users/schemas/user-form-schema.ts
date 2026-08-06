@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { City, State } from "country-state-city";
+import { isAppValidPhoneNumber } from "@/shared/utils/phone-input.util";
+import { zEmail, zRequiredName } from "@/shared/form";
 
 export function createUserFormSchema(messages: {
   firstName: string;
@@ -15,10 +17,12 @@ export function createUserFormSchema(messages: {
 }) {
   return z
     .object({
-      first_name: z.string().trim().min(1, messages.firstName),
-      last_name: z.string().trim().min(1, messages.lastName),
-      email: z.string().trim().email(messages.email),
-      phone_number: z.string().trim().min(8, messages.phone),
+      first_name: zRequiredName(messages.firstName),
+      last_name: zRequiredName(messages.lastName),
+      email: zEmail(messages.email),
+      phone_number: z.string().refine((val) => isAppValidPhoneNumber(val), {
+        message: messages.phone,
+      }),
       gender: z.string().trim().min(1, messages.gender),
       role: z.string().trim().regex(/^\d+$/, messages.role),
       address1: z.string().trim(),

@@ -174,7 +174,7 @@ type Props = {
   siteDetailsLoading: boolean;
   dateFmt: Intl.DateTimeFormat;
   dueFmt: Intl.DateTimeFormat;
-};
+};                                                                                                                                                                                            
 
 export function QuotationDetailBody({
   detail,

@@ -3,6 +3,7 @@ import type { MassActionConfig } from "./types";
 export type MassActionResourceKey =
   | "jobs"
   | "clients"
+  | "vendors"
   | "contacts"
   | "sites"
   | "quotations"
@@ -18,6 +19,7 @@ export type MassActionResourceKey =
 const RESOURCE_META: Record<MassActionResourceKey, { idsKey: string; apiSegment: string }> = {
   jobs: { idsKey: "job_ids", apiSegment: "jobs" },
   clients: { idsKey: "client_ids", apiSegment: "clients" },
+  vendors: { idsKey: "vendor_ids", apiSegment: "vendors" },
   contacts: { idsKey: "contact_ids", apiSegment: "contacts" },
   sites: { idsKey: "site_ids", apiSegment: "sites" },
   quotations: { idsKey: "quotation_ids", apiSegment: "quotations" },
