@@ -18,7 +18,8 @@ export type EntityAddress = {
   longitude?: string | null;
 };
 
-export type EntityAddressPayload = Omit<EntityAddress, "id">;
+/** Create payloads omit `id`; update payloads include `id` for existing rows. */
+export type EntityAddressPayload = EntityAddress;
 
 export function isEntityAddressType(value: unknown): value is EntityAddressType {
   return value === "billing" || value === "shipping" || value === "other";

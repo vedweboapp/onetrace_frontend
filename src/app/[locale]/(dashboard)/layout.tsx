@@ -4,6 +4,7 @@ import { DashboardChromeSlot } from "@/features/dashboard/components/dashboard-c
 import { DashboardHeader } from "@/features/dashboard/components/dashboard-header";
 import { DashboardSidebar } from "@/features/dashboard/components/dashboard-sidebar";
 import { NavigationBackTracker } from "@/shared/components/navigation/navigation-back-tracker";
+import { OrgCurrencyBootstrap } from "@/shared/money/use-org-currency";
 import {
   dashboardMainGutterClassName,
   dashboardPageContainerClassName,
@@ -15,6 +16,7 @@ import { Suspense } from "react";
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <DashboardAuthGuard>
+      <OrgCurrencyBootstrap />
       <Suspense fallback={null}>
         <NavigationBackTracker />
       </Suspense>

@@ -45,11 +45,7 @@ import {
   massSelectionColumn,
   useEntityListMassActions,
 } from "@/shared/mass-actions";
-
-function moneyDisplay(v: unknown): string {
-  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : Number.NaN;
-  return Number.isFinite(n) ? n.toFixed(2) : "—";
-}
+import { useOrgCurrency } from "@/shared/money/use-org-currency";
 
 function installationTypeCell(row: CompositeItem) {
   const chip = resolveInstallationTypeChipData(row.installation_type);
@@ -60,6 +56,7 @@ function installationTypeCell(row: CompositeItem) {
 export function CompositeItemsPanel() {
   const t = useTranslations("Dashboard.compositeItems");
   const tList = useTranslations("Dashboard.list");
+  const { formatMoneyValue: moneyDisplay } = useOrgCurrency();
   const dateFmt = useDashboardDateFormat();
   const router = useRouter();
   const pathname = usePathname();

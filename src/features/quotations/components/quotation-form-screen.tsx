@@ -76,7 +76,7 @@ import {
   saveQuickCreateFormDraft,
 } from "@/shared/utils/quick-create-form-draft.util";
 import { useQuotationFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import {
   AppButton,
   AppTabs,
@@ -879,7 +879,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                   {...quoteNameRegister}
                   onBlur={(e) => {
                     quoteNameRegister.onBlur(e);
-                    const next = capitalizeFirstLetter(e.target.value);
+                    const next = sanitizeTitleInput(e.target.value);
                     if (next !== e.target.value) setValue("quote_name", next, { shouldValidate: true });
                   }}
                 />

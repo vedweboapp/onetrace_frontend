@@ -26,13 +26,14 @@ import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
-import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import {
   QUICK_CREATE_CLIENT_PARAM,
+  QUICK_CREATE_SELECT_TARGET_PARAM,
+  hrefAfterEntityCreate,
   resolveFormBackUrl,
 } from "@/shared/utils/quick-create-navigation.util";
 import {
@@ -361,7 +362,14 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       const saved = isEdit && projectId ? await updateProject(projectId, payload) : await createProject(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
-      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.projects, saved.id, safeBack));
+      router.replace(
+        hrefAfterEntityCreate({
+          createdId: saved.id,
+          selectTarget: isEdit ? null : searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
+          backHref: safeBack,
+          listPath: routes.dashboard.projects,
+        }),
+      );
     } catch (error) {
       reportFormSubmitApiError(error, setError);
     } finally {
@@ -430,7 +438,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                     className={cn(surfaceInputClassName, errors.name && "border-red-500 dark:border-red-500")}
                     {...register("name", {
                       onChange: (e) => {
-                        e.target.value = capitalizeFirstLetter(e.target.value);
+                        e.target.value = sanitizeTitleInput(e.target.value);
                       },
                     })}
                   />

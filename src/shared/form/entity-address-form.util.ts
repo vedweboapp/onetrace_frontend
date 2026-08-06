@@ -21,6 +21,8 @@ export type EntityAddressFormMessages = {
 
 /** Form-row shape (ISO codes for cascading location UI). */
 export type EntityAddressFormRow = {
+  /** Present when editing an existing address row from the API. */
+  id?: number;
   address_type: EntityAddressType;
   address_line_1: string;
   address_line_2: string;
@@ -52,6 +54,7 @@ export function emptyEntityAddressFormRow(overrides?: Partial<EntityAddressFormR
 export function createEntityAddressRowSchema(messages: EntityAddressFormMessages) {
   return z
     .object({
+      id: z.number().int().positive().optional(),
       address_type: z.enum(["billing", "shipping", "other"], { message: messages.addressType }),
       address_line_1: zTrimmedNonEmpty(messages.addressLine1),
       address_line_2: z.string(),
@@ -110,7 +113,7 @@ function stateIsoFromName(countryIso: string, stateName: string | null | undefin
 }
 
 export function mapEntityAddressFormRowToPayload(row: EntityAddressFormRow): EntityAddressPayload {
-  return {
+  const payload: EntityAddressPayload = {
     address_type: row.address_type,
     address_line_1: row.address_line_1.trim(),
     address_line_2: row.address_line_2.trim() || null,
@@ -122,12 +125,17 @@ export function mapEntityAddressFormRowToPayload(row: EntityAddressFormRow): Ent
     latitude: row.latitude.trim() || null,
     longitude: row.longitude.trim() || null,
   };
+  if (typeof row.id === "number" && row.id > 0) {
+    payload.id = row.id;
+  }
+  return payload;
 }
 
 export function mapEntityAddressApiToFormRow(addr: Partial<EntityAddress> | null | undefined): EntityAddressFormRow {
   const countryIso = countryIsoFromName(addr?.country);
   const stateIso = stateIsoFromName(countryIso, addr?.state);
   return {
+    id: typeof addr?.id === "number" && addr.id > 0 ? addr.id : undefined,
     address_type: normalizeEntityAddressType(addr?.address_type),
     address_line_1: addr?.address_line_1?.trim() ?? "",
     address_line_2: addr?.address_line_2?.trim() ?? "",

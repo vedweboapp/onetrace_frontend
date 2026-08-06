@@ -13,6 +13,9 @@ import {
   hasDirtyFields,
 } from "../utils/company-settings-diff.util";
 import { AppButton } from "@/shared/ui";
+import { useOrgCurrencyStore } from "@/shared/money/org-currency.store";
+import { formatOrgMoney } from "@/shared/money/format-money.util";
+import { normalizeOrgCurrencySettings } from "@/shared/money/org-currency.types";
 
 interface CurrencySettings {
   currencyCode: string;
@@ -55,7 +58,10 @@ const CompanySettingsCurrency = ({ initialData, onSaveSuccess }: CompanySettings
     setIsMounted(true);
   }, []);
 
-  // Format helper function
+  React.useEffect(() => {
+    useOrgCurrencyStore.getState().setSettings(settings);
+  }, [settings]);
+
   const formatCurrencyValue = (
     value: number,
     formatType: "symbol" | "code",
@@ -63,52 +69,19 @@ const CompanySettingsCurrency = ({ initialData, onSaveSuccess }: CompanySettings
     code: string,
     symbolPosition: "before" | "after",
     digitSeparator: string,
-    decimalPlaces: number
-  ) => {
-    const decimals = isNaN(Number(decimalPlaces)) ? 2 : Number(decimalPlaces);
-    const parts = value.toFixed(decimals).split(".");
-    const integerPart = parts[0];
-    const decimalPart = parts[1] ? "." + parts[1] : "";
-
-    let formattedInteger = "";
-
-    if (digitSeparator === "12,34,567.89") {
-      // Indian formatting (lakhs, crores)
-      let lastThree = integerPart.substring(integerPart.length - 3);
-      const otherBits = integerPart.substring(0, integerPart.length - 3);
-      if (otherBits !== "") {
-        lastThree = "," + lastThree;
-      }
-      formattedInteger = otherBits.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
-    } else if (digitSeparator === "1.234.567,89") {
-      // European formatting
-      formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    } else if (digitSeparator === "1 234 567.89") {
-      // Space formatting
-      formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-    } else {
-      // Standard US/UK formatting (1,234,567.89)
-      formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    }
-
-    // Combine integer and decimal parts
-    let formattedNumber = "";
-    if (digitSeparator === "1.234.567,89") {
-      // uses comma for decimals
-      formattedNumber = formattedInteger + (parts[1] ? "," + parts[1] : "");
-    } else {
-      formattedNumber = formattedInteger + decimalPart;
-    }
-
-    // Add prefix/suffix
-    const prefixOrSuffix = formatType === "symbol" ? symbol : code;
-
-    if (symbolPosition === "before") {
-      return `${prefixOrSuffix} ${formattedNumber}`;
-    } else {
-      return `${formattedNumber} ${prefixOrSuffix}`;
-    }
-  };
+    decimalPlaces: number,
+  ) =>
+    formatOrgMoney(
+      value,
+      normalizeOrgCurrencySettings({
+        currencyCode: code,
+        formatType,
+        symbol,
+        symbolPosition,
+        digitSeparator,
+        decimalPlaces,
+      }),
+    );
 
   const handleOpenCustomize = () => {
     setTempSettings({ ...settings });

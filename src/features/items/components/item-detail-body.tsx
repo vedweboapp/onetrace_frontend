@@ -33,11 +33,7 @@ import {
   DetailStatusMetric,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
-
-function moneyDisplay(v: unknown): string {
-  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : Number.NaN;
-  return Number.isFinite(n) ? n.toFixed(2) : "—";
-}
+import { useOrgCurrency } from "@/shared/money/use-org-currency";
 
 function installationCostTypeLabel(
   value: InstallationCostType | string | null | undefined,
@@ -69,6 +65,7 @@ export function ItemDetailBody({
   const t = useTranslations("Dashboard.items");
   const tMeta = useTranslations("Dashboard.common.detail");
   const tStatus = useTranslations("Dashboard.clients.status");
+  const { formatMoneyValue: moneyDisplay } = useOrgCurrency();
   const [childItemsById, setChildItemsById] = React.useState<Map<number, Item>>(new Map());
   const [groupName, setGroupName] = React.useState<string | null>(null);
   const [unitTypesById, setUnitTypesById] = React.useState<Record<number, Pick<UnitType, "id" | "name" | "short_form">>>({});

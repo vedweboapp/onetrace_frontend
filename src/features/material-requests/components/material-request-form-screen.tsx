@@ -40,6 +40,7 @@ import {
   DetailSectionCountBadge,
 } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
+import { useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
 import {
@@ -59,6 +60,7 @@ type Props = {
 
 export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
   const t = useTranslations("Dashboard.materialRequests");
+  const tQuick = useTranslations("Dashboard.quickCreate");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -69,6 +71,15 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
   }, [pathname]);
   const safeBack = useFormBackUrl("material-requests", listHref);
   const isEdit = mode === "edit";
+
+  const workerQuickAdd = useSettingsQuickAdd({
+    href: `${routes.dashboard.settingsUsers}/new`,
+    addLabel: tQuick("add.user"),
+  });
+  const statusQuickAdd = useSettingsQuickAdd({
+    href: routes.dashboard.settingsMaterialStatus,
+    addLabel: tQuick("add.materialStatus"),
+  });
 
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
@@ -306,6 +317,9 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
                         invalid={!!errors.worker_name}
                         onBlur={field.onBlur}
                         onChange={field.onChange}
+                        onAdd={workerQuickAdd.onAdd}
+                        addAriaLabel={workerQuickAdd.addAriaLabel}
+                        addLabel={workerQuickAdd.addLabel}
                       />
                     )}
                   />
@@ -341,6 +355,9 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
                         invalid={!!errors.status}
                         onBlur={field.onBlur}
                         onChange={field.onChange}
+                        onAdd={statusQuickAdd.onAdd}
+                        addAriaLabel={statusQuickAdd.addAriaLabel}
+                        addLabel={statusQuickAdd.addLabel}
                       />
                     )}
                   />

@@ -4,4 +4,13 @@ export {
   getApiFieldErrorMap,
   reportFormSubmitApiError,
 } from "./report-form-api-error.util";
-export { zTrimmedNonEmpty, zHexColour6 } from "./schemas";
+export {
+  capitalizeFirstLetter,
+  rhfSanitizeOnChange,
+  sanitizeEmailInput,
+  sanitizeFieldInput,
+  sanitizeNameInput,
+  sanitizeTitleInput,
+  type FieldInputKind,
+} from "./field-input.util";
+export { zTrimmedNonEmpty, zRequiredName, zRequiredTitle, zEmail, zHexColour6 } from "./schemas";

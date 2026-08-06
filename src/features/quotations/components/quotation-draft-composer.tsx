@@ -29,7 +29,7 @@ import { formatMoneyDisplay, parseMoneyValue } from "@/features/quotations/utils
 import { cn } from "@/core/utils/http.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn, type QuickCreateSelectApplied } from "@/shared/hooks/use-quick-create-return";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { AppButton, AppModal, CheckmarkSelect, DataTableRowActionsMenu, FieldLabel, surfaceInputClassName } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui";
 
@@ -296,7 +296,7 @@ export function QuotationDraftComposer({
   const compositeFormId = React.useId();
   const router = useRouter();
   const pathname = usePathname();
-
+ 
   const [newSectionName, setNewSectionName] = React.useState("");
   const [rowPick, setRowPick] = React.useState<Record<string, DraftRowPick>>({});
   const [groups, setGroups] = React.useState<Group[]>([]);
@@ -488,7 +488,7 @@ export function QuotationDraftComposer({
   function addSection() {
     const trimmed = newSectionName.trim();
     if (!trimmed) return;
-    const name = capitalizeFirstLetter(trimmed);
+    const name = sanitizeTitleInput(trimmed);
     patchDraft((d) => ({
       sections: [
         ...d.sections,
@@ -1004,7 +1004,7 @@ export function QuotationDraftComposer({
                 onChange={(e) => setNewSectionName(e.target.value)}
                 onBlur={() =>
                   setNewSectionName((prev) => {
-                    const next = capitalizeFirstLetter(prev);
+                    const next = sanitizeTitleInput(prev);
                     return next !== prev ? next : prev;
                   })
                 }
@@ -1130,7 +1130,7 @@ export function QuotationDraftComposer({
                         onBlur={() => {
                           setSectionTitleEditId(null);
                           const raw = section.name;
-                          const next = capitalizeFirstLetter(raw);
+                          const next = sanitizeTitleInput(raw);
                           if (next !== raw) updateSectionName(si, next);
                         }}
                         onKeyDown={(e) => {
@@ -1558,7 +1558,7 @@ function PlotBlock({
                   onBlur={() => {
                     setPlotTitleEdit(false);
                     const raw = plot.name;
-                    const next = capitalizeFirstLetter(raw);
+                    const next = sanitizeTitleInput(raw);
                     if (next !== raw) onPlotName(next);
                   }}
                   onKeyDown={(e) => {

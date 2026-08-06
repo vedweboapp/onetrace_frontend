@@ -5,11 +5,8 @@ import { X, Plus, Trash2 } from "lucide-react";
 import { AppButton } from "@/shared/ui/app-button";
 import { FormRule, RuleCondition, FormRuleOutput, RuleAction } from "./form-rules.types";
 import MultiSelect from "../components/multi-select";
-import PhoneInput from "react-phone-number-input";
-import { SurfacePhoneCountrySelect } from "@/shared/ui/surface-phone-country-select";
-import { DEFAULT_PHONE_COUNTRY } from "@/shared/ui/surface-phone-field";
+import { PhoneNumberInput, DEFAULT_PHONE_COUNTRY, surfaceInputClassName } from "@/shared/ui";
 import { currencyList } from "../components/currency-list";
-import { surfaceInputClassName } from "@/shared/ui";
 
 /** Full-height drawer below the form builder sub-header (top-14 + h-14 = 7rem). */
 const FORM_BUILDER_SUBHEADER_OFFSET = "top-28";
@@ -220,18 +217,18 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
     }
     if (fieldType === "phone" || fieldType === "mobile") {
       return (
-        <PhoneInput
-          international
-          defaultCountry={DEFAULT_PHONE_COUNTRY}
-          placeholder="Enter phone number"
-          className="w-full mt-1.5"
-          value={ruleValue}
-          onChange={(val) => setRuleValue(val || "")}
-          countrySelectComponent={SurfacePhoneCountrySelect}
-          numberInputProps={{
-            className: `w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors.ruleValue ? 'border-red-500' : 'border-gray-300'} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`,
-          }}
-        />
+        <div className="surface-phone-root w-full mt-1.5">
+          <PhoneNumberInput
+            value={ruleValue}
+            onChange={setRuleValue}
+            defaultCountry={DEFAULT_PHONE_COUNTRY}
+            placeholder="Enter phone number"
+            className="w-full"
+            numberInputProps={{
+              className: `w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors.ruleValue ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`,
+            }}
+          />
+        </div>
       );
     }
 

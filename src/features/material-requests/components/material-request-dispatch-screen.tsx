@@ -25,6 +25,8 @@ import {
   quantityTableInputCellClass,
 } from "@/shared/components/quantity/quantity-table-columns";
 import { AppButton, CheckmarkSelect, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
+import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 
 type LineDraft = {
   key: string;
@@ -86,6 +88,32 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
   const [extraDraft, setExtraDraft] = React.useState<ExtraDraft>({ id: "new", item: "", quantity: "" });
   const [extraRows, setExtraRows] = React.useState<ExtraDraft[]>([]);
   const [notes, setNotes] = React.useState<string>("");
+
+  const itemQuickCreate = useQuickCreate({ kind: "item" });
+  const reloadItemOptions = React.useCallback(async () => {
+    try {
+      const itemsRes = await fetchItemsPage(1, 500, { isActive: true });
+      const options = itemsRes.items.map((item) => ({
+        value: String(item.id),
+        label: item.name?.trim() || item.sku?.trim() || `#${item.id}`,
+      }));
+      const labels: Record<number, string> = {};
+      for (const item of itemsRes.items) {
+        labels[item.id] = item.name?.trim() || item.sku?.trim() || `#${item.id}`;
+      }
+      setItemOptions(options);
+      setItemLabelById(labels);
+    } catch {
+      /* keep existing options */
+    }
+  }, []);
+  useQuickCreateReturn({
+    onReloadOptions: reloadItemOptions,
+    onApplySelect: ({ selectTarget, selectId }) => {
+      if (selectTarget !== "item") return;
+      setExtraDraft((prev) => ({ ...prev, item: selectId }));
+    },
+  });
 
   React.useEffect(() => {
     let cancelled = false;
@@ -416,6 +444,9 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
                     size="sm"
                     disabled={saving || extraItemOptions.length === 0}
                     onChange={(v) => setExtraDraft((prev) => ({ ...prev, item: v }))}
+                    onAdd={itemQuickCreate.onAdd}
+                    addAriaLabel={itemQuickCreate.addAriaLabel}
+                    addLabel={itemQuickCreate.addLabel}
                   />
                 </div>
                 <input

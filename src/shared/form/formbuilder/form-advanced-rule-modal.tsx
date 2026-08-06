@@ -5,9 +5,7 @@ import { X, Plus, Trash2 } from "lucide-react";
 import { AppButton } from "@/shared/ui/app-button";
 import { FormRule, RuleCondition, FormRuleOutput, RuleAction, FormRuleBlock } from "./form-rules.types";
 import MultiSelect from "../components/multi-select";
-import PhoneInput from "react-phone-number-input";
-import { SurfacePhoneCountrySelect } from "@/shared/ui/surface-phone-country-select";
-import { DEFAULT_PHONE_COUNTRY } from "@/shared/ui/surface-phone-field";
+import { PhoneNumberInput, DEFAULT_PHONE_COUNTRY } from "@/shared/ui";
 import { currencyList } from "../components/currency-list";
 
 const FORM_BUILDER_SUBHEADER_OFFSET = "top-28";
@@ -324,18 +322,18 @@ const FormAdvancedRuleModal = ({
 
     if (fieldType === "phone" || fieldType === "mobile") {
       return (
-        <PhoneInput
-          international
-          defaultCountry={DEFAULT_PHONE_COUNTRY}
-          placeholder="Enter phone number"
-          className="w-full mt-1.5"
-          value={blockValue}
-          onChange={(val) => handleBlockChange(blockIdx, { value: val || "" })}
-          countrySelectComponent={SurfacePhoneCountrySelect}
-          numberInputProps={{
-            className: `w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[`block-${blockIdx}-ruleValue`] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`,
-          }}
-        />
+        <div className="surface-phone-root w-full mt-1.5">
+          <PhoneNumberInput
+            value={blockValue}
+            onChange={(val) => handleBlockChange(blockIdx, { value: val })}
+            defaultCountry={DEFAULT_PHONE_COUNTRY}
+            placeholder="Enter phone number"
+            className="w-full"
+            numberInputProps={{
+              className: `w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[`block-${blockIdx}-ruleValue`] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`,
+            }}
+          />
+        </div>
       );
     }
 

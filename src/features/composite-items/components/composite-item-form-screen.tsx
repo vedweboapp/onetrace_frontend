@@ -40,7 +40,7 @@ import type { Item } from "@/features/items/types/item.types";
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
-import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { useQuickCreate, useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
@@ -48,7 +48,7 @@ import {
   resolveFormBackUrl,
 } from "@/shared/utils/quick-create-navigation.util";
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import {
   AppButton,
   CheckmarkSelect,
@@ -56,6 +56,7 @@ import {
   FieldLabel,
   fieldErrorTextClassName,
   InputWithEndSelect,
+  MoneyInput,
   SurfaceShell,
   surfaceInputClassName,
 } from "@/shared/ui";
@@ -170,12 +171,22 @@ function weightPayload(valueRaw: string, unitRaw: WeightUnit): { weight?: number
 export function CompositeItemFormScreen({ mode, itemId }: Props) {
   const t = useTranslations("Dashboard.compositeItems");
   const tModal = useTranslations("Dashboard.compositeItems.modal");
+  const tQuick = useTranslations("Dashboard.quickCreate");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const safeBack = useFormBackUrl("composite-items", routes.dashboard.compositeItems);
   const isEdit = mode === "edit";
   const pendingItemRowRef = React.useRef<string | null>(null);
+
+  const unitTypeQuickAdd = useSettingsQuickAdd({
+    href: routes.dashboard.settingsUnitTypes,
+    addLabel: tQuick("add.unitType"),
+  });
+  const installationTypeQuickAdd = useSettingsQuickAdd({
+    href: routes.dashboard.settingsInstallationTypes,
+    addLabel: tQuick("add.installationType"),
+  });
 
   const nameId = React.useId();
   const skuId = React.useId();
@@ -918,7 +929,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <FieldLabel htmlFor={nameId} required>{tModal("name")}</FieldLabel>
-                <input id={nameId} type="text" autoComplete="off" value={name} onChange={(e) => setName(capitalizeFirstLetter(e.target.value))} onBlur={() => setNameTouched(true)} disabled={submitting} placeholder={tModal("namePlaceholder")} className={surfaceInputClassName} />
+                <input id={nameId} type="text" autoComplete="off" value={name} onChange={(e) => setName(sanitizeTitleInput(e.target.value))} onBlur={() => setNameTouched(true)} disabled={submitting} placeholder={tModal("namePlaceholder")} className={surfaceInputClassName} />
                 {nameInvalid ? <p className={fieldErrorTextClassName}>{tModal("nameError")}</p> : null}
               </div>
               <div>
@@ -943,6 +954,9 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   clearable
                   className="w-full"
                   onChange={setUnitType}
+                  onAdd={unitTypeQuickAdd.onAdd}
+                  addAriaLabel={unitTypeQuickAdd.addAriaLabel}
+                  addLabel={unitTypeQuickAdd.addLabel}
                 />
                 {unitTypesError ? (
                   <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{unitTypesError}</p>
@@ -981,6 +995,9 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                     searchable
                     clearable
                     className="w-full"
+                    onAdd={installationTypeQuickAdd.onAdd}
+                    addAriaLabel={installationTypeQuickAdd.addAriaLabel}
+                    addLabel={installationTypeQuickAdd.addLabel}
                   />
                 </div>
               </div>
@@ -1006,11 +1023,29 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <FieldLabel htmlFor={costId} required>{tModal("costPrice")}</FieldLabel>
-                <input id={costId} type="number" inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} disabled={submitting} className={surfaceInputClassName} min={0} step="0.01" />
+                <MoneyInput
+                  id={costId}
+                  type="number"
+                  inputMode="decimal"
+                  value={cost}
+                  onChange={(e) => setCost(e.target.value)}
+                  disabled={submitting}
+                  min={0}
+                  step="0.01"
+                />
               </div>
               <div>
                 <FieldLabel htmlFor={sellId} required>{tModal("sellingPrice")}</FieldLabel>
-                <input id={sellId} type="number" inputMode="decimal" value={sell} onChange={(e) => setSell(e.target.value)} disabled={submitting} className={surfaceInputClassName} min={0} step="0.01" />
+                <MoneyInput
+                  id={sellId}
+                  type="number"
+                  inputMode="decimal"
+                  value={sell}
+                  onChange={(e) => setSell(e.target.value)}
+                  disabled={submitting}
+                  min={0}
+                  step="0.01"
+                />
               </div>
             </div>
             <div className="space-y-4">
