@@ -56,7 +56,7 @@ export function DashboardProfileMenu({ initials, className }: Props) {
           role="menu"
           aria-label={t("profileMenuLabel")}
           className={cn(
-            "absolute right-0 top-[calc(100%+0.375rem)] z-50 min-w-[12rem] rounded-lg border border-slate-200 bg-white p-2 shadow-lg",
+            "absolute right-0 top-[calc(100%+0.375rem)] z-[999] min-w-[12rem] rounded-lg border border-slate-200 bg-white p-2 shadow-lg",
             "dark:border-slate-700 dark:bg-slate-900",
           )}
         >
