@@ -12,7 +12,7 @@ export type SiteFormMessages = {
   pincode: string;
   contactPersonTitle: string;
   contactPerson: string;
-  duplicateContactTitle: string;
+  contactPersonDuplicate: string;
 };
 
 export function createSiteFormSchema(messages: SiteFormMessages) {
@@ -71,24 +71,26 @@ export function createSiteFormSchema(messages: SiteFormMessages) {
         });
       }
 
-      const titleToFirstIndex = new Map<string, number>();
+      const pairToFirstIndex = new Map<string, number>();
       for (let i = 0; i < data.contacts.length; i++) {
         const title = data.contacts[i]?.title?.trim() ?? "";
-        if (!title) continue;
-        const firstIndex = titleToFirstIndex.get(title);
+        const contact = data.contacts[i]?.contact?.trim() ?? "";
+        if (!title || !contact) continue;
+        const pairKey = `${title}\0${contact}`;
+        const firstIndex = pairToFirstIndex.get(pairKey);
         if (firstIndex !== undefined) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            path: ["contacts", firstIndex, "title"],
-            message: messages.duplicateContactTitle,
+            path: ["contacts", firstIndex, "contact"],
+            message: messages.contactPersonDuplicate,
           });
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            path: ["contacts", i, "title"],
-            message: messages.duplicateContactTitle,
+            path: ["contacts", i, "contact"],
+            message: messages.contactPersonDuplicate,
           });
         } else {
-          titleToFirstIndex.set(title, i);
+          pairToFirstIndex.set(pairKey, i);
         }
       }
     });
