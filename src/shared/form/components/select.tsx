@@ -1,154 +1,108 @@
 "use client";
 
-import { surfaceSelectClassName } from "@/shared/ui";
-import React, {
-    SelectHTMLAttributes,
-} from "react";
-
+import React, { SelectHTMLAttributes } from "react";
+import { FieldError, UseFormRegisterReturn } from "react-hook-form";
 import {
-    FieldError,
-    UseFormRegisterReturn,
-} from "react-hook-form";
+  FieldErrorText,
+  FieldGroup,
+  surfaceSelectClassName,
+} from "@/shared/ui";
+import { cn } from "@/core/utils/http.util";
 
 type DropdownOption =
-    | string
-    | {
-        label: string;
-        value: string;
+  | string
+  | {
+      label: string;
+      value: string;
     };
 
-type FormDropdownProps =
-    SelectHTMLAttributes<HTMLSelectElement> & {
-        label?: React.ReactNode;
+type FormDropdownProps = SelectHTMLAttributes<HTMLSelectElement> & {
+  label?: React.ReactNode;
+  register?: UseFormRegisterReturn;
+  options?: DropdownOption[];
+  errors?: FieldError;
+  className?: string;
+  readOnly?: boolean;
+  fieldRequired?: boolean;
+};
 
-        register?: UseFormRegisterReturn;
+const formatLabel = (value: string) =>
+  value
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 
-        options?: DropdownOption[];
+const labelLooksRequired = (label?: React.ReactNode) =>
+  typeof label === "string" && /\*/.test(label);
 
-        errors?: FieldError;
-
-        className?: string;
-
-        readOnly?: boolean;
-    };
-
-const formatLabel = (value: string) => {
-    return value
-        .split("_")
-        .map(
-            (word) =>
-                word.charAt(0).toUpperCase() +
-                word.slice(1)
-        )
-        .join(" ");
+const cleanLabelNode = (label?: React.ReactNode): React.ReactNode => {
+  if (typeof label === "string") return label.replace(/[*:]/g, "").trim();
+  return label;
 };
 
 const Select = ({
-    label,
-    register,
-    options = [],
-    errors,
-    className = "",
-    readOnly,
-    // placeholder,
-    ...rest
+  label,
+  register,
+  options = [],
+  errors,
+  className = "",
+  readOnly,
+  fieldRequired,
+  required,
+  id,
+  name,
+  ...rest
 }: FormDropdownProps) => {
+  const selectId = id ?? register?.name ?? name;
+  const isRequired = Boolean(fieldRequired ?? required ?? labelLooksRequired(label));
+  const displayLabel = cleanLabelNode(label);
+
+  const control = (
+    <select
+      id={selectId}
+      name={name}
+      {...register}
+      {...rest}
+      required={required}
+      disabled={readOnly || rest.disabled}
+      aria-invalid={errors ? true : undefined}
+      className={cn(
+        surfaceSelectClassName,
+        "field-control",
+        readOnly &&
+          "cursor-not-allowed border-slate-200 bg-slate-50 select-none focus-visible:border-slate-200 focus-visible:ring-0 dark:border-slate-700 dark:bg-slate-800/50",
+        errors && "border-red-500 dark:border-red-500",
+        className,
+      )}
+    >
+      <option value="">Select...</option>
+      {options.map((item, index) => {
+        const value = typeof item === "string" ? item : item.value;
+        const optionLabel = typeof item === "string" ? formatLabel(item) : item.label;
+        return (
+          <option key={index} value={value}>
+            {optionLabel}
+          </option>
+        );
+      })}
+    </select>
+  );
+
+  if (!label) {
     return (
-        <div
-            className={`
-        flex
-        flex-col
-        gap-1
-        w-full
-        relative
-        overflow-visible
-      `}
-        >
-            {label && (
-                <label
-                    htmlFor={rest.name}
-                    className="
-            text-sm
-            font-medium
-            text-mutedtext
-          "
-                >
-                    {label}
-                </label>
-            )}
-
-            <select
-                {...register}
-                {...rest}
-                disabled={readOnly}
-                className={`
-          rounded-[8px]
-          px-3
-          py-2
-          outline-none
-          w-full
-          text-slate-900
-          dark:text-white
-          text-left
-          ${readOnly
-                        ? `
-                border-none
-                bg-gray-100
-                dark:bg-slate-800/50
-                cursor-not-allowed
-                select-none
-              `
-                        : `
-                bg-white
-                dark:bg-slate-900
-                border
-                ${errors
-                            ? "border-red-500"
-                            : "border-gray-300 dark:border-slate-700"
-                        }
-                ${surfaceSelectClassName}
-              `
-                    }
-          ${className}
-        `}
-            >
-                <option value="">
-                    {"Select..."}
-                </option>
-                {options.map((item, index) => {
-                    const value =
-                        typeof item === "string"
-                            ? item
-                            : item.value;
-
-                    const optionLabel =
-                        typeof item === "string"
-                            ? formatLabel(item)
-                            : item.label;
-
-                    return (
-                        <option
-                            key={index}
-                            value={value}
-                        >
-                            {optionLabel}
-                        </option>
-                    );
-                })}
-            </select>
-
-            {errors && (
-                <span
-                    className="
-            text-red-500
-            text-xs
-          "
-                >
-                    {errors.message}
-                </span>
-            )}
-        </div>
+      <div className="relative w-full min-w-0 overflow-visible">
+        {control}
+        <FieldErrorText>{errors?.message}</FieldErrorText>
+      </div>
     );
+  }
+
+  return (
+    <FieldGroup label={displayLabel} htmlFor={selectId} required={isRequired} className="w-full">
+      {control}
+      <FieldErrorText>{errors?.message}</FieldErrorText>
+    </FieldGroup>
+  );
 };
 
 export default Select;

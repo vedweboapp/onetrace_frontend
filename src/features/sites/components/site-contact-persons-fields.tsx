@@ -184,7 +184,7 @@ export function SiteContactPersonsFields({
                 "sm:grid-cols-[1fr_1fr_auto]",
               )}
             >
-              <FieldGroup label={t("contactPerson.titleLabel")} htmlFor={`site-cp-title-${index}`}>
+              <FieldGroup label={t("contactPerson.titleLabel")} htmlFor={`site-cp-title-${index}`} required>
                 <Controller
                   control={control}
                   name={`contacts.${index}.title`}
@@ -206,7 +206,7 @@ export function SiteContactPersonsFields({
                 <FieldErrorText>{titleErr}</FieldErrorText>
               </FieldGroup>
 
-              <FieldGroup label={t("contactPerson.contactLabel")} htmlFor={`site-cp-contact-${index}`}>
+              <FieldGroup label={t("contactPerson.contactLabel")} htmlFor={`site-cp-contact-${index}`} required>
                 <Controller
                   control={control}
                   name={`contacts.${index}.contact`}

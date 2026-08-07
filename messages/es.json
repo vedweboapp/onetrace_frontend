@@ -213,9 +213,12 @@
       "eyebrowMain": "Espacio de trabajo",
       "eyebrowSettings": "Ajustes",
       "closeSettings": "Cerrar ajustes",
+      "closeSettingsShort": "Cerrar",
       "toggleSidebar": "Expandir o contraer barra lateral",
       "notifications": "Notificaciones",
       "signOut": "Cerrar sesión",
+      "signingOut": "Cerrando sesión…",
+      "myProfile": "Mi perfil",
       "openSettings": "Ajustes y apariencia",
       "openProfileMenu": "Abrir menú de perfil",
       "profileMenuLabel": "Cuenta"
@@ -647,10 +650,10 @@
       "metaTitle": "Apariencia",
       "pageKicker": "Ajustes",
       "title": "Apariencia",
-      "subtitle": "Controla el tema, el idioma y el color de acento del panel. El acento resalta la navegación y las acciones clave.",
-      "themeHeading": "Tema",
+      "subtitle": "Controla el tema, la tipografía, el diseño del panel y la presentación de formularios.",
+      "themeHeading": "Tema y colores",
       "themeHint": "Alterna entre interfaz clara y oscura.",
-      "themeSelectLabel": "Tema de la interfaz",
+      "themeSelectLabel": "Modo",
       "theme": {
         "light": "Claro",
         "dark": "Oscuro"
@@ -663,13 +666,13 @@
         "es": "Español"
       },
       "accentHeading": "Color de acento",
-      "accentPresetsLabel": "Predefinidos",
+      "accentPresetsLabel": "Color principal",
       "accentCustomLabel": "Color personalizado",
       "accentCustom": "Personalizado",
       "customHexLabel": "Color hex personalizado",
       "customColorPicker": "Elegir color",
       "applyCustom": "Aplicar",
-      "customHint": "Usa 6 caracteres hex (p. ej. #2563eb). El acento personalizado afecta la barra lateral, la barra móvil y los resaltados de acento.",
+      "customHint": "Usa 6 caracteres hex (p. ej. #2563eb). El acento afecta la navegación y las acciones clave.",
       "accents": {
         "black": "Negro",
         "blue": "Azul",
@@ -684,7 +687,60 @@
         "fuchsia": "Fucsia",
         "teal": "Verde azulado",
         "orange": "Naranja"
-      }
+      },
+      "typographyHeading": "Tipografía",
+      "fontFamilyLabel": "Familia tipográfica",
+      "fontFamilyHint": "Se aplica en todo el panel para una lectura uniforme.",
+      "fontSizeLabel": "Tamaño de fuente",
+      "fontSizeHint": "Ajusta el tamaño base de etiquetas y texto.",
+      "fontSizePreview": "Vista previa: El veloz murciélago hindú comía feliz cardillo y kiwi.",
+      "fonts": {
+        "inter": "Inter",
+        "roboto": "Roboto",
+        "sourceSans": "Source Sans 3",
+        "openSans": "Open Sans",
+        "dmSans": "DM Sans",
+        "system": "Sistema"
+      },
+      "fontSizes": {
+        "small": "Pequeño",
+        "medium": "Mediano",
+        "large": "Grande"
+      },
+      "layoutHeading": "Diseño del panel",
+      "sidebarLayoutLabel": "Diseño de navegación",
+      "sidebarLayoutHint": "Elige dónde aparece la navegación principal en escritorio.",
+      "layouts": {
+        "lithium": {
+          "title": "Barra izquierda (Lithium)",
+          "subtitle": "Navegación vertical clásica a la izquierda."
+        },
+        "hydrogen": {
+          "title": "Navegación superior (Hydrogen)",
+          "subtitle": "Navegación horizontal en la barra superior."
+        },
+        "boron": {
+          "title": "Barra derecha (Boron)",
+          "subtitle": "Navegación vertical a la derecha."
+        }
+      },
+      "formLayoutHeading": "Diseño de formularios",
+      "labelPlacementLabel": "Posición de etiquetas",
+      "labelPlacementHint": "Posición de las etiquetas respecto a los campos en formularios.",
+      "labelPlacements": {
+        "top": "Arriba",
+        "left": "Izquierda",
+        "right": "Derecha"
+      },
+      "requiredIndicatorLabel": "Indicador de campo obligatorio",
+      "requiredIndicatorHint": "Cómo se marcan los campos obligatorios en la aplicación.",
+      "requiredIndicators": {
+        "asterisk": "Asterisco (*)",
+        "redLine": "Línea roja"
+      },
+      "formPreviewHeading": "Vista previa",
+      "formPreviewLabel": "Campo obligatorio de ejemplo",
+      "formPreviewValue": "Valor de ejemplo"
     },
     "pinStatus": {
       "metaTitle": "Estados de Pin",
@@ -3289,7 +3345,12 @@
       "clearFilter": "Quitar este filtro",
       "filterMenu": "Filtros",
       "filterMenuAria": "Abrir búsqueda y filtros",
-      "cardCreated": "Creado {date}"
+      "cardCreated": "Creado {date}",
+      "textModeAria": "Visualización del texto de celda",
+      "textModeClip": "Recortar",
+      "textModeWrap": "Ajustar",
+      "textModeClipHint": "Una sola línea; corta con … (desplaza la tabla en horizontal)",
+      "textModeWrapHint": "Ajusta el texto largo en varias líneas dentro de la columna"
     },
     "projects": {
       "metaTitle": "Proyectos",

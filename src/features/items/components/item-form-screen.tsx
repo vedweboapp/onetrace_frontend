@@ -18,7 +18,7 @@ import {
 } from "@/shared/utils/quick-create-navigation.util";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import type { InputWithEndSelectOption } from "@/shared/ui";
-import { AppButton, CheckmarkSelect, FieldLabel, fieldErrorTextClassName, InputWithEndSelect, MoneyInput, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
+import { AppButton, CheckmarkSelect, FieldErrorText, FieldGroup, FieldLabel, InputWithEndSelect, MoneyInput, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
 import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
 import { formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
 import { getUnitTypeId, resolveDefaultUnitTypeSelectValue } from "@/features/items/utils/item-unit-type.util";
@@ -301,10 +301,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
         ) : (
           <form id="item-form-screen" className="space-y-5 p-4 sm:p-6" onSubmit={(e) => void submit(e)}>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <FieldLabel htmlFor={nameId} required>
-                  {tModal("name")}
-                </FieldLabel>
+              <FieldGroup label={tModal("name")} htmlFor={nameId} required>
                 <input
                   id={nameId}
                   type="text"
@@ -319,12 +316,9 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                   placeholder={tModal("namePlaceholder")}
                   className={cn(surfaceInputClassName, nameError && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
                 />
-                {nameError ? <p className={fieldErrorTextClassName}>{nameError}</p> : null}
-              </div>
-              <div>
-                <FieldLabel htmlFor={skuId} required>
-                  {tModal("sku")}
-                </FieldLabel>
+                <FieldErrorText>{nameError}</FieldErrorText>
+              </FieldGroup>
+              <FieldGroup label={tModal("sku")} htmlFor={skuId} required>
                 <input
                   id={skuId}
                   type="text"
@@ -339,8 +333,8 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                   placeholder={tModal("skuPlaceholder")}
                   className={cn(surfaceInputClassName, skuError && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
                 />
-                {skuError ? <p className={fieldErrorTextClassName}>{skuError}</p> : null}
-              </div>
+                <FieldErrorText>{skuError}</FieldErrorText>
+              </FieldGroup>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
@@ -377,8 +371,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                   className={surfaceInputClassName}
                 />
               </div>
-              <div>
-                <FieldLabel htmlFor={costId} required>{tModal("costPrice")}</FieldLabel>
+              <FieldGroup label={tModal("costPrice")} htmlFor={costId} required>
                 <MoneyInput
                   id={costId}
                   type="number"
@@ -391,10 +384,9 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                   disabled={submitting}
                   invalid={!!costError}
                 />
-                {costError ? <p className={fieldErrorTextClassName}>{costError}</p> : null}
-              </div>
-              <div>
-                <FieldLabel htmlFor={sellId} required>{tModal("sellingPrice")}</FieldLabel>
+                <FieldErrorText>{costError}</FieldErrorText>
+              </FieldGroup>
+              <FieldGroup label={tModal("sellingPrice")} htmlFor={sellId} required>
                 <MoneyInput
                   id={sellId}
                   type="number"
@@ -407,8 +399,8 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                   disabled={submitting}
                   invalid={!!sellError}
                 />
-                {sellError ? <p className={fieldErrorTextClassName}>{sellError}</p> : null}
-              </div>
+                <FieldErrorText>{sellError}</FieldErrorText>
+              </FieldGroup>
             </div>
 
             <div className="space-y-4 pt-1">

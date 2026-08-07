@@ -37,6 +37,7 @@ import {
   DataTablePaginationBar,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
+  listPageRootClassName,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
@@ -328,7 +329,7 @@ export function ReturnToStockPanel() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
           filtersActive={filtersActive}

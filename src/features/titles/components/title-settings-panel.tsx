@@ -9,6 +9,16 @@ import type { Title } from "@/features/titles/types/title.types";
 import { formatTitleLabel } from "@/features/titles/utils/title-display.util";
 import { zTrimmedNonEmpty } from "@/shared/form";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import {
+  SettingsDetailActions,
+  SettingsDetailIdSubtitle,
+  SettingsDetailList,
+  SettingsDetailRow,
+  SettingsDetailTextValue,
+  SettingsDetailTimestampValue,
+  SettingsDetailTitle,
+  settingsDetailUserLabel,
+} from "@/shared/components/settings/settings-detail-view";
 import { getApiErrorDisplayMessage, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
@@ -33,6 +43,7 @@ import {
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
+  listPageRootClassName,
   listPageSurfaceShellClassName,
   surfaceInputClassName,
 } from "@/shared/ui";
@@ -225,11 +236,9 @@ export function TitleSettingsPanel() {
   }, [t, dateFmt]);
 
   return (
-    <div className="space-y-6">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
-          title={t("title")}
-          description={t("subtitle")}
           backHref={routes.dashboard.settingsCustomization}
           backAriaLabel={tCustomization("backToHub")}
           filtersActive={filtersActive}
@@ -331,72 +340,61 @@ export function TitleSettingsPanel() {
       <DetailPanel
         open={detailRow !== null}
         onClose={() => setDetailRow(null)}
-        title={detailRow ? formatTitleLabel(detailRow) : null}
+        title={detailRow ? <SettingsDetailTitle name={formatTitleLabel(detailRow)} /> : null}
         subtitle={
-          detailRow ? (
-            <span className="text-sm text-slate-500 dark:text-slate-400">{t("detail.idLabel", { id: detailRow.id })}</span>
-          ) : undefined
+          detailRow ? <SettingsDetailIdSubtitle idLabel={t("detail.idLabel", { id: detailRow.id })} /> : undefined
         }
         footer={
           detailRow ? (
-            <>
-              <AppButton type="button" variant="secondary" size="sm" onClick={() => setDetailRow(null)}>
-                {t("modal.cancel")}
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  const row = detailRow;
-                  setDetailRow(null);
-                  openEdit(row);
-                }}
-              >
-                {t("edit")}
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="danger"
-                size="sm"
-                onClick={() => {
-                  const row = detailRow;
-                  setDetailRow(null);
-                  setDeleteTarget(row);
-                }}
-              >
-                {t("delete")}
-              </AppButton>
-            </>
+            <SettingsDetailActions
+              cancelLabel={t("modal.cancel")}
+              editLabel={t("edit")}
+              deleteLabel={t("delete")}
+              onCancel={() => setDetailRow(null)}
+              onEdit={() => {
+                const row = detailRow;
+                setDetailRow(null);
+                openEdit(row);
+              }}
+              onDelete={() => {
+                const row = detailRow;
+                setDetailRow(null);
+                setDeleteTarget(row);
+              }}
+            />
           ) : undefined
         }
       >
         {detailRow ? (
-          <div className="space-y-5">
-            <FieldGroup label={t("table.title")}>
-              <p className="text-sm text-slate-800 dark:text-slate-200">{formatTitleLabel(detailRow)}</p>
-            </FieldGroup>
-            <FieldGroup label={t("detail.createdAt")}>
-              <p className="text-sm text-slate-800 dark:text-slate-200">
-                {dateFmt.format(new Date(detailRow.created_at))}
-              </p>
-              {titleUserLabel(detailRow.created_by) !== "—" ? (
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {t("detail.byUser", { user: titleUserLabel(detailRow.created_by) })}
-                </p>
-              ) : null}
-            </FieldGroup>
-            <FieldGroup label={t("detail.updatedAt")}>
-              <p className="text-sm text-slate-800 dark:text-slate-200">
-                {dateFmt.format(new Date(detailRow.modified_at))}
-              </p>
-              {titleUserLabel(detailRow.modified_by) !== "—" ? (
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {t("detail.byUser", { user: titleUserLabel(detailRow.modified_by) })}
-                </p>
-              ) : null}
-            </FieldGroup>
-          </div>
+          <SettingsDetailList>
+            <SettingsDetailRow label={t("table.title")}>
+              <SettingsDetailTextValue>{formatTitleLabel(detailRow)}</SettingsDetailTextValue>
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("detail.createdAt")}>
+              <SettingsDetailTimestampValue
+                dateFmt={dateFmt}
+                value={detailRow.created_at}
+                byUser={settingsDetailUserLabel(detailRow.created_by)}
+                byUserTemplate={
+                  settingsDetailUserLabel(detailRow.created_by) !== "—"
+                    ? t("detail.byUser", { user: settingsDetailUserLabel(detailRow.created_by) })
+                    : null
+                }
+              />
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("detail.updatedAt")}>
+              <SettingsDetailTimestampValue
+                dateFmt={dateFmt}
+                value={detailRow.modified_at}
+                byUser={settingsDetailUserLabel(detailRow.modified_by)}
+                byUserTemplate={
+                  settingsDetailUserLabel(detailRow.modified_by) !== "—"
+                    ? t("detail.byUser", { user: settingsDetailUserLabel(detailRow.modified_by) })
+                    : null
+                }
+              />
+            </SettingsDetailRow>
+          </SettingsDetailList>
         ) : null}
       </DetailPanel>
 

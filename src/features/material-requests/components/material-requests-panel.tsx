@@ -31,6 +31,7 @@ import {
   DataTablePaginationBar,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
+  listPageRootClassName,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
@@ -264,7 +265,7 @@ export function MaterialRequestsPanel() {
   }, [t, tList, dateFmt, workerLabelById, statusLabel, statusRowFor, massSel.tableColumn]);
 
   return (
-    <div className="space-y-4">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
           filtersActive={filtersActive}

@@ -130,7 +130,7 @@ export function ClientDetailScreen({ clientId }: Props) {
           ) : error && activeTab === "details" ? (
             <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
           ) : detail && activeTab === "details" ? (
-            <ClientDetailBody detail={detail} dateFmt={dateFmt} />
+            <ClientDetailBody detail={detail} dateFmt={dateFmt} onSaved={retry} />
           ) : loading ? (
             <EntityDetailLoadingSkeleton />
           ) : error ? (

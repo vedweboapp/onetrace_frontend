@@ -10,6 +10,7 @@ import { useEntityDetailBack } from "@/shared/hooks/use-entity-detail-back";
 import { useEntityDetailScreen } from "@/shared/hooks/use-entity-detail-screen";
 import type { DashboardListSection } from "@/shared/utils/detail-from-list.util";
 import { SurfaceShell } from "@/shared/ui";
+import { cn } from "@/core/utils/http.util";
 
 export type EntityDetailScreenLabels = {
   metaTitle: string;
@@ -92,7 +93,7 @@ export function EntityDetailScreen<T>({
     ) : null;
 
   return (
-    <div className={className ?? "pb-8 sm:pb-10"}>
+    <div className={cn("min-h-0 w-full pb-8 sm:pb-10", className)}>
       <DetailPageHeader
         title={title}
         titleLoading={titleLoading}
@@ -103,7 +104,7 @@ export function EntityDetailScreen<T>({
         actions={!loading && !error && detail && actions ? actions({ detail, listBack, retry }) : null}
       />
 
-      <SurfaceShell className={detailRecordSurfaceShellClassName}>
+      <SurfaceShell className={cn(detailRecordSurfaceShellClassName, "mt-3")}>
         {renderSurface ? renderSurface(screenCtx) : defaultSurface}
       </SurfaceShell>
 

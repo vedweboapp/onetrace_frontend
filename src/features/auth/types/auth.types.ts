@@ -4,13 +4,19 @@ export type AuthUser = {
   id: number;
   email: string;
   username: string;
+  first_name?: string;
+  last_name?: string;
+  /** Present when the API returns a workspace role on the user. */
+  role?: string;
+  role_name?: string;
 };
-
 
 export type AuthOrganizationMembership = {
   id?: number;
   organization_id?: number;
   organization_name?: string;
+  role?: string;
+  role_name?: string;
 };
 
 /** Raw shape inside the `data` field of the login API envelope. */

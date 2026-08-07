@@ -1,4 +1,4 @@
-import { Hammer } from "lucide-react";
+import { Construction } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 
 type DashboardUnderDevelopmentStateProps = {
@@ -7,6 +7,10 @@ type DashboardUnderDevelopmentStateProps = {
   className?: string;
 };
 
+/**
+ * Full-panel “coming soon” state — fills the available shell height
+ * (Zoho / WMS style) instead of a tiny island in a tall empty card.
+ */
 export function DashboardUnderDevelopmentState({
   title,
   description,
@@ -15,27 +19,35 @@ export function DashboardUnderDevelopmentState({
   return (
     <div
       className={cn(
-        "flex min-h-[420px] flex-col items-center justify-center rounded-2xl bg-slate-50/45 px-6 text-center dark:bg-slate-900/25",
+        "flex h-full min-h-0 w-full flex-1 flex-col items-center justify-center px-5 py-10 text-center sm:px-8 sm:py-14",
         className,
       )}
     >
-      <div className="mb-5 inline-flex size-14 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-400 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
-        <Hammer className="size-6" strokeWidth={1.7} />
+      <div
+        className={cn(
+          "mb-5 inline-flex size-12 items-center justify-center rounded-xl sm:mb-6 sm:size-14 sm:rounded-2xl",
+          "border border-slate-200/90 bg-white text-slate-400 shadow-sm",
+          "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500",
+        )}
+      >
+        <Construction className="size-5 sm:size-6" strokeWidth={1.6} aria-hidden />
       </div>
 
-      <h3 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+      <h3 className="max-w-lg text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
         {title}
       </h3>
-      <p className="mt-3 max-w-sm text-sm leading-6 text-slate-500 dark:text-slate-400">
+      <p className="mt-2.5 max-w-md text-[length:var(--dash-body-size,0.875rem)] leading-6 text-slate-500 dark:text-slate-400 sm:mt-3">
         {description}
       </p>
 
-      <div className="mt-7 space-y-2.5">
-        <div className="h-3 w-36 rounded-full bg-slate-100 dark:bg-slate-800" />
-        <div className="h-3 w-28 rounded-full bg-slate-100 dark:bg-slate-800" />
-        <div className="h-3 w-24 rounded-full bg-slate-100 dark:bg-slate-800" />
+      <div
+        className="mt-8 hidden w-full max-w-xs space-y-2.5 sm:mt-10 sm:block"
+        aria-hidden
+      >
+        <div className="mx-auto h-2.5 w-full max-w-[11rem] rounded-full bg-slate-100 dark:bg-slate-800" />
+        <div className="mx-auto h-2.5 w-full max-w-[8.5rem] rounded-full bg-slate-100 dark:bg-slate-800" />
+        <div className="mx-auto h-2.5 w-full max-w-[6.5rem] rounded-full bg-slate-100 dark:bg-slate-800" />
       </div>
     </div>
   );
 }
-

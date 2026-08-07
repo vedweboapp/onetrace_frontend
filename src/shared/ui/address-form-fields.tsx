@@ -73,29 +73,29 @@ export function AddressLineAutocompleteFields<T extends FieldValues>({
         control={control}
         name={"address_line_1" as never}
         render={({ field }) => (
-          <AddressPlaceAutocomplete
-            id={`${idPrefix}-line1`}
-            label={labels.addressLine1}
-            required
-            value={field.value ?? ""}
-            onChange={(value) => {
-              setValue("address_line_1" as never, value as never, {
-                shouldDirty: true,
-                shouldTouch: true,
-                shouldValidate: true,
-              });
-            }}
-            onBlur={field.onBlur}
-            countryIso={countryIso}
-            contextCity={searchContext.city}
-            contextState={searchContext.state}
-            contextCountry={searchContext.country}
-            contextPincode={searchContext.pincode}
-            disabled={disabled}
-            invalid={!!errors?.address_line_1}
-            error={errors?.address_line_1}
-            onSelectPlace={(place) => applyPlace(place, "1")}
-          />
+          <FieldGroup label={labels.addressLine1} htmlFor={`${idPrefix}-line1`} required>
+            <AddressPlaceAutocomplete
+              id={`${idPrefix}-line1`}
+              value={field.value ?? ""}
+              onChange={(value) => {
+                setValue("address_line_1" as never, value as never, {
+                  shouldDirty: true,
+                  shouldTouch: true,
+                  shouldValidate: true,
+                });
+              }}
+              onBlur={field.onBlur}
+              countryIso={countryIso}
+              contextCity={searchContext.city}
+              contextState={searchContext.state}
+              contextCountry={searchContext.country}
+              contextPincode={searchContext.pincode}
+              disabled={disabled}
+              invalid={!!errors?.address_line_1}
+              error={errors?.address_line_1}
+              onSelectPlace={(place) => applyPlace(place, "1")}
+            />
+          </FieldGroup>
         )}
       />
       <Controller

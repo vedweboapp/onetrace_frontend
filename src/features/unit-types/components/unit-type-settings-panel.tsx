@@ -51,6 +51,7 @@ import {
   SurfaceShell,
   FieldGroup,
   listPageSurfaceShellClassName,
+  listPageRootClassName,
   surfaceInputClassName,
 } from "@/shared/ui";
 
@@ -344,11 +345,9 @@ export function UnitTypeSettingsPanel() {
   }, [t, tList, dateFmt, actionOpts]);
 
   return (
-    <div className="space-y-6">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
-          title={t("title")}
-          description={t("subtitle")}
           backHref={routes.dashboard.settingsCustomization}
           backAriaLabel={tCustomization("backToHub")}
           filtersActive={filtersActive}
@@ -488,7 +487,7 @@ export function UnitTypeSettingsPanel() {
           </>
         }
       >
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           <FieldGroup
             label={
               <span>

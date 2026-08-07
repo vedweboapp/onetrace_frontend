@@ -10,7 +10,7 @@ import ProjectTypeFormList from "@/features/project-forms/components/project-typ
 // }
 export default async function ProjectFormsPage() {
   return (
-    <div className="pb-12">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <ProjectTypeFormList />
     </div>
   );

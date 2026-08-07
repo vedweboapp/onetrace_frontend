@@ -34,6 +34,7 @@ import {
   DataTablePaginationBar,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
+  listPageRootClassName,
   DataTableRowActionsMenu,
   ListPageActiveFilter,
   ListPageCard,
@@ -287,7 +288,7 @@ export function VendorsPanel() {
   const pageRange = getListPageRange(pagination);
 
   return (
-    <div className="space-y-4">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
           filtersActive={filtersActive}

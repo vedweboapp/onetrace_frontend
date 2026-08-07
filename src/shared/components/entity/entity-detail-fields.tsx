@@ -158,6 +158,8 @@ export type DetailSystemMetadataSectionProps = {
     statusLabel: ReactNode;
   };
   extra?: ReactNode;
+  /** Flat section for single-surface detail pages (no nested card). */
+  variant?: "card" | "flat";
 };
 
 /** Standard audit block — timestamps and created/modified by — shown last on detail pages. */
@@ -170,12 +172,13 @@ export function DetailSystemMetadataSection({
   labels,
   status,
   extra,
+  variant = "card",
 }: DetailSystemMetadataSectionProps) {
   const createdByUser = normalizeDetailAuditUser(createdBy);
   const modifiedByUser = normalizeDetailAuditUser(modifiedBy);
 
   return (
-    <DetailPanelCard title={labels.sectionTitle} defaultOpen={false}>
+    <DetailPanelCard title={labels.sectionTitle} defaultOpen={false} variant={variant}>
       <DetailMetricsGrid className="sm:grid-cols-2">
         {status ? (
           <DetailMetricCard label={status.statusLabel}>

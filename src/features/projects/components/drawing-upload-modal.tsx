@@ -9,7 +9,8 @@ import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import {
   AppButton,
   AppModal,
-  FieldLabel,
+  FieldErrorText,
+  FieldGroup,
   fieldErrorTextClassName,
   surfaceInputClassName,
 } from "@/shared/ui";
@@ -205,28 +206,27 @@ export function DrawingUploadModal({
                       <FileText className="size-4 text-slate-500 dark:text-slate-400" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <FieldLabel htmlFor={`drawing-name-${row.id}`} required>
-                        {t("name")} {idx + 1}
-                      </FieldLabel>
-                      <input
-                        id={`drawing-name-${row.id}`}
-                        type="text"
-                        autoComplete="off"
-                        value={row.name}
-                        onChange={(e) => {
-                          const value = sanitizeTitleInput(e.target.value);
-                          setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, name: value } : r)));
-                        }}
-                        onBlur={() => {
-                          setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, touched: true } : r)));
-                        }}
-                        disabled={submitting}
-                        placeholder={t("namePlaceholder")}
-                        className={surfaceInputClassName}
-                      />
+                      <FieldGroup label={`${t("name")} ${idx + 1}`} htmlFor={`drawing-name-${row.id}`} required>
+                        <input
+                          id={`drawing-name-${row.id}`}
+                          type="text"
+                          autoComplete="off"
+                          value={row.name}
+                          onChange={(e) => {
+                            const value = sanitizeTitleInput(e.target.value);
+                            setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, name: value } : r)));
+                          }}
+                          onBlur={() => {
+                            setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, touched: true } : r)));
+                          }}
+                          disabled={submitting}
+                          placeholder={t("namePlaceholder")}
+                          className={surfaceInputClassName}
+                        />
+                        {rowInvalid ? <FieldErrorText>{t("nameError")}</FieldErrorText> : null}
+                      </FieldGroup>
                     </div>
                   </div>
-                  {rowInvalid ? <p className={fieldErrorTextClassName}>{t("nameError")}</p> : null}
                 </div>
               );
             })}

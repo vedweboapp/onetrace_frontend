@@ -39,7 +39,9 @@ export type PersonalProfileResponse = {
         phone_number?: string | null;
         secondary_phone?: string | null;
         tertiary_phone?: string | null;
-        user?: {
+        first_name?: string;
+    last_name?: string;
+    user?: {
             email?: string;
             first_name?: string;
             last_name?: string;
