@@ -26,7 +26,9 @@ import {
   AppModal,
   CheckmarkSelect,
   type CheckmarkSelectOption,
-  FieldLabel,
+  FieldGroup,
+  FieldErrorText,
+  RequiredMark,
   fieldErrorTextClassName,
   surfaceInputClassName,
 } from "@/shared/ui";
@@ -226,10 +228,7 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
       }
     >
       <form id="group-form" className="space-y-5" onSubmit={(e) => void submit(e)}>
-        <div>
-          <FieldLabel htmlFor={nameId} required>
-            {t("name")}
-          </FieldLabel>
+        <FieldGroup label={t("name")} htmlFor={nameId} required>
           <input
             id={nameId}
             type="text"
@@ -241,8 +240,8 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
             placeholder={t("namePlaceholder")}
             className={surfaceInputClassName}
           />
-          {nameInvalid ? <p className={fieldErrorTextClassName}>{t("nameError")}</p> : null}
-        </div>
+          {nameInvalid ? <FieldErrorText>{t("nameError")}</FieldErrorText> : null}
+        </FieldGroup>
 
         <div>
           {compositeLoadError ? (
@@ -257,11 +256,11 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
             <div className={COMPOSITE_ITEMS_GRID}>
               <span className={compositeHeaderCellClassName}>
                 {t("compositeItem")}
-                <span className="ml-1 text-red-500">*</span>
+                <RequiredMark alwaysVisible />
               </span>
               <span className={compositeHeaderCellClassName}>
                 {t("abbreviation")}
-                <span className="ml-1 text-red-500">*</span>
+                <RequiredMark alwaysVisible />
               </span>
               <span className={compositeHeaderCellClassName} aria-hidden />
               {rows.map((row, idx) => {

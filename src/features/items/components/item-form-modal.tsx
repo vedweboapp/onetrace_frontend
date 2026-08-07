@@ -19,7 +19,17 @@ import { markApiErrorToasted } from "@/core/errors/api-error-toast.util";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
-import { AppButton, AppModal, CheckmarkSelect, FieldLabel, fieldErrorTextClassName, InputWithEndSelect, MoneyInput, surfaceInputClassName } from "@/shared/ui";
+import {
+  AppButton,
+  AppModal,
+  CheckmarkSelect,
+  FieldErrorText,
+  FieldGroup,
+  FieldLabel,
+  InputWithEndSelect,
+  MoneyInput,
+  surfaceInputClassName,
+} from "@/shared/ui";
 
 type Props = {
   open: boolean;
@@ -288,10 +298,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
     >
       <form id="item-form" className="space-y-5" onSubmit={(e) => void submit(e)}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <FieldLabel htmlFor={nameId} required>
-              {t("name")}
-            </FieldLabel>
+          <FieldGroup label={t("name")} htmlFor={nameId} required>
             <input
               id={nameId}
               type="text"
@@ -306,13 +313,10 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               placeholder={t("namePlaceholder")}
               className={cn(surfaceInputClassName, nameError && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
             />
-            {nameError ? <p className={fieldErrorTextClassName}>{nameError}</p> : null}
-          </div>
+            <FieldErrorText>{nameError}</FieldErrorText>
+          </FieldGroup>
 
-          <div>
-            <FieldLabel htmlFor={skuId} required>
-              {t("sku")}
-            </FieldLabel>
+          <FieldGroup label={t("sku")} htmlFor={skuId} required>
             <input
               id={skuId}
               type="text"
@@ -327,8 +331,8 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               placeholder={t("skuPlaceholder")}
               className={cn(surfaceInputClassName, skuError && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
             />
-            {skuError ? <p className={fieldErrorTextClassName}>{skuError}</p> : null}
-          </div>
+            <FieldErrorText>{skuError}</FieldErrorText>
+          </FieldGroup>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

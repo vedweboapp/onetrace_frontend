@@ -15,6 +15,18 @@ import type { ProjectType } from "@/features/project-types/types/project-type.ty
 import { formatProjectTypeLabel, normalizeProjectTypeHex } from "@/features/project-types/utils/project-type-display.util";
 import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import {
+  SettingsDetailActions,
+  SettingsDetailColourValue,
+  SettingsDetailIdSubtitle,
+  SettingsDetailList,
+  SettingsDetailRow,
+  SettingsDetailStatusValue,
+  SettingsDetailTextValue,
+  SettingsDetailTimestampValue,
+  SettingsDetailTitle,
+  settingsDetailUserLabel,
+} from "@/shared/components/settings/settings-detail-view";
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
@@ -32,6 +44,7 @@ import {
   DataTablePaginationBar,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
+  listPageRootClassName,
   DetailPanel,
   FieldGroup,
   ListPageActiveFilter,
@@ -286,11 +299,9 @@ export function ProjectTypeSettingsPanel() {
   }, [t, dateFmt]);
 
   return (
-    <div className="space-y-6">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
-          title={t("title")}
-          description={t("subtitle")}
           backHref={routes.dashboard.settingsCustomization}
           backAriaLabel={tCustomization("backToHub")}
           filtersActive={filtersActive}
@@ -415,112 +426,91 @@ export function ProjectTypeSettingsPanel() {
       <DetailPanel
         open={detailRow !== null}
         onClose={() => setDetailRow(null)}
-        title={detailRow ? <ProjectTypeChip row={detailRow} className="text-base font-semibold" /> : null}
-        subtitle={
+        title={
           detailRow ? (
-            <span className="text-sm text-slate-500 dark:text-slate-400">
-              {t("detail.idLabel", { id: detailRow.id })}
-            </span>
-          ) : undefined
+            <SettingsDetailTitle
+              name={formatProjectTypeLabel(detailRow)}
+              bgColour={bgHex(detailRow)}
+              textColour={textHex(detailRow)}
+            />
+          ) : null
+        }
+        subtitle={
+          detailRow ? <SettingsDetailIdSubtitle idLabel={t("detail.idLabel", { id: detailRow.id })} /> : undefined
         }
         footer={
           detailRow ? (
-            <>
-              <AppButton type="button" variant="secondary" size="sm" onClick={() => setDetailRow(null)}>
-                {t("modal.cancel")}
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  const row = detailRow;
-                  setDetailRow(null);
-                  openEdit(row);
-                }}
-              >
-                {t("edit")}
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="secondary"
-                size="sm"
-                loading={togglingId === detailRow.id}
-                disabled={togglingId === detailRow.id}
-                onClick={() => void handleToggleActive(detailRow, !detailRow.is_active)}
-              >
-                {detailRow.is_active ? t("deactivate") : t("activate")}
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="danger"
-                size="sm"
-                onClick={() => {
-                  const row = detailRow;
-                  setDetailRow(null);
-                  setDeleteTarget(row);
-                }}
-              >
-                {t("delete")}
-              </AppButton>
-            </>
+            <SettingsDetailActions
+              cancelLabel={t("modal.cancel")}
+              editLabel={t("edit")}
+              deleteLabel={t("delete")}
+              onCancel={() => setDetailRow(null)}
+              onEdit={() => {
+                const row = detailRow;
+                setDetailRow(null);
+                openEdit(row);
+              }}
+              onDelete={() => {
+                const row = detailRow;
+                setDetailRow(null);
+                setDeleteTarget(row);
+              }}
+              toggleLabel={detailRow.is_active ? t("deactivate") : t("activate")}
+              toggleLoading={togglingId === detailRow.id}
+              toggleDisabled={togglingId === detailRow.id}
+              onToggle={() => void handleToggleActive(detailRow, !detailRow.is_active)}
+            />
           ) : undefined
         }
       >
         {detailRow ? (
-          <div className="space-y-5">
-            <FieldGroup label={t("table.type")}>
-              <p className="text-sm text-slate-800 dark:text-slate-200">{formatProjectTypeLabel(detailRow)}</p>
-            </FieldGroup>
-            <FieldGroup label={t("table.status")}>
-              <ActiveStatusBadge
+          <SettingsDetailList>
+            <SettingsDetailRow label={t("table.type")}>
+              <SettingsDetailTextValue>{formatProjectTypeLabel(detailRow)}</SettingsDetailTextValue>
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("table.status")}>
+              <SettingsDetailStatusValue
                 active={detailRow.is_active}
-                label={detailRow.is_active ? t("status.active") : t("status.inactive")}
+                activeLabel={t("status.active")}
+                inactiveLabel={t("status.inactive")}
               />
-            </FieldGroup>
-            <FieldGroup label={t("modal.bgColour")}>
-              <div className="flex items-center gap-3">
-                <span
-                  className="size-8 shrink-0 rounded-none border border-slate-200 dark:border-slate-600"
-                  style={{ backgroundColor: bgHex(detailRow) }}
-                  aria-hidden
-                />
-                <p className="font-mono text-sm text-slate-700 dark:text-slate-200">{bgHex(detailRow).toUpperCase()}</p>
-              </div>
-            </FieldGroup>
-            <FieldGroup label={t("modal.textColour")}>
-              <div className="flex items-center gap-3">
-                <span
-                  className="flex size-8 shrink-0 items-center justify-center rounded-none border border-slate-200 text-xs font-bold dark:border-slate-600"
-                  style={{ backgroundColor: bgHex(detailRow), color: textHex(detailRow) }}
-                  aria-hidden
-                >
-                  Aa
-                </span>
-                <p className="font-mono text-sm text-slate-700 dark:text-slate-200">{textHex(detailRow).toUpperCase()}</p>
-              </div>
-            </FieldGroup>
-            <FieldGroup label={t("detail.createdAt")}>
-              <p className="text-sm text-slate-800 dark:text-slate-200">
-                {dateFmt.format(new Date(detailRow.created_at))}
-              </p>
-              {projectTypeUserLabel(detailRow.created_by) !== "—" ? (
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {t("detail.byUser", { user: projectTypeUserLabel(detailRow.created_by) })}
-                </p>
-              ) : null}
-            </FieldGroup>
-            <FieldGroup label={t("detail.updatedAt")}>
-              <p className="text-sm text-slate-800 dark:text-slate-200">
-                {dateFmt.format(new Date(detailRow.modified_at))}
-              </p>
-              {projectTypeUserLabel(detailRow.modified_by) !== "—" ? (
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {t("detail.byUser", { user: projectTypeUserLabel(detailRow.modified_by) })}
-                </p>
-              ) : null}
-            </FieldGroup>
-          </div>
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("modal.bgColour")}>
+              <SettingsDetailColourValue hex={bgHex(detailRow)} />
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("modal.textColour")}>
+              <SettingsDetailColourValue
+                hex={textHex(detailRow)}
+                previewBg={bgHex(detailRow)}
+                previewText={textHex(detailRow)}
+                sample
+              />
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("detail.createdAt")}>
+              <SettingsDetailTimestampValue
+                dateFmt={dateFmt}
+                value={detailRow.created_at}
+                byUser={settingsDetailUserLabel(detailRow.created_by)}
+                byUserTemplate={
+                  settingsDetailUserLabel(detailRow.created_by) !== "—"
+                    ? t("detail.byUser", { user: settingsDetailUserLabel(detailRow.created_by) })
+                    : null
+                }
+              />
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("detail.updatedAt")}>
+              <SettingsDetailTimestampValue
+                dateFmt={dateFmt}
+                value={detailRow.modified_at}
+                byUser={settingsDetailUserLabel(detailRow.modified_by)}
+                byUserTemplate={
+                  settingsDetailUserLabel(detailRow.modified_by) !== "—"
+                    ? t("detail.byUser", { user: settingsDetailUserLabel(detailRow.modified_by) })
+                    : null
+                }
+              />
+            </SettingsDetailRow>
+          </SettingsDetailList>
         ) : null}
       </DetailPanel>
 
@@ -542,7 +532,7 @@ export function ProjectTypeSettingsPanel() {
           </>
         }
       >
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           <FieldGroup
             label={
               <span>

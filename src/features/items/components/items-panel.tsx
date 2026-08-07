@@ -20,6 +20,7 @@ import {
   DataTableRowActionsMenu,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
+  listPageRootClassName,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
@@ -226,7 +227,7 @@ export function ItemsPanel() {
   }, [t, tList, dateFmt, massSel.tableColumn]);
 
   return (
-    <div className="space-y-6">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
           filtersActive={filtersActive}

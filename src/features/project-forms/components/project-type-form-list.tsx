@@ -296,20 +296,21 @@ const ProjectTypeFormList = () => {
     const pageRange = getListPageRange(pagination);
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between rounded-md border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden sm:gap-3">
+            <div className="flex shrink-0 items-center justify-between gap-3">
                 <ListPageSearchField 
                     placeholder={t("searchPlaceholder")}
                     ariaLabel={t("searchAria")}
                     value={search}
                     onCommit={commitSearch}
+                    className="sm:max-w-sm"
                 />
                 <AppButton onClick={openProjectTypePicker}>
                     <Plus className="size-4" /> {t("createNewForm")}
                 </AppButton>
             </div>
 
-            <SurfaceShell className="rounded-none">
+            <SurfaceShell className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-none border border-slate-200 dark:border-slate-800">
                 {loadError ? (
                     <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">
                         {loadError}
@@ -325,8 +326,8 @@ const ProjectTypeFormList = () => {
                         {t("empty")}
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse text-sm">
+                    <div className="min-h-0 flex-1 overflow-auto">
+                        <table className="w-full border-collapse text-left text-sm">
                             <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/50">
                                 <tr>
                                     <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.formName")}</th>

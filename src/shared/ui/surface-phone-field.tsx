@@ -12,7 +12,7 @@ import {
   DEFAULT_PHONE_COUNTRY_CODE,
   normalizePhoneForPhoneInput,
 } from "@/shared/utils/phone-input.util";
-import { FieldErrorText, FieldLabel } from "./field-primitives";
+import { FieldErrorText, FieldGroup } from "./field-primitives";
 import { PhoneNumberInput } from "./phone-number-input";
 
 /** Default calling code for phone fields across the app (+1 United States). */
@@ -60,8 +60,7 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
   const errId = error ? `${id}-error` : undefined;
   const described = [describedBy, errId].filter(Boolean).join(" ") || undefined;
 
-  const resolvedCountry =
-    countryIsoToPhoneCountry(countryIso) ?? defaultCountry;
+  const resolvedCountry = countryIsoToPhoneCountry(countryIso) ?? defaultCountry;
 
   const displayValue = React.useMemo(() => {
     const normalized = normalizePhoneForPhoneInput(typeof value === "string" ? value : "");
@@ -73,35 +72,30 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
     if (raw && raw !== displayValue) onChange(displayValue);
   }, [displayValue, onChange, value]);
 
-  // Remount when address country changes and the phone is empty so the flag updates.
   const phoneInputKey = displayValue ? `${id}-valued` : `${id}-${resolvedCountry}`;
 
   return (
-    <div className={cn("surface-phone-root", className)}>
-      <FieldLabel htmlFor={id} required={required}>
-        {label}
-      </FieldLabel>
-      <PhoneNumberInput
-        key={phoneInputKey}
-        value={displayValue}
-        onChange={onChange}
-        onBlur={onBlur}
-        defaultCountry={resolvedCountry}
-        disabled={disabled}
-        placeholder={placeholder}
-        inputRef={ref}
-        className={cn(
-          "mt-1.5",
-          error && "ring-2 ring-red-500/30 dark:ring-red-500/25",
-        )}
-        numberInputProps={{
-          id,
-          name: fieldName,
-          "aria-invalid": error ? true : undefined,
-          "aria-describedby": described,
-        }}
-      />
+    <FieldGroup label={label} htmlFor={id} required={required} className={className}>
+      <div className="surface-phone-root">
+        <PhoneNumberInput
+          key={phoneInputKey}
+          value={displayValue}
+          onChange={onChange}
+          onBlur={onBlur}
+          defaultCountry={resolvedCountry}
+          disabled={disabled}
+          placeholder={placeholder}
+          inputRef={ref}
+          className={cn(error && "ring-2 ring-red-500/30 dark:ring-red-500/25")}
+          numberInputProps={{
+            id,
+            name: fieldName,
+            "aria-invalid": error ? true : undefined,
+            "aria-describedby": described,
+          }}
+        />
+      </div>
       <FieldErrorText id={errId}>{error}</FieldErrorText>
-    </div>
+    </FieldGroup>
   );
 }

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { routes } from "@/shared/config/routes";
 import {
+  pathWithoutQueryAndHash,
   readBackHrefForPath,
   sanitizeInternalListBack,
   sanitizeJobsBackHref,
@@ -35,10 +36,16 @@ function resolveStoredOrQueryBack(
   fallback: string,
 ): string {
   const raw = readBackHrefForPath(pathname) ?? rawBack;
-  if (listSection === "jobs") {
-    return sanitizeJobsBackHref(raw, fallback);
+  const resolved =
+    listSection === "jobs"
+      ? sanitizeJobsBackHref(raw, fallback)
+      : sanitizeInternalDashboardBack(raw) ?? sanitizeInternalListBack(raw, listSection) ?? fallback;
+
+  if (pathWithoutQueryAndHash(resolved) === pathWithoutQueryAndHash(pathname)) {
+    return fallback;
   }
-  return sanitizeInternalDashboardBack(raw) ?? sanitizeInternalListBack(raw, listSection) ?? fallback;
+
+  return resolved;
 }
 
 /**

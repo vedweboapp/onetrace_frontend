@@ -39,6 +39,23 @@ const PersonalProfileDetails = () => {
           ? (data as { data: PersonalProfileResponse }).data
           : (data as PersonalProfileResponse);
       setProfile(resolved);
+
+      const detail = resolved?.user_detail;
+      const nested = detail?.user;
+      const first =
+        nested?.first_name?.trim() ||
+        (detail as { first_name?: string } | undefined)?.first_name?.trim() ||
+        "";
+      const last =
+        nested?.last_name?.trim() ||
+        (detail as { last_name?: string } | undefined)?.last_name?.trim() ||
+        "";
+      if (first || last) {
+        useAuthStore.getState().patchUser({
+          first_name: first || undefined,
+          last_name: last || undefined,
+        });
+      }
     } catch (err) {
       console.error("Failed to load personal profile", err);
       setError(t("loadError"));

@@ -21,15 +21,15 @@ const CompanySettingsHeader = ({ isEditing, setIsEditing, onSave, showEdit = tru
     ];
 
     return (
-        <div className='flex items-center justify-between'>
+        <div className="flex items-end justify-between gap-3">
             <AppTabs
                 tabs={tabs}
                 value={params.tab as string}
                 onValueChange={(value) => setParam("tab", value)}
-                className='w-full'
+                className="min-w-0 flex-1"
             />
             {showEdit && (
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2 self-center pb-1.5">
                     {isEditing && (
                         <AppButton
                             variant="primary"

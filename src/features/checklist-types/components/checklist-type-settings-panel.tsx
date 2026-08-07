@@ -24,6 +24,17 @@ import { formatProjectTypeLabel } from "@/features/project-types/utils/project-t
 import { zTrimmedNonEmpty } from "@/shared/form";
 import { ChecklistTypeSortableTable } from "@/features/checklist-types/components/checklist-type-sortable-table";
 import {
+  SettingsDetailActions,
+  SettingsDetailIdSubtitle,
+  SettingsDetailList,
+  SettingsDetailRow,
+  SettingsDetailStatusValue,
+  SettingsDetailTextValue,
+  SettingsDetailTimestampValue,
+  SettingsDetailTitle,
+  settingsDetailUserLabel,
+} from "@/shared/components/settings/settings-detail-view";
+import {
   toastError,
   toastSuccess,
   toastApiError,
@@ -56,6 +67,7 @@ import {
   DataTablePaginationBar,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
+  listPageRootClassName,
   DetailPanel,
   FieldGroup,
   ListPageActiveFilter,
@@ -461,11 +473,9 @@ if (editing && initialValues) {
   );
 
   return (
-    <div className="space-y-6">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
-          title={t("title")}
-          description={t("subtitle")}
           backHref={routes.dashboard.settingsCustomization}
           backAriaLabel={tCustomization("backToHub")}
           filtersActive={filtersActive}
@@ -691,142 +701,99 @@ if (editing && initialValues) {
         open={detailRow !== null}
         onClose={() => setDetailRow(null)}
         title={
-          detailRow ? (
-            <span className="text-base font-semibold text-slate-900 dark:text-slate-100">
-              {formatChecklistTypeLabel(detailRow)}
-            </span>
-          ) : null
+          detailRow ? <SettingsDetailTitle name={formatChecklistTypeLabel(detailRow)} /> : null
         }
         subtitle={
-          detailRow ? (
-            <span className="text-sm text-slate-500 dark:text-slate-400">
-              {t("detail.idLabel", { id: detailRow.id })}
-            </span>
-          ) : undefined
+          detailRow ? <SettingsDetailIdSubtitle idLabel={t("detail.idLabel", { id: detailRow.id })} /> : undefined
         }
         footer={
           detailRow ? (
-            <>
-              <AppButton
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setDetailRow(null)}
-              >
-                {t("modal.cancel")}
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  const row = detailRow;
-                  setDetailRow(null);
-                  openEdit(row);
-                }}
-              >
-                {t("edit")}
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="secondary"
-                size="sm"
-                loading={togglingId === detailRow.id}
-                disabled={togglingId === detailRow.id}
-                onClick={() =>
-                  void handleToggleActive(detailRow, !detailRow.is_active)
-                }
-              >
-                {detailRow.is_active ? t("deactivate") : t("activate")}
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="danger"
-                size="sm"
-                onClick={() => {
-                  const row = detailRow;
-                  setDetailRow(null);
-                  setDeleteTarget(row);
-                }}
-              >
-                {t("delete")}
-              </AppButton>
-            </>
+            <SettingsDetailActions
+              cancelLabel={t("modal.cancel")}
+              editLabel={t("edit")}
+              deleteLabel={t("delete")}
+              onCancel={() => setDetailRow(null)}
+              onEdit={() => {
+                const row = detailRow;
+                setDetailRow(null);
+                openEdit(row);
+              }}
+              onDelete={() => {
+                const row = detailRow;
+                setDetailRow(null);
+                setDeleteTarget(row);
+              }}
+              toggleLabel={detailRow.is_active ? t("deactivate") : t("activate")}
+              toggleLoading={togglingId === detailRow.id}
+              toggleDisabled={togglingId === detailRow.id}
+              onToggle={() => void handleToggleActive(detailRow, !detailRow.is_active)}
+            />
           ) : undefined
         }
       >
         {detailRow ? (
-  <div className="space-y-5">
-    <FieldGroup label={t("table.title")}>
-      <p className="text-sm text-slate-800 dark:text-slate-200">
-        {formatChecklistTypeLabel(detailRow)}
-      </p>
-    </FieldGroup>
-    <FieldGroup label={t("table.projectType")}>
-      <p className="text-sm text-slate-800 dark:text-slate-200">
-        {projectTypeLabelFromChecklistRow(detailRow)}
-      </p>
-    </FieldGroup>
-    <FieldGroup label={t("table.sequence")}>
-      <p className="text-sm text-slate-800 dark:text-slate-200">
-        {detailRow.sequence}
-      </p>
-    </FieldGroup>
-    <FieldGroup label={t("table.required")}>
-      <p className="text-sm text-slate-800 dark:text-slate-200">
-        {detailRow.is_required ? t("required.yes") : t("required.no")}
-      </p>
-    </FieldGroup>
-
-    <FieldGroup label={t("modal.file")}>
-      {detailRow.file ? (
-        <a
-          href={detailRow.file ?? "#"}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm text-blue-600 hover:underline dark:text-blue-400"
-        >
-{detailRow.file.split("/").pop() ?? detailRow.file}        </a>
-      ) : (
-        <p className="text-sm text-slate-500 dark:text-slate-400">{t("modal.noFile")}</p>
-      )}
-    </FieldGroup>
-    <FieldGroup label={t("table.status")}>
-      <ActiveStatusBadge
-        active={detailRow.is_active}
-        label={
-          detailRow.is_active
-            ? t("status.active")
-            : t("status.inactive")
-        }
-      />
-    </FieldGroup>
-    <FieldGroup label={t("detail.createdAt")}>
-      <p className="text-sm text-slate-800 dark:text-slate-200">
-        {formatOptionalDate(dateFmt, detailRow.created_at)}
-      </p>
-      {checklistTypeUserLabel(detailRow.created_by) !== "—" ? (
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          {t("detail.byUser", {
-            user: checklistTypeUserLabel(detailRow.created_by),
-          })}
-        </p>
-      ) : null}
-    </FieldGroup>
-    <FieldGroup label={t("detail.updatedAt")}>
-      <p className="text-sm text-slate-800 dark:text-slate-200">
-        {formatOptionalDate(dateFmt, detailRow.modified_at)}
-      </p>
-      {checklistTypeUserLabel(detailRow.modified_by) !== "—" ? (
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          {t("detail.byUser", {
-            user: checklistTypeUserLabel(detailRow.modified_by),
-          })}
-        </p>
-      ) : null}
-    </FieldGroup>
-  </div>
-) : null}
+          <SettingsDetailList>
+            <SettingsDetailRow label={t("table.title")}>
+              <SettingsDetailTextValue>{formatChecklistTypeLabel(detailRow)}</SettingsDetailTextValue>
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("table.projectType")}>
+              <SettingsDetailTextValue>{projectTypeLabelFromChecklistRow(detailRow)}</SettingsDetailTextValue>
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("table.sequence")}>
+              <SettingsDetailTextValue>{detailRow.sequence}</SettingsDetailTextValue>
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("table.required")}>
+              <SettingsDetailTextValue>
+                {detailRow.is_required ? t("required.yes") : t("required.no")}
+              </SettingsDetailTextValue>
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("modal.file")}>
+              {detailRow.file ? (
+                <a
+                  href={detailRow.file ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  {detailRow.file.split("/").pop() ?? detailRow.file}
+                </a>
+              ) : (
+                <SettingsDetailTextValue muted>{t("modal.noFile")}</SettingsDetailTextValue>
+              )}
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("table.status")}>
+              <SettingsDetailStatusValue
+                active={detailRow.is_active}
+                activeLabel={t("status.active")}
+                inactiveLabel={t("status.inactive")}
+              />
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("detail.createdAt")}>
+              <SettingsDetailTimestampValue
+                dateFmt={dateFmt}
+                value={detailRow.created_at}
+                byUser={settingsDetailUserLabel(detailRow.created_by)}
+                byUserTemplate={
+                  settingsDetailUserLabel(detailRow.created_by) !== "—"
+                    ? t("detail.byUser", { user: settingsDetailUserLabel(detailRow.created_by) })
+                    : null
+                }
+              />
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("detail.updatedAt")}>
+              <SettingsDetailTimestampValue
+                dateFmt={dateFmt}
+                value={detailRow.modified_at}
+                byUser={settingsDetailUserLabel(detailRow.modified_by)}
+                byUserTemplate={
+                  settingsDetailUserLabel(detailRow.modified_by) !== "—"
+                    ? t("detail.byUser", { user: settingsDetailUserLabel(detailRow.modified_by) })
+                    : null
+                }
+              />
+            </SettingsDetailRow>
+          </SettingsDetailList>
+        ) : null}
       </DetailPanel>
 
       <AppModal
@@ -859,7 +826,7 @@ if (editing && initialValues) {
           </>
         }
       >
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           <FieldGroup
             label={
               <span>

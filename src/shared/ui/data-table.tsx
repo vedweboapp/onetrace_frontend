@@ -1,27 +1,49 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { cn } from "@/core/utils/http.util";
 
-/** Outer scroll boundary for responsive tables */
+/** Outer scroll boundary for responsive tables (single scroll region inside list shell). */
 export function DataTableScroll({ className, ...props }: ComponentPropsWithoutRef<"div">) {
-  return <div className={cn("overflow-x-auto", className)} {...props} />;
-}
-
-export type DataTableProps = ComponentPropsWithoutRef<"table">;
-
-/** Full-width semantic table aligned with SurfaceShell */
-export function DataTable({ className, ...props }: DataTableProps) {
   return (
-    <table className={cn("w-full min-w-[min(100%,640px)] table-auto text-left text-sm", className)} {...props} />
+    <div
+      className={cn(
+        "min-h-0 flex-1 overflow-auto overscroll-contain",
+        "rounded-none",
+        className,
+      )}
+      {...props}
+    />
   );
 }
 
-/** Table section headers (muted bar) */
+export type DataTableProps = ComponentPropsWithoutRef<"table"> & {
+  /** When true, long text wraps; otherwise cells truncate (clip). */
+  textWrap?: boolean;
+};
+
+/** Full-width bordered table (Zoho / WMS style). */
+export function DataTable({ className, textWrap, ...props }: DataTableProps) {
+  return (
+    <table
+      data-text-mode={textWrap ? "wrap" : "clip"}
+      className={cn(
+        "w-full min-w-[min(100%,640px)] border-collapse text-left text-sm",
+        textWrap ? "table-auto" : "table-fixed",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+/** Sticky header bar with solid column background. */
 export function DataTableHead({ className, ...props }: ComponentPropsWithoutRef<"thead">) {
   return (
     <thead
       className={cn(
-        "border-b border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500",
-        "dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-500",
+        "sticky top-0 z-10 border-b border-slate-200 bg-slate-100 text-[11px] font-semibold uppercase tracking-wide text-slate-600",
+        "dark:border-slate-700 dark:bg-slate-800/95 dark:text-slate-300",
+        "[&>tr>th]:border-r [&>tr>th]:border-slate-200/90 [&>tr>th]:last:border-r-0",
+        "dark:[&>tr>th]:border-slate-700/80",
         className,
       )}
       {...props}
@@ -30,7 +52,17 @@ export function DataTableHead({ className, ...props }: ComponentPropsWithoutRef<
 }
 
 export function DataTableBody({ className, ...props }: ComponentPropsWithoutRef<"tbody">) {
-  return <tbody className={cn("divide-y divide-slate-200 dark:divide-slate-800", className)} {...props} />;
+  return (
+    <tbody
+      className={cn(
+        "divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-950",
+        "[&>tr>td]:border-r [&>tr>td]:border-slate-100 [&>tr>td]:last:border-r-0",
+        "dark:[&>tr>td]:border-slate-800/90",
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 export type DataTableRowProps = ComponentPropsWithoutRef<"tr"> & {
@@ -48,7 +80,7 @@ export function DataTableRow({
     <tr
       className={cn(
         "bg-white dark:bg-slate-950",
-        clickable && "cursor-pointer transition hover:bg-slate-50 dark:hover:bg-slate-900/70",
+        clickable && "cursor-pointer transition hover:bg-slate-50 dark:hover:bg-slate-900/80",
         className,
       )}
       role={clickable ? "button" : undefined}
@@ -66,7 +98,7 @@ export function DataTableRow({
   );
 }
 
-const selectionColumnClassName = "w-11 min-w-11 max-w-11 pl-4 pr-2 py-2.5 align-middle";
+const selectionColumnClassName = "w-11 min-w-11 max-w-11 pl-3 pr-2 py-2.5 align-middle";
 
 function SelectionColumnContent({ children }: { children: ReactNode }) {
   return <div className="flex items-center justify-start">{children}</div>;
@@ -88,7 +120,7 @@ export function DataTableTh({
           ? selectionColumnClassName
           : narrow
             ? "w-11 px-2 py-2.5 align-middle"
-            : "px-4 py-2.5 align-middle",
+            : "px-3 py-2.5 align-middle sm:px-3.5",
         className,
       )}
       {...props}
@@ -114,7 +146,7 @@ export function DataTableTd({
           ? selectionColumnClassName
           : narrow
             ? "w-11 px-2 py-2.5 align-middle"
-            : "px-4 py-2.5 align-middle text-slate-600 dark:text-slate-400",
+            : "px-3 py-2.5 align-middle text-slate-700 dark:text-slate-300 sm:px-3.5",
         className,
       )}
       {...props}

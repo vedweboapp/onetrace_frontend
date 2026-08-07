@@ -39,7 +39,7 @@
   height: 2.75rem;
   border: 0;
   background: transparent;
-  font-size: 0.875rem;
+  font-size: var(--dash-body-size, 0.875rem);
   line-height: 1.25rem;
   color: rgb(15 23 42);
   outline: none;
@@ -61,7 +61,7 @@
   border-radius: 0.5rem;
   border: 0;
   background: rgb(248 250 252);
-  font-size: 0.875rem;
+  font-size: var(--dash-body-size, 0.875rem);
 }
 .dark .surface-phone-root .PhoneInputCountrySelect {
   background: rgb(15 23 42);
@@ -74,6 +74,13 @@
 @theme {
   --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  /* Tie Tailwind text-* utilities to Appearance font size (Small/Medium/Large). */
+  --text-xs: var(--dash-text-xs);
+  --text-sm: var(--dash-text-sm);
+  --text-base: var(--dash-text-base);
+  --text-lg: var(--dash-text-lg);
+  --text-xl: var(--dash-text-xl);
+  --text-2xl: var(--dash-text-2xl);
 }
 
 html {
@@ -84,6 +91,17 @@ html {
 :root {
   --dash-accent: #111111;
   --dash-on-accent: #ffffff;
+  --dash-font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --dash-font-size: 15px;
+  --dash-type-scale: 1;
+  --dash-label-size: calc(var(--dash-font-size) * 0.933);
+  --dash-body-size: var(--dash-font-size);
+  --dash-text-xs: calc(var(--dash-font-size) * 0.8);
+  --dash-text-sm: calc(var(--dash-font-size) * 0.933);
+  --dash-text-base: var(--dash-font-size);
+  --dash-text-lg: calc(var(--dash-font-size) * 1.125);
+  --dash-text-xl: calc(var(--dash-font-size) * 1.25);
+  --dash-text-2xl: calc(var(--dash-font-size) * 1.5);
 }
 
 html.dark {
@@ -93,7 +111,171 @@ html.dark {
 }
 
 body {
-  font-family: var(--font-sans);
+  font-family: var(--dash-font-family, var(--font-sans));
+  font-size: var(--dash-font-size, 15px);
+}
+
+/*
+ * Appearance → Font size: force text-* utilities to the dash scale.
+ * Complements @theme --text-* so portaled menus and any late utilities stay in sync.
+ */
+.dash-appearance-scope[data-font-size] :is(.text-xs),
+html[data-font-size] :is(.text-xs) {
+  font-size: var(--dash-text-xs) !important;
+}
+.dash-appearance-scope[data-font-size] :is(.text-sm),
+html[data-font-size] :is(.text-sm) {
+  font-size: var(--dash-text-sm) !important;
+}
+.dash-appearance-scope[data-font-size] :is(.text-base),
+html[data-font-size] :is(.text-base) {
+  font-size: var(--dash-text-base) !important;
+}
+.dash-appearance-scope[data-font-size] :is(.text-lg),
+html[data-font-size] :is(.text-lg) {
+  font-size: var(--dash-text-lg) !important;
+}
+.dash-appearance-scope[data-font-size] :is(.text-xl),
+html[data-font-size] :is(.text-xl) {
+  font-size: var(--dash-text-xl) !important;
+}
+.dash-appearance-scope[data-font-size] :is(.text-2xl),
+html[data-font-size] :is(.text-2xl) {
+  font-size: var(--dash-text-2xl) !important;
+}
+
+.dash-appearance-scope {
+  font-family: var(--dash-font-family);
+  font-size: var(--dash-font-size);
+}
+
+/* —— Form layout (Appearance → Form layout) —— */
+.dash-appearance-scope .field-group {
+  width: 100%;
+  min-width: 0;
+}
+
+.dash-appearance-scope[data-form-label="top"] .field-group {
+  display: block;
+}
+.dash-appearance-scope[data-form-label="top"] .field-label {
+  margin-bottom: 0.375rem;
+}
+
+.dash-appearance-scope[data-form-label="left"] .field-group,
+.dash-appearance-scope[data-form-label="right"] .field-group {
+  display: grid;
+  /* Label hugs text — no empty leading gap before the label. */
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: start;
+  column-gap: 0.75rem;
+  row-gap: 0.25rem;
+}
+
+.dash-appearance-scope[data-form-label="left"] .field-label {
+  margin-bottom: 0;
+  padding-top: 0.7rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dash-appearance-scope[data-form-label="right"] .field-label {
+  margin-bottom: 0;
+  padding-top: 0.7rem;
+  text-align: left;
+  white-space: nowrap;
+  order: 2;
+}
+
+.dash-appearance-scope[data-form-label="right"] .field-control-wrap {
+  order: 1;
+}
+
+@media (max-width: 639px) {
+  .dash-appearance-scope[data-form-label="left"] .field-group,
+  .dash-appearance-scope[data-form-label="right"] .field-group {
+    grid-template-columns: 1fr;
+  }
+  .dash-appearance-scope[data-form-label="left"] .field-label,
+  .dash-appearance-scope[data-form-label="right"] .field-label {
+    padding-top: 0;
+    margin-bottom: 0.375rem;
+    text-align: left;
+    order: 0;
+  }
+  .dash-appearance-scope[data-form-label="right"] .field-control-wrap {
+    order: 0;
+  }
+}
+
+/* Required: asterisk (default) vs red line on the control */
+.dash-appearance-scope[data-required-indicator="redLine"] .field-required-asterisk {
+  display: none;
+}
+
+.dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  .field-control,
+.dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  > input:not([type="hidden"]),
+.dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  > textarea,
+.dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  > select,
+.dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  .surface-phone-root
+  .PhoneInput,
+.dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  > button,
+.dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  [data-field-control] {
+  border-left-width: 3px;
+  border-left-color: rgb(220 38 38);
+}
+
+.dark .dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  .field-control,
+.dark .dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  > input:not([type="hidden"]),
+.dark .dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  > textarea,
+.dark .dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  > select,
+.dark .dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  .surface-phone-root
+  .PhoneInput,
+.dark .dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  > button,
+.dark .dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  [data-field-control] {
+  border-left-color: rgb(248 113 113);
 }
 
 /* Number inputs: hide browser increment/decrement spinners; keep type=number validation. */

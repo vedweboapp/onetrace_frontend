@@ -31,7 +31,9 @@ import {
   AppButton,
   CheckmarkSelect,
   type CheckmarkSelectOption,
-  FieldLabel,
+  FieldGroup,
+  FieldErrorText,
+  RequiredMark,
   fieldErrorTextClassName,
   SurfaceShell,
   surfaceInputClassName,
@@ -293,10 +295,7 @@ export function GroupFormScreen({ mode, groupId }: Props) {
           </div>
         ) : (
           <form id="group-form-screen" className="space-y-5 p-4 sm:p-6" onSubmit={(e) => void submit(e)}>
-            <div>
-              <FieldLabel htmlFor={nameId} required>
-                {tModal("name")}
-              </FieldLabel>
+            <FieldGroup label={tModal("name")} htmlFor={nameId} required>
               <input
                 id={nameId}
                 type="text"
@@ -308,8 +307,8 @@ export function GroupFormScreen({ mode, groupId }: Props) {
                 placeholder={tModal("namePlaceholder")}
                 className={surfaceInputClassName}
               />
-              {nameInvalid ? <p className={fieldErrorTextClassName}>{tModal("nameError")}</p> : null}
-            </div>
+              {nameInvalid ? <FieldErrorText>{tModal("nameError")}</FieldErrorText> : null}
+            </FieldGroup>
             <div>
               {compositeLoadError ? (
                 <p className="text-sm text-amber-700 dark:text-amber-300">{compositeLoadError}</p>
@@ -323,11 +322,11 @@ export function GroupFormScreen({ mode, groupId }: Props) {
                 <div className={COMPOSITE_ITEMS_GRID}>
                   <span className={compositeHeaderCellClassName}>
                     {tModal("compositeItem")}
-                    <span className="ml-1 text-red-500">*</span>
+                    <RequiredMark alwaysVisible />
                   </span>
                   <span className={compositeHeaderCellClassName}>
                     {tModal("abbreviation")}
-                    <span className="ml-1 text-red-500">*</span>
+                    <RequiredMark alwaysVisible />
                   </span>
                   <span className={compositeHeaderCellClassName} aria-hidden />
                   {rows.map((row, idx) => {

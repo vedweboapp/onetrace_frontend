@@ -36,6 +36,7 @@ import {
   SurfacePhoneField,
   SurfaceTextField,
   SurfaceShell,
+  dashboardScrollablePageClassName,
 } from "@/shared/ui";
 
 type Props = {
@@ -158,7 +159,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
   }
 
   return (
-    <div className="pb-12">
+    <div className={dashboardScrollablePageClassName()}>
       <DetailPageHeader
         title={isEdit ? t("page.editTitle") : t("page.createTitle")}
         backHref={safeBack}
@@ -176,7 +177,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
         }
       />
 
-      <SurfaceShell className="rounded-none border-0 shadow-none ring-0">
+      <SurfaceShell className="rounded-none border border-slate-200 shadow-none ring-0 dark:border-slate-800">
         {loadingExisting ? (
           <div className="space-y-3 p-4 sm:p-6">
             <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
@@ -187,7 +188,12 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
             <p className="text-sm text-red-600 dark:text-red-400">{screenError}</p>
           </div>
         ) : (
-          <form id="vendor-upsert-screen-form" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(submit)}>
+          <form
+            id="vendor-upsert-screen-form"
+            className="w-full max-w-none space-y-6 p-4 sm:p-6 lg:p-8"
+            noValidate
+            onSubmit={handleSubmit(submit)}
+          >
             <FormFieldRow cols="2">
               <SurfaceTextField
                 register={register}
@@ -204,7 +210,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
                 control={control}
                 name="type"
                 render={({ field }) => (
-                  <FieldGroup label={t("fields.type")} htmlFor="vendor-type">
+                  <FieldGroup label={t("fields.type")} htmlFor="vendor-type" required>
                     <CheckmarkSelect
                       id="vendor-type"
                       options={typeOptions}
@@ -241,6 +247,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
                 name="phone"
                 id="vendor-phone"
                 label={t("fields.phone")}
+                required
                 error={errors.phone?.message}
                 disabled={saving}
                 countryIso={phoneCountry}

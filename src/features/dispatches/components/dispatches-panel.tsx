@@ -20,6 +20,7 @@ import {
   DataTableRowActionsMenu,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
+  listPageRootClassName,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
@@ -141,7 +142,7 @@ export function DispatchesPanel() {
   const pageRange = getListPageRange(pagination);
 
   return (
-    <div className="space-y-4">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
           filtersActive={filtersActive}

@@ -12,6 +12,11 @@ import {
   accentOnAccentHex,
   normalizeAccentHex,
 } from "@/features/dashboard/utils/accent-hex.util";
+import {
+  FONT_FAMILY_CSS,
+  FONT_SIZE_CSS,
+  GOOGLE_FONTS_STYLESHEET,
+} from "@/features/dashboard/utils/appearance-typography.util";
 import { cn } from "@/core/utils/http.util";
 
 type Props = {
@@ -31,25 +36,40 @@ function isMonochromeBlackPreset(
 
 function useIsClient() {
   return useSyncExternalStore(
-    () => () => { },
+    () => () => {},
     () => true,
     () => false,
   );
 }
 
 /**
- * Sets `--dash-accent` and `--dash-on-accent` for dashboard + settings UI
- * (auth/public use root defaults from globals.css).
+ * Applies dashboard appearance tokens (accent, typography, form layout, chrome layout)
+ * via CSS variables + data attributes for the whole dashboard shell.
+ * Also mirrors tokens onto `document.documentElement` so portaled menus/modals match.
  */
 export function DashboardAppearanceScope({ children, className }: Props) {
   const { resolvedTheme } = useTheme();
   const mounted = useIsClient();
 
-  const { accentKind, accent, customAccentHex } = useDashboardAppearanceStore(
+  const {
+    accentKind,
+    accent,
+    customAccentHex,
+    fontFamily,
+    fontSize,
+    sidebarLayout,
+    formLabelPlacement,
+    requiredIndicator,
+  } = useDashboardAppearanceStore(
     useShallow((s) => ({
       accentKind: s.accentKind,
       accent: s.accent,
       customAccentHex: s.customAccentHex,
+      fontFamily: s.fontFamily,
+      fontSize: s.fontSize,
+      sidebarLayout: s.sidebarLayout,
+      formLabelPlacement: s.formLabelPlacement,
+      requiredIndicator: s.requiredIndicator,
     })),
   );
 
@@ -62,14 +82,64 @@ export function DashboardAppearanceScope({ children, className }: Props) {
   }
 
   const onHex = accentOnAccentHex(hex);
+  const typeScale = FONT_SIZE_CSS[fontSize];
 
   const style = {
     "--dash-accent": hex,
     "--dash-on-accent": onHex,
+    "--dash-font-family": FONT_FAMILY_CSS[fontFamily],
+    "--dash-font-size": typeScale.root,
+    "--dash-label-size": typeScale.label,
+    "--dash-body-size": typeScale.body,
+    "--dash-type-scale": typeScale.scale,
+    fontFamily: "var(--dash-font-family)",
+    fontSize: "var(--dash-font-size)",
   } as CSSProperties;
 
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+    const id = "dash-appearance-google-fonts";
+    if (document.getElementById(id)) return;
+    const link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = GOOGLE_FONTS_STYLESHEET;
+    document.head.appendChild(link);
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    root.style.setProperty("--dash-accent", hex);
+    root.style.setProperty("--dash-on-accent", onHex);
+    root.style.setProperty("--dash-font-family", FONT_FAMILY_CSS[fontFamily]);
+    root.style.setProperty("--dash-font-size", typeScale.root);
+    root.style.setProperty("--dash-label-size", typeScale.label);
+    root.style.setProperty("--dash-body-size", typeScale.body);
+    root.style.setProperty("--dash-type-scale", typeScale.scale);
+    root.setAttribute("data-font-size", fontSize);
+    root.setAttribute("data-font-family", fontFamily);
+  }, [
+    hex,
+    onHex,
+    fontFamily,
+    fontSize,
+    typeScale.root,
+    typeScale.label,
+    typeScale.body,
+    typeScale.scale,
+  ]);
+
   return (
-    <div className={cn(className)} style={style}>
+    <div
+      className={cn("dash-appearance-scope", className)}
+      style={style}
+      data-sidebar-layout={sidebarLayout}
+      data-form-label={formLabelPlacement}
+      data-required-indicator={requiredIndicator}
+      data-font-family={fontFamily}
+      data-font-size={fontSize}
+    >
       {children}
     </div>
   );
