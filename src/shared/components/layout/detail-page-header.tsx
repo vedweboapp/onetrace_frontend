@@ -93,12 +93,7 @@ export function DetailPageHeader({
         </div>
         {titleLoading ? <DetailPageHeaderLoadingBar /> : null}
         {extension ? (
-          <div
-            className={cn(
-              dashboardContentHorizontalGutterClassName,
-              "border-t border-slate-200 py-1 dark:border-slate-800",
-            )}
-          >
+          <div className={cn(dashboardContentHorizontalGutterClassName, "pt-0")}>
             {extension}
           </div>
         ) : null}

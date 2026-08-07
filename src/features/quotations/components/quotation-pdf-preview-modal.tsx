@@ -167,28 +167,36 @@ function PlotTable({
               const isVariation = sp.variation ?? false;
               const variationText = isVariation ? "Yes" : "No";
 
-              const frontendAddr = process.env.NEXT_PUBLIC_FRONTEND_ADDRESS || "http://localhost:3000";
-              const pinLink = sp.pin_id ? `${frontendAddr}/public/quotation?&token=${sp.pin_id}` : null;
+              // Pin *link* only — snapshots are cropped from section.drawing_file via the API origin.
+              const frontendAddr = (process.env.NEXT_PUBLIC_FRONTEND_ADDRESS || "http://localhost:3000").replace(
+                /\/$/,
+                "",
+              );
+              const pinLink = sp.pin_id ? `${frontendAddr}/public/quotation?token=${sp.pin_id}` : null;
 
               return (
                 <tr key={rowIdx} style={{ borderTop: "1px solid #f1f5f9", background: rowIdx % 2 === 1 ? "#f8fafc" : "white" }}>
                   <td style={{ padding: "8px 10px" }}>
-                   {pinLink && (
+                    {pinLink ? (
                       <a
                         href={pinLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ color: "#2563eb", textDecoration: "underline", fontWeight: 500 }}
+                        style={{ display: "inline-block", lineHeight: 0 }}
                       >
                         <PinSnapshotCell
-                      pinKey={pinKey}
-                      pinSnapshots={pinSnapshots}
-                      locationLabel={sp.location}
-                    />
+                          pinKey={pinKey}
+                          pinSnapshots={pinSnapshots}
+                          locationLabel={sp.location}
+                        />
                       </a>
-                      )
-                    }
-                  
+                    ) : (
+                      <PinSnapshotCell
+                        pinKey={pinKey}
+                        pinSnapshots={pinSnapshots}
+                        locationLabel={sp.location}
+                      />
+                    )}
                   </td>
                   <td style={{ padding: "8px 10px", fontWeight: 600, color: "#374151" }}>{locText}</td>
                   <td style={{ padding: "8px 10px" }}>

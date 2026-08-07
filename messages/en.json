@@ -221,9 +221,12 @@
       "eyebrowMain": "Workspace",
       "eyebrowSettings": "Settings",
       "closeSettings": "Close settings",
+      "closeSettingsShort": "Close",
       "toggleSidebar": "Expand or collapse sidebar",
       "notifications": "Notifications",
       "signOut": "Sign out",
+      "signingOut": "Signing out…",
+      "myProfile": "My profile",
       "openSettings": "Settings & appearance",
       "openProfileMenu": "Open profile menu",
       "profileMenuLabel": "Account"
@@ -655,10 +658,10 @@
       "metaTitle": "Appearance",
       "pageKicker": "Settings",
       "title": "Appearance",
-      "subtitle": "Control theme, language, and accent for the dashboard. Accent colors highlight navigation and key actions.",
-      "themeHeading": "Theme",
+      "subtitle": "Control theme, typography, dashboard layout, and form field display for this workspace.",
+      "themeHeading": "Theme & colors",
       "themeHint": "Switch between a bright interface and a dark interface.",
-      "themeSelectLabel": "Interface theme",
+      "themeSelectLabel": "Mode",
       "theme": {
         "light": "Light",
         "dark": "Dark"
@@ -671,13 +674,13 @@
         "es": "Español"
       },
       "accentHeading": "Accent color",
-      "accentPresetsLabel": "Presets",
+      "accentPresetsLabel": "Primary color",
       "accentCustomLabel": "Custom color",
       "accentCustom": "Custom",
       "customHexLabel": "Custom hex color",
       "customColorPicker": "Pick a color",
       "applyCustom": "Apply",
-      "customHint": "Use a 6-digit hex value (e.g. #2563eb). Custom accents apply to the sidebar, mobile bar, and accent highlights.",
+      "customHint": "Use a 6-digit hex value (e.g. #2563eb). Accent colors apply to navigation and key actions.",
       "accents": {
         "black": "Black",
         "blue": "Blue",
@@ -692,7 +695,60 @@
         "fuchsia": "Fuchsia",
         "teal": "Teal",
         "orange": "Orange"
-      }
+      },
+      "typographyHeading": "Typography",
+      "fontFamilyLabel": "Font family",
+      "fontFamilyHint": "Applied across the dashboard for consistent reading.",
+      "fontSizeLabel": "Font size",
+      "fontSizeHint": "Adjust base text size for labels and body copy.",
+      "fontSizePreview": "Preview: The quick brown fox jumps over the lazy dog.",
+      "fonts": {
+        "inter": "Inter",
+        "roboto": "Roboto",
+        "sourceSans": "Source Sans 3",
+        "openSans": "Open Sans",
+        "dmSans": "DM Sans",
+        "system": "System default"
+      },
+      "fontSizes": {
+        "small": "Small",
+        "medium": "Medium",
+        "large": "Large"
+      },
+      "layoutHeading": "Dashboard layout",
+      "sidebarLayoutLabel": "Navigation layout",
+      "sidebarLayoutHint": "Choose where primary navigation appears on desktop.",
+      "layouts": {
+        "lithium": {
+          "title": "Left sidebar (Lithium)",
+          "subtitle": "Classic vertical navigation on the left."
+        },
+        "hydrogen": {
+          "title": "Top navigation (Hydrogen)",
+          "subtitle": "Horizontal navigation along the top bar."
+        },
+        "boron": {
+          "title": "Right sidebar (Boron)",
+          "subtitle": "Vertical navigation on the right."
+        }
+      },
+      "formLayoutHeading": "Form layout",
+      "labelPlacementLabel": "Label placement",
+      "labelPlacementHint": "Position of field labels relative to inputs on forms and detail screens.",
+      "labelPlacements": {
+        "top": "Top",
+        "left": "Left",
+        "right": "Right"
+      },
+      "requiredIndicatorLabel": "Required field indicator",
+      "requiredIndicatorHint": "How mandatory fields are marked across the app.",
+      "requiredIndicators": {
+        "asterisk": "Asterisk (*)",
+        "redLine": "Red line"
+      },
+      "formPreviewHeading": "Live preview",
+      "formPreviewLabel": "Sample required field",
+      "formPreviewValue": "Sample value"
     },
     "pinStatus": {
       "metaTitle": "Pin Statuses",
@@ -3300,7 +3356,12 @@
       "clearFilter": "Remove this filter",
       "filterMenu": "Filters",
       "filterMenuAria": "Open search and filters",
-      "cardCreated": "Created {date}"
+      "cardCreated": "Created {date}",
+      "textModeAria": "Cell text display",
+      "textModeClip": "Clip",
+      "textModeWrap": "Wrap",
+      "textModeClipHint": "Keep text on one line; truncate with … (scroll table sideways for more columns)",
+      "textModeWrapHint": "Wrap long text onto multiple lines inside the column"
     },
     "projects": {
       "metaTitle": "Projects",

@@ -66,13 +66,21 @@ export function fetchDrawingArrayBuffer(fileUrl: string): Promise<ArrayBuffer> {
     try {
       let buffer: ArrayBuffer;
       try {
+        // Media endpoints must not send Accept: application/json (axios default).
         const res = await api.get<ArrayBuffer>(fileUrl, {
           responseType: "arraybuffer",
           skipErrorToast: true,
+          headers: {
+            Accept: "*/*",
+            "Content-Type": undefined,
+          },
         });
         buffer = res.data;
       } catch {
-        const rawRes = await fetch(fileUrl);
+        const rawRes = await fetch(fileUrl, {
+          credentials: "include",
+          headers: { Accept: "*/*" },
+        });
         if (!rawRes.ok) {
           throw new Error(`HTTP ${rawRes.status} fetching drawing: ${fileUrl}`);
         }

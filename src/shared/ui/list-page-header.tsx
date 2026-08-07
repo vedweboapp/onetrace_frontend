@@ -97,11 +97,11 @@ export function ListPageHeader({
 
   React.useEffect(() => {
     const pageHeadingRow =
-      title || backHref ? (
+      title || description ? (
         <div
           className={cn(
             dashboardContentHorizontalGutterClassName,
-            "flex min-h-11 items-center gap-2 border-b border-slate-200 py-1 dark:border-slate-800",
+            "flex min-h-10 items-center gap-2 py-1.5",
           )}
         >
           {backHref ? (
@@ -117,14 +117,14 @@ export function ListPageHeader({
               <ArrowLeft className="size-4" strokeWidth={2} aria-hidden />
             </Link>
           ) : null}
-          {title ? (
-            <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1">
+            {title ? (
               <h1 className="truncate text-sm font-semibold leading-tight text-slate-900 dark:text-slate-100">{title}</h1>
-              {description ? (
-                <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{description}</p>
-              ) : null}
-            </div>
-          ) : null}
+            ) : null}
+            {description ? (
+              <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{description}</p>
+            ) : null}
+          </div>
         </div>
       ) : null;
 
@@ -203,11 +203,25 @@ export function ListPageHeader({
       return () => setSecondaryRow(null);
     }
 
-    const hasToolbar = Boolean(controls) || showViewToggle || action;
+    const hasToolbar = Boolean(controls) || showViewToggle || action || backHref;
     if (!hasToolbar && !pageHeadingRow) {
       setSecondaryRow(null);
       return () => setSecondaryRow(null);
     }
+
+    const backButton = backHref && !title ? (
+      <Link
+        href={backHref}
+        className={cn(
+          "inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-transparent text-slate-500 transition",
+          "hover:border-slate-200 hover:bg-slate-50 hover:text-slate-800",
+          "dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+        )}
+        aria-label={backAriaLabel ?? tList("back")}
+      >
+        <ArrowLeft className="size-4" strokeWidth={2} aria-hidden />
+      </Link>
+    ) : null;
 
     const filterButton = controls ? (
       <button
@@ -247,6 +261,7 @@ export function ListPageHeader({
             )}
           >
             <div className="flex min-w-0 items-center gap-2">
+              {backButton}
               {filterButton}
               {viewToggle}
             </div>

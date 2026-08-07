@@ -27,7 +27,7 @@ export function MoneyInput({
   return (
     <div
       className={cn(
-        "flex h-11 w-full min-w-0 items-center rounded-xl border border-slate-200 bg-white text-sm shadow-sm transition",
+        "field-control flex h-11 w-full min-w-0 items-center rounded-xl border border-slate-200 bg-white text-[length:var(--dash-body-size,0.875rem)] shadow-sm transition",
         "focus-within:border-[color:var(--dash-accent,#111111)] focus-within:ring-2 focus-within:ring-[color:var(--dash-accent,#111111)]/20",
         "dark:border-slate-700 dark:bg-slate-950",
         invalid && "border-red-500 focus-within:border-red-500 focus-within:ring-red-500/20",
@@ -36,7 +36,7 @@ export function MoneyInput({
       )}
     >
       {before ? (
-        <span className="shrink-0 pl-3.5 text-sm font-medium text-slate-500 dark:text-slate-400" aria-hidden>
+        <span className="shrink-0 pl-3.5 text-[length:var(--dash-body-size,0.875rem)] font-medium text-slate-500 dark:text-slate-400" aria-hidden>
           {affix}
         </span>
       ) : null}
@@ -44,7 +44,7 @@ export function MoneyInput({
         {...inputProps}
         disabled={disabled}
         className={cn(
-          "min-w-0 flex-1 border-0 bg-transparent py-0 text-sm text-slate-900 outline-none",
+          "min-w-0 flex-1 border-0 bg-transparent py-0 text-[length:var(--dash-body-size,0.875rem)] text-slate-900 outline-none",
           "placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500",
           "disabled:cursor-not-allowed",
           before ? "pr-3.5 pl-1.5" : "pl-3.5 pr-1.5",
@@ -52,7 +52,7 @@ export function MoneyInput({
         )}
       />
       {!before ? (
-        <span className="shrink-0 pr-3.5 text-sm font-medium text-slate-500 dark:text-slate-400" aria-hidden>
+        <span className="shrink-0 pr-3.5 text-[length:var(--dash-body-size,0.875rem)] font-medium text-slate-500 dark:text-slate-400" aria-hidden>
           {affix}
         </span>
       ) : null}

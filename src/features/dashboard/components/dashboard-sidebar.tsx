@@ -37,12 +37,19 @@ export function DashboardSidebar() {
       customAccentHex: s.customAccentHex,
     })),
   );
+  const sidebarLayout = useDashboardAppearanceStore((s) => s.sidebarLayout);
   const resolved = resolveDashboardAccent(accentSlice);
   const sidebarExpanded = useDashboardSidebarStore((s) => s.sidebarOpen);
+  const isBoron = sidebarLayout === "boron";
+  const isHydrogen = sidebarLayout === "hydrogen";
 
   const shell = cn(
-    "hidden h-full min-h-0 shrink-0 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900",
-    "md:flex",
+    "hidden h-full min-h-0 shrink-0 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain bg-white dark:bg-slate-900",
+    isBoron
+      ? "border-l border-slate-200 dark:border-slate-800"
+      : "border-r border-slate-200 dark:border-slate-800",
+    // Hydrogen = top nav: keep sidebar for mobile only
+    isHydrogen ? "md:hidden" : "md:flex",
     "transition-[width] duration-10 ease-[cubic-bezier(0.4,0,0.2,1)]",
     sidebarExpanded ? "md:w-50" : "md:w-[42px]",
   );
@@ -231,6 +238,8 @@ function SidebarCollapsedFlyout({
   const closeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [open, setOpen] = React.useState(false);
   const [pos, setPos] = React.useState({ top: 0, left: 0 });
+  const sidebarLayout = useDashboardAppearanceStore((s) => s.sidebarLayout);
+  const openToLeft = sidebarLayout === "boron";
 
   const clearCloseTimer = React.useCallback(() => {
     if (closeTimerRef.current) {
@@ -243,8 +252,12 @@ function SidebarCollapsedFlyout({
     const el = triggerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    setPos({ top: rect.top, left: rect.right + 6 });
-  }, []);
+    const menuWidth = 152;
+    setPos({
+      top: rect.top,
+      left: openToLeft ? Math.max(8, rect.left - menuWidth - 6) : rect.right + 6,
+    });
+  }, [openToLeft]);
 
   const openMenu = React.useCallback(() => {
     clearCloseTimer();

@@ -3,6 +3,7 @@
 import type { LucideIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ListEmptyStateKind } from "@/shared/hooks/use-list-active-inactive-empty";
+import { cn } from "@/core/utils/http.util";
 import { AppButton } from "./app-button";
 import { DashboardEmptyState, type DashboardEmptyStateIconName } from "./dashboard-empty-state";
 
@@ -24,7 +25,23 @@ export type ListPageEmptyStatesProps = {
 };
 
 export function listPageSurfaceShellClassName(hideListChrome: boolean): string {
-  return hideListChrome ? "rounded-none border-dashed" : "rounded-none";
+  return cn(
+    // Single scroll: shell fills remaining height; only table body scrolls.
+    "flex min-h-0 flex-1 flex-col overflow-hidden",
+    hideListChrome ? "rounded-none border-dashed" : "rounded-none border border-slate-200 dark:border-slate-800",
+  );
+}
+
+/** Root wrapper for list panels — fills the shell; only the table body scrolls. */
+export function listPageRootClassName(): string {
+  return cn(
+    "flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden sm:gap-3",
+  );
+}
+
+/** Scrollable pages (forms) — parent shell already scrolls; keep bottom padding. */
+export function dashboardScrollablePageClassName(): string {
+  return "min-h-0 w-full pb-8";
 }
 
 /** Shared empty states for dashboard list panels (matches Clients behaviour). */

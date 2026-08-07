@@ -1,17 +1,41 @@
-import React, { ReactNode } from 'react'
+import React, { ReactNode } from "react";
+import { cn } from "@/core/utils/http.util";
 
-const FormSectionCard = ({ title, icon, children }: { title: string, icon: ReactNode, children: ReactNode }) => {
+/**
+ * Flat settings/form section — single surface, no nested card chrome.
+ * Appearance typography inherits from `.dash-appearance-scope`.
+ */
+const FormSectionCard = ({
+  title,
+  icon,
+  children,
+  className,
+}: {
+  title: string;
+  icon?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) => {
   return (
-    <div className='flex flex-col gap-4 w-full border border-gray-200 rounded-lg shadow-sm p-6 bg-white dark:bg-slate-900 dark:border-slate-600'>
-      <div className='flex items-center gap-4'>
-        <div className='p-1.5 rounded-full bg-gray-200 p-2 dark:bg-slate-800 text-primary'>
-          {icon}
-        </div>
-        <h1 className='text-xl font-bold'>{title}</h1>
+    <section
+      className={cn(
+        "flex w-full flex-col gap-5 border-b border-slate-200/90 py-6 first:pt-0 last:border-b-0 dark:border-slate-700/80",
+        className,
+      )}
+    >
+      <div className="flex items-center gap-3">
+        {icon ? (
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+            {icon}
+          </div>
+        ) : null}
+        <h2 className="text-[length:var(--dash-body-size,0.875rem)] font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-base">
+          {title}
+        </h2>
       </div>
       {children}
-    </div>
-  )
-}
+    </section>
+  );
+};
 
 export default FormSectionCard;

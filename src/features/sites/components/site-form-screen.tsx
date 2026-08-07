@@ -69,6 +69,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
         pincode: t("validation.pincode"),
         contactPersonTitle: t("validation.contactPersonTitle"),
         contactPerson: t("validation.contactPerson"),
+        contactPersonDuplicate: t("validation.contactPersonDuplicate"),
       }),
     [t],
   );

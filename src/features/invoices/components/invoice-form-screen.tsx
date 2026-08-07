@@ -469,11 +469,9 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                   control={control}
                   name="client"
                   render={({ field }) => (
-                    <div>
+                    <FieldGroup label={t("fields.clientName")} htmlFor="invoice-client" required>
                       <CheckmarkSelect
                         id="invoice-client"
-                        label={t("fields.clientName")}
-                        required
                         options={clientOptions}
                         value={field.value}
                         onChange={(v) => {
@@ -490,7 +488,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                         addAriaLabel={clientQuickCreate.addAriaLabel}
                       />
                       <FieldErrorText>{errors.client?.message}</FieldErrorText>
-                    </div>
+                    </FieldGroup>
                   )}
                 />
                 <Controller
@@ -623,7 +621,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                       <th className="px-3 py-2">{tGroups("title")}</th>
                       <th className="px-3 py-2">
                         {tItems("title")}
-                        <RequiredMark />
+                        <RequiredMark alwaysVisible />
                       </th>
                       <th className="px-3 py-2">{t("lineItems.qty")}</th>
                       <th className="px-3 py-2">{t("lineItems.rate")}</th>

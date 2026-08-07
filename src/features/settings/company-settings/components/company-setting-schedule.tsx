@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { CheckSquare, Square, Clock, ChevronDown } from "lucide-react";
+import { CheckSquare, Square } from "lucide-react";
 import { updateOrganizationDetails } from "../api/company-settings.api";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { useTranslations } from "next-intl";
@@ -11,8 +11,23 @@ import {
   hasDirtyFields,
   SCHEDULE_TAB_FIELDS,
 } from "../utils/company-settings-diff.util";
+import {
+  AppButton,
+  FieldGroup,
+  surfaceInputClassName,
+  surfaceSelectClassName,
+} from "@/shared/ui";
+import { cn } from "@/core/utils/http.util";
 
-const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DAYS_OF_WEEK = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
 const BREAK_OPTIONS = ["15 minutes", "30 minutes", "45 minutes", "1 hour"];
 
 interface CompanySettingScheduleProps {
@@ -20,19 +35,26 @@ interface CompanySettingScheduleProps {
   onSaveSuccess?: (data: OrganizationDetails) => void;
 }
 
-const CompanySettingSchedule = ({ initialData, onSaveSuccess }: CompanySettingScheduleProps) => {
+const CompanySettingSchedule = ({
+  initialData,
+  onSaveSuccess,
+}: CompanySettingScheduleProps) => {
   const t = useTranslations("Dashboard.settingsCompany");
   const [isMounted, setIsMounted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const [workingDays, setWorkingDays] = useState<string[]>(
     initialData.workingDays && initialData.workingDays.length > 0
-      ? initialData.workingDays.map(d => d.charAt(0).toUpperCase() + d.slice(1).toLowerCase())
-      : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+      ? initialData.workingDays.map(
+          (d) => d.charAt(0).toUpperCase() + d.slice(1).toLowerCase(),
+        )
+      : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
   );
   const [startTime, setStartTime] = useState(initialData.startTime || "09:00");
   const [endTime, setEndTime] = useState(initialData.endTime || "17:00");
-  const [breakDuration, setBreakDuration] = useState(initialData.breakDuration || "30 minutes");
+  const [breakDuration, setBreakDuration] = useState(
+    initialData.breakDuration || "30 minutes",
+  );
 
   useEffect(() => {
     setIsMounted(true);
@@ -46,13 +68,17 @@ const CompanySettingSchedule = ({ initialData, onSaveSuccess }: CompanySettingSc
       endTime,
       breakDuration,
     };
-    const patch = buildDirtyOrganizationPatch(initialData, current, SCHEDULE_TAB_FIELDS);
+    const patch = buildDirtyOrganizationPatch(
+      initialData,
+      current,
+      SCHEDULE_TAB_FIELDS,
+    );
     return hasDirtyFields(patch);
   }, [initialData, workingDays, startTime, endTime, breakDuration]);
 
   const toggleDay = (day: string) => {
     setWorkingDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
     );
   };
 
@@ -89,24 +115,30 @@ const CompanySettingSchedule = ({ initialData, onSaveSuccess }: CompanySettingSc
   };
 
   const timezoneDisplay = initialData.timezone || "GMT+0";
+  const breakSelectValue = BREAK_OPTIONS.includes(breakDuration)
+    ? breakDuration
+    : BREAK_OPTIONS[1];
 
   return (
-    <div className={`bg-white dark:bg-slate-900 dark:border-slate-700 dark:border-slate-600 rounded-xl border border-slate-200/80 p-0 shadow-sm flex flex-col transition-opacity duration-500 mt-2 ${isMounted ? "animate-in fade-in duration-500 opacity-100" : "opacity-0"}`}>
-
-      {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-700">
-        <h2 className="text-xl font-bold text-slate-800 tracking-tight dark:text-slate-200">Working Schedule</h2>
-        <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Current Timezone: {timezoneDisplay}</span>
+    <div
+      className={cn(
+        "mt-2 flex flex-col rounded-xl border border-slate-200/90 bg-white dark:border-slate-700 dark:bg-slate-950",
+        "transition-opacity duration-500",
+        isMounted ? "animate-in fade-in opacity-100" : "opacity-0",
+      )}
+    >
+      <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-6 py-5 dark:border-slate-800">
+        <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          Working Schedule
+        </h2>
+        <span className="text-[length:var(--dash-label-size,0.875rem)] font-medium text-slate-500 dark:text-slate-400">
+          Current Timezone: {timezoneDisplay}
+        </span>
       </div>
 
-      <div className="p-8 flex flex-col gap-8">
-
-        {/* Operational Days */}
-        <div className="flex flex-col gap-4">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            Operational Days
-          </label>
-          <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col gap-8 p-6 sm:p-8">
+        <FieldGroup label="Operational Days" htmlFor="schedule-days" required>
+          <div id="schedule-days" className="flex flex-wrap items-center gap-2.5">
             {DAYS_OF_WEEK.map((day) => {
               const isSelected = workingDays.includes(day);
               return (
@@ -114,90 +146,75 @@ const CompanySettingSchedule = ({ initialData, onSaveSuccess }: CompanySettingSc
                   key={day}
                   type="button"
                   onClick={() => toggleDay(day)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-semibold transition-colors duration-200 ${isSelected
-                    ? "bg-blue-50 border-blue-500 text-blue-600"
-                    : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
-                    }`}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-semibold transition",
+                    isSelected
+                      ? "border-[color:var(--dash-accent,#111111)] bg-[color:var(--dash-accent,#111111)]/10 text-[color:var(--dash-accent,#111111)]"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900",
+                  )}
                 >
                   {isSelected ? (
-                    <CheckSquare className="size-4.5 fill-blue-500 text-white" />
+                    <CheckSquare className="size-4 shrink-0" />
                   ) : (
-                    <Square className="size-4.5 text-slate-300 stroke-[2]" />
+                    <Square className="size-4 shrink-0 text-slate-300" />
                   )}
                   {day}
                 </button>
               );
             })}
           </div>
+        </FieldGroup>
+
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+          <FieldGroup label="Start Time" htmlFor="schedule-start" required>
+            <input
+              id="schedule-start"
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              className={cn(surfaceInputClassName, "field-control")}
+            />
+          </FieldGroup>
+
+          <FieldGroup label="End Time" htmlFor="schedule-end" required>
+            <input
+              id="schedule-end"
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              className={cn(surfaceInputClassName, "field-control")}
+            />
+          </FieldGroup>
+
+          <FieldGroup label="Break Duration" htmlFor="schedule-break" required>
+            <select
+              id="schedule-break"
+              value={breakSelectValue}
+              onChange={(e) => setBreakDuration(e.target.value)}
+              className={cn(surfaceSelectClassName, "field-control")}
+            >
+              {BREAK_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </FieldGroup>
         </div>
 
-        {/* Time Inputs */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Start Time */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Start Time
-            </label>
-            <div className="relative">
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="w-full pl-4 dark:bg-slate-600 dark:border-slate-500 dark:text-slate-300 pr-10 py-3 rounded-lg border border-slate-200 bg-slate-50/50 text-slate-800 text-sm font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
-                style={{ colorScheme: "light" }}
-              />
-              {/* <Clock className="absolute right-3.5 top-1/2 -translate-y-1/2 size-4.5 text-slate-400 pointer-events-none" /> */}
-            </div>
-          </div>
-
-          {/* End Time */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              End Time
-            </label>
-            <div className="relative">
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="w-full pl-4 pr-10 py-3 dark:bg-slate-600 dark:border-slate-500 dark:text-slate-300 rounded-lg border border-slate-200 bg-slate-50/50 text-slate-800 text-sm font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
-                style={{ colorScheme: "light" }}
-              />
-              {/* <Clock className="absolute right-3.5 top-1/2 -translate-y-1/2 size-4.5 text-slate-400 pointer-events-none" /> */}
-            </div>
-          </div>
-
-          {/* Break Duration */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Break Duration
-            </label>
-            <div className="relative">
-              <input
-                type="time"
-                value={breakDuration}
-                onChange={(e) => setBreakDuration(e.target.value)}
-                className="w-full pl-4 pr-10 py-3 dark:bg-slate-600 dark:border-slate-500 dark:text-slate-300 rounded-lg border border-slate-200 bg-slate-50/50 text-slate-800 text-sm font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors appearance-none cursor-pointer"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Action Button – only visible when something changed */}
-        {isDirty && (
-          <div className="flex justify-end pt-4 mt-2 border-t border-slate-100 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <button
+        {isDirty ? (
+          <div className="flex justify-end border-t border-slate-100 pt-4 dark:border-slate-800">
+            <AppButton
+              variant="primary"
               type="button"
               onClick={handleSave}
               disabled={isSaving}
-              className="px-6 py-2.5 bg-[#0F172A] hover:bg-slate-800 active:scale-[0.98] transition-all text-white text-sm font-semibold rounded-[8px] shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSaving ? "Saving..." : "Save Changes"}
-            </button>
+            </AppButton>
           </div>
-        )}
+        ) : null}
       </div>
-
     </div>
   );
 };

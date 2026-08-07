@@ -2,7 +2,19 @@
 
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
-import { Building2, ClipboardList, FolderKanban, Hammer, Home, Layers, ListTodo, Package, SearchX, Tags } from "lucide-react";
+import {
+  Building2,
+  ClipboardList,
+  FileQuestion,
+  FolderKanban,
+  Hammer,
+  Home,
+  Layers,
+  ListTodo,
+  Package,
+  SearchX,
+  Tags,
+} from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 
 export type DashboardEmptyStateIconName =
@@ -17,7 +29,8 @@ export type DashboardEmptyStateIconName =
   | "projectStatus"
   | "jobStatus"
   | "materialStatus"
-  | "noResults";
+  | "noResults"
+  | "notFound";
 
 type DashboardEmptyStateProps = {
   title: string;
@@ -25,17 +38,23 @@ type DashboardEmptyStateProps = {
   icon?: LucideIcon;
   iconName?: DashboardEmptyStateIconName;
   action?: React.ReactNode;
+  secondaryAction?: React.ReactNode;
   className?: string;
-  /** Shorter layout for embedded tabs/panels (no forced min-height). */
+  /** Shorter layout for embedded tabs/panels (no forced fill). */
   compact?: boolean;
 };
 
+/**
+ * Full-panel empty / not-found state (WMS / Zoho style).
+ * In list shells, use without `compact` so it fills the viewport under the header.
+ */
 export function DashboardEmptyState({
   title,
   description,
   icon,
   iconName = "default",
   action,
+  secondaryAction,
   className,
   compact = false,
 }: DashboardEmptyStateProps) {
@@ -52,26 +71,41 @@ export function DashboardEmptyState({
     jobStatus: ListTodo,
     materialStatus: ClipboardList,
     noResults: SearchX,
+    notFound: FileQuestion,
   };
   const Icon = icon ?? iconByName[iconName];
 
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center px-6 text-center",
+        "flex w-full flex-col items-center justify-center px-6 text-center",
         compact
           ? "min-h-0 py-10 sm:py-14"
-          : "min-h-[420px] rounded-2xl bg-slate-50/45 dark:bg-slate-900/25",
+          : "min-h-0 flex-1 py-12 sm:py-16",
         className,
       )}
     >
-      <div className="mb-5 inline-flex size-14 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-400 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
-        <Icon className="size-6" strokeWidth={1.7} />
+      <div
+        className={cn(
+          "mb-5 inline-flex size-14 items-center justify-center rounded-2xl",
+          "bg-gradient-to-br from-sky-50 to-indigo-50 text-orange-500",
+          "ring-1 ring-slate-200/80 dark:from-slate-800 dark:to-slate-900 dark:text-orange-400 dark:ring-slate-700",
+        )}
+      >
+        <Icon className="size-7" strokeWidth={1.6} aria-hidden />
       </div>
-      <h3 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{title}</h3>
-      <p className="mt-3 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</p>
-      {action ? <div className="mt-6">{action}</div> : null}
+      <h3 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
+        {title}
+      </h3>
+      <p className="mt-2.5 max-w-md text-[length:var(--dash-body-size,0.875rem)] leading-6 text-slate-500 dark:text-slate-400">
+        {description}
+      </p>
+      {action || secondaryAction ? (
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          {action}
+          {secondaryAction}
+        </div>
+      ) : null}
     </div>
   );
 }
-

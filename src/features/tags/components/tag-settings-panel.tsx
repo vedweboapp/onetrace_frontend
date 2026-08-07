@@ -8,6 +8,18 @@ import { createTag, deleteTag, fetchTagsPage, updateTag } from "@/features/tags/
 import type { Tag } from "@/features/tags/types/tag.types";
 import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import {
+  SettingsDetailActions,
+  SettingsDetailColourValue,
+  SettingsDetailIdSubtitle,
+  SettingsDetailList,
+  SettingsDetailRow,
+  SettingsDetailStatusValue,
+  SettingsDetailTextValue,
+  SettingsDetailTimestampValue,
+  SettingsDetailTitle,
+  settingsDetailUserLabel,
+} from "@/shared/components/settings/settings-detail-view";
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
@@ -20,10 +32,10 @@ import {
   AddButton, AppButton,
   AppModal,
   ConfirmDialog,
-  ActiveStatusBadge,
   DataTablePaginationBar,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
+  listPageRootClassName,
   DetailPanel,
   FieldGroup,
   ListPageCard,
@@ -278,11 +290,9 @@ export function TagSettingsPanel() {
   }, [t, dateFmt]);
 
   return (
-    <div className="space-y-6">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
-          title={t("title")}
-          description={t("subtitle")}
           backHref={routes.dashboard.settingsCustomization}
           backAriaLabel={tCustomization("backToHub")}
           filtersActive={filtersActive}
@@ -362,72 +372,106 @@ export function TagSettingsPanel() {
       <DetailPanel
         open={detailRow !== null}
         onClose={() => setDetailRow(null)}
-        title={detailRow ? <TagChip row={detailRow} className="text-base font-semibold" /> : null}
-        subtitle={detailRow ? <span className="text-sm text-slate-500 dark:text-slate-400">{detailRow.uuid ? `${t("detail.idLabel", { id: detailRow.id })} · ${detailRow.uuid}` : t("detail.idLabel", { id: detailRow.id })}</span> : undefined}
+        title={
+          detailRow ? (
+            <SettingsDetailTitle
+              name={formatTagRowLabel(detailRow)}
+              bgColour={bgHex(detailRow)}
+              textColour={textHex(detailRow)}
+            />
+          ) : null
+        }
+        subtitle={
+          detailRow ? (
+            <SettingsDetailIdSubtitle
+              idLabel={t("detail.idLabel", { id: detailRow.id })}
+              extra={detailRow.uuid || undefined}
+            />
+          ) : undefined
+        }
         footer={
           detailRow ? (
-            <>
-              <AppButton type="button" variant="secondary" size="sm" onClick={() => setDetailRow(null)}>
-                {t("modal.cancel")}
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  const row = detailRow;
-                  setDetailRow(null);
-                  openEdit(row);
-                }}
-              >
-                {t("edit")}
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="secondary"
-                size="sm"
-                loading={togglingId === detailRow.id}
-                disabled={togglingId === detailRow.id}
-                onClick={() => void handleToggleActive(detailRow, detailRow.is_active !== true)}
-              >
-                {detailRow.is_active === true ? t("deactivate") : t("activate")}
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="danger"
-                size="sm"
-                onClick={() => {
-                  const row = detailRow;
-                  setDetailRow(null);
-                  setDeleteTarget(row);
-                }}
-              >
-                {t("delete")}
-              </AppButton>
-            </>
+            <SettingsDetailActions
+              cancelLabel={t("modal.cancel")}
+              editLabel={t("edit")}
+              deleteLabel={t("delete")}
+              onCancel={() => setDetailRow(null)}
+              onEdit={() => {
+                const row = detailRow;
+                setDetailRow(null);
+                openEdit(row);
+              }}
+              onDelete={() => {
+                const row = detailRow;
+                setDetailRow(null);
+                setDeleteTarget(row);
+              }}
+              toggleLabel={detailRow.is_active === true ? t("deactivate") : t("activate")}
+              toggleLoading={togglingId === detailRow.id}
+              toggleDisabled={togglingId === detailRow.id}
+              onToggle={() => void handleToggleActive(detailRow, detailRow.is_active !== true)}
+            />
           ) : undefined
         }
       >
         {detailRow ? (
-          <div className="space-y-5">
-            <FieldGroup label={t("table.tag")}><p className="text-sm text-slate-800 dark:text-slate-200">{formatTagRowLabel(detailRow)}</p></FieldGroup>
+          <SettingsDetailList>
+            <SettingsDetailRow label={t("table.tag")}>
+              <SettingsDetailTextValue>{formatTagRowLabel(detailRow)}</SettingsDetailTextValue>
+            </SettingsDetailRow>
             {detailRow.uuid ? (
-              <FieldGroup label="UUID">
-                <p className="break-all font-mono text-xs text-slate-700 dark:text-slate-200">{detailRow.uuid}</p>
-              </FieldGroup>
+              <SettingsDetailRow label="UUID">
+                <SettingsDetailTextValue mono>{detailRow.uuid}</SettingsDetailTextValue>
+              </SettingsDetailRow>
             ) : null}
-            <FieldGroup label={t("modal.bgColour")}><div className="flex items-center gap-3"><span className="size-8 shrink-0 rounded-none border border-slate-200 dark:border-slate-600" style={{ backgroundColor: bgHex(detailRow) }} aria-hidden /><p className="font-mono text-sm text-slate-700 dark:text-slate-200">{bgHex(detailRow).toUpperCase()}</p></div></FieldGroup>
-            <FieldGroup label={t("modal.textColour")}><div className="flex items-center gap-3"><span className="flex size-8 shrink-0 items-center justify-center rounded-none border border-slate-200 text-xs font-bold dark:border-slate-600" style={{ backgroundColor: bgHex(detailRow), color: textHex(detailRow) }} aria-hidden>Aa</span><p className="font-mono text-sm text-slate-700 dark:text-slate-200">{textHex(detailRow).toUpperCase()}</p></div></FieldGroup>
-            <FieldGroup label={t("status.active")}>
-              <ActiveStatusBadge
+            <SettingsDetailRow label={t("status.active")}>
+              <SettingsDetailStatusValue
                 active={detailRow.is_active === true}
-                label={detailRow.is_active ? t("status.active") : t("status.inactive")}
+                activeLabel={t("status.active")}
+                inactiveLabel={t("status.inactive")}
               />
-            </FieldGroup>
-            <FieldGroup label="Organization"><p className="text-sm text-slate-800 dark:text-slate-200">{detailRow.organization ?? "—"}</p></FieldGroup>
-            <FieldGroup label={t("detail.createdAt")}><p className="text-sm text-slate-800 dark:text-slate-200">{dateFmt.format(new Date(detailRow.created_at))}</p>{tagUserLabel(detailRow.created_by) !== "—" ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("detail.byUser", { user: tagUserLabel(detailRow.created_by) })}</p> : null}</FieldGroup>
-            <FieldGroup label={t("detail.updatedAt")}><p className="text-sm text-slate-800 dark:text-slate-200">{dateFmt.format(new Date(detailRow.modified_at))}</p>{tagUserLabel(detailRow.modified_by) !== "—" ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("detail.byUser", { user: tagUserLabel(detailRow.modified_by) })}</p> : null}</FieldGroup>
-          </div>
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("modal.bgColour")}>
+              <SettingsDetailColourValue hex={bgHex(detailRow)} />
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("modal.textColour")}>
+              <SettingsDetailColourValue
+                hex={textHex(detailRow)}
+                previewBg={bgHex(detailRow)}
+                previewText={textHex(detailRow)}
+                sample
+              />
+            </SettingsDetailRow>
+            <SettingsDetailRow label="Organization">
+              <SettingsDetailTextValue muted={!detailRow.organization}>
+                {detailRow.organization ?? "—"}
+              </SettingsDetailTextValue>
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("detail.createdAt")}>
+              <SettingsDetailTimestampValue
+                dateFmt={dateFmt}
+                value={detailRow.created_at}
+                byUser={settingsDetailUserLabel(detailRow.created_by)}
+                byUserTemplate={
+                  settingsDetailUserLabel(detailRow.created_by) !== "—"
+                    ? t("detail.byUser", { user: settingsDetailUserLabel(detailRow.created_by) })
+                    : null
+                }
+              />
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("detail.updatedAt")}>
+              <SettingsDetailTimestampValue
+                dateFmt={dateFmt}
+                value={detailRow.modified_at}
+                byUser={settingsDetailUserLabel(detailRow.modified_by)}
+                byUserTemplate={
+                  settingsDetailUserLabel(detailRow.modified_by) !== "—"
+                    ? t("detail.byUser", { user: settingsDetailUserLabel(detailRow.modified_by) })
+                    : null
+                }
+              />
+            </SettingsDetailRow>
+          </SettingsDetailList>
         ) : null}
       </DetailPanel>
 
@@ -440,7 +484,7 @@ export function TagSettingsPanel() {
         isBusy={saving}
         footer={<><AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => setFormOpen(false)}>{t("modal.cancel")}</AppButton><AppButton type="button" variant="primary" size="sm" loading={saving} onClick={() => void submitForm()}>{t("modal.save")}</AppButton></>}
       >
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           <FieldGroup label={<span>{t("modal.tagName")} <span className="text-red-500">*</span></span>} htmlFor="tag-name">
             <input id="tag-name" value={tagName} onChange={(e) => { setTagName(sanitizeTitleInput(e.target.value)); if (errors.tag_name) setErrors((prev) => ({ ...prev, tag_name: undefined })); }} className={cn(surfaceInputClassName, errors.tag_name && "border-red-500 focus:border-red-500 focus:ring-red-500/20")} autoComplete="off" />
             {errors.tag_name ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.tag_name}</p> : null}

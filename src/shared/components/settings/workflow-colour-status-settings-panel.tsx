@@ -8,6 +8,18 @@ import type { createWorkflowColourStatusApi } from "@/shared/api/create-workflow
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import { toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import {
+  SettingsDetailActions,
+  SettingsDetailColourValue,
+  SettingsDetailIdSubtitle,
+  SettingsDetailList,
+  SettingsDetailRow,
+  SettingsDetailStatusValue,
+  SettingsDetailTextValue,
+  SettingsDetailTimestampValue,
+  SettingsDetailTitle,
+  settingsDetailUserLabel,
+} from "@/shared/components/settings/settings-detail-view";
 import { cn } from "@/core/utils/http.util";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
@@ -16,10 +28,10 @@ import {
   AddButton, AppButton,
   AppModal,
   ConfirmDialog,
-  ActiveStatusBadge,
   CheckmarkSelect,
   type CheckmarkSelectOption,
   ListPageEmptyStates,
+  listPageRootClassName,
   listPageSurfaceShellClassName,
   type DashboardEmptyStateIconName,
   DataTablePaginationBar,
@@ -318,11 +330,9 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
   }, [t, dateFmt]);
 
   return (
-    <div className="space-y-6">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
-          title={t("title")}
-          description={t("subtitle")}
           backHref={routes.dashboard.settingsCustomization}
           backAriaLabel={tCustomization("backToHub")}
           filtersActive={filtersActive}
@@ -426,121 +436,93 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
       <DetailPanel
         open={detailRow !== null}
         onClose={() => setDetailRow(null)}
-        title={detailRow ? <StatusChip row={detailRow} className="text-base font-semibold" /> : null}
-        subtitle={
+        title={
           detailRow ? (
-            <span className="text-sm text-slate-500 dark:text-slate-400">
-              {t("detail.idLabel", { id: detailRow.id })}
-            </span>
-          ) : undefined
+            <SettingsDetailTitle
+              name={detailRow.status_name}
+              bgColour={normalizeHex(detailRow.bg_colour)}
+              textColour={normalizeHex(detailRow.text_colour)}
+            />
+          ) : null
+        }
+        subtitle={
+          detailRow ? <SettingsDetailIdSubtitle idLabel={t("detail.idLabel", { id: detailRow.id })} /> : undefined
         }
         footer={
           detailRow ? (
-            <>
-              <AppButton type="button" variant="secondary" size="sm" onClick={() => setDetailRow(null)}>
-                {t("modal.cancel")}
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  const row = detailRow;
-                  setDetailRow(null);
-                  openEdit(row);
-                }}
-              >
-                {t("edit")}
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="secondary"
-                size="sm"
-                loading={togglingId === detailRow.id}
-                disabled={togglingId === detailRow.id}
-                onClick={() => void handleToggleActive(detailRow, detailRow.is_active !== true)}
-              >
-                {detailRow.is_active === true ? t("deactivate") : t("activate")}
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="danger"
-                size="sm"
-                onClick={() => {
-                  const row = detailRow;
-                  setDetailRow(null);
-                  setDeleteTarget(row);
-                }}
-              >
-                {t("delete")}
-              </AppButton>
-            </>
+            <SettingsDetailActions
+              cancelLabel={t("modal.cancel")}
+              editLabel={t("edit")}
+              deleteLabel={t("delete")}
+              onCancel={() => setDetailRow(null)}
+              onEdit={() => {
+                const row = detailRow;
+                setDetailRow(null);
+                openEdit(row);
+              }}
+              onDelete={() => {
+                const row = detailRow;
+                setDetailRow(null);
+                setDeleteTarget(row);
+              }}
+              toggleLabel={detailRow.is_active === true ? t("deactivate") : t("activate")}
+              toggleLoading={togglingId === detailRow.id}
+              toggleDisabled={togglingId === detailRow.id}
+              onToggle={() => void handleToggleActive(detailRow, detailRow.is_active !== true)}
+            />
           ) : undefined
         }
       >
         {detailRow ? (
-          <div className="space-y-5">
-            <FieldGroup label={t("table.status")}>
-              <ActiveStatusBadge
+          <SettingsDetailList>
+            <SettingsDetailRow label={t("table.status")}>
+              <SettingsDetailStatusValue
                 active={detailRow.is_active === true}
-                label={detailRow.is_active === true ? t("status.active") : t("status.inactive")}
+                activeLabel={t("status.active")}
+                inactiveLabel={t("status.inactive")}
               />
-            </FieldGroup>
+            </SettingsDetailRow>
             {detailRow.category ? (
-              <FieldGroup label={t("modal.category")}>
-                <p className="text-sm text-slate-800 dark:text-slate-200">{detailRow.category}</p>
-              </FieldGroup>
+              <SettingsDetailRow label={t("modal.category")}>
+                <SettingsDetailTextValue>{detailRow.category}</SettingsDetailTextValue>
+              </SettingsDetailRow>
             ) : null}
-            <FieldGroup label={t("modal.bgColour")}>
-              <div className="flex items-center gap-3">
-                <span
-                  className="size-8 shrink-0 rounded-none border border-slate-200 dark:border-slate-600"
-                  style={{ backgroundColor: normalizeHex(detailRow.bg_colour) }}
-                  aria-hidden
-                />
-                <p className="font-mono text-sm text-slate-700 dark:text-slate-200">
-                  {normalizeHex(detailRow.bg_colour).toUpperCase()}
-                </p>
-              </div>
-            </FieldGroup>
-            <FieldGroup label={t("modal.textColour")}>
-              <div className="flex items-center gap-3">
-                <span
-                  className="flex size-8 shrink-0 items-center justify-center rounded-none border border-slate-200 text-xs font-bold dark:border-slate-600"
-                  style={{
-                    backgroundColor: normalizeHex(detailRow.bg_colour),
-                    color: normalizeHex(detailRow.text_colour),
-                  }}
-                  aria-hidden
-                >
-                  Aa
-                </span>
-                <p className="font-mono text-sm text-slate-700 dark:text-slate-200">
-                  {normalizeHex(detailRow.text_colour).toUpperCase()}
-                </p>
-              </div>
-            </FieldGroup>
-            <FieldGroup label={t("detail.createdAt")}>
-              <p className="text-sm text-slate-800 dark:text-slate-200">
-                {dateFmt.format(new Date(detailRow.created_at))}
-              </p>
-              {statusUserLabel(detailRow.created_by) !== "—" ? (
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {t("detail.byUser", { user: statusUserLabel(detailRow.created_by) })}
-                </p>
-              ) : null}
-            </FieldGroup>
-            <FieldGroup label={t("detail.updatedAt")}>
-              <p className="text-sm text-slate-800 dark:text-slate-200">
-                {dateFmt.format(new Date(detailRow.modified_at))}
-              </p>
-              {statusUserLabel(detailRow.modified_by) !== "—" ? (
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {t("detail.byUser", { user: statusUserLabel(detailRow.modified_by) })}
-                </p>
-              ) : null}
-            </FieldGroup>
-          </div>
+            <SettingsDetailRow label={t("modal.bgColour")}>
+              <SettingsDetailColourValue hex={normalizeHex(detailRow.bg_colour)} />
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("modal.textColour")}>
+              <SettingsDetailColourValue
+                hex={normalizeHex(detailRow.text_colour)}
+                previewBg={normalizeHex(detailRow.bg_colour)}
+                previewText={normalizeHex(detailRow.text_colour)}
+                sample
+              />
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("detail.createdAt")}>
+              <SettingsDetailTimestampValue
+                dateFmt={dateFmt}
+                value={detailRow.created_at}
+                byUser={settingsDetailUserLabel(detailRow.created_by)}
+                byUserTemplate={
+                  settingsDetailUserLabel(detailRow.created_by) !== "—"
+                    ? t("detail.byUser", { user: settingsDetailUserLabel(detailRow.created_by) })
+                    : null
+                }
+              />
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("detail.updatedAt")}>
+              <SettingsDetailTimestampValue
+                dateFmt={dateFmt}
+                value={detailRow.modified_at}
+                byUser={settingsDetailUserLabel(detailRow.modified_by)}
+                byUserTemplate={
+                  settingsDetailUserLabel(detailRow.modified_by) !== "—"
+                    ? t("detail.byUser", { user: settingsDetailUserLabel(detailRow.modified_by) })
+                    : null
+                }
+              />
+            </SettingsDetailRow>
+          </SettingsDetailList>
         ) : null}
       </DetailPanel>
 

@@ -19,6 +19,7 @@ import {
   DataTablePaginationBar,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
+  listPageRootClassName,
   DataTableRowActionsMenu,
   ListPageCard,
   ListPageCardGrid,
@@ -297,7 +298,7 @@ export function ClientsPanel() {
   const pageRange = getListPageRange(pagination);
 
   return (
-    <div className="space-y-4">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
           filtersActive={filtersActive}
@@ -373,7 +374,7 @@ export function ClientsPanel() {
             onSwitchToInactive={switchToInactive}
           />
         ) : listViewMode === "list" ? (
-          <div className="p-4 sm:p-6">
+          <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-6">
             <ListPageCardGrid>
               {items.map((row) => (
                 <ListPageCard

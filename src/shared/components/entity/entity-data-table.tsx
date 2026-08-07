@@ -15,6 +15,8 @@ import {
   DataTableTd,
   DataTableTh,
 } from "@/shared/ui";
+import { DataTableTextModeToggle } from "@/shared/ui/data-table-text-mode-toggle";
+import { useDataTableTextModeStore } from "@/shared/ui/data-table-text-mode.store";
 
 const TRUNCATE_MAX = {
   sm: "max-w-[14rem]",
@@ -26,15 +28,15 @@ function columnHeaderClassName<T>(column: EntityTableColumn<T>) {
   return cn(column.responsive && entityResponsiveClass(column.responsive), column.headerClassName);
 }
 
-function columnCellClassName<T>(column: EntityTableColumn<T>) {
+function columnCellClassName<T>(column: EntityTableColumn<T>, wrap: boolean): string | undefined {
   return cn(
     column.responsive && entityResponsiveClass(column.responsive),
-    entityTableTdClassName(column),
+    entityTableTdClassName(column, wrap),
     column.cellClassName,
   );
 }
 
-function renderEntityTableCell<T>(column: EntityTableColumn<T>, row: T): ReactNode {
+function renderEntityTableCell<T>(column: EntityTableColumn<T>, row: T, wrap: boolean): ReactNode {
   switch (column.variant) {
     case "primary":
       return column.value(row);
@@ -43,7 +45,7 @@ function renderEntityTableCell<T>(column: EntityTableColumn<T>, row: T): ReactNo
     case "truncate": {
       const title = column.title?.(row);
       return (
-        <span className="block truncate" title={title}>
+        <span className={cn("block", wrap ? "whitespace-normal break-words" : "truncate")} title={title}>
           {column.value(row)}
         </span>
       );
@@ -78,22 +80,28 @@ function renderEntityTableCell<T>(column: EntityTableColumn<T>, row: T): ReactNo
   }
 }
 
-function entityTableTdClassName<T>(column: EntityTableColumn<T>): string | undefined {
+function entityTableTdClassName<T>(column: EntityTableColumn<T>, wrap: boolean): string | undefined {
   switch (column.variant) {
     case "primary":
-      return "font-semibold text-slate-900 dark:text-slate-100";
+      return cn(
+        "font-semibold text-slate-900 dark:text-slate-100",
+        wrap ? "whitespace-normal break-words" : "truncate",
+      );
     case "truncate": {
+      if (wrap) return "whitespace-normal break-words";
       const max = column.maxWidth ? TRUNCATE_MAX[column.maxWidth] : TRUNCATE_MAX.sm;
       return cn(max, "truncate");
     }
+    case "text":
+    case "muted":
+    case "phone":
+      return wrap ? "whitespace-normal break-words" : "truncate";
     case "mono":
       return "font-mono text-xs";
     case "tabular":
       return "tabular-nums";
-    case "muted":
-      return "text-slate-500 dark:text-slate-400";
     case "date":
-      return "tabular-nums";
+      return "tabular-nums whitespace-nowrap";
     default:
       return undefined;
   }
@@ -110,10 +118,12 @@ export type EntityDataTableProps<T extends { id: number | string }> = {
   emptyMessage?: ReactNode;
   className?: string;
   scrollClassName?: string;
+  /** Hide the clip/wrap control (e.g. embedded mini tables). */
+  hideTextModeToggle?: boolean;
 };
 
 /**
- * Entity list table: shared header + body styling. Features pass `columns` and `rows` only.
+ * Entity list table: bordered Zoho/WMS chrome, sticky head, clip/wrap in header corner.
  */
 export function EntityDataTable<T extends { id: number | string }>({
   columns,
@@ -124,63 +134,84 @@ export function EntityDataTable<T extends { id: number | string }>({
   emptyMessage,
   className,
   scrollClassName,
+  hideTextModeToggle = false,
 }: EntityDataTableProps<T>) {
   const clickable = !!onRowClick;
+  const textMode = useDataTableTextModeStore((s) => s.textMode);
+  const wrap = textMode === "wrap";
+  const lastColIndex = columns.length - 1;
 
   return (
-    <DataTableScroll className={scrollClassName}>
-      <DataTable className={className}>
-        <DataTableHead>
-          <tr>
-            {columns.map((col) => (
-              <DataTableTh
-                key={col.id}
-                narrow={col.narrow && col.variant !== "selection"}
-                compact={col.variant === "selection"}
-                className={columnHeaderClassName(col)}
-              >
-                {col.headerSrOnly ? <span className="sr-only">{col.header}</span> : col.header}
-              </DataTableTh>
-            ))}
-          </tr>
-        </DataTableHead>
-        <DataTableBody>
-          {rows.length === 0 && emptyMessage ? (
-            <DataTableEmptyRow colSpan={columns.length} message={emptyMessage} />
-          ) : (
-            rows.map((row) => {
-              const highlightId = rowHighlightId?.(row) ?? row.id;
-              return (
-                <DataTableRow
-                  key={row.id}
-                  data-list-row-id={highlightId}
-                  className={getRowClassName?.(row)}
-                  clickable={clickable}
-                  onClick={clickable ? () => onRowClick(row) : undefined}
-                >
-                  {columns.map((col) => {
-                    const isolateClick = col.variant === "actions" || col.variant === "selection";
-                    return (
-                      <DataTableTd
-                        key={col.id}
-                        narrow={col.narrow && col.variant !== "selection"}
-                        compact={col.variant === "selection"}
-                        className={columnCellClassName(col)}
-                        onPointerDown={isolateClick ? (e) => e.stopPropagation() : undefined}
-                        onMouseDown={isolateClick ? (e) => e.stopPropagation() : undefined}
-                        onClick={isolateClick ? (e) => e.stopPropagation() : undefined}
-                        onKeyDown={isolateClick ? (e) => e.stopPropagation() : undefined}
-                      >
-                        {renderEntityTableCell(col, row)}
-                      </DataTableTd>
-                    );
-                  })}
-                </DataTableRow>
-              );
-            })
-          )}
-        </DataTableBody>
-      </DataTable>
-    </DataTableScroll>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <DataTableScroll className={scrollClassName}>
+        <DataTable className={className} textWrap={wrap}>
+          <DataTableHead>
+            <tr>
+              {columns.map((col, index) => {
+                const isLast = index === lastColIndex;
+                const showMode = isLast && !hideTextModeToggle;
+                return (
+                  <DataTableTh
+                    key={col.id}
+                    narrow={col.narrow && col.variant !== "selection"}
+                    compact={col.variant === "selection"}
+                    className={columnHeaderClassName(col)}
+                  >
+                    {showMode ? (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="min-w-0 truncate">
+                          {col.headerSrOnly ? <span className="sr-only">{col.header}</span> : col.header}
+                        </span>
+                        <DataTableTextModeToggle variant="header" className="shrink-0" />
+                      </div>
+                    ) : col.headerSrOnly ? (
+                      <span className="sr-only">{col.header}</span>
+                    ) : (
+                      col.header
+                    )}
+                  </DataTableTh>
+                );
+              })}
+            </tr>
+          </DataTableHead>
+          <DataTableBody>
+            {rows.length === 0 && emptyMessage ? (
+              <DataTableEmptyRow colSpan={columns.length} message={emptyMessage} />
+            ) : (
+              rows.map((row) => {
+                const highlightId = rowHighlightId?.(row) ?? row.id;
+                return (
+                  <DataTableRow
+                    key={row.id}
+                    data-list-row-id={highlightId}
+                    className={getRowClassName?.(row)}
+                    clickable={clickable}
+                    onClick={clickable ? () => onRowClick(row) : undefined}
+                  >
+                    {columns.map((col) => {
+                      const isolateClick = col.variant === "actions" || col.variant === "selection";
+                      return (
+                        <DataTableTd
+                          key={col.id}
+                          narrow={col.narrow && col.variant !== "selection"}
+                          compact={col.variant === "selection"}
+                          className={columnCellClassName(col, wrap)}
+                          onPointerDown={isolateClick ? (e) => e.stopPropagation() : undefined}
+                          onMouseDown={isolateClick ? (e) => e.stopPropagation() : undefined}
+                          onClick={isolateClick ? (e) => e.stopPropagation() : undefined}
+                          onKeyDown={isolateClick ? (e) => e.stopPropagation() : undefined}
+                        >
+                          {renderEntityTableCell(col, row, wrap)}
+                        </DataTableTd>
+                      );
+                    })}
+                  </DataTableRow>
+                );
+              })
+            )}
+          </DataTableBody>
+        </DataTable>
+      </DataTableScroll>
+    </div>
   );
 }

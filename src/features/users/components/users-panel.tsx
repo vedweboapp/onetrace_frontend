@@ -19,6 +19,7 @@ import {
   AppButton,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
+  listPageRootClassName,
   DataTablePaginationBar,
   DataTableRowActionsMenu,
   ListPageCard,
@@ -143,7 +144,7 @@ export function UsersPanel() {
   }, [t, tList, dateFmt, router, pathname, listHref]);
 
   return (
-    <div className="space-y-4">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
           filtersActive={filtersActive}

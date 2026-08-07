@@ -43,6 +43,15 @@ function projectFormDetails(
   };
 }
 
+function toFiniteCoord(raw: unknown): number | null {
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  if (typeof raw === "string" && raw.trim()) {
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
 function sourcePinFromPlotPin(pin: QuotationPlotPin): QuotationQuoteSectionSourcePin {
   const itemIdRaw = pin.item_detail?.id;
   const composite_item_id =
@@ -50,8 +59,8 @@ function sourcePinFromPlotPin(pin: QuotationPlotPin): QuotationQuoteSectionSourc
   const projectForm = projectFormDetails(pin.project_form);
   return {
     pin_id: typeof pin.id === "number" && Number.isFinite(pin.id) && pin.id > 0 ? pin.id : null,
-    x_coordinate: typeof pin.x_coordinate === "number" && Number.isFinite(pin.x_coordinate) ? pin.x_coordinate : null,
-    y_coordinate: typeof pin.y_coordinate === "number" && Number.isFinite(pin.y_coordinate) ? pin.y_coordinate : null,
+    x_coordinate: toFiniteCoord(pin.x_coordinate),
+    y_coordinate: toFiniteCoord(pin.y_coordinate),
     status: typeof pin.status === "number" && Number.isFinite(pin.status) ? pin.status : null,
     status_id: typeof pin.status_id === "number" && Number.isFinite(pin.status_id) ? pin.status_id : null,
     status_name:

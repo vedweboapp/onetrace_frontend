@@ -26,6 +26,7 @@ import {
   ConfirmDialog,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
+  listPageRootClassName,
   DataTablePaginationBar,
   DataTableRowActionsMenu,
   ListPageCard,
@@ -285,7 +286,7 @@ export function QrCodesPanel() {
   const pageRange = getListPageRange(pagination);
 
   return (
-    <div className="space-y-4">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
       <ListPageHeader
         filtersActive={filtersActive}

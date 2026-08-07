@@ -21,14 +21,14 @@ const PersonalProfileHeader = ({ isEditing, setIsEditing, showEdit = true, submi
     ];
 
     return (
-        <div className='sticky -top-5 sm:-top-6 z-20 flex items-center justify-between bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-sm pb-4 pt-5 sm:pt-6 border-b border-slate-200/60 dark:border-slate-800/80 mb-2 -mx-4 px-4 lg:-mx-6 lg:px-6 -mt-5 sm:-mt-6'>
+        <div className="sticky -top-5 z-20 -mx-4 -mt-5 flex items-center justify-between gap-3 bg-slate-50/95 px-4 pb-0 pt-5 backdrop-blur-sm sm:-top-6 sm:-mt-6 sm:pt-6 lg:-mx-6 lg:px-6 dark:bg-slate-950/95">
             <AppTabs
                 tabs={tabs}
                 value={params.tab as string}
                 onValueChange={(value) => setParam("tab", value)}
-                className='w-full'
+                className="min-w-0 flex-1"
             />
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2 self-center pb-1.5">
             {showEdit && (
                 <AppButton
                     variant={isEditing ? "ghost" : "primary"}
@@ -43,7 +43,6 @@ const PersonalProfileHeader = ({ isEditing, setIsEditing, showEdit = true, submi
                     <AppButton
                         variant="primary"
                         size="sm"
-                        // type="submit"
                         onClick={submitHandler}
                         disabled={isSaving}
                     >

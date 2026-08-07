@@ -162,8 +162,11 @@ export async function createPinCropDataUrl(
 
     ctx.restore();
 
-    // Store in compressed WebP format for minimal memory footprint
-    const dataUrl = canvas.toDataURL("image/webp", 0.85);
+    // Prefer WebP; fall back when the browser cannot encode it (empty/invalid data URL).
+    let dataUrl = canvas.toDataURL("image/webp", 0.85);
+    if (!dataUrl.startsWith("data:image/webp")) {
+      dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+    }
 
     // Explicitly release canvas memory
     canvas.width = 0;
@@ -181,7 +184,19 @@ export type PinSnapshotTask = {
   sourcePinIndex: number;
   drawingFile: string;
   sourcePin: QuotationQuoteSectionSourcePin;
+  xPercent: number;
+  yPercent: number;
 };
+
+/** API sometimes returns pin coords as strings — coerce so snapshot tasks are not skipped. */
+function toFiniteCoord(raw: unknown): number | null {
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  if (typeof raw === "string" && raw.trim()) {
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
 
 /**
  * Scans quote_sections to extract all real positioned source_pins tasks.
@@ -199,20 +214,21 @@ export function extractPinSnapshotTasks(
     (sec.plots ?? []).forEach((plot, plotIdx) => {
       (plot.pins ?? []).forEach((group, groupIdx) => {
         (group.source_pins ?? []).forEach((sourcePin, pinIdx) => {
-          if (
-            typeof sourcePin.x_coordinate === "number" &&
-            typeof sourcePin.y_coordinate === "number"
-          ) {
-            tasks.push({
-              key: getQuotationPinSnapshotKey(secIdx, plotIdx, groupIdx, pinIdx),
-              sectionIndex: secIdx,
-              plotIndex: plotIdx,
-              pinGroupIndex: groupIdx,
-              sourcePinIndex: pinIdx,
-              drawingFile: resolvedUrl,
-              sourcePin,
-            });
-          }
+          const xPercent = toFiniteCoord(sourcePin.x_coordinate);
+          const yPercent = toFiniteCoord(sourcePin.y_coordinate);
+          if (xPercent == null || yPercent == null) return;
+
+          tasks.push({
+            key: getQuotationPinSnapshotKey(secIdx, plotIdx, groupIdx, pinIdx),
+            sectionIndex: secIdx,
+            plotIndex: plotIdx,
+            pinGroupIndex: groupIdx,
+            sourcePinIndex: pinIdx,
+            drawingFile: resolvedUrl,
+            sourcePin,
+            xPercent,
+            yPercent,
+          });
         });
       });
     });
@@ -278,23 +294,22 @@ export async function generateQuotationPinSnapshots(
         if (isCancelled?.()) return;
 
         try {
-          // Wrap document fetch with a 10s timeout
+          // Large drawings can take longer than a short timeout on first render.
           const levelSnap = await withTimeout(
             getSectionSnapshot(task.drawingFile),
-            10000,
+            45000,
             `Failed to load blueprint drawing: ${task.drawingFile}`
           );
 
           if (isCancelled?.()) return;
 
-          // Wrap crop logic with a 5s timeout
           const dataUrl = await withTimeout(
             createPinCropDataUrl(levelSnap, {
-              xPercent: task.sourcePin.x_coordinate ?? 0,
-              yPercent: task.sourcePin.y_coordinate ?? 0,
+              xPercent: task.xPercent,
+              yPercent: task.yPercent,
               locationLabel: task.sourcePin.location ?? undefined,
             }),
-            5000,
+            15000,
             "Failed to crop pin thumbnail snapshot"
           );
 

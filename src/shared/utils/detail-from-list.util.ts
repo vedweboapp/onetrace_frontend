@@ -17,6 +17,11 @@ function pathKeyForBackStorage(path: string): string {
   return `${BACK_HREF_STORAGE_PREFIX}${withoutQuery}`;
 }
 
+export function pathWithoutQueryAndHash(path: string): string {
+  const withoutHash = path.split("#")[0] ?? path;
+  return withoutHash.split("?")[0] ?? withoutHash;
+}
+
 /** Persists return URL for a destination path (session-only; not shown in the address bar). */
 export function storeBackHrefForPath(destinationPath: string, backHref: string): void {
   if (typeof window === "undefined") return;
@@ -57,7 +62,16 @@ export function buildEntityDetailHrefAfterSave(
   listBackHref?: string | null,
 ): string {
   const detailPath = `${entityListPath}/${entityId}`;
-  const listBack = (listBackHref?.trim() || entityListPath).split("#")[0] ?? entityListPath;
+  let listBack = (listBackHref?.trim() || entityListPath).split("#")[0] ?? entityListPath;
+
+  // Edit forms store the detail page as back; after save, restore the detail page's prior back (usually the list).
+  if (pathWithoutQueryAndHash(listBack) === detailPath) {
+    const priorBack = readBackHrefForPath(detailPath);
+    listBack = priorBack?.trim()
+      ? (priorBack.split("#")[0] ?? priorBack)
+      : entityListPath;
+  }
+
   return buildPathWithStoredBack(detailPath, listBack);
 }
 

@@ -34,6 +34,7 @@ import {
   DataTablePaginationBar,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
+  listPageRootClassName,
   DataTableRowActionsMenu,
   ListPageCard,
   ListPageCardGrid,
@@ -333,7 +334,7 @@ export function InvoicesPanel() {
   }, [t, tList, dateFmt, locale, clientLabelById, statusLabel, openEdit, massSel.tableColumn]);
 
   return (
-    <div className="space-y-4">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
       <ListPageHeader
         filtersActive={filtersActive}

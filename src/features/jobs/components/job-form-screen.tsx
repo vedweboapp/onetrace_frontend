@@ -1005,7 +1005,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                         <th className="px-3 py-2">{tGroups("title")}</th>
                         <th className="px-3 py-2">
                           {tItems("title")}
-                          <RequiredMark />
+                          <RequiredMark alwaysVisible />
                         </th>
                         <th className="px-3 py-2">{t("lineItems.qty")}</th>
                         <th className="px-3 py-2">{t("lineItems.rate")}</th>

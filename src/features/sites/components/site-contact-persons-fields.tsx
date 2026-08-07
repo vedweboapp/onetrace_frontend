@@ -134,6 +134,10 @@ export function SiteContactPersonsFields({
   }, [reloadContacts, contactsRefreshKey]);
 
   const rowErrors = errors.contacts;
+  const contactsSectionError =
+    rowErrors && !Array.isArray(rowErrors) && typeof rowErrors.message === "string"
+      ? rowErrors.message
+      : undefined;
   const canAdd = Boolean(clientId && clientId > 0) && !disabled;
 
   const contactQuickCreate = useQuickCreate({
@@ -148,7 +152,7 @@ export function SiteContactPersonsFields({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("contactPerson.sectionTitle")}</h3>
-        
+          <FieldErrorText>{contactsSectionError}</FieldErrorText>
         </div>
         <AppButton
           type="button"
@@ -184,7 +188,7 @@ export function SiteContactPersonsFields({
                 "sm:grid-cols-[1fr_1fr_auto]",
               )}
             >
-              <FieldGroup label={t("contactPerson.titleLabel")} htmlFor={`site-cp-title-${index}`}>
+              <FieldGroup label={t("contactPerson.titleLabel")} htmlFor={`site-cp-title-${index}`} required>
                 <Controller
                   control={control}
                   name={`contacts.${index}.title`}
@@ -206,7 +210,7 @@ export function SiteContactPersonsFields({
                 <FieldErrorText>{titleErr}</FieldErrorText>
               </FieldGroup>
 
-              <FieldGroup label={t("contactPerson.contactLabel")} htmlFor={`site-cp-contact-${index}`}>
+              <FieldGroup label={t("contactPerson.contactLabel")} htmlFor={`site-cp-contact-${index}`} required>
                 <Controller
                   control={control}
                   name={`contacts.${index}.contact`}

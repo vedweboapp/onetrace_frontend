@@ -389,7 +389,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
             <ProjectPinsListTab sites={detail.sites} />
           ) : activeTab !== "details" ? (
             <DashboardUnderDevelopmentState
-              className="min-h-[calc(100vh-280px)] rounded-none px-4 sm:min-h-[420px] sm:px-6"
+              className="rounded-none"
               title={tHome("title")}
               description={tHome("body")}
             />

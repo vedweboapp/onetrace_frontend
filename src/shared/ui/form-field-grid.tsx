@@ -14,7 +14,7 @@ export function FormFieldRow({
   return (
     <div
       className={cn(
-        "grid gap-4",
+        "form-field-row grid w-full gap-x-5 gap-y-4",
         cols === "1" && "grid-cols-1",
         cols === "2" && "grid-cols-1 sm:grid-cols-2",
         cols === "3" && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",

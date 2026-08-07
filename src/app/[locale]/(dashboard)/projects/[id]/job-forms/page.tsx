@@ -9,7 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function DashboardProjectFormsPage() {
     return (
-        <div className="pb-12">
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
             <ProjectJobFormsDetails />
         </div>
     );

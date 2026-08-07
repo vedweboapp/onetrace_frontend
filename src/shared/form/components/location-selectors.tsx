@@ -3,6 +3,12 @@
 import React from "react";
 import { Country, State, City } from "country-state-city";
 import { FieldError, UseFormRegisterReturn } from "react-hook-form";
+import {
+  FieldErrorText,
+  FieldGroup,
+  surfaceSelectClassName,
+} from "@/shared/ui";
+import { cn } from "@/core/utils/http.util";
 
 interface SelectorProps {
   label: string;
@@ -10,7 +16,48 @@ interface SelectorProps {
   errors?: FieldError;
   readOnly?: boolean;
   className?: string;
+  fieldRequired?: boolean;
   [key: string]: any;
+}
+
+function LocationSelect({
+  label,
+  register,
+  errors,
+  readOnly,
+  className = "",
+  fieldRequired,
+  disabled,
+  children,
+  ...rest
+}: SelectorProps & { disabled?: boolean; children: React.ReactNode }) {
+  const selectId = register?.name;
+  return (
+    <FieldGroup
+      label={label}
+      htmlFor={selectId}
+      required={fieldRequired}
+      className={cn("w-full", className)}
+    >
+      <select
+        id={selectId}
+        {...register}
+        {...rest}
+        disabled={disabled || readOnly}
+        aria-invalid={errors ? true : undefined}
+        className={cn(
+          surfaceSelectClassName,
+          "field-control",
+          (disabled || readOnly) &&
+            "cursor-not-allowed border-slate-200 bg-slate-50 select-none focus-visible:ring-0 dark:border-slate-700 dark:bg-slate-800/50",
+          errors && "border-red-500 dark:border-red-500",
+        )}
+      >
+        {children}
+      </select>
+      <FieldErrorText>{errors?.message}</FieldErrorText>
+    </FieldGroup>
+  );
 }
 
 export const CountryDropdown = ({
@@ -19,40 +66,28 @@ export const CountryDropdown = ({
   errors,
   readOnly,
   className = "",
+  fieldRequired,
   ...rest
 }: SelectorProps) => {
   const countries = Country.getAllCountries();
 
   return (
-    <div className={`flex flex-col gap-1 w-full ${className}`}>
-      {label && (
-        <label className="text-sm font-medium text-mutedtext">
-          {label}
-        </label>
-      )}
-
-      <select
-        {...register}
-        {...rest}
-        disabled={readOnly}
-        className={`
-          rounded-[8px] px-3 py-2 outline-none w-full
-          ${readOnly
-            ? "border-none bg-gray-100 dark:bg-slate-800/50 cursor-not-allowed select-none"
-            : `bg-white dark:bg-slate-900 border ${errors ? "border-red-500" : "border-gray-300 dark:border-slate-700"} focus:ring-2 focus:ring-blue-500`
-          }
-        `}
-      >
-        <option value="">Select Country</option>
-        {countries.map((country) => (
-          <option key={country.isoCode} value={country.isoCode}>
-            {country.name}
-          </option>
-        ))}
-      </select>
-
-      {errors && <span className="text-red-500 text-xs">{errors.message}</span>}
-    </div>
+    <LocationSelect
+      label={label}
+      register={register}
+      errors={errors}
+      readOnly={readOnly}
+      className={className}
+      fieldRequired={fieldRequired}
+      {...rest}
+    >
+      <option value="">Select Country</option>
+      {countries.map((country) => (
+        <option key={country.isoCode} value={country.isoCode}>
+          {country.name}
+        </option>
+      ))}
+    </LocationSelect>
   );
 };
 
@@ -63,42 +98,29 @@ export const StateDropdown = ({
   readOnly,
   className = "",
   countryCode,
+  fieldRequired,
   ...rest
 }: SelectorProps & { countryCode?: string }) => {
   const states = countryCode ? State.getStatesOfCountry(countryCode) : [];
 
   return (
-    <div className={`flex flex-col gap-1 w-full ${className}`}>
-      {label && (
-        <label className="text-sm font-medium text-mutedtext">
-          {label}
-        </label>
-      )}
-
-      <select
-        {...register}
-        {...rest}
-        disabled={readOnly || !countryCode}
-        className={`
-          rounded-[8px] px-3 py-2 outline-none w-full
-          ${readOnly || !countryCode
-            ? "border-none bg-gray-100 dark:bg-slate-800/50 cursor-not-allowed select-none"
-            : `bg-white dark:bg-slate-900 border ${errors ? "border-red-500" : "border-gray-300 dark:border-slate-700"} focus:ring-2 focus:ring-blue-500`
-          }
-        `}
-      >
-        <option value="">
-          {countryCode ? "Select State" : "Select Country First"}
+    <LocationSelect
+      label={label}
+      register={register}
+      errors={errors}
+      readOnly={readOnly}
+      className={className}
+      fieldRequired={fieldRequired}
+      disabled={!countryCode}
+      {...rest}
+    >
+      <option value="">{countryCode ? "Select State" : "Select Country First"}</option>
+      {states.map((state) => (
+        <option key={state.isoCode} value={state.isoCode}>
+          {state.name}
         </option>
-        {states.map((state) => (
-          <option key={state.isoCode} value={state.isoCode}>
-            {state.name}
-          </option>
-        ))}
-      </select>
-
-      {errors && <span className="text-red-500 text-xs">{errors.message}</span>}
-    </div>
+      ))}
+    </LocationSelect>
   );
 };
 
@@ -110,49 +132,36 @@ export const CityDropdown = ({
   className = "",
   countryCode,
   stateCode,
+  fieldRequired,
   ...rest
 }: SelectorProps & { countryCode?: string; stateCode?: string }) => {
   const cities =
-    countryCode && stateCode
-      ? City.getCitiesOfState(countryCode, stateCode)
-      : [];
+    countryCode && stateCode ? City.getCitiesOfState(countryCode, stateCode) : [];
 
   return (
-    <div className={`flex flex-col gap-1 w-full ${className}`}>
-      {label && (
-        <label className="text-sm font-medium text-mutedtext">
-          {label}
-        </label>
-      )}
-
-      <select
-        {...register}
-        {...rest}
-        disabled={readOnly || !countryCode || !stateCode}
-        className={`
-          rounded-[8px] px-3 py-2 outline-none w-full
-          ${readOnly || !countryCode || !stateCode
-            ? "border-none bg-gray-100 dark:bg-slate-800/50 cursor-not-allowed select-none"
-            : `bg-white dark:bg-slate-900 border ${errors ? "border-red-500" : "border-gray-300 dark:border-slate-700"} focus:ring-2 focus:ring-blue-500`
-          }
-        `}
-      >
-        <option value="">
-          {!countryCode
-            ? "Select Country First"
-            : !stateCode
+    <LocationSelect
+      label={label}
+      register={register}
+      errors={errors}
+      readOnly={readOnly}
+      className={className}
+      fieldRequired={fieldRequired}
+      disabled={!countryCode || !stateCode}
+      {...rest}
+    >
+      <option value="">
+        {!countryCode
+          ? "Select Country First"
+          : !stateCode
             ? "Select State First"
             : "Select City"}
+      </option>
+      {cities.map((city) => (
+        <option key={city.name} value={city.name}>
+          {city.name}
         </option>
-        {cities.map((city) => (
-          <option key={city.name} value={city.name}>
-            {city.name}
-          </option>
-        ))}
-      </select>
-
-      {errors && <span className="text-red-500 text-xs">{errors.message}</span>}
-    </div>
+      ))}
+    </LocationSelect>
   );
 };
 
@@ -174,8 +183,7 @@ export const LocationSelectorGroup = ({
   watch,
   errors,
   readOnly,
-  grid = true,
-  fieldNames = { country: "country", state: "state", city: "city" }
+  fieldNames = { country: "country", state: "state", city: "city" },
 }: LocationSelectorGroupProps) => {
   const selectedCountry = watch(fieldNames.country || "country");
   const selectedState = watch(fieldNames.state || "state");

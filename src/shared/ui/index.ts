@@ -36,6 +36,7 @@ export {
   surfaceInputClassName,
   surfaceSelectClassName,
   surfaceTextareaClassName,
+  fieldControlClassName,
 } from "./field-primitives";
 export {
   SurfaceDateInput,
@@ -111,9 +112,14 @@ export { DashboardEmptyState, type DashboardEmptyStateIconName } from "./dashboa
 export {
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
+  listPageRootClassName,
+  dashboardScrollablePageClassName,
   type ListPageEmptyStatesProps,
   type ListPageOnboardingEmptyProps,
 } from "./list-page-empty-states";
+export { DataTableTextModeToggle } from "./data-table-text-mode-toggle";
+export { useDataTableTextModeStore } from "./data-table-text-mode.store";
+export type { DataTableTextMode } from "./data-table-text-mode.store";
 export { DashboardUnderDevelopmentState } from "./dashboard-under-development-state";
 export {
   TextField,

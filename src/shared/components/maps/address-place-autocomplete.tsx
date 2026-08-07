@@ -22,7 +22,8 @@ import { sanitizeAddressInput } from "@/shared/form/field-input.util";
 
 type Props = {
   id: string;
-  label: React.ReactNode;
+  /** When omitted, parent `FieldGroup` owns the label (Appearance layout). */
+  label?: React.ReactNode;
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
@@ -232,11 +233,17 @@ export function AddressPlaceAutocomplete({
   }
 
   return (
-    <div ref={wrapRef} className="relative">
-      <label htmlFor={id} className={fieldLabelClassName}>
-        {label}
-        {required ? <span className={fieldRequiredMarkClassName} aria-hidden> *</span> : null}
-      </label>
+    <div ref={wrapRef} className="relative w-full min-w-0">
+      {label != null && label !== "" ? (
+        <label htmlFor={id} className={fieldLabelClassName}>
+          {label}
+          {required ? (
+            <span className={cn(fieldRequiredMarkClassName, "field-required-asterisk")} aria-hidden>
+              *
+            </span>
+          ) : null}
+        </label>
+      ) : null}
       <input
         id={id}
         type="text"

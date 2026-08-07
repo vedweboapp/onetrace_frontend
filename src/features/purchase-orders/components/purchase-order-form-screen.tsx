@@ -452,11 +452,9 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
                   control={control}
                   name="vendor"
                   render={({ field }) => (
-                    <div>
+                    <FieldGroup label={t("fields.vendorName")} htmlFor="po-vendor" required>
                       <CheckmarkSelect
                         id="po-vendor"
-                        label={t("fields.vendorName")}
-                        required
                         options={vendorOptions}
                         value={field.value}
                         onChange={(v) => {
@@ -474,7 +472,7 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
                         addLabel={vendorQuickCreate.addLabel}
                       />
                       <FieldErrorText>{errors.vendor?.message}</FieldErrorText>
-                    </div>
+                    </FieldGroup>
                   )}
                 />
                 <Controller
@@ -609,7 +607,7 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
                       <th className="px-3 py-2">{tGroups("title")}</th>
                       <th className="px-3 py-2">
                         {tItems("title")}
-                        <RequiredMark />
+                        <RequiredMark alwaysVisible />
                       </th>
                       <th className="px-3 py-2">{t("lineItems.qty")}</th>
                       <th className="px-3 py-2">{t("lineItems.rate")}</th>

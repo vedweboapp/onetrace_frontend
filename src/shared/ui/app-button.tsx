@@ -40,9 +40,9 @@ const variants = {
 
 /** Compact dashboard actions — text only, no icons. */
 const sizes = {
-  sm: "h-8 min-h-8 rounded-md px-3 text-xs font-medium",
-  md: "h-9 min-h-9 rounded-md px-3.5 text-xs font-medium",
-  lg: "h-10 min-h-10 rounded-lg px-4 text-sm font-medium",
+  sm: "h-8 min-h-8 rounded-md px-3 text-[length:var(--dash-text-xs,0.75rem)] font-medium",
+  md: "h-9 min-h-9 rounded-md px-3.5 text-[length:var(--dash-text-sm,0.875rem)] font-medium",
+  lg: "h-10 min-h-10 rounded-lg px-4 text-[length:var(--dash-body-size,0.875rem)] font-medium",
 } as const;
 
 export type AppButtonVariant = keyof typeof variants;

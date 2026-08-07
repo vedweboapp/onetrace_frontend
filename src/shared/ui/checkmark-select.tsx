@@ -313,7 +313,7 @@ export function CheckmarkSelect({
               onChange={(e) => setSearch(e.target.value)}
               placeholder={searchPlaceholder}
               className={cn(
-                "h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm outline-none",
+                "h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-[length:var(--dash-text-sm,0.875rem)] outline-none",
                 "focus-visible:border-[color:var(--dash-accent,#111111)] focus-visible:ring-2 focus-visible:ring-[color:var(--dash-accent,#111111)]/20",
                 "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100",
               )}
@@ -395,10 +395,10 @@ export function CheckmarkSelect({
   }
 
   const triggerClass = cn(
-    "flex w-full items-center justify-between gap-1.5 border text-left font-medium outline-none transition",
+    "field-control flex w-full items-center justify-between gap-1.5 border text-left font-medium outline-none transition",
     size === "sm"
-      ? "h-8 min-h-8 rounded-md px-2 text-xs shadow-sm"
-      : "h-11 gap-2 rounded-xl px-3.5 text-sm shadow-sm",
+      ? "h-8 min-h-8 rounded-md px-2 text-[length:var(--dash-text-xs,0.75rem)] shadow-sm"
+      : "h-11 gap-2 rounded-xl px-3.5 text-[length:var(--dash-body-size,0.875rem)] shadow-sm",
     disabled
       ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-600"
       : cn(
@@ -412,8 +412,10 @@ export function CheckmarkSelect({
   );
 
   const splitFrameClass = cn(
-    "flex w-full min-w-0 items-stretch overflow-hidden border text-left font-medium shadow-sm outline-none transition",
-    size === "sm" ? "h-8 min-h-8 rounded-md text-xs" : "h-11 min-h-11 rounded-xl text-sm",
+    "field-control flex w-full min-w-0 items-stretch overflow-hidden border text-left font-medium shadow-sm outline-none transition",
+    size === "sm"
+      ? "h-8 min-h-8 rounded-md text-[length:var(--dash-text-xs,0.75rem)]"
+      : "h-11 min-h-11 rounded-xl text-[length:var(--dash-body-size,0.875rem)]",
     disabled
       ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-600"
       : cn(
@@ -427,7 +429,9 @@ export function CheckmarkSelect({
 
   const openSplitButtonClass = cn(
     "flex min-w-0 flex-1 items-center justify-between gap-1.5 border-0 bg-transparent text-left font-medium outline-none transition",
-    size === "sm" ? "px-2 text-xs" : "gap-2 px-3.5 text-sm",
+    size === "sm"
+      ? "px-2 text-[length:var(--dash-text-xs,0.75rem)]"
+      : "gap-2 px-3.5 text-[length:var(--dash-body-size,0.875rem)]",
     disabled
       ? "cursor-not-allowed"
       : cn(
@@ -454,7 +458,11 @@ export function CheckmarkSelect({
       {label ? (
         <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.1em] text-[color:var(--dash-accent,#111111)]">
           {label}
-          {required ? <span className={fieldRequiredMarkClassName} aria-hidden> *</span> : null}
+          {required ? (
+            <span className={cn(fieldRequiredMarkClassName, "field-required-asterisk")} aria-hidden>
+              *
+            </span>
+          ) : null}
         </span>
       ) : null}
       {useSplitTrigger ? (

@@ -27,6 +27,7 @@ import {
   ConfirmDialog,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
+  listPageRootClassName,
   DataTablePaginationBar,
   DataTableRowActionsMenu,
   ListPageActiveFilter,
@@ -277,7 +278,7 @@ export function SitesPanel() {
   }, [t, tList, dateFmt, clientLabelById, togglingId, listHref, pathname, router, mass, items.length]);
 
   return (
-    <div className="space-y-4">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
           filtersActive={filtersActive}

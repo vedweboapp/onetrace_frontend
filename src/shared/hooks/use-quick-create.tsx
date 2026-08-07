@@ -76,9 +76,11 @@ export function useQuickCreate({
   };
 }
 
-/** + Add that opens a settings (or other) page and returns via stored back href. */
+/** + Add that opens a settings page or an inline create modal. */
 export function useSettingsQuickAdd(args: {
-  href: string;
+  href?: string;
+  /** When set, opens inline create modal instead of navigating away. */
+  onOpen?: () => void;
   addLabel: string;
   addDisabled?: boolean;
   getFormDraft?: () => unknown;
@@ -87,7 +89,7 @@ export function useSettingsQuickAdd(args: {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { href, addLabel, addDisabled = false, getFormDraft, returnTo: returnToProp } = args;
+  const { href, onOpen, addLabel, addDisabled = false, getFormDraft, returnTo: returnToProp } = args;
 
   const returnTo = React.useMemo(() => {
     if (returnToProp) return returnToProp;
@@ -95,15 +97,21 @@ export function useSettingsQuickAdd(args: {
     return qs ? `${pathname}?${qs}` : pathname;
   }, [returnToProp, pathname, searchParams]);
 
-  const canAdd = !addDisabled && href.trim().length > 0;
+  const canAdd = !addDisabled && (typeof onOpen === "function" || Boolean(href?.trim()));
 
   const navigate = React.useCallback(() => {
     if (!canAdd) return;
     if (getFormDraft) {
       saveQuickCreateFormDraft(returnTo, getFormDraft());
     }
-    router.push(buildPathWithStoredBack(href, returnTo));
-  }, [canAdd, getFormDraft, returnTo, router, href]);
+    if (onOpen) {
+      onOpen();
+      return;
+    }
+    if (href?.trim()) {
+      router.push(buildPathWithStoredBack(href, returnTo));
+    }
+  }, [canAdd, getFormDraft, returnTo, onOpen, router, href]);
 
   return {
     canAdd,

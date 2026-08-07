@@ -120,9 +120,11 @@ export function EntityAddressesFields<T extends FieldValues>({
   const addressesRootError = (errors.addresses as { message?: string } | undefined)?.message;
 
   return (
-    <div className="space-y-4">
+    <section className="w-full space-y-5 border-t border-slate-200/90 pt-6 dark:border-slate-700/80">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{labels.sectionTitle}</h3>
+        <h3 className="text-[length:var(--dash-body-size,0.875rem)] font-semibold text-slate-900 dark:text-slate-100">
+          {labels.sectionTitle}
+        </h3>
         <AppButton
           type="button"
           variant="secondary"
@@ -157,9 +159,9 @@ export function EntityAddressesFields<T extends FieldValues>({
         return (
           <div
             key={field.id}
-            className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-900/40"
+            className="w-full space-y-4 border-b border-slate-100 pb-6 last:border-b-0 last:pb-0 dark:border-slate-800"
           >
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
                 {labels.rowLabel(index + 1)}
               </span>
@@ -189,38 +191,37 @@ export function EntityAddressesFields<T extends FieldValues>({
               </div>
             </div>
 
-            <div className="space-y-4">
-              <FormFieldRow cols="2">
-                <div>
-                  <Controller
-                    control={control}
-                    name={`addresses.${index}.address_type` as Path<T>}
-                    render={({ field: f }) => (
-                      <CheckmarkSelect
-                        id={`${rowIdPrefix}-type`}
-                        label={labels.addressType}
-                        listLabel={labels.addressType}
-                        options={typeOptions}
-                        value={String(f.value ?? "billing")}
-                        onChange={f.onChange}
-                        disabled={disabled}
-                        emptyLabel={labels.addressType}
-                        className="w-full"
-                      />
-                    )}
-                  />
-                  {rowErrors?.address_type ? (
-                    <FieldErrorText>{String(rowErrors.address_type.message ?? "")}</FieldErrorText>
-                  ) : null}
-                </div>
-                <Controller
-                  control={control}
-                  name={`addresses.${index}.address_line_1` as Path<T>}
-                  render={({ field: f }) => (
+            <FormFieldRow cols="2">
+              <Controller
+                control={control}
+                name={`addresses.${index}.address_type` as Path<T>}
+                render={({ field: f }) => (
+                  <FieldGroup label={labels.addressType} htmlFor={`${rowIdPrefix}-type`} required>
+                    <CheckmarkSelect
+                      id={`${rowIdPrefix}-type`}
+                      listLabel={labels.addressType}
+                      options={typeOptions}
+                      value={String(f.value ?? "billing")}
+                      onChange={f.onChange}
+                      disabled={disabled}
+                      emptyLabel={labels.addressType}
+                      className="w-full"
+                      invalid={Boolean(rowErrors?.address_type)}
+                    />
+                    {rowErrors?.address_type ? (
+                      <FieldErrorText>{String(rowErrors.address_type.message ?? "")}</FieldErrorText>
+                    ) : null}
+                  </FieldGroup>
+                )}
+              />
+
+              <Controller
+                control={control}
+                name={`addresses.${index}.address_line_1` as Path<T>}
+                render={({ field: f }) => (
+                  <FieldGroup label={labels.addressLine1} htmlFor={`${rowIdPrefix}-line1`} required>
                     <AddressPlaceAutocomplete
                       id={`${rowIdPrefix}-line1`}
-                      label={labels.addressLine1}
-                      required
                       value={String(f.value ?? "")}
                       onChange={f.onChange}
                       onBlur={f.onBlur}
@@ -230,103 +231,107 @@ export function EntityAddressesFields<T extends FieldValues>({
                       contextCountry={searchContext.country}
                       disabled={disabled}
                       invalid={Boolean(rowErrors?.address_line_1)}
-                      error={rowErrors?.address_line_1 ? String(rowErrors.address_line_1.message ?? "") : undefined}
+                      error={
+                        rowErrors?.address_line_1
+                          ? String(rowErrors.address_line_1.message ?? "")
+                          : undefined
+                      }
                       onSelectPlace={(place) => applyPlaceToRow(setValue, index, place)}
                       maxLength={FIELD_MAX_LENGTH.ADDRESS_LINE}
                     />
-                  )}
-                />
-              </FormFieldRow>
+                  </FieldGroup>
+                )}
+              />
+            </FormFieldRow>
 
-              <FormFieldRow cols="2">
+            <FormFieldRow cols="2">
+              <Controller
+                control={control}
+                name={`addresses.${index}.address_line_2` as Path<T>}
+                render={({ field: f }) => (
+                  <FieldGroup label={labels.addressLine2} htmlFor={`${rowIdPrefix}-line2`}>
+                    <input
+                      id={`${rowIdPrefix}-line2`}
+                      autoComplete="address-line2"
+                      className={surfaceInputClassName}
+                      disabled={disabled}
+                      maxLength={FIELD_MAX_LENGTH.ADDRESS_LINE}
+                      value={String(f.value ?? "")}
+                      onChange={(e) => f.onChange(sanitizeAddressInput(e.target.value))}
+                      onBlur={f.onBlur}
+                    />
+                  </FieldGroup>
+                )}
+              />
+              <FieldGroup label={labels.pincode} htmlFor={`${rowIdPrefix}-pincode`} required>
                 <Controller
                   control={control}
-                  name={`addresses.${index}.address_line_2` as Path<T>}
+                  name={`addresses.${index}.pincode` as Path<T>}
                   render={({ field: f }) => (
-                    <FieldGroup label={labels.addressLine2} htmlFor={`${rowIdPrefix}-line2`}>
-                      <input
-                        id={`${rowIdPrefix}-line2`}
-                        autoComplete="address-line2"
-                        className={surfaceInputClassName}
-                        disabled={disabled}
-                        maxLength={FIELD_MAX_LENGTH.ADDRESS_LINE}
-                        value={String(f.value ?? "")}
-                        onChange={(e) => f.onChange(sanitizeAddressInput(e.target.value))}
-                        onBlur={f.onBlur}
-                      />
-                    </FieldGroup>
+                    <input
+                      id={`${rowIdPrefix}-pincode`}
+                      maxLength={FIELD_MAX_LENGTH.PINCODE}
+                      value={String(f.value ?? "")}
+                      onChange={(e) => f.onChange(sanitizeDigitsInput(e.target.value))}
+                      onBlur={f.onBlur}
+                      disabled={disabled}
+                      className={cn(
+                        surfaceInputClassName,
+                        rowErrors?.pincode && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
+                      )}
+                    />
                   )}
                 />
-                <FieldGroup label={labels.pincode} htmlFor={`${rowIdPrefix}-pincode`} required>
-                  <Controller
-                    control={control}
-                    name={`addresses.${index}.pincode` as Path<T>}
-                    render={({ field: f }) => (
-                      <input
-                        id={`${rowIdPrefix}-pincode`}
-                        maxLength={FIELD_MAX_LENGTH.PINCODE}
-                        value={String(f.value ?? "")}
-                        onChange={(e) => f.onChange(sanitizeDigitsInput(e.target.value))}
-                        onBlur={f.onBlur}
-                        disabled={disabled}
-                        className={cn(
-                          surfaceInputClassName,
-                          rowErrors?.pincode && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
-                        )}
-                      />
-                    )}
-                  />
-                  {rowErrors?.pincode ? (
-                    <FieldErrorText>{String(rowErrors.pincode.message ?? "")}</FieldErrorText>
-                  ) : null}
-                </FieldGroup>
-              </FormFieldRow>
+                {rowErrors?.pincode ? (
+                  <FieldErrorText>{String(rowErrors.pincode.message ?? "")}</FieldErrorText>
+                ) : null}
+              </FieldGroup>
+            </FormFieldRow>
 
-              <CascadingLocationFields
-                control={control}
-                setValue={setValue}
-                countryIsoName={`addresses.${index}.country_iso` as Path<T>}
-                stateIsoName={`addresses.${index}.state_iso` as Path<T>}
-                cityName={`addresses.${index}.city` as Path<T>}
-                disabled={disabled}
-                labels={{
-                  country: labels.country,
-                  state: labels.state,
-                  city: labels.city,
-                }}
-                placeholders={{
-                  country: labels.countryPlaceholder,
-                  state: labels.statePlaceholder,
-                  city: labels.cityPlaceholder,
-                }}
-                errors={{
-                  country: rowErrors?.country_iso?.message as string | undefined,
-                  state: rowErrors?.state_iso?.message as string | undefined,
-                  city: rowErrors?.city?.message as string | undefined,
-                }}
-              />
+            <CascadingLocationFields
+              control={control}
+              setValue={setValue}
+              countryIsoName={`addresses.${index}.country_iso` as Path<T>}
+              stateIsoName={`addresses.${index}.state_iso` as Path<T>}
+              cityName={`addresses.${index}.city` as Path<T>}
+              disabled={disabled}
+              labels={{
+                country: labels.country,
+                state: labels.state,
+                city: labels.city,
+              }}
+              placeholders={{
+                country: labels.countryPlaceholder,
+                state: labels.statePlaceholder,
+                city: labels.cityPlaceholder,
+              }}
+              errors={{
+                country: rowErrors?.country_iso?.message as string | undefined,
+                state: rowErrors?.state_iso?.message as string | undefined,
+                city: rowErrors?.city?.message as string | undefined,
+              }}
+            />
 
-              <input
-                type="hidden"
-                {...register(`addresses.${index}.id` as Path<T>, {
-                  setValueAs: (value) => {
-                    if (value === "" || value == null) return undefined;
-                    const parsed = typeof value === "number" ? value : Number(value);
-                    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
-                  },
-                })}
-              />
-              {includeGeo ? (
-                <>
-                  <input type="hidden" {...register(`addresses.${index}.latitude` as Path<T>)} />
-                  <input type="hidden" {...register(`addresses.${index}.longitude` as Path<T>)} />
-                </>
-              ) : null}
-            </div>
+            <input
+              type="hidden"
+              {...register(`addresses.${index}.id` as Path<T>, {
+                setValueAs: (value) => {
+                  if (value === "" || value == null) return undefined;
+                  const parsed = typeof value === "number" ? value : Number(value);
+                  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+                },
+              })}
+            />
+            {includeGeo ? (
+              <>
+                <input type="hidden" {...register(`addresses.${index}.latitude` as Path<T>)} />
+                <input type="hidden" {...register(`addresses.${index}.longitude` as Path<T>)} />
+              </>
+            ) : null}
           </div>
         );
       })}
       {addressesRootError ? <FieldErrorText>{addressesRootError}</FieldErrorText> : null}
-    </div>
+    </section>
   );
 }

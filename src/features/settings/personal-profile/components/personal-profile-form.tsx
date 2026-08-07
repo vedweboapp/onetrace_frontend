@@ -21,6 +21,7 @@ import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { City, Country, State } from "country-state-city"; 
 import { Inputs } from "../types/types";
 import { updatePersonalProfile } from "../api/personal-profile.api";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { useTranslations } from "next-intl";
@@ -309,6 +310,10 @@ const PersonalProfileForm = forwardRef<
             await updatePersonalProfile(String(initialData.id), formData);
 
             toastSuccess(t("updatedToast"));
+            useAuthStore.getState().patchUser({
+                first_name: data.firstName?.trim() || undefined,
+                last_name: data.lastName?.trim() || undefined,
+            });
             if (onSuccess) onSuccess();
         } catch (error) {
             console.error("Failed to update profile:", error);
@@ -326,7 +331,6 @@ const PersonalProfileForm = forwardRef<
         submit: () => handleSubmit(handleActualSubmit)(),
         isSaving,
     }), [isSaving, handleSubmit, handleActualSubmit]);
-    console.log("emails are here", emailFields)
     if (isLoading) {
         return (
             <div className="w-full space-y-6 animate-pulse">
@@ -339,11 +343,12 @@ const PersonalProfileForm = forwardRef<
 
     return (
         <form
-            className={`flex flex-col gap-6 w-full pb-10 transition-opacity duration-500 ${isMounted ? "animate-in fade-in duration-500 opacity-100" : "opacity-0"}`}
+            className={`flex w-full flex-col pb-10 transition-opacity duration-500 ${isMounted ? "animate-in fade-in duration-500 opacity-100" : "opacity-0"}`}
             onSubmit={handleSubmit(handleActualSubmit)}
         >
+            <div className="flex w-full flex-col rounded-xl border border-slate-200/90 bg-white px-5 py-2 dark:border-slate-700 dark:bg-slate-950 sm:px-8">
             {/* Header / Basic Info Summary */}
-            <div className="flex w-full border border-gray-200 rounded-xl shadow-sm p-5 bg-white gap-6 items-center dark:bg-slate-900 dark:border-slate-700">
+            <div className="flex w-full items-center gap-6 border-b border-slate-200/90 py-6 dark:border-slate-700/80">
                 <ProfilePictureUploader
                     image={image}
                     setImage={setImage}
@@ -351,17 +356,14 @@ const PersonalProfileForm = forwardRef<
                     readOnly={!isEditing}
                 />
                 <div className="flex flex-col gap-2">
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+                    <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
                         {initialData?.user_detail?.first_name || "Alex"}{" "}
                         {initialData?.user_detail?.last_name || "Morgan"}
                     </h1>
-                    {/* <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold w-fit dark:bg-slate-700 dark:text-slate-300">
-                        {initialData?.role_detail?.name || "Senior Driver"}
-                    </span> */}
-                    <div className="flex gap-5 mt-1">
+                    <div className="mt-1 flex gap-5">
                         <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
                             <Calendar size={16} />
-                            <span className="text-sm">
+                            <span className="text-[length:var(--dash-body-size,0.875rem)]">
                                 Joined{" "}
                                 {initialData?.created_at
                                     ? new Date(initialData.created_at).toLocaleDateString(
@@ -371,27 +373,25 @@ const PersonalProfileForm = forwardRef<
                                     : "Oct 2023"}
                             </span>
                         </div>
-                        {/* <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-                            <MapPin size={16} />
-                            <span className="text-sm">Alexandria, Egypt</span>
-                        </div> */}
                     </div>
                 </div>
             </div>
             {/* Basic Information */}
             <FormSectionCard title={t("BasicInfo")} icon={<Calendar size={20} />}>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pt-2">
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
                     <Input
                         label={t("FirstName")}
                         register={register("firstName")}
                         errors={errors.firstName}
                         readOnly={!isEditing}
+                        fieldRequired
                     />
                     <Input
                         label={t("LastName")}
                         register={register("lastName")}
                         errors={errors.lastName}
                         readOnly={!isEditing}
+                        fieldRequired
                     />
                     <Input
                         label={t("DateOfBirth")}
@@ -428,7 +428,7 @@ const PersonalProfileForm = forwardRef<
 
             {/* Contact Details */}
             <FormSectionCard title={t("ContactDetails")} icon={<Mail size={20} />}>
-                <div className="flex flex-col gap-8 pt-2">
+                <div className="flex flex-col gap-8">
                     <div className=" grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
@@ -703,7 +703,7 @@ const PersonalProfileForm = forwardRef<
                     </div>
                 </div>
             </FormSectionCard>
-
+            </div>
         </form>
     );
 });

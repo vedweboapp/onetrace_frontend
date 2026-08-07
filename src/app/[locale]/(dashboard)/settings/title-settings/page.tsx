@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function TitleSettingsPage() {
   return (
-    <div className="pb-16">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <Suspense
         fallback={
           <div className="space-y-2 p-6">

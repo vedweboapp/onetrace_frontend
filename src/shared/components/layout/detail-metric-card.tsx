@@ -5,14 +5,14 @@ import { cn } from "@/core/utils/http.util";
 import { ActiveStatusBadge } from "@/shared/ui";
 import { DetailCollapsibleSection } from "./detail-collapsible-section";
 
-/** Soft canvas behind white section cards on entity detail routes. */
+/** Soft canvas behind a single flat detail surface (avoid card-in-card). */
 export const detailRecordSurfaceShellClassName = cn(
-  "overflow-visible rounded-none border-0 border-t border-slate-200/90 bg-slate-100/90 shadow-none ring-0",
+  "overflow-visible rounded-none border border-slate-200/90 bg-white shadow-none ring-0",
   "dark:border-slate-800 dark:bg-slate-950",
 );
 
-/** Vertical gap between white detail section cards. */
-export const detailPageStackClassName = "space-y-2";
+/** Vertical stack for detail sections — spacing only, no divider lines between sections. */
+export const detailPageStackClassName = "flex flex-col gap-1";
 
 /** Responsive grid for label/value pairs inside a detail section */
 export function DetailMetricsGrid({
@@ -117,7 +117,7 @@ export function DetailSectionTitle({ children }: { children: ReactNode }) {
 }
 
 export function DetailPagePadding({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("px-4 py-2.5 sm:px-6 sm:py-3", className)}>{children}</div>;
+  return <div className={cn("w-full", className)}>{children}</div>;
 }
 
 /** White section card for detail pages (overview, address, system metadata, etc.). */
@@ -133,6 +133,8 @@ export function DetailPanelCard({
   bodyClassName,
   defaultOpen = true,
   collapsible = true,
+  /** Flat section (WMS/Zoho detail style); supports collapse chevron when `collapsible`. */
+  variant = "flat",
   toggleAriaLabel = "Toggle section",
 }: {
   title?: ReactNode;
@@ -143,8 +145,48 @@ export function DetailPanelCard({
   bodyClassName?: string;
   defaultOpen?: boolean;
   collapsible?: boolean;
+  variant?: "card" | "flat";
   toggleAriaLabel?: string;
 }) {
+  if (variant === "flat") {
+    if (title && collapsible) {
+      return (
+        <DetailCollapsibleSection
+          title={title}
+          badge={badge}
+          headerRight={headerRight}
+          defaultOpen={defaultOpen}
+          className={cn(
+            "rounded-none border-0 border-b-0 bg-transparent shadow-none [&]:border-0 dark:bg-transparent",
+            "[&>div:first-child]:border-b-0",
+            className,
+          )}
+          bodyClassName={cn("px-4 pb-4 pt-0 sm:px-5 sm:pb-5", bodyClassName)}
+          toggleAriaLabel={toggleAriaLabel}
+        >
+          {children}
+        </DetailCollapsibleSection>
+      );
+    }
+
+    return (
+      <section className={cn("bg-transparent", className)}>
+        {title ? (
+          <div className="flex flex-col gap-1.5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <h2 className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">{title}</h2>
+            {headerRight || badge ? (
+              <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+                {badge}
+                {headerRight}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        <div className={cn("px-4 pb-4 sm:px-5 sm:pb-5", bodyClassName)}>{children}</div>
+      </section>
+    );
+  }
+
   if (title && collapsible) {
     return (
       <DetailCollapsibleSection

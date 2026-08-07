@@ -2,7 +2,7 @@ import { CreateProjectTypeForm } from "@/features/project-forms/components/creat
 
 export default async function ProjectTypeCreateFormPage() {
   return (
-    <div className="pb-12">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
       <CreateProjectTypeForm />
     </div>
   );

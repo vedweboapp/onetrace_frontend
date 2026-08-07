@@ -51,7 +51,7 @@ export function DetailLinkedTable({
   rowNumberHeader = "#",
 }: Props) {
   return (
-    <DataTableScroll className="-mx-1 rounded-lg border border-slate-200 dark:border-slate-800">
+    <DataTableScroll className="max-h-[min(28rem,50vh)] rounded-lg border border-slate-200 dark:border-slate-700">
       <DataTable className="table-fixed">
         <colgroup>
           {showRowNumbers ? <col className="w-11" /> : null}
