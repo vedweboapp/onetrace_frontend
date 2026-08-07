@@ -2029,7 +2029,8 @@
         "pincode": "Introduce un código postal.",
         "contactPersonTitle": "Selecciona un título.",
         "contactPerson": "Selecciona una persona de contacto.",
-        "contactPersonDuplicate": "Esta combinación de título y persona de contacto ya está añadida."
+        "contactPersonDuplicate": "Esta combinación de título y persona de contacto ya está añadida.",
+        "duplicateContactTitle": "No se permite un contacto duplicado con el mismo título."
       },
       "location": {
         "searchPlaceholder": "Empieza a escribir la dirección…",

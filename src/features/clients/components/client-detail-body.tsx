@@ -170,7 +170,6 @@ export function ClientDetailBody({
         </DetailPanelCard>
 
         <DetailSystemMetadataSection
-          variant="flat"
           createdAt={detail.created_at}
           modifiedAt={detail.modified_at}
           dateFmt={dateFmt}

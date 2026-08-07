@@ -8,6 +8,8 @@ import { Controller, useForm } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchVendorTypesPage } from "@/features/vendor-types/api/vendor-type.api";
+import { VendorTypeFormModal } from "@/features/vendor-types/components/vendor-type-form-modal";
+import type { VendorType } from "@/features/vendor-types/types/vendor-type.types";
 import { createVendor, fetchVendor, updateVendor } from "@/features/vendors/api/vendor.api";
 import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
 import { usePhoneCountryFromAddresses } from "@/shared/hooks/use-phone-country-from-address";
@@ -61,6 +63,12 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
   const [typeOptions, setTypeOptions] = React.useState<Array<{ value: string; label: string }>>([]);
+  const [vendorTypeModalOpen, setVendorTypeModalOpen] = React.useState(false);
+
+  const loadTypeOptions = React.useCallback(async () => {
+    const { items } = await fetchVendorTypesPage(1, 100, { is_active: true });
+    setTypeOptions(items.map((row) => ({ value: String(row.id), label: row.name })));
+  }, []);
 
   const schema = React.useMemo(
     () =>
@@ -96,7 +104,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
   const phoneCountry = usePhoneCountryFromAddresses(control);
   const tQuick = useTranslations("Dashboard.quickCreate");
   const vendorTypeQuickAdd = useSettingsQuickAdd({
-    href: routes.dashboard.settingsVendorTypes,
+    onOpen: () => setVendorTypeModalOpen(true),
     addLabel: tQuick("add.vendorType"),
   });
 
@@ -104,10 +112,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchVendorTypesPage(1, 100, { is_active: true });
-        if (!cancelled) {
-          setTypeOptions(items.map((row) => ({ value: String(row.id), label: row.name })));
-        }
+        await loadTypeOptions();
       } catch {
         if (!cancelled) setTypeOptions([]);
       }
@@ -115,7 +120,21 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadTypeOptions]);
+
+  const handleVendorTypeCreated = React.useCallback(
+    (row: VendorType) => {
+      setTypeOptions((prev) => {
+        const next = { value: String(row.id), label: row.name };
+        if (prev.some((opt) => opt.value === next.value)) {
+          return prev.map((opt) => (opt.value === next.value ? next : opt));
+        }
+        return [...prev, next];
+      });
+      setValue("type", String(row.id), { shouldDirty: true, shouldValidate: true });
+    },
+    [setValue],
+  );
 
   React.useEffect(() => {
     if (!isEdit || !vendorId) return;
@@ -286,6 +305,12 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
           </form>
         )}
       </SurfaceShell>
+
+      <VendorTypeFormModal
+        open={vendorTypeModalOpen}
+        onClose={() => setVendorTypeModalOpen(false)}
+        onSaved={handleVendorTypeCreated}
+      />
     </div>
   );
 }

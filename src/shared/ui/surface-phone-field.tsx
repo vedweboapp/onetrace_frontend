@@ -72,13 +72,21 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
     if (raw && raw !== displayValue) onChange(displayValue);
   }, [displayValue, onChange, value]);
 
-  const phoneInputKey = displayValue ? `${id}-valued` : `${id}-${resolvedCountry}`;
+  // Remount only when the address-derived default country changes while the phone is empty.
+  const phoneMountKeyRef = React.useRef(resolvedCountry);
+  const [phoneMountKey, setPhoneMountKey] = React.useState(0);
+  React.useEffect(() => {
+    if (!displayValue.trim() && phoneMountKeyRef.current !== resolvedCountry) {
+      setPhoneMountKey((key) => key + 1);
+    }
+    phoneMountKeyRef.current = resolvedCountry;
+  }, [displayValue, resolvedCountry]);
 
   return (
     <FieldGroup label={label} htmlFor={id} required={required} className={className}>
       <div className="surface-phone-root">
         <PhoneNumberInput
-          key={phoneInputKey}
+          key={`${id}-${phoneMountKey}`}
           value={displayValue}
           onChange={onChange}
           onBlur={onBlur}
