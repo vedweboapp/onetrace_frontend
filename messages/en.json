@@ -2037,7 +2037,8 @@
         "pincode": "Enter a postal or ZIP code.",
         "contactPersonTitle": "Select a title.",
         "contactPerson": "Select a contact person.",
-        "contactPersonDuplicate": "This title and contact person combination is already added."
+        "contactPersonDuplicate": "This title and contact person combination is already added.",
+        "duplicateContactTitle": "Duplicate contact with the same title is not allowed."
       },
       "location": {
         "searchPlaceholder": "Start typing street address…",

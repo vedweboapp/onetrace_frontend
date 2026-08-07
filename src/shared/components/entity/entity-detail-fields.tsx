@@ -172,7 +172,7 @@ export function DetailSystemMetadataSection({
   labels,
   status,
   extra,
-  variant = "card",
+  variant = "flat",
 }: DetailSystemMetadataSectionProps) {
   const createdByUser = normalizeDetailAuditUser(createdBy);
   const modifiedByUser = normalizeDetailAuditUser(modifiedBy);

@@ -12,6 +12,7 @@ export type SiteFormMessages = {
   pincode: string;
   contactPersonTitle: string;
   contactPerson: string;
+  duplicateContactTitle: string;
 };
 
 export function createSiteFormSchema(messages: SiteFormMessages) {
@@ -68,6 +69,27 @@ export function createSiteFormSchema(messages: SiteFormMessages) {
           path: ["city"],
           message: messages.city,
         });
+      }
+
+      const titleToFirstIndex = new Map<string, number>();
+      for (let i = 0; i < data.contacts.length; i++) {
+        const title = data.contacts[i]?.title?.trim() ?? "";
+        if (!title) continue;
+        const firstIndex = titleToFirstIndex.get(title);
+        if (firstIndex !== undefined) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["contacts", firstIndex, "title"],
+            message: messages.duplicateContactTitle,
+          });
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["contacts", i, "title"],
+            message: messages.duplicateContactTitle,
+          });
+        } else {
+          titleToFirstIndex.set(title, i);
+        }
       }
     });
 }

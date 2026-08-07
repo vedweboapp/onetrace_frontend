@@ -75,6 +75,7 @@ export function SiteFormModal({
         pincode: t("validation.pincode"),
         contactPersonTitle: t("validation.contactPersonTitle"),
         contactPerson: t("validation.contactPerson"),
+        duplicateContactTitle: t("validation.duplicateContactTitle"),
       }),
     [t],
   );

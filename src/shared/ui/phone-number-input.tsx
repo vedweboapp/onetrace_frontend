@@ -55,28 +55,32 @@ export function PhoneNumberInput({
   // cannot keep overflowing national digits (e.g. India 13 vs mobile max 10).
   const [clampEpoch, setClampEpoch] = React.useState(0);
   const localInputRef = React.useRef<HTMLInputElement | null>(null);
+  const valueRef = React.useRef(value);
+  valueRef.current = value;
 
   const restoreFocusAfterRemount = React.useCallback(() => {
-    requestAnimationFrame(() => {
-      const el = localInputRef.current;
-      if (!el) return;
-      el.focus();
-      const len = el.value.length;
-      try {
-        el.setSelectionRange(len, len);
-      } catch {
-        /* unsupported on some input types */
-      }
-    });
+    const el = localInputRef.current;
+    if (!el) return;
+    el.focus();
+    const len = el.value.length;
+    try {
+      el.setSelectionRange(len, len);
+    } catch {
+      /* unsupported on some input types */
+    }
   }, []);
 
+  // Only adopt a new default flag when the field is empty (address country changed).
   React.useEffect(() => {
-    setCountry(defaultCountry);
+    if (!valueRef.current.trim()) {
+      setCountry(defaultCountry);
+    }
   }, [defaultCountry]);
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     if (clampEpoch === 0) return;
     restoreFocusAfterRemount();
+    requestAnimationFrame(restoreFocusAfterRemount);
   }, [clampEpoch, restoreFocusAfterRemount]);
 
   const activeCountry = country ?? defaultCountry;
@@ -91,25 +95,39 @@ export function PhoneNumberInput({
     [inputRef, numberInputProps?.ref],
   );
 
+  const handleChange = React.useCallback(
+    (next: Value | undefined) => {
+      const raw = next ?? "";
+      const clamped = clampPhoneE164ToCountryMax(raw, activeCountry);
+      valueRef.current = clamped;
+      onChange(clamped);
+      if (raw !== clamped) {
+        setClampEpoch((epoch) => epoch + 1);
+      }
+    },
+    [activeCountry, onChange],
+  );
+
+  const handleCountryChange = React.useCallback(
+    (next: Country | undefined) => {
+      setCountry(next);
+      const current = valueRef.current;
+      if (!current.trim()) return;
+      const clamped = clampPhoneE164ToCountryMax(current, next ?? defaultCountry);
+      if (clamped === current) return;
+      valueRef.current = clamped;
+      onChange(clamped);
+    },
+    [defaultCountry, onChange],
+  );
+
   return (
     <PhoneInput
       key={`phone-clamp-${clampEpoch}`}
       value={(value || undefined) as Value | undefined}
-      onChange={(next) => {
-        const raw = next ?? "";
-        const clamped = clampPhoneE164ToCountryMax(raw, activeCountry);
-        onChange(clamped);
-        if (raw !== clamped) {
-          setClampEpoch((epoch) => epoch + 1);
-        }
-      }}
+      onChange={handleChange}
       onBlur={onBlur}
-      onCountryChange={(next) => {
-        setCountry(next);
-        if (value) {
-          onChange(clampPhoneE164ToCountryMax(value, next ?? defaultCountry));
-        }
-      }}
+      onCountryChange={handleCountryChange}
       international
       limitMaxLength
       defaultCountry={defaultCountry}
