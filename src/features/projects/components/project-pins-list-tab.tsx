@@ -1388,7 +1388,7 @@ const ProjectPinsListTab = ({
     },
   ];
   return (
-    <div className="min-w-0 ">
+    <div className="min-w-0 w-full ">
       {dialogVisible && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-99 px-4">
           <div className="w-full max-w-md bg-white p-6 rounded-lg dark:bg-slate-950">
@@ -1689,220 +1689,226 @@ const ProjectPinsListTab = ({
       {/* ── Sticky header: title + filters (single responsive row) ── */}
       <div className="sticky top-0 z-10 shrink-0 divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-950">
 
-      <div className="flex min-w-0 flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        {/* Title + subtitle */}
-        <div className="min-w-0 shrink-0">
-          <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-            {t("title")}
-          </h2>
-          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-            {t("subtitle")}
-          </p>
-        </div>
+        <div className="flex min-w-0 flex-col gap-3 px-4 lg:px-6 py-3 lg:flex-row sm:items-center sm:justify-between sm:gap-4 w-full">
+          {/* Title + subtitle */}
+          <div className="min-w-0 shrink-0">
+            <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+              {t("title")}
+            </h2>
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+              {t("subtitle")}
+            </p>
+          </div>
 
-        {/* Filters — wrap on mobile, single row on sm+ */}
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <ListPageSearchField
-            value={search}
-            onCommit={commitSearch}
-            placeholder={t("searchPlaceholder")}
-            ariaLabel={t("searchAria")}
-            className="w-full min-w-0 sm:w-48"
-          />
-          <CheckmarkSelect
-            listLabel={t("quoteStatus")}
-            buttonAriaLabel={t("quoteStatus")}
-            options={QuoteFilerOptions}
-            value={selectedQuoteStatus}
-            emptyLabel={t("quoteStatus")}
-            className="min-w-0 flex-1 sm:flex-none sm:w-36"
-            onChange={(o) => {
-              setSelectedQuoteStatus(o);
-            }}
-            clearable
-          />
-          <CheckmarkSelect
-            options={jobStatus}
-            listLabel={t("pinsStatus")}
-            buttonAriaLabel={t("pinsStatus")}
-            emptyLabel={t("pinsStatus")}
-            clearable
-            className="min-w-0 flex-1 sm:flex-none sm:w-36"
-            value={selectedJobStatus}
-            onChange={(e) => {
-              setSelectedJobStatus(e);
-            }}
-          />
-          <CheckmarkSelect
-            listLabel={t("filterLevel")}
-            buttonAriaLabel={t("filterLevel")}
-            options={levelOptions}
-            value={levelFilter != null ? String(levelFilter) : ""}
-            emptyLabel={t("filterAllLevels")}
-            portaled
-            searchable
-            clearable
-            className="min-w-0 flex-1 sm:flex-none sm:w-36"
-            onChange={(v) => {
-              setLevelFilter(v ? Number.parseInt(v, 10) : undefined);
-              setPlotFilter(undefined);
-            }}
-          />
-
-          <CheckmarkSelect
-            listLabel={t("filterPlot")}
-            buttonAriaLabel={t("filterPlot")}
-            options={plotOptions}
-            value={plotFilter != null ? String(plotFilter) : ""}
-            emptyLabel={t("filterAllPlots")}
-            portaled
-            searchable
-            clearable
-            disabled={plotOptions.length === 0}
-            className="min-w-0 flex-1 sm:flex-none sm:w-36"
-            onChange={(v) =>
-              setPlotFilter(v ? Number.parseInt(v, 10) : undefined)
-            }
-          />
-        </div>
-      </div>
-      {selectedIds.size > 0 && <div className="p-4 mb-2">
-        <div className="bg-white drak:bg-slate-900/20 p-2 sm:px-4 sm:py-2  dark:bg-slate-900/20 border dark:border-slate-700/80  rounded-lg border-slate-200/90 flex items-center justify-between gap-3 overflow-hidden">
-          <div className="flex items-center  gap-4">
-            <span className="shrink-0 whitespace-nowrap rounded-md bg-[color:var(--dash-accent,#111)]/10 px-2 py-1 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-100">
-              {selectedIds.size} {selectedIds.size === 1 ? "pin" : "pins"}{" "}
-              selected
-            </span>
-            <div className="bg-slate-200  h-4"></div>
+          {/* Filters — wrap on mobile, single row on sm+ */}
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <ListPageSearchField
+              value={search}
+              onCommit={commitSearch}
+              placeholder={t("searchPlaceholder")}
+              ariaLabel={t("searchAria")}
+              className="w-full min-w-0 sm:w-48"
+            />
             <CheckmarkSelect
-              listLabel={t("massAction")}
-              buttonAriaLabel={t("massAction")}
-              options={massActionOptions}
-              emptyLabel={t("selectAction")}
-              className="w-42"
-              value={selectedAction}
+              listLabel={t("quoteStatus")}
+              buttonAriaLabel={t("quoteStatus")}
+              options={QuoteFilerOptions}
+              value={selectedQuoteStatus}
+              emptyLabel={t("quoteStatus")}
+              className="min-w-0 flex-1 sm:flex-none sm:w-36"
+              onChange={(o) => {
+                setSelectedQuoteStatus(o);
+              }}
               clearable
-              size="sm"
-              portaled
+            />
+            <CheckmarkSelect
+              options={jobStatus}
+              listLabel={t("pinsStatus")}
+              buttonAriaLabel={t("pinsStatus")}
+              emptyLabel={t("pinsStatus")}
+              clearable
+              className="min-w-0 flex-1 sm:flex-none sm:w-36"
+              value={selectedJobStatus}
               onChange={(e) => {
-                setSelectedAction(e);
+                setSelectedJobStatus(e);
               }}
             />
-            {selectedAction && (
-              <div className="flex items-center gap-3">
-                <CheckmarkSelect
-                  listLabel={t("actionField")}
-                  buttonAriaLabel={t("actionField")}
-                  options={actionFields}
-                  emptyLabel={t("selectField")}
-                  value={selectedActionField}
-                  clearable
-                  size="sm"
-                  portaled
-                  className="w-40"
-                  onChange={(e) => {
-                    setSelectedActionField(e);
-                    setSelectedFormId("");
-                    setSelectedVariation("");
-                    setSelectedQuantity("");
-                  }}
-                />
+            <CheckmarkSelect
+              listLabel={t("filterLevel")}
+              buttonAriaLabel={t("filterLevel")}
+              options={levelOptions}
+              value={levelFilter != null ? String(levelFilter) : ""}
+              emptyLabel={t("filterAllLevels")}
+              portaled
+              searchable
+              clearable
+              className="min-w-0 flex-1 sm:flex-none sm:w-36"
+              onChange={(v) => {
+                setLevelFilter(v ? Number.parseInt(v, 10) : undefined);
+                setPlotFilter(undefined);
+              }}
+            />
 
-                {selectedActionField === "update_form" && (
+            <CheckmarkSelect
+              listLabel={t("filterPlot")}
+              buttonAriaLabel={t("filterPlot")}
+              options={plotOptions}
+              value={plotFilter != null ? String(plotFilter) : ""}
+              emptyLabel={t("filterAllPlots")}
+              portaled
+              searchable
+              clearable
+              disabled={plotOptions.length === 0}
+              className="min-w-0 flex-1 sm:flex-none sm:w-36"
+              onChange={(v) =>
+                setPlotFilter(v ? Number.parseInt(v, 10) : undefined)
+              }
+            />
+          </div>
+        </div>
+        {selectedIds.size > 0 && <div className="px-4 lg:px-6 py-2 mb-2">
+          <div className="bg-white drak:bg-slate-900/20 p-2 sm:px-4 sm:py-2  dark:bg-slate-900/20 border dark:border-slate-700/80  rounded-lg border-slate-200/90 flex items-center justify-between gap-3 overflow-hidden">
+            <div className="flex items-center  gap-4">
+              <span className="shrink-0 whitespace-nowrap rounded-md bg-[color:var(--dash-accent,#111)]/10 px-2 py-1 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-100">
+                {selectedIds.size} {selectedIds.size === 1 ? "pin" : "pins"}{" "}
+                selected
+              </span>
+              <div className="bg-slate-200  h-4"></div>
+              <CheckmarkSelect
+                listLabel={t("massAction")}
+                buttonAriaLabel={t("massAction")}
+                options={massActionOptions}
+                emptyLabel={t("selectAction")}
+                className="w-42"
+                value={selectedAction}
+                clearable
+                size="sm"
+                portaled
+                onChange={(e) => {
+                  setSelectedAction(e);
+                }}
+              />
+              {selectedAction && (
+                <div className="flex items-center gap-3">
                   <CheckmarkSelect
-                    listLabel="Form"
-                    buttonAriaLabel="Form"
-                    options={formOptions}
-                    emptyLabel={loadingForms ? "Loading..." : "Select Form"}
-                    value={selectedFormId}
-                    clearable
-                    size="sm"
-                    portaled
-                    className="w-44"
-                    disabled={loadingForms}
-                    onChange={(e) => setSelectedFormId(e)}
-                  />
-                )}
-
-                {selectedActionField === "update_variation" && (
-                  <CheckmarkSelect
-                    listLabel="Variation"
-                    buttonAriaLabel="Variation"
-                    options={[
-                      { value: "true", label: "Yes" },
-                      { value: "false", label: "No" },
-                    ]}
-                    emptyLabel="Select Variation"
-                    value={selectedVariation}
+                    listLabel={t("actionField")}
+                    buttonAriaLabel={t("actionField")}
+                    options={actionFields}
+                    emptyLabel={t("selectField")}
+                    value={selectedActionField}
                     clearable
                     size="sm"
                     portaled
                     className="w-40"
-                    onChange={(e) => setSelectedVariation(e)}
+                    onChange={(e) => {
+                      setSelectedActionField(e);
+                      setSelectedFormId("");
+                      setSelectedVariation("");
+                      setSelectedQuantity("");
+                    }}
                   />
-                )}
 
-                {selectedActionField === "update_quantity" && (
-                  <input
-                    type="number"
-                    min="1"
-                    value={selectedQuantity}
-                    onChange={(e) => setSelectedQuantity(e.target.value)}
-                    className={cn(
-                      surfaceInputClassName,
-                      "w-24 px-3 h-8 py-1 text-sm rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100",
-                    )}
-                    placeholder="Qty"
-                  />
-                )}
+                  {selectedActionField === "update_form" && (
+                    <CheckmarkSelect
+                      listLabel="Form"
+                      buttonAriaLabel="Form"
+                      options={formOptions}
+                      emptyLabel={loadingForms ? "Loading..." : "Select Form"}
+                      value={selectedFormId}
+                      clearable
+                      size="sm"
+                      portaled
+                      className="w-44"
+                      disabled={loadingForms}
+                      onChange={(e) => setSelectedFormId(e)}
+                    />
+                  )}
 
-                <AppButton
-                  variant="primary"
-                  size="sm"
-                  onClick={handleApplyMassUpdate}
-                  loading={isSubmitting}
-                  disabled={
-                    isSubmitting ||
-                    !selectedActionField ||
-                    (selectedActionField === "update_form" && !selectedFormId) ||
-                    (selectedActionField === "update_variation" && !selectedVariation) ||
-                    (selectedActionField === "update_quantity" && !selectedQuantity)
+                  {selectedActionField === "update_variation" && (
+                    <CheckmarkSelect
+                      listLabel="Variation"
+                      buttonAriaLabel="Variation"
+                      options={[
+                        { value: "true", label: "Yes" },
+                        { value: "false", label: "No" },
+                      ]}
+                      emptyLabel="Select Variation"
+                      value={selectedVariation}
+                      clearable
+                      size="sm"
+                      portaled
+                      className="w-40"
+                      onChange={(e) => setSelectedVariation(e)}
+                    />
+                  )}
+
+                  {selectedActionField === "update_quantity" && (
+                    <input
+                      type="number"
+                      min="1"
+                      max={200}
+                      value={selectedQuantity}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        if (raw === "") { setSelectedQuantity(""); return; }
+                        const clamped = Math.min(200, Math.max(1, Number(raw)));
+                        setSelectedQuantity(String(clamped));
+                      }}
+                      className={cn(
+                        surfaceInputClassName,
+                        "w-24 px-3 h-8 py-1 text-sm rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100",
+                      )}
+                      placeholder="Qty"
+                    />
+                  )}
+
+                  <AppButton
+                    variant="primary"
+                    size="sm"
+                    onClick={handleApplyMassUpdate}
+                    loading={isSubmitting}
+                    disabled={
+                      isSubmitting ||
+                      !selectedActionField ||
+                      (selectedActionField === "update_form" && !selectedFormId) ||
+                      (selectedActionField === "update_variation" && !selectedVariation) ||
+                      (selectedActionField === "update_quantity" && !selectedQuantity)
+                    }
+                  >
+                    Apply
+                  </AppButton>
+
+                </div>
+              )}
+            </div>
+
+
+            {effectiveSelectedIds.size > 0 && selectedQuoteStatus == "approved" && (
+              <AppButton
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  const todoOption = jobStatusOptions.find((opt) =>
+                    opt.label.toLowerCase().includes("to do") || opt.label.toLowerCase().includes("todo"),
+                  ) ?? jobStatusOptions[0];
+
+                  if (todoOption) {
+                    setDialogJobStatusId(Number.parseInt(todoOption.value, 10));
+                    setValue("job_status", todoOption.value, { shouldValidate: true });
                   }
-                >
-                  Apply
-                </AppButton>
 
-              </div>
+                  if (alreadyJobPins.length > 0) {
+                    setJobConflictWarning(true);
+                  } else {
+                    setDialogVisible(true);
+                  }
+                }}
+              >
+                Create Job
+              </AppButton>
             )}
           </div>
-
-
-          {effectiveSelectedIds.size > 0  && selectedQuoteStatus == "approved" && (
-            <AppButton
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                const todoOption = jobStatusOptions.find((opt) =>
-                  opt.label.toLowerCase().includes("to do") || opt.label.toLowerCase().includes("todo"),
-                ) ?? jobStatusOptions[0];
-
-                if (todoOption) {
-                  setDialogJobStatusId(Number.parseInt(todoOption.value, 10));
-                  setValue("job_status", todoOption.value, { shouldValidate: true });
-                }
-
-                if (alreadyJobPins.length > 0) {
-                  setJobConflictWarning(true);
-                } else {
-                  setDialogVisible(true);
-                }
-              }}
-            >
-              Create Job
-            </AppButton>
-          )}
-        </div>
-      </div>}
+        </div>}
 
       </div>{/* end sticky header */}
 
@@ -1928,7 +1934,7 @@ const ProjectPinsListTab = ({
           />
         ) : (
           <div className="mt-2">
-            <label className="inline-flex shrink-0 items-center gap-2 cursor-pointer px-6 py-2">
+            <label className="inline-flex shrink-0 items-center gap-2 cursor-pointer px-4 lg:px-6 py-2">
               <GroupCheckbox
                 ids={selectablePinIds}
                 selectedIds={effectiveSelectedIds}
@@ -1938,7 +1944,7 @@ const ProjectPinsListTab = ({
                 {allSelected ? "Deselect All" : "Select All"}
               </span>
             </label>
-            <div className="space-y-8 px-4 py-4 sm:px-6 sm:py-2">
+            <div className="space-y-8 px-4 lg:px-6 py-4 sm:py-2">
               {loadError && locations.length > 0 && (
                 <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
                   {loadError}

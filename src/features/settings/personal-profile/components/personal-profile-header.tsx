@@ -21,7 +21,7 @@ const PersonalProfileHeader = ({ isEditing, setIsEditing, showEdit = true, submi
     ];
 
     return (
-        <div className="sticky -top-5 z-20 -mx-4 -mt-5 flex items-center justify-between gap-3 bg-slate-50/95 px-4 pb-0 pt-5 backdrop-blur-sm sm:-top-6 sm:-mt-6 sm:pt-6 lg:-mx-6 lg:px-6 dark:bg-slate-950/95">
+        <div className="sticky -top-5 z-20 flex items-center justify-between gap-3 bg-slate-50/95 px-0 pb-0 pt-5 backdrop-blur-sm sm:-top-6 sm:-mt-6 sm:pt-6 dark:bg-slate-950/95">
             <AppTabs
                 tabs={tabs}
                 value={params.tab as string}
