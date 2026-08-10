@@ -13,7 +13,7 @@ import {
 import { ProjectTypeChip } from "@/features/project-types/components/project-type-chip";
 import type { ProjectType } from "@/features/project-types/types/project-type.types";
 import { formatProjectTypeLabel, normalizeProjectTypeHex } from "@/features/project-types/utils/project-type-display.util";
-import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
+import { reportLocalFormSubmitApiError, zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   SettingsDetailActions,
@@ -240,6 +240,10 @@ export function ProjectTypeSettingsPanel() {
       setFormOpen(false);
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
+    } catch (error) {
+      reportLocalFormSubmitApiError(error, (fieldErrors) => {
+        setErrors((prev) => ({ ...prev, ...fieldErrors }));
+      });
     } finally {
       setSaving(false);
     }
