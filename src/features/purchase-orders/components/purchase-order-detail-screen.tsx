@@ -122,7 +122,7 @@ export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
         />
       )}
     >
-      {({ detail, dateFmt }) => {
+      {({ detail, dateFmt, retry }) => {
         const vendorId = nestedId(detail.vendor);
         const contactId = nestedId(detail.contact as number | PurchaseOrderContactRef | null | undefined);
         return (
@@ -134,6 +134,7 @@ export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
             dueFmt={dueFmt}
             statusLabel={statusLabel(detail.status)}
             activeTab={activeTab}
+            onSaved={retry}
           />
         );
       }}

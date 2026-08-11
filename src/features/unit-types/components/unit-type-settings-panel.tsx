@@ -13,7 +13,7 @@ import {
 } from "@/features/unit-types/api/unit-type.api";
 import type { UnitType } from "@/features/unit-types/types/unit-type.types";
 import { formatUnitTypeLabel, formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
-import { zTrimmedNonEmpty } from "@/shared/form";
+import { reportLocalFormSubmitApiError, zTrimmedNonEmpty } from "@/shared/form";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   getApiErrorDisplayMessage,
@@ -271,6 +271,13 @@ export function UnitTypeSettingsPanel() {
       setFormOpen(false);
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
+    } catch (error) {
+      reportLocalFormSubmitApiError(
+        error,
+        (fieldErrors) => setErrors((prev) => ({ ...prev, ...fieldErrors })),
+        undefined,
+        { fieldMap: { short_form: "shortForm" } },
+      );
     } finally {
       setSaving(false);
     }

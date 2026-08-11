@@ -1,13 +1,16 @@
 "use client";
 
+import * as React from "react";
 import { useTranslations } from "next-intl";
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { ProjectTypeChip } from "@/features/project-types/components/project-type-chip";
 import type { ProjectType } from "@/features/project-types/types/project-type.types";
+import { updateProject } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { resolveProjectTypeChipData } from "@/features/projects/utils/project-type-id.util";
 import { routes } from "@/shared/config/routes";
+import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import {
   DetailMetricCard,
   DetailMetricsGrid,
@@ -15,7 +18,10 @@ import {
   DetailPanelCard,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
+import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
+import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
+import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 
 function projectSiteListRows(
   detail: Project,
@@ -38,21 +44,40 @@ function projectSiteListRows(
   return rows;
 }
 
+function resolveProjectStatusId(detail: Project): string {
+  const status = detail.project_status;
+  if (typeof status === "object" && status !== null && typeof status.id === "number") {
+    return String(status.id);
+  }
+  if (typeof status === "number" && Number.isFinite(status)) {
+    return String(status);
+  }
+  return "";
+}
+
 export function ProjectDetailBody({
   detail,
   dateFmt,
   dateOnlyFmt,
   clientName,
   projectTypeById = {},
+  statusOptions = [],
+  siteOptions = [],
+  onSaved,
 }: {
   detail: Project;
   dateFmt: Intl.DateTimeFormat;
   dateOnlyFmt: Intl.DateTimeFormat;
   clientName: string | null;
   projectTypeById?: Record<number, ProjectType>;
+  statusOptions?: WorkflowColourStatus[];
+  siteOptions?: CheckmarkSelectOption[];
+  /** Refresh detail after a successful quick-edit PATCH. */
+  onSaved?: () => void;
 }) {
   const t = useTranslations("Dashboard.projects");
   const tMeta = useTranslations("Dashboard.common.detail");
+  const tActions = useTranslations("Dashboard.common.actions");
   const clientId = getProjectClientId(detail);
   const projectTypeChip = resolveProjectTypeChipData(detail, projectTypeById);
 
@@ -73,17 +98,52 @@ export function ProjectDetailBody({
       }
     : null;
 
+  const projectStatusSelectOptions = React.useMemo(
+    () => statusOptions.map((s) => ({ value: String(s.id), label: s.status_name })),
+    [statusOptions],
+  );
+
+  async function patchField(body: Parameters<typeof updateProject>[1]) {
+    try {
+      await updateProject(detail.id, body);
+      toastSuccess(t("updatedToast"));
+      onSaved?.();
+    } catch (error) {
+      toastApiError(error, t("toggleActiveError"));
+      throw error;
+    }
+  }
+
   return (
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
         <DetailPanelCard title={t("detail.sectionOverview")}>
-          <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-3">
-            <DetailMetricCard label={t("table.status")}>
-              <WorkflowColourStatusChip row={statusChip} fallbackLabel="—" />
-            </DetailMetricCard>
-            <DetailMetricCard label={t("fields.name")}>
+          <DetailMetricsGrid>
+            {projectStatusSelectOptions.length > 0 ? (
+              <DetailEditableField
+                label={t("table.status")}
+                value={resolveProjectStatusId(detail)}
+                kind="select"
+                options={projectStatusSelectOptions}
+                editAriaLabel={tActions("edit")}
+                onSave={(next) => patchField({ project_status: Number(next) })}
+              >
+                <WorkflowColourStatusChip row={statusChip} fallbackLabel="—" />
+              </DetailEditableField>
+            ) : (
+              <DetailMetricCard label={t("table.status")}>
+                <WorkflowColourStatusChip row={statusChip} fallbackLabel="—" />
+              </DetailMetricCard>
+            )}
+            <DetailEditableField
+              label={t("fields.name")}
+              value={detail.name}
+              kind="text"
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchField({ name: next.trim() })}
+            >
               <span className="break-words">{detail.name}</span>
-            </DetailMetricCard>
+            </DetailEditableField>
             <DetailMetricCard label={t("fields.client")}>
               {clientId ? (
                 <DetailEntityLink
@@ -99,19 +159,24 @@ export function ProjectDetailBody({
             <DetailMetricCard label={t("fields.projectType")}>
               {projectTypeChip ? <ProjectTypeChip row={projectTypeChip} /> : <span>—</span>}
             </DetailMetricCard>
-            <DetailMetricCard label={t("fields.startDate")}>
-              {start ? dateOnlyFmt.format(new Date(`${start}T12:00:00`)) : "—"}
-            </DetailMetricCard>
-            <DetailMetricCard label={t("fields.endDate")}>
-              {end ? dateOnlyFmt.format(new Date(`${end}T12:00:00`)) : "—"}
-            </DetailMetricCard>
-            {/* {detail.status ? (
-              <DetailMetricCard label={t("table.status")}>
-                <span className="inline-flex max-w-full truncate rounded-full border border-black/10 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm dark:bg-slate-800 dark:text-slate-200">
-                  {detail.status}
-                </span>
-              </DetailMetricCard>
-            ) : null} */}
+            <DetailEditableField
+              label={t("fields.startDate")}
+              value={start}
+              kind="text"
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchField({ start_date: next.trim() })}
+            >
+              {start ? dateOnlyFmt.format(new Date(`${start}T12:00:00`)) : null}
+            </DetailEditableField>
+            <DetailEditableField
+              label={t("fields.endDate")}
+              value={end}
+              kind="text"
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchField({ end_date: next.trim() || null })}
+            >
+              {end ? dateOnlyFmt.format(new Date(`${end}T12:00:00`)) : null}
+            </DetailEditableField>
             <DetailMetricCard label={t("fields.manager")}>
               {(detail.manager_detail ?? []).map((manager, index) => (
                 <span key={index}>
@@ -124,32 +189,48 @@ export function ProjectDetailBody({
         </DetailPanelCard>
 
         <DetailPanelCard title={t("detail.panelDescription")}>
-          {detail.description?.trim() ? (
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-              {detail.description}
-            </p>
-          ) : (
-            <p className="text-sm font-normal text-slate-500 dark:text-slate-400">—</p>
-          )}
+          <DetailEditableField
+            label={<span className="sr-only">{t("fields.description")}</span>}
+            value={detail.description ?? ""}
+            kind="text"
+            editAriaLabel={tActions("edit")}
+            onSave={(next) => patchField({ description: next })}
+          >
+            {detail.description?.trim() ? (
+              <span className="whitespace-pre-wrap font-normal leading-relaxed">{detail.description}</span>
+            ) : null}
+          </DetailEditableField>
         </DetailPanelCard>
 
         <DetailPanelCard title={t("detail.panelSites")}>
-          {siteRows.length === 0 ? (
-            <p className="text-sm font-normal text-slate-500 dark:text-slate-400">{t("detail.sitesEmpty")}</p>
-          ) : (
-            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {siteRows.map((row) => (
-                <li key={row.id} className="min-w-0 border-t border-slate-200/80 pt-3 first:border-t-0 first:pt-0 dark:border-slate-800">
-                  <DetailEntityLink
-                    href={`${routes.dashboard.sites}/${row.id}`}
-                    className="block min-w-0 font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                  >
-                    <span className="break-words">{row.label}</span>
-                  </DetailEntityLink>
-                </li>
-              ))}
-            </ul>
-          )}
+          <DetailEditableField
+            label={t("fields.sites")}
+            kind="multiselect"
+            values={siteRows.map((row) => String(row.id))}
+            options={siteOptions}
+            editAriaLabel={tActions("edit")}
+            empty="—"
+            onSaveValues={(next) =>
+              patchField({
+                sites: next.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0),
+              })
+            }
+          >
+            {siteRows.length === 0 ? null : (
+              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {siteRows.map((row) => (
+                  <li key={row.id} className="min-w-0 border-t border-slate-200/80 pt-3 first:border-t-0 first:pt-0 dark:border-slate-800">
+                    <DetailEntityLink
+                      href={`${routes.dashboard.sites}/${row.id}`}
+                      className="block min-w-0 font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                    >
+                      <span className="break-words">{row.label}</span>
+                    </DetailEntityLink>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </DetailEditableField>
         </DetailPanelCard>
 
         <DetailSystemMetadataSection

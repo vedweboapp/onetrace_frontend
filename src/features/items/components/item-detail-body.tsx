@@ -6,10 +6,11 @@ import { fetchGroup } from "@/features/groups/api/group.api";
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { InstallationTypeChip } from "@/features/installation-types/components/installation-type-chip";
 import type { Item } from "@/features/items/types/item.types";
-import { fetchItemsPage } from "@/features/items/api/item.api";
-import { resolveInstallationTypeChipData } from "@/features/items/utils/item-installation-type.util";
-import { resolveUnitTypeShortLabel } from "@/features/items/utils/item-unit-type.util";
+import { fetchItemsPage, updateItem } from "@/features/items/api/item.api";
+import { getInstallationTypeId, resolveInstallationTypeChipData } from "@/features/items/utils/item-installation-type.util";
+import { getUnitTypeId, resolveUnitTypeShortLabel } from "@/features/items/utils/item-unit-type.util";
 import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
+import { fetchInstallationTypesPage } from "@/features/installation-types/api/installation-type.api";
 import type { UnitType } from "@/features/unit-types/types/unit-type.types";
 import type { InstallationCostType } from "@/features/items/types/item.types";
 import {
@@ -18,7 +19,7 @@ import {
   resolveItemAttachmentUrl,
 } from "@/features/items/utils/item-attachment-display.util";
 import { routes } from "@/shared/config/routes";
-
+import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import {
   DetailLinkedTable,
   DetailLinkedTableRow,
@@ -33,6 +34,7 @@ import {
   DetailStatusMetric,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
+import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useOrgCurrency } from "@/shared/money/use-org-currency";
 
 function installationCostTypeLabel(
@@ -55,23 +57,39 @@ function formatValueWithUnit(value: string | number | null | undefined, unit: st
   return suffix ? `${raw} ${suffix}` : raw;
 }
 
+function parseRequiredNumber(next: string): number {
+  const n = Number(String(next).trim());
+  if (!Number.isFinite(n)) {
+    throw new Error("Invalid number");
+  }
+  return n;
+}
+
 export function ItemDetailBody({
   detail,
   dateFmt,
+  onSaved,
 }: {
   detail: Item;
   dateFmt: Intl.DateTimeFormat;
+  /** Refresh detail after a successful quick-edit PATCH. */
+  onSaved?: () => void;
 }) {
   const t = useTranslations("Dashboard.items");
   const tMeta = useTranslations("Dashboard.common.detail");
+  const tActions = useTranslations("Dashboard.common.actions");
   const tStatus = useTranslations("Dashboard.clients.status");
   const { formatMoneyValue: moneyDisplay } = useOrgCurrency();
   const [childItemsById, setChildItemsById] = React.useState<Map<number, Item>>(new Map());
   const [groupName, setGroupName] = React.useState<string | null>(null);
   const [unitTypesById, setUnitTypesById] = React.useState<Record<number, Pick<UnitType, "id" | "name" | "short_form">>>({});
+  const [unitTypeOptions, setUnitTypeOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [installationTypeOptions, setInstallationTypeOptions] = React.useState<{ value: string; label: string }[]>([]);
 
   const groupId = typeof detail.group === "number" && Number.isFinite(detail.group) && detail.group > 0 ? detail.group : null;
   const installationTypeChip = resolveInstallationTypeChipData(detail.installation_type);
+  const unitTypeId = getUnitTypeId(detail.unit_type);
+  const installationTypeId = getInstallationTypeId(detail.installation_type);
   const unitTypeLabel = resolveUnitTypeShortLabel(detail.unit_type, unitTypesById);
   const components = detail.components ?? [];
   const attachments = detail.is_composite
@@ -81,6 +99,22 @@ export function ItemDetailBody({
   const hasInstallationCost =
     detail.is_composite &&
     (installationCostValue !== "—" || Boolean(detail.installation_cost_type?.trim()));
+  const installationHoursRaw =
+    detail.installation_hours != null && String(detail.installation_hours).trim() !== ""
+      ? String(detail.installation_hours).trim()
+      : null;
+  const hasInstallationHours = Boolean(detail.is_composite && installationHoursRaw);
+
+  async function patchField(body: Parameters<typeof updateItem>[1]) {
+    try {
+      await updateItem(detail.id, body);
+      toastSuccess(t("modal.updatedToast"));
+      onSaved?.();
+    } catch (error) {
+      toastApiError(error, t("loadError"));
+      throw error;
+    }
+  }
 
   React.useEffect(() => {
     if (!detail.is_composite || components.length === 0) {
@@ -122,10 +156,6 @@ export function ItemDetailBody({
   }, [groupId]);
 
   React.useEffect(() => {
-    if (detail.unit_type == null || typeof detail.unit_type !== "number") {
-      setUnitTypesById({});
-      return;
-    }
     let cancelled = false;
     (async () => {
       try {
@@ -134,20 +164,50 @@ export function ItemDetailBody({
         setUnitTypesById(
           Object.fromEntries(items.map((u) => [u.id, { id: u.id, name: u.name, short_form: u.short_form }])),
         );
+        setUnitTypeOptions(items.map((u) => ({ value: String(u.id), label: u.name?.trim() || `#${u.id}` })));
       } catch {
-        if (!cancelled) setUnitTypesById({});
+        if (!cancelled) {
+          setUnitTypesById({});
+          setUnitTypeOptions([]);
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [detail.id, detail.unit_type]);
+  }, [detail.id]);
+
+  React.useEffect(() => {
+    if (!detail.is_composite) {
+      setInstallationTypeOptions([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchInstallationTypesPage(1, 500, { is_active: true });
+        if (!cancelled) {
+          setInstallationTypeOptions(
+            items.map((row) => ({
+              value: String(row.id),
+              label: row.installation_type?.trim() || `#${row.id}`,
+            })),
+          );
+        }
+      } catch {
+        if (!cancelled) setInstallationTypeOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [detail.id, detail.is_composite]);
 
   return (
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
         <DetailPanelCard title={t("detail.sectionOverview")}>
-          <DetailMetricsGrid className="lg:grid-cols-2">
+          <DetailMetricsGrid>
             {typeof detail.is_active === "boolean" ? (
               <DetailStatusMetric
                 label="Status"
@@ -156,29 +216,83 @@ export function ItemDetailBody({
                 inactiveLabel={tStatus("inactive")}
               />
             ) : null}
-            <DetailMetricCard label={t("detail.sku")}>
-              <span className="font-mono">{detail.sku?.trim() ? detail.sku : "—"}</span>
-            </DetailMetricCard>
-            <DetailMetricCard label={t("detail.quantity")}>
+            <DetailEditableField
+              label={t("detail.sku")}
+              value={detail.sku ?? ""}
+              kind="text"
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchField({ sku: next.trim() })}
+            >
+              <span className="font-mono">{detail.sku?.trim() ? detail.sku : null}</span>
+            </DetailEditableField>
+            <DetailEditableField
+              label={t("detail.quantity")}
+              value={detail.quantity != null ? String(detail.quantity) : ""}
+              kind="text"
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchField({ quantity: parseRequiredNumber(next) })}
+            >
               <span className="tabular-nums">
-                {unitTypeLabel !== "—" ? formatQuantityWithUnit(detail.quantity, unitTypeLabel) : (detail.quantity ?? "—")}
+                {unitTypeLabel !== "—"
+                  ? formatQuantityWithUnit(detail.quantity, unitTypeLabel)
+                  : (detail.quantity ?? null)}
               </span>
-            </DetailMetricCard>
-            {unitTypeLabel !== "—" ? (
+            </DetailEditableField>
+            {unitTypeOptions.length > 0 ? (
+              <DetailEditableField
+                label={t("detail.unitType")}
+                value={unitTypeId != null ? String(unitTypeId) : ""}
+                kind="select"
+                options={unitTypeOptions}
+                editAriaLabel={tActions("edit")}
+                onSave={(next) => patchField({ unit_type: Number(next) })}
+              >
+                <span>{unitTypeLabel !== "—" ? unitTypeLabel : null}</span>
+              </DetailEditableField>
+            ) : unitTypeLabel !== "—" ? (
               <DetailMetricCard label={t("detail.unitType")}>
                 <span>{unitTypeLabel}</span>
               </DetailMetricCard>
             ) : null}
-            <DetailMetricCard label={t("detail.reorder")}>
-              <span className="tabular-nums">{detail.reorder_quantity ?? "—"}</span>
-            </DetailMetricCard>
-            <DetailMetricCard label={t("detail.cost")}>
+            <DetailEditableField
+              label={t("detail.reorder")}
+              value={detail.reorder_quantity != null ? String(detail.reorder_quantity) : ""}
+              kind="text"
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchField({ reorder_quantity: parseRequiredNumber(next) })}
+            >
+              <span className="tabular-nums">{detail.reorder_quantity ?? null}</span>
+            </DetailEditableField>
+            <DetailEditableField
+              label={t("detail.cost")}
+              value={detail.cost_price != null ? String(detail.cost_price) : ""}
+              kind="text"
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchField({ cost_price: parseRequiredNumber(next) })}
+            >
               <span className="tabular-nums">{moneyDisplay(detail.cost_price)}</span>
-            </DetailMetricCard>
-            <DetailMetricCard label={t("detail.sell")}>
+            </DetailEditableField>
+            <DetailEditableField
+              label={t("detail.sell")}
+              value={detail.selling_price != null ? String(detail.selling_price) : ""}
+              kind="text"
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchField({ selling_price: parseRequiredNumber(next) })}
+            >
               <span className="tabular-nums">{moneyDisplay(detail.selling_price)}</span>
-            </DetailMetricCard>
-            {installationTypeChip ? (
+            </DetailEditableField>
+            {installationTypeChip && installationTypeOptions.length > 0 ? (
+              <DetailEditableField
+                label={t("detail.installationType")}
+                value={installationTypeId != null ? String(installationTypeId) : ""}
+                kind="select"
+                options={installationTypeOptions}
+                editAriaLabel={tActions("edit")}
+                onSave={(next) => patchField({ installation_type: Number(next) })}
+              >
+                <InstallationTypeChip row={installationTypeChip} />
+              </DetailEditableField>
+            ) : installationTypeChip ? (
               <DetailMetricCard label={t("detail.installationType")}>
                 <InstallationTypeChip row={installationTypeChip} />
               </DetailMetricCard>
@@ -191,6 +305,17 @@ export function ItemDetailBody({
                     : installationCostTypeLabel(detail.installation_cost_type, (key) => t(`detail.${key}`))}
                 </span>
               </DetailMetricCard>
+            ) : null}
+            {hasInstallationHours ? (
+              <DetailEditableField
+                label={t("detail.installationHours")}
+                value={installationHoursRaw ?? ""}
+                kind="text"
+                editAriaLabel={tActions("edit")}
+                onSave={(next) => patchField({ installation_hours: parseRequiredNumber(next) })}
+              >
+                <span className="tabular-nums">{installationHoursRaw}</span>
+              </DetailEditableField>
             ) : null}
             {detail.length != null || detail.width != null || detail.height != null ? (
               <DetailMetricCard label={t("detail.dimensions")}>

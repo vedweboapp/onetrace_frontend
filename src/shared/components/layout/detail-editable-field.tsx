@@ -5,11 +5,12 @@ import type { ReactNode } from "react";
 import { Check, Loader2, Pencil, X } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import { CheckmarkSelect, type CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
+import { MultiCheckSelect } from "@/shared/ui/multi-check-select";
 import { PhoneNumberInput } from "@/shared/ui/phone-number-input";
 import { surfaceInputClassName } from "@/shared/ui/field-primitives";
 import { normalizePhoneForPhoneInput } from "@/shared/utils/phone-input.util";
 
-export type DetailEditableFieldKind = "text" | "email" | "tel" | "select";
+export type DetailEditableFieldKind = "text" | "email" | "tel" | "select" | "multiselect";
 
 /**
  * WMS / Zoho-style detail field: uppercase label above value.
@@ -21,9 +22,12 @@ export function DetailEditableField({
   children,
   value,
   onSave,
+  onSaveValues,
   onEdit,
   kind = "text",
   options,
+  selectSearchable = false,
+  values: multiValues,
   editAriaLabel = "Edit",
   className,
   empty = "—",
@@ -33,31 +37,42 @@ export function DetailEditableField({
   children?: ReactNode;
   /** Current string value used when opening the inline editor. */
   value?: string;
+  /** Selected values for `kind="multiselect"`. */
+  values?: string[];
   /** Persist a single-field change; enables true quick edit. */
   onSave?: (next: string) => Promise<void>;
+  /** Persist multi-select change when `kind="multiselect"`. */
+  onSaveValues?: (next: string[]) => Promise<void>;
   /** Fallback: navigate to full edit (used when `onSave` is absent). */
   onEdit?: () => void;
   kind?: DetailEditableFieldKind;
   options?: CheckmarkSelectOption[];
+  /** Enable search in select dropdown (useful for long lists like countries). */
+  selectSearchable?: boolean;
   editAriaLabel?: string;
   className?: string;
   empty?: ReactNode;
   disabled?: boolean;
 }) {
   const hasValue = children != null && children !== "";
-  const canInline = typeof onSave === "function" && !disabled;
+  const canInline =
+    !disabled &&
+    (kind === "multiselect"
+      ? typeof onSaveValues === "function"
+      : typeof onSave === "function");
   const canNavigate = typeof onEdit === "function" && !disabled && !canInline;
   const editable = canInline || canNavigate;
 
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState("");
+  const [draftValues, setDraftValues] = React.useState<string[]>([]);
   const [saving, setSaving] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const skipBlurCommit = React.useRef(false);
 
   React.useEffect(() => {
     if (!editing) return;
-    if (kind === "tel" || kind === "select") return;
+    if (kind === "tel" || kind === "select" || kind === "multiselect") return;
     const id = window.requestAnimationFrame(() => inputRef.current?.focus());
     return () => window.cancelAnimationFrame(id);
   }, [editing, kind]);
@@ -65,6 +80,11 @@ export function DetailEditableField({
   function startEdit(e?: React.SyntheticEvent) {
     e?.stopPropagation();
     if (canInline) {
+      if (kind === "multiselect") {
+        setDraftValues(multiValues ?? []);
+        setEditing(true);
+        return;
+      }
       const initial =
         kind === "tel" ? normalizePhoneForPhoneInput(value ?? "") : (value ?? "");
       setDraft(initial);
@@ -78,10 +98,29 @@ export function DetailEditableField({
     skipBlurCommit.current = true;
     setEditing(false);
     setDraft(value ?? "");
+    setDraftValues(multiValues ?? []);
   }
 
   async function commit(nextValue?: string) {
     if (!canInline || saving) return;
+    if (kind === "multiselect") {
+      const next = draftValues;
+      const prev = multiValues ?? [];
+      if (next.length === prev.length && next.every((v, i) => v === prev[i])) {
+        setEditing(false);
+        return;
+      }
+      setSaving(true);
+      try {
+        await onSaveValues?.(next);
+        setEditing(false);
+      } catch {
+        // Caller shows toast; keep editor open.
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     const next = (nextValue ?? draft).trim();
     const prev = (value ?? "").trim();
     if (next === prev) {
@@ -90,7 +129,7 @@ export function DetailEditableField({
     }
     setSaving(true);
     try {
-      await onSave(next);
+      await onSave?.(next);
       setEditing(false);
     } catch {
       // Caller shows toast; keep editor open.
@@ -116,11 +155,22 @@ export function DetailEditableField({
                 disabled={saving}
                 size="sm"
                 portaled
+                searchable={selectSearchable}
                 className="w-full"
                 onChange={(v) => {
                   setDraft(v);
                   void commit(v);
                 }}
+              />
+            ) : kind === "multiselect" && options ? (
+              <MultiCheckSelect
+                listLabel={typeof label === "string" ? label : editAriaLabel}
+                options={options}
+                values={draftValues}
+                disabled={saving}
+                portaled
+                className="w-full"
+                onChange={setDraftValues}
               />
             ) : kind === "tel" ? (
               <div className="surface-phone-root">

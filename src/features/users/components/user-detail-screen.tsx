@@ -1,13 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { Mail, Phone, User } from "lucide-react";
+import { Mail, Pencil, Phone, User } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchUserProfile } from "@/features/users/api/user.api";
+import { fetchRoles, fetchUserProfile, updateUserProfile } from "@/features/users/api/user.api";
 import type { UserProfile } from "@/features/users/types/user.types";
+import { resolveUserAddresses } from "@/features/users/utils/user-form-map";
 import { routes } from "@/shared/config/routes";
+import { DetailSystemMetadataSection, EntityDetailLoadingSkeleton } from "@/shared/components/entity";
+import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
+import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
   detailRecordSurfaceShellClassName,
   DetailMetricCard,
@@ -16,21 +20,40 @@ import {
   DetailPanelCard,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
-import { EntityDetailLoadingSkeleton } from "@/shared/components/entity";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useEntityDetailBack } from "@/shared/hooks/use-entity-detail-back";
-import { buildCurrentPageBackHref, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
-import { AppButton, EditButton, SurfaceShell } from "@/shared/ui";
+import { formatSettingsDetailDate } from "@/shared/components/settings/settings-detail-view";
+import {
+  buildCurrentPageBackHref,
+  buildPathWithStoredBack,
+} from "@/shared/utils/detail-from-list.util";
+import { AppButton, EditButton, SurfaceShell, type CheckmarkSelectOption } from "@/shared/ui";
 
 function userRoleLabel(row: UserProfile | null): string {
   if (!row?.role_detail) return "—";
-  return (
-    row.role_detail.role_name?.trim() || row.role_detail.name?.trim() || "—"
-  );
+  return row.role_detail.role_name?.trim() || row.role_detail.name?.trim() || "—";
+}
+
+function resolveBasePay(row: UserProfile): string {
+  if (row.base_pay != null && String(row.base_pay).trim() !== "") return String(row.base_pay);
+  const fromDetail = (row.user_detail as { base_pay?: unknown })?.base_pay;
+  if (fromDetail != null && String(fromDetail).trim() !== "") return String(fromDetail);
+  return "";
+}
+
+function resolveBasePayType(row: UserProfile): "fixed_amount" | "rate_per_hr" {
+  const raw =
+    row.base_pay_type ??
+    (row.user_detail as { base_pay_type?: unknown })?.base_pay_type ??
+    null;
+  return raw === "rate_per_hr" ? "rate_per_hr" : "fixed_amount";
 }
 
 export function UserDetailScreen({ userId }: { userId: number }) {
   const t = useTranslations("Dashboard.users");
+  const tMeta = useTranslations("Dashboard.common.detail");
+  const tActions = useTranslations("Dashboard.common.actions");
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -40,6 +63,29 @@ export function UserDetailScreen({ userId }: { userId: number }) {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
+  const [roleOptions, setRoleOptions] = React.useState<CheckmarkSelectOption[]>([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const roles = await fetchRoles();
+        if (!cancelled) {
+          setRoleOptions(
+            roles.map((r) => ({
+              value: String(r.id),
+              label: r.role_name?.trim() || r.name?.trim() || `Role #${r.id}`,
+            })),
+          );
+        }
+      } catch {
+        if (!cancelled) setRoleOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -69,6 +115,47 @@ export function UserDetailScreen({ userId }: { userId: number }) {
     [locale],
   );
 
+  const genderOptions = React.useMemo<CheckmarkSelectOption[]>(
+    () => [
+      { value: "Male", label: t("genders.male") },
+      { value: "Female", label: t("genders.female") },
+      { value: "Other", label: t("genders.other") },
+    ],
+    [t],
+  );
+
+  const payTypeOptions = React.useMemo<CheckmarkSelectOption[]>(
+    () => [
+      { value: "fixed_amount", label: t("fields.basePayTypeFixed") },
+      { value: "rate_per_hr", label: t("fields.basePayTypeRate") },
+    ],
+    [t],
+  );
+
+  function goEdit() {
+    router.push(
+      buildPathWithStoredBack(
+        `${pathname}/edit`,
+        buildCurrentPageBackHref(pathname, searchParams),
+      ),
+    );
+  }
+
+  async function patchField(body: Parameters<typeof updateUserProfile>[1]) {
+    try {
+      await updateUserProfile(userId, body);
+      toastSuccess(t("updatedToast"));
+      setRefreshNonce((k) => k + 1);
+    } catch (error) {
+      toastApiError(error, t("saveError"));
+      throw error;
+    }
+  }
+
+  const addresses = detail ? resolveUserAddresses(detail) : [];
+  const basePay = detail ? resolveBasePay(detail) : "";
+  const basePayType = detail ? resolveBasePayType(detail) : "fixed_amount";
+
   return (
     <div className="pb-8 sm:pb-10">
       <DetailPageHeader
@@ -85,17 +172,11 @@ export function UserDetailScreen({ userId }: { userId: number }) {
           detail ? (
             <>
               <span className="inline-flex items-center gap-1.5">
-                <User
-                  className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500"
-                  aria-hidden
-                />
+                <User className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
                 {userRoleLabel(detail)}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <Mail
-                  className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500"
-                  aria-hidden
-                />
+                <Mail className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
                 <a
                   href={`mailto:${detail.user_detail.email}`}
                   className="text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
@@ -105,10 +186,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
               </span>
               {detail.user_detail.phone_number ? (
                 <span className="inline-flex items-center gap-1.5">
-                  <Phone
-                    className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500"
-                    aria-hidden
-                  />
+                  <Phone className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
                   {detail.user_detail.phone_number}
                 </span>
               ) : null}
@@ -116,18 +194,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
           ) : undefined
         }
         actions={
-          !loading && !error && detail ? (
-            <EditButton
-              onClick={() =>
-                router.push(
-                  buildPathWithStoredBack(
-                    `${pathname}/edit`,
-                    buildCurrentPageBackHref(pathname, searchParams),
-                  ),
-                )
-              }
-            />
-          ) : null
+          !loading && !error && detail ? <EditButton onClick={goEdit} /> : null
         }
       />
 
@@ -147,45 +214,186 @@ export function UserDetailScreen({ userId }: { userId: number }) {
             </AppButton>
           </div>
         ) : detail ? (
-          <DetailPagePadding>
+          <DetailPagePadding className="!px-0 !py-0 sm:!px-0 sm:!py-0">
             <div className={detailPageStackClassName}>
-            <DetailPanelCard title={t("detail.sectionOverview")}>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <DetailMetricCard label={t("fields.firstName")}>
-                  {detail.user_detail.first_name || "—"}
-                </DetailMetricCard>
-                <DetailMetricCard label={t("fields.lastName")}>
-                  {detail.user_detail.last_name || "—"}
-                </DetailMetricCard>
-                <DetailMetricCard label={t("fields.email")}>
-                  <a
-                    href={`mailto:${detail.user_detail.email}`}
-                    className="break-all font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+              <DetailPanelCard title={t("detail.sectionOverview")} variant="flat">
+                <DetailMetricsGrid>
+                  <DetailEditableField
+                    label={t("fields.firstName")}
+                    value={detail.user_detail.first_name ?? ""}
+                    kind="text"
+                    editAriaLabel={tActions("edit")}
+                    onSave={(next) => patchField({ first_name: next })}
                   >
-                    {detail.user_detail.email}
-                  </a>
-                </DetailMetricCard>
-                <DetailMetricCard label={t("fields.phone")}>
-                  {detail.user_detail.phone_number || "—"}
-                </DetailMetricCard>
-                <DetailMetricCard label={t("fields.gender")}>
-                  {detail.user_detail.gender || "—"}
-                </DetailMetricCard>
-                <DetailMetricCard label={t("fields.role")}>
-                  {userRoleLabel(detail)}
-                </DetailMetricCard>
-                <DetailMetricCard label={t("fields.inviteStatus")}>
-                  {detail.user_detail.invite_status || "—"}
-                </DetailMetricCard>
-                <DetailMetricCard label={t("fields.invitationSentAt")}>
-                  {detail.user_detail.invitation_sent_at
-                    ? dateFmt.format(
-                        new Date(detail.user_detail.invitation_sent_at),
-                      )
-                    : "—"}
-                </DetailMetricCard>
-              </div>
-            </DetailPanelCard>
+                    {detail.user_detail.first_name || "—"}
+                  </DetailEditableField>
+                  <DetailEditableField
+                    label={t("fields.lastName")}
+                    value={detail.user_detail.last_name ?? ""}
+                    kind="text"
+                    editAriaLabel={tActions("edit")}
+                    onSave={(next) => patchField({ last_name: next })}
+                  >
+                    {detail.user_detail.last_name || "—"}
+                  </DetailEditableField>
+                  <DetailEditableField
+                    label={t("fields.email")}
+                    value={detail.user_detail.email}
+                    kind="email"
+                    editAriaLabel={tActions("edit")}
+                    onSave={(next) => patchField({ email: next })}
+                  >
+                    <a
+                      href={`mailto:${detail.user_detail.email}`}
+                      className="break-all font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {detail.user_detail.email}
+                    </a>
+                  </DetailEditableField>
+                  <DetailEditableField
+                    label={t("fields.phone")}
+                    value={detail.user_detail.phone_number ?? ""}
+                    kind="tel"
+                    editAriaLabel={tActions("edit")}
+                    onSave={(next) => patchField({ phone_number: next })}
+                  >
+                    {detail.user_detail.phone_number || "—"}
+                  </DetailEditableField>
+                  <DetailEditableField
+                    label={t("fields.gender")}
+                    value={detail.user_detail.gender ?? ""}
+                    kind="select"
+                    options={genderOptions}
+                    editAriaLabel={tActions("edit")}
+                    onSave={(next) => patchField({ gender: next })}
+                  >
+                    {detail.user_detail.gender || "—"}
+                  </DetailEditableField>
+                  <DetailEditableField
+                    label={t("fields.role")}
+                    value={detail.role_detail?.id ? String(detail.role_detail.id) : ""}
+                    kind="select"
+                    options={roleOptions}
+                    editAriaLabel={tActions("edit")}
+                    onSave={(next) => patchField({ role: Number.parseInt(next, 10) })}
+                  >
+                    {userRoleLabel(detail)}
+                  </DetailEditableField>
+                  <DetailMetricCard label={t("fields.inviteStatus")}>
+                    {detail.user_detail.invite_status || "—"}
+                  </DetailMetricCard>
+                  <DetailMetricCard label={t("fields.invitationSentAt")}>
+                    {formatSettingsDetailDate(dateFmt, detail.user_detail.invitation_sent_at)}
+                  </DetailMetricCard>
+                </DetailMetricsGrid>
+              </DetailPanelCard>
+
+              <DetailPanelCard title={t("fields.basePay")} variant="flat">
+                <DetailMetricsGrid>
+                  <DetailEditableField
+                    label={t("fields.basePay")}
+                    value={basePay}
+                    kind="text"
+                    editAriaLabel={tActions("edit")}
+                    empty="—"
+                    onSave={(next) => {
+                      const n = next.trim() ? Number(next) : null;
+                      return patchField({
+                        base_pay: n != null && Number.isFinite(n) ? n : null,
+                        base_pay_type: n != null && Number.isFinite(n) ? basePayType : null,
+                      });
+                    }}
+                  >
+                    {basePay || "—"}
+                  </DetailEditableField>
+                  <DetailEditableField
+                    label={t("fields.basePayType")}
+                    value={basePayType}
+                    kind="select"
+                    options={payTypeOptions}
+                    editAriaLabel={tActions("edit")}
+                    onSave={(next) =>
+                      patchField({
+                        base_pay_type: next === "rate_per_hr" ? "rate_per_hr" : "fixed_amount",
+                        ...(basePay.trim()
+                          ? { base_pay: Number(basePay) }
+                          : {}),
+                      })
+                    }
+                  >
+                    {basePayType === "rate_per_hr"
+                      ? t("fields.basePayTypeRate")
+                      : t("fields.basePayTypeFixed")}
+                  </DetailEditableField>
+                </DetailMetricsGrid>
+              </DetailPanelCard>
+
+              <DetailPanelCard
+                title={t("fields.addresses")}
+                variant="flat"
+                headerRight={
+                  <button
+                    type="button"
+                    onClick={goEdit}
+                    className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                    aria-label={tActions("edit")}
+                  >
+                    <Pencil className="size-3.5" strokeWidth={1.75} aria-hidden />
+                    {tActions("edit")}
+                  </button>
+                }
+              >
+                {addresses.length === 0 ? (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {t("detail.addressUnavailable")}
+                  </p>
+                ) : (
+                  <ul className="space-y-6">
+                    {addresses.map((addr, index) => (
+                      <li key={addr.id ?? `${addr.address_type}-${index}`} className="min-w-0">
+                        <div className="mb-2 flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            {t(`addressType.${addr.address_type}`)}
+                          </span>
+                          {addr.is_primary ? (
+                            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                              {t("addresses.primary")}
+                            </span>
+                          ) : null}
+                        </div>
+                        <DetailFormattedAddress
+                          line1={addr.address_line_1}
+                          line2={addr.address_line_2}
+                          city={addr.city}
+                          state={addr.state}
+                          pincode={addr.pincode}
+                          country={addr.country}
+                          emptyMessage={
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              {t("detail.addressUnavailable")}
+                            </p>
+                          }
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </DetailPanelCard>
+
+              <DetailSystemMetadataSection
+                createdAt={detail.created_at}
+                modifiedAt={null}
+                dateFmt={dateFmt}
+                labels={{
+                  sectionTitle: tMeta("systemMetadata"),
+                  createdAt: tMeta("createdAt"),
+                  updatedAt: tMeta("updatedAt"),
+                  createdBy: tMeta("createdBy"),
+                  modifiedBy: tMeta("modifiedBy"),
+                  notModifiedYet: tMeta("notModifiedYet"),
+                }}
+              />
             </div>
           </DetailPagePadding>
         ) : null}

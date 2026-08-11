@@ -95,22 +95,24 @@ function countryNameFromIso(iso: string): string {
   return Country.getCountryByCode(iso)?.name ?? iso;
 }
 
-function stateNameFromIso(countryIso: string, stateIso: string): string {
-  if (!countryIso || !stateIso) return stateIso;
-  return State.getStatesOfCountry(countryIso).find((s) => s.isoCode === stateIso)?.name ?? stateIso;
-}
-
-function countryIsoFromName(name: string | null | undefined): string {
+export function countryIsoFromName(name: string | null | undefined): string {
   const n = (name ?? "").trim().toLowerCase();
   if (!n) return "";
   return Country.getAllCountries().find((c) => c.name.toLowerCase() === n)?.isoCode ?? "";
 }
 
-function stateIsoFromName(countryIso: string, stateName: string | null | undefined): string {
+export function stateIsoFromName(countryIso: string, stateName: string | null | undefined): string {
   const n = (stateName ?? "").trim().toLowerCase();
   if (!countryIso || !n) return "";
   return State.getStatesOfCountry(countryIso).find((s) => s.name.toLowerCase() === n)?.isoCode ?? "";
 }
+
+export function stateNameFromIso(countryIso: string, stateIso: string): string {
+  if (!countryIso || !stateIso) return stateIso;
+  return State.getStatesOfCountry(countryIso).find((s) => s.isoCode === stateIso)?.name ?? stateIso;
+}
+
+export { countryNameFromIso };
 
 export function mapEntityAddressFormRowToPayload(row: EntityAddressFormRow): EntityAddressPayload {
   const payload: EntityAddressPayload = {

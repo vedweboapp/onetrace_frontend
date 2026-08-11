@@ -210,6 +210,9 @@
       },
       "detail": {
         "systemMetadata": "System metadata",
+        "createdAt": "Created at",
+        "updatedAt": "Updated at",
+        "createdBy": "Created by",
         "modifiedBy": "Modified by",
         "notModifiedYet": "Not modified yet"
       }
@@ -1427,6 +1430,14 @@
         "phone": "Phone number",
         "gender": "Gender",
         "role": "Role",
+        "basePay": "Base pay",
+        "basePayType": "Pay type",
+        "basePayTypeFixed": "Fixed pay",
+        "basePayTypeRate": "Pay per hr",
+        "addresses": "Addresses",
+        "addressType": "Address type",
+        "addressLine1": "Address line 1",
+        "addressLine2": "Address line 2",
         "address1": "Address line 1",
         "address2": "Address line 2",
         "country": "Country",
@@ -1436,6 +1447,17 @@
         "inviteStatus": "Invite status",
         "invitationSentAt": "Invitation sent at"
       },
+      "addresses": {
+        "add": "Add address",
+        "remove": "Remove address",
+        "primary": "Primary",
+        "rowLabel": "Address {index}"
+      },
+      "addressType": {
+        "billing": "Billing",
+        "shipping": "Shipping",
+        "other": "Other"
+      },
       "genders": {
         "male": "Male",
         "female": "Female",
@@ -1444,6 +1466,7 @@
       "placeholders": {
         "gender": "Select gender",
         "role": "Select role",
+        "basePay": "Enter amount",
         "country": "Select country",
         "state": "Select state",
         "city": "Select city"
@@ -1455,6 +1478,10 @@
         "phone": "Enter a valid phone number.",
         "gender": "Select gender.",
         "role": "Select role.",
+        "basePay": "Enter a valid base pay amount.",
+        "addressLine1": "Enter address line 1.",
+        "addressType": "Select address type.",
+        "addressesMin": "Add at least one address.",
         "country": "Select country.",
         "state": "Select state.",
         "city": "Select city.",
@@ -1469,7 +1496,8 @@
         "retry": "Retry",
         "backAria": "Back to users list",
         "editWithIcon": "Edit",
-        "sectionOverview": "Overview"
+        "sectionOverview": "Overview",
+        "addressUnavailable": "No addresses on file."
       },
       "page": {
         "createTitle": "Invite user",
@@ -3941,6 +3969,8 @@
         "installationCostType": "Pricing",
         "installationCostTypeFixed": "Fixed amount",
         "installationCostTypeRate": "Rate / hr",
+        "installationHours": "Install hours",
+        "installationHoursPlaceholder": "e.g. 2.5",
         "fulfilmentDetails": "Fulfilment details",
         "dimensions": "Dimensions",
         "dimensionsPlaceholder": "L*W*H",
@@ -4006,6 +4036,7 @@
         "installationCost": "Installation cost",
         "installationCostFixed": "Fixed amount",
         "installationCostRate": "Rate / hr",
+        "installationHours": "Install hours",
         "dimensions": "Dimensions",
         "weight": "Weight",
         "sectionAttachments": "Attachments",

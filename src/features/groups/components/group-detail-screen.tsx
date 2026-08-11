@@ -78,7 +78,9 @@ export function GroupDetailScreen({ groupId }: Props) {
         />
       }
     >
-      {({ detail, dateFmt }) => <GroupDetailBody detail={detail} dateFmt={dateFmt} />}
+      {({ detail, dateFmt, retry }) => (
+        <GroupDetailBody detail={detail} dateFmt={dateFmt} onSaved={retry} />
+      )}
     </EntityDetailScreen>
   );
 }

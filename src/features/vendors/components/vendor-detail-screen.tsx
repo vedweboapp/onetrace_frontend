@@ -162,7 +162,7 @@ export function VendorDetailScreen({ vendorId }: Props) {
           ) : error && activeTab === "details" ? (
             <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
           ) : detail && activeTab === "details" ? (
-            <VendorDetailBody detail={detail} dateFmt={dateFmt} />
+            <VendorDetailBody detail={detail} dateFmt={dateFmt} onSaved={retry} />
           ) : loading ? (
             <EntityDetailLoadingSkeleton />
           ) : error ? (
