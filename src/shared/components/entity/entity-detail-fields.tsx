@@ -180,7 +180,7 @@ export function DetailSystemMetadataSection({
 
   return (
     <DetailPanelCard title={labels.sectionTitle} defaultOpen={false} variant={variant}>
-      <DetailMetricsGrid className="sm:grid-cols-2">
+      <DetailMetricsGrid>
         {status ? (
           <DetailMetricCard label={status.statusLabel}>
             <ActiveStatusBadge
@@ -230,12 +230,12 @@ export function DetailCreatedBySection({ title, user, usernameLabel, emailLabel 
   const email = user.email?.trim();
   return (
     <DetailPanelCard title={title}>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <DetailMetricsGrid>
         <DetailMetricCard label={usernameLabel}>{username}</DetailMetricCard>
         <DetailMetricCard label={emailLabel}>
           {email ? <DetailEmailLink email={email} /> : "—"}
         </DetailMetricCard>
-      </div>
+      </DetailMetricsGrid>
     </DetailPanelCard>
   );
 }
@@ -269,7 +269,7 @@ export function DetailRecordMetaSection({
   gridClassName,
 }: DetailRecordMetaProps) {
   return (
-    <DetailMetricsGrid className={gridClassName ?? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-2"}>
+    <DetailMetricsGrid className={gridClassName}>
       <DetailMetricCard label={statusLabel}>
         <ActiveStatusBadge active={isActive} label={isActive ? activeLabel : inactiveLabel} />
       </DetailMetricCard>

@@ -2,10 +2,11 @@
 
 import * as React from "react";
 import dynamic from "next/dynamic";
-import { useLocale, useTranslations } from "next-intl";
-import { DetailEntityLink } from "@/shared/components/entity";
-import { usePathname, useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { usePathname, useRouter } from "@/i18n/navigation";
+import { updateQuotation } from "@/features/quotations/api/quotation.api";
+import { QUOTE_CATEGORY } from "@/features/quotations/constants/quotation-category";
 import type {
   QuotationContactNested,
   QuotationDetail,
@@ -14,9 +15,13 @@ import type {
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
 import {
   getQuotationAdditionalContactEntries,
+  getQuotationAdditionalContactIds,
+  getQuotationContactId,
   getQuotationCustomerId,
+  getQuotationOptionalUserId,
   getQuotationProjectId,
-  getQuotationTechnicianEntries,
+  getQuotationSiteIds,
+  getQuotationTagIds,
   quotationCustomerLabel,
   quotationProjectLabel,
   quotationSiteListRows,
@@ -27,13 +32,14 @@ import {
   siteToAddressMapPoint,
 } from "@/features/quotations/utils/quotation-site-map.util";
 import { seedDraftFromQuoteSections } from "@/features/quotations/utils/quotation-draft-seed.util";
-import { quotationStatusLabel } from "@/features/quotations/utils/quotation-status.util";
-import type { Site } from "@/features/sites/types/site.types";
 import {
-  DetailSystemMetadataSection,
-  DetailUserAttribution,
-  normalizeDetailAuditUser,
-} from "@/shared/components/entity";
+  QUOTATION_STATUS_OPTIONS,
+  normalizeQuotationStatusValue,
+  quotationStatusLabel,
+} from "@/features/quotations/utils/quotation-status.util";
+import type { Site } from "@/features/sites/types/site.types";
+import { DetailEntityLink, DetailSystemMetadataSection, DetailUserAttribution, normalizeDetailAuditUser } from "@/shared/components/entity";
+import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { DetailFormattedAddress, hasDetailAddress } from "@/shared/components/layout/detail-formatted-address";
 import { What3WordsInline } from "@/shared/components/layout/what3words-inline";
 import {
@@ -42,16 +48,19 @@ import {
   detailMapViewportClassName,
 } from "@/shared/components/layout/detail-page-map-layout";
 import {
-  DetailMetricCard,
   DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
 } from "@/shared/components/layout/detail-metric-card";
+import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { AppTabs } from "@/shared/ui";
+import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import { routes } from "@/shared/config/routes";
-import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
+import {
+  formatApiDateForHtmlDateInput,
+  formatFlexibleApiDate,
+} from "@/shared/utils/api-date-parse.util";
 import { cn } from "@/core/utils/http.util";
-import { once } from "events";
 
 function quotationAssigneeToAudit(
   user: string | number | QuotationUserRef | null | undefined,
@@ -78,44 +87,82 @@ function quotationContactToAudit(
   });
 }
 
-type TechnicianEntry = ReturnType<typeof getQuotationTechnicianEntries>[number];
 type AdditionalContactEntry = ReturnType<typeof getQuotationAdditionalContactEntries>[number];
  
 
 function QuotationDetailPeopleSection({
   detail,
-  technicianEntries,
   additionalContactEntries = [],
   t,
+  tActions,
+  contactOptions,
+  salespersonOptions,
+  onSaveField,
 }: {
   detail: QuotationDetail;
-  technicianEntries: TechnicianEntry[];
   additionalContactEntries?: AdditionalContactEntry[];
   t: ReturnType<typeof useTranslations<"Dashboard.quotations">>;
+  tActions: ReturnType<typeof useTranslations<"Dashboard.common.actions">>;
+  contactOptions: CheckmarkSelectOption[];
+  salespersonOptions: CheckmarkSelectOption[];
+  onSaveField: (body: Parameters<typeof updateQuotation>[1]) => Promise<void>;
 }) {
+  const salespersonId = getQuotationOptionalUserId(detail.salesperson);
+  const primaryContactId = getQuotationContactId(detail.primary_customer_contact);
+  const additionalIds = getQuotationAdditionalContactIds(detail.additional_customer_contact);
+
   return (
     <DetailPanelCard title={t("detail.sectionPeople")}>
-      <DetailMetricsGrid className="sm:grid-cols-2">
-        <DetailMetricCard label={t("fields.salesperson")}>
+      <DetailMetricsGrid>
+        <DetailEditableField
+          label={t("fields.salesperson")}
+          value={salespersonId != null ? String(salespersonId) : ""}
+          kind="select"
+          options={salespersonOptions}
+          editAriaLabel={tActions("edit")}
+          empty="—"
+          onSave={(next) =>
+            onSaveField({ salesperson: next.trim() ? Number(next) : null })
+          }
+        >
           <DetailUserAttribution user={quotationAssigneeToAudit(detail.salesperson)} />
-        </DetailMetricCard>
-        {/* <DetailMetricCard label={t("fields.projectManager")}>
-          <DetailUserAttribution user={quotationAssigneeToAudit(detail.project_manager)} />
-        </DetailMetricCard> */}
-        <DetailMetricCard label={t("fields.primaryContact")}>
+        </DetailEditableField>
+        <DetailEditableField
+          label={t("fields.primaryContact")}
+          value={primaryContactId != null ? String(primaryContactId) : ""}
+          kind="select"
+          options={contactOptions}
+          editAriaLabel={tActions("edit")}
+          empty="—"
+          onSave={(next) =>
+            onSaveField({
+              primary_customer_contact: next.trim() ? Number(next) : null,
+            })
+          }
+        >
           <DetailUserAttribution user={quotationContactToAudit(detail.primary_customer_contact)} />
-        </DetailMetricCard>
-        <DetailMetricCard label={t("fields.additionalContacts")} className="sm:col-span-2">
-          {additionalContactEntries.length === 0 ? (
-            <span className="text-sm font-normal text-slate-500 dark:text-slate-400">—</span>
-          ) : (
+        </DetailEditableField>
+        <DetailEditableField
+          className="sm:col-span-2"
+          label={t("fields.additionalContacts")}
+          kind="multiselect"
+          values={additionalIds.map(String)}
+          options={contactOptions}
+          editAriaLabel={tActions("edit")}
+          empty="—"
+          onSaveValues={(next) =>
+            onSaveField({
+              additional_customer_contact: next.map((id) => Number(id)).filter(Number.isFinite),
+            })
+          }
+        >
+          {additionalContactEntries.length === 0 ? null : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {additionalContactEntries.map((entry, index) =>
                 entry.kind === "id" ? (
                   <DetailUserAttribution key={`addl-id-${entry.id}-${index}`} user={{ id: entry.id }} />
                 ) : (
                   <DetailUserAttribution
-
                     key={`addl-${entry.contact.id}-${index}`}
                     user={quotationContactToAudit(entry.contact)}
                   />
@@ -123,25 +170,7 @@ function QuotationDetailPeopleSection({
               )}
             </div>
           )}
-        </DetailMetricCard>
-        {/* <DetailMetricCard label={t("fields.technicians")} className="sm:col-span-2">
-          {technicianEntries.length === 0 ? (
-            <span className="text-sm font-normal text-slate-500 dark:text-slate-400">—</span>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {technicianEntries.map((entry, ti) =>
-                entry.kind === "id" ? (
-                  <DetailUserAttribution key={`tech-id-${entry.id}-${ti}`} user={{ id: entry.id }} />
-                ) : (
-                  <DetailUserAttribution
-                    key={`tech-${entry.user.id}-${ti}`}
-                    user={quotationAssigneeToAudit(entry.user)}
-                  />
-                ),
-              )}
-            </div>
-          )}
-        </DetailMetricCard> */}
+        </DetailEditableField>
       </DetailMetricsGrid>
     </DetailPanelCard>
   );
@@ -174,7 +203,15 @@ type Props = {
   siteDetailsLoading: boolean;
   dateFmt: Intl.DateTimeFormat;
   dueFmt: Intl.DateTimeFormat;
-};                                                                                                                                                                                            
+  /** Refresh detail after a successful quick-edit PATCH. */
+  onSaved?: () => void;
+  clientOptions?: CheckmarkSelectOption[];
+  projectOptions?: CheckmarkSelectOption[];
+  siteOptions?: CheckmarkSelectOption[];
+  tagOptions?: CheckmarkSelectOption[];
+  contactOptions?: CheckmarkSelectOption[];
+  salespersonOptions?: CheckmarkSelectOption[];
+};
 
 export function QuotationDetailBody({
   detail,
@@ -186,16 +223,43 @@ export function QuotationDetailBody({
   siteDetailsLoading,
   dateFmt,
   dueFmt,
+  onSaved,
+  clientOptions = [],
+  projectOptions = [],
+  siteOptions = [],
+  tagOptions = [],
+  contactOptions = [],
+  salespersonOptions = [],
 }: Props) {
   const t = useTranslations("Dashboard.quotations");
   const tMeta = useTranslations("Dashboard.common.detail");
-  const locale = useLocale();
+  const tActions = useTranslations("Dashboard.common.actions");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [detailTab, setDetailTab] = React.useState<"project" | "pricing">(() =>
     searchParams.get("tab") === "pricing" ? "pricing" : "project",
   );
+
+  const statusOptions = React.useMemo(
+    () =>
+      QUOTATION_STATUS_OPTIONS.map((row) => ({
+        value: row.value,
+        label: t(row.labelKey),
+      })),
+    [t],
+  );
+
+  async function patchField(body: Parameters<typeof updateQuotation>[1]) {
+    try {
+      await updateQuotation(detail.id, body);
+      toastSuccess(t("updatedToast"));
+      onSaved?.();
+    } catch (error) {
+      toastApiError(error, t("saveError"));
+      throw error;
+    }
+  }
 
   const goToTab = React.useCallback(
     (tab: "project" | "pricing") => {
@@ -242,7 +306,6 @@ export function QuotationDetailBody({
     [quoteSectionsSorted],
   );
 
-  const technicianEntries = React.useMemo(() => getQuotationTechnicianEntries(detail), [detail]);
   const additionalContactEntries = React.useMemo(
     () => getQuotationAdditionalContactEntries(detail.additional_customer_contact),
     [detail.additional_customer_contact],
@@ -251,6 +314,7 @@ export function QuotationDetailBody({
   const projectId = getQuotationProjectId(detail.project);
 
   const dueLabel = formatFlexibleApiDate(detail.due_date, dueFmt);
+  const statusValue = normalizeQuotationStatusValue(detail.status);
 
   const desc = detail.description?.trim() ?? "";
   const modifiedAt = detail.modified_at ?? detail.created_at;
@@ -258,11 +322,33 @@ export function QuotationDetailBody({
   const overviewCard = (
     <DetailPanelCard title={t("detail.sectionOverview")}>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <DetailMetricCard label={t("table.status")}>
+        <DetailEditableField
+          label={t("table.status")}
+          value={statusValue}
+          kind="select"
+          options={statusOptions}
+          editAriaLabel={tActions("edit")}
+          onSave={(next) => patchField({ status: next })}
+        >
           {quotationStatusLabel(detail.status, t)}
-        </DetailMetricCard>
-        <DetailMetricCard label={t("fields.quoteName")}>{detail.quote_name}</DetailMetricCard>
-        <DetailMetricCard label={t("fields.customer")}>
+        </DetailEditableField>
+        <DetailEditableField
+          label={t("fields.quoteName")}
+          value={detail.quote_name}
+          kind="text"
+          editAriaLabel={tActions("edit")}
+          onSave={(next) => patchField({ quote_name: next })}
+        >
+          {detail.quote_name}
+        </DetailEditableField>
+        <DetailEditableField
+          label={t("fields.customer")}
+          value={customerId != null ? String(customerId) : ""}
+          kind="select"
+          options={clientOptions}
+          editAriaLabel={tActions("edit")}
+          onSave={(next) => patchField({ customer: Number(next) })}
+        >
           {customerId != null ? (
             <DetailEntityLink href={`${routes.dashboard.clients}/${customerId}`} className={detailEntityLinkClassName}>
               {quotationCustomerLabel(detail.customer, customerName ?? null)}
@@ -270,21 +356,38 @@ export function QuotationDetailBody({
           ) : (
             quotationCustomerLabel(detail.customer, customerName ?? null)
           )}
-        </DetailMetricCard>
-        <DetailMetricCard label={t("fields.project")}>
-          {projectId != null ? (
-            <DetailEntityLink href={`${routes.dashboard.projects}/${projectId}`} className={detailEntityLinkClassName}>
-              {quotationProjectLabel(detail.project, projectName ?? null)}
-            </DetailEntityLink>
-          ) : (
-            quotationProjectLabel(detail.project, projectName ?? null)
-          )}
-        </DetailMetricCard>
+        </DetailEditableField>
+        {(detail.quote_category === QUOTE_CATEGORY.project || projectId != null) ? (
+          <DetailEditableField
+            label={t("fields.project")}
+            value={projectId != null ? String(projectId) : ""}
+            kind="select"
+            options={projectOptions}
+            editAriaLabel={tActions("edit")}
+            onSave={(next) => patchField({ project: Number(next) })}
+          >
+            {projectId != null ? (
+              <DetailEntityLink href={`${routes.dashboard.projects}/${projectId}`} className={detailEntityLinkClassName}>
+                {quotationProjectLabel(detail.project, projectName ?? null)}
+              </DetailEntityLink>
+            ) : (
+              quotationProjectLabel(detail.project, projectName ?? null)
+            )}
+          </DetailEditableField>
+        ) : null}
 
-        <DetailMetricCard label={t("fields.sites")}>
-          {siteRows.length === 0 ? (
-            <span>—</span>
-          ) : (
+        <DetailEditableField
+          label={t("fields.sites")}
+          kind="multiselect"
+          values={getQuotationSiteIds(detail).map(String)}
+          options={siteOptions}
+          editAriaLabel={tActions("edit")}
+          empty="—"
+          onSaveValues={(next) =>
+            patchField({ sites: next.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0) })
+          }
+        >
+          {siteRows.length === 0 ? null : (
             <div className="flex flex-wrap gap-2">
               {siteRows.map((row) => (
                 <DetailEntityLink
@@ -297,23 +400,56 @@ export function QuotationDetailBody({
               ))}
             </div>
           )}
-        </DetailMetricCard>
-        <DetailMetricCard label={t("fields.tags")}>{tagsLabel}</DetailMetricCard>
-        <DetailMetricCard label={t("fields.orderNumber")}>{detail.order_number?.trim() || "—"}</DetailMetricCard>
-        <DetailMetricCard label={t("fields.dueDate")}>{dueLabel}</DetailMetricCard>
+        </DetailEditableField>
+        <DetailEditableField
+          label={t("fields.tags")}
+          kind="multiselect"
+          values={getQuotationTagIds(detail.tags).map(String)}
+          options={tagOptions}
+          editAriaLabel={tActions("edit")}
+          empty="—"
+          onSaveValues={(next) =>
+            patchField({ tags: next.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0) })
+          }
+        >
+          {tagsLabel !== "—" ? tagsLabel : null}
+        </DetailEditableField>
+        <DetailEditableField
+          label={t("fields.orderNumber")}
+          value={detail.order_number ?? ""}
+          kind="text"
+          editAriaLabel={tActions("edit")}
+          empty="—"
+          onSave={(next) => patchField({ order_number: next || null })}
+        >
+          {detail.order_number?.trim() ? detail.order_number : null}
+        </DetailEditableField>
+        <DetailEditableField
+          label={t("fields.dueDate")}
+          value={formatApiDateForHtmlDateInput(detail.due_date)}
+          kind="text"
+          editAriaLabel={tActions("edit")}
+          empty="—"
+          onSave={(next) => patchField({ due_date: next || null })}
+        >
+          {dueLabel !== "—" ? dueLabel : null}
+        </DetailEditableField>
+        <DetailEditableField
+          className="sm:col-span-2"
+          label={t("fields.description")}
+          value={desc}
+          kind="text"
+          editAriaLabel={tActions("edit")}
+          empty={t("detail.noDescription")}
+          onSave={(next) => patchField({ description: next || null })}
+        >
+          {desc ? (
+            <p className="min-w-0 whitespace-pre-wrap break-words text-sm font-normal leading-relaxed [overflow-wrap:anywhere] text-slate-700 dark:text-slate-300">
+              {desc}
+            </p>
+          ) : null}
+        </DetailEditableField>
       </div>
-    </DetailPanelCard>
-  );
-
-  const descriptionCard = (
-    <DetailPanelCard title={t("fields.description")} bodyClassName="min-w-0">
-      {desc ? (
-        <p className="min-w-0 whitespace-pre-wrap break-words text-sm leading-relaxed [overflow-wrap:anywhere] text-slate-700 dark:text-slate-300">
-          {desc}
-        </p>
-      ) : (
-        <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.noDescription")}</p>
-      )}
     </DetailPanelCard>
   );
 
@@ -396,7 +532,6 @@ export function QuotationDetailBody({
           map={siteLocationSplit?.map ?? null}
         >
           {overviewCard}
-          {descriptionCard}
 
           {showMapColumn ? (
             <DetailPanelCard title={t("detail.sectionSiteAddress")}>
@@ -408,9 +543,12 @@ export function QuotationDetailBody({
 
           <QuotationDetailPeopleSection
             detail={detail}
-            technicianEntries={technicianEntries}
             additionalContactEntries={additionalContactEntries}
             t={t}
+            tActions={tActions}
+            contactOptions={contactOptions}
+            salespersonOptions={salespersonOptions}
+            onSaveField={patchField}
           />
 
           <DetailSystemMetadataSection

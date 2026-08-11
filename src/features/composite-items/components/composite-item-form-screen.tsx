@@ -214,6 +214,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     unit_type: number | null;
     installation_cost: number | null;
     installation_cost_type: InstallationCostType | null;
+    installation_hours: number | null;
     length: number | null;
     width: number | null;
     height: number | null;
@@ -231,6 +232,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
   const [unitTypesError, setUnitTypesError] = React.useState<string | null>(null);
   const [installationCost, setInstallationCost] = React.useState("");
   const [installationCostType, setInstallationCostType] = React.useState<InstallationCostType>("fixed_amount");
+  const [installationHours, setInstallationHours] = React.useState("");
   const [length, setLength] = React.useState("");
   const [width, setWidth] = React.useState("");
   const [height, setHeight] = React.useState("");
@@ -275,6 +277,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
       unitType,
       installationCost,
       installationCostType,
+      installationHours,
       length,
       width,
       height,
@@ -294,6 +297,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
       unitType,
       installationCost,
       installationCostType,
+      installationHours,
       length,
       width,
       height,
@@ -316,6 +320,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
       unitType?: string;
       installationCost?: string;
       installationCostType?: InstallationCostType;
+      installationHours?: string;
       length?: string;
       width?: string;
       height?: string;
@@ -336,6 +341,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     if (saved.installationCostType === "fixed_amount" || saved.installationCostType === "rate_per_hr") {
       setInstallationCostType(saved.installationCostType);
     }
+    if (typeof saved.installationHours === "string") setInstallationHours(saved.installationHours);
     if (typeof saved.length === "string") setLength(saved.length);
     if (typeof saved.width === "string") setWidth(saved.width);
     if (typeof saved.height === "string") setHeight(saved.height);
@@ -602,6 +608,11 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
           );
           const costType = item.installation_cost_type;
           setInstallationCostType(costType === "rate_per_hr" ? "rate_per_hr" : "fixed_amount");
+          setInstallationHours(
+            item.installation_hours != null && String(item.installation_hours).trim() !== ""
+              ? String(item.installation_hours)
+              : "",
+          );
           setLength(item.length != null && String(item.length).trim() !== "" ? String(item.length) : "");
           setWidth(item.width != null && String(item.width).trim() !== "" ? String(item.width) : "");
           setHeight(item.height != null && String(item.height).trim() !== "" ? String(item.height) : "");
@@ -647,6 +658,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
             installation_cost: toNumberOrNull(String(item.installation_cost ?? "")),
             installation_cost_type:
               item.installation_cost_type === "rate_per_hr" ? "rate_per_hr" : "fixed_amount",
+            installation_hours: toNumberOrNull(String(item.installation_hours ?? "")),
             length: toNumberOrNull(String(item.length ?? "")),
             width: toNumberOrNull(String(item.width ?? "")),
             height: toNumberOrNull(String(item.height ?? "")),
@@ -738,6 +750,9 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     const installationCostFields = installationCost.trim()
       ? installationCostPayload(installationCost, installationCostType)
       : {};
+    const installationHoursValue = installationHours.trim()
+      ? toNumberOrNull(installationHours)
+      : null;
     const dimensionsFields = dimensionsPayload(length, width, height);
     const hasDimensions = Object.keys(dimensionsFields).length > 0;
     const weightFields = weight.trim() ? weightPayload(weight, weightUnit) : {};
@@ -774,6 +789,9 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
         }
         if (installationCostType !== (init.installation_cost_type ?? "fixed_amount")) {
           payload.installation_cost_type = installationCost.trim() ? installationCostType : null;
+        }
+        if (installationHoursValue !== init.installation_hours) {
+          payload.installation_hours = installationHoursValue;
         }
         const currentLength = length.trim() ? toNumberOrNull(length) : null;
         if (currentLength !== init.length) {
@@ -833,6 +851,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
             ...installationTypePayload,
             ...unitTypePayload,
             ...installationCostFields,
+            ...(installationHoursValue != null ? { installation_hours: installationHoursValue } : {}),
             ...dimensionsFields,
             ...(hasDimensions ? { dimensions_unit: dimensionsUnit } : {}),
             ...weightFields,
@@ -1017,6 +1036,21 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   onSelectChange={(v) => setInstallationCostType(v === "rate_per_hr" ? "rate_per_hr" : "fixed_amount")}
                   selectOptions={installationCostTypeOptions}
                   selectAriaLabel={tModal("installationCostType")}
+                />
+              </div>
+              <div>
+                <FieldLabel htmlFor="composite-installation-hours">{tModal("installationHours")}</FieldLabel>
+                <input
+                  id="composite-installation-hours"
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="0.01"
+                  value={installationHours}
+                  onChange={(e) => setInstallationHours(e.target.value)}
+                  placeholder={tModal("installationHoursPlaceholder")}
+                  disabled={submitting}
+                  className={surfaceInputClassName}
                 />
               </div>
             </div>

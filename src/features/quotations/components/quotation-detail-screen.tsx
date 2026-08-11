@@ -1,9 +1,16 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
+import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { fetchQuotation, updateQuotation } from "@/features/quotations/api/quotation.api";
+import {
+  parseQuoteCategoryParam,
+  resolveQuotationQuoteCategory,
+} from "@/features/quotations/constants/quotation-category";
 import { QuotationDetailBody } from "@/features/quotations/components/quotation-detail-body";
 import { QuotationExportDropdown } from "@/features/quotations/components/quotation-export-dropdown";
 import { QuotationUpdateStatusDialog } from "@/features/quotations/components/quotation-update-status-dialog";
@@ -17,11 +24,16 @@ import { fetchTagsPage } from "@/features/tags/api/tag.api";
 import { resolveQuotationSiteDetails } from "@/features/quotations/utils/quotation-site-details.util";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
+import {
+  fetchUsersForAppRoles,
+  userProfilesToSelectOptions,
+} from "@/features/users/utils/load-users-by-role.util";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { AppButton } from "@/shared/ui";
+import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
  
 type Props = {
   quotationId: number;
@@ -38,6 +50,22 @@ export function QuotationDetailScreen({ quotationId }: Props) {
   const [siteDetails, setSiteDetails] = React.useState<Site[]>([]);
   const [siteDetailsLoading, setSiteDetailsLoading] = React.useState(false);
   const [detailForSite, setDetailForSite] = React.useState<QuotationDetail | null>(null);
+  const [contactOptions, setContactOptions] = React.useState<CheckmarkSelectOption[]>([]);
+  const [salespersonOptions, setSalespersonOptions] = React.useState<CheckmarkSelectOption[]>([]);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  /** Keep header/sidebar quote category in sync when opening detail without `?quote_category=`. */
+  React.useEffect(() => {
+    if (!detailForSite) return;
+    const resolved = resolveQuotationQuoteCategory(detailForSite);
+    const current = parseQuoteCategoryParam(searchParams.get("quote_category"));
+    if (current === resolved) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("quote_category", resolved);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [detailForSite, pathname, router, searchParams]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -95,6 +123,50 @@ export function QuotationDetailScreen({ quotationId }: Props) {
       cancelled = true;
     };
   }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const byRole = await fetchUsersForAppRoles(["sales"]);
+        if (!cancelled) {
+          setSalespersonOptions(userProfilesToSelectOptions(byRole.sales ?? []));
+        }
+      } catch {
+        if (!cancelled) setSalespersonOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    const customerId = detailForSite ? getQuotationCustomerId(detailForSite.customer) : null;
+    if (!customerId) {
+      setContactOptions([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchContactsPage(1, 500, { client: customerId, is_active: true });
+        if (!cancelled) {
+          setContactOptions(
+            items.map((c) => ({
+              value: String(c.id),
+              label: c.name?.trim() || c.email?.trim() || `#${c.id}`,
+            })),
+          );
+        }
+      } catch {
+        if (!cancelled) setContactOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [detailForSite]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -168,9 +240,25 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         />
       )}
     >
-      {({ detail, dateFmt }) => {
+      {({ detail, dateFmt, retry }) => {
         const customerIdForLookup = getQuotationCustomerId(detail.customer);
         const projectIdForLookup = getQuotationProjectId(detail.project);
+        const clientOptions = Object.entries(clientNames).map(([id, name]) => ({
+          value: id,
+          label: name,
+        }));
+        const projectOptions = Object.entries(projectNames).map(([id, name]) => ({
+          value: id,
+          label: name,
+        }));
+        const siteOptions = Object.entries(siteNames).map(([id, name]) => ({
+          value: id,
+          label: name,
+        }));
+        const tagOptions = Object.entries(tagNames).map(([id, name]) => ({
+          value: id,
+          label: name,
+        }));
         return (
           <QuotationDetailBody
             detail={detail}
@@ -182,6 +270,13 @@ export function QuotationDetailScreen({ quotationId }: Props) {
             siteDetailsLoading={siteDetailsLoading}
             dateFmt={dateFmt}
             dueFmt={dueFmt}
+            onSaved={retry}
+            clientOptions={clientOptions}
+            projectOptions={projectOptions}
+            siteOptions={siteOptions}
+            tagOptions={tagOptions}
+            contactOptions={contactOptions}
+            salespersonOptions={salespersonOptions}
           />
         );
       }}
