@@ -61,7 +61,7 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
     };
   }, []);
 
-  const { labelFor: statusLabel, rowFor: statusRowFor } = useMaterialStatusCatalog();
+  const { labelFor: statusLabel, rowFor: statusRowFor, options: statusOptions } = useMaterialStatusCatalog();
 
   const detailTabs = React.useMemo(
     () => [
@@ -134,6 +134,8 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
                   dueFmt={dueFmt}
                   statusLabel={statusLabel(detail.status)}
                   statusRow={statusRowFor(detail.status)}
+                  statusOptions={statusOptions}
+                  onSaved={retry}
                 />
               );
             })()

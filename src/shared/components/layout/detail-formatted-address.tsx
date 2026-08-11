@@ -38,10 +38,10 @@ function buildCityStatePinLine(parts: Pick<DetailAddressParts, "city" | "state" 
 
 type LabeledRowsProps = DetailAddressParts & { line2Fallback?: string };
 
-/** Tighter responsive columns — fields pack by content width instead of stretching across the card. */
+/** Address fields: max 2–3 columns so they don’t collapse into one stretched row on wide screens. */
 const ADDRESS_FIELD_GRID = cn(
-  "grid grid-cols-1 gap-3",
-  "sm:grid-cols-[repeat(auto-fill,minmax(8.75rem,1fr))] sm:gap-x-4 sm:gap-y-3",
+  "grid grid-cols-1 gap-x-6 gap-y-4",
+  "sm:grid-cols-2 lg:grid-cols-3",
 );
 
 function LabeledAddressRows({ line1, line2, city, state, pincode, country, line2Fallback }: LabeledRowsProps) {

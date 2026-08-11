@@ -29,7 +29,7 @@ export function DetailMetricsGrid({
     return (
       <div
         className={cn(
-          "flex flex-wrap items-start gap-x-5 gap-y-3 [&>*]:min-w-[8.75rem] [&>*]:max-w-[16rem]",
+          "flex flex-wrap items-start gap-x-6 gap-y-4 [&>*]:min-w-[9rem] [&>*]:max-w-[15rem] [&>*]:basis-[calc(25%-1.125rem)] [&>*]:grow-0",
           className,
         )}
       >
@@ -41,8 +41,9 @@ export function DetailMetricsGrid({
   return (
     <div
       className={cn(
-        "grid grid-cols-1 gap-3",
-        "sm:grid-cols-[repeat(auto-fill,minmax(8.75rem,1fr))] sm:gap-x-4 sm:gap-y-3",
+        // Cap column growth so wide screens don't leave huge empty cells on the right.
+        "grid grid-cols-1 gap-x-6 gap-y-4",
+        "sm:grid-cols-[repeat(auto-fill,minmax(10rem,13.5rem))]",
         className,
       )}
     >

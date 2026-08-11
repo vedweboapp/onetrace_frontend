@@ -22,3 +22,16 @@ export function parseQuoteCategoryParam(raw: string | null | undefined): QuoteCa
   if (cat === QUOTE_CATEGORY.project || cat === "project") return QUOTE_CATEGORY.project;
   return undefined;
 }
+
+/** Infer service vs project quote from API detail when the URL lacks `quote_category`. */
+export function resolveQuotationQuoteCategory(detail: {
+  quote_category?: string | null;
+  category?: string | null;
+  project?: unknown;
+}): QuoteCategoryApi {
+  const fromApi = parseQuoteCategoryParam(detail.quote_category ?? detail.category);
+  if (fromApi) return fromApi;
+  const project = detail.project;
+  if (project != null && project !== 0 && project !== "") return QUOTE_CATEGORY.project;
+  return QUOTE_CATEGORY.service;
+}

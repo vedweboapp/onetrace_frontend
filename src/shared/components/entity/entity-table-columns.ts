@@ -43,7 +43,7 @@ export type EntityTableColumn<T> = EntityTableColumnBase<T> &
     | { variant: "mono"; value: (row: T) => ReactNode }
     | { variant: "tabular"; value: (row: T) => ReactNode }
     | { variant: "muted"; value: (row: T) => ReactNode }
-    | { variant: "date"; value: (row: T) => string | Date; dateFmt: Intl.DateTimeFormat }
+    | { variant: "date"; value: (row: T) => string | Date | number | null | undefined; dateFmt: Intl.DateTimeFormat }
     | {
         variant: "status";
         isActive: (row: T) => boolean;
@@ -87,7 +87,7 @@ export function entityCol<T>() {
     date: (
       id: string,
       header: ReactNode,
-      value: (row: T) => string | Date,
+      value: (row: T) => string | Date | number | null | undefined,
       dateFmt: Intl.DateTimeFormat,
       opts?: ColumnLayoutOpts,
     ) => applyOpts({ id, header, variant: "date", value, dateFmt }, opts),

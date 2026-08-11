@@ -35,7 +35,7 @@ export function ReturnToStockDetailBody({ detail, dueFmt }: Props) {
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
         <DetailPanelCard title={t("return.detail.sectionOverview")}>
-          <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-3">
+          <DetailMetricsGrid>
             <DetailMetricCard label={t("table.workerName")}>
               {dispatchReturnWorkerLabel(detail.worker_name ?? detail.worker)}
             </DetailMetricCard>

@@ -21,7 +21,7 @@ import {
 } from "@/features/checklist-types/utils/checklist-type-display.util";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
-import { zTrimmedNonEmpty } from "@/shared/form";
+import { reportLocalFormSubmitApiError, zTrimmedNonEmpty } from "@/shared/form";
 import { ChecklistTypeSortableTable } from "@/features/checklist-types/components/checklist-type-sortable-table";
 import {
   SettingsDetailActions,
@@ -436,6 +436,10 @@ if (editing && initialValues) {
     setFormOpen(false);
     if (!editing) setUrl({ page: null });
     setRefreshNonce((n) => n + 1);
+  } catch (error) {
+    reportLocalFormSubmitApiError(error, (fieldErrors) => {
+      setErrors((prev) => ({ ...prev, ...fieldErrors }));
+    });
   } finally {
     setSaving(false);
   }

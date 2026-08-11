@@ -162,7 +162,7 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
         </div>
       )}
     >
-      {({ detail, dateFmt }) => {
+      {({ detail, dateFmt, retry }) => {
         const clientId = nestedId(detail.client);
         const contactRef = (detail.contact ?? detail.contact_person) as
           | number
@@ -179,6 +179,7 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
             dueFmt={dueFmt}
             statusLabel={statusLabel(detail.status)}
             activeTab={activeTab}
+            onSaved={retry}
           />
         );
       }}

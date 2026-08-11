@@ -3,6 +3,7 @@ export {
   applyApiErrorsToForm,
   getApiFieldErrorMap,
   reportFormSubmitApiError,
+  reportLocalFormSubmitApiError,
 } from "./report-form-api-error.util";
 export {
   capitalizeFirstLetter,

@@ -14,6 +14,7 @@ import {
 } from "@/features/quotations/utils/quotation-nested-fields.util";
 import { formatApiDateForHtmlDateInput } from "@/shared/utils/api-date-parse.util";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
+import { normalizeQuotationStatusValue } from "@/features/quotations/utils/quotation-status.util";
 
 export function parseOptionalId(raw: string): number | null {
   const s = raw.trim();
@@ -63,6 +64,7 @@ export function mapQuotationFormToPayload(
   const due = values.due_date.trim();
   const orderNum = values.order_number.trim();
   const desc = values.description.trim();
+  const status = normalizeQuotationStatusValue(values.status) || null;
   const sites = (values.sites ?? [])
     .map((raw) => Number.parseInt(raw, 10))
     .filter((id) => Number.isFinite(id) && id > 0);
@@ -87,6 +89,7 @@ export function mapQuotationFormToPayload(
     quote_category,
     levels: values.select_all_levels ? [] : values.level_ids,
     select_all_levels: values.select_all_levels,
+    ...(status ? { status } : {}),
   };
 }
 
@@ -103,6 +106,7 @@ export function emptyQuotationFormDefaults(): QuotationFormValues {
     tag_ids: [],
     order_number: "",
     due_date: "",
+    status: "draft",
     salesperson: "",
     project_manager: "",
     technician_ids: [],
@@ -138,6 +142,7 @@ export function mapQuotationDetailToFormDefaults(detail: QuotationDetail): Quota
     tag_ids: tagIds,
     order_number: detail.order_number ?? "",
     due_date: formatApiDateForHtmlDateInput(detail.due_date),
+    status: normalizeQuotationStatusValue(detail.status) || "draft",
     salesperson: asIdString(getQuotationOptionalUserId(detail.salesperson)),
     project_manager: asIdString(getQuotationOptionalUserId(detail.project_manager)),
     technician_ids: getQuotationTechnicianIds(detail),

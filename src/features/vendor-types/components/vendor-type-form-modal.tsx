@@ -10,9 +10,9 @@ import {
   formatVendorTypeLabel,
   normalizeVendorTypeHex,
 } from "@/features/vendor-types/utils/vendor-type-display.util";
-import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
+import { reportLocalFormSubmitApiError, zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess } from "@/shared/feedback/app-toast";
 import { AppButton, AppModal, FieldGroup, fieldLabelClassName, surfaceInputClassName } from "@/shared/ui";
 
 const DEFAULT_BG = "#DBEAFE";
@@ -83,7 +83,11 @@ export function VendorTypeFormModal({ open, onClose, editing = null, onSaved }: 
       onSaved?.(saved);
       onClose();
     } catch (error) {
-      toastApiError(error, isEdit ? t("loadError") : t("loadError"));
+      reportLocalFormSubmitApiError(
+        error,
+        (fieldErrors) => setErrors((prev) => ({ ...prev, ...fieldErrors })),
+        t("loadError"),
+      );
     } finally {
       setSaving(false);
     }

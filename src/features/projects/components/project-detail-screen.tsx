@@ -37,7 +37,9 @@ import {
 } from "@/shared/ui";
 import ProjectPinsListTab from "./project-pins-list-tab";
 import { fetchProjectStatusesPage } from "@/features/project-status/api/project-status.api";
+import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
+import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 
 type Props = {
   projectId: number;
@@ -64,6 +66,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
   // --- Project Status Dialog ---
   const [statusDialogOpen, setStatusDialogOpen] = React.useState(false);
   const [statusOptions, setStatusOptions] = React.useState<WorkflowColourStatus[]>([]);
+  const [siteOptions, setSiteOptions] = React.useState<CheckmarkSelectOption[]>([]);
   const [selectedStatusId, setSelectedStatusId] = React.useState<string>("");
   const [updatingStatus, setUpdatingStatus] = React.useState(false);
 
@@ -80,6 +83,28 @@ export function ProjectDetailScreen({ projectId }: Props) {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  React.useEffect(() => {
+    const clientId = detailForClient ? getProjectClientId(detailForClient) : null;
+    if (!clientId) {
+      setSiteOptions([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchSitesPage(1, 500, { client: clientId, is_active: true });
+        if (!cancelled) {
+          setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name?.trim() || `#${s.id}` })));
+        }
+      } catch {
+        if (!cancelled) setSiteOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [detailForClient]);
 
   // Sync selected status when dialog opens (pre-select current status)
   React.useEffect(() => {
@@ -372,6 +397,9 @@ export function ProjectDetailScreen({ projectId }: Props) {
               dateOnlyFmt={dateOnlyFmt}
               clientName={clientName}
               projectTypeById={projectTypeById}
+              statusOptions={statusOptions}
+              siteOptions={siteOptions}
+              onSaved={retry}
             />
           ) : loading ? (
             <EntityDetailLoadingSkeleton />

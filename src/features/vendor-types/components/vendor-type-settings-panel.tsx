@@ -13,7 +13,7 @@ import {
 import { VendorTypeChip } from "@/features/vendor-types/components/vendor-type-chip";
 import type { VendorType } from "@/features/vendor-types/types/vendor-type.types";
 import { formatVendorTypeLabel, normalizeVendorTypeHex } from "@/features/vendor-types/utils/vendor-type-display.util";
-import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
+import { reportLocalFormSubmitApiError, zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   SettingsDetailActions,
@@ -241,6 +241,10 @@ export function VendorTypeSettingsPanel() {
       setFormOpen(false);
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
+    } catch (error) {
+      reportLocalFormSubmitApiError(error, (fieldErrors) => {
+        setErrors((prev) => ({ ...prev, ...fieldErrors }));
+      });
     } finally {
       setSaving(false);
     }

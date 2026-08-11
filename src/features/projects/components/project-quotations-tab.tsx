@@ -86,8 +86,13 @@ function renderQuotationTableCell(column: EntityTableColumn<QuotationListItem>, 
         </span>
       );
     }
-    case "date":
-      return column.dateFmt.format(new Date(column.value(row)));
+    case "date": {
+      const raw = column.value(row);
+      if (raw == null || raw === "") return "—";
+      const d = raw instanceof Date ? raw : new Date(raw);
+      if (Number.isNaN(d.getTime()) || d.getFullYear() < 1980) return "—";
+      return column.dateFmt.format(d);
+    }
     default:
       return null;
   }

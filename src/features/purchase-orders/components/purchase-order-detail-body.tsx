@@ -1,6 +1,8 @@
 "use client";
 
+import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { updatePurchaseOrder } from "@/features/purchase-orders/api/purchase-order.api";
 import type { PurchaseOrderCompositeItem, PurchaseOrderDetail } from "@/features/purchase-orders/types/purchase-order.types";
 import { PurchaseOrderStatusBadge } from "@/features/purchase-orders/components/purchase-order-status-badge";
 import {
@@ -13,6 +15,7 @@ import {
 import { resolvePurchaseOrderAddresses } from "@/features/purchase-orders/utils/purchase-order-form-map";
 import { computeLineAmount, formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
+import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
   DetailMetricCard,
@@ -21,7 +24,11 @@ import {
   DetailPanelCard,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
-import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
+import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import {
+  formatApiDateForHtmlDateInput,
+  formatFlexibleApiDate,
+} from "@/shared/utils/api-date-parse.util";
 
 type Props = {
   detail: PurchaseOrderDetail;
@@ -31,6 +38,8 @@ type Props = {
   dueFmt: Intl.DateTimeFormat;
   statusLabel: string;
   activeTab: "overview" | "lineItems";
+  /** Refresh detail after a successful quick-edit PATCH. */
+  onSaved?: () => void;
 };
 
 type DisplayLine = {
@@ -93,14 +102,39 @@ export function PurchaseOrderDetailBody({
   dueFmt,
   statusLabel,
   activeTab,
+  onSaved,
 }: Props) {
   const t = useTranslations("Dashboard.purchaseOrders");
+  const tActions = useTranslations("Dashboard.common.actions");
   const locale = useLocale();
   const lines = resolveDisplayLines(detail);
   const addresses = resolvePurchaseOrderAddresses(detail);
   const totalBalance = purchaseOrderTotalAmount(detail);
-  const vendorNotes = detail.vendor_notes?.trim() || "";
-  const internalNotes = detail.internal_notes?.trim() || "";
+  const vendorNotes = detail.vendor_notes?.trim() ?? "";
+  const internalNotes = detail.internal_notes?.trim() ?? "";
+  const paymentTermsValue = (detail.payment_terms ?? "").trim();
+
+  const paymentTermOptions = React.useMemo(
+    () => [
+      { value: "net_7", label: t("paymentTerms.net7") },
+      { value: "net_45", label: t("paymentTerms.net45") },
+      { value: "net_30", label: t("paymentTerms.net30") },
+      { value: "net_15", label: t("paymentTerms.net15") },
+      { value: "due_on_receipt", label: t("paymentTerms.dueOnReceipt") },
+    ],
+    [t],
+  );
+
+  async function patchField(body: Parameters<typeof updatePurchaseOrder>[1]) {
+    try {
+      await updatePurchaseOrder(detail.id, body);
+      toastSuccess(t("updatedToast"));
+      onSaved?.();
+    } catch (error) {
+      toastApiError(error, t("updateError"));
+      throw error;
+    }
+  }
 
   return (
     <DetailPagePadding>
@@ -108,7 +142,7 @@ export function PurchaseOrderDetailBody({
         {activeTab === "overview" ? (
           <>
             <DetailPanelCard title={t("detail.sectionOrderDetails")}>
-              <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-4">
+              <DetailMetricsGrid>
                 <DetailMetricCard label={t("fields.vendorName")}>
                   {purchaseOrderVendorLabel(detail.vendor, vendorName)}
                 </DetailMetricCard>
@@ -124,12 +158,29 @@ export function PurchaseOrderDetailBody({
                 <DetailMetricCard label={t("fields.issueDate")}>
                   {formatFlexibleApiDate(detail.issue_date, dueFmt)}
                 </DetailMetricCard>
-                <DetailMetricCard label={t("fields.dueDate")}>
-                  {formatFlexibleApiDate(detail.due_date, dueFmt)}
-                </DetailMetricCard>
-                <DetailMetricCard label={t("fields.paymentTerms")}>
-                  {purchaseOrderPaymentTermsLabel(detail.payment_terms)}
-                </DetailMetricCard>
+                <DetailEditableField
+                  label={t("fields.dueDate")}
+                  value={formatApiDateForHtmlDateInput(detail.due_date)}
+                  kind="text"
+                  editAriaLabel={tActions("edit")}
+                  empty="—"
+                  onSave={(next) => patchField({ due_date: next || undefined })}
+                >
+                  {formatFlexibleApiDate(detail.due_date, dueFmt) !== "—"
+                    ? formatFlexibleApiDate(detail.due_date, dueFmt)
+                    : null}
+                </DetailEditableField>
+                <DetailEditableField
+                  label={t("fields.paymentTerms")}
+                  value={paymentTermsValue}
+                  kind="select"
+                  options={paymentTermOptions}
+                  editAriaLabel={tActions("edit")}
+                  empty="—"
+                  onSave={(next) => patchField({ payment_terms: next })}
+                >
+                  {paymentTermsValue ? purchaseOrderPaymentTermsLabel(detail.payment_terms) : null}
+                </DetailEditableField>
                 <DetailMetricCard label={t("fields.status")}>
                   <PurchaseOrderStatusBadge status={detail.status} label={statusLabel} />
                 </DetailMetricCard>
@@ -171,17 +222,39 @@ export function PurchaseOrderDetailBody({
               )}
             </DetailPanelCard>
 
-            {vendorNotes ? (
-              <DetailPanelCard title={t("fields.vendorNotes")}>
-                <p className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">{vendorNotes}</p>
-              </DetailPanelCard>
-            ) : null}
+            <DetailPanelCard title={t("fields.vendorNotes")}>
+              <DetailEditableField
+                label={t("fields.vendorNotes")}
+                value={vendorNotes}
+                kind="text"
+                editAriaLabel={tActions("edit")}
+                empty="—"
+                onSave={(next) => patchField({ vendor_notes: next })}
+              >
+                {vendorNotes ? (
+                  <p className="whitespace-pre-wrap text-sm font-normal text-slate-700 dark:text-slate-300">
+                    {vendorNotes}
+                  </p>
+                ) : null}
+              </DetailEditableField>
+            </DetailPanelCard>
 
-            {internalNotes ? (
-              <DetailPanelCard title={t("fields.internalNotes")}>
-                <p className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">{internalNotes}</p>
-              </DetailPanelCard>
-            ) : null}
+            <DetailPanelCard title={t("fields.internalNotes")}>
+              <DetailEditableField
+                label={t("fields.internalNotes")}
+                value={internalNotes}
+                kind="text"
+                editAriaLabel={tActions("edit")}
+                empty="—"
+                onSave={(next) => patchField({ internal_notes: next })}
+              >
+                {internalNotes ? (
+                  <p className="whitespace-pre-wrap text-sm font-normal text-slate-700 dark:text-slate-300">
+                    {internalNotes}
+                  </p>
+                ) : null}
+              </DetailEditableField>
+            </DetailPanelCard>
 
             <DetailSystemMetadataSection
               createdAt={detail.created_at ?? new Date().toISOString()}

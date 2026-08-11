@@ -75,6 +75,8 @@ export type Item = {
   unit_type?: number | ItemUnitTypeRef | null;
   installation_cost?: string | number | null;
   installation_cost_type?: InstallationCostType | string | null;
+  /** Hours needed to install this composite item. */
+  installation_hours?: string | number | null;
   // Fulfilment / dimensions (backend expects separate fields)
   length?: string | number | null;
   width?: string | number | null;
@@ -100,6 +102,7 @@ export type ItemCreatePayload = {
   unit_type?: number;
   installation_cost?: number;
   installation_cost_type?: InstallationCostType;
+  installation_hours?: number | null;
   // Fulfilment / dimensions
   length?: number | null;
   width?: number | null;

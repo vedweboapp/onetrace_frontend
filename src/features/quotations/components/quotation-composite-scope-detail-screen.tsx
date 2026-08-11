@@ -169,7 +169,7 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
         ) : pinDetails ? (
           <div className={detailPageStackClassName}>
             <DetailPanelCard >
-              <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-3">
+              <DetailMetricsGrid>
                 <DetailMetricCard label={t("colQtyInScope")}>
                   <span className="tabular-nums font-semibold">{pinTotalQty}</span>
                 </DetailMetricCard>
@@ -279,7 +279,7 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
         ) : detail ? (
           <div className={detailPageStackClassName}>
             <DetailPanelCard title={t("sectionQuoteLine")}>
-              <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-3">
+              <DetailMetricsGrid>
                 {repeatCount > 1 ? (
                   <DetailMetricCard label={t("includedTimes")}>
                     <span className="tabular-nums font-semibold">×{repeatCount}</span>
@@ -297,7 +297,7 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
             </DetailPanelCard>
 
             <DetailPanelCard title={tItems("detail.sectionOverview")}>
-              <DetailMetricsGrid className="lg:grid-cols-2">
+              <DetailMetricsGrid>
                 <DetailMetricCard label={tItems("detail.sku")}>
                   <span className="font-mono">{detail.sku?.trim() ? detail.sku : "—"}</span>
                 </DetailMetricCard>

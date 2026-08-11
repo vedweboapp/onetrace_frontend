@@ -13,7 +13,7 @@ import {
 import { InstallationTypeChip } from "@/features/installation-types/components/installation-type-chip";
 import type { InstallationType } from "@/features/installation-types/types/installation-type.types";
 import { formatInstallationTypeLabel, normalizeInstallationTypeHex } from "@/features/installation-types/utils/installation-type-display.util";
-import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
+import { reportLocalFormSubmitApiError, zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   SettingsDetailActions,
@@ -249,6 +249,10 @@ export function InstallationTypeSettingsPanel() {
       setFormOpen(false);
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
+    } catch (error) {
+      reportLocalFormSubmitApiError(error, (fieldErrors) => {
+        setErrors((prev) => ({ ...prev, ...fieldErrors }));
+      });
     } finally {
       setSaving(false);
     }

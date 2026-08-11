@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { z } from "zod";
 import type { createWorkflowColourStatusApi } from "@/shared/api/create-workflow-colour-status.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
+import { reportLocalFormSubmitApiError, zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
 import { toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
@@ -18,6 +19,7 @@ import {
   SettingsDetailTextValue,
   SettingsDetailTimestampValue,
   SettingsDetailTitle,
+  formatSettingsDetailDate,
   settingsDetailUserLabel,
 } from "@/shared/components/settings/settings-detail-view";
 import { cn } from "@/core/utils/http.util";
@@ -46,7 +48,6 @@ import {
   fieldLabelClassName,
   surfaceInputClassName,
 } from "@/shared/ui";
-import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
@@ -277,6 +278,19 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
       setFormOpen(false);
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
+    } catch (error) {
+      reportLocalFormSubmitApiError(
+        error,
+        (fieldErrors) => setErrors((prev) => ({ ...prev, ...fieldErrors })),
+        undefined,
+        {
+          fieldMap: {
+            bg_color: "bg_colour",
+            text_color: "text_colour",
+            name: "status_name",
+          },
+        },
+      );
     } finally {
       setSaving(false);
     }
@@ -396,7 +410,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
                   title={<StatusChip row={row} className="text-sm font-semibold" />}
                   meta={
                     <>
-                      {statusUserLabel(row.created_by)} · {dateFmt.format(new Date(row.created_at))}
+                      {statusUserLabel(row.created_by)} · {formatSettingsDetailDate(dateFmt, row.created_at)}
                     </>
                   }
                   onCardClick={() => setDetailRow(row)}

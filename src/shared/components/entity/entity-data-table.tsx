@@ -17,12 +17,24 @@ import {
 } from "@/shared/ui";
 import { DataTableTextModeToggle } from "@/shared/ui/data-table-text-mode-toggle";
 import { useDataTableTextModeStore } from "@/shared/ui/data-table-text-mode.store";
+import { formatSettingsDetailDate } from "@/shared/components/settings/settings-detail-view";
 
 const TRUNCATE_MAX = {
   sm: "max-w-[14rem]",
   md: "max-w-[16rem]",
   lg: "max-w-[20rem]",
 } as const;
+
+function formatEntityTableDate(
+  value: string | Date | number | null | undefined,
+  dateFmt: Intl.DateTimeFormat,
+): string {
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime()) || value.getFullYear() < 1980) return "—";
+    return dateFmt.format(value);
+  }
+  return formatSettingsDetailDate(dateFmt, value);
+}
 
 function columnHeaderClassName<T>(column: EntityTableColumn<T>) {
   return cn(column.responsive && entityResponsiveClass(column.responsive), column.headerClassName);
@@ -62,7 +74,7 @@ function renderEntityTableCell<T>(column: EntityTableColumn<T>, row: T, wrap: bo
     case "muted":
       return column.value(row);
     case "date":
-      return column.dateFmt.format(new Date(column.value(row)));
+      return formatEntityTableDate(column.value(row), column.dateFmt);
     case "status":
       return (
         <ActiveStatusBadge

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { updateInvoice } from "@/features/invoices/api/invoice.api";
 import type { InvoiceCompositeItem, InvoiceDetail, InvoiceLineItem } from "@/features/invoices/types/invoice.types";
 import { InvoiceStatusBadge } from "@/features/invoices/components/invoice-status-badge";
 import {
@@ -14,6 +15,7 @@ import {
 import { resolveInvoiceAddresses } from "@/features/invoices/utils/invoice-form-map";
 import { formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
+import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
   DetailMetricCard,
@@ -22,7 +24,11 @@ import {
   DetailPanelCard,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
-import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
+import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import {
+  formatApiDateForHtmlDateInput,
+  formatFlexibleApiDate,
+} from "@/shared/utils/api-date-parse.util";
 
 type Props = {
   detail: InvoiceDetail;
@@ -32,6 +38,8 @@ type Props = {
   dueFmt: Intl.DateTimeFormat;
   statusLabel: string;
   activeTab: "overview" | "lineItems";
+  /** Refresh detail after a successful quick-edit PATCH. */
+  onSaved?: () => void;
 };
 
 type DisplayLine = {
@@ -106,15 +114,40 @@ export function InvoiceDetailBody({
   dueFmt,
   statusLabel,
   activeTab,
+  onSaved,
 }: Props) {
   const t = useTranslations("Dashboard.invoices");
+  const tActions = useTranslations("Dashboard.common.actions");
   const locale = useLocale();
   const addresses = resolveInvoiceAddresses(detail);
   const lines = resolveDisplayLines(detail);
   const totalBalance = invoiceTotalAmount(detail);
-  const clientNotes =
-    detail.client_notes?.trim() || detail.notes_and_terms?.trim() || "";
-  const internalNotes = detail.internal_notes?.trim() || "";
+  const notesAndTerms = detail.notes_and_terms?.trim() ?? "";
+  const clientNotes = detail.client_notes?.trim() ?? "";
+  const internalNotes = detail.internal_notes?.trim() ?? "";
+  const paymentTermsValue = (detail.payment_terms ?? "").trim();
+
+  const paymentTermOptions = React.useMemo(
+    () => [
+      { value: "net_7", label: t("paymentTerms.net7") },
+      { value: "net_45", label: t("paymentTerms.net45") },
+      { value: "net_30", label: t("paymentTerms.net30") },
+      { value: "net_15", label: t("paymentTerms.net15") },
+      { value: "due_on_receipt", label: t("paymentTerms.dueOnReceipt") },
+    ],
+    [t],
+  );
+
+  async function patchField(body: Parameters<typeof updateInvoice>[1]) {
+    try {
+      await updateInvoice(detail.id, body);
+      toastSuccess(t("updatedToast"));
+      onSaved?.();
+    } catch (error) {
+      toastApiError(error, t("updateError"));
+      throw error;
+    }
+  }
 
   return (
     <DetailPagePadding>
@@ -122,28 +155,60 @@ export function InvoiceDetailBody({
       {activeTab === "overview" ? (
         <>
           <DetailPanelCard title={t("detail.sectionInvoiceDetails")}>
-            <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-4">
+            <DetailMetricsGrid>
               <DetailMetricCard label={t("fields.clientName")}>
                 {invoiceClientLabel(detail.client, clientName)}
               </DetailMetricCard>
               <DetailMetricCard label={t("fields.contactPerson")}>
                 {invoiceContactPersonLabel(detail, contactName)}
               </DetailMetricCard>
-              <DetailMetricCard label={t("fields.invoiceNumber")}>
+              <DetailEditableField
+                label={t("fields.invoiceNumber")}
+                value={detail.invoice_number ?? ""}
+                kind="text"
+                editAriaLabel={tActions("edit")}
+                onSave={(next) => patchField({ invoice_number: next })}
+              >
                 {detail.invoice_number}
-              </DetailMetricCard>
+              </DetailEditableField>
               <DetailMetricCard label={t("fields.projectName")}>
                 {invoiceJobOrProjectLabel(detail)}
               </DetailMetricCard>
-              <DetailMetricCard label={t("fields.issueDate")}>
-                {formatFlexibleApiDate(detail.issue_date, dueFmt)}
-              </DetailMetricCard>
-              <DetailMetricCard label={t("fields.dueDate")}>
-                {formatFlexibleApiDate(detail.due_date, dueFmt)}
-              </DetailMetricCard>
-              <DetailMetricCard label={t("fields.paymentTerms")}>
-                {invoicePaymentTermsLabel(detail.payment_terms)}
-              </DetailMetricCard>
+              <DetailEditableField
+                label={t("fields.issueDate")}
+                value={formatApiDateForHtmlDateInput(detail.issue_date)}
+                kind="text"
+                editAriaLabel={tActions("edit")}
+                empty="—"
+                onSave={(next) => patchField({ issue_date: next || undefined })}
+              >
+                {formatFlexibleApiDate(detail.issue_date, dueFmt) !== "—"
+                  ? formatFlexibleApiDate(detail.issue_date, dueFmt)
+                  : null}
+              </DetailEditableField>
+              <DetailEditableField
+                label={t("fields.dueDate")}
+                value={formatApiDateForHtmlDateInput(detail.due_date)}
+                kind="text"
+                editAriaLabel={tActions("edit")}
+                empty="—"
+                onSave={(next) => patchField({ due_date: next || undefined })}
+              >
+                {formatFlexibleApiDate(detail.due_date, dueFmt) !== "—"
+                  ? formatFlexibleApiDate(detail.due_date, dueFmt)
+                  : null}
+              </DetailEditableField>
+              <DetailEditableField
+                label={t("fields.paymentTerms")}
+                value={paymentTermsValue}
+                kind="select"
+                options={paymentTermOptions}
+                editAriaLabel={tActions("edit")}
+                empty="—"
+                onSave={(next) => patchField({ payment_terms: next })}
+              >
+                {paymentTermsValue ? invoicePaymentTermsLabel(detail.payment_terms) : null}
+              </DetailEditableField>
               <DetailMetricCard label={t("fields.status")}>
                 <InvoiceStatusBadge status={detail.status} label={statusLabel} />
               </DetailMetricCard>
@@ -185,21 +250,56 @@ export function InvoiceDetailBody({
             )}
           </DetailPanelCard>
 
-          {clientNotes ? (
-            <DetailPanelCard title={t("fields.notesAndTerms")}>
-              <p className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
-                {clientNotes}
-              </p>
-            </DetailPanelCard>
-          ) : null}
+          <DetailPanelCard title={t("fields.notesAndTerms")}>
+            <DetailEditableField
+              label={t("fields.notesAndTerms")}
+              value={notesAndTerms}
+              kind="text"
+              editAriaLabel={tActions("edit")}
+              empty="—"
+              onSave={(next) => patchField({ notes_and_terms: next })}
+            >
+              {notesAndTerms ? (
+                <p className="whitespace-pre-wrap text-sm font-normal text-slate-700 dark:text-slate-300">
+                  {notesAndTerms}
+                </p>
+              ) : null}
+            </DetailEditableField>
+          </DetailPanelCard>
 
-          {internalNotes ? (
-            <DetailPanelCard title={t("fields.internalNotes")}>
-              <p className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
-                {internalNotes}
-              </p>
-            </DetailPanelCard>
-          ) : null}
+          <DetailPanelCard title={t("fields.clientNotes")}>
+            <DetailEditableField
+              label={t("fields.clientNotes")}
+              value={clientNotes}
+              kind="text"
+              editAriaLabel={tActions("edit")}
+              empty="—"
+              onSave={(next) => patchField({ client_notes: next })}
+            >
+              {clientNotes ? (
+                <p className="whitespace-pre-wrap text-sm font-normal text-slate-700 dark:text-slate-300">
+                  {clientNotes}
+                </p>
+              ) : null}
+            </DetailEditableField>
+          </DetailPanelCard>
+
+          <DetailPanelCard title={t("fields.internalNotes")}>
+            <DetailEditableField
+              label={t("fields.internalNotes")}
+              value={internalNotes}
+              kind="text"
+              editAriaLabel={tActions("edit")}
+              empty="—"
+              onSave={(next) => patchField({ internal_notes: next })}
+            >
+              {internalNotes ? (
+                <p className="whitespace-pre-wrap text-sm font-normal text-slate-700 dark:text-slate-300">
+                  {internalNotes}
+                </p>
+              ) : null}
+            </DetailEditableField>
+          </DetailPanelCard>
 
           <DetailSystemMetadataSection
             createdAt={detail.created_at ?? new Date().toISOString()}

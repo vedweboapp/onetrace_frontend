@@ -37,6 +37,8 @@ export function createQuotationFormSchema(
     tag_ids: z.array(z.number()),
     order_number: z.string(),
     due_date: z.string(),
+    /** Quote workflow status: draft | sent | approved | rejected (used on edit). */
+    status: z.string(),
     salesperson: z.string(),
     project_manager: z.string(),
     technician_ids: z.array(z.number()),

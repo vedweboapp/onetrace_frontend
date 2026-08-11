@@ -1,16 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Pencil } from "lucide-react";
-import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { usePathname, useRouter } from "@/i18n/navigation";
 import { updateClient } from "@/features/clients/api/client.api";
 import type { Client } from "@/features/clients/types/client.types";
 import { resolveClientAddresses } from "@/features/clients/utils/client-form-map";
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
-import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
+import { DetailEntityAddressFields } from "@/shared/components/layout/detail-entity-address-fields";
 import {
   DetailMetricsGrid,
   DetailPagePadding,
@@ -19,11 +16,6 @@ import {
 } from "@/shared/components/layout/detail-metric-card";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { ActiveStatusBadge } from "@/shared/ui";
-import {
-  buildCurrentPageBackHref,
-  buildEntityEditHrefFromDetail,
-  buildPathWithStoredBack,
-} from "@/shared/utils/detail-from-list.util";
 
 export function ClientDetailBody({
   detail,
@@ -38,9 +30,6 @@ export function ClientDetailBody({
   const t = useTranslations("Dashboard.clients");
   const tMeta = useTranslations("Dashboard.common.detail");
   const tActions = useTranslations("Dashboard.common.actions");
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const addresses = resolveClientAddresses(detail);
 
   const statusOptions = React.useMemo(
@@ -50,13 +39,6 @@ export function ClientDetailBody({
     ],
     [t],
   );
-
-  function goEdit() {
-    const detailBackHref = buildCurrentPageBackHref(pathname, searchParams);
-    router.push(
-      buildPathWithStoredBack(buildEntityEditHrefFromDetail(pathname, searchParams), detailBackHref),
-    );
-  }
 
   async function patchField(body: Parameters<typeof updateClient>[1]) {
     try {
@@ -69,11 +51,39 @@ export function ClientDetailBody({
     }
   }
 
+  async function patchAddresses(addressPayloads: Parameters<typeof updateClient>[1]["addresses"]) {
+    try {
+      await updateClient(detail.id, {
+        name: detail.name,
+        email: detail.email,
+        phone: detail.phone ?? "",
+        addresses: addressPayloads,
+      });
+      toastSuccess(t("updatedToast"));
+      onSaved?.();
+    } catch (error) {
+      toastApiError(error, t("toggleActiveError"));
+      throw error;
+    }
+  }
+
+  const addressFieldLabels = React.useMemo(
+    () => ({
+      addressLine1: t("fields.addressLine1"),
+      addressLine2: t("fields.addressLine2"),
+      pincode: t("fields.pincode"),
+      country: t("fields.country"),
+      state: t("fields.stateProvince"),
+      city: t("fields.city"),
+    }),
+    [t],
+  );
+
   return (
     <DetailPagePadding className="!px-0 !py-0 sm:!px-0 sm:!py-0">
       <div className={detailPageStackClassName}>
         <DetailPanelCard title={t("detail.panelOverview")} variant="flat">
-          <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-3">
+          <DetailMetricsGrid>
             <DetailEditableField
               label={t("fields.name")}
               value={detail.name}
@@ -118,21 +128,7 @@ export function ClientDetailBody({
           </DetailMetricsGrid>
         </DetailPanelCard>
 
-        <DetailPanelCard
-          title={t("fields.addresses")}
-          variant="flat"
-          headerRight={
-            <button
-              type="button"
-              onClick={goEdit}
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-              aria-label={tActions("edit")}
-            >
-              <Pencil className="size-3.5" strokeWidth={1.75} aria-hidden />
-              {tActions("edit")}
-            </button>
-          }
-        >
+        <DetailPanelCard title={t("fields.addresses")} variant="flat">
           {addresses.length === 0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>
           ) : (
@@ -149,19 +145,14 @@ export function ClientDetailBody({
                       </span>
                     ) : null}
                   </div>
-                  <DetailFormattedAddress
-                    line1={addr.address_line_1}
-                    line2={addr.address_line_2}
-                    city={addr.city}
-                    state={addr.state}
-                    pincode={addr.pincode}
-                    country={addr.country}
-                    line2Fallback={t("detail.addressLine2Empty")}
-                    emptyMessage={
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        {t("detail.addressUnavailable")}
-                      </p>
-                    }
+                  <DetailEntityAddressFields
+                    address={addr}
+                    addressIndex={index}
+                    allAddresses={addresses}
+                    labels={addressFieldLabels}
+                    editAriaLabel={tActions("edit")}
+                    line2Empty={t("detail.addressLine2Empty")}
+                    onSaveAddresses={patchAddresses}
                   />
                 </li>
               ))}

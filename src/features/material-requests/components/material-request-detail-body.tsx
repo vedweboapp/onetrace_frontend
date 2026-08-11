@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { DetailEntityLink } from "@/shared/components/entity";
+import { updateMaterialRequest } from "@/features/material-requests/api/material-request.api";
 import type { MaterialRequestDetail } from "@/features/material-requests/types/material-request.types";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import { MaterialRequestStatusBadge } from "@/features/material-requests/components/material-request-status-badge";
@@ -9,10 +10,9 @@ import {
   materialRequestExtraItemName,
   materialRequestItemGroupName,
   materialRequestItemProductName,
-  materialRequestJobProjectName,
-  materialRequestJobTitle,
   materialRequestWorkerLabel,
   nestedId,
+  normalizeMaterialRequestStatus,
 } from "@/features/material-requests/utils/material-request-nested-fields.util";
 import type { MaterialRequestItemSummary } from "@/features/material-requests/types/material-request.types";
 import { DispatchedQuantityCell } from "@/shared/components/quantity/dispatched-quantity-cell";
@@ -21,6 +21,7 @@ import {
   quantityTableHeaderClass,
 } from "@/shared/components/quantity/quantity-table-columns";
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
+import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import {
   DetailCollapsibleSection,
   DetailMetricCard,
@@ -30,8 +31,12 @@ import {
   DetailSectionCountBadge,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
+import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
-import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
+import {
+  formatApiDateForHtmlDateInput,
+  formatFlexibleApiDate,
+} from "@/shared/utils/api-date-parse.util";
 import { cn } from "@/core/utils/http.util";
 import { Link } from "@/i18n/navigation";
 
@@ -42,6 +47,10 @@ type Props = {
   dueFmt: Intl.DateTimeFormat;
   statusLabel: string;
   statusRow?: Pick<WorkflowColourStatus, "status_name" | "bg_colour" | "text_colour"> | null;
+  /** Status select options from `useMaterialStatusCatalog()` on the detail screen. */
+  statusOptions?: { value: string; label: string }[];
+  /** Refresh detail after a successful quick-edit PATCH. */
+  onSaved?: () => void;
 };
 
 function itemRowsFromDetail(detail: MaterialRequestDetail): MaterialRequestItemSummary[] {
@@ -73,27 +82,62 @@ export function MaterialRequestDetailBody({
   dueFmt,
   statusLabel,
   statusRow,
+  statusOptions = [],
+  onSaved,
 }: Props) {
   const t = useTranslations("Dashboard.materialRequests");
+  const tActions = useTranslations("Dashboard.common.actions");
   const extraItems = detail.extra_dispatch_items ?? [];
   const dispatchIds = detail.dispatch_ids ?? [];
   const itemRows = itemRowsFromDetail(detail);
   const showRestockedColumn = itemRows.some((row) => row.restocked_quantity > 0);
+  const statusValue = normalizeMaterialRequestStatus(detail.status);
+  const notes = detail.notes?.trim() ?? "";
+
+  async function patchField(body: Parameters<typeof updateMaterialRequest>[1]) {
+    try {
+      await updateMaterialRequest(detail.id, body);
+      toastSuccess(t("updatedToast"));
+      onSaved?.();
+    } catch (error) {
+      toastApiError(error, t("loadError"));
+      throw error;
+    }
+  }
 
   return (
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
       <DetailPanelCard title={t("detail.sectionOverview")}>
-        <DetailMetricsGrid className="mb-4 sm:grid-cols-2 lg:grid-cols-3">
+        <DetailMetricsGrid className="mb-4">
           <DetailMetricCard label={t("fields.workerName")}>
             {materialRequestWorkerLabel(detail.worker_name, workerName)}
           </DetailMetricCard>
-          <DetailMetricCard label={t("fields.status")}>
-            <MaterialRequestStatusBadge status={detail.status} label={statusLabel} statusRow={statusRow} />
-          </DetailMetricCard>
-          <DetailMetricCard label={t("fields.requestedDate")}>
+          {statusOptions.length > 0 ? (
+            <DetailEditableField
+              label={t("fields.status")}
+              value={statusValue}
+              kind="select"
+              options={statusOptions}
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchField({ status: next })}
+            >
+              <MaterialRequestStatusBadge status={detail.status} label={statusLabel} statusRow={statusRow} />
+            </DetailEditableField>
+          ) : (
+            <DetailMetricCard label={t("fields.status")}>
+              <MaterialRequestStatusBadge status={detail.status} label={statusLabel} statusRow={statusRow} />
+            </DetailMetricCard>
+          )}
+          <DetailEditableField
+            label={t("fields.requestedDate")}
+            value={formatApiDateForHtmlDateInput(detail.requested_date)}
+            kind="text"
+            editAriaLabel={tActions("edit")}
+            onSave={(next) => patchField({ requested_date: next })}
+          >
             {formatFlexibleApiDate(detail.requested_date, dueFmt)}
-          </DetailMetricCard>
+          </DetailEditableField>
         </DetailMetricsGrid>
       </DetailPanelCard>
 
@@ -129,8 +173,6 @@ export function MaterialRequestDetailBody({
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {(detail.jobs ?? []).map((job) => (
               <div key={job.id} className="py-3 first:pt-0 last:pb-0">
-                {/* <p className="font-semibold text-slate-900 dark:text-slate-100">{materialRequestJobTitle(job)}</p> */}
-
                 <Link href={`${routes.dashboard.jobs}/${job.id}`} className="font-semibold text-slate-900 underline-offset-2 hover:underline dark:text-slate-100">
                 #{job.serial_number ?? job.id}
                 </Link>
@@ -246,11 +288,20 @@ export function MaterialRequestDetailBody({
         </DetailPanelCard>
       ) : null}
 
-      {detail.notes?.trim() ? (
-        <DetailPanelCard title={t("fields.notes")}>
-          <p className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">{detail.notes}</p>
-        </DetailPanelCard>
-      ) : null}
+      <DetailPanelCard title={t("fields.notes")}>
+        <DetailEditableField
+          label={t("fields.notes")}
+          value={notes}
+          kind="text"
+          editAriaLabel={tActions("edit")}
+          empty="—"
+          onSave={(next) => patchField({ notes: next })}
+        >
+          {notes ? (
+            <p className="whitespace-pre-wrap text-sm font-normal text-slate-700 dark:text-slate-300">{notes}</p>
+          ) : null}
+        </DetailEditableField>
+      </DetailPanelCard>
 
       <DetailSystemMetadataSection
         createdAt={detail.created_at ?? new Date().toISOString()}
