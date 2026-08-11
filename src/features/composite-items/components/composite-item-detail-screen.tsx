@@ -80,7 +80,9 @@ export function CompositeItemDetailScreen({ itemId }: Props) {
         />
       }
     >
-      {({ detail, dateFmt }) => <ItemDetailBody detail={detail} dateFmt={dateFmt} />}
+      {({ detail, dateFmt, retry }) => (
+        <ItemDetailBody detail={detail} dateFmt={dateFmt} onSaved={retry} />
+      )}
     </EntityDetailScreen>
   );
 }

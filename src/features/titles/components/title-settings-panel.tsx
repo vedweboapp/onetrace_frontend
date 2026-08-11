@@ -7,7 +7,7 @@ import { cn } from "@/core/utils/http.util";
 import { createTitle, deleteTitle, fetchTitlesPage, updateTitle } from "@/features/titles/api/title.api";
 import type { Title } from "@/features/titles/types/title.types";
 import { formatTitleLabel } from "@/features/titles/utils/title-display.util";
-import { zTrimmedNonEmpty } from "@/shared/form";
+import { reportLocalFormSubmitApiError, zTrimmedNonEmpty } from "@/shared/form";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   SettingsDetailActions,
@@ -178,6 +178,10 @@ export function TitleSettingsPanel() {
       setFormOpen(false);
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
+    } catch (error) {
+      reportLocalFormSubmitApiError(error, (fieldErrors) => {
+        setErrors((prev) => ({ ...prev, ...fieldErrors }));
+      });
     } finally {
       setSaving(false);
     }

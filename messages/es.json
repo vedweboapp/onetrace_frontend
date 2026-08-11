@@ -202,6 +202,9 @@
       },
       "detail": {
         "systemMetadata": "Metadatos del sistema",
+        "createdAt": "Creado el",
+        "updatedAt": "Actualizado el",
+        "createdBy": "Creado por",
         "modifiedBy": "Modificado por",
         "notModifiedYet": "Sin modificar"
       }
@@ -1419,6 +1422,14 @@
         "phone": "Teléfono",
         "gender": "Género",
         "role": "Rol",
+        "basePay": "Salario base",
+        "basePayType": "Tipo de pago",
+        "basePayTypeFixed": "Pago fijo",
+        "basePayTypeRate": "Pago por hora",
+        "addresses": "Direcciones",
+        "addressType": "Tipo de dirección",
+        "addressLine1": "Dirección línea 1",
+        "addressLine2": "Dirección línea 2",
         "address1": "Dirección línea 1",
         "address2": "Dirección línea 2",
         "country": "País",
@@ -1428,6 +1439,17 @@
         "inviteStatus": "Estado de invitación",
         "invitationSentAt": "Invitación enviada el"
       },
+      "addresses": {
+        "add": "Añadir dirección",
+        "remove": "Eliminar dirección",
+        "primary": "Principal",
+        "rowLabel": "Dirección {index}"
+      },
+      "addressType": {
+        "billing": "Facturación",
+        "shipping": "Envío",
+        "other": "Otra"
+      },
       "genders": {
         "male": "Masculino",
         "female": "Femenino",
@@ -1436,6 +1458,7 @@
       "placeholders": {
         "gender": "Selecciona género",
         "role": "Selecciona rol",
+        "basePay": "Introducir importe",
         "country": "Selecciona país",
         "state": "Selecciona estado",
         "city": "Selecciona ciudad"
@@ -1447,6 +1470,10 @@
         "phone": "Introduce un teléfono válido.",
         "gender": "Selecciona género.",
         "role": "Selecciona rol.",
+        "basePay": "Introduce un importe de salario base válido.",
+        "addressLine1": "Introduce la dirección línea 1.",
+        "addressType": "Selecciona el tipo de dirección.",
+        "addressesMin": "Añade al menos una dirección.",
         "country": "Selecciona país.",
         "state": "Selecciona estado.",
         "city": "Selecciona ciudad.",
@@ -1461,7 +1488,8 @@
         "retry": "Reintentar",
         "backAria": "Volver a la lista de usuarios",
         "editWithIcon": "Editar",
-        "sectionOverview": "Resumen"
+        "sectionOverview": "Resumen",
+        "addressUnavailable": "No hay direcciones registradas."
       },
       "page": {
         "createTitle": "Invitar usuario",
@@ -3924,6 +3952,8 @@
         "installationCostType": "Precio",
         "installationCostTypeFixed": "Importe fijo",
         "installationCostTypeRate": "Tarifa / h",
+        "installationHours": "Horas de instalación",
+        "installationHoursPlaceholder": "p. ej. 2,5",
         "fulfilmentDetails": "Detalles de cumplimiento",
         "dimensions": "Dimensiones",
         "dimensionsPlaceholder": "L*A*H",
@@ -3989,6 +4019,7 @@
         "installationCost": "Coste de instalación",
         "installationCostFixed": "Importe fijo",
         "installationCostRate": "Tarifa / h",
+        "installationHours": "Horas de instalación",
         "dimensions": "Dimensiones",
         "weight": "Peso",
         "sectionAttachments": "Adjuntos",

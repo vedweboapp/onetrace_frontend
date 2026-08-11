@@ -4,6 +4,7 @@ import type {
   QuotationScopePinDetailRow,
 } from "../../../quotations/utils/quotation-composite-scope-pins.util";
 import type { DrawingPin, DrawingPlot, DrawingPinAttachment } from "@/features/projects/types/drawing.types";
+import type { QuotationDetail } from "@/features/quotations/types/quotation.types";
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -322,4 +323,57 @@ export async function fetchPublicPinDetails(pinId: number): Promise<QuotationSco
     drawingName,
     quotationId,
   };
+}
+
+export async function fetchPublicQuotationByToken(token: string): Promise<QuotationDetail> {
+  const response = await api.get<unknown>(`public/quotations/${token}/`);
+  const data = unwrapApiData(response.data);
+  return data as QuotationDetail;
+}
+
+export type PublicQuotationResponsePayload = {
+  status: "approved" | "rejected" | "questioned";
+  comment?: string;
+  signature?: File | Blob | string | null;
+};
+
+export function dataURLtoBlob(dataurl: string): Blob {
+  const arr = dataurl.split(",");
+  const mime = arr[0].match(/:(.*?);/)?.[1] ?? "image/png";
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
+}
+
+export async function submitPublicQuotationResponse(
+  token: string,
+  payload: PublicQuotationResponsePayload,
+): Promise<void> {
+  const formData = new FormData();
+  formData.append("status", payload.status);
+
+  if (payload.comment?.trim()) {
+    formData.append("comment", payload.comment.trim());
+  }
+
+  if (payload.signature) {
+    if (payload.signature instanceof File || payload.signature instanceof Blob) {
+      formData.append("signature", payload.signature, "signature.png");
+    } else if (typeof payload.signature === "string" && payload.signature.startsWith("data:")) {
+      const blob = dataURLtoBlob(payload.signature);
+      formData.append("signature", blob, "signature.png");
+    } else if (typeof payload.signature === "string" && payload.signature.trim()) {
+      formData.append("signature", payload.signature.trim());
+    }
+  }
+
+  await api.post(`public/quotations/${token}/`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 }

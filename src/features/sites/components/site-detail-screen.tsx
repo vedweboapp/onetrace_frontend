@@ -11,6 +11,8 @@ import { SiteDetailBody } from "@/features/sites/components/site-detail-body";
 import type { Site } from "@/features/sites/types/site.types";
 import {
   EntityDetailEditButton,
+  EntityDetailErrorState,
+  EntityDetailLoadingSkeleton,
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
@@ -40,10 +42,12 @@ function SiteDetailBodyWithContacts({
   detail,
   clientName,
   dateFmt,
+  onSaved,
 }: {
   detail: Site;
   clientName: string;
   dateFmt: Intl.DateTimeFormat;
+  onSaved?: () => void;
 }) {
   const [contactNameById, setContactNameById] = React.useState<Record<number, string>>({});
   const [titleNameById, setTitleNameById] = React.useState<Record<string, string>>({});
@@ -121,6 +125,7 @@ function SiteDetailBodyWithContacts({
       dateFmt={dateFmt}
       contactNameById={contactNameById}
       titleNameById={titleNameById}
+      onSaved={onSaved}
     />
   );
 }
@@ -193,14 +198,21 @@ export function SiteDetailScreen({ siteId }: Props) {
           />
         </div>
       )}
-    >
-      {({ detail, dateFmt }) => (
-        <SiteDetailBodyWithContacts
-          detail={detail}
-          clientName={siteClientName(detail, clientNameById)}
-          dateFmt={dateFmt}
-        />
-      )}
-    </EntityDetailScreen>
+      renderSurface={({ detail, loading, error, retry, dateFmt }) => {
+        if (loading) return <EntityDetailLoadingSkeleton />;
+        if (error) {
+          return <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />;
+        }
+        if (!detail) return null;
+        return (
+          <SiteDetailBodyWithContacts
+            detail={detail}
+            clientName={siteClientName(detail, clientNameById)}
+            dateFmt={dateFmt}
+            onSaved={retry}
+          />
+        );
+      }}
+    />
   );
 }

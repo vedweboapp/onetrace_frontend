@@ -31,7 +31,7 @@ export function applyApiErrorsToForm<TFieldValues extends FieldValues>(
       continue;
     }
     const formPath = (options?.fieldMap?.[apiKey] ?? apiKey) as Path<TFieldValues>;
-    setError(formPath, { type: "server", message });
+    setError(formPath, { type: "server", message: message.trim() });
     applied = true;
   }
   return applied;
@@ -52,5 +52,37 @@ export function reportFormSubmitApiError<TFieldValues extends FieldValues>(
     markApiErrorToasted(error);
     return;
   }
+  toastApiError(error, fallbackToast);
+}
+
+/**
+ * Same intent as `reportFormSubmitApiError`, for local `useState` error maps
+ * (customization settings panels — not react-hook-form).
+ */
+export function reportLocalFormSubmitApiError(
+  error: unknown,
+  applyFieldErrors: (fieldErrors: Record<string, string>) => void,
+  fallbackToast?: string,
+  options?: {
+    /** Map API field keys → local form error keys when names differ. */
+    fieldMap?: Record<string, string>;
+  },
+): void {
+  const fieldErrors = getApiFieldErrorMap(error);
+  const mapped: Record<string, string> = {};
+
+  for (const [apiKey, message] of Object.entries(fieldErrors)) {
+    if (apiKey === "non_field_errors" || apiKey === "detail" || apiKey === "__all__") continue;
+    const formKey = options?.fieldMap?.[apiKey] ?? apiKey;
+    const trimmed = message.trim();
+    if (trimmed) mapped[formKey] = trimmed;
+  }
+
+  if (Object.keys(mapped).length > 0) {
+    applyFieldErrors(mapped);
+    markApiErrorToasted(error);
+    return;
+  }
+
   toastApiError(error, fallbackToast);
 }

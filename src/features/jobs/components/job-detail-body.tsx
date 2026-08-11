@@ -5,19 +5,21 @@ import { useLocale, useTranslations } from "next-intl";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import type { Job } from "@/features/jobs/types/job.types";
 import { JobFormsSection } from "@/features/job-forms/components/job-forms-section";
-import { useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { JobFormChecklistGateModal } from "@/features/job-forms/components/job-form-checklist-gate-modal";
+import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
 import { updateJob, updateJobChecklists } from "@/features/jobs/api/job.api";
 import {
   jobChecklistUpdatePayload,
   requiredJobChecklistsComplete,
 } from "@/features/jobs/utils/job-nested-fields.util";
-import { toastApiError, toastError } from "@/shared/feedback/app-toast";
+import { toastApiError, toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import type { JobChecklistItem } from "@/features/jobs/types/job.types";
 import { JobChecklistsSection } from "@/features/jobs/components/job-checklists-section";
 import {
+  getJobStatusId,
   getJobStatusRow,
   jobAssignedWorkerLabel,
   jobChecklistEntries,
@@ -32,6 +34,7 @@ import {
   resolveJobMetaCompositeItemId,
 } from "@/features/jobs/utils/job-meta-payload.util";
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
+import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
 import {
   DetailLinkedTable,
@@ -47,7 +50,10 @@ import {
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
-import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
+import {
+  formatApiDateForHtmlDateInput,
+  formatFlexibleApiDate,
+} from "@/shared/utils/api-date-parse.util";
 import { cn } from "@/core/utils/http.util";
 import { ChevronRight, Layers, MapPinned } from "lucide-react";
 import { DrawingPinPreviewModal } from "@/features/projects/components/drawing-pin-preview-modal";
@@ -61,6 +67,7 @@ import { useLevelSnapshots, type LevelSnapshotState } from "@/shared/hooks/use-l
 import { PinThumbnailCropped } from "@/shared/components/pin-thumbnail-cropped";
 import { DrawingFilePreviewFill } from "@/features/projects/components/drawing-file-preview";
 import { DrawingPinThumbnailOverlay } from "@/features/projects/components/drawing-pin-thumbnail-overlay";
+import { useSearchParams } from "next/navigation";
 
 type JobDrawingPlot = Omit<DrawingPlot, "coordinates"> & {
   coordinates?: number[][];
@@ -651,17 +658,23 @@ export function JobDetailBody({
   dateFmt,
   workerLabel,
   onChecklistsUpdated,
+  onSaved,
 }: {
   detail: Job;
   dateFmt: Intl.DateTimeFormat;
   workerLabel?: string;
   onChecklistsUpdated?: () => void;
+  /** Refresh detail after a successful quick-edit PATCH. */
+  onSaved?: () => void;
 }) {
   const t = useTranslations("Dashboard.jobs");
   const tQa = useTranslations("Dashboard.jobs.qualityAssurance");
   const tMeta = useTranslations("Dashboard.common.detail");
+  const tActions = useTranslations("Dashboard.common.actions");
   const locale = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const [gateOpen, setGateOpen] = React.useState(false);
   const [gateSaving, setGateSaving] = React.useState(false);
@@ -669,12 +682,24 @@ export function JobDetailBody({
   const [pendingFormLabel, setPendingFormLabel] = React.useState("");
 
   const [pinStatuses, setPinStatuses] = React.useState<WorkflowColourStatus[]>([]);
+  const [jobStatuses, setJobStatuses] = React.useState<WorkflowColourStatus[]>([]);
 
   React.useEffect(() => {
     fetchPinStatusesPage(1, 500, { is_active: true })
       .then((res) => setPinStatuses(res.items))
       .catch((err) => console.error("Failed to load pin statuses", err));
   }, []);
+
+  React.useEffect(() => {
+    fetchJobStatusesPage(1, 500)
+      .then((res) => setJobStatuses(res.items.filter((s) => s.is_active !== false)))
+      .catch((err) => console.error("Failed to load job statuses", err));
+  }, []);
+
+  const jobStatusSelectOptions = React.useMemo(
+    () => jobStatuses.map((s) => ({ value: String(s.id), label: s.status_name })),
+    [jobStatuses],
+  );
 
   const [previewPinData, setPreviewPinData] = React.useState<{
     pin: DrawingPin;
@@ -773,6 +798,17 @@ export function JobDetailBody({
   const checklistMarked = jobChecklistIsMarked(detail);
 
   const checklistsComplete = requiredJobChecklistsComplete(checklistEntries, { isMarked: checklistMarked });
+
+  async function patchField(body: Parameters<typeof updateJob>[1]) {
+    try {
+      await updateJob(detail.id, body);
+      toastSuccess(t("updatedToast"));
+      onSaved?.();
+    } catch (error) {
+      toastApiError(error, t("updateError"));
+      throw error;
+    }
+  }
 
   async function handleGateConfirm(items: JobChecklistItem[]) {
     setGateSaving(true);
@@ -898,18 +934,31 @@ export function JobDetailBody({
       <div className={detailPageStackClassName}>
         <DetailPanelCard title={t("sections.basic")}>
           <DetailMetricsGrid>
-            <DetailMetricCard label={t("fields.jobStatus")}>
-              <WorkflowColourStatusChip
-                row={statusRow}
-                fallbackLabel={detail.job_pin_status?.trim() || t("detail.statusUnknown")}
-              />
-            </DetailMetricCard>
+            {jobStatusSelectOptions.length > 0 ? (
+              <DetailEditableField
+                label={t("fields.jobStatus")}
+                value={getJobStatusId(detail) != null ? String(getJobStatusId(detail)) : ""}
+                kind="select"
+                options={jobStatusSelectOptions}
+                editAriaLabel={tActions("edit")}
+                onSave={(next) => patchField({ job_status: Number(next) })}
+              >
+                <WorkflowColourStatusChip
+                  row={statusRow}
+                  fallbackLabel={detail.job_pin_status?.trim() || t("detail.statusUnknown")}
+                />
+              </DetailEditableField>
+            ) : (
+              <DetailMetricCard label={t("fields.jobStatus")}>
+                <WorkflowColourStatusChip
+                  row={statusRow}
+                  fallbackLabel={detail.job_pin_status?.trim() || t("detail.statusUnknown")}
+                />
+              </DetailMetricCard>
+            )}
             <DetailMetricCard label={t("fields.assignedWorker")}>
               {workerLabel ?? jobAssignedWorkerLabel(detail)}
             </DetailMetricCard>
-            {/* <DetailMetricCard label={t("fields.jobId")}>
-              <span className="tabular-nums">{detail.id}</span>
-            </DetailMetricCard> */}
           </DetailMetricsGrid>
         </DetailPanelCard>
 
@@ -920,7 +969,7 @@ export function JobDetailBody({
         ) : null}
 
         <DetailPanelCard title={t("detail.sectionRelations")}>
-          <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-3">
+          <DetailMetricsGrid>
             <DetailMetricCard label={t("fields.client")}>
               {clientId != null ? (
                 <DetailEntityLink
@@ -1080,9 +1129,15 @@ export function JobDetailBody({
 
         <DetailPanelCard title={t("detail.sectionSchedule")}>
           <DetailMetricsGrid>
-            <DetailMetricCard label={t("fields.startDate")}>
+            <DetailEditableField
+              label={t("fields.startDate")}
+              value={formatApiDateForHtmlDateInput(detail.start_date)}
+              kind="text"
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchField({ start_date: next })}
+            >
               {formatFlexibleApiDate(detail.start_date, dateFmt)}
-            </DetailMetricCard>
+            </DetailEditableField>
             <DetailMetricCard label={t("fields.endDate")}>
               {detail.completed_at
                 ? formatFlexibleApiDate(detail.completed_at, dateFmt)
@@ -1096,14 +1151,27 @@ export function JobDetailBody({
           </DetailMetricsGrid>
         </DetailPanelCard>
 
-        {detail.description?.trim() ? (
-          <DetailPanelCard title={t("detail.sectionDescription")}>
-            <p className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">{detail.description}</p>
-          </DetailPanelCard>
-        ) : null}
+        <DetailPanelCard title={t("detail.sectionDescription")}>
+          <DetailEditableField
+            label={t("fields.description")}
+            value={detail.description?.trim() ?? ""}
+            kind="text"
+            editAriaLabel={tActions("edit")}
+            empty="—"
+            onSave={(next) => patchField({ description: next })}
+          >
+            {detail.description?.trim() ? (
+              <p className="whitespace-pre-wrap text-sm font-normal text-slate-700 dark:text-slate-300">
+                {detail.description}
+              </p>
+            ) : null}
+          </DetailEditableField>
+        </DetailPanelCard>
 
         {levels.length > 0 && (
-          <DetailPanelCard title={locale === "es" ? "Planos y Pins" : "Drawings & Pins"}>
+          <DetailPanelCard
+            title={locale === "es" ? "Planos y Pins" : "Drawings & Pins"}
+          >
             {selectedPinIdList.length > 0 ? (
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/60">
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-200">

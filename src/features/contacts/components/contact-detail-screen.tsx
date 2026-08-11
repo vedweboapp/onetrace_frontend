@@ -16,6 +16,8 @@ import {
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import {
   EntityDetailEditButton,
+  EntityDetailErrorState,
+  EntityDetailLoadingSkeleton,
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
@@ -134,8 +136,12 @@ export function ContactDetailScreen({ contactId }: Props) {
           />
         </div>
       )}
-    >
-      {({ detail, dateFmt }) => {
+      renderSurface={({ detail, loading, error, retry, dateFmt }) => {
+        if (loading) return <EntityDetailLoadingSkeleton />;
+        if (error) {
+          return <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />;
+        }
+        if (!detail) return null;
         const { clientName, vendorName } = resolveParentNames(detail);
         return (
           <ContactDetailBody
@@ -143,9 +149,10 @@ export function ContactDetailScreen({ contactId }: Props) {
             clientName={clientName}
             vendorName={vendorName}
             dateFmt={dateFmt}
+            onSaved={retry}
           />
         );
       }}
-    </EntityDetailScreen>
+    />
   );
 }

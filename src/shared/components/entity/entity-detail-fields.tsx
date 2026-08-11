@@ -8,6 +8,7 @@ import {
   DetailPanelCard,
 } from "@/shared/components/layout/detail-metric-card";
 import { ActiveStatusBadge } from "@/shared/ui";
+import { formatSettingsDetailDate } from "@/shared/components/settings/settings-detail-view";
 
 const linkClassName =
   "break-all font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline";
@@ -179,7 +180,7 @@ export function DetailSystemMetadataSection({
 
   return (
     <DetailPanelCard title={labels.sectionTitle} defaultOpen={false} variant={variant}>
-      <DetailMetricsGrid className="sm:grid-cols-2">
+      <DetailMetricsGrid>
         {status ? (
           <DetailMetricCard label={status.statusLabel}>
             <ActiveStatusBadge
@@ -191,14 +192,14 @@ export function DetailSystemMetadataSection({
         <DetailMetricCard label={labels.createdAt}>
           <DetailTimestampValue
             icon={Calendar}
-            value={dateFmt.format(new Date(createdAt))}
+            value={formatSettingsDetailDate(dateFmt, createdAt)}
           />
         </DetailMetricCard>
         <DetailMetricCard label={labels.updatedAt}>
-          {modifiedAt?.trim() ? (
+          {modifiedAt?.trim() && formatSettingsDetailDate(dateFmt, modifiedAt) !== "—" ? (
             <DetailTimestampValue
               icon={RefreshCw}
-              value={dateFmt.format(new Date(modifiedAt))}
+              value={formatSettingsDetailDate(dateFmt, modifiedAt)}
             />
           ) : (
             <span className="text-sm text-slate-600 dark:text-slate-400">—</span>
@@ -229,12 +230,12 @@ export function DetailCreatedBySection({ title, user, usernameLabel, emailLabel 
   const email = user.email?.trim();
   return (
     <DetailPanelCard title={title}>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <DetailMetricsGrid>
         <DetailMetricCard label={usernameLabel}>{username}</DetailMetricCard>
         <DetailMetricCard label={emailLabel}>
           {email ? <DetailEmailLink email={email} /> : "—"}
         </DetailMetricCard>
-      </div>
+      </DetailMetricsGrid>
     </DetailPanelCard>
   );
 }
@@ -268,15 +269,15 @@ export function DetailRecordMetaSection({
   gridClassName,
 }: DetailRecordMetaProps) {
   return (
-    <DetailMetricsGrid className={gridClassName ?? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-2"}>
+    <DetailMetricsGrid className={gridClassName}>
       <DetailMetricCard label={statusLabel}>
         <ActiveStatusBadge active={isActive} label={isActive ? activeLabel : inactiveLabel} />
       </DetailMetricCard>
       <DetailMetricCard label={createdAtLabel}>
-        <DetailTimestampValue icon={Calendar} value={dateFmt.format(new Date(createdAt))} />
+        <DetailTimestampValue icon={Calendar} value={formatSettingsDetailDate(dateFmt, createdAt)} />
       </DetailMetricCard>
       <DetailMetricCard label={updatedAtLabel}>
-        <DetailTimestampValue icon={RefreshCw} value={dateFmt.format(new Date(modifiedAt))} />
+        <DetailTimestampValue icon={RefreshCw} value={formatSettingsDetailDate(dateFmt, modifiedAt)} />
       </DetailMetricCard>
       {extra}
     </DetailMetricsGrid>

@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useReducer, useState } from "react";
 import dynamic from "next/dynamic";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, useParams } from "next/navigation";
 import {
   loadQuotationScopePinDetails,
   type QuotationScopePinDetailPayload,
 } from "@/features/quotations/utils/quotation-composite-scope-pins.util";
-import { fetchPublicPinDetails } from "@/features/public/quotation/api/public-pin.api";
+import { fetchPublicPinDetails, fetchPublicQuotationByToken, submitPublicQuotationResponse } from "@/features/public/quotation/api/public-pin.api";
 import { fetchQuotation } from "@/features/quotations/api/quotation.api";
+import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import type { DrawingPlot, DrawingPin } from "@/features/projects/types/drawing.types";
 import type {
   QuotationDetail,
@@ -304,30 +305,46 @@ const REJECTION_REASONS = [
 function RejectionDialog({
   open,
   onClose,
+  token,
 }: {
   open: boolean;
   onClose: () => void;
+  token?: string | null;
 }) {
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [signature, setSignature] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
-
-  const toggle = (reason: string) =>
-    setSelected((prev) =>
-      prev.includes(reason) ? prev.filter((r) => r !== reason) : [...prev, reason],
-    );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSignatureChange = (value: string) => {
     setSignature(value || null);
   };
 
-  const handleSubmit = () => {
-    setSubmitted(true);
+  const handleSubmit = async () => {
+    if (!token || !selectedReason) return;
+    setIsSubmitting(true);
+    const commentParts = [selectedReason];
+    if (note.trim()) {
+      commentParts.push(note.trim());
+    }
+    const comment = commentParts.join(", ");
+    try {
+      await submitPublicQuotationResponse(token, {
+        status: "rejected",
+        comment,
+      });
+      setSubmitted(true);
+      toastSuccess("Response submitted successfully");
+    } catch (err) {
+      toastApiError(err, "Failed to submit response");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
-    setSelected([]);
+    setSelectedReason(null);
     setNote("");
     setSignature(null);
     setSubmitted(false);
@@ -348,11 +365,12 @@ function RejectionDialog({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-0.5">Quotation Response</p>
-              <h2 className="text-white text-lg font-bold leading-snug">Decline Quotation</h2>
+              <h2 className="text-white text-lg font-bold leading-snug">Reject Quotation</h2>
             </div>
             <button
               type="button"
               onClick={handleClose}
+              disabled={isSubmitting}
               className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
               aria-label="Close"
             >
@@ -392,7 +410,7 @@ function RejectionDialog({
         ) : (
           /* Form */
           <div className="px-6 py-5">
-            <p className="text-sm text-slate-500 mb-4">Please select the reason(s) for declining this quotation:</p>
+            <p className="text-sm text-slate-500 mb-4">Please select the reason for declining this quotation:</p>
             <div className="space-y-2.5 mb-5">
               {REJECTION_REASONS.map((reason) => (
                 <label
@@ -401,16 +419,15 @@ function RejectionDialog({
                 >
                   <div className="relative mt-0.5 shrink-0">
                     <input
-                      type="checkbox"
+                      type="radio"
+                      name="rejection-reason"
                       className="sr-only peer"
-                      checked={selected.includes(reason)}
-                      onChange={() => toggle(reason)}
+                      checked={selectedReason === reason}
+                      onChange={() => setSelectedReason(reason)}
                     />
-                    <div className="size-4 rounded border-2 border-slate-300 peer-checked:border-red-500 peer-checked:bg-red-500 transition-all flex items-center justify-center">
-                      {selected.includes(reason) && (
-                        <svg className="size-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
+                    <div className="size-4 rounded-full border-2 border-slate-300 peer-checked:border-red-500 peer-checked:bg-red-500 transition-all flex items-center justify-center">
+                      {selectedReason === reason && (
+                        <div className="size-1.5 rounded-full bg-white" />
                       )}
                     </div>
                   </div>
@@ -450,7 +467,8 @@ function RejectionDialog({
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                disabled={isSubmitting}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -458,10 +476,10 @@ function RejectionDialog({
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={selected.length === 0}
+                disabled={!selectedReason || isSubmitting}
                 className="px-5 py-2 rounded-lg text-sm font-semibold bg-[#DC2626] text-white hover:bg-red-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                Submit Decline
+                {isSubmitting ? "Rejecting..." : "Reject"}
               </button>
             </div>
           </div>
@@ -477,14 +495,17 @@ function AcceptanceDialog({
   open,
   onClose,
   onSignatureCapture,
+  token,
 }: {
   open: boolean;
   onClose: () => void;
   onSignatureCapture?: (sig: string | null) => void;
+  token?: string | null;
 }) {
   const [note, setNote] = useState("");
   const [signature, setSignature] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSignatureChange = (value: string) => {
     const sig = value || null;
@@ -492,8 +513,21 @@ function AcceptanceDialog({
     onSignatureCapture?.(sig);
   };
 
-  const handleSubmit = () => {
-    setSubmitted(true);
+  const handleSubmit = async () => {
+    if (!token) return;
+    setIsSubmitting(true);
+    try {
+      await submitPublicQuotationResponse(token, {
+        status: "approved",
+        signature,
+      });
+      setSubmitted(true);
+      toastSuccess("Quotation accepted successfully");
+    } catch (err) {
+      toastApiError(err, "Failed to accept quotation");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
@@ -522,6 +556,7 @@ function AcceptanceDialog({
             <button
               type="button"
               onClick={handleClose}
+              disabled={isSubmitting}
               className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
               aria-label="Close"
             >
@@ -600,16 +635,18 @@ function AcceptanceDialog({
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                disabled={isSubmitting}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleSubmit}
-                className="px-5 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                disabled={isSubmitting}
+                className="px-5 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
               >
-                Confirm Acceptance
+                {isSubmitting ? "Submitting..." : "Confirm Acceptance"}
               </button>
             </div>
           </div>
@@ -625,18 +662,33 @@ function QuestionDialog({
   open,
   onClose,
   onSaveQuestion,
+  token,
 }: {
   open: boolean;
   onClose: () => void;
   onSaveQuestion?: (question: string) => void;
+  token?: string | null;
 }) {
   const [questionText, setQuestionText] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = () => {
-    if (!questionText.trim()) return;
-    setSubmitted(true);
-    onSaveQuestion?.(questionText.trim());
+  const handleSubmit = async () => {
+    if (!questionText.trim() || !token) return;
+    setIsSubmitting(true);
+    try {
+      await submitPublicQuotationResponse(token, {
+        status: "questioned",
+        comment: questionText.trim(),
+      });
+      setSubmitted(true);
+      onSaveQuestion?.(questionText.trim());
+      toastSuccess("Question submitted successfully");
+    } catch (err) {
+      toastApiError(err, "Failed to submit question");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
@@ -664,6 +716,7 @@ function QuestionDialog({
             <button
               type="button"
               onClick={handleClose}
+              disabled={isSubmitting}
               className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
               aria-label="Close"
             >
@@ -709,6 +762,7 @@ function QuestionDialog({
                 rows={5}
                 value={questionText}
                 onChange={(e) => setQuestionText(e.target.value)}
+                disabled={isSubmitting}
                 placeholder="Type your question regarding terms, scope, line items, pricing, or timeline here..."
                 className="w-full text-sm border border-slate-300 rounded-xl p-3 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent resize-none transition-shadow"
               />
@@ -719,17 +773,18 @@ function QuestionDialog({
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                disabled={isSubmitting}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={!questionText.trim()}
+                disabled={!questionText.trim() || isSubmitting}
                 className="px-5 py-2 rounded-lg text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                Submit Question
+                {isSubmitting ? "Submitting..." : "Submit Question"}
               </button>
             </div>
           </div>
@@ -915,7 +970,18 @@ function PdfColumn({
 export function QuotationPinDetails() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get("token") ?? searchParams.get("id") ?? searchParams.get("quotationId") ?? searchParams.get("pinDetailsKey");
+  const params = useParams();
+
+  const rawRouteToken = params?.token ?? params?.id;
+  const routeToken = typeof rawRouteToken === "string" ? rawRouteToken : Array.isArray(rawRouteToken) ? rawRouteToken[0] : null;
+
+  const token =
+    routeToken ??
+    searchParams.get("token") ??
+    searchParams.get("id") ??
+    searchParams.get("quotationId") ??
+    searchParams.get("pinDetailsKey");
+
   const pinParam = searchParams.get("pin") ?? searchParams.get("pinId");
   const pinDialogParam = searchParams.get("pinDialog");
 
@@ -952,52 +1018,62 @@ export function QuotationPinDetails() {
     setLoading(true);
     setError(null);
 
-    if (isNumericToken) {
-      // Primary: call Quotation API using the quotation ID passed in URL
-      fetchQuotation(numericId)
-        .then((data) => {
-          if (!cancelled) {
-            setQuotationDetail(data);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          // Fallback: try public pin details if direct quotation call fails
-          fetchPublicPinDetails(numericId)
+    // Primary: fetch using public quotation by token API (GET /public/quotations/:token/)
+    fetchPublicQuotationByToken(token)
+      .then((data) => {
+        if (!cancelled) {
+          setQuotationDetail(data);
+          setLoading(false);
+        }
+      })
+      .catch((tokenErr) => {
+        console.warn("[QuotationPinDetails] fetchPublicQuotationByToken failed, trying fallback:", tokenErr);
+        if (isNumericToken) {
+          fetchQuotation(numericId)
             .then((data) => {
               if (!cancelled) {
-                setPinPayload(data);
-                if (data.quotationId) {
-                  fetchQuotation(data.quotationId)
-                    .then((qd) => { if (!cancelled) setQuotationDetail(qd); })
-                    .catch(() => { });
-                }
+                setQuotationDetail(data);
                 setLoading(false);
               }
             })
             .catch(() => {
-              if (!cancelled) {
-                setError("Unable to load quotation details.");
-                setLoading(false);
-              }
+              fetchPublicPinDetails(numericId)
+                .then((data) => {
+                  if (!cancelled) {
+                    setPinPayload(data);
+                    if (data.quotationId) {
+                      fetchQuotation(data.quotationId)
+                        .then((qd) => { if (!cancelled) setQuotationDetail(qd); })
+                        .catch(() => { });
+                    }
+                    setLoading(false);
+                  }
+                })
+                .catch(() => {
+                  if (!cancelled) {
+                    setError("Unable to load quotation details.");
+                    setLoading(false);
+                  }
+                });
             });
-        });
-    } else {
-      // Session storage fallback
-      const stored = loadQuotationScopePinDetails(token);
-      if (stored) {
-        setPinPayload(stored);
-        if (stored.quotationId) {
-          fetchQuotation(stored.quotationId)
-            .then((qd) => { if (!cancelled) setQuotationDetail(qd); })
-            .catch(() => { });
+        } else {
+          const stored = loadQuotationScopePinDetails(token);
+          if (stored) {
+            setPinPayload(stored);
+            if (stored.quotationId) {
+              fetchQuotation(stored.quotationId)
+                .then((qd) => { if (!cancelled) setQuotationDetail(qd); })
+                .catch(() => { });
+            }
+            setLoading(false);
+          } else {
+            if (!cancelled) {
+              setError("This quotation link is invalid or has expired.");
+              setLoading(false);
+            }
+          }
         }
-        setLoading(false);
-      } else {
-        setError("This quotation link is invalid or has expired.");
-        setLoading(false);
-      }
-    }
+      });
 
     return () => { cancelled = true; };
   }, [token, numericId, isNumericToken]);
@@ -1241,6 +1317,19 @@ export function QuotationPinDetails() {
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
   const [savedQuestion, setSavedQuestion] = useState<string | null>(null);
 
+  /* ── Scroll lock: prevent body scroll while any dialog is open ── */
+  useEffect(() => {
+    const anyOpen = isPinDialogOpen || isRejectDialogOpen || isAcceptDialogOpen || isQuestionDialogOpen;
+    if (anyOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isPinDialogOpen, isRejectDialogOpen, isAcceptDialogOpen, isQuestionDialogOpen]);
+
   /* ── Render states ── */
 
   if (!token) {
@@ -1261,6 +1350,8 @@ export function QuotationPinDetails() {
 
   const quoteTitle = effectiveQuotationDetail.quote_name;
   const quoteSerial = effectiveQuotationDetail.quotation_serial_number;
+  const quotationStatus = (effectiveQuotationDetail as any)?.status as string | undefined;
+  const isAlreadyActioned = ["approved", "questioned", "rejected"].includes((quotationStatus ?? "").toLowerCase());
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -1283,27 +1374,31 @@ export function QuotationPinDetails() {
                 <span className="text-xs text-slate-400 font-mono">#{quoteSerial}</span>
               </div>
             )}
-            <button
-              type="button"
-              onClick={() => setIsAcceptDialogOpen(true)}
-              className="px-3.5 py-1.5 rounded-lg text-sm cursor-pointer font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
-            >
-              Accept
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsQuestionDialogOpen(true)}
-              className="px-3.5 py-1.5 rounded-lg text-sm cursor-pointer font-semibold bg-transparent border border-slate-900 text-slate-600 hover:bg-slate-200/50 transition-colors" 
-            >
-                Raise a Question
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsRejectDialogOpen(true)}
-              className="px-3.5 py-1.5 rounded-lg text-sm cursor-pointer font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors"
-            >
-              Decline
-            </button>
+            {!isAlreadyActioned && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsAcceptDialogOpen(true)}
+                  className="px-3.5 py-1.5 rounded-lg text-sm cursor-pointer font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsQuestionDialogOpen(true)}
+                  className="px-3.5 py-1.5 rounded-lg text-sm cursor-pointer font-semibold bg-transparent border border-slate-900 text-slate-600 hover:bg-slate-200/50 transition-colors"
+                >
+                  Raise a Question
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsRejectDialogOpen(true)}
+                  className="px-3.5 py-1.5 rounded-lg text-sm cursor-pointer font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors"
+                >
+                  Reject
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -1334,13 +1429,14 @@ export function QuotationPinDetails() {
       </div>
 
       {/* ── Rejection dialog ── */}
-      <RejectionDialog open={isRejectDialogOpen} onClose={() => setIsRejectDialogOpen(false)} />
+      <RejectionDialog open={isRejectDialogOpen} onClose={() => setIsRejectDialogOpen(false)} token={token} />
 
       {/* ── Acceptance dialog ── */}
       <AcceptanceDialog
         open={isAcceptDialogOpen}
         onClose={() => setIsAcceptDialogOpen(false)}
         onSignatureCapture={(sig) => setAcceptSignature(sig)}
+        token={token}
       />
 
       {/* ── Question dialog ── */}
@@ -1348,6 +1444,7 @@ export function QuotationPinDetails() {
         open={isQuestionDialogOpen}
         onClose={() => setIsQuestionDialogOpen(false)}
         onSaveQuestion={(q) => setSavedQuestion(q)}
+        token={token}
       />
       {selectedPin && (
         <DrawingPinPreviewModal

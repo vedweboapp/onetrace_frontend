@@ -34,7 +34,7 @@ export function DispatchDetailBody({ detail, dateFmt, dueFmt }: Props) {
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
       <DetailPanelCard title={t("detail.sectionOverview")}>
-        <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-3">
+        <DetailMetricsGrid>
           <DetailMetricCard label={t("fields.dispatchId")}>
             <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">
               {detail.dispatch_order_number}

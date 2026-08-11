@@ -6,7 +6,7 @@ import { z } from "zod";
 import { cn } from "@/core/utils/http.util";
 import { createTag, deleteTag, fetchTagsPage, updateTag } from "@/features/tags/api/tag.api";
 import type { Tag } from "@/features/tags/types/tag.types";
-import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
+import { reportLocalFormSubmitApiError, zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   SettingsDetailActions,
@@ -215,6 +215,19 @@ export function TagSettingsPanel() {
       setFormOpen(false);
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
+    } catch (error) {
+      reportLocalFormSubmitApiError(
+        error,
+        (fieldErrors) => setErrors((prev) => ({ ...prev, ...fieldErrors })),
+        undefined,
+        {
+          fieldMap: {
+            name: "tag_name",
+            bg_color: "bg_colour",
+            text_color: "text_colour",
+          },
+        },
+      );
     } finally {
       setSaving(false);
     }

@@ -158,6 +158,7 @@ export function JobDetailScreen({ jobId }: Props) {
                   })()
                 }
                 onChecklistsUpdated={retry}
+                onSaved={retry}
               />
             ) : detail && activeTab === "materials" ? (
               <JobMaterialsTab detail={detail} />

@@ -38,7 +38,7 @@ export type EntityDetailScreenProps<T> = {
   subtitle?: (detail: T) => ReactNode;
   actions?: (ctx: { detail: T; listBack: string; retry: () => void }) => ReactNode;
   headerExtension?: ReactNode;
-  children?: (ctx: { detail: T; dateFmt: Intl.DateTimeFormat }) => ReactNode;
+  children?: (ctx: { detail: T; dateFmt: Intl.DateTimeFormat; retry: () => void }) => ReactNode;
   renderSurface?: (ctx: EntityDetailScreenContext<T>) => ReactNode;
   onDetailChange?: (detail: T | null) => void;
   footer?: ReactNode;
@@ -89,7 +89,7 @@ export function EntityDetailScreen<T>({
     ) : error ? (
       <EntityDetailErrorState message={error} retryLabel={labels.retry} onRetry={retry} />
     ) : detail && children ? (
-      children({ detail, dateFmt })
+      children({ detail, dateFmt, retry })
     ) : null;
 
   return (

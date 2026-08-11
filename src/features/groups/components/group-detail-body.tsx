@@ -5,9 +5,11 @@ import { useTranslations } from "next-intl";
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
+import { updateGroup } from "@/features/groups/api/group.api";
 import type { Group } from "@/features/groups/types/group.types";
 import { routes } from "@/shared/config/routes";
 import { useOrgCurrency } from "@/shared/money/use-org-currency";
+import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import {
   DetailLinkedTable,
   DetailLinkedTableRow,
@@ -16,11 +18,13 @@ import {
 } from "@/shared/components/layout/detail-linked-table";
 import {
   DetailMetricCard,
+  DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
   DetailStatusMetric,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
+import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 
 function formatLinkedItemLabel(name: string, abbreviation?: string | null) {
   const abbr = abbreviation?.trim();
@@ -36,15 +40,30 @@ function formatLinkedItemLabel(name: string, abbreviation?: string | null) {
 export function GroupDetailBody({
   detail,
   dateFmt,
+  onSaved,
 }: {
   detail: Group;
   dateFmt: Intl.DateTimeFormat;
+  /** Refresh detail after a successful quick-edit PATCH. */
+  onSaved?: () => void;
 }) {
   const t = useTranslations("Dashboard.groups");
   const tMeta = useTranslations("Dashboard.common.detail");
+  const tActions = useTranslations("Dashboard.common.actions");
   const { formatMoneyValue: moneyDisplay } = useOrgCurrency();
   const linkedItems = detail.items ?? [];
   const [compositeById, setCompositeById] = React.useState<Map<number, CompositeItem>>(new Map());
+
+  async function patchField(body: Parameters<typeof updateGroup>[1]) {
+    try {
+      await updateGroup(detail.id, body);
+      toastSuccess(t("modal.updatedToast"));
+      onSaved?.();
+    } catch (error) {
+      toastApiError(error, t("detailLoadError"));
+      throw error;
+    }
+  }
 
   React.useEffect(() => {
     if (linkedItems.length === 0) {
@@ -70,7 +89,16 @@ export function GroupDetailBody({
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
         <DetailPanelCard title={t("detail.sectionOverview")}>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <DetailMetricsGrid>
+            <DetailEditableField
+              label={t("table.name")}
+              value={detail.name}
+              kind="text"
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchField({ name: next.trim() })}
+            >
+              <span className="break-words">{detail.name}</span>
+            </DetailEditableField>
             <DetailStatusMetric
               label={t("table.status")}
               isActive={detail.is_active}
@@ -80,7 +108,7 @@ export function GroupDetailBody({
             <DetailMetricCard label={t("table.itemCount")}>
               <span className="tabular-nums">{linkedItems.length}</span>
             </DetailMetricCard>
-          </div>
+          </DetailMetricsGrid>
         </DetailPanelCard>
 
         <DetailPanelCard title={t("detail.sectionItems")}>

@@ -45,6 +45,9 @@ import {
   getQuotationSiteIds,
   quotationNestedSiteToSite,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
+import {
+  QUOTATION_STATUS_OPTIONS,
+} from "@/features/quotations/utils/quotation-status.util";
 import { siteHasMapableLocation, siteToAddressMapPoint } from "@/features/quotations/utils/quotation-site-map.util";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
@@ -1019,6 +1022,28 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
               <FormFieldRow cols="2">
                 <FieldGroup label={t("fields.orderNumber")} htmlFor="quotation-order">
                   <input id="quotation-order" className={surfaceInputClassName} {...register("order_number")} />
+                </FieldGroup>
+                <FieldGroup label={t("table.status")} htmlFor="quotation-status">
+                  <Controller
+                    control={control}
+                    name="status"
+                    render={({ field }) => (
+                      <CheckmarkSelect
+                        id="quotation-status"
+                        portaled
+                        listLabel={t("table.status")}
+                        options={QUOTATION_STATUS_OPTIONS.map((row) => ({
+                          value: row.value,
+                          label: t(row.labelKey),
+                        }))}
+                        value={field.value}
+                        emptyLabel={t("updateStatus.placeholder")}
+                        disabled={saving}
+                        onBlur={field.onBlur}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
                 </FieldGroup>
               </FormFieldRow>
             ) : null}
