@@ -25,6 +25,8 @@ export type QuotationScopePinDetailPayload = {
   selectedPin?: DrawingPin | null;
   plots?: DrawingPlot[];
   drawingName?: string;
+  /** The quotation this pin belongs to; populated by the public pin API. */
+  quotationId?: number | null;
 };
 
 export function saveQuotationScopePinDetails(payload: QuotationScopePinDetailPayload): string | null {

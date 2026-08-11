@@ -266,3 +266,8 @@ export async function exportQuotation(
     URL.revokeObjectURL(url);
   }
 }
+
+export async function sendQuotation(id: number): Promise<void> {
+  const { data } = await api.post<ApiEnvelope<unknown>>(QUOTATION_PATHS.send(id));
+  assertApiSuccess(data);
+}

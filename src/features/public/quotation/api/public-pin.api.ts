@@ -279,6 +279,37 @@ export async function fetchPublicPinDetails(pinId: number): Promise<QuotationSco
   const plotLabel =
     parseString(payload.plot_label ?? payload.plot_name ?? payload.plot ?? payload.location ?? payload.status_name) ?? undefined;
 
+  // Extract quotation ID — try every plausible field path/name.
+  function resolveQuotationId(raw: Record<string, unknown>): number | null {
+    const candidates = [
+      raw.quotation_id,
+      raw.quotation,
+      raw.quote_id,
+      raw.quote,
+      (levelDetail as Record<string, unknown> | null)?.quotation_id,
+      (levelDetail as Record<string, unknown> | null)?.quotation,
+      (levelDetail as Record<string, unknown> | null)?.quote_id,
+    ];
+    for (const c of candidates) {
+      if (typeof c === "number" && Number.isFinite(c) && c > 0) return c;
+      if (typeof c === "string") {
+        const n = Number(c.trim());
+        if (Number.isFinite(n) && n > 0) return n;
+      }
+      // Support nested object: { id: 1, ... }
+      if (isObject(c) && typeof (c as any).id === "number" && (c as any).id > 0) return (c as any).id;
+    }
+    return null;
+  }
+  const quotationId = resolveQuotationId(payload);
+
+  // Dev-mode: log raw payload keys to help identify correct field name.
+  if (process.env.NODE_ENV !== "production") {
+    console.debug("[PublicPin] raw payload keys:", Object.keys(payload));
+    if (levelDetail) console.debug("[PublicPin] levelDetail keys:", Object.keys(levelDetail));
+    console.debug("[PublicPin] resolved quotationId:", quotationId);
+  }
+
   return {
     title: drawingName,
     sectionLabel,
@@ -289,5 +320,6 @@ export async function fetchPublicPinDetails(pinId: number): Promise<QuotationSco
     selectedPin,
     plots,
     drawingName,
+    quotationId,
   };
 }
