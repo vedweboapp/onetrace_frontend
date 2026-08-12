@@ -57,11 +57,11 @@ function looksLikePdf(bytes: Uint8Array): boolean {
 export function fetchDrawingArrayBuffer(fileUrl: string): Promise<ArrayBuffer> {
   // 1. Already resolved → return a fresh copy so callers cannot detach the cache
   const resolved = resolvedCache.get(fileUrl);
-  if (resolved) return Promise.resolve(resolved.buffer.slice(resolved.byteOffset, resolved.byteOffset + resolved.byteLength));
+  if (resolved) return Promise.resolve(resolved.buffer.slice(resolved.byteOffset, resolved.byteOffset + resolved.byteLength) as ArrayBuffer);
 
   // 2. In-flight → reuse the same promise, then copy on resolve
   const inflight = inflightCache.get(fileUrl);
-  if (inflight) return inflight.then((u8) => u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength));
+  if (inflight) return inflight.then((u8) => u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer);
 
   // 3. New fetch — wait for a concurrency slot
   const promise = (async () => {
@@ -103,7 +103,7 @@ export function fetchDrawingArrayBuffer(fileUrl: string): Promise<ArrayBuffer> {
   })();
 
   inflightCache.set(fileUrl, promise);
-  return promise.then((u8) => u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength));
+  return promise.then((u8) => u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer);
 }
 
 /** Load PDF bytes for react-pdf `Document` (`{ data }`). Rejects non-PDF payloads. */
