@@ -305,10 +305,12 @@ const REJECTION_REASONS = [
 function RejectionDialog({
   open,
   onClose,
+  onRefresh,
   token,
 }: {
   open: boolean;
   onClose: () => void;
+  onRefresh?: () => void;
   token?: string | null;
 }) {
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
@@ -344,6 +346,9 @@ function RejectionDialog({
   };
 
   const handleClose = () => {
+    if (submitted) {
+      onRefresh?.();
+    }
     setSelectedReason(null);
     setNote("");
     setSignature(null);
@@ -495,11 +500,13 @@ function AcceptanceDialog({
   open,
   onClose,
   onSignatureCapture,
+  onRefresh,
   token,
 }: {
   open: boolean;
   onClose: () => void;
   onSignatureCapture?: (sig: string | null) => void;
+  onRefresh?: () => void;
   token?: string | null;
 }) {
   const [note, setNote] = useState("");
@@ -531,6 +538,9 @@ function AcceptanceDialog({
   };
 
   const handleClose = () => {
+    if (submitted) {
+      onRefresh?.();
+    }
     setNote("");
     setSignature(null);
     setSubmitted(false);
@@ -662,11 +672,13 @@ function QuestionDialog({
   open,
   onClose,
   onSaveQuestion,
+  onRefresh,
   token,
 }: {
   open: boolean;
   onClose: () => void;
   onSaveQuestion?: (question: string) => void;
+  onRefresh?: () => void;
   token?: string | null;
 }) {
   const [questionText, setQuestionText] = useState("");
@@ -692,6 +704,9 @@ function QuestionDialog({
   };
 
   const handleClose = () => {
+    if (submitted) {
+      onRefresh?.();
+    }
     setQuestionText("");
     setSubmitted(false);
     onClose();
@@ -707,7 +722,7 @@ function QuestionDialog({
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
         {/* Header */}
-        <div className="bg-slate-200 px-6 py-5">
+        <div className="bg-gray-800 px-6 py-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-0.5">Quotation Response</p>
@@ -1317,6 +1332,13 @@ export function QuotationPinDetails() {
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
   const [savedQuestion, setSavedQuestion] = useState<string | null>(null);
 
+  const refreshQuotation = () => {
+    if (!token) return;
+    fetchPublicQuotationByToken(token)
+      .then((data) => setQuotationDetail(data))
+      .catch(() => {});
+  };
+
   /* ── Scroll lock: prevent body scroll while any dialog is open ── */
   useEffect(() => {
     const anyOpen = isPinDialogOpen || isRejectDialogOpen || isAcceptDialogOpen || isQuestionDialogOpen;
@@ -1429,13 +1451,14 @@ export function QuotationPinDetails() {
       </div>
 
       {/* ── Rejection dialog ── */}
-      <RejectionDialog open={isRejectDialogOpen} onClose={() => setIsRejectDialogOpen(false)} token={token} />
+      <RejectionDialog open={isRejectDialogOpen} onClose={() => setIsRejectDialogOpen(false)} onRefresh={refreshQuotation} token={token} />
 
       {/* ── Acceptance dialog ── */}
       <AcceptanceDialog
         open={isAcceptDialogOpen}
         onClose={() => setIsAcceptDialogOpen(false)}
         onSignatureCapture={(sig) => setAcceptSignature(sig)}
+        onRefresh={refreshQuotation}
         token={token}
       />
 
@@ -1444,6 +1467,7 @@ export function QuotationPinDetails() {
         open={isQuestionDialogOpen}
         onClose={() => setIsQuestionDialogOpen(false)}
         onSaveQuestion={(q) => setSavedQuestion(q)}
+        onRefresh={refreshQuotation}
         token={token}
       />
       {selectedPin && (

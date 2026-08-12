@@ -88,7 +88,7 @@ function quotationContactToAudit(
 }
 
 type AdditionalContactEntry = ReturnType<typeof getQuotationAdditionalContactEntries>[number];
- 
+
 
 function QuotationDetailPeopleSection({
   detail,
@@ -401,6 +401,7 @@ export function QuotationDetailBody({
             </div>
           )}
         </DetailEditableField>
+
         <DetailEditableField
           label={t("fields.tags")}
           kind="multiselect"
@@ -433,6 +434,16 @@ export function QuotationDetailBody({
           onSave={(next) => patchField({ due_date: next || null })}
         >
           {dueLabel !== "—" ? dueLabel : null}
+        </DetailEditableField>
+        <DetailEditableField
+          label={t("fields.clientResponse")}
+          empty="—"
+        >
+          {detail.comment?.trim() ? (
+            <p className="min-w-0 whitespace-pre-wrap break-words text-sm font-bold leading-relaxed [overflow-wrap:anywhere] text-slate-700 dark:text-slate-300">
+              {detail.comment}
+            </p>
+          ) : "-"}
         </DetailEditableField>
         <DetailEditableField
           className="sm:col-span-2"
