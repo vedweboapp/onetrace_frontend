@@ -2330,7 +2330,8 @@
         "status": "Active state",
         "createdAt": "Created",
         "updatedAt": "Last updated",
-        "createdBy": "Created by"
+        "createdBy": "Created by",
+        "clientResponse": "Client response"
       },
       "additionalContacts": {
         "add": "Add additional contact",

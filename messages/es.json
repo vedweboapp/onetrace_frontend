@@ -2322,7 +2322,8 @@
         "status": "Estado activo",
         "createdAt": "Creado",
         "updatedAt": "Última actualización",
-        "createdBy": "Creado por"
+        "createdBy": "Creado por",
+        "clientResponse": "Respuesta del cliente"
       },
       "additionalContacts": {
         "add": "Añadir contacto adicional",
