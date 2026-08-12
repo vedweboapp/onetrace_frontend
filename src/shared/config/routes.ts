@@ -50,6 +50,8 @@ export const routes = {
     settingsChecklistTypes: "/settings/checklist-type",
     settingsCustomization: "/settings/customization",
     settingsUsers: "/settings/users",
+    settingsRoles: "/settings/roles",
+    settingsProfiles: "/settings/profiles",
     settingsPersonalProfile: "/settings/personal-profile",
     settingsCompanySettings: "/settings/company-settings",
     documentation: "/documentation",

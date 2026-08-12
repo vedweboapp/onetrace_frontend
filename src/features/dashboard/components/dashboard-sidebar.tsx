@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
-import { BookOpen, BookUser, Building2, ChevronRight, ClipboardList, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
+import { BookOpen, BookUser, Building2, ChevronRight, ClipboardList, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, ShieldCheck, Store, Truck, UserRound } from "lucide-react";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -632,6 +632,8 @@ function DashboardSettingsSidebar({
   const pathname = usePathname();
   const customizationHref = routes.dashboard.settingsCustomization;
   const usersHref = routes.dashboard.settingsUsers;
+  const rolesHref = routes.dashboard.settingsRoles;
+  const profilesHref = routes.dashboard.settingsProfiles;
   const personalProfileHref = routes.dashboard.settingsPersonalProfile;
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
   const modulesHref = routes.dashboard.settingsModules;
@@ -642,6 +644,10 @@ function DashboardSettingsSidebar({
 
   const usersActive =
     pathname === usersHref || pathname.startsWith(`${usersHref}/`);
+  const rolesActive =
+    pathname === rolesHref || pathname.startsWith(`${rolesHref}/`);
+  const profilesActive =
+    pathname === profilesHref || pathname.startsWith(`${profilesHref}/`);
   const personalProfileActive =
     pathname === personalProfileHref || pathname.startsWith(`${personalProfileHref}/`);
   const companySettingsActive =
@@ -708,6 +714,22 @@ function DashboardSettingsSidebar({
           active={usersActive}
           label={t("users")}
           icon={UserRound}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={rolesHref}
+          active={rolesActive}
+          label={t("roles")}
+          icon={ShieldCheck}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={profilesHref}
+          active={profilesActive}
+          label={t("profiles")}
+          icon={Layers}
           expanded={expanded}
           resolved={resolved}
         />
