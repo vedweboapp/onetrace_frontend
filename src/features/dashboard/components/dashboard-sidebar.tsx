@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
-import { BookOpen, BookUser, Building2, ChevronRight, ClipboardList, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
+import { BookOpen, BookUser, Building2, CalendarDays, ChevronRight, ClipboardList, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -373,6 +373,7 @@ function DashboardMainSidebar({
   const invoicesHref = routes.dashboard.invoices;
   const purchaseOrdersHref = routes.dashboard.purchaseOrders;
   const jobsHref = routes.dashboard.jobs;
+  const schedulingHref = routes.dashboard.scheduling;
   const qrCodesHref = routes.dashboard.qrCodes;
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
@@ -414,6 +415,8 @@ function DashboardMainSidebar({
   const purchaseOrdersActive =
     pathname === purchaseOrdersHref || pathname.startsWith(`${purchaseOrdersHref}/`);
   const jobsActive = pathname === jobsHref || pathname.startsWith(`${jobsHref}/`);
+  const schedulingActive =
+    pathname === schedulingHref || pathname.startsWith(`${schedulingHref}/`);
   const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
@@ -548,6 +551,14 @@ function DashboardMainSidebar({
               active: projectJobActive,
             },
           ]}
+        />
+        <SidebarNavLink
+          href={schedulingHref}
+          active={schedulingActive}
+          label={t("scheduling")}
+          icon={CalendarDays}
+          expanded={expanded}
+          resolved={resolved}
         />
         <SidebarNavLink
           href={qrCodesHref}

@@ -23,6 +23,7 @@ export const routes = {
       `/jobs/${jobId}/form?formId=${formId}&job_form_id=${job_form_id}`,
     jobPinDetail: (jobId: number | string, pinId: number | string) =>
       `/jobs/${jobId}/pins/${pinId}`,
+    scheduling: "/scheduling",
     qrCodes: "/qr-codes",
     projects: "/projects",
     projectPinDetail: (projectId: number | string, pinId: number | string, drawingId?: number | string) => {

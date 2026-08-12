@@ -188,6 +188,8 @@ export type JobUpdatePayload = Omit<Partial<JobCreatePayload>, "checklists"> & {
   job_status?: number;
   /** List/detail toggle; omitted on create payload. */
   is_active?: boolean;
+  /** Schedule end (used by Scheduling / Create Schedule). */
+  end_date?: string | null;
   pin_ids?: number[];
   pins?: Array<{ id: number; status: number | null }>;
   checklists?: number[] | JobChecklistUpdateItem[];
