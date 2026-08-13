@@ -16,7 +16,31 @@ const optionalPositiveId = (message: string) =>
     .trim()
     .refine((v) => v === "" || (/^\d+$/.test(v) && Number.parseInt(v, 10) > 0), { message });
 
-export function createJobFormSchema(messages: JobFormMessages) {
+export function createJobFormSchema(
+  messages: JobFormMessages,
+  options?: { requireScheduleFields?: boolean },
+) {
+  const requireScheduleFields = options?.requireScheduleFields ?? false;
+
+  const assignedWorkerField = requireScheduleFields
+    ? z
+        .string()
+        .trim()
+        .min(1, { message: messages.assignedWorker })
+        .refine((v) => /^\d+$/.test(v) && Number.parseInt(v, 10) > 0, {
+          message: messages.assignedWorker,
+        })
+    : z
+        .string()
+        .trim()
+        .refine((v) => v === "" || (/^\d+$/.test(v) && Number.parseInt(v, 10) > 0), {
+          message: messages.assignedWorker,
+        });
+
+  const startDateField = requireScheduleFields
+    ? zTrimmedNonEmpty(messages.startDate)
+    : z.string().trim();
+
   return z
     .object({
       // title: zTrimmedNonEmpty(messages.title),
@@ -27,14 +51,8 @@ export function createJobFormSchema(messages: JobFormMessages) {
       project: optionalPositiveId(messages.optionalId),
       site: optionalPositiveId(messages.optionalId),
       job_category: z.string().optional(),
-      assigned_worker: z
-        .string()
-        .trim()
-        .min(1, { message: messages.assignedWorker })
-        .refine((v) => /^\d+$/.test(v) && Number.parseInt(v, 10) > 0, {
-          message: messages.assignedWorker,
-        }),
-      start_date: zTrimmedNonEmpty(messages.startDate),
+      assigned_worker: assignedWorkerField,
+      start_date: startDateField,
       checklists: z.array(z.string()).min(1, { message: messages.requiredChecklist }),
       job_meta_items: z
         .array(

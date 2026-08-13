@@ -18,6 +18,7 @@ import {
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
+import { UserAvailabilityFields } from "@/features/users/components/user-availability-fields";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
@@ -54,6 +55,8 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
         gender: t("validation.gender"),
         role: t("validation.role"),
         basePay: t("validation.basePay"),
+        availabilityTime: t("validation.availabilityTime"),
+        availabilityRange: t("validation.availabilityRange"),
         addressLine1: t("validation.addressLine1"),
         country: t("validation.country"),
         state: t("validation.state"),
@@ -331,6 +334,8 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
                 <FieldErrorText>{errors.base_pay?.message}</FieldErrorText>
               </FieldGroup>
             </FormFieldRow>
+
+            <UserAvailabilityFields control={control} errors={errors} disabled={saving} />
 
             <EntityAddressesFields
               control={control}

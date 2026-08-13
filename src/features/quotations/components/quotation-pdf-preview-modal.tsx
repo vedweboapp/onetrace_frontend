@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Download, Loader2 } from "lucide-react";
-import { fetchQuotation } from "@/features/quotations/api/quotation.api";
+import { Download, Loader2, Send } from "lucide-react";
+import { fetchQuotation, sendQuotation } from "@/features/quotations/api/quotation.api";
+import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import type {
   QuotationDetail,
   QuotationQuoteSection,
@@ -128,6 +129,8 @@ function PlotTable({
   plotVat,
   plotTotal,
   pinSnapshots,
+  quotationId,
+  onPinClick,
 }: {
   sectionIdx: number;
   plotIdx: number;
@@ -137,6 +140,8 @@ function PlotTable({
   plotVat: number;
   plotTotal: number;
   pinSnapshots: Map<string, string>;
+  quotationId?: number;
+  onPinClick?: (pinId: number) => void;
 }) {
   return (
     <div style={{ marginBottom: 20 }}>
@@ -152,7 +157,6 @@ function PlotTable({
               <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600 }}>Item / Description</th>
               <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, width: 80 }}>Variation</th>
               <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, width: 70 }}>Quantity</th>
-              {/* <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, width: 90 }}>Pin Link</th> */}
             </tr>
           </thead>
           <tbody>
@@ -167,17 +171,42 @@ function PlotTable({
               const isVariation = sp.variation ?? false;
               const variationText = isVariation ? "Yes" : "No";
 
-              // Pin *link* only — snapshots are cropped from section.drawing_file via the API origin.
               const frontendAddr = (process.env.NEXT_PUBLIC_FRONTEND_ADDRESS || "http://localhost:3000").replace(
                 /\/$/,
                 "",
               );
-              const pinLink = sp.pin_id ? `${frontendAddr}/public/quotation?token=${sp.pin_id}` : null;
+              const pinLink = quotationId
+                ? `${frontendAddr}/public/quotation?token=${quotationId}${sp.pin_id ? `&pin=${sp.pin_id}&pinDialog=true` : ""}`
+                : sp.pin_id
+                ? `${frontendAddr}/public/quotation?token=${sp.pin_id}&pinDialog=true`
+                : null;
 
               return (
                 <tr key={rowIdx} style={{ borderTop: "1px solid #f1f5f9", background: rowIdx % 2 === 1 ? "#f8fafc" : "white" }}>
                   <td style={{ padding: "8px 10px" }}>
-                    {pinLink ? (
+                    {sp.pin_id && onPinClick ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          onPinClick(sp.pin_id!);
+                        }}
+                        style={{
+                          display: "inline-block",
+                          lineHeight: 0,
+                          background: "none",
+                          border: "none",
+                          padding: 0,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <PinSnapshotCell
+                          pinKey={pinKey}
+                          pinSnapshots={pinSnapshots}
+                          locationLabel={sp.location}
+                        />
+                      </button>
+                    ) : pinLink ? (
                       <a
                         href={pinLink}
                         target="_blank"
@@ -207,20 +236,6 @@ function PlotTable({
                   </td>
                   <td style={{ padding: "8px 10px", textAlign: "center", color: "#374151" }}>{variationText}</td>
                   <td style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, color: "#374151" }}>{qty}</td>
-                  {/* <td style={{ padding: "8px 10px", textAlign: "center" }}>
-                    {pinLink ? (
-                      <a
-                        href={pinLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: "#2563eb", textDecoration: "underline", fontWeight: 500 }}
-                      >
-                        View
-                      </a>
-                    ) : (
-                      <span style={{ color: "#94a3b8" }}>—</span>
-                    )}
-                  </td> */}
                 </tr>
               );
             })}
@@ -254,10 +269,14 @@ function SectionBlock({
   sectionIdx,
   section,
   pinSnapshots,
+  quotationId,
+  onPinClick,
 }: {
   sectionIdx: number;
   section: QuotationQuoteSection;
   pinSnapshots: Map<string, string>;
+  quotationId?: number;
+  onPinClick?: (pinId: number) => void;
 }) {
   const grandTotal = section.section_total ?? 0;
   const vat = grandTotal * 0.2;
@@ -283,6 +302,8 @@ function SectionBlock({
           plotVat={p.plotVat}
           plotTotal={p.plotTotal}
           pinSnapshots={pinSnapshots}
+          quotationId={quotationId}
+          onPinClick={onPinClick}
         />
       ))}
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4, marginBottom: 16 }}>
@@ -410,13 +431,14 @@ function TermsSection() {
 
 /* ── Document body (shared by preview + hidden export render) ── */
 
-type DocumentBodyProps = {
+export type DocumentBodyProps = {
   data: QuotationDetail;
   pinSnapshots: Map<string, string>;
   sections: QuotationQuoteSection[];
+  onPinClick?: (pinId: number) => void;
 };
 
-function DocumentBody({ data, pinSnapshots, sections }: DocumentBodyProps) {
+export function DocumentBody({ data, pinSnapshots, sections, onPinClick }: DocumentBodyProps) {
   const grandTotalExVat = sections.reduce((s, sec) => s + (sec.section_total ?? 0), 0);
   const vatAmount = grandTotalExVat * 0.2;
   const grandTotalIncVat = grandTotalExVat + vatAmount;
@@ -538,7 +560,14 @@ function DocumentBody({ data, pinSnapshots, sections }: DocumentBodyProps) {
 
         {/* Sections */}
         {sections.map((sec, secIdx) => (
-          <SectionBlock key={secIdx} sectionIdx={secIdx} section={sec} pinSnapshots={pinSnapshots} />
+          <SectionBlock
+            key={secIdx}
+            sectionIdx={secIdx}
+            section={sec}
+            pinSnapshots={pinSnapshots}
+            quotationId={data.id}
+            onPinClick={onPinClick}
+          />
         ))}
 
         {/* How to pay */}
@@ -671,6 +700,7 @@ export function QuotationPdfPreviewModal({ open, quotationId, quoteName, onClose
   });
   const [pinSnapshots, setPinSnapshots] = React.useState<Map<string, string>>(new Map());
   const [generationError, setGenerationError] = React.useState<string | null>(null);
+  const [isSending, setIsSending] = React.useState(false);
 
   const { state: dlState, error: dlError, download } = useDownloadPdf(quoteName, quotationId);
 
@@ -754,24 +784,49 @@ export function QuotationPdfPreviewModal({ open, quotationId, quoteName, onClose
       ? "Downloaded!"
       : "Download PDF";
 
+  const handleSendQuotation = async () => {
+    const qId = quotationId ?? quoteDetail?.id;
+    if (!qId) return;
+    setIsSending(true);
+    try {
+      await sendQuotation(qId);
+      toastSuccess("Quotation sent successfully");
+    } catch (err) {
+      toastApiError(err, "Failed to send quotation");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   return (
     <AppModal
       open={open}
-      onClose={!isBusy ? onClose : () => undefined}
+      onClose={!isBusy && !isSending ? onClose : () => undefined}
       title="PDF Preview"
       size="5xl"
-      closeOnBackdrop={!isBusy}
+      closeOnBackdrop={!isBusy && !isSending}
       footer={
         <>
-          <AppButton type="button" variant="secondary" size="sm" disabled={isBusy} onClick={onClose}>
+          <AppButton type="button" variant="secondary" size="sm" disabled={isBusy || isSending} onClick={onClose}>
             Close
+          </AppButton>
+          <AppButton
+            type="button"
+            variant="secondary"
+            size="sm"
+            loading={isSending}
+            disabled={isBusy || isSending || !quoteDetail || loading}
+            onClick={() => void handleSendQuotation()}
+          >
+            <Send className="mr-1.5 size-4" />
+            Send Quotation
           </AppButton>
           <AppButton
             type="button"
             variant="primary"
             size="sm"
             loading={isBusy}
-            disabled={loading || !!error || !quoteDetail || generationStatus !== "success" || isBusy}
+            disabled={loading || !!error || !quoteDetail || generationStatus !== "success" || isBusy || isSending}
             onClick={() => void download()}
           >
             <Download className="mr-1.5 size-4" />

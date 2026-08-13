@@ -145,6 +145,14 @@
       "drawingPreviewAlt": "Vista previa del plano con el pin",
       "pinMarker": "Marcador de pin",
       "pinPreviewUnavailable": "Vista previa del pin no disponible"
+    },
+    "qrCode": {
+      "pageTitle": "Código QR",
+      "pageDescription": "Página pública de escaneo de código QR.",
+      "eyebrow": "Código QR",
+      "title": "Código QR",
+      "noDataTitle": "No se encontraron datos",
+      "noDataDescription": "Este código QR aún no está asignado, por lo que no hay nada que mostrar."
     }
   },
   "Dashboard": {
@@ -246,6 +254,7 @@
       "projectJob": "Trabajos de Proyecto",
       "flyoutService": "Servicio",
       "flyoutProject": "Proyecto",
+      "scheduling": "Programación",
       "qrCodes": "Códigos QR",
       "projects": "Proyectos",
       "groups": "Grupos",
@@ -267,10 +276,12 @@
       "jobStatus": "Estados de Trabajo",
       "materialStatus": "Estados de Material",
       "tags": "Etiquetas",
+      "titles": "Títulos",
       "projectTypes": "Tipos de Proyecto",
       "installationTypes": "Tipos de Instalación",
       "vendorTypes": "Tipos de Proveedor",
       "unitTypes": "Tipos de Unidad",
+      "rejectionReasons": "Motivos de rechazo",
       "checklistTypes": "Tipos de Lista de Verificación",
       "users": "Usuarios",
       "personalProfile": "Perfil personal",
@@ -284,7 +295,7 @@
       "customization": {
         "label": "Personalización",
         "hubTitle": "Personalización",
-        "hubDescription": "Elige qué configurar: Tipos de Proyecto, Tipos de Instalación, Tipos de Proveedor, Tipos de Unidad, Tipos de Lista de Verificación, Estados de Proyecto, Estados de Pin, Estados de Trabajo, Estados de Material, Etiquetas y Títulos.",
+        "hubDescription": "Elige qué configurar: Tipos de Proyecto, Tipos de Instalación, Tipos de Proveedor, Tipos de Unidad, Motivos de rechazo, Tipos de Lista de Verificación, Estados de Proyecto, Estados de Pin, Estados de Trabajo, Estados de Material, Etiquetas y Títulos.",
         "backToHub": "Volver a personalización",
         "items": {
           "projectTypes": {
@@ -302,6 +313,10 @@
           "unitTypes": {
             "title": "Tipos de Unidad",
             "description": "Unidades de medida como Kg, caja o metro."
+          },
+          "rejectionReasons": {
+            "title": "Motivos de rechazo",
+            "description": "Motivos usados al rechazar controles de calidad, materiales u otro trabajo."
           },
           "checklistTypes": {
             "title": "Tipos de Lista de Verificación",
@@ -378,6 +393,27 @@
         "pullHistoricalDataDescription": "Importa los registros existentes de Zoho para este recurso después de guardar los mapeos.",
         "pullHistoricalDataSuccess": "La importación de datos históricos ha comenzado",
         "pullHistoricalDataError": "No se pudo iniciar la importación de datos históricos. Inténtalo de nuevo.",
+        "pullFullSync": "Sincronización completa",
+        "pullIncrementalSync": "Sincronización incremental",
+        "pullFullSyncHint": "Importa todos los registros de Zoho para este recurso.",
+        "pullIncrementalSyncHint": "Importa solo los registros cambiados desde la última sincronización.",
+        "pullSaveMappingFirst": "Guarda el mapeo antes de importar datos.",
+        "pullFullSyncCount": "Sincronizaciones totales: {count}",
+        "pullLastSynced": "Última sincronización: {datetime}",
+        "pullLastSyncedNever": "Última sincronización: Nunca",
+        "pullSyncInProgress": "Sincronización en curso…",
+        "pullSyncComplete": "Sincronización completada",
+        "pullSyncFailed": "La sincronización falló",
+        "pullSyncStatusQueued": "En cola",
+        "pullSyncStatusRunning": "En ejecución",
+        "pullSyncStatusSucceeded": "Correcta",
+        "pullSyncStatusFailed": "Fallida",
+        "pullSyncProcessed": "Procesados: {count}",
+        "pullSyncCreated": "Creados: {count}",
+        "pullSyncUpdated": "Actualizados: {count}",
+        "pullSyncRestored": "Restaurados: {count}",
+        "pullSyncSkipped": "Omitidos: {count}",
+        "pullSyncStatusError": "No se pudo consultar el estado de la sincronización. Inténtalo de nuevo.",
         "saveMapping": "Guardar mapeo",
         "cancel": "Cancelar",
         "loadError": "No se pudieron cargar las opciones de mapeo. Inténtalo de nuevo.",
@@ -418,7 +454,8 @@
         "configureMapping": "configuración",
         "connectionDetailsTitle": "Detalles de la conexión",
         "connectionDetailsSubtitle": "Estado y resumen de sincronización de esta integración.",
-        "reconnect": "conectar",
+        "reconnect": "Reconectar",
+        "connectAction": "Conectar",
         "webhookTitle": "Configuración del webhook personalizado",
         "backToDetails": "Volver a los detalles",
         "backToIntegrations": "Volver a integraciones",
@@ -1045,6 +1082,58 @@
       "validationName": "Introduce un nombre de unidad.",
       "validationShortForm": "Introduce una abreviatura de unidad (p. ej. kg)."
     },
+    "rejectionReasons": {
+      "metaTitle": "Motivos de rechazo",
+      "title": "Motivos de rechazo",
+      "subtitle": "Gestiona los motivos usados al rechazar trabajo o materiales.",
+      "add": "Añadir",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "filterState": "Estado activo",
+      "table": {
+        "name": "Motivo",
+        "status": "Estado",
+        "created": "Creado",
+        "updated": "Última actualización",
+        "actions": "Acciones"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "byUser": "Por {user}"
+      },
+      "emptyTitle": "Aún no hay motivos de rechazo",
+      "emptyDescription": "Crea tu primer motivo de rechazo (p. ej. Producto dañado, Artículo incorrecto).",
+      "loadError": "No se pudieron cargar los motivos de rechazo. Inténtalo de nuevo.",
+      "modal": {
+        "createTitle": "Nuevo motivo de rechazo",
+        "editTitle": "Editar motivo de rechazo",
+        "name": "Nombre",
+        "namePlaceholder": "p. ej. Producto dañado",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "deleteConfirmTitle": "¿Eliminar este motivo de rechazo?",
+      "deleteConfirmBody": "Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar",
+      "pageLabel": "Mostrando {start}-{end} de {total} motivos de rechazo",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "saved": "Motivo de rechazo actualizado",
+      "created": "Motivo de rechazo creado",
+      "deleted": "Motivo de rechazo eliminado",
+      "activatedToast": "Motivo de rechazo activado",
+      "deactivatedToast": "Motivo de rechazo desactivado",
+      "toggleActiveError": "No se pudo actualizar el estado. Inténtalo de nuevo.",
+      "validationName": "Introduce un nombre de motivo de rechazo."
+    },
     "titleSettings": {
       "metaTitle": "Títulos",
       "title": "Títulos",
@@ -1394,6 +1483,11 @@
       "detailMetaTitle": "Detalle del usuario",
       "title": "Usuarios",
       "subtitle": "Invita y gestiona usuarios de tu organización.",
+      "tabs": {
+        "users": "Usuarios",
+        "groups": "Grupos",
+        "aria": "Secciones de usuarios"
+      },
       "invite": "Invitar usuario",
       "edit": "Editar",
       "loadError": "No se pudieron cargar los usuarios. Inténtalo de nuevo.",
@@ -1437,7 +1531,24 @@
         "city": "Ciudad",
         "pincode": "Código postal",
         "inviteStatus": "Estado de invitación",
-        "invitationSentAt": "Invitación enviada el"
+        "invitationSentAt": "Invitación enviada el",
+        "availableDays": "Días disponibles",
+        "availableDaysHint": "Selecciona los días y horarios en los que este usuario está disponible."
+      },
+      "availability": {
+        "day": "Día",
+        "available": "Disponible",
+        "from": "Desde",
+        "to": "Hasta",
+        "days": {
+          "monday": "Lunes",
+          "tuesday": "Martes",
+          "wednesday": "Miércoles",
+          "thursday": "Jueves",
+          "friday": "Viernes",
+          "saturday": "Sábado",
+          "sunday": "Domingo"
+        }
       },
       "addresses": {
         "add": "Añadir dirección",
@@ -1477,7 +1588,9 @@
         "country": "Selecciona país.",
         "state": "Selecciona estado.",
         "city": "Selecciona ciudad.",
-        "pincode": "Introduce el código postal."
+        "pincode": "Introduce el código postal.",
+        "availabilityTime": "Introduce hora de inicio y fin para cada día disponible.",
+        "availabilityRange": "La hora de fin debe ser posterior a la de inicio."
       },
       "modal": {
         "save": "Guardar",
@@ -1489,13 +1602,78 @@
         "backAria": "Volver a la lista de usuarios",
         "editWithIcon": "Editar",
         "sectionOverview": "Resumen",
-        "addressUnavailable": "No hay direcciones registradas."
+        "addressUnavailable": "No hay direcciones registradas.",
+        "noAvailability": "No hay días disponibles configurados.",
+        "tabsAria": "Secciones del detalle del usuario",
+        "tabs": {
+          "overview": "Resumen",
+          "scheduling": "Programación"
+        }
       },
       "page": {
         "createTitle": "Invitar usuario",
         "createSubtitle": "Completa los datos del usuario y envía la invitación.",
         "editTitle": "Editar",
         "editSubtitle": "Actualiza los datos del usuario y guarda los cambios."
+      }
+    },
+    "userGroups": {
+      "metaTitle": "Grupos de usuarios",
+      "detailMetaTitle": "Detalle del grupo",
+      "title": "Grupos",
+      "subtitle": "Agrupa usuarios para programación y asignaciones.",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "loadError": "No se pudieron cargar los grupos. Inténtalo de nuevo.",
+      "detailLoadError": "No se pudieron cargar los detalles del grupo. Inténtalo de nuevo.",
+      "usersLoadError": "No se pudieron cargar los usuarios. Inténtalo de nuevo.",
+      "createdToast": "Grupo creado",
+      "updatedToast": "Grupo actualizado",
+      "deleted": "Grupo eliminado",
+      "deleteError": "No se pudo eliminar el grupo. Inténtalo de nuevo.",
+      "emptyTitle": "Aún no hay grupos de usuarios",
+      "emptyDescription": "Crea un grupo y añade usuarios.",
+      "pageLabel": "Mostrando {start}-{end} de {total} grupos",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "table": {
+        "name": "Nombre del grupo",
+        "members": "Usuarios",
+        "noMembers": "Sin usuarios",
+        "created": "Creado",
+        "actions": "Acciones"
+      },
+      "fields": {
+        "name": "Nombre del grupo",
+        "users": "Usuarios"
+      },
+      "placeholders": {
+        "name": "p. ej. Técnicos de campo"
+      },
+      "picker": {
+        "available": "Usuarios disponibles",
+        "selected": "Usuarios seleccionados",
+        "emptyAvailable": "No hay más usuarios para añadir",
+        "emptySelected": "Selecciona usuarios para este grupo"
+      },
+      "validation": {
+        "name": "Introduce un nombre de grupo.",
+        "users": "Selecciona al menos un usuario."
+      },
+      "modal": {
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "deleteConfirmTitle": "¿Eliminar este grupo?",
+      "deleteConfirmBody": "Los usuarios no se eliminan. Solo se quita el grupo.",
+      "detail": {
+        "backAria": "Volver a la lista de grupos",
+        "createdAt": "Creado",
+        "byUser": "Por {user}"
+      },
+      "page": {
+        "createTitle": "Nuevo grupo",
+        "editTitle": "Editar grupo"
       }
     },
     "clients": {
@@ -2321,7 +2499,8 @@
         "status": "Estado activo",
         "createdAt": "Creado",
         "updatedAt": "Última actualización",
-        "createdBy": "Creado por"
+        "createdBy": "Creado por",
+        "clientResponse": "Respuesta del cliente"
       },
       "additionalContacts": {
         "add": "Añadir contacto adicional",
@@ -3054,6 +3233,160 @@
         "lineBackAria": "Volver al envío"
       }
     },
+    "scheduling": {
+      "metaTitle": "Programación",
+      "title": "Programación",
+      "subtitle": "Planifica horarios de trabajadores en el calendario.",
+      "technicians": "Técnicos",
+      "searchTechnicians": "Buscar técnicos…",
+      "searchUsers": "Buscar usuarios…",
+      "closeSearch": "Cerrar búsqueda",
+      "backToUsers": "Volver a todos los usuarios",
+      "workerColumn": "Trabajador",
+      "usersColumn": "Usuarios",
+      "thisWeek": "Esta semana",
+      "thisMonth": "Este mes",
+      "today": "Hoy",
+      "viewMonth": "Mes",
+      "viewWeek": "Semana",
+      "viewDay": "Día",
+      "monthMoreSchedules": "+{count} más",
+      "allClients": "Todos los clientes",
+      "allJobs": "Todos los trabajos",
+      "allProjects": "Todos los proyectos",
+      "allWorkers": "Todos los trabajadores",
+      "allUsers": "Todos los usuarios",
+      "allUserGroups": "Todos los grupos",
+      "createSchedule": "Crear programación",
+      "removeSchedule": "Quitar programación",
+      "emptyTechnicians": "No se encontraron técnicos.",
+      "emptyUsers": "No se encontraron usuarios.",
+      "emptyUsersHint": "Prueba otro grupo o borra la búsqueda para ver usuarios.",
+      "clearPeopleFilters": "Borrar filtros",
+      "legendAvailable": "Disponible",
+      "legendUnavailable": "No disponible",
+      "legendScheduled": "Programado",
+      "legendTimeOff": "Tiempo libre",
+      "legendHint": "Las horas verdes son cuando el usuario está disponible.",
+      "legendHintDrag": "Arrastra en la línea de tiempo para asignar un trabajo.",
+      "legendHintTimeOff": "Arrastra en la línea de tiempo para marcar tiempo libre.",
+      "bookJob": "Asignar trabajo",
+      "markTimeOff": "Tiempo libre",
+      "offDuty": "Libre",
+      "availableHoursNote": "Disponible {hours}",
+      "monthJobCount": "{count} trabajos",
+      "monthTimeOffCount": "{count} tiempo libre",
+      "conflict": {
+        "booked": "Ese horario ya está programado.",
+        "unavailable": "Ese horario está fuera de la disponibilidad del usuario.",
+        "timeOff": "Ese horario está marcado como tiempo libre.",
+        "invalidRange": "Elige una hora de fin posterior a la de inicio."
+      },
+      "agenda": {
+        "title": "Programación del día",
+        "subtitle": "{jobs} trabajos · {timeOff} tiempo libre",
+        "openDay": "Vista diaria",
+        "emptyJobs": "No hay trabajos programados este día.",
+        "emptyTimeOff": "No hay tiempo libre este día.",
+        "jobsTab": "Trabajos",
+        "timeOffTab": "Tiempo libre",
+        "tabsAria": "Secciones del día",
+        "searchPlaceholder": "Buscar trabajos o usuarios…",
+        "clientLine": "Cliente – {name}",
+        "assignToLine": "Asignar a – {name}"
+      },
+      "loadError": "No se pudieron cargar las programaciones. Inténtalo de nuevo.",
+      "noSchedules": "Sin programaciones",
+      "modal": {
+        "title": "Crear programación",
+        "rescheduleTitle": "Reprogramar",
+        "currentTitle": "Título actual — {title}",
+        "technicianFallbackTitle": "Técnico",
+        "cancel": "Cancelar",
+        "save": "Crear programación",
+        "saveReschedule": "Guardar programación",
+        "saving": "Creando…",
+        "savingReschedule": "Guardando…",
+        "successToast": "Programación creada",
+        "successRescheduleToast": "Programación actualizada",
+        "errorToast": "No se pudo crear la programación. Inténtalo de nuevo.",
+        "errorRescheduleToast": "No se pudo actualizar la programación. Inténtalo de nuevo.",
+        "noUnassignedJobs": "No hay trabajos sin asignar para este cliente.",
+        "loadingJobs": "Cargando trabajos…"
+      },
+      "timeOff": {
+        "title": "Marcar no disponible",
+        "subtitle": "Bloquea este horario para que no se asignen trabajos.",
+        "reason": "Motivo",
+        "reasonPlaceholder": "p. ej. Permiso, formación, viaje…",
+        "save": "Guardar tiempo libre",
+        "saving": "Guardando…",
+        "cancel": "Cancelar",
+        "blocked": "Tiempo libre",
+        "remove": "Quitar tiempo libre",
+        "successToast": "Tiempo libre guardado",
+        "errorToast": "No se pudo guardar el tiempo libre. Inténtalo de nuevo.",
+        "deletedToast": "Tiempo libre eliminado",
+        "deleteError": "No se pudo eliminar el tiempo libre. Inténtalo de nuevo.",
+        "deleteConfirmTitle": "¿Quitar tiempo libre?",
+        "deleteConfirmBody": "Este horario bloqueado volverá a estar disponible en el calendario."
+      },
+      "detail": {
+        "title": "Programación del {date}",
+        "close": "Cerrar",
+        "moreOptions": "Más opciones",
+        "edit": "Editar",
+        "createTimesheet": "Crear hoja de horas",
+        "findReplacement": "Buscar reemplazo",
+        "delete": "Eliminar",
+        "allDay": "Todo el día",
+        "recurrenceDaily": "Se repite diariamente",
+        "recurrenceWeekly": "Se repite semanalmente",
+        "recurrenceEnds": "La repetición termina el {date}",
+        "deletedToast": "Programación eliminada",
+        "deleteError": "No se pudo eliminar la programación. Inténtalo de nuevo.",
+        "deleteConfirmTitle": "¿Eliminar programación?",
+        "deleteConfirmBody": "Esta programación se eliminará del calendario.",
+        "timesheetSoon": "Crear hoja de horas estará disponible cuando se conecte la API.",
+        "replacementSoon": "Buscar reemplazo estará disponible cuando se conecte la API.",
+        "editSoon": "Editar programación estará disponible cuando se conecte la API."
+      },
+      "fields": {
+        "worker": "Trabajador",
+        "client": "Nombre del cliente",
+        "job": "Nombre del trabajo",
+        "date": "Fecha",
+        "time": "Hora",
+        "startDate": "Fecha de inicio",
+        "endDate": "Fecha de fin",
+        "startTime": "Hora de inicio",
+        "endTime": "Hora de fin",
+        "allDay": "Todo el día",
+        "notes": "Notas",
+        "recurrence": "Recurrencia",
+        "recurrenceNone": "No se repite",
+        "recurrenceDaily": "Diaria",
+        "recurrenceWeekly": "Semanal",
+        "recurrenceEnd": "Fin de repetición",
+        "to": "a"
+      },
+      "placeholders": {
+        "client": "Seleccionar cliente",
+        "job": "Seleccionar trabajo",
+        "worker": "Seleccionar trabajador",
+        "notes": "Añadir notas (opcional)"
+      },
+      "validation": {
+        "worker": "Selecciona un trabajador",
+        "client": "Selecciona un cliente",
+        "job": "Selecciona un trabajo",
+        "startDate": "La fecha de inicio es obligatoria",
+        "endDate": "La fecha de fin es obligatoria",
+        "startTime": "La hora de inicio es obligatoria",
+        "endTime": "La hora de fin es obligatoria",
+        "recurrenceEnd": "La fecha de fin de repetición es obligatoria"
+      }
+    },
     "jobs": {
       "metaTitle": "Trabajos",
       "detailMetaTitle": "Detalles del trabajo",
@@ -3061,6 +3394,8 @@
       "subtitle": "Programa y supervisa el trabajo de campo. Asigna técnicos y actualiza el estado del trabajo.",
       "add": "Añadir",
       "edit": "Editar",
+      "createSchedule": "Crear programación",
+      "reschedule": "Reprogramar",
       "emptyTitle": "Aún no hay trabajos",
       "emptyDescription": "Crea tu primer trabajo para asignar técnicos y hacer seguimiento del estado.",
       "loadError": "No se pudieron cargar los trabajos. Inténtalo de nuevo.",
@@ -3141,10 +3476,19 @@
         "tabsAria": "Secciones del detalle del trabajo",
         "tabs": {
           "overview": "Resumen",
+          "scheduling": "Programación",
           "materials": "Materiales",
           "dispatch": "Envío",
           "returns": "Devoluciones"
         },
+        "schedulingTitle": "Programación",
+        "schedulingEmpty": "Este trabajo aún no está programado.",
+        "schedulingHasSchedule": "Programación actual de este trabajo.",
+        "schedulingLoading": "Cargando programación…",
+        "schedulingLoadError": "No se pudo cargar la programación. Inténtalo de nuevo.",
+        "schedulingHistory": "Historial de programación",
+        "openScheduling": "Programación",
+        "openSchedulingHint": "Ver trabajadores y calendario",
         "materialsTitle": "Materiales",
         "materialsEmpty": "No hay materiales vinculados a este trabajo.",
         "dispatchesTitle": "Envíos",
@@ -3222,6 +3566,9 @@
       "checklists": {
         "sectionTitle": "Listas de verificación",
         "toggle": "Mostrar u ocultar listas de verificación",
+        "completeChecks": "Completar verificaciones",
+        "verifyHint": "Verifica y completa todas las listas y requisitos.",
+        "viewFile": "Ver archivo",
         "required": "Obligatorio",
         "sequence": "Sec. {n}",
         "checkedAt": "Marcado {when}",
@@ -3288,6 +3635,7 @@
         "forms": "Formularios",
         "assignedWorker": "Técnico asignado",
         "startDate": "Fecha y hora de inicio",
+        "jobTime": "Tiempo del trabajo",
         "endDate": "Fecha y hora de fin",
         "jobStatus": "Estado del trabajo",
         "sectionName": "Nombre de sección",

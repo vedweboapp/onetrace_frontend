@@ -22,6 +22,7 @@ import {
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
+import { JOB_CATEGORY } from "@/features/jobs/constants/job-category";
 import { routes } from "@/shared/config/routes";
 import { getApiErrorDisplayMessage, toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -45,6 +46,7 @@ import {
   buildDetailHrefWithListReturn,
   buildPathWithStoredBack,
   buildProjectJobsTabHref,
+  mergeUrlQueryParam,
 } from "@/shared/utils/detail-from-list.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 
@@ -65,14 +67,24 @@ export function ProjectJobsTab({ projectId }: Props) {
 
   const openJobDetail = React.useCallback(
     (id: number) => {
-      router.push(buildDetailHrefWithListReturn(`${routes.dashboard.jobs}/${id}`, listBack, id));
+      const detailPath = mergeUrlQueryParam(
+        `${routes.dashboard.jobs}/${id}`,
+        "job_category",
+        JOB_CATEGORY.project,
+      );
+      router.push(buildDetailHrefWithListReturn(detailPath, listBack, id));
     },
     [listBack, router],
   );
 
   const openEdit = React.useCallback(
     (job: ProjectJobListItem) => {
-      router.push(buildPathWithStoredBack(`${routes.dashboard.jobs}/${job.id}/edit`, listBack));
+      router.push(
+        buildPathWithStoredBack(
+          mergeUrlQueryParam(`${routes.dashboard.jobs}/${job.id}/edit`, "job_category", JOB_CATEGORY.project),
+          listBack,
+        ),
+      );
     },
     [listBack, router],
   );

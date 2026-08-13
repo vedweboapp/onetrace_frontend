@@ -166,8 +166,8 @@ export type JobLevelSnapshot = {
 export type JobCreatePayload = {
   // title: string;
   description: string;
-  assigned_worker: number;
-  start_date: string;
+  assigned_worker?: number;
+  start_date?: string;
   forms?: number[];
   job_status?: number;
   client?: number;
@@ -188,6 +188,8 @@ export type JobUpdatePayload = Omit<Partial<JobCreatePayload>, "checklists"> & {
   job_status?: number;
   /** List/detail toggle; omitted on create payload. */
   is_active?: boolean;
+  /** Schedule end (used by Scheduling / Create Schedule). */
+  end_date?: string | null;
   pin_ids?: number[];
   pins?: Array<{ id: number; status: number | null }>;
   checklists?: number[] | JobChecklistUpdateItem[];
@@ -211,6 +213,7 @@ export type Job = {
   job_status: number | WorkflowColourStatus | null;
   start_date: string;
   end_date: string;
+  job_time?: string | null;
   completed_at: string | null;
   is_active: boolean;
   deleted_by: unknown;

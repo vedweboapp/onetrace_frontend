@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ClipboardList, ListChecks, ListTodo, MapPin, Plug, Ruler, Shapes, Store, Tag, Tags, Text } from "lucide-react";
+import { Ban, ClipboardList, ListChecks, ListTodo, MapPin, Plug, Ruler, Shapes, Store, Tag, Tags, Text } from "lucide-react";
 import {
   CUSTOMIZATION_SETTINGS_HREFS,
   type CustomizationSettingsItemId,
@@ -16,6 +16,7 @@ const ICON_BY_ID: Record<CustomizationSettingsItemId, LucideIcon> = {
   installationTypes: Plug,
   vendorTypes: Store,
   unitTypes: Ruler,
+  rejectionReasons: Ban,
   checklistTypes: ListChecks,
   projectStatus: Tags,
   pinStatus: MapPin,

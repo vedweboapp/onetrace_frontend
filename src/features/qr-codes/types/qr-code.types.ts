@@ -27,6 +27,8 @@ export type QrCode = {
   modified_by?: QrCodeUserRef | null;
   assigned_to_detail?: unknown;
   batch_detail?: QrCodeBatchDetail | null;
+  /** Scan landing URL, e.g. `http://host:5001/org1/{uuid}`. */
+  public_url?: string | null;
 };
 
 export type QrCodePagination = {

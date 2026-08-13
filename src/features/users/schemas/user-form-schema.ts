@@ -5,6 +5,7 @@ import {
   createEntityAddressesArraySchema,
   type EntityAddressFormMessages,
 } from "@/shared/form/entity-address-form.util";
+import { USER_AVAILABILITY_DAYS } from "@/features/users/types/user-availability.types";
 
 export type UserBasePayType = "fixed_amount" | "rate_per_hr";
 
@@ -16,6 +17,8 @@ export type UserFormMessages = {
   gender: string;
   role: string;
   basePay: string;
+  availabilityTime: string;
+  availabilityRange: string;
 } & EntityAddressFormMessages;
 
 export function createUserFormSchema(messages: UserFormMessages) {
@@ -30,6 +33,14 @@ export function createUserFormSchema(messages: UserFormMessages) {
     role: z.string().trim().regex(/^\d+$/, messages.role),
     base_pay: z.string().trim(),
     base_pay_type: z.enum(["fixed_amount", "rate_per_hr"]),
+    available_days: z.array(
+      z.object({
+        day: z.enum(USER_AVAILABILITY_DAYS),
+        enabled: z.boolean(),
+        start_time: z.string().trim(),
+        end_time: z.string().trim(),
+      }),
+    ),
     addresses: createEntityAddressesArraySchema(messages),
   }).superRefine((data, ctx) => {
     if (data.base_pay.trim()) {
@@ -42,6 +53,24 @@ export function createUserFormSchema(messages: UserFormMessages) {
         });
       }
     }
+    data.available_days.forEach((row, index) => {
+      if (!row.enabled) return;
+      if (!row.start_time.trim() || !row.end_time.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["available_days", index, "start_time"],
+          message: messages.availabilityTime,
+        });
+        return;
+      }
+      if (row.start_time >= row.end_time) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["available_days", index, "end_time"],
+          message: messages.availabilityRange,
+        });
+      }
+    });
   });
 }
 

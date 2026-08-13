@@ -2579,7 +2579,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                 </div>
               </div>
 
-              {!isPinEditing && (
+              {/* {!isPinEditing && (
                 <div className="pt-4 border-t border-slate-100 dark:border-slate-800/60">
                   <button
                     onClick={() => setPinDeleteConfirmOpen(true)}
@@ -2591,7 +2591,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     Delete Pin
                   </button>
                 </div>
-              )}
+              )} */}
             </div>
           )
         ) : null}
@@ -2672,12 +2672,12 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     </button>
                   </div>
 
-                  <button
+                  {/* <button
                     onClick={() => setDeleteConfirmOpen(true)}
                     className="w-full rounded-xl bg-red-50 py-3 text-sm font-bold text-red-600 hover:bg-red-100 transition-colors"
                   >
                     Delete Plot & Pins
-                  </button>
+                  </button> */}
                 </div>
               </>
             )}

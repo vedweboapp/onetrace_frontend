@@ -61,6 +61,39 @@ export type ZohoKeyMappingData = {
   external_fields: ZohoFieldGroup[];
   internal_fields: ZohoFieldGroup[];
   existing_mapping: ZohoExistingMapping[];
+  full_sync_count?: number | null;
+  last_synced_at?: string | null;
+  mapping_saved?: boolean | null;
+};
+
+export type ZohoSyncMode = "full" | "incremental";
+
+export type ZohoSyncJob = {
+  id: number;
+  resource: string;
+  mode: string;
+  status: string;
+  current_page: number;
+  next_page: number;
+  processed_count: number;
+  created_count: number;
+  updated_count: number;
+  restored_count: number;
+  skipped_count: number;
+  error: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+};
+
+export type ZohoPullAllRecordsResponse = {
+  success?: boolean;
+  message?: string;
+  job: ZohoSyncJob;
+};
+
+export type ZohoSyncJobStatusResponse = {
+  success?: boolean;
+  job: ZohoSyncJob;
 };
 
 export type ZohoSaveKeyMappingPayload = {

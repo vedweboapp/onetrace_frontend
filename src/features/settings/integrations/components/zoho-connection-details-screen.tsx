@@ -210,9 +210,22 @@ export function ZohoConnectionDetailsScreen() {
         <div className="space-y-6">
           <SurfaceShell className="rounded-xl">
             <div className="space-y-5 p-4 sm:p-6">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("connectionDetailsTitle")}</h2>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("connectionDetailsSubtitle")}</p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("connectionDetailsTitle")}</h2>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("connectionDetailsSubtitle")}</p>
+                </div>
+                <AppButton
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="shrink-0 self-start"
+                  loading={reconnecting}
+                  disabled={reconnecting}
+                  onClick={() => void handleReconnect()}
+                >
+                  {connection.connected ? t("reconnect") : t("connectAction")}
+                </AppButton>
               </div>
 
               <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -233,28 +246,15 @@ export function ZohoConnectionDetailsScreen() {
                 <DetailRow
                   label={t("status")}
                   value={
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={cn(
-                            "inline-block size-2 rounded-full",
-                            connection.connected ? "bg-emerald-500" : "bg-red-500",
-                          )}
-                          aria-hidden="true"
-                        />
-                        <span>{connection.connected ? t("connected") : t("disconnected")}</span>
-                      </div>
-                      <AppButton
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        className="h-7 px-2 py-1 text-xs"
-                        loading={reconnecting}
-                        disabled={reconnecting}
-                        onClick={() => void handleReconnect()}
-                      >
-                        {t("reconnect")}
-                      </AppButton>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={cn(
+                          "inline-block size-2 rounded-full",
+                          connection.connected ? "bg-emerald-500" : "bg-red-500",
+                        )}
+                        aria-hidden="true"
+                      />
+                      <span>{connection.connected ? t("connected") : t("disconnected")}</span>
                     </div>
                   }
                 />

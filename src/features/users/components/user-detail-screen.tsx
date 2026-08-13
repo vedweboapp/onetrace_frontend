@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Suspense } from "react";
 import { Mail, Pencil, Phone, User } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -8,6 +9,8 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchRoles, fetchUserProfile, updateUserProfile } from "@/features/users/api/user.api";
 import type { UserProfile } from "@/features/users/types/user.types";
 import { resolveUserAddresses } from "@/features/users/utils/user-form-map";
+import { normalizeUserAvailabilityFromApi } from "@/features/users/utils/user-availability.util";
+import { SchedulingPanel } from "@/features/scheduling/components/scheduling-panel";
 import { routes } from "@/shared/config/routes";
 import { DetailSystemMetadataSection, EntityDetailLoadingSkeleton } from "@/shared/components/entity";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
@@ -28,7 +31,8 @@ import {
   buildCurrentPageBackHref,
   buildPathWithStoredBack,
 } from "@/shared/utils/detail-from-list.util";
-import { AppButton, EditButton, SurfaceShell, type CheckmarkSelectOption } from "@/shared/ui";
+import { AppButton, AppTabs, EditButton, SurfaceShell, type AppTabItem, type CheckmarkSelectOption } from "@/shared/ui";
+import { cn } from "@/core/utils/http.util";
 
 function userRoleLabel(row: UserProfile | null): string {
   if (!row?.role_detail) return "—";
@@ -50,6 +54,19 @@ function resolveBasePayType(row: UserProfile): "fixed_amount" | "rate_per_hr" {
   return raw === "rate_per_hr" ? "rate_per_hr" : "fixed_amount";
 }
 
+function resolveUserAvailability(row: UserProfile) {
+  const source =
+    row.available_days ??
+    (row.user_detail as { available_days?: UserProfile["available_days"] })?.available_days;
+  return normalizeUserAvailabilityFromApi(source ?? null).filter((day) => day.enabled);
+}
+
+type UserDetailTabId = "overview" | "scheduling";
+
+function isUserDetailTabId(value: string | null): value is UserDetailTabId {
+  return value === "overview" || value === "scheduling";
+}
+
 export function UserDetailScreen({ userId }: { userId: number }) {
   const t = useTranslations("Dashboard.users");
   const tMeta = useTranslations("Dashboard.common.detail");
@@ -59,6 +76,26 @@ export function UserDetailScreen({ userId }: { userId: number }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const safeBack = useEntityDetailBack("settings/users", routes.dashboard.settingsUsers);
+  const tabFromUrl = searchParams.get("tab");
+  const activeTab: UserDetailTabId = isUserDetailTabId(tabFromUrl) ? tabFromUrl : "overview";
+
+  const detailTabs = React.useMemo<AppTabItem[]>(
+    () => [
+      { id: "overview", label: t("detail.tabs.overview") },
+      { id: "scheduling", label: t("detail.tabs.scheduling") },
+    ],
+    [t],
+  );
+
+  function handleTabChange(tab: string) {
+    if (!isUserDetailTabId(tab)) return;
+    const nextParams = new URLSearchParams(searchParams.toString());
+    if (tab === "overview") nextParams.delete("tab");
+    else nextParams.set("tab", tab);
+    const query = nextParams.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
+
   const [detail, setDetail] = React.useState<UserProfile | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -155,9 +192,10 @@ export function UserDetailScreen({ userId }: { userId: number }) {
   const addresses = detail ? resolveUserAddresses(detail) : [];
   const basePay = detail ? resolveBasePay(detail) : "";
   const basePayType = detail ? resolveBasePayType(detail) : "fixed_amount";
+  const availableDays = detail ? resolveUserAvailability(detail) : [];
 
   return (
-    <div className="pb-8 sm:pb-10">
+    <div className="min-h-0 w-full pb-8 sm:pb-10">
       <DetailPageHeader
         title={
           detail
@@ -196,208 +234,258 @@ export function UserDetailScreen({ userId }: { userId: number }) {
         actions={
           !loading && !error && detail ? <EditButton onClick={goEdit} /> : null
         }
+        extension={
+          <AppTabs
+            tabs={detailTabs}
+            value={activeTab}
+            onValueChange={handleTabChange}
+            ariaLabel={t("detail.tabsAria")}
+            panelIdPrefix="user-detail-tab"
+            className="-mx-1 px-1 sm:-mx-0 sm:px-0"
+          />
+        }
       />
 
-      <SurfaceShell className={detailRecordSurfaceShellClassName}>
-        {loading ? (
-          <EntityDetailLoadingSkeleton />
-        ) : error ? (
-          <div className="space-y-4 p-4 sm:p-6">
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            <AppButton
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => setRefreshNonce((k) => k + 1)}
-            >
-              {t("detail.retry")}
-            </AppButton>
-          </div>
-        ) : detail ? (
-          <DetailPagePadding className="!px-0 !py-0 sm:!px-0 sm:!py-0">
-            <div className={detailPageStackClassName}>
-              <DetailPanelCard title={t("detail.sectionOverview")} variant="flat">
-                <DetailMetricsGrid>
-                  <DetailEditableField
-                    label={t("fields.firstName")}
-                    value={detail.user_detail.first_name ?? ""}
-                    kind="text"
-                    editAriaLabel={tActions("edit")}
-                    onSave={(next) => patchField({ first_name: next })}
-                  >
-                    {detail.user_detail.first_name || "—"}
-                  </DetailEditableField>
-                  <DetailEditableField
-                    label={t("fields.lastName")}
-                    value={detail.user_detail.last_name ?? ""}
-                    kind="text"
-                    editAriaLabel={tActions("edit")}
-                    onSave={(next) => patchField({ last_name: next })}
-                  >
-                    {detail.user_detail.last_name || "—"}
-                  </DetailEditableField>
-                  <DetailEditableField
-                    label={t("fields.email")}
-                    value={detail.user_detail.email}
-                    kind="email"
-                    editAriaLabel={tActions("edit")}
-                    onSave={(next) => patchField({ email: next })}
-                  >
-                    <a
-                      href={`mailto:${detail.user_detail.email}`}
-                      className="break-all font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {detail.user_detail.email}
-                    </a>
-                  </DetailEditableField>
-                  <DetailEditableField
-                    label={t("fields.phone")}
-                    value={detail.user_detail.phone_number ?? ""}
-                    kind="tel"
-                    editAriaLabel={tActions("edit")}
-                    onSave={(next) => patchField({ phone_number: next })}
-                  >
-                    {detail.user_detail.phone_number || "—"}
-                  </DetailEditableField>
-                  <DetailEditableField
-                    label={t("fields.gender")}
-                    value={detail.user_detail.gender ?? ""}
-                    kind="select"
-                    options={genderOptions}
-                    editAriaLabel={tActions("edit")}
-                    onSave={(next) => patchField({ gender: next })}
-                  >
-                    {detail.user_detail.gender || "—"}
-                  </DetailEditableField>
-                  <DetailEditableField
-                    label={t("fields.role")}
-                    value={detail.role_detail?.id ? String(detail.role_detail.id) : ""}
-                    kind="select"
-                    options={roleOptions}
-                    editAriaLabel={tActions("edit")}
-                    onSave={(next) => patchField({ role: Number.parseInt(next, 10) })}
-                  >
-                    {userRoleLabel(detail)}
-                  </DetailEditableField>
-                  <DetailMetricCard label={t("fields.inviteStatus")}>
-                    {detail.user_detail.invite_status || "—"}
-                  </DetailMetricCard>
-                  <DetailMetricCard label={t("fields.invitationSentAt")}>
-                    {formatSettingsDetailDate(dateFmt, detail.user_detail.invitation_sent_at)}
-                  </DetailMetricCard>
-                </DetailMetricsGrid>
-              </DetailPanelCard>
-
-              <DetailPanelCard title={t("fields.basePay")} variant="flat">
-                <DetailMetricsGrid>
-                  <DetailEditableField
-                    label={t("fields.basePay")}
-                    value={basePay}
-                    kind="text"
-                    editAriaLabel={tActions("edit")}
-                    empty="—"
-                    onSave={(next) => {
-                      const n = next.trim() ? Number(next) : null;
-                      return patchField({
-                        base_pay: n != null && Number.isFinite(n) ? n : null,
-                        base_pay_type: n != null && Number.isFinite(n) ? basePayType : null,
-                      });
-                    }}
-                  >
-                    {basePay || "—"}
-                  </DetailEditableField>
-                  <DetailEditableField
-                    label={t("fields.basePayType")}
-                    value={basePayType}
-                    kind="select"
-                    options={payTypeOptions}
-                    editAriaLabel={tActions("edit")}
-                    onSave={(next) =>
-                      patchField({
-                        base_pay_type: next === "rate_per_hr" ? "rate_per_hr" : "fixed_amount",
-                        ...(basePay.trim()
-                          ? { base_pay: Number(basePay) }
-                          : {}),
-                      })
-                    }
-                  >
-                    {basePayType === "rate_per_hr"
-                      ? t("fields.basePayTypeRate")
-                      : t("fields.basePayTypeFixed")}
-                  </DetailEditableField>
-                </DetailMetricsGrid>
-              </DetailPanelCard>
-
-              <DetailPanelCard
-                title={t("fields.addresses")}
-                variant="flat"
-                headerRight={
-                  <button
-                    type="button"
-                    onClick={goEdit}
-                    className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-                    aria-label={tActions("edit")}
-                  >
-                    <Pencil className="size-3.5" strokeWidth={1.75} aria-hidden />
-                    {tActions("edit")}
-                  </button>
-                }
+      {activeTab === "scheduling" ? (
+        <div
+          className={cn(
+            "mt-3 flex min-h-[24rem] flex-col overflow-hidden",
+            "h-[calc(100dvh-13rem)] sm:h-[calc(100dvh-12rem)]",
+          )}
+        >
+          <Suspense
+            fallback={
+              <div className="space-y-2 p-4">
+                <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+                <div className="h-40 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+              </div>
+            }
+          >
+            <SchedulingPanel fixedWorkerId={userId} syncUrl={false} />
+          </Suspense>
+        </div>
+      ) : (
+        <SurfaceShell className={cn(detailRecordSurfaceShellClassName, "mt-3")}>
+          {loading ? (
+            <EntityDetailLoadingSkeleton />
+          ) : error ? (
+            <div className="space-y-4 p-4 sm:p-6">
+              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              <AppButton
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setRefreshNonce((k) => k + 1)}
               >
-                {addresses.length === 0 ? (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    {t("detail.addressUnavailable")}
-                  </p>
-                ) : (
-                  <ul className="space-y-6">
-                    {addresses.map((addr, index) => (
-                      <li key={addr.id ?? `${addr.address_type}-${index}`} className="min-w-0">
-                        <div className="mb-2 flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                            {t(`addressType.${addr.address_type}`)}
-                          </span>
-                          {addr.is_primary ? (
-                            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                              {t("addresses.primary")}
-                            </span>
-                          ) : null}
-                        </div>
-                        <DetailFormattedAddress
-                          line1={addr.address_line_1}
-                          line2={addr.address_line_2}
-                          city={addr.city}
-                          state={addr.state}
-                          pincode={addr.pincode}
-                          country={addr.country}
-                          emptyMessage={
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
-                              {t("detail.addressUnavailable")}
-                            </p>
-                          }
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </DetailPanelCard>
-
-              <DetailSystemMetadataSection
-                createdAt={detail.created_at}
-                modifiedAt={null}
-                dateFmt={dateFmt}
-                labels={{
-                  sectionTitle: tMeta("systemMetadata"),
-                  createdAt: tMeta("createdAt"),
-                  updatedAt: tMeta("updatedAt"),
-                  createdBy: tMeta("createdBy"),
-                  modifiedBy: tMeta("modifiedBy"),
-                  notModifiedYet: tMeta("notModifiedYet"),
-                }}
-              />
+                {t("detail.retry")}
+              </AppButton>
             </div>
-          </DetailPagePadding>
-        ) : null}
-      </SurfaceShell>
+          ) : detail ? (
+            <DetailPagePadding className="!px-0 !py-0 sm:!px-0 sm:!py-0">
+              <div className={detailPageStackClassName}>
+                <DetailPanelCard title={t("detail.sectionOverview")} variant="flat">
+                  <DetailMetricsGrid>
+                    <DetailEditableField
+                      label={t("fields.firstName")}
+                      value={detail.user_detail.first_name ?? ""}
+                      kind="text"
+                      editAriaLabel={tActions("edit")}
+                      onSave={(next) => patchField({ first_name: next })}
+                    >
+                      {detail.user_detail.first_name || "—"}
+                    </DetailEditableField>
+                    <DetailEditableField
+                      label={t("fields.lastName")}
+                      value={detail.user_detail.last_name ?? ""}
+                      kind="text"
+                      editAriaLabel={tActions("edit")}
+                      onSave={(next) => patchField({ last_name: next })}
+                    >
+                      {detail.user_detail.last_name || "—"}
+                    </DetailEditableField>
+                    <DetailEditableField
+                      label={t("fields.email")}
+                      value={detail.user_detail.email}
+                      kind="email"
+                      editAriaLabel={tActions("edit")}
+                      onSave={(next) => patchField({ email: next })}
+                    >
+                      <a
+                        href={`mailto:${detail.user_detail.email}`}
+                        className="break-all font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {detail.user_detail.email}
+                      </a>
+                    </DetailEditableField>
+                    <DetailEditableField
+                      label={t("fields.phone")}
+                      value={detail.user_detail.phone_number ?? ""}
+                      kind="tel"
+                      editAriaLabel={tActions("edit")}
+                      onSave={(next) => patchField({ phone_number: next })}
+                    >
+                      {detail.user_detail.phone_number || "—"}
+                    </DetailEditableField>
+                    <DetailEditableField
+                      label={t("fields.gender")}
+                      value={detail.user_detail.gender ?? ""}
+                      kind="select"
+                      options={genderOptions}
+                      editAriaLabel={tActions("edit")}
+                      onSave={(next) => patchField({ gender: next })}
+                    >
+                      {detail.user_detail.gender || "—"}
+                    </DetailEditableField>
+                    <DetailEditableField
+                      label={t("fields.role")}
+                      value={detail.role_detail?.id ? String(detail.role_detail.id) : ""}
+                      kind="select"
+                      options={roleOptions}
+                      editAriaLabel={tActions("edit")}
+                      onSave={(next) => patchField({ role: Number.parseInt(next, 10) })}
+                    >
+                      {userRoleLabel(detail)}
+                    </DetailEditableField>
+                    <DetailMetricCard label={t("fields.inviteStatus")}>
+                      {detail.user_detail.invite_status || "—"}
+                    </DetailMetricCard>
+                    <DetailMetricCard label={t("fields.invitationSentAt")}>
+                      {formatSettingsDetailDate(dateFmt, detail.user_detail.invitation_sent_at)}
+                    </DetailMetricCard>
+                  </DetailMetricsGrid>
+                </DetailPanelCard>
+
+                <DetailPanelCard title={t("fields.basePay")} variant="flat">
+                  <DetailMetricsGrid>
+                    <DetailEditableField
+                      label={t("fields.basePay")}
+                      value={basePay}
+                      kind="text"
+                      editAriaLabel={tActions("edit")}
+                      empty="—"
+                      onSave={(next) => {
+                        const n = next.trim() ? Number(next) : null;
+                        return patchField({
+                          base_pay: n != null && Number.isFinite(n) ? n : null,
+                          base_pay_type: n != null && Number.isFinite(n) ? basePayType : null,
+                        });
+                      }}
+                    >
+                      {basePay || "—"}
+                    </DetailEditableField>
+                    <DetailEditableField
+                      label={t("fields.basePayType")}
+                      value={basePayType}
+                      kind="select"
+                      options={payTypeOptions}
+                      editAriaLabel={tActions("edit")}
+                      onSave={(next) =>
+                        patchField({
+                          base_pay_type: next === "rate_per_hr" ? "rate_per_hr" : "fixed_amount",
+                          ...(basePay.trim() ? { base_pay: Number(basePay) } : {}),
+                        })
+                      }
+                    >
+                      {basePayType === "rate_per_hr"
+                        ? t("fields.basePayTypeRate")
+                        : t("fields.basePayTypeFixed")}
+                    </DetailEditableField>
+                  </DetailMetricsGrid>
+                </DetailPanelCard>
+
+                <DetailPanelCard title={t("fields.availableDays")} variant="flat">
+                  {availableDays.length === 0 ? (
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.noAvailability")}</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {availableDays.map((row) => (
+                        <li
+                          key={row.day}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-800"
+                        >
+                          <span className="font-medium text-slate-800 dark:text-slate-100">
+                            {t(`availability.days.${row.day}`)}
+                          </span>
+                          <span className="text-slate-600 dark:text-slate-300">
+                            {row.start_time} – {row.end_time}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </DetailPanelCard>
+
+                <DetailPanelCard
+                  title={t("fields.addresses")}
+                  variant="flat"
+                  headerRight={
+                    <button
+                      type="button"
+                      onClick={goEdit}
+                      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                      aria-label={tActions("edit")}
+                    >
+                      <Pencil className="size-3.5" strokeWidth={1.75} aria-hidden />
+                      {tActions("edit")}
+                    </button>
+                  }
+                >
+                  {addresses.length === 0 ? (
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      {t("detail.addressUnavailable")}
+                    </p>
+                  ) : (
+                    <ul className="space-y-6">
+                      {addresses.map((addr, index) => (
+                        <li key={addr.id ?? `${addr.address_type}-${index}`} className="min-w-0">
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                              {t(`addressType.${addr.address_type}`)}
+                            </span>
+                            {addr.is_primary ? (
+                              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                {t("addresses.primary")}
+                              </span>
+                            ) : null}
+                          </div>
+                          <DetailFormattedAddress
+                            line1={addr.address_line_1}
+                            line2={addr.address_line_2}
+                            city={addr.city}
+                            state={addr.state}
+                            pincode={addr.pincode}
+                            country={addr.country}
+                            emptyMessage={
+                              <p className="text-sm text-slate-500 dark:text-slate-400">
+                                {t("detail.addressUnavailable")}
+                              </p>
+                            }
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </DetailPanelCard>
+
+                <DetailSystemMetadataSection
+                  createdAt={detail.created_at}
+                  modifiedAt={null}
+                  dateFmt={dateFmt}
+                  labels={{
+                    sectionTitle: tMeta("systemMetadata"),
+                    createdAt: tMeta("createdAt"),
+                    updatedAt: tMeta("updatedAt"),
+                    createdBy: tMeta("createdBy"),
+                    modifiedBy: tMeta("modifiedBy"),
+                    notModifiedYet: tMeta("notModifiedYet"),
+                  }}
+                />
+              </div>
+            </DetailPagePadding>
+          ) : null}
+        </SurfaceShell>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Suspense } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -9,8 +10,14 @@ import { JobDetailBody } from "@/features/jobs/components/job-detail-body";
 import { JobMaterialsTab } from "@/features/jobs/components/job-materials-tab";
 import { JobDispatchTab } from "@/features/jobs/components/job-dispatch-tab";
 import { JobReturnsTab } from "@/features/jobs/components/job-returns-tab";
+import { JobSchedulingTab } from "@/features/jobs/components/job-scheduling-tab";
 import { JobUpdateStatusDialog } from "@/features/jobs/components/job-update-status-dialog";
 import { JobQualityAssuranceControls } from "@/features/jobs/components/job-quality-assurance-controls";
+import {
+  parseJobCategoryParam,
+  resolveJobCategory,
+  isServiceJobCategory,
+} from "@/features/jobs/constants/job-category";
 import type { Job } from "@/features/jobs/types/job.types";
 import { isQualityAssuranceDecided } from "@/features/jobs/types/quality-assurance.types";
 import { getJobAssignedWorkerId, getJobStatusId } from "@/features/jobs/utils/job-nested-fields.util";
@@ -27,22 +34,20 @@ import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
 import { EditButton } from "@/shared/ui/dashboard-action-buttons";
 import { buildCurrentPageBackHref, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 
-function normalizeJobCategory(value: string | null | undefined): string {
-  return (value ?? "").toLowerCase().replace(/[^a-z]/g, "");
-}
-
-function isServiceJobCategory(value: string | null | undefined): boolean {
-  return normalizeJobCategory(value) === "servicejob";
-}
-
 type Props = {
   jobId: number;
 };
 
-type JobDetailTabId = "overview" | "materials" | "dispatch" | "returns";
+type JobDetailTabId = "overview" | "scheduling" | "materials" | "dispatch" | "returns";
 
 function isJobDetailTabId(value: string | null): value is JobDetailTabId {
-  return value === "overview" || value === "materials" || value === "dispatch" || value === "returns";
+  return (
+    value === "overview" ||
+    value === "scheduling" ||
+    value === "materials" ||
+    value === "dispatch" ||
+    value === "returns"
+  );
 }
 
 export function JobDetailScreen({ jobId }: Props) {
@@ -52,6 +57,7 @@ export function JobDetailScreen({ jobId }: Props) {
   const searchParams = useSearchParams();
   const [statusOpen, setStatusOpen] = React.useState(false);
   const [statusSaving, setStatusSaving] = React.useState(false);
+  const [detailForNav, setDetailForNav] = React.useState<Job | null>(null);
   const [workerLabelById, setWorkerLabelById] = React.useState<Record<number, string>>({});
   const tabFromUrl = searchParams.get("tab");
   const activeTab: JobDetailTabId = isJobDetailTabId(tabFromUrl) ? tabFromUrl : "overview";
@@ -59,6 +65,7 @@ export function JobDetailScreen({ jobId }: Props) {
   const detailTabs = React.useMemo<AppTabItem[]>(
     () => [
       { id: "overview", label: t("detail.tabs.overview") },
+      { id: "scheduling", label: t("detail.tabs.scheduling") },
       { id: "materials", label: t("detail.tabs.materials") },
       { id: "dispatch", label: t("detail.tabs.dispatch") },
       { id: "returns", label: t("detail.tabs.returns") },
@@ -74,6 +81,17 @@ export function JobDetailScreen({ jobId }: Props) {
     const query = nextParams.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }
+
+  /** Keep header/sidebar job category in sync when opening detail without `?job_category=`. */
+  React.useEffect(() => {
+    if (!detailForNav) return;
+    const resolved = resolveJobCategory(detailForNav);
+    const current = parseJobCategoryParam(searchParams.get("job_category"));
+    if (current === resolved) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("job_category", resolved);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [detailForNav, pathname, router, searchParams]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -104,7 +122,14 @@ export function JobDetailScreen({ jobId }: Props) {
       listRoute={routes.dashboard.jobs}
       loadError={t("detailLoadError")}
       fetch={fetchJob}
+      onDetailChange={setDetailForNav}
       getTitle={(detail) => detail.job_serial_number ?? String(detail.id)}
+      wrapSurface={activeTab !== "scheduling"}
+      className={
+        activeTab === "scheduling"
+          ? "flex h-full min-h-0 flex-1 flex-col overflow-hidden pb-0 sm:pb-0"
+          : undefined
+      }
       labels={{
         metaTitle: t("detailMetaTitle"),
         backAria: t("detail.backAria"),
@@ -159,7 +184,19 @@ export function JobDetailScreen({ jobId }: Props) {
                 }
                 onChecklistsUpdated={retry}
                 onSaved={retry}
+                onOpenScheduling={() => handleTabChange("scheduling")}
               />
+            ) : detail && activeTab === "scheduling" ? (
+              <Suspense
+                fallback={
+                  <div className="space-y-2 p-4">
+                    <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+                    <div className="h-40 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+                  </div>
+                }
+              >
+                <JobSchedulingTab detail={detail} />
+              </Suspense>
             ) : detail && activeTab === "materials" ? (
               <JobMaterialsTab detail={detail} />
             ) : detail && activeTab === "dispatch" ? (
@@ -176,7 +213,6 @@ export function JobDetailScreen({ jobId }: Props) {
 
 function JobDetailActions({
   detail,
-  listBack,
   statusOpen,
   statusSaving,
   onOpenStatus,
@@ -200,9 +236,7 @@ function JobDetailActions({
   const searchParams = useSearchParams();
 
   function openEdit() {
-    const jobCategory =
-      searchParams.get("job_category")?.trim() ||
-      (typeof detail.job_category === "string" ? detail.job_category.trim() : "");
+    const jobCategory = resolveJobCategory(detail);
     const detailBackHref = buildCurrentPageBackHref(pathname, searchParams);
     const editPath = buildPathWithStoredBack(`${pathname}/edit`, detailBackHref);
     const targetUrl = jobCategory

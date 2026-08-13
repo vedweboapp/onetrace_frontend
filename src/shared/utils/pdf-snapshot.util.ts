@@ -1,4 +1,4 @@
-import { pdfjs } from "@/shared/utils/pdfjs-worker";
+import { getPdfjs } from "@/shared/utils/pdfjs-worker";
 import { fetchDrawingArrayBuffer } from "@/features/projects/utils/drawing-file-bytes.util";
 
 export type LevelSnapshot = {
@@ -80,7 +80,8 @@ export async function getOrCreateLevelSnapshot(fileUrl: string): Promise<LevelSn
       // 2. If it's a PDF file, render first page via PDF.js
       let pdf: any = null;
       try {
-        const loadingTask = pdfjs.getDocument({ data: new Uint8Array(arrayBuffer.slice(0)) });
+        const pdfjsInstance = await getPdfjs();
+        const loadingTask = pdfjsInstance.getDocument({ data: new Uint8Array(arrayBuffer.slice(0)) });
         pdf = await loadingTask.promise;
         const page = await pdf.getPage(1);
 

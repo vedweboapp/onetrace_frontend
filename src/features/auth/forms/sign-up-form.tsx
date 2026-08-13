@@ -8,7 +8,7 @@ import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { OTPInput } from "input-otp";
 import { Link, useRouter } from "@/i18n/navigation";
 import { sendOtp, signUpHandler, verifyOtp } from "../api/auth.api";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastApiError, toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
 import { isApiBusinessError } from "@/core/errors/api-business-error";
 
@@ -33,7 +33,7 @@ type SignUpInput = {
   otp: string;
   password: string;
   confirm_password: string;
-  terms_and_conditions?: boolean;
+  terms_and_conditions: boolean;
 };
 
 interface sendOtpBody {
@@ -63,6 +63,7 @@ const SignUpForm = () => {
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
 
   const {
     register,
@@ -70,11 +71,22 @@ const SignUpForm = () => {
     handleSubmit,
     watch,
     getValues,
+    setValue,
     trigger,
+    setError,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<SignUpInput>({
     defaultValues: { otp: "", company_size: "" },
   });
+
+  useEffect(() => {
+    if (resendTimer <= 0) return;
+    const interval = setInterval(() => {
+      setResendTimer((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendTimer]);
 
   const route = useRouter();
   const t = useTranslations("Auth.signUpForm");
@@ -114,34 +126,7 @@ const SignUpForm = () => {
       toastSuccess("Account created! Please log in.");
       route.push("/login");
     } catch (error) {
-      console.error("signup error", error);
-
-      // Helper: pull the first field-level message from { email: ["..."] } shape
-      const extractFieldMsg = (errors: unknown): string | undefined => {
-        if (!errors || typeof errors !== "object" || Array.isArray(errors)) return undefined;
-        return Object.values(errors as Record<string, unknown>)
-          .flatMap((v) => (Array.isArray(v) ? v : [v]))
-          .find((v): v is string => typeof v === "string" && v.trim().length > 0);
-      };
-
-      let msg: string | undefined;
-
-      if (isApiBusinessError(error)) {
-        msg = extractFieldMsg(error.errors) ?? error.message;
-      } else if (
-        error &&
-        typeof error === "object" &&
-        "response" in error &&
-        (error as any).response?.data
-      ) {
-        // AxiosError — the response was 4xx so the envelope guard didn't run
-        const data = (error as any).response.data as Record<string, unknown>;
-        msg = extractFieldMsg(data.errors) ?? (typeof data.message === "string" ? data.message : undefined);
-      } else if (error instanceof Error) {
-        msg = error.message;
-      }
-
-      toastError(msg ?? "Failed to create account. Please try again.");
+      toastApiError(error, "Failed to create account. Please try again.");
     }
   };
 
@@ -154,14 +139,17 @@ const SignUpForm = () => {
         const payload: sendOtpBody = { email: emailData, purpose: "email_verify" };
         await sendOtp(payload);
         toastSuccess(t("toasts.Sent"));
+        setValue("otp", "");
         setOtpSent(true);
         setStep(2);
+        setResendTimer(60);
         setEmailSending(false);
       }
-    } catch {
+    } catch (err) {
       setOtpSent(false);
       setEmailVerified(false);
       setEmailSending(false);
+      toastApiError(err, "Failed to send OTP.");
     }
   };
 
@@ -175,14 +163,41 @@ const SignUpForm = () => {
           otp: getValues("otp"),
         };
         await verifyOtp(payload);
+        clearErrors("otp");
         toastSuccess(t("toasts.verified"));
         setEmailVerified(true);
         setVerifyingOtp(false);
         setStep(3);
       }
-    } catch {
+    } catch (err: any) {
       setEmailVerified(false);
       setVerifyingOtp(false);
+      setValue("otp", "");
+
+      // Extract error message from API response shape { message, errors: { otp: ["Invalid OTP"] } }
+      let errorMsg = "Invalid OTP code";
+      if (isApiBusinessError(err)) {
+        if (err.errors && typeof err.errors === "object" && !Array.isArray(err.errors)) {
+          const otpError = (err.errors as Record<string, unknown>).otp;
+          if (Array.isArray(otpError) && otpError[0]) {
+            errorMsg = String(otpError[0]);
+          } else if (typeof otpError === "string") {
+            errorMsg = otpError;
+          }
+        }
+        if (err.message && errorMsg === "Invalid OTP code") {
+          errorMsg = err.message;
+        }
+      } else if (err?.response?.data) {
+        const d = err.response.data;
+        if (d.errors?.otp?.[0]) {
+          errorMsg = d.errors.otp[0];
+        } else if (d.message) {
+          errorMsg = d.message;
+        }
+      }
+
+      setError("otp", { type: "manual", message: errorMsg });
     }
   };
 
@@ -430,10 +445,14 @@ const SignUpForm = () => {
             <button
               type="button"
               onClick={sendEmail}
-              disabled={emailSending}
-              className="w-full text-center text-xs text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              disabled={emailSending || resendTimer > 0}
+              className="w-full text-center text-xs text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
-              {emailSending ? "Resending…" : "Didn't receive it? Resend OTP"}
+              {emailSending
+                ? "Resending…"
+                : resendTimer > 0
+                ? `Resend OTP in ${resendTimer}s`
+                : "Didn't receive it? Resend OTP"}
             </button>
 
             <button

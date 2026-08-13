@@ -34,6 +34,12 @@ function resolveApiBaseUrl(): string {
   return resolvePublicApiBaseUrl();
 }
 
+/** Axios treats `/path` as site-root absolute and ignores baseURL — strip leading slash. */
+function toBaseRelativeApiPath(url: string): string {
+  if (!url.startsWith("/") || url.startsWith("//")) return url;
+  return url.replace(/^\/+/, "");
+}
+
 function ensureTrailingSlashUrl(url: string): string {
   const trimmed = url.trim();
   if (!trimmed || trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return trimmed;
@@ -123,7 +129,7 @@ const refreshClient = axios.create({
 refreshClient.interceptors.request.use((config) => {
   delete config.headers.Authorization;
   if (typeof config.url === "string" && config.url.length > 0) {
-    config.url = ensureTrailingSlashUrl(config.url);
+    config.url = ensureTrailingSlashUrl(toBaseRelativeApiPath(config.url));
   }
   return config;
 });
@@ -139,7 +145,7 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   if (typeof config.url === "string" && config.url.length > 0) {
-    config.url = ensureTrailingSlashUrl(config.url);
+    config.url = ensureTrailingSlashUrl(toBaseRelativeApiPath(config.url));
   }
   return config;
 });

@@ -121,9 +121,16 @@
     const payload: JobCreatePayload = {
       // title: values.title.trim(),
       description: values.description.trim(),
-      assigned_worker: Number.parseInt(values.assigned_worker, 10),
-      start_date: htmlDatetimeLocalToIso(values.start_date),
     };
+
+    const workerId = values.assigned_worker.trim();
+    if (workerId && /^\d+$/.test(workerId)) {
+      payload.assigned_worker = Number.parseInt(workerId, 10);
+    }
+
+    if (values.start_date.trim()) {
+      payload.start_date = htmlDatetimeLocalToIso(values.start_date);
+    }
 
     const categoryNorm = (values.job_category ?? "").toLowerCase().replace(/[^a-z]/g, "");
 

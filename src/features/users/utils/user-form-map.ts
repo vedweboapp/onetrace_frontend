@@ -4,6 +4,11 @@ import type {
   UpdateUserProfilePayload,
   UserProfile,
 } from "@/features/users/types/user.types";
+import {
+  defaultUserAvailabilityRows,
+  mapUserAvailabilityToPayload,
+  normalizeUserAvailabilityFromApi,
+} from "@/features/users/utils/user-availability.util";
 import type { EntityAddress } from "@/shared/types/entity-address.types";
 import {
   emptyEntityAddressFormRow,
@@ -42,6 +47,7 @@ export function emptyUserFormDefaults(): UserFormValues {
     role: "",
     base_pay: "",
     base_pay_type: "fixed_amount",
+    available_days: defaultUserAvailabilityRows(),
     addresses: [emptyEntityAddressFormRow({ address_type: "other", is_primary: true })],
   };
 }
@@ -62,6 +68,9 @@ export function userToFormDefaults(row: UserProfile): UserFormValues {
       ? (row.user_detail as { base_pay_type?: unknown }).base_pay_type
       : null);
   const base_pay_type = payTypeRaw === "rate_per_hr" ? "rate_per_hr" : "fixed_amount";
+  const availabilitySource =
+    row.available_days ??
+    (row.user_detail as { available_days?: UserProfile["available_days"] })?.available_days;
 
   return {
     first_name: row.user_detail.first_name ?? "",
@@ -72,6 +81,7 @@ export function userToFormDefaults(row: UserProfile): UserFormValues {
     role: row.role_detail?.id ? String(row.role_detail.id) : "",
     base_pay: basePay,
     base_pay_type,
+    available_days: normalizeUserAvailabilityFromApi(availabilitySource ?? null),
     addresses:
       addresses.length > 0
         ? addresses.map((addr) => mapEntityAddressApiToFormRow(addr))
@@ -85,6 +95,7 @@ function mapUserFormCore(values: UserFormValues) {
     return payload;
   });
   const basePay = toNumberOrNull(values.base_pay);
+  const available_days = mapUserAvailabilityToPayload(values.available_days);
   return {
     email: values.email.trim(),
     first_name: values.first_name.trim(),
@@ -93,6 +104,7 @@ function mapUserFormCore(values: UserFormValues) {
     gender: values.gender.trim(),
     role: Number.parseInt(values.role, 10),
     addresses,
+    ...(available_days.length > 0 ? { available_days } : {}),
     ...(basePay != null
       ? { base_pay: basePay, base_pay_type: values.base_pay_type }
       : { base_pay: null, base_pay_type: null }),

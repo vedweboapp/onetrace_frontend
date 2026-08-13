@@ -19,11 +19,14 @@ export function DetailMetricsGrid({
   children,
   className,
   compact,
+  columns = "auto",
 }: {
   children: ReactNode;
   className?: string;
   /** Pack fields by content width (flex wrap) — avoids wide empty gaps beside maps. */
   compact?: boolean;
+  /** `2` / `3` stretch to full section width; `auto` keeps compact label/value cells. */
+  columns?: "auto" | 2 | 3;
 }) {
   if (compact) {
     return (
@@ -41,9 +44,10 @@ export function DetailMetricsGrid({
   return (
     <div
       className={cn(
-        // Cap column growth so wide screens don't leave huge empty cells on the right.
         "grid grid-cols-1 gap-x-6 gap-y-4",
-        "sm:grid-cols-[repeat(auto-fill,minmax(10rem,13.5rem))]",
+        columns === "auto" && "sm:grid-cols-[repeat(auto-fill,minmax(10rem,13.5rem))]",
+        columns === 2 && "sm:grid-cols-2",
+        columns === 3 && "sm:grid-cols-2 lg:grid-cols-3",
         className,
       )}
     >

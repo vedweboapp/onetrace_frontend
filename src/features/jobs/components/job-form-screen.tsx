@@ -119,14 +119,17 @@ export function JobFormScreen({ mode, jobId }: Props) {
 
   const schema = React.useMemo(
     () =>
-      createJobFormSchema({
-        assignedWorker: t("validation.assignedWorker"),
-        startDate: t("validation.startDate"),
-        optionalId: t("validation.optionalId"),
-        compositeQuantity: t("validation.compositeQuantity"),
-        requiredChecklist: t("validation.requiredChecklist"),
-      }),
-    [t],
+      createJobFormSchema(
+        {
+          assignedWorker: t("validation.assignedWorker"),
+          startDate: t("validation.startDate"),
+          optionalId: t("validation.optionalId"),
+          compositeQuantity: t("validation.compositeQuantity"),
+          requiredChecklist: t("validation.requiredChecklist"),
+        },
+        { requireScheduleFields: isEdit },
+      ),
+    [t, isEdit],
   );
 
   const jobCategoryFromUrl = searchParams.get("job_category") ?? "";
@@ -866,7 +869,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                 </FormFieldRow>
               )}
 
-              <FormFieldRow cols="3">
+              <FormFieldRow cols="2">
                 <Controller
                   control={control}
                   name="job_status"
@@ -889,33 +892,6 @@ export function JobFormScreen({ mode, jobId }: Props) {
                         addLabel="Add new"
                       />
                       <FieldErrorText>{errors.job_status?.message}</FieldErrorText>
-                    </div>
-                  )}
-                />
-
-                <Controller
-                  control={control}
-                  name="assigned_worker"
-                  render={({ field }) => (
-                    <div>
-                      <CheckmarkSelect
-                        id="job-worker"
-                        label={t("fields.assignedWorker")}
-                        required
-                        options={workerOptions}
-                        value={field.value}
-                        onChange={field.onChange}
-                        emptyLabel={t("placeholders.assignedWorker")}
-                        disabled={saving || workerOptions.length === 0}
-                        invalid={!!errors.assigned_worker}
-                        listLabel={t("fields.assignedWorker")}
-                        portaled
-                        searchable
-                        onAdd={openUsersSettings}
-                        addAriaLabel="Add user"
-                        addLabel="Add new"
-                      />
-                      <FieldErrorText>{errors.assigned_worker?.message}</FieldErrorText>
                     </div>
                   )}
                 />
@@ -945,32 +921,60 @@ export function JobFormScreen({ mode, jobId }: Props) {
                   )}
                 />
               </FormFieldRow>
-              {/* <FormFieldRow>
+
+              {isEdit ? (
                 <FormFieldRow cols="2">
-                  
-                </FormFieldRow>
-              </FormFieldRow> */}
-            </section>
-
-
-            <section className="space-y-6">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {t("sections.schedule")}
-              </h2>
-              <FormFieldRow cols="1">
-                <FieldGroup label={t("fields.startDate")} htmlFor="job-start" required>
-                  <SurfaceDateInput
-                    id="job-start"
-                    type="datetime-local"
-                    aria-invalid={errors.start_date ? true : undefined}
-                    invalid={!!errors.start_date}
-                    disabled={saving}
-                    {...register("start_date")}
+                  <Controller
+                    control={control}
+                    name="assigned_worker"
+                    render={({ field }) => (
+                      <div>
+                        <CheckmarkSelect
+                          id="job-worker"
+                          label={t("fields.assignedWorker")}
+                          required
+                          options={workerOptions}
+                          value={field.value}
+                          onChange={field.onChange}
+                          emptyLabel={t("placeholders.assignedWorker")}
+                          disabled={saving || workerOptions.length === 0}
+                          invalid={!!errors.assigned_worker}
+                          listLabel={t("fields.assignedWorker")}
+                          portaled
+                          searchable
+                          onAdd={openUsersSettings}
+                          addAriaLabel="Add user"
+                          addLabel="Add new"
+                        />
+                        <FieldErrorText>{errors.assigned_worker?.message}</FieldErrorText>
+                      </div>
+                    )}
                   />
-                  <FieldErrorText>{errors.start_date?.message}</FieldErrorText>
-                </FieldGroup>
-              </FormFieldRow>
+                </FormFieldRow>
+              ) : null}
             </section>
+
+
+            {isEdit ? (
+              <section className="space-y-6">
+                <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  {t("sections.schedule")}
+                </h2>
+                <FormFieldRow cols="1">
+                  <FieldGroup label={t("fields.startDate")} htmlFor="job-start" required>
+                    <SurfaceDateInput
+                      id="job-start"
+                      type="datetime-local"
+                      aria-invalid={errors.start_date ? true : undefined}
+                      invalid={!!errors.start_date}
+                      disabled={saving}
+                      {...register("start_date")}
+                    />
+                    <FieldErrorText>{errors.start_date?.message}</FieldErrorText>
+                  </FieldGroup>
+                </FormFieldRow>
+              </section>
+            ) : null}
 
             {!isProjectJob && (
               <section className="space-y-6">

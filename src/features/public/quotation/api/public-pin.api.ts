@@ -4,6 +4,7 @@ import type {
   QuotationScopePinDetailRow,
 } from "../../../quotations/utils/quotation-composite-scope-pins.util";
 import type { DrawingPin, DrawingPlot, DrawingPinAttachment } from "@/features/projects/types/drawing.types";
+import type { QuotationDetail } from "@/features/quotations/types/quotation.types";
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -279,6 +280,37 @@ export async function fetchPublicPinDetails(pinId: number): Promise<QuotationSco
   const plotLabel =
     parseString(payload.plot_label ?? payload.plot_name ?? payload.plot ?? payload.location ?? payload.status_name) ?? undefined;
 
+  // Extract quotation ID — try every plausible field path/name.
+  function resolveQuotationId(raw: Record<string, unknown>): number | null {
+    const candidates = [
+      raw.quotation_id,
+      raw.quotation,
+      raw.quote_id,
+      raw.quote,
+      (levelDetail as Record<string, unknown> | null)?.quotation_id,
+      (levelDetail as Record<string, unknown> | null)?.quotation,
+      (levelDetail as Record<string, unknown> | null)?.quote_id,
+    ];
+    for (const c of candidates) {
+      if (typeof c === "number" && Number.isFinite(c) && c > 0) return c;
+      if (typeof c === "string") {
+        const n = Number(c.trim());
+        if (Number.isFinite(n) && n > 0) return n;
+      }
+      // Support nested object: { id: 1, ... }
+      if (isObject(c) && typeof (c as any).id === "number" && (c as any).id > 0) return (c as any).id;
+    }
+    return null;
+  }
+  const quotationId = resolveQuotationId(payload);
+
+  // Dev-mode: log raw payload keys to help identify correct field name.
+  if (process.env.NODE_ENV !== "production") {
+    console.debug("[PublicPin] raw payload keys:", Object.keys(payload));
+    if (levelDetail) console.debug("[PublicPin] levelDetail keys:", Object.keys(levelDetail));
+    console.debug("[PublicPin] resolved quotationId:", quotationId);
+  }
+
   return {
     title: drawingName,
     sectionLabel,
@@ -289,5 +321,59 @@ export async function fetchPublicPinDetails(pinId: number): Promise<QuotationSco
     selectedPin,
     plots,
     drawingName,
+    quotationId,
   };
+}
+
+export async function fetchPublicQuotationByToken(token: string): Promise<QuotationDetail> {
+  const response = await api.get<unknown>(`public/quotations/${token}/`);
+  const data = unwrapApiData(response.data);
+  return data as QuotationDetail;
+}
+
+export type PublicQuotationResponsePayload = {
+  status: "approved" | "rejected" | "questioned";
+  comment?: string;
+  signature?: File | Blob | string | null;
+};
+
+export function dataURLtoBlob(dataurl: string): Blob {
+  const arr = dataurl.split(",");
+  const mime = arr[0].match(/:(.*?);/)?.[1] ?? "image/png";
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
+}
+
+export async function submitPublicQuotationResponse(
+  token: string,
+  payload: PublicQuotationResponsePayload,
+): Promise<void> {
+  const formData = new FormData();
+  formData.append("status", payload.status);
+
+  if (payload.comment?.trim()) {
+    formData.append("comment", payload.comment.trim());
+  }
+
+  if (payload.signature) {
+    if (payload.signature instanceof File || payload.signature instanceof Blob) {
+      formData.append("signature", payload.signature, "signature.png");
+    } else if (typeof payload.signature === "string" && payload.signature.startsWith("data:")) {
+      const blob = dataURLtoBlob(payload.signature);
+      formData.append("signature", blob, "signature.png");
+    } else if (typeof payload.signature === "string" && payload.signature.trim()) {
+      formData.append("signature", payload.signature.trim());
+    }
+  }
+
+  await api.post(`public/quotations/${token}/`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 }

@@ -236,10 +236,10 @@ export function SettingsDetailActions({
 }: {
   cancelLabel: string;
   editLabel: string;
-  deleteLabel: string;
+  deleteLabel?: string;
   onCancel: () => void;
   onEdit: () => void;
-  onDelete: () => void;
+  onDelete?: () => void;
   toggleLabel?: string;
   onToggle?: () => void;
   toggleLoading?: boolean;
@@ -265,9 +265,11 @@ export function SettingsDetailActions({
           {toggleLabel}
         </AppButton>
       ) : null}
-      <AppButton type="button" variant="danger" size="sm" onClick={onDelete}>
-        {deleteLabel}
-      </AppButton>
+      {deleteLabel && onDelete ? (
+        <AppButton type="button" variant="danger" size="sm" onClick={onDelete}>
+          {deleteLabel}
+        </AppButton>
+      ) : null}
     </>
   );
 }

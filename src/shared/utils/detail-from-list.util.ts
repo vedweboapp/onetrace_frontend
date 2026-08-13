@@ -95,7 +95,8 @@ export type DashboardListSection =
   | "material-requests"
   | "dispatches"
   | "return-to-stock"
-  | "settings/users";
+  | "settings/users"
+  | "settings/user-groups";
 
 function decodeInternalDashboardPath(raw: string | null | undefined): string | null {
   if (!raw) return null;
@@ -123,8 +124,9 @@ export function sanitizeInternalListBack(
 }
 
 const PROJECT_DETAIL_BACK = /^\/projects\/\d+(\?[^#]*)?$/;
+const SCHEDULING_BACK = /^\/scheduling(\?[^#]*)?$/;
 
-/** Jobs list or project detail (jobs tab) — used when leaving job create/edit/detail. */
+/** Jobs list, scheduling, or project detail — used when leaving job create/edit/detail. */
 export function sanitizeJobsBackHref(raw: string | null | undefined, fallback: string): string {
   const fromJobsList = sanitizeInternalListBack(raw, "jobs");
   if (fromJobsList) return fromJobsList;
@@ -133,7 +135,7 @@ export function sanitizeJobsBackHref(raw: string | null | undefined, fallback: s
   if (!decoded) return fallback;
 
   const pathAndQuery = decoded.split("#")[0] ?? decoded;
-  if (PROJECT_DETAIL_BACK.test(pathAndQuery)) return decoded;
+  if (PROJECT_DETAIL_BACK.test(pathAndQuery) || SCHEDULING_BACK.test(pathAndQuery)) return decoded;
 
   // Any other valid in-app path (e.g. another entity detail page).
   return decoded;

@@ -244,7 +244,7 @@ export function EntityAddressesFields<T extends FieldValues>({
               />
             </FormFieldRow>
 
-            <FormFieldRow cols="2">
+            <FormFieldRow cols="1">
               <Controller
                 control={control}
                 name={`addresses.${index}.address_line_2` as Path<T>}
@@ -263,29 +263,6 @@ export function EntityAddressesFields<T extends FieldValues>({
                   </FieldGroup>
                 )}
               />
-              <FieldGroup label={labels.pincode} htmlFor={`${rowIdPrefix}-pincode`} required>
-                <Controller
-                  control={control}
-                  name={`addresses.${index}.pincode` as Path<T>}
-                  render={({ field: f }) => (
-                    <input
-                      id={`${rowIdPrefix}-pincode`}
-                      maxLength={FIELD_MAX_LENGTH.PINCODE}
-                      value={String(f.value ?? "")}
-                      onChange={(e) => f.onChange(sanitizeDigitsInput(e.target.value))}
-                      onBlur={f.onBlur}
-                      disabled={disabled}
-                      className={cn(
-                        surfaceInputClassName,
-                        rowErrors?.pincode && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
-                      )}
-                    />
-                  )}
-                />
-                {rowErrors?.pincode ? (
-                  <FieldErrorText>{String(rowErrors.pincode.message ?? "")}</FieldErrorText>
-                ) : null}
-              </FieldGroup>
             </FormFieldRow>
 
             <CascadingLocationFields
@@ -310,6 +287,31 @@ export function EntityAddressesFields<T extends FieldValues>({
                 state: rowErrors?.state_iso?.message as string | undefined,
                 city: rowErrors?.city?.message as string | undefined,
               }}
+              trailingSlot={
+                <FieldGroup label={labels.pincode} htmlFor={`${rowIdPrefix}-pincode`} required>
+                  <Controller
+                    control={control}
+                    name={`addresses.${index}.pincode` as Path<T>}
+                    render={({ field: f }) => (
+                      <input
+                        id={`${rowIdPrefix}-pincode`}
+                        maxLength={FIELD_MAX_LENGTH.PINCODE}
+                        value={String(f.value ?? "")}
+                        onChange={(e) => f.onChange(sanitizeDigitsInput(e.target.value))}
+                        onBlur={f.onBlur}
+                        disabled={disabled}
+                        className={cn(
+                          surfaceInputClassName,
+                          rowErrors?.pincode && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
+                        )}
+                      />
+                    )}
+                  />
+                  {rowErrors?.pincode ? (
+                    <FieldErrorText>{String(rowErrors.pincode.message ?? "")}</FieldErrorText>
+                  ) : null}
+                </FieldGroup>
+              }
             />
 
             <input
