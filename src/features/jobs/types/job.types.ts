@@ -166,8 +166,8 @@ export type JobLevelSnapshot = {
 export type JobCreatePayload = {
   // title: string;
   description: string;
-  assigned_worker: number;
-  start_date: string;
+  assigned_worker?: number;
+  start_date?: string;
   forms?: number[];
   job_status?: number;
   client?: number;
@@ -213,6 +213,7 @@ export type Job = {
   job_status: number | WorkflowColourStatus | null;
   start_date: string;
   end_date: string;
+  job_time?: string | null;
   completed_at: string | null;
   is_active: boolean;
   deleted_by: unknown;

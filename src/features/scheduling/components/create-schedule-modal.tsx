@@ -3,15 +3,16 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { Building2, Briefcase } from "lucide-react";
+import { fetchJob } from "@/features/jobs/api/job.api";
 import type { Job } from "@/features/jobs/types/job.types";
-import { getJobAssignedWorkerId } from "@/features/jobs/utils/job-nested-fields.util";
-import { createSchedule } from "@/features/scheduling/api/schedule.mock.api";
+import { getJobAssignedWorkerId, getJobProjectId } from "@/features/jobs/utils/job-nested-fields.util";
+import { createSchedule, updateSchedule } from "@/features/scheduling/api/schedule.api";
 import {
   jobSelectLabel,
   loadUnassignedJobsForClient,
   useSchedulingCatalog,
 } from "@/features/scheduling/hooks/use-scheduling-catalog";
-import type { ScheduleRecurrence } from "@/features/scheduling/types/schedule.types";
+import type { Schedule } from "@/features/scheduling/types/schedule.types";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
 import {
   combineDateAndTimeEndToIso,
@@ -27,7 +28,6 @@ import {
   FieldErrorText,
   FieldGroup,
   surfaceInputClassName,
-  surfaceTextareaClassName,
 } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import { cn } from "@/core/utils/http.util";
@@ -39,6 +39,8 @@ export type CreateSchedulePrefill = {
   jobId?: number;
   workerId?: number;
   dateKey?: string;
+  startTime?: string;
+  endTime?: string;
 };
 
 type Props = {
@@ -47,6 +49,13 @@ type Props = {
   technician: CreateScheduleTechnician | null;
   defaultDateKey: string;
   prefill?: CreateSchedulePrefill | null;
+  existingSchedule?: Schedule | null;
+  getBookingConflict?: (input: {
+    workerId: number;
+    startAt: string;
+    endAt: string;
+    ignoreScheduleId?: number;
+  }) => string | null;
   onCreated?: (scheduleId: number) => void;
 };
 
@@ -61,13 +70,13 @@ export function CreateScheduleModal({
   technician,
   defaultDateKey,
   prefill,
+  existingSchedule,
+  getBookingConflict,
   onCreated,
 }: Props) {
   const t = useTranslations("Dashboard.scheduling");
-  const { catalog, loading: catalogLoading } = useSchedulingCatalog(
-    t("modal.technicianFallbackTitle"),
-    t("allClients"),
-  );
+  const isReschedule = Boolean(existingSchedule);
+  const { catalog, loading: catalogLoading } = useSchedulingCatalog(t("modal.technicianFallbackTitle"));
 
   const [jobOptions, setJobOptions] = React.useState<CheckmarkSelectOption[]>([]);
   const [jobsById, setJobsById] = React.useState<Record<number, Job>>({});
@@ -82,29 +91,20 @@ export function CreateScheduleModal({
   const [startTime, setStartTime] = React.useState("09:00");
   const [endTime, setEndTime] = React.useState("17:00");
   const [allDay, setAllDay] = React.useState(false);
-  const [recurrence, setRecurrence] = React.useState<ScheduleRecurrence>("none");
-  const [recurrenceEndDate, setRecurrenceEndDate] = React.useState("");
-  const [notes, setNotes] = React.useState("");
   const [errors, setErrors] = React.useState<Record<string, string>>({});
+
+  const lockClientJob = Boolean(prefill?.clientId && prefill?.jobId) || isReschedule;
+  const includeJobId = existingSchedule?.job_id ?? prefill?.jobId;
 
   const clientOptions = React.useMemo(() => {
     if (!catalog) return [];
-    return catalog.clientOptions.filter((o) => o.value !== "");
+    return catalog.clients.map((c) => ({ value: String(c.id), label: c.name }));
   }, [catalog]);
 
   const workerOptions = React.useMemo<CheckmarkSelectOption[]>(() => {
     if (!catalog) return [];
     return catalog.technicians.map((w) => ({ value: String(w.id), label: w.name }));
   }, [catalog]);
-
-  const recurrenceOptions = React.useMemo<CheckmarkSelectOption[]>(
-    () => [
-      { value: "none", label: t("fields.recurrenceNone") },
-      { value: "daily", label: t("fields.recurrenceDaily") },
-      { value: "weekly", label: t("fields.recurrenceWeekly") },
-    ],
-    [t],
-  );
 
   const selectedWorker = React.useMemo(() => {
     if (technician) return technician;
@@ -117,26 +117,37 @@ export function CreateScheduleModal({
 
   React.useEffect(() => {
     if (!open) return;
+    if (existingSchedule) {
+      const start = splitApiDateTime(existingSchedule.start_at);
+      const end = splitApiDateTime(existingSchedule.end_at);
+      setWorkerId(String(existingSchedule.worker_id));
+      setClientId(String(existingSchedule.client_id));
+      setJobId(String(existingSchedule.job_id));
+      setStartDate(start.date || defaultDateKey);
+      setEndDate(end.date || start.date || defaultDateKey);
+      setStartTime(start.time || "09:00");
+      setEndTime(end.time || "17:00");
+      setAllDay(Boolean(existingSchedule.all_day));
+      setErrors({});
+      return;
+    }
     const dateKey = prefill?.dateKey || defaultDateKey || toDateKey(new Date());
     setWorkerId(prefill?.workerId ? String(prefill.workerId) : technician ? String(technician.id) : "");
     setClientId(prefill?.clientId ? String(prefill.clientId) : "");
     setJobId(prefill?.jobId ? String(prefill.jobId) : "");
     setStartDate(dateKey);
     setEndDate(dateKey);
-    setStartTime("09:00");
-    setEndTime("17:00");
+    setStartTime(prefill?.startTime || "09:00");
+    setEndTime(prefill?.endTime || "17:00");
     setAllDay(false);
-    setRecurrence("none");
-    setRecurrenceEndDate("");
-    setNotes("");
     setErrors({});
-  }, [open, defaultDateKey, prefill, technician?.id]);
+  }, [open, defaultDateKey, prefill, technician?.id, existingSchedule]);
 
   React.useEffect(() => {
     if (!open || !clientId) {
       setJobOptions([]);
       setJobsById({});
-      if (!prefill?.jobId) setJobId("");
+      if (!includeJobId) setJobId("");
       return;
     }
     const clientNum = Number(clientId);
@@ -144,14 +155,21 @@ export function CreateScheduleModal({
 
     let cancelled = false;
     setLoadingJobs(true);
-    if (!prefill?.jobId) setJobId("");
+    if (!includeJobId) setJobId("");
     (async () => {
       try {
         const items = await loadUnassignedJobsForClient(clientNum);
         if (cancelled) return;
-        const allowPrefill = prefill?.jobId ? items.find((j) => j.id === prefill.jobId) : null;
-        const candidates = allowPrefill
-          ? [...items.filter(isUnassignedJob), allowPrefill].filter(
+        let extra = includeJobId ? items.find((j) => j.id === includeJobId) : undefined;
+        if (includeJobId && !extra) {
+          try {
+            extra = await fetchJob(includeJobId, { silent: true });
+          } catch {
+            extra = undefined;
+          }
+        }
+        const candidates = extra
+          ? [...items.filter(isUnassignedJob), extra].filter(
               (j, i, arr) => arr.findIndex((x) => x.id === j.id) === i,
             )
           : items.filter(isUnassignedJob);
@@ -159,9 +177,9 @@ export function CreateScheduleModal({
         for (const job of candidates) byId[job.id] = job;
         setJobsById(byId);
         setJobOptions(candidates.map((job) => ({ value: String(job.id), label: jobSelectLabel(job) })));
-        if (prefill?.jobId && byId[prefill.jobId]) {
-          setJobId(String(prefill.jobId));
-          applyJobDefaults(String(prefill.jobId), byId);
+        if (includeJobId && byId[includeJobId]) {
+          setJobId(String(includeJobId));
+          if (!existingSchedule) applyJobDefaults(String(includeJobId), byId);
         }
       } catch {
         if (!cancelled) {
@@ -175,8 +193,8 @@ export function CreateScheduleModal({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- prefill job applied once per open
-  }, [open, clientId, prefill?.jobId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- include job applied once per open
+  }, [open, clientId, includeJobId, existingSchedule?.id]);
 
   function applyJobDefaults(nextJobId: string, map: Record<number, Job> = jobsById) {
     setJobId(nextJobId);
@@ -188,7 +206,6 @@ export function CreateScheduleModal({
     if (end.date) setEndDate(end.date);
     if (start.time) setStartTime(start.time);
     if (end.time) setEndTime(end.time);
-    if (!notes.trim() && job.description?.trim()) setNotes(job.description.trim());
   }
 
   function validate(): boolean {
@@ -202,8 +219,16 @@ export function CreateScheduleModal({
       if (!startTime.trim()) next.startTime = t("validation.startTime");
       if (!endTime.trim()) next.endTime = t("validation.endTime");
     }
-    if (recurrence !== "none" && !recurrenceEndDate.trim()) {
-      next.recurrenceEnd = t("validation.recurrenceEnd");
+    if (!next.startTime && !next.endTime && !allDay && selectedWorker && getBookingConflict) {
+      const startIso = combineDateAndTimeToIso(startDate, startTime, false);
+      const endIso = combineDateAndTimeEndToIso(endDate, endTime, false);
+      const conflict = getBookingConflict({
+        workerId: selectedWorker.id,
+        startAt: startIso,
+        endAt: endIso,
+        ignoreScheduleId: existingSchedule?.id,
+      });
+      if (conflict) next.time = conflict;
     }
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -216,38 +241,40 @@ export function CreateScheduleModal({
     if (!Number.isFinite(jobNum) || jobNum <= 0 || !Number.isFinite(clientNum)) return;
 
     const job = jobsById[jobNum];
-    const clientLabel = clientOptions.find((o) => o.value === clientId)?.label ?? "";
+    const clientLabel =
+      clientOptions.find((o) => o.value === clientId)?.label ?? existingSchedule?.client_name ?? "";
 
     setSaving(true);
     try {
       const startIso = combineDateAndTimeToIso(startDate, startTime, allDay);
       const endIso = combineDateAndTimeEndToIso(endDate, endTime, allDay);
-      const recurrenceEndIso =
-        recurrence !== "none" && recurrenceEndDate.trim()
-          ? combineDateAndTimeEndToIso(recurrenceEndDate, endTime, true)
-          : null;
 
-      const row = await createSchedule({
+      const payload = {
         job_id: jobNum,
         worker_id: selectedWorker.id,
         client_id: clientNum,
         client_name: clientLabel,
-        job_title: job?.title?.trim() || `Job #${jobNum}`,
-        job_serial: job?.job_serial_number?.trim() || null,
+        job_title: job?.title?.trim() || existingSchedule?.job_title || `Job #${jobNum}`,
+        job_serial: job?.job_serial_number?.trim() || existingSchedule?.job_serial || null,
         worker_name: selectedWorker.name,
         worker_title: selectedWorker.title?.trim() || t("modal.technicianFallbackTitle"),
+        project_id: (job ? getJobProjectId(job.project) : null) ?? existingSchedule?.project_id ?? null,
         start_at: startIso,
         end_at: endIso,
-        notes: notes.trim() || null,
-        recurrence,
-        recurrence_end_at: recurrenceEndIso,
+        notes: null,
+        recurrence: "none" as const,
+        recurrence_end_at: null,
         all_day: allDay,
-      });
-      toastSuccess(t("modal.successToast"));
+      };
+
+      const row = existingSchedule
+        ? await updateSchedule(existingSchedule.id, payload)
+        : await createSchedule(payload);
+      toastSuccess(isReschedule ? t("modal.successRescheduleToast") : t("modal.successToast"));
       onCreated?.(row.id);
       onClose();
     } catch (error) {
-      toastApiError(error, t("modal.errorToast"));
+      toastApiError(error, isReschedule ? t("modal.errorRescheduleToast") : t("modal.errorToast"));
     } finally {
       setSaving(false);
     }
@@ -259,7 +286,7 @@ export function CreateScheduleModal({
     <AppModal
       open={open}
       onClose={() => (!saving ? onClose() : undefined)}
-      title={t("modal.title")}
+      title={isReschedule ? t("modal.rescheduleTitle") : t("modal.title")}
       size="lg"
       isBusy={saving}
       footer={
@@ -273,12 +300,18 @@ export function CreateScheduleModal({
             disabled={saving || catalogLoading}
             onClick={() => void handleSave()}
           >
-            {saving ? t("modal.saving") : t("modal.save")}
+            {saving
+              ? isReschedule
+                ? t("modal.savingReschedule")
+                : t("modal.saving")
+              : isReschedule
+                ? t("modal.saveReschedule")
+                : t("modal.save")}
           </AppButton>
         </div>
       }
     >
-      {selectedWorker ? (
+      {selectedWorker && technician ? (
         <div className="mb-5 flex items-center gap-3 border-b border-slate-200 pb-4 dark:border-slate-700">
           <div
             className="flex size-10 shrink-0 items-center justify-center rounded-full bg-cyan-500 text-sm font-semibold uppercase text-white"
@@ -327,7 +360,7 @@ export function CreateScheduleModal({
               listLabel={t("fields.client")}
               options={clientOptions}
               value={clientId}
-              disabled={saving || catalogLoading || Boolean(prefill?.clientId)}
+              disabled={saving || catalogLoading || lockClientJob}
               searchable
               portaled
               emptyLabel={t("placeholders.client")}
@@ -355,7 +388,7 @@ export function CreateScheduleModal({
               listLabel={t("fields.job")}
               options={jobOptions}
               value={jobId}
-              disabled={saving || !clientId || loadingJobs || Boolean(prefill?.jobId)}
+              disabled={saving || !clientId || loadingJobs || lockClientJob}
               searchable
               portaled
               emptyLabel={
@@ -442,47 +475,9 @@ export function CreateScheduleModal({
                 onChange={(e) => setEndTime(e.target.value)}
               />
             </div>
-            <FieldErrorText>{errors.startTime || errors.endTime}</FieldErrorText>
+            <FieldErrorText>{errors.startTime || errors.endTime || errors.time}</FieldErrorText>
           </div>
         ) : null}
-
-        <FieldGroup label={t("fields.recurrence")} htmlFor="schedule-recurrence">
-          <CheckmarkSelect
-            id="schedule-recurrence"
-            listLabel={t("fields.recurrence")}
-            options={recurrenceOptions}
-            value={recurrence}
-            disabled={saving}
-            portaled
-            onChange={(v) => setRecurrence(v as ScheduleRecurrence)}
-          />
-        </FieldGroup>
-
-        {recurrence !== "none" ? (
-          <FieldGroup label={t("fields.recurrenceEnd")} htmlFor="schedule-recurrence-end" required>
-            <input
-              id="schedule-recurrence-end"
-              type="date"
-              value={recurrenceEndDate}
-              disabled={saving}
-              className={cn(surfaceInputClassName, "w-full")}
-              onChange={(e) => setRecurrenceEndDate(e.target.value)}
-            />
-            <FieldErrorText>{errors.recurrenceEnd}</FieldErrorText>
-          </FieldGroup>
-        ) : null}
-
-        <FieldGroup label={t("fields.notes")} htmlFor="schedule-notes">
-          <textarea
-            id="schedule-notes"
-            value={notes}
-            disabled={saving}
-            rows={4}
-            placeholder={t("placeholders.notes")}
-            className={cn(surfaceTextareaClassName, "min-h-[6rem]")}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-        </FieldGroup>
       </div>
     </AppModal>
   );

@@ -4,14 +4,12 @@ import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   Briefcase,
-  Calendar,
   MoreHorizontal,
-  RefreshCw,
   Sun,
   UserRound,
   X,
 } from "lucide-react";
-import { deleteSchedule } from "@/features/scheduling/api/schedule.mock.api";
+import { deleteSchedule } from "@/features/scheduling/api/schedule.api";
 import type { Schedule } from "@/features/scheduling/types/schedule.types";
 import { formatDurationHours } from "@/features/scheduling/utils/scheduling-time.util";
 import {
@@ -67,20 +65,6 @@ export function ScheduleDetailModal({ schedule, open, onClose, onDeleted, onEdit
   const timeLabel = schedule.all_day
     ? t("detail.allDay")
     : `${formatTimeRange(schedule.start_at, schedule.end_at, locale)} (${formatDurationHours(schedule.start_at, schedule.end_at)})`;
-
-  const recurrenceLabel =
-    schedule.recurrence === "daily"
-      ? t("detail.recurrenceDaily")
-      : schedule.recurrence === "weekly"
-        ? t("detail.recurrenceWeekly")
-        : null;
-
-  const recurrenceEndLabel =
-    schedule.recurrence !== "none" && schedule.recurrence_end_at
-      ? new Intl.DateTimeFormat(locale, { weekday: "short", month: "short", day: "numeric", year: "numeric" }).format(
-          new Date(schedule.recurrence_end_at),
-        )
-      : null;
 
   async function handleDelete() {
     if (!schedule) return;
@@ -219,17 +203,7 @@ export function ScheduleDetailModal({ schedule, open, onClose, onDeleted, onEdit
           <DetailRow icon={UserRound} label={schedule.worker_title} />
           <DetailRow icon={UserRound} label={schedule.client_name} />
           <DetailRow icon={Sun} label={timeLabel} />
-          {recurrenceLabel ? <DetailRow icon={RefreshCw} label={recurrenceLabel} /> : null}
-          {recurrenceEndLabel ? (
-            <DetailRow icon={Calendar} label={t("detail.recurrenceEnds", { date: recurrenceEndLabel })} />
-          ) : null}
         </ul>
-
-        {schedule.notes?.trim() ? (
-          <p className="mt-4 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:bg-slate-900/60 dark:text-slate-300">
-            {schedule.notes.trim()}
-          </p>
-        ) : null}
       </AppModal>
 
       <ConfirmDialog

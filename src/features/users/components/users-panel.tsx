@@ -3,10 +3,11 @@
 import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 
 import * as React from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { UsersSettingsTabs } from "@/features/users/components/users-settings-tabs";
 import { fetchUsersPage } from "@/features/users/api/user.api";
 import type { UserProfile } from "@/features/users/types/user.types";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
@@ -146,7 +147,9 @@ export function UsersPanel() {
   return (
     <div className={listPageRootClassName()}>
       {!hideListChrome ? (
-        <ListPageHeader
+        <>
+          <UsersSettingsTabs />
+          <ListPageHeader
           filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
@@ -175,6 +178,7 @@ export function UsersPanel() {
             </div>
           }
         />
+        </>
       ) : null}
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>

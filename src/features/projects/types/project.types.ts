@@ -25,10 +25,9 @@ export type LocationToJobPayload = {
   // title: string,
   pin_ids: number[],
   site?: number,
-  start_date?: string,
-  assigned_worker?: number
   checklists: number[] | string[] | undefined
   job_status?: number
+  job_category?: string
 }
 /** When the API embeds client on project detail/list rows. */
 export type ProjectClientRef = {

@@ -17,7 +17,7 @@ import {
 } from "@/features/projects/api/project.api";
 import { fetchDrawingsPage } from "@/features/projects/api/drawing.api";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
-import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
+import { JOB_CATEGORY } from "@/features/jobs/constants/job-category";
 import type {
   Drawing,
   DrawingPin,
@@ -49,7 +49,6 @@ import {
   type LevelSnapshotState,
 } from "@/shared/hooks/use-level-snapshots.hook";
 import { PinThumbnailCropped } from "@/shared/components/pin-thumbnail-cropped";
-import { number } from "zod";
 
 const PIN_TABLE_GRID =
   "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,1.4rem)_minmax(0,5rem)_minmax(0,1fr)_minmax(0,6rem)_minmax(0,0.5fr)_minmax(0,0.4fr)_minmax(0,0.4fr)_minmax(0,1fr)_minmax(0,0.45fr)] items-center gap-x-3";
@@ -792,19 +791,9 @@ const ProjectPinsListTab = ({
     drawingName: string;
     drawingId?: number;
   } | null>(null);
-  const [dialogSiteId, setDialogSiteId] = useState<number | undefined>(
-    undefined,
-  );
   const [dialogChecklistIds, setDialogChecklistIds] = useState<number[]>([]);
   const [checklistSearch, setChecklistSearch] = useState<string>("");
   const [projectTypeId, setProjectTypeId] = useState<number | null>(null);
-  const [dialogAssignedWorkerId, setDialogAssignedWorkerId] = useState<
-    number | undefined
-  >(undefined);
-  const [workerOptions, setWorkerOptions] = useState<
-    { value: string; label: string }[]
-  >([]);
-  const [loadingWorkers, setLoadingWorkers] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dialogJobStatusId, setDialogJobStatusId] = useState<
     number | undefined
@@ -828,24 +817,6 @@ const ProjectPinsListTab = ({
 
   const t = useTranslations("Dashboard.projects.location");
   const router = useRouter();
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingWorkers(true);
-    loadTechnicianOptions()
-      .then((options) => {
-        if (!cancelled) setWorkerOptions(options);
-      })
-      .catch(() => {
-        if (!cancelled) setWorkerOptions([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingWorkers(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -1083,18 +1054,14 @@ const ProjectPinsListTab = ({
     setValue,
     formState: { errors },
   } = useForm<{
-    start_date: string | null;
     site: string;
     checklists: string[];
     job_status: string;
-    assigned_worker: string;
   }>({
     defaultValues: {
-      start_date: null,
       site: "",
       checklists: [],
       job_status: "",
-      assigned_worker: "",
     },
   });
 
@@ -1283,35 +1250,27 @@ const ProjectPinsListTab = ({
   }, []);
 
   const handleCreateJob = async (formData: {
-    start_date: string | null;
     site: string;
     checklists: string[];
     job_status: string;
-    assigned_worker: string;
   }): Promise<void> => {
     setIsSubmitting(true);
     try {
-      const safeStartDate = formData.start_date?.trim() ? formData.start_date : undefined;
       const res = await createJobFromLocation({
         project: Number(id),
         pin_ids: jobEligiblePinIds,
         site: formData.site ? Number(formData.site) : undefined,
-        start_date: safeStartDate,
-        assigned_worker: formData.assigned_worker
-          ? Number(formData.assigned_worker)
-          : undefined,
         checklists: formData.checklists.map(Number),
         job_status: formData.job_status
           ? Number(formData.job_status)
           : undefined,
+        job_category: JOB_CATEGORY.project,
       });
       setDialogVisible(false);
       reset();
-      setDialogSiteId(undefined);
-      setDialogAssignedWorkerId(undefined);
       setDialogChecklistIds([]);
       setDialogJobStatusId(undefined);
-      router.push(`${routes.dashboard.jobs}/${res.id}`);
+      router.push(`${routes.dashboard.jobs}/${res.id}?job_category=${JOB_CATEGORY.project}`);
     } catch (e) {
       console.log("error in here", e);
     } finally {
@@ -1390,194 +1349,123 @@ const ProjectPinsListTab = ({
   return (
     <div className="min-w-0 w-full ">
       {dialogVisible && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-99 px-4">
-          <div className="w-full max-w-md bg-white p-6 rounded-lg dark:bg-slate-950">
-            <h2 className="text-lg font-semibold">Create Job</h2>
-            <p className="mt-2">
-              Are you sure you want to create a job for the selected pins?
-            </p>
+        <div className="fixed inset-0 z-[99] flex items-center justify-center bg-black/50 px-4 py-6 backdrop-blur-sm sm:py-10">
+          <div className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-lg bg-white shadow-xl dark:bg-slate-950">
+            <div className="shrink-0 px-6 pt-6">
+              <h2 className="text-lg font-semibold">Create Job</h2>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                Are you sure you want to create a job for the selected pins?
+              </p>
+            </div>
 
-            <div className="mt-2">
-              <label className="text-md font-semibold text-slate-800 dark:text-slate-200">
-                {t("Start")}
-                {/* <span className="text-red-500">*</span> */}
-              </label>
-              <input
-                type="date"
-                {...register("start_date", {
-                  // required: t("requiredJob"),
-                })}
-                placeholder={t("createJobPlaceHolder")}
-                className={cn(
-                  surfaceInputClassName,
-                  errors.start_date
-                    ? "border-red-300 ring ring-red-500"
-                    : "border-slate-300",
-                  "w-full p-2 rounded-md bg-white dark:bg-slate-900",
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+              <div>
+                <label className="text-md font-semibold text-slate-800 dark:text-slate-200">
+                  {t("site")} <span className="text-red-500">*</span>
+                </label>
+                <Controller
+                  control={control}
+                  name="site"
+                  rules={{
+                    required: t("requiredSite") || "Site is required",
+                  }}
+                  render={({ field }) => (
+                    <CheckmarkSelect
+                      listLabel={t("site")}
+                      buttonAriaLabel={t("site")}
+                      options={siteOptions}
+                      value={field.value}
+                      emptyLabel={t("selectSite")}
+                      portaled
+                      searchable
+                      clearable
+                      className={cn(
+                        "w-full",
+                        errors.site && "ring ring-red-500 rounded-lg",
+                      )}
+                      onChange={(option) => field.onChange(option)}
+                    />
+                  )}
+                />
+                {errors.site && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.site.message}
+                  </p>
                 )}
-              />
-              {errors.start_date && (
-                <p className="text-red-500">{errors.start_date.message}</p>
-              )}
-            </div>
+              </div>
 
-            <div className="mt-4">
-              <label className="text-md font-semibold text-slate-800 dark:text-slate-200">
-                {t("site")} <span className="text-red-500">*</span>
-              </label>
-              <Controller
-                control={control}
-                name="site"
-                rules={{
-                  required: t("requiredSite") || "Site is required",
-                }}
-                render={({ field }) => (
-                  <CheckmarkSelect
-                    listLabel={t("site")}
-                    buttonAriaLabel={t("site")}
-                    options={siteOptions}
-                    value={field.value}
-                    emptyLabel={t("selectSite")}
-                    portaled
-                    searchable
-                    clearable
-                    className={cn(
-                      "w-full",
-                      errors.site && "ring ring-red-500 rounded-lg",
-                    )}
-                    // onChange={(value) => {
-                    //   setDialogSiteId(
-                    //     value ? Number.parseInt(value, 10) : undefined,
-                    //   );
-                    //   setValue("site", value ?? "", { shouldValidate: true });
-                    // }}
-                    onChange={(option) => field.onChange(option)}
-                  />
+              <div>
+                <label className="text-md font-semibold text-slate-800 dark:text-slate-200">
+                  {t("checkList")} <span className="text-red-500">*</span>
+                </label>
+                <Controller
+                  control={control}
+                  name="checklists"
+                  rules={{
+                    required: t("requiredChecklist") || "Checklist is required",
+                  }}
+                  render={({ field }) => (
+                    <MultiCheckSelect
+                      id="checklist-select"
+                      options={checklistOptions}
+                      values={field.value ?? []}
+                      onChange={(options: string[]) => field.onChange(options)}
+                      placeholder={t("selectChecklist") || "Select Checklist"}
+                      listLabel={t("checkList")}
+                      disabled={checkListLoading}
+                      className="w-full "
+                    />
+                  )}
+                />
+                {errors.checklists && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.checklists.message}
+                  </p>
                 )}
-              />
-              {/*               
-              <input
-                type="hidden"
-                {...register("site", {
-                  required: t("requiredSite") || "Site is required",
-                })}
-              /> */}
-              {errors.site && (
-                <p className="mt-1 text-sm text-red-500">
-                  {errors.site.message}
-                </p>
-              )}
-            </div>
+              </div>
 
-            <div className="mt-4">
-              <label className="text-md font-semibold text-slate-800 dark:text-slate-200">
-                {t("assignedWorker")}
-              </label>
-              <Controller
-                name="assigned_worker"
-                rules={{
-                  required: false,
-                }}
-                control={control}
-                render={({ field }) => (
-                  <CheckmarkSelect
-                    listLabel={t("assignedWorker")}
-                    buttonAriaLabel={t("assignedWorker")}
-                    options={workerOptions}
-                    value={field.value || ""}
-                    emptyLabel={t("selectWorker") || "Select Worker"}
-                    portaled
-                    searchable
-                    clearable
-                    className="w-full"
-                    disabled={loadingWorkers || workerOptions.length === 0}
-                    onChange={(value) => field.onChange(value)}
-                  />
+              <div>
+                <label className="text-md font-semibold text-slate-800 dark:text-slate-200">
+                  Job Status <span className="text-red-500">*</span>
+                </label>
+                <CheckmarkSelect
+                  listLabel="Job Status"
+                  buttonAriaLabel="Job Status"
+                  options={jobStatusOptions}
+                  value={
+                    dialogJobStatusId != null ? String(dialogJobStatusId) : ""
+                  }
+                  emptyLabel="Select Job Status"
+                  portaled
+                  searchable
+                  clearable
+                  className="w-full"
+                  disabled={loadingJobStatuses || jobStatusOptions.length === 0}
+                  onChange={(value) => {
+                    setDialogJobStatusId(
+                      value ? Number.parseInt(value, 10) : undefined,
+                    );
+                    setValue("job_status", value ?? "", { shouldValidate: true });
+                  }}
+                />
+                <input
+                  type="hidden"
+                  {...register("job_status", {
+                    required: t("requiredJobStatus") || "Job status is required",
+                  })}
+                />
+                {errors.job_status && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.job_status.message}
+                  </p>
                 )}
-              />
+              </div>
             </div>
 
-            <div className="mt-4">
-              <label className="text-md font-semibold text-slate-800 dark:text-slate-200">
-                {t("checkList")} <span className="text-red-500">*</span>
-              </label>
-              <Controller
-                control={control}
-                name="checklists"
-                rules={{
-                  required: t("requiredChecklist") || "Checklist is required",
-                }}
-                render={({ field }) => (
-                  <MultiCheckSelect
-                    id="checklist-select"
-                    options={checklistOptions}
-                    // values={dialogChecklistIds.map(String)}
-                    values={field.value ?? []}
-                    onChange={(options: string[]) => field.onChange(options)}
-                    placeholder={t("selectChecklist") || "Select Checklist"}
-                    listLabel={t("checkList")}
-                    disabled={checkListLoading}
-                    className="w-full "
-                  />
-                )}
-              />
-
-              {/* <input
-    type="hidden"
-    {...register("checklists", {
-      required: t("requiredChecklist") || "Checklist is required",
-    })}
-  /> */}
-              {errors.checklists && (
-                <p className="mt-1 text-sm text-red-500">
-                  {errors.checklists.message}
-                </p>
-              )}
-            </div>
-
-            <div className="mt-4">
-              <label className="text-md font-semibold text-slate-800 dark:text-slate-200">
-                Job Status <span className="text-red-500">*</span>
-              </label>
-              <CheckmarkSelect
-                listLabel="Job Status"
-                buttonAriaLabel="Job Status"
-                options={jobStatusOptions}
-                value={
-                  dialogJobStatusId != null ? String(dialogJobStatusId) : ""
-                }
-                emptyLabel="Select Job Status"
-                portaled
-                searchable
-                clearable
-                className="w-full"
-                disabled={loadingJobStatuses || jobStatusOptions.length === 0}
-                onChange={(value) => {
-                  setDialogJobStatusId(
-                    value ? Number.parseInt(value, 10) : undefined,
-                  );
-                  setValue("job_status", value ?? "", { shouldValidate: true });
-                }}
-              />
-              <input
-                type="hidden"
-                {...register("job_status", {
-                  required: t("requiredJobStatus") || "Job status is required",
-                })}
-              />
-              {errors.job_status && (
-                <p className="mt-1 text-sm text-red-500">
-                  {errors.job_status.message}
-                </p>
-              )}
-            </div>
-
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="shrink-0 flex justify-end gap-2 px-6 pb-6 pt-2">
               <AppButton
                 onClick={() => {
                   reset();
-                  setDialogSiteId(undefined);
-                  setDialogAssignedWorkerId(undefined);
                   setDialogVisible(false);
                   setDialogChecklistIds([]);
                   setDialogJobStatusId(undefined);

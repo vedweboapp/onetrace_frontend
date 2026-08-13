@@ -22,6 +22,30 @@ export function buildWeekDays(weekStart: Date): Date[] {
   return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 }
 
+export function startOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+export function addMonths(d: Date, months: number): Date {
+  const next = new Date(d);
+  next.setMonth(next.getMonth() + months);
+  return next;
+}
+
+export function isSameLocalMonth(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+}
+
+/** Monday-start grid covering six weeks for the month containing `anchor`. */
+export function buildMonthGrid(anchor: Date): Date[] {
+  const gridStart = startOfWeekMonday(startOfMonth(anchor));
+  return Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
+}
+
+export function formatMonthYearLabel(d: Date, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(d);
+}
+
 export function toDateKey(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");

@@ -55,7 +55,7 @@ import {
   formatFlexibleApiDate,
 } from "@/shared/utils/api-date-parse.util";
 import { cn } from "@/core/utils/http.util";
-import { ChevronRight, Layers, MapPinned } from "lucide-react";
+import { CalendarDays, ChevronRight, Layers, MapPinned } from "lucide-react";
 import { DrawingPinPreviewModal } from "@/features/projects/components/drawing-pin-preview-modal";
 import { JobQualityAssuranceControls } from "@/features/jobs/components/job-quality-assurance-controls";
 import { QualityAssuranceDetailGrid } from "@/features/jobs/components/quality-assurance-status";
@@ -659,6 +659,7 @@ export function JobDetailBody({
   workerLabel,
   onChecklistsUpdated,
   onSaved,
+  onOpenScheduling,
 }: {
   detail: Job;
   dateFmt: Intl.DateTimeFormat;
@@ -666,6 +667,7 @@ export function JobDetailBody({
   onChecklistsUpdated?: () => void;
   /** Refresh detail after a successful quick-edit PATCH. */
   onSaved?: () => void;
+  onOpenScheduling?: () => void;
 }) {
   const t = useTranslations("Dashboard.jobs");
   const tQa = useTranslations("Dashboard.jobs.qualityAssurance");
@@ -928,12 +930,16 @@ export function JobDetailBody({
   const projectId =
     detail.project && typeof detail.project === "object" ? detail.project.id : typeof detail.project === "number" ? detail.project : null;
   const siteId = detail.site && typeof detail.site === "object" ? detail.site.id : typeof detail.site === "number" ? detail.site : null;
+  const isServiceJob =
+    (detail.job_category ?? searchParams.get("job_category") ?? "")
+      .toLowerCase()
+      .replace(/[^a-z]/g, "") === "servicejob";
 
   return (
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
         <DetailPanelCard title={t("sections.basic")}>
-          <DetailMetricsGrid>
+          <DetailMetricsGrid columns={2}>
             {jobStatusSelectOptions.length > 0 ? (
               <DetailEditableField
                 label={t("fields.jobStatus")}
@@ -957,7 +963,23 @@ export function JobDetailBody({
               </DetailMetricCard>
             )}
             <DetailMetricCard label={t("fields.assignedWorker")}>
-              {workerLabel ?? jobAssignedWorkerLabel(detail)}
+              <div className="flex items-center gap-1.5">
+                <span className="min-w-0 truncate">{workerLabel ?? jobAssignedWorkerLabel(detail)}</span>
+                {onOpenScheduling ? (
+                  <button
+                    type="button"
+                    title={t("detail.openScheduling")}
+                    aria-label={t("detail.openScheduling")}
+                    onClick={onOpenScheduling}
+                    className={cn(
+                      "inline-flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition",
+                      "hover:bg-sky-50 hover:text-sky-700 dark:hover:bg-sky-950/40 dark:hover:text-sky-300",
+                    )}
+                  >
+                    <CalendarDays className="size-4" strokeWidth={1.75} aria-hidden />
+                  </button>
+                ) : null}
+              </div>
             </DetailMetricCard>
           </DetailMetricsGrid>
         </DetailPanelCard>
@@ -969,7 +991,7 @@ export function JobDetailBody({
         ) : null}
 
         <DetailPanelCard title={t("detail.sectionRelations")}>
-          <DetailMetricsGrid>
+          <DetailMetricsGrid columns={2}>
             <DetailMetricCard label={t("fields.client")}>
               {clientId != null ? (
                 <DetailEntityLink
@@ -982,18 +1004,20 @@ export function JobDetailBody({
                 "—"
               )}
             </DetailMetricCard>
-            <DetailMetricCard label={t("fields.project")}>
-              {projectId != null ? (
-                <DetailEntityLink
-                  href={`${routes.dashboard.projects}/${projectId}`}
-                  className="font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                >
-                  {jobProjectLabel(detail.project)}
-                </DetailEntityLink>
-              ) : (
-                "—"
-              )}
-            </DetailMetricCard>
+            {!isServiceJob ? (
+              <DetailMetricCard label={t("fields.project")}>
+                {projectId != null ? (
+                  <DetailEntityLink
+                    href={`${routes.dashboard.projects}/${projectId}`}
+                    className="font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                  >
+                    {jobProjectLabel(detail.project)}
+                  </DetailEntityLink>
+                ) : (
+                  "—"
+                )}
+              </DetailMetricCard>
+            ) : null}
             <DetailMetricCard label={t("fields.site")}>
               {siteId != null ? (
                 <DetailEntityLink
@@ -1129,6 +1153,9 @@ export function JobDetailBody({
 
         <DetailPanelCard title={t("detail.sectionSchedule")}>
           <DetailMetricsGrid>
+            <DetailMetricCard label={t("fields.jobTime")}>
+              {detail.job_time?.trim() ? detail.job_time.trim() : "—"}
+            </DetailMetricCard>
             <DetailEditableField
               label={t("fields.startDate")}
               value={formatApiDateForHtmlDateInput(detail.start_date)}

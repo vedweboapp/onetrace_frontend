@@ -3,44 +3,98 @@
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useRouter } from "@/i18n/navigation";
-import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
-import { fetchSchedules } from "@/features/scheduling/api/schedule.mock.api";
+import { usePathname, useRouter } from "@/i18n/navigation";
+import { ChevronLeft, ChevronRight, Funnel } from "lucide-react";
+import {
+  deleteSchedule,
+  deleteWorkerTimeOff,
+  fetchSchedules,
+  fetchSchedule,
+  fetchWorkerTimeOff,
+} from "@/features/scheduling/api/schedule.api";
 import {
   CreateScheduleModal,
   type CreateSchedulePrefill,
   type CreateScheduleTechnician,
 } from "@/features/scheduling/components/create-schedule-modal";
-import { ScheduleDetailModal } from "@/features/scheduling/components/schedule-detail-modal";
-import { SchedulingDayTimeline } from "@/features/scheduling/components/scheduling-day-timeline";
+import {
+  MarkUnavailableModal,
+  type TimeOffPrefill,
+} from "@/features/scheduling/components/mark-unavailable-modal";
+import { SchedulingDayAgendaPanel } from "@/features/scheduling/components/scheduling-day-agenda-panel";
+import { SchedulingDayTimeline, type TimelineRangeSelect } from "@/features/scheduling/components/scheduling-day-timeline";
+import { SchedulingLegend } from "@/features/scheduling/components/scheduling-legend";
+import { SchedulingMonthCalendar } from "@/features/scheduling/components/scheduling-month-calendar";
+import { SchedulingEmptyUsers } from "@/features/scheduling/components/scheduling-empty-users";
+import { SchedulingPeopleHeader } from "@/features/scheduling/components/scheduling-people-header";
+import { SchedulingWeekCalendar } from "@/features/scheduling/components/scheduling-week-calendar";
+import { SchedulingWeekDayStrip } from "@/features/scheduling/components/scheduling-week-day-strip";
 import { useSchedulingCatalog } from "@/features/scheduling/hooks/use-scheduling-catalog";
-import type { Schedule } from "@/features/scheduling/types/schedule.types";
+import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
+import {
+  availabilityHeaderBarClass,
+  availabilityToneClass,
+  dayTone,
+  getDayAvailabilityWindow,
+  hasAvailabilityData,
+  hasFreeBookableSlot,
+  isoOverlaps,
+  mergeTones,
+  minutesToTime,
+  occupiedRangesForDay,
+} from "@/features/scheduling/utils/scheduling-availability.util";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
 import {
   addDays,
+  addMonths,
   apiDateToKey,
+  buildMonthGrid,
   buildWeekDays,
   formatDayHeader,
   formatMonthDay,
-  formatTimeRange,
+  formatMonthYearLabel,
   formatWeekRangeLabel,
   formatWeekdayShort,
   isSameLocalDay,
   startOfWeekMonday,
   toDateKey,
 } from "@/features/scheduling/utils/scheduling-week.util";
+import { useDashboardChromeStore } from "@/features/dashboard/store/dashboard-chrome.store";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import { dashboardContentHorizontalGutterClassName } from "@/shared/config/dashboard-shell";
 import { routes } from "@/shared/config/routes";
-import { AppButton, CheckmarkSelect } from "@/shared/ui";
+import {
+  buildCurrentPageBackHref,
+  buildPathWithStoredBack,
+  pathWithoutQueryAndHash,
+} from "@/shared/utils/detail-from-list.util";
+import { AppButton, CheckmarkSelect, ConfirmDialog } from "@/shared/ui";
+import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import { cn } from "@/core/utils/http.util";
 
-type ViewMode = "week" | "day";
+type ViewMode = "week" | "day" | "month";
+type DragMode = "book" | "timeoff";
+
+function parseViewMode(value: string | null): ViewMode {
+  if (value === "week") return "week";
+  if (value === "month") return "month";
+  return "day";
+}
+
+export type SchedulingPanelProps = {
+  /** Scope the calendar to one worker (e.g. user detail scheduling tab). */
+  fixedWorkerId?: number;
+  /** Pre-select a job filter (e.g. job detail scheduling tab). */
+  defaultJobId?: number;
+  /** Sync view/filters to URL search params. Default true on /scheduling. */
+  syncUrl?: boolean;
+};
 
 function startOfLocalDaySafe(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
-function scheduleOverlapsDay(schedule: Schedule, dayKey: string): boolean {
+function scheduleOverlapsDay(schedule: { start_at: string; end_at: string }, dayKey: string): boolean {
   const startKey = apiDateToKey(schedule.start_at);
   const endKey = apiDateToKey(schedule.end_at) ?? startKey;
   if (!startKey) return false;
@@ -48,16 +102,37 @@ function scheduleOverlapsDay(schedule: Schedule, dayKey: string): boolean {
   return dayKey >= startKey && dayKey <= end;
 }
 
-export function SchedulingPanel() {
+export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }: SchedulingPanelProps) {
   const t = useTranslations("Dashboard.scheduling");
+  const tList = useTranslations("Dashboard.list");
   const locale = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const setSecondaryRow = useDashboardChromeStore((s) => s.setSecondaryRow);
 
-  const viewMode = (searchParams.get("view") === "day" ? "day" : "week") as ViewMode;
-  const workerFilter = searchParams.get("worker") ?? "";
-  const clientFilter = searchParams.get("client") ?? "";
-  const scheduleIdParam = searchParams.get("schedule");
+  const [localViewMode, setLocalViewMode] = React.useState<ViewMode>("day");
+  const [localClientFilter, setLocalClientFilter] = React.useState("");
+  const [localJobFilter, setLocalJobFilter] = React.useState(() =>
+    typeof defaultJobId === "number" && defaultJobId > 0 ? String(defaultJobId) : "",
+  );
+  const [localProjectFilter, setLocalProjectFilter] = React.useState("");
+  const [localWorkerFilter, setLocalWorkerFilter] = React.useState("");
+  const [localGroupFilter, setLocalGroupFilter] = React.useState("");
+
+  const viewMode = (
+    syncUrl ? parseViewMode(searchParams.get("view")) : localViewMode
+  ) as ViewMode;
+  const workerFilter = fixedWorkerId
+    ? String(fixedWorkerId)
+    : syncUrl
+      ? (searchParams.get("worker") ?? "")
+      : localWorkerFilter;
+  const clientFilter = syncUrl ? (searchParams.get("client") ?? "") : localClientFilter;
+  const jobFilter = syncUrl ? (searchParams.get("job") ?? "") : localJobFilter;
+  const projectFilter = syncUrl ? (searchParams.get("project") ?? "") : localProjectFilter;
+  const groupFilter = syncUrl ? (searchParams.get("group") ?? "") : localGroupFilter;
+  const scheduleIdParam = syncUrl ? searchParams.get("schedule") : null;
 
   const [anchorDate, setAnchorDate] = React.useState(() => {
     const dateParam = searchParams.get("date");
@@ -69,28 +144,35 @@ export function SchedulingPanel() {
   });
 
   const [schedules, setSchedules] = React.useState<Schedule[]>([]);
+  const [timeOffs, setTimeOffs] = React.useState<WorkerTimeOff[]>([]);
   const [loadingSchedules, setLoadingSchedules] = React.useState(true);
   const [techSearch, setTechSearch] = React.useState("");
   const [refreshKey, setRefreshKey] = React.useState(0);
+  const [dragMode, setDragMode] = React.useState<DragMode>("book");
 
   const [createOpen, setCreateOpen] = React.useState(false);
   const [createTech, setCreateTech] = React.useState<CreateScheduleTechnician | null>(null);
   const [createDateKey, setCreateDateKey] = React.useState(toDateKey(new Date()));
   const [createPrefill, setCreatePrefill] = React.useState<CreateSchedulePrefill | null>(null);
+  const [timeOffOpen, setTimeOffOpen] = React.useState(false);
+  const [timeOffPrefill, setTimeOffPrefill] = React.useState<TimeOffPrefill | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<Schedule | null>(null);
+  const [deleteTimeOff, setDeleteTimeOff] = React.useState<WorkerTimeOff | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
+  const [deletingTimeOff, setDeletingTimeOff] = React.useState(false);
+  const [agendaDay, setAgendaDay] = React.useState<Date | null>(null);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const filterAnchorRef = React.useRef<HTMLButtonElement>(null);
+  const filterRowRef = React.useRef<HTMLDivElement>(null);
 
-  const [detailSchedule, setDetailSchedule] = React.useState<Schedule | null>(null);
-  const [detailOpen, setDetailOpen] = React.useState(false);
-
-  const { catalog, loading: catalogLoading } = useSchedulingCatalog(
-    t("modal.technicianFallbackTitle"),
-    t("allClients"),
-  );
+  const { catalog, loading: catalogLoading } = useSchedulingCatalog(t("modal.technicianFallbackTitle"));
 
   const weekStart = React.useMemo(() => startOfWeekMonday(anchorDate), [anchorDate]);
-  const days = React.useMemo(
-    () => (viewMode === "week" ? buildWeekDays(weekStart) : [startOfLocalDaySafe(anchorDate)]),
-    [viewMode, weekStart, anchorDate],
-  );
+  const days = React.useMemo(() => {
+    if (viewMode === "week") return buildWeekDays(weekStart);
+    if (viewMode === "day") return [startOfLocalDaySafe(anchorDate)];
+    return buildMonthGrid(anchorDate);
+  }, [viewMode, weekStart, anchorDate]);
 
   const rangeFrom = toDateKey(days[0]!);
   const rangeTo = toDateKey(days[days.length - 1]!);
@@ -98,7 +180,9 @@ export function SchedulingPanel() {
   const rangeLabel =
     viewMode === "week"
       ? formatWeekRangeLabel(weekStart, locale)
-      : formatDayHeader(days[0]!, locale, t("today"));
+      : viewMode === "month"
+        ? formatMonthYearLabel(anchorDate, locale)
+        : formatDayHeader(days[0]!, locale, t("today"));
 
   const reloadSchedules = React.useCallback(async () => {
     setLoadingSchedules(true);
@@ -110,45 +194,90 @@ export function SchedulingPanel() {
       if (clientFilter && Number.isFinite(Number(clientFilter))) {
         filters.client_id = Number(clientFilter);
       }
-      const rows = await fetchSchedules(filters);
-      setSchedules(rows);
+      if (jobFilter && Number.isFinite(Number(jobFilter))) {
+        filters.job_id = Number(jobFilter);
+      }
+      const timeOffFilters: Parameters<typeof fetchWorkerTimeOff>[0] = { from: rangeFrom, to: rangeTo };
+      if (workerFilter && Number.isFinite(Number(workerFilter))) {
+        timeOffFilters.worker_id = Number(workerFilter);
+      }
+      const [rows, offs] = await Promise.all([
+        fetchSchedules(filters),
+        fetchWorkerTimeOff(timeOffFilters).catch(() => [] as WorkerTimeOff[]),
+      ]);
+      let nextRows = rows;
+      if (projectFilter && Number.isFinite(Number(projectFilter))) {
+        const projectId = Number(projectFilter);
+        nextRows = rows.filter((row) => {
+          if (row.project_id === projectId) return true;
+          const job = catalog?.jobs.find((j) => j.id === row.job_id);
+          return job?.projectId === projectId;
+        });
+      }
+      setSchedules(nextRows);
+      setTimeOffs(offs);
     } catch (error) {
       toastApiError(error, t("loadError"));
       setSchedules([]);
+      setTimeOffs([]);
     } finally {
       setLoadingSchedules(false);
     }
-  }, [rangeFrom, rangeTo, workerFilter, clientFilter, t]);
+  }, [rangeFrom, rangeTo, workerFilter, clientFilter, jobFilter, projectFilter, catalog, t]);
 
   React.useEffect(() => {
     void reloadSchedules();
   }, [reloadSchedules, refreshKey]);
 
+  function schedulingReturnHref() {
+    if (!syncUrl) return buildCurrentPageBackHref(pathname, searchParams);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("schedule");
+    if (!params.get("date")) params.set("date", toDateKey(anchorDate));
+    const qs = params.toString();
+    return qs ? `${routes.dashboard.scheduling}?${qs}` : routes.dashboard.scheduling;
+  }
+
   React.useEffect(() => {
-    if (!scheduleIdParam) return;
+    if (!syncUrl || !scheduleIdParam) return;
     const id = Number(scheduleIdParam);
     if (!Number.isFinite(id) || id <= 0) return;
     const found = schedules.find((s) => s.id === id);
     if (found) {
-      setDetailSchedule(found);
-      setDetailOpen(true);
+      router.replace(buildPathWithStoredBack(`${routes.dashboard.jobs}/${found.job_id}`, schedulingReturnHref()));
       return;
     }
     let cancelled = false;
     (async () => {
-      const { fetchSchedule } = await import("@/features/scheduling/api/schedule.mock.api");
       const row = await fetchSchedule(id);
       if (!cancelled && row) {
-        setDetailSchedule(row);
-        setDetailOpen(true);
+        router.replace(buildPathWithStoredBack(`${routes.dashboard.jobs}/${row.job_id}`, schedulingReturnHref()));
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [scheduleIdParam, schedules]);
+  }, [scheduleIdParam, schedules, router, syncUrl]);
 
   function patchSearchParams(patch: Record<string, string | null>) {
+    if (!syncUrl) {
+      if ("view" in patch) setLocalViewMode(parseViewMode(patch.view));
+      if ("client" in patch) {
+        setLocalClientFilter(patch.client ?? "");
+        if (patch.client != null) {
+          setLocalJobFilter("");
+          setLocalProjectFilter("");
+        }
+      }
+      if ("job" in patch) setLocalJobFilter(patch.job ?? "");
+      if ("project" in patch) {
+        setLocalProjectFilter(patch.project ?? "");
+        if (patch.project != null) setLocalJobFilter("");
+      }
+      if ("worker" in patch && !fixedWorkerId) setLocalWorkerFilter(patch.worker ?? "");
+      if ("group" in patch) setLocalGroupFilter(patch.group ?? "");
+      return;
+    }
     const params = new URLSearchParams(searchParams.toString());
     for (const [key, value] of Object.entries(patch)) {
       if (value == null || value === "") params.delete(key);
@@ -159,20 +288,102 @@ export function SchedulingPanel() {
   }
 
   function setViewMode(mode: ViewMode) {
-    patchSearchParams({ view: mode === "week" ? null : mode });
+    patchSearchParams({ view: mode === "day" ? null : mode });
   }
 
   function setClientFilter(value: string) {
-    patchSearchParams({ client: value || null });
+    patchSearchParams({ client: value || null, job: null, project: null });
   }
+
+  function setJobFilter(value: string) {
+    patchSearchParams({ job: value || null });
+  }
+
+  function setProjectFilter(value: string) {
+    patchSearchParams({ project: value || null, job: null });
+  }
+
+  function setWorkerFilter(value: string) {
+    patchSearchParams({ worker: value || null });
+  }
+
+  function setGroupFilter(value: string) {
+    patchSearchParams({ group: value || null });
+  }
+
+  function clearFilters() {
+    patchSearchParams({
+      client: null,
+      job: null,
+      project: null,
+    });
+  }
+
+  const hasActiveFilters = Boolean(clientFilter || projectFilter || jobFilter);
+
+  React.useEffect(() => {
+    if (!filtersOpen) return;
+    function onDocClick(e: MouseEvent) {
+      const target = e.target as Node;
+      const el = e.target as Element;
+      if (filterAnchorRef.current?.contains(target)) return;
+      if (filterRowRef.current?.contains(target)) return;
+      if (typeof el.closest === "function") {
+        if (el.closest("[data-ot-checkmark-portal]")) return;
+        if (el.closest("[role='menu']")) return;
+      }
+      setFiltersOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setFiltersOpen(false);
+    }
+    document.addEventListener("click", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("click", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [filtersOpen]);
 
   function openWorkerCalendar(tech: SchedulingTechnician) {
-    patchSearchParams({ worker: String(tech.id), view: "week" });
+    if (fixedWorkerId) return;
+    setFiltersOpen(false);
+    patchSearchParams({ worker: String(tech.id) });
   }
 
-  function clearWorkerFilter() {
-    patchSearchParams({ worker: null });
-  }
+  const clientOptions = React.useMemo<CheckmarkSelectOption[]>(() => {
+    const all: CheckmarkSelectOption[] = [{ value: "", label: t("allClients") }];
+    if (!catalog) return all;
+    return [...all, ...catalog.clients.map((c) => ({ value: String(c.id), label: c.name }))];
+  }, [catalog, t]);
+
+  const projectOptions = React.useMemo<CheckmarkSelectOption[]>(() => {
+    const all: CheckmarkSelectOption[] = [{ value: "", label: t("allProjects") }];
+    if (!catalog) return all;
+    const clientId = clientFilter && Number.isFinite(Number(clientFilter)) ? Number(clientFilter) : null;
+    let projects = catalog.projects;
+    if (clientId != null) {
+      projects = projects.filter((p) => p.clientId === clientId);
+    }
+    return [...all, ...projects.map((p) => ({ value: String(p.id), label: p.name }))];
+  }, [catalog, clientFilter, t]);
+
+  const jobOptions = React.useMemo<CheckmarkSelectOption[]>(() => {
+    const all: CheckmarkSelectOption[] = [{ value: "", label: t("allJobs") }];
+    if (!catalog) return all;
+    const clientId = clientFilter && Number.isFinite(Number(clientFilter)) ? Number(clientFilter) : null;
+    const projectId = projectFilter && Number.isFinite(Number(projectFilter)) ? Number(projectFilter) : null;
+    let jobs = catalog.jobs;
+    if (clientId != null) jobs = jobs.filter((j) => j.clientId === clientId);
+    if (projectId != null) jobs = jobs.filter((j) => j.projectId === projectId);
+    return [...all, ...jobs.map((j) => ({ value: String(j.id), label: j.label }))];
+  }, [catalog, clientFilter, projectFilter, t]);
+
+  const groupOptions = React.useMemo<CheckmarkSelectOption[]>(() => {
+    const all: CheckmarkSelectOption[] = [{ value: "", label: t("allUserGroups") }];
+    if (!catalog) return all;
+    return [...all, ...(catalog.userGroups ?? []).map((g) => ({ value: String(g.id), label: g.name }))];
+  }, [catalog, t]);
 
   const filteredTechs = React.useMemo(() => {
     if (!catalog) return [];
@@ -180,10 +391,15 @@ export function SchedulingPanel() {
     if (workerFilter && Number.isFinite(Number(workerFilter))) {
       rows = rows.filter((r) => r.id === Number(workerFilter));
     }
+    if (groupFilter && Number.isFinite(Number(groupFilter))) {
+      const group = (catalog.userGroups ?? []).find((g) => g.id === Number(groupFilter));
+      const memberIds = new Set((group?.users ?? []).map((u) => u.id));
+      rows = rows.filter((r) => memberIds.has(r.id) || memberIds.has(r.profileId));
+    }
     const q = techSearch.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter((row) => row.searchText.includes(q));
-  }, [catalog, workerFilter, techSearch]);
+  }, [catalog, workerFilter, groupFilter, techSearch]);
 
   const schedulesByWorkerDay = React.useMemo(() => {
     const map = new Map<string, Schedule[]>();
@@ -200,131 +416,483 @@ export function SchedulingPanel() {
     return map;
   }, [schedules, days]);
 
-  function openCreateSchedule(tech: SchedulingTechnician, day: Date) {
-    setCreateTech({ id: tech.id, name: tech.name, title: tech.title, initials: tech.initials });
+  const schedulesByDay = React.useMemo(() => {
+    const map = new Map<string, Schedule[]>();
+    for (const schedule of schedules) {
+      for (const day of days) {
+        const key = toDateKey(day);
+        if (!scheduleOverlapsDay(schedule, key)) continue;
+        const list = map.get(key) ?? [];
+        list.push(schedule);
+        map.set(key, list);
+      }
+    }
+    for (const [key, list] of map) {
+      list.sort((a, b) => a.start_at.localeCompare(b.start_at) || a.id - b.id);
+      map.set(key, list);
+    }
+    return map;
+  }, [schedules, days]);
+
+  const timeOffsByWorkerDay = React.useMemo(() => {
+    const map = new Map<string, WorkerTimeOff[]>();
+    for (const row of timeOffs) {
+      for (const day of days) {
+        const key = toDateKey(day);
+        if (!scheduleOverlapsDay(row, key)) continue;
+        const mapKey = `${row.worker_id}:${key}`;
+        const list = map.get(mapKey) ?? [];
+        list.push(row);
+        map.set(mapKey, list);
+      }
+    }
+    return map;
+  }, [timeOffs, days]);
+
+  const timeOffsByDay = React.useMemo(() => {
+    const map = new Map<string, WorkerTimeOff[]>();
+    for (const row of timeOffs) {
+      for (const day of days) {
+        const key = toDateKey(day);
+        if (!scheduleOverlapsDay(row, key)) continue;
+        const list = map.get(key) ?? [];
+        list.push(row);
+        map.set(key, list);
+      }
+    }
+    return map;
+  }, [timeOffs, days]);
+
+  const singleWorker = React.useMemo(() => {
+    if (filteredTechs.length === 1) return filteredTechs[0] ?? null;
+    return null;
+  }, [filteredTechs]);
+
+  React.useEffect(() => {
+    if (!singleWorker) setDragMode("book");
+  }, [singleWorker]);
+
+  function toCreateTech(tech: SchedulingTechnician): CreateScheduleTechnician {
+    return { id: tech.id, name: tech.name, title: tech.title, initials: tech.initials };
+  }
+
+  function openCreateSchedule(
+    tech: SchedulingTechnician | null,
+    day: Date,
+    times?: { startTime: string; endTime: string },
+  ) {
+    setCreateTech(tech ? toCreateTech(tech) : null);
     setCreateDateKey(toDateKey(day));
-    setCreatePrefill(null);
+    if (!tech) {
+      setCreatePrefill({
+        dateKey: toDateKey(day),
+        startTime: times?.startTime,
+        endTime: times?.endTime,
+      });
+      setCreateOpen(true);
+      return;
+    }
+    const window = getDayAvailabilityWindow(tech.availableDays, day);
+    const startTime = times?.startTime ?? (window ? minutesToTime(window.startMinutes) : undefined);
+    const endTime =
+      times?.endTime ??
+      (window ? minutesToTime(Math.min(window.startMinutes + 60, window.endMinutes)) : undefined);
+    setCreatePrefill(startTime && endTime ? { dateKey: toDateKey(day), startTime, endTime } : { dateKey: toDateKey(day) });
     setCreateOpen(true);
   }
 
-  function openScheduleDetail(schedule: Schedule) {
-    setDetailSchedule(schedule);
-    setDetailOpen(true);
-    patchSearchParams({ schedule: String(schedule.id) });
+  function getBookingConflict(input: {
+    workerId: number;
+    startAt: string;
+    endAt: string;
+    ignoreScheduleId?: number;
+  }): string | null {
+    const tech = catalog?.technicians.find((row) => row.id === input.workerId);
+    const start = new Date(input.startAt);
+    const end = new Date(input.endAt);
+    if (!(start < end)) return t("conflict.invalidRange");
+
+    if (tech && hasAvailabilityData(tech.availableDays)) {
+      const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+      const last = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+      while (cursor <= last) {
+        const window = getDayAvailabilityWindow(tech.availableDays, cursor);
+        if (!window) return t("conflict.unavailable");
+        const dayStart = new Date(cursor);
+        const dayEnd = addDays(dayStart, 1);
+        const clipStart = start > dayStart ? start : dayStart;
+        const clipEnd = end < dayEnd ? end : dayEnd;
+        const startMin = (clipStart.getTime() - dayStart.getTime()) / 60_000;
+        const endMin = (clipEnd.getTime() - dayStart.getTime()) / 60_000;
+        if (startMin < window.startMinutes || endMin > window.endMinutes) return t("conflict.unavailable");
+        cursor.setDate(cursor.getDate() + 1);
+      }
+    }
+
+    const booked = schedules.some(
+      (row) =>
+        row.worker_id === input.workerId &&
+        row.id !== input.ignoreScheduleId &&
+        isoOverlaps(input.startAt, input.endAt, row.start_at, row.end_at),
+    );
+    if (booked) return t("conflict.booked");
+
+    const off = timeOffs.some(
+      (row) =>
+        row.worker_id === input.workerId && isoOverlaps(input.startAt, input.endAt, row.start_at, row.end_at),
+    );
+    if (off) return t("conflict.timeOff");
+    return null;
   }
 
-  function closeScheduleDetail() {
-    setDetailOpen(false);
-    setDetailSchedule(null);
-    patchSearchParams({ schedule: null });
+  function openTimeOffForDay(tech: SchedulingTechnician, day: Date, times?: { startTime: string; endTime: string }) {
+    const window = getDayAvailabilityWindow(tech.availableDays, day);
+    setCreateTech(toCreateTech(tech));
+    setTimeOffPrefill({
+      dateKey: toDateKey(day),
+      startTime: times?.startTime ?? (window ? minutesToTime(window.startMinutes) : "09:00"),
+      endTime: times?.endTime ?? (window ? minutesToTime(window.endMinutes) : "17:00"),
+    });
+    setTimeOffOpen(true);
   }
 
-  function onScheduleCreated(id: number) {
+  function onTimelineRangeSelect(range: TimelineRangeSelect) {
+    if (dragMode === "timeoff") {
+      openTimeOffForDay(range.tech, range.day, {
+        startTime: range.startTime,
+        endTime: range.endTime,
+      });
+      return;
+    }
+    openCreateSchedule(range.tech, range.day, {
+      startTime: range.startTime,
+      endTime: range.endTime,
+    });
+  }
+
+  function openJobDetail(schedule: Schedule) {
+    const detailPath = `${routes.dashboard.jobs}/${schedule.job_id}`;
+    if (pathWithoutQueryAndHash(pathname) === pathWithoutQueryAndHash(detailPath)) return;
+    router.push(buildPathWithStoredBack(detailPath, schedulingReturnHref()));
+  }
+
+  function onScheduleCreated() {
     setRefreshKey((k) => k + 1);
-    patchSearchParams({ schedule: String(id) });
+  }
+
+  async function confirmRemoveSchedule() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteSchedule(deleteTarget.id);
+      toastSuccess(t("detail.deletedToast"));
+      setDeleteTarget(null);
+      setRefreshKey((k) => k + 1);
+    } catch (error) {
+      toastApiError(error, t("detail.deleteError"));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function confirmRemoveTimeOff() {
+    if (!deleteTimeOff) return;
+    setDeletingTimeOff(true);
+    try {
+      await deleteWorkerTimeOff(deleteTimeOff.id);
+      toastSuccess(t("timeOff.deletedToast"));
+      setDeleteTimeOff(null);
+      setRefreshKey((k) => k + 1);
+    } catch (error) {
+      toastApiError(error, t("timeOff.deleteError"));
+    } finally {
+      setDeletingTimeOff(false);
+    }
   }
 
   function goPrev() {
-    setAnchorDate((d) => addDays(d, viewMode === "week" ? -7 : -1));
+    setAnchorDate((d) => {
+      if (viewMode === "month") return addMonths(d, -1);
+      if (viewMode === "week") return addDays(d, -7);
+      return addDays(d, -1);
+    });
   }
   function goNext() {
-    setAnchorDate((d) => addDays(d, viewMode === "week" ? 7 : 1));
-  }
-  function goThisWeek() {
-    setAnchorDate(new Date());
-    setViewMode("week");
+    setAnchorDate((d) => {
+      if (viewMode === "month") return addMonths(d, 1);
+      if (viewMode === "week") return addDays(d, 7);
+      return addDays(d, 1);
+    });
   }
   function goToday() {
     setAnchorDate(new Date());
     setViewMode("day");
   }
 
+  function openDayView(day: Date) {
+    setAnchorDate(day);
+    setViewMode("day");
+  }
+
   const loading = catalogLoading || loadingSchedules;
-  const colTemplate = `minmax(220px, 260px) repeat(${days.length}, minmax(140px, 1fr))`;
-  const focusedWorker = workerFilter
-    ? catalog?.technicians.find((w) => w.id === Number(workerFilter))
-    : null;
+  const colTemplate = `minmax(220px, 240px) repeat(${days.length}, minmax(140px, 1fr))`;
+
+  function clearPeopleFilters() {
+    setTechSearch("");
+    setGroupFilter("");
+    if (!fixedWorkerId) setWorkerFilter("");
+  }
+
+  const hasPeopleFilters = Boolean(
+    techSearch.trim() || groupFilter || (!fixedWorkerId && workerFilter),
+  );
+
+  const focusedWorker =
+    singleWorker && (fixedWorkerId || Boolean(workerFilter)) ? singleWorker : null;
+
+  const peopleHeader = (
+    <SchedulingPeopleHeader
+      groupOptions={groupOptions}
+      groupValue={groupFilter}
+      search={techSearch}
+      focusedWorker={focusedWorker}
+      prominent={false}
+      onBack={!fixedWorkerId && focusedWorker ? () => setWorkerFilter("") : undefined}
+      onGroupChange={setGroupFilter}
+      onSearchChange={setTechSearch}
+    />
+  );
+
+  const filterFields = (
+    <>
+      <CheckmarkSelect
+        listLabel={t("allClients")}
+        buttonAriaLabel={t("allClients")}
+        options={clientOptions}
+        value={clientFilter}
+        searchable
+        portaled
+        clearable
+        className="min-w-[9.5rem] shrink-0"
+        size="sm"
+        onChange={setClientFilter}
+      />
+      <CheckmarkSelect
+        listLabel={t("allProjects")}
+        buttonAriaLabel={t("allProjects")}
+        options={projectOptions}
+        value={projectFilter}
+        searchable
+        portaled
+        clearable
+        className="min-w-[9.5rem] shrink-0"
+        size="sm"
+        onChange={setProjectFilter}
+      />
+      <CheckmarkSelect
+        listLabel={t("allJobs")}
+        buttonAriaLabel={t("allJobs")}
+        options={jobOptions}
+        value={jobFilter}
+        searchable
+        portaled
+        clearable
+        className="min-w-[9.5rem] shrink-0"
+        size="sm"
+        onChange={setJobFilter}
+      />
+      {hasActiveFilters ? (
+        <AppButton type="button" variant="secondary" size="sm" className="shrink-0" onClick={clearFilters}>
+          {tList("clearFilters")}
+        </AppButton>
+      ) : null}
+    </>
+  );
+
+  const toolbarRow = (
+    <div
+      className={cn(
+        "flex min-h-[2.75rem] items-center gap-2 py-2",
+        syncUrl ? dashboardContentHorizontalGutterClassName : "border-b border-slate-200 px-3 dark:border-slate-800",
+      )}
+    >
+      <button
+        ref={filterAnchorRef}
+        type="button"
+        onClick={() => setFiltersOpen((open) => !open)}
+        aria-expanded={filtersOpen}
+        aria-label={tList("filterMenuAria")}
+        title={tList("filterMenuAria")}
+        className={cn(
+          "relative inline-flex size-8 shrink-0 items-center justify-center rounded-md border transition outline-none",
+          "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+          "focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100 dark:focus-visible:ring-offset-slate-950",
+          filtersOpen && "border-slate-300 bg-slate-50 dark:border-slate-600 dark:bg-slate-800",
+        )}
+      >
+        <Funnel className="size-4" strokeWidth={2} aria-hidden />
+        {hasActiveFilters ? (
+          <span
+            className="absolute right-1 top-1 size-1.5 rounded-full ring-2 ring-white dark:ring-slate-900"
+            style={{ background: "var(--dash-accent, #111)" }}
+            aria-hidden
+          />
+        ) : null}
+      </button>
+
+      {filtersOpen ? (
+        <div
+          ref={filterRowRef}
+          role="region"
+          aria-label={tList("filterMenu")}
+          className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-x-contain"
+        >
+          {filterFields}
+        </div>
+      ) : (
+        <>
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="inline-flex overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+              <button
+                type="button"
+                className="inline-flex size-8 items-center justify-center text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                aria-label="Previous"
+                onClick={goPrev}
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <button
+                type="button"
+                className="inline-flex size-8 items-center justify-center border-l border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                aria-label="Next"
+                onClick={goNext}
+              >
+                <ChevronRight className="size-4" />
+              </button>
+            </div>
+            <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{rangeLabel}</p>
+          </div>
+
+          <SchedulingLegend className="mx-2 hidden min-w-0 flex-1 justify-center lg:flex" />
+
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              className="rounded-md px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              onClick={goToday}
+            >
+              {t("today")}
+            </button>
+            <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-900">
+              {(
+                [
+                  ["day", t("viewDay")],
+                  ["week", t("viewWeek")],
+                  ["month", t("viewMonth")],
+                ] as const
+              ).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-xs font-semibold transition",
+                    viewMode === mode
+                      ? "bg-white text-slate-900 shadow-sm dark:bg-slate-100 dark:text-slate-900"
+                      : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100",
+                  )}
+                  onClick={() => setViewMode(mode)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  React.useEffect(() => {
+    if (!syncUrl) return;
+    setSecondaryRow(toolbarRow);
+    return () => setSecondaryRow(null);
+  });
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:px-6">
-        <div className="flex items-center gap-1">
-          <AppButton type="button" variant="secondary" size="sm" onClick={goPrev} aria-label="Previous">
-            <ChevronLeft className="size-4" />
-          </AppButton>
-          <AppButton type="button" variant="secondary" size="sm" onClick={goThisWeek}>
-            {t("thisWeek")}
-          </AppButton>
-          <AppButton type="button" variant="secondary" size="sm" onClick={goToday}>
-            {t("today")}
-          </AppButton>
-          <AppButton type="button" variant="secondary" size="sm" onClick={goNext} aria-label="Next">
-            <ChevronRight className="size-4" />
-          </AppButton>
-        </div>
-        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{rangeLabel}</p>
+      {syncUrl ? null : toolbarRow}
 
-        {focusedWorker ? (
-          <AppButton type="button" variant="secondary" size="sm" onClick={clearWorkerFilter}>
-            {t("allWorkers")}
-          </AppButton>
-        ) : null}
-
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 dark:border-slate-700">
-            <button
-              type="button"
-              className={cn(
-                "rounded-md px-2.5 py-1 text-xs font-semibold",
-                viewMode === "week"
-                  ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
-                  : "text-slate-600 dark:text-slate-300",
-              )}
-              onClick={() => setViewMode("week")}
-            >
-              {t("viewWeek")}
-            </button>
-            <button
-              type="button"
-              className={cn(
-                "rounded-md px-2.5 py-1 text-xs font-semibold",
-                viewMode === "day"
-                  ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
-                  : "text-slate-600 dark:text-slate-300",
-              )}
-              onClick={() => setViewMode("day")}
-            >
-              {t("viewDay")}
-            </button>
-          </div>
-          <CheckmarkSelect
-            listLabel={t("allClients")}
-            options={catalog?.clientOptions ?? [{ value: "", label: t("allClients") }]}
-            value={clientFilter}
-            searchable
-            portaled
-            className="min-w-[10rem]"
-            size="sm"
-            onChange={setClientFilter}
-          />
+      {focusedWorker || (singleWorker && viewMode !== "month") ? (
+        <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 px-1 py-1 dark:border-slate-800 sm:px-2">
+          {focusedWorker ? <div className="min-w-0 flex-1">{peopleHeader}</div> : null}
+          <SchedulingLegend className={cn("min-w-0 lg:hidden", focusedWorker ? "hidden sm:flex" : "flex-1")} />
+          {singleWorker && viewMode !== "month" ? (
+            <div className="ml-auto inline-flex shrink-0 rounded-md border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-900">
+              {(
+                [
+                  ["book", t("bookJob")],
+                  ["timeoff", t("markTimeOff")],
+                ] as const
+              ).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  className={cn(
+                    "rounded px-2 py-0.5 text-[10px] font-semibold transition",
+                    dragMode === mode
+                      ? "bg-white text-slate-900 shadow-sm dark:bg-slate-100 dark:text-slate-900"
+                      : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100",
+                  )}
+                  onClick={() => setDragMode(mode)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
-      </div>
+      ) : (
+        <div className="flex shrink-0 items-center border-b border-slate-200 px-1 py-1 dark:border-slate-800 sm:px-2 lg:hidden">
+          <SchedulingLegend />
+        </div>
+      )}
 
       {viewMode === "day" && days[0] ? (
-        <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-slate-200 px-4 py-2 dark:border-slate-800 sm:px-6">
+        <div className="flex shrink-0 items-stretch gap-1 border-b border-slate-200 px-1 py-1.5 dark:border-slate-800 sm:px-2">
           {buildWeekDays(startOfWeekMonday(anchorDate)).map((day) => {
             const key = toDateKey(day);
             const selected = isSameLocalDay(day, anchorDate);
             const isToday = isSameLocalDay(day, new Date());
+            const tone = singleWorker
+              ? dayTone(
+                  getDayAvailabilityWindow(singleWorker.availableDays, day),
+                  hasAvailabilityData(singleWorker.availableDays),
+                  occupiedRangesForDay(timeOffsByDay.get(key) ?? [], key),
+                )
+              : mergeTones(
+                  filteredTechs.map((tech) =>
+                    dayTone(
+                      getDayAvailabilityWindow(tech.availableDays, day),
+                      hasAvailabilityData(tech.availableDays),
+                      occupiedRangesForDay(
+                        (timeOffsByDay.get(key) ?? []).filter((row) => row.worker_id === tech.id),
+                        key,
+                      ),
+                    ),
+                  ),
+                );
             return (
               <button
                 key={key}
                 type="button"
                 className={cn(
-                  "flex min-w-[3.25rem] flex-col items-center rounded-lg border px-2 py-1.5 text-center transition",
+                  "flex w-12 shrink-0 flex-col items-center rounded-md border px-1 py-1 text-center transition sm:w-[3.25rem]",
                   selected
                     ? "border-sky-600 bg-sky-600 text-white"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200",
+                    : cn(
+                        "border-slate-200 text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:text-slate-200",
+                        availabilityToneClass(tone) || "bg-white dark:bg-slate-900",
+                      ),
                   isToday && !selected && "ring-1 ring-sky-400",
                 )}
                 onClick={() => setAnchorDate(day)}
@@ -344,152 +912,205 @@ export function SchedulingPanel() {
             <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
           </div>
         ) : (
-          <SchedulingDayTimeline
-            day={days[0]}
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {focusedWorker ? (
+              <SchedulingWeekCalendar
+                days={[days[0]]}
+                technician={focusedWorker}
+                schedules={schedules}
+                timeOffs={timeOffs}
+                dragMode={dragMode}
+                hideDayHeaders
+                fillHeight
+                onCreate={(day, startTime, endTime) =>
+                  dragMode === "timeoff"
+                    ? openTimeOffForDay(focusedWorker, day, { startTime, endTime })
+                    : openCreateSchedule(focusedWorker, day, { startTime, endTime })
+                }
+                onScheduleClick={openJobDetail}
+                onRemoveSchedule={setDeleteTarget}
+                onRemoveTimeOff={setDeleteTimeOff}
+              />
+            ) : (
+              <SchedulingDayTimeline
+                day={days[0]}
+                technicians={filteredTechs}
+                schedules={schedules}
+                timeOffs={timeOffs}
+                peopleHeader={peopleHeader}
+                dragMode={dragMode}
+                onClearPeopleFilters={hasPeopleFilters ? clearPeopleFilters : undefined}
+                onCreateSchedule={openCreateSchedule}
+                onRangeSelect={onTimelineRangeSelect}
+                onScheduleClick={openJobDetail}
+                onRemoveSchedule={setDeleteTarget}
+                onRemoveTimeOff={setDeleteTimeOff}
+                onWorkerClick={openWorkerCalendar}
+              />
+            )}
+          </div>
+        )
+      ) : viewMode === "month" ? (
+        loading ? (
+          <div className="space-y-2 p-4">
+            <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+            <div className="h-64 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+          </div>
+        ) : filteredTechs.length === 0 ? (
+          <SchedulingEmptyUsers onClear={hasPeopleFilters ? clearPeopleFilters : undefined} />
+        ) : (
+          <SchedulingMonthCalendar
+            anchorMonth={anchorDate}
+            monthDays={days}
+            schedulesByDay={schedulesByDay}
+            timeOffsByDay={timeOffsByDay}
             technicians={filteredTechs}
-            schedules={schedules}
+            loading={false}
+            singleWorker={singleWorker}
+            onDayClick={setAgendaDay}
             onCreateSchedule={openCreateSchedule}
-            onScheduleClick={openScheduleDetail}
-            onWorkerClick={openWorkerCalendar}
           />
         )
+      ) : loading ? (
+        <div className="space-y-2 p-4">
+          <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+          <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+          <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+        </div>
+      ) : filteredTechs.length === 0 ? (
+        <SchedulingEmptyUsers onClear={hasPeopleFilters ? clearPeopleFilters : undefined} />
+      ) : focusedWorker ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <SchedulingWeekCalendar
+            days={days}
+            technician={focusedWorker}
+            schedules={schedules}
+            timeOffs={timeOffs}
+            dragMode={dragMode}
+            onDayHeaderClick={setAgendaDay}
+            onCreate={(day, startTime, endTime) =>
+              dragMode === "timeoff"
+                ? openTimeOffForDay(focusedWorker, day, { startTime, endTime })
+                : openCreateSchedule(focusedWorker, day, { startTime, endTime })
+            }
+            onScheduleClick={openJobDetail}
+            onRemoveSchedule={setDeleteTarget}
+            onRemoveTimeOff={setDeleteTimeOff}
+          />
+        </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-auto">
-          <div className="min-w-[720px]">
+          <div className="min-w-[760px]">
             <div
               className="sticky top-0 z-20 grid border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
               style={{ gridTemplateColumns: colTemplate }}
             >
-              <div className="flex items-center gap-2 border-r border-slate-200 px-3 py-3 dark:border-slate-800">
-                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                  {t("workerColumn")}
-                </span>
-                <div className="relative min-w-0 flex-1">
-                  <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="search"
-                    value={techSearch}
-                    placeholder={t("searchTechnicians")}
-                    className="h-8 w-full rounded-md border border-slate-200 bg-white pl-7 pr-2 text-xs dark:border-slate-700 dark:bg-slate-900"
-                    onChange={(e) => setTechSearch(e.target.value)}
-                  />
-                </div>
+              <div className="border-r border-slate-200 px-2 py-2 dark:border-slate-800">
+                {peopleHeader}
               </div>
               {days.map((day) => {
                 const isToday = isSameLocalDay(day, new Date());
+                const dayKey = toDateKey(day);
+                const tone = mergeTones(
+                  filteredTechs.map((tech) =>
+                    dayTone(
+                      getDayAvailabilityWindow(tech.availableDays, day),
+                      hasAvailabilityData(tech.availableDays),
+                      occupiedRangesForDay(
+                        (timeOffsByDay.get(dayKey) ?? []).filter((row) => row.worker_id === tech.id),
+                        dayKey,
+                      ),
+                    ),
+                  ),
+                );
                 return (
-                  <div
-                    key={toDateKey(day)}
-                    className={cn(
-                      "border-r border-slate-200 px-3 py-3 text-center last:border-r-0 dark:border-slate-800",
-                      isToday && "bg-slate-50 dark:bg-slate-900/60",
-                    )}
+                  <button
+                    type="button"
+                    key={dayKey}
+                    className="flex min-w-0 flex-col overflow-hidden border-r border-slate-200 text-center last:border-r-0 dark:border-slate-800"
+                    onClick={() => setAgendaDay(day)}
                   >
-                    {isToday ? (
-                      <div className="mx-auto mb-1 h-1 w-10 rounded-full bg-slate-900 dark:bg-slate-100" />
-                    ) : null}
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                      {formatWeekdayShort(day, locale)}
-                    </p>
-                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                      {formatMonthDay(day, locale)}
-                    </p>
-                  </div>
+                    <span className={cn("block h-1.5 w-full shrink-0", availabilityHeaderBarClass(tone))} />
+                    <span
+                      className={cn(
+                        "px-2 py-2 sm:px-3",
+                        availabilityToneClass(tone) || (isToday ? "bg-slate-50 dark:bg-slate-900/60" : ""),
+                      )}
+                    >
+                      {isToday ? (
+                        <span className="mx-auto mb-1 block h-1 w-10 rounded-full bg-slate-900 dark:bg-slate-100" />
+                      ) : null}
+                      <span className="block text-[11px] font-bold uppercase tracking-wide">
+                        {formatWeekdayShort(day, locale)}
+                      </span>
+                      <span className="block text-sm font-semibold">
+                        {formatMonthDay(day, locale)}
+                      </span>
+                    </span>
+                  </button>
                 );
               })}
             </div>
 
-            {loading ? (
-              <div className="space-y-2 p-4">
-                <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-                <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-                <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-              </div>
-            ) : filteredTechs.length === 0 ? (
-              <p className="p-6 text-sm text-slate-500">{t("emptyTechnicians")}</p>
-            ) : (
-              filteredTechs.map((tech) => (
-                <div
-                  key={tech.id}
-                  className="grid border-b border-slate-100 dark:border-slate-800/80"
-                  style={{ gridTemplateColumns: colTemplate }}
-                >
-                  <div className="flex items-start gap-2.5 border-r border-slate-200 px-3 py-3 dark:border-slate-800">
-                    <div
-                      className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold uppercase text-white dark:bg-slate-200 dark:text-slate-900"
-                      aria-hidden
-                    >
-                      {tech.initials}
-                    </div>
-                    <div className="min-w-0">
+            {filteredTechs.map((tech) => (
+              <div
+                key={tech.id}
+                className="grid border-b border-slate-100 dark:border-slate-800/80"
+                style={{ gridTemplateColumns: colTemplate }}
+              >
+                <div className="flex min-w-0 items-center gap-2.5 border-r border-slate-200 px-3 py-2.5 dark:border-slate-800">
+                  <div
+                    className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold uppercase text-white dark:bg-slate-200 dark:text-slate-900"
+                    aria-hidden
+                  >
+                    {tech.initials}
+                  </div>
+                  <div className="min-w-0">
+                    {fixedWorkerId ? (
+                      <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                        {tech.name}
+                      </p>
+                    ) : (
                       <button
                         type="button"
-                        className="truncate text-left text-sm font-semibold text-sky-700 hover:underline dark:text-sky-400"
+                        className="block w-full truncate text-left text-sm font-semibold text-sky-700 hover:underline dark:text-sky-400"
                         onClick={() => openWorkerCalendar(tech)}
                       >
                         {tech.name}
                       </button>
-                      <p className="truncate text-xs text-slate-500 dark:text-slate-400">{tech.title}</p>
-                    </div>
+                    )}
+                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">{tech.title}</p>
                   </div>
-
-                  {days.map((day) => {
-                    const dayKey = toDateKey(day);
-                    const cellSchedules = schedulesByWorkerDay.get(`${tech.id}:${dayKey}`) ?? [];
-                    const isToday = isSameLocalDay(day, new Date());
-                    return (
-                      <div
-                        key={`${tech.id}-${dayKey}`}
-                        className={cn(
-                          "group/cell relative flex min-h-[88px] flex-col border-r border-slate-100 p-2 last:border-r-0 dark:border-slate-800/60",
-                          "hover:bg-sky-50/80 dark:hover:bg-sky-950/30",
-                          isToday && "bg-slate-50/70 dark:bg-slate-900/40",
-                        )}
-                      >
-                        <div className="space-y-1.5">
-                          {cellSchedules.map((schedule) => (
-                            <button
-                              key={schedule.id}
-                              type="button"
-                              className="block w-full rounded-md border border-sky-300 bg-sky-50 px-2 py-1.5 text-left transition hover:border-sky-400 dark:border-sky-800 dark:bg-sky-950/40"
-                              onClick={() => openScheduleDetail(schedule)}
-                            >
-                              <p className="truncate text-[11px] font-semibold text-sky-950 dark:text-sky-100">
-                                {schedule.job_title}
-                              </p>
-                              <p className="truncate text-[10px] text-sky-900/80 dark:text-sky-200/80">
-                                {schedule.all_day
-                                  ? t("detail.allDay")
-                                  : formatTimeRange(schedule.start_at, schedule.end_at, locale)}
-                              </p>
-                              <p className="truncate text-[10px] text-sky-800/70 dark:text-sky-300/70">
-                                {schedule.client_name}
-                              </p>
-                            </button>
-                          ))}
-                        </div>
-
-                        <div
-                          className={cn(
-                            "mt-auto flex justify-center pt-2 opacity-0 transition group-hover/cell:opacity-100",
-                            cellSchedules.length === 0 && "flex-1 items-center",
-                          )}
-                        >
-                          <button
-                            type="button"
-                            className="inline-flex items-center gap-1 rounded-md bg-sky-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-sky-700"
-                            onClick={() => openCreateSchedule(tech, day)}
-                          >
-                            <Plus className="size-3.5" strokeWidth={2.25} />
-                            {t("createSchedule")}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
                 </div>
-              ))
-            )}
+
+                {days.map((day) => {
+                  const dayKey = toDateKey(day);
+                  const cellSchedules = schedulesByWorkerDay.get(`${tech.id}:${dayKey}`) ?? [];
+                  const cellTimeOffs = timeOffsByWorkerDay.get(`${tech.id}:${dayKey}`) ?? [];
+                  return (
+                    <div
+                      key={`${tech.id}-${dayKey}`}
+                      className="min-h-[6rem] border-r border-slate-100 p-1 last:border-r-0 dark:border-slate-800/60"
+                    >
+                      <SchedulingWeekDayStrip
+                        tech={tech}
+                        day={day}
+                        schedules={cellSchedules}
+                        timeOffs={cellTimeOffs}
+                        onCreate={(startTime, endTime) =>
+                          dragMode === "timeoff"
+                            ? openTimeOffForDay(tech, day, { startTime, endTime })
+                            : openCreateSchedule(tech, day, { startTime, endTime })
+                        }
+                        onScheduleClick={openJobDetail}
+                        onRemoveSchedule={setDeleteTarget}
+                        onRemoveTimeOff={setDeleteTimeOff}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -500,18 +1121,99 @@ export function SchedulingPanel() {
         technician={createTech}
         defaultDateKey={createDateKey}
         prefill={createPrefill}
+        getBookingConflict={getBookingConflict}
         onCreated={onScheduleCreated}
       />
 
-      <ScheduleDetailModal
-        schedule={detailSchedule}
-        open={detailOpen}
-        onClose={closeScheduleDetail}
-        onDeleted={() => {
-          setRefreshKey((k) => k + 1);
-          closeScheduleDetail();
+      <SchedulingDayAgendaPanel
+        open={agendaDay != null}
+        day={agendaDay}
+        schedules={agendaDay ? schedulesByDay.get(toDateKey(agendaDay)) ?? [] : []}
+        timeOffs={agendaDay ? timeOffsByDay.get(toDateKey(agendaDay)) ?? [] : []}
+        technicians={filteredTechs}
+        userGroups={catalog?.userGroups ?? []}
+        groupOptions={groupOptions}
+        canCreate={
+          agendaDay != null &&
+          (singleWorker
+            ? hasFreeBookableSlot(
+                getDayAvailabilityWindow(singleWorker.availableDays, agendaDay),
+                hasAvailabilityData(singleWorker.availableDays),
+                [
+                  ...occupiedRangesForDay(schedulesByDay.get(toDateKey(agendaDay)) ?? [], toDateKey(agendaDay)),
+                  ...occupiedRangesForDay(timeOffsByDay.get(toDateKey(agendaDay)) ?? [], toDateKey(agendaDay)),
+                ],
+              )
+            : filteredTechs.some((tech) =>
+                hasFreeBookableSlot(
+                  getDayAvailabilityWindow(tech.availableDays, agendaDay),
+                  hasAvailabilityData(tech.availableDays),
+                  [
+                    ...occupiedRangesForDay(
+                      (schedulesByDay.get(toDateKey(agendaDay)) ?? []).filter((row) => row.worker_id === tech.id),
+                      toDateKey(agendaDay),
+                    ),
+                    ...occupiedRangesForDay(
+                      (timeOffsByDay.get(toDateKey(agendaDay)) ?? []).filter((row) => row.worker_id === tech.id),
+                      toDateKey(agendaDay),
+                    ),
+                  ],
+                ),
+              ))
+        }
+        onClose={() => setAgendaDay(null)}
+        onOpenDayView={() => {
+          if (!agendaDay) return;
+          openDayView(agendaDay);
+          setAgendaDay(null);
         }}
-        onEdit={() => toastSuccess(t("detail.editSoon"))}
+        onCreate={() => {
+          if (!agendaDay) return;
+          openCreateSchedule(singleWorker, agendaDay);
+          setAgendaDay(null);
+        }}
+        onScheduleClick={(schedule) => {
+          setAgendaDay(null);
+          openJobDetail(schedule);
+        }}
+        onRemoveSchedule={setDeleteTarget}
+        onRemoveTimeOff={setDeleteTimeOff}
+      />
+
+      <MarkUnavailableModal
+        open={timeOffOpen}
+        technician={createTech}
+        prefill={timeOffPrefill}
+        onClose={() => setTimeOffOpen(false)}
+        onSaved={onScheduleCreated}
+      />
+
+      <ConfirmDialog
+        open={deleteTarget != null}
+        title={t("detail.deleteConfirmTitle")}
+        body={t("detail.deleteConfirmBody")}
+        highlight={deleteTarget ? `${deleteTarget.worker_name} · ${deleteTarget.job_title}` : undefined}
+        confirmLabel={t("detail.delete")}
+        cancelLabel={t("modal.cancel")}
+        isBusy={deleting}
+        onClose={() => (!deleting ? setDeleteTarget(null) : undefined)}
+        onConfirm={() => void confirmRemoveSchedule()}
+      />
+
+      <ConfirmDialog
+        open={deleteTimeOff != null}
+        title={t("timeOff.deleteConfirmTitle")}
+        body={t("timeOff.deleteConfirmBody")}
+        highlight={
+          deleteTimeOff
+            ? `${deleteTimeOff.worker_name} · ${deleteTimeOff.reason.trim() || t("timeOff.blocked")}`
+            : undefined
+        }
+        confirmLabel={t("timeOff.remove")}
+        cancelLabel={t("modal.cancel")}
+        isBusy={deletingTimeOff}
+        onClose={() => (!deletingTimeOff ? setDeleteTimeOff(null) : undefined)}
+        onConfirm={() => void confirmRemoveTimeOff()}
       />
     </div>
   );

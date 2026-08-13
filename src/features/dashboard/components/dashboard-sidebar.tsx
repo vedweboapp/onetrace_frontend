@@ -12,6 +12,10 @@ import { useDashboardAppearanceStore } from "@/features/settings/personal-profil
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import { resolveDashboardAccent } from "@/features/dashboard/utils/accent-resolve.util";
 import {
+  JOB_CATEGORY,
+  parseJobCategoryParam,
+} from "@/features/jobs/constants/job-category";
+import {
   isProjectQuoteCategory,
   isServiceQuoteCategory,
   parseQuoteCategoryParam,
@@ -430,11 +434,13 @@ function DashboardMainSidebar({
   const itemsActive = pathname === itemsHref || pathname.startsWith(`${itemsHref}/`);
   const compositeActive = pathname === compositeHref || pathname.startsWith(`${compositeHref}/`);
   const itemsSectionActive = itemsActive || compositeActive;
-  const serviceJobHref = `${routes.dashboard.jobs}?job_category=servicejob`;
-  const projectJobHref = `${routes.dashboard.jobs}?job_category=projectjob`;
-  const currentJobCategory = searchParams.get("job_category");
-  const serviceJobActive = jobsActive && currentJobCategory === "servicejob";
-  const projectJobActive = jobsActive && currentJobCategory === "projectjob";
+  const serviceJobHref = `${routes.dashboard.jobs}?job_category=${JOB_CATEGORY.service}`;
+  const projectJobHref = `${routes.dashboard.jobs}?job_category=${JOB_CATEGORY.project}`;
+  const jobCategory = jobsActive ? parseJobCategoryParam(searchParams.get("job_category")) : undefined;
+  const serviceJobActive =
+    jobsActive &&
+    (jobCategory == null ? pathname === routes.dashboard.jobs : jobCategory === JOB_CATEGORY.service);
+  const projectJobActive = jobsActive && jobCategory === JOB_CATEGORY.project;
 
   return (
     <>
@@ -643,6 +649,7 @@ function DashboardSettingsSidebar({
   const pathname = usePathname();
   const customizationHref = routes.dashboard.settingsCustomization;
   const usersHref = routes.dashboard.settingsUsers;
+  const userGroupsHref = routes.dashboard.settingsUserGroups;
   const personalProfileHref = routes.dashboard.settingsPersonalProfile;
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
   const modulesHref = routes.dashboard.settingsModules;
@@ -652,7 +659,10 @@ function DashboardSettingsSidebar({
   const customizationActive = isCustomizationSettingsPath(pathname);
 
   const usersActive =
-    pathname === usersHref || pathname.startsWith(`${usersHref}/`);
+    pathname === usersHref ||
+    pathname.startsWith(`${usersHref}/`) ||
+    pathname === userGroupsHref ||
+    pathname.startsWith(`${userGroupsHref}/`);
   const personalProfileActive =
     pathname === personalProfileHref || pathname.startsWith(`${personalProfileHref}/`);
   const companySettingsActive =

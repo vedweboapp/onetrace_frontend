@@ -38,6 +38,8 @@ type Props = {
 
   onTriggerBlur?: (e: React.FocusEvent<HTMLButtonElement>) => void;
   className?: string;
+  /** Minimum width of the portaled option list (px). Useful for icon-only triggers. */
+  menuMinWidth?: number;
   listLabel?: string;
   disabled?: boolean;
 
@@ -176,6 +178,7 @@ export function CheckmarkSelect({
   onTriggerFocus,
   onTriggerBlur,
   className,
+  menuMinWidth,
   listLabel = "Options",
   disabled,
   invalid,
@@ -560,7 +563,7 @@ export function CheckmarkSelect({
                 position: "fixed",
                 top: dropdownPlacement.top,
                 left: dropdownPlacement.left,
-                width: Math.max(dropdownPlacement.width, size === "sm" ? 120 : 200),
+                width: Math.max(dropdownPlacement.width, menuMinWidth ?? (size === "sm" ? 200 : 240)),
                 transform: dropdownPlacement.transform,
                 zIndex: 200,
                 ["--dash-accent" as string]: portalAccent,
