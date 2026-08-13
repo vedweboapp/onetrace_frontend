@@ -62,102 +62,232 @@ export type FieldRuleState = {
 };
 
 export function buildFieldRuleState(rules: FormRule[], formValues: Record<string, any>) {
-  // Map of field_api_name -> FieldRuleState
-  const stateMap = new Map<string, FieldRuleState>();
+  const sortedRules = [...rules].sort((a, b) => a.sequence - b.sequence);
 
-  // 1. Pre-process fields to establish base state.
-  // If a field is targeted by ANY "show" action across all rules, its default state is hidden.
-  // Otherwise, default state is visible=true, required=false, disabled=false.
-  for (const rule of rules) {
+  // 1. Establish base state for all target fields across all rules.
+  // Any field targeted by a "show" action defaults to visible=false.
+  const baseDefaults = new Map<string, FieldRuleState>();
+
+  for (const rule of sortedRules) {
     if (rule.rule_type === "advanced" && rule.blocks) {
       for (const block of rule.blocks) {
         for (const output of block.output_fields || []) {
           const targetField = output.field_api_name;
-          if (!stateMap.has(targetField)) {
-            stateMap.set(targetField, { visible: true, required: false, disabled: false });
+          if (!targetField) continue;
+          if (!baseDefaults.has(targetField)) {
+            baseDefaults.set(targetField, { visible: true, required: false, disabled: false });
           }
           if (output.action === "show") {
-            stateMap.get(targetField)!.visible = false;
+            baseDefaults.get(targetField)!.visible = false;
+          }
+        }
+        for (const output of block.else_output_fields || []) {
+          const targetField = output.field_api_name;
+          if (!targetField) continue;
+          if (!baseDefaults.has(targetField)) {
+            baseDefaults.set(targetField, { visible: true, required: false, disabled: false });
+          }
+          if (output.action === "show") {
+            baseDefaults.get(targetField)!.visible = false;
           }
         }
       }
     } else {
       for (const output of rule.output_fields || []) {
         const targetField = output.field_api_name;
-        if (!stateMap.has(targetField)) {
-          stateMap.set(targetField, { visible: true, required: false, disabled: false });
+        if (!targetField) continue;
+        if (!baseDefaults.has(targetField)) {
+          baseDefaults.set(targetField, { visible: true, required: false, disabled: false });
         }
         if (output.action === "show") {
-          stateMap.get(targetField)!.visible = false;
+          baseDefaults.get(targetField)!.visible = false;
         }
       }
     }
   }
 
-  // 2. Evaluate rules sequentially and apply matched overrides.
-  const sortedRules = [...rules].sort((a, b) => a.sequence - b.sequence);
+  // Helper to clone state map
+  const cloneStateMap = (map: Map<string, FieldRuleState>): Map<string, FieldRuleState> => {
+    const next = new Map<string, FieldRuleState>();
+    map.forEach((val, key) => {
+      next.set(key, { ...val });
+    });
+    return next;
+  };
 
-  for (const rule of sortedRules) {
-    if (rule.rule_type === "advanced" && rule.blocks) {
-      for (const block of rule.blocks) {
-        const triggerValue = formValues[block.field_api_name];
-        const isMatch = evaluateCondition(triggerValue, block.condition, block.value);
+  // Helper to check if two state maps are identical
+  const areStateMapsEqual = (a: Map<string, FieldRuleState>, b: Map<string, FieldRuleState>): boolean => {
+    if (a.size !== b.size) return false;
+    for (const [key, valA] of a.entries()) {
+      const valB = b.get(key);
+      if (!valB) return false;
+      if (valA.visible !== valB.visible || valA.required !== valB.required || valA.disabled !== valB.disabled) {
+        return false;
+      }
+    }
+    return true;
+  };
 
-        if (isMatch) {
-          for (const output of block.output_fields || []) {
-            const targetField = output.field_api_name;
-            const currentState = stateMap.get(targetField)!;
+  // 2. Iterative Multi-Pass Evaluation to resolve dependency chains
+  let currentStateMap = cloneStateMap(baseDefaults);
+  const MAX_PASSES = 10;
 
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
+    const nextStateMap = cloneStateMap(baseDefaults);
+
+    for (const rule of sortedRules) {
+      if (rule.rule_type === "advanced" && rule.blocks) {
+        // Evaluate all blocks in this advanced rule first
+        const blockMatches = rule.blocks.map((block) => {
+          const triggerField = block.field_api_name;
+          if (!triggerField) return false;
+          const isTriggerVisible = !currentStateMap.has(triggerField) || currentStateMap.get(triggerField)!.visible !== false;
+          if (!isTriggerVisible) return false;
+          const triggerValue = formValues[triggerField];
+          return evaluateCondition(triggerValue, block.condition, block.value);
+        });
+
+        // Evaluate else conditions independently (else_condition on the same IF field)
+        const elseMatches = rule.blocks.map((block, bIdx) => {
+          if (!block.else_output_fields?.length) return false;
+          // If IF matched, else branch does not fire
+          if (blockMatches[bIdx]) return false;
+
+          const triggerField = block.field_api_name;
+          if (!triggerField) return false;
+
+          const isTriggerVisible = !currentStateMap.has(triggerField) || currentStateMap.get(triggerField)!.visible !== false;
+          if (!isTriggerVisible) return false;
+
+          // If else has its own explicit condition, evaluate it
+          if (block.else_condition) {
+            const triggerValue = formValues[triggerField];
+            return evaluateCondition(triggerValue, block.else_condition, block.else_value ?? null);
+          }
+
+          // No explicit else_condition means: fire whenever IF condition is false
+          return true;
+        });
+
+        // Collect all target fields with 'show' actions in this rule (from Then or Else blocks)
+        const showTargetFields = new Set<string>();
+        rule.blocks.forEach((block) => {
+          (block.output_fields || []).forEach((output) => {
+            if (output.field_api_name && output.action === "show") {
+              showTargetFields.add(output.field_api_name);
+            }
+          });
+          (block.else_output_fields || []).forEach((output) => {
+            if (output.field_api_name && output.action === "show") {
+              showTargetFields.add(output.field_api_name);
+            }
+          });
+        });
+
+        // Apply 'show' actions
+        showTargetFields.forEach((targetField) => {
+          let shouldShow = true;
+          for (let bIdx = 0; bIdx < rule.blocks!.length; bIdx++) {
+            const block = rule.blocks![bIdx];
+            const hasShowInThen = (block.output_fields || []).some(
+              (o) => o.field_api_name === targetField && o.action === "show"
+            );
+            const hasShowInElse = (block.else_output_fields || []).some(
+              (o) => o.field_api_name === targetField && o.action === "show"
+            );
+
+            if (hasShowInThen && !blockMatches[bIdx]) {
+              shouldShow = false;
+              break;
+            }
+            if (hasShowInElse && !elseMatches[bIdx]) {
+              shouldShow = false;
+              break;
+            }
+          }
+
+          if (shouldShow) {
+            const currentState = nextStateMap.get(targetField);
             if (currentState) {
-              switch (output.action) {
-                case "show":
-                  currentState.visible = true;
-                  break;
-                case "hide":
-                  currentState.visible = false;
-                  break;
-                case "require":
-                  currentState.required = true;
-                  break;
-                case "disable":
-                  currentState.disabled = true;
-                  break;
+              currentState.visible = true;
+            }
+          }
+        });
+
+        // Apply non-'show' actions for THEN (if matched) and ELSE (if else matched)
+        rule.blocks.forEach((block, bIdx) => {
+          // Apply THEN actions when IF matches
+          if (blockMatches[bIdx]) {
+            (block.output_fields || []).forEach((output) => {
+              const targetField = output.field_api_name;
+              if (!targetField) return;
+              const currentState = nextStateMap.get(targetField);
+              if (currentState) {
+                switch (output.action) {
+                  case "hide": currentState.visible = false; break;
+                  case "require": currentState.required = true; break;
+                  case "disable": currentState.disabled = true; break;
+                }
+              }
+            });
+          }
+          // Apply ELSE actions when else condition matches
+          if (elseMatches[bIdx]) {
+            (block.else_output_fields || []).forEach((output) => {
+              const targetField = output.field_api_name;
+              if (!targetField) return;
+              const currentState = nextStateMap.get(targetField);
+              if (currentState) {
+                switch (output.action) {
+                  case "hide": currentState.visible = false; break;
+                  case "require": currentState.required = true; break;
+                  case "disable": currentState.disabled = true; break;
+                }
+              }
+            });
+          }
+        });
+      } else {
+        // Simple rule evaluation
+        const triggerField = rule.field_api_name || "";
+        const isTriggerVisible = !triggerField || !currentStateMap.has(triggerField) || currentStateMap.get(triggerField)!.visible !== false;
+        
+        if (isTriggerVisible && triggerField) {
+          const triggerValue = formValues[triggerField];
+          const isMatch = evaluateCondition(triggerValue, rule.condition!, rule.value);
+
+          if (isMatch) {
+            for (const output of rule.output_fields || []) {
+              const targetField = output.field_api_name;
+              if (!targetField) continue;
+              const currentState = nextStateMap.get(targetField);
+              if (currentState) {
+                switch (output.action) {
+                  case "show":
+                    currentState.visible = true;
+                    break;
+                  case "hide":
+                    currentState.visible = false;
+                    break;
+                  case "require":
+                    currentState.required = true;
+                    break;
+                  case "disable":
+                    currentState.disabled = true;
+                    break;
+                }
               }
             }
           }
         }
       }
-    } else {
-      const triggerValue = formValues[rule.field_api_name || ""];
-      const isMatch = evaluateCondition(triggerValue, rule.condition!, rule.value);
-
-      if (isMatch) {
-        for (const output of rule.output_fields || []) {
-          const targetField = output.field_api_name;
-          
-          // State should already exist from step 1
-          const currentState = stateMap.get(targetField)!;
-
-          if (currentState) {
-            switch (output.action) {
-              case "show":
-                currentState.visible = true;
-                break;
-              case "hide":
-                currentState.visible = false;
-                break;
-              case "require":
-                currentState.required = true;
-                break;
-              case "disable":
-                currentState.disabled = true;
-                break;
-            }
-          }
-        }
-      }
     }
+
+    if (areStateMapsEqual(currentStateMap, nextStateMap)) {
+      break;
+    }
+    currentStateMap = nextStateMap;
   }
 
-  return stateMap;
+  return currentStateMap;
 }

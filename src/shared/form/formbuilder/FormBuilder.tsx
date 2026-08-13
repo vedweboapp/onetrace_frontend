@@ -1386,7 +1386,7 @@ export default function FormBuilderLayout({
   return (
 
     <div className="relative flex flex-col h-full -mx-4 -mt-5 lg:mx-0 lg:mt-0">
-      {
+      {/*
         showRuleTypeModal && (
           <RuleTypeModal
             isOpen={showRuleTypeModal}
@@ -1402,7 +1402,7 @@ export default function FormBuilderLayout({
             }}
           />
         )
-      }
+      */}
       {
         showRuleModal && (
           <FormRuleModal
@@ -1620,7 +1620,7 @@ export default function FormBuilderLayout({
                 <AppButton
                   onClick={() => {
                     setEditingRule(null);
-                    setShowRuleTypeModal(true);
+                    setShowAdvancedRuleModal(true);
                   }}
                 >
                   Add Rule

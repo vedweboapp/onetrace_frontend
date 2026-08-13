@@ -24,6 +24,9 @@ export type FormRuleBlock = {
   condition: RuleCondition;
   value: string | string[] | null;
   output_fields: FormRuleOutput[];
+  else_condition?: RuleCondition;
+  else_value?: string | string[] | null;
+  else_output_fields?: FormRuleOutput[];
 };
 
 export type FormRule = {
