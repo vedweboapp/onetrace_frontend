@@ -601,7 +601,13 @@ const FormAdvancedRuleModal = ({
                           <select
                             className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[`block-${idx}-triggerField`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
                             value={block.field_api_name}
-                            onChange={(e) => handleBlockChange(idx, { field_api_name: e.target.value })}
+                            onChange={(e) =>
+                              handleBlockChange(idx, {
+                                field_api_name: e.target.value,
+                                value: "",
+                                else_value: undefined,
+                              })
+                            }
                           >
                             <option value="">Select Field</option>
                             {availableIfFields.map((field) => (
