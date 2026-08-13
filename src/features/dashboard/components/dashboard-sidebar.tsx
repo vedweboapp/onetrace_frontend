@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
-import { BookOpen, BookUser, Building2, ChevronRight, ClipboardList, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, ShieldCheck, Store, Truck, UserRound } from "lucide-react";
+import { BookOpen, BookUser, Building2, CalendarDays, ShieldCheck, ChevronRight, ClipboardList, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -313,39 +313,39 @@ function SidebarCollapsedFlyout({
       </button>
       {open && typeof document !== "undefined"
         ? createPortal(
-            <div
-              role="menu"
-              aria-label={label}
-              className={cn(
-                "fixed z-[80] w-[9.5rem] rounded-lg border border-slate-200/90 bg-white p-1 shadow-md",
-                "ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
-              )}
-              style={{ top: pos.top, left: pos.left }}
-              onMouseEnter={openMenu}
-              onMouseLeave={scheduleClose}
-            >
-              <div className="flex flex-col gap-0.5">
-                {items.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    role="menuitem"
-                    onClick={() => setOpen(false)}
-                    className={cn(
-                      "rounded-md px-2.5 py-1.5 text-[13px] font-medium tracking-tight transition",
-                      item.active
-                        ? resolved.navActiveClassName
-                        : "text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white",
-                    )}
-                    style={item.active ? resolved.navActiveStyle : undefined}
-                  >
-                    <span className="block truncate">{item.label}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>,
-            document.body,
-          )
+          <div
+            role="menu"
+            aria-label={label}
+            className={cn(
+              "fixed z-[80] w-[9.5rem] rounded-lg border border-slate-200/90 bg-white p-1 shadow-md",
+              "ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
+            )}
+            style={{ top: pos.top, left: pos.left }}
+            onMouseEnter={openMenu}
+            onMouseLeave={scheduleClose}
+          >
+            <div className="flex flex-col gap-0.5">
+              {items.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  role="menuitem"
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "rounded-md px-2.5 py-1.5 text-[13px] font-medium tracking-tight transition",
+                    item.active
+                      ? resolved.navActiveClassName
+                      : "text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white",
+                  )}
+                  style={item.active ? resolved.navActiveStyle : undefined}
+                >
+                  <span className="block truncate">{item.label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>,
+          document.body,
+        )
         : null}
     </div>
   );
@@ -373,6 +373,7 @@ function DashboardMainSidebar({
   const invoicesHref = routes.dashboard.invoices;
   const purchaseOrdersHref = routes.dashboard.purchaseOrders;
   const jobsHref = routes.dashboard.jobs;
+  const schedulingHref = routes.dashboard.scheduling;
   const qrCodesHref = routes.dashboard.qrCodes;
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
@@ -414,6 +415,8 @@ function DashboardMainSidebar({
   const purchaseOrdersActive =
     pathname === purchaseOrdersHref || pathname.startsWith(`${purchaseOrdersHref}/`);
   const jobsActive = pathname === jobsHref || pathname.startsWith(`${jobsHref}/`);
+  const schedulingActive =
+    pathname === schedulingHref || pathname.startsWith(`${schedulingHref}/`);
   const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
@@ -548,6 +551,14 @@ function DashboardMainSidebar({
               active: projectJobActive,
             },
           ]}
+        />
+        <SidebarNavLink
+          href={schedulingHref}
+          active={schedulingActive}
+          label={t("scheduling")}
+          icon={CalendarDays}
+          expanded={expanded}
+          resolved={resolved}
         />
         <SidebarNavLink
           href={qrCodesHref}

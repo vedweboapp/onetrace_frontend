@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import { AppButton } from "@/shared/ui/app-button";
 import { FormRule, RuleCondition, FormRuleOutput, RuleAction, FormRuleBlock, ElseBlock } from "./form-rules.types";
+import { RuleFieldSelect, type RuleFieldOption } from "./rule-field-select";
 import MultiSelect from "../components/multi-select";
 import { PhoneNumberInput, DEFAULT_PHONE_COUNTRY } from "@/shared/ui";
 import { currencyList } from "../components/currency-list";
@@ -14,7 +15,7 @@ const FORM_BUILDER_DRAWER_HEIGHT = "h-[calc(100dvh-7rem)]";
 type FormAdvancedRuleModalProps = {
   onClose: () => void;
   onSave: (rule: FormRule) => void;
-  fields: { value: string; label: string; type?: string; options?: any[] }[];
+  fields: RuleFieldOption[];
   initialRule?: FormRule | null;
   existingRules?: FormRule[];
 };
@@ -104,6 +105,7 @@ const FormAdvancedRuleModal = ({
 
   const getAvailableIfFields = (blockIdx: number) => {
     return fields.filter((field) => {
+      if (field.optionKind === "section") return false;
       const typeLower = (field.type || "").toLowerCase();
       if (
         typeLower === "image_upload" ||
@@ -546,7 +548,11 @@ const FormAdvancedRuleModal = ({
             className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[errorKey] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
             value={blockValue} onChange={e => handleChange(e.target.value)}>
             <option value="">Select Option</option>
-            {fieldOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            {fieldOptions.map((opt) => {
+              const optionValue = typeof opt === "string" ? opt : opt.value;
+              const optionLabel = typeof opt === "string" ? opt : opt.label;
+              return <option key={optionValue} value={optionValue}>{optionLabel}</option>;
+            })}
           </select>
         );
       }
@@ -639,16 +645,15 @@ const FormAdvancedRuleModal = ({
                       </div>
                       <div className="flex-1 min-w-0 pb-3">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center w-full">
-                          <select
-                            className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[`block-${idx}-triggerField`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+                          <RuleFieldSelect
+                            className="w-full"
                             value={block.field_api_name}
-                            onChange={e => handleBlockChange(idx, { field_api_name: e.target.value, value: "", else_blocks: [] })}
-                          >
-                            <option value="">Select Field</option>
-                            {availableIfFields.map(field => (
-                              <option key={field.value} value={field.value}>{field.label}</option>
-                            ))}
-                          </select>
+                            onChange={(value) => handleBlockChange(idx, { field_api_name: value, value: "", else_blocks: [] })}
+                            options={availableIfFields}
+                            placeholder="Select Field"
+                            invalid={!!errors[`block-${idx}-triggerField`]}
+                            listLabel="Trigger fields"
+                          />
 
                           <select
                             className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[`block-${idx}-condition`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
@@ -690,14 +695,15 @@ const FormAdvancedRuleModal = ({
                                   {actionTypes.map(action => <option key={action.value} value={action.value}>{action.label}</option>)}
                                 </select>
 
-                                <select
-                                  className={`w-full p-2.5 border outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] ${!output.field_api_name && errors[`block-${idx}-outputs`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+                                <RuleFieldSelect
+                                  className="w-full"
                                   value={output.field_api_name}
-                                  onChange={e => handleThenOutputChange(idx, outIdx, "field_api_name", e.target.value)}
-                                >
-                                  <option value="">Select Target Field</option>
-                                  {availableThenFields.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                                </select>
+                                  onChange={(value) => handleThenOutputChange(idx, outIdx, "field_api_name", value)}
+                                  options={availableThenFields}
+                                  placeholder="Select Target Field"
+                                  invalid={!output.field_api_name && !!errors[`block-${idx}-outputs`]}
+                                  listLabel="Target fields and sections"
+                                />
 
                                 <AppButton
                                   type="button" variant="ghost"
@@ -804,14 +810,15 @@ const FormAdvancedRuleModal = ({
                                       >
                                         {actionTypes.map(action => <option key={action.value} value={action.value}>{action.label}</option>)}
                                       </select>
-                                      <select
-                                        className={`w-full p-2.5 border outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] ${!elseOutput.field_api_name && errors[`block-${idx}-else${elseBlockIdx}-outputs`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+                                      <RuleFieldSelect
+                                        className="w-full"
                                         value={elseOutput.field_api_name}
-                                        onChange={e => handleElseOutputChange(idx, elseBlockIdx, outIdx, "field_api_name", e.target.value)}
-                                      >
-                                        <option value="">Select Target Field</option>
-                                        {availableElseFields.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                                      </select>
+                                        onChange={(value) => handleElseOutputChange(idx, elseBlockIdx, outIdx, "field_api_name", value)}
+                                        options={availableElseFields}
+                                        placeholder="Select Target Field"
+                                        invalid={!elseOutput.field_api_name && !!errors[`block-${idx}-else${elseBlockIdx}-outputs`]}
+                                        listLabel="Target fields and sections"
+                                      />
                                       <AppButton
                                         type="button" variant="ghost"
                                         className={`text-red-500 p-2 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 ${elseBlock.else_output_fields.length <= 1 ? "opacity-50 cursor-not-allowed" : ""}`}

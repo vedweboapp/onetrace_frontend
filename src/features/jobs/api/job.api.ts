@@ -25,6 +25,8 @@ export type JobListFilters = {
   is_active?: boolean;
   job_status?: number;
   assigned_worker?: number;
+  /** Filter jobs belonging to a client (when supported by API). */
+  client?: number;
   job_category?: string;
 
   job_type?: string;
@@ -50,6 +52,9 @@ export async function fetchJobsPage(
   }
   if (typeof filters?.assigned_worker === "number" && Number.isFinite(filters.assigned_worker)) {
     params.assigned_worker = filters.assigned_worker;
+  }
+  if (typeof filters?.client === "number" && Number.isFinite(filters.client) && filters.client > 0) {
+    params.client = filters.client;
   }
   if (filters?.job_category) {
     params.job_category = filters.job_category;

@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
+import { Send } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
-import { fetchQuotation, updateQuotation } from "@/features/quotations/api/quotation.api";
+import { fetchQuotation, sendQuotation, updateQuotation } from "@/features/quotations/api/quotation.api";
 import {
   parseQuoteCategoryParam,
   resolveQuotationQuoteCategory,
@@ -299,6 +300,7 @@ function QuotationDetailActions({
 }) {
   const [statusOpen, setStatusOpen] = React.useState(false);
   const [statusSaving, setStatusSaving] = React.useState(false);
+  const [sending, setSending] = React.useState(false);
 
   async function handleStatusUpdate(status: string) {
     setStatusSaving(true);
@@ -314,10 +316,33 @@ function QuotationDetailActions({
     }
   }
 
+  async function handleSendQuotation() {
+    setSending(true);
+    try {
+      await sendQuotation(quotationId);
+      toastSuccess("Quotation sent successfully");
+    } catch (error) {
+      toastApiError(error, "Failed to send quotation");
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
     <div className="flex flex-wrap gap-2">
       <AppButton type="button" variant="secondary" size="sm" onClick={() => setStatusOpen(true)}>
         {t("updateStatus.action")}
+      </AppButton>
+      <AppButton
+        type="button"
+        variant="secondary"
+        size="sm"
+        loading={sending}
+        disabled={sending}
+        onClick={() => void handleSendQuotation()}
+      >
+        <Send className="mr-1.5 size-4" />
+        Send Quotation
       </AppButton>
       <QuotationExportDropdown quotationId={quotationId} quoteName={detail.quote_name} />
       <EntityDetailEditButton

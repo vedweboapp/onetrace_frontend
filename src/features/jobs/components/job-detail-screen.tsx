@@ -13,7 +13,7 @@ import { JobUpdateStatusDialog } from "@/features/jobs/components/job-update-sta
 import { JobQualityAssuranceControls } from "@/features/jobs/components/job-quality-assurance-controls";
 import type { Job } from "@/features/jobs/types/job.types";
 import { isQualityAssuranceDecided } from "@/features/jobs/types/quality-assurance.types";
-import { getJobAssignedWorkerId, getJobStatusId } from "@/features/jobs/utils/job-nested-fields.util";
+import { getJobAssignedWorkerId, getJobClientId, getJobStatusId } from "@/features/jobs/utils/job-nested-fields.util";
 import { isJobStatusCompleted } from "@/features/jobs/utils/quality-assurance-eligibility.util";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import {
@@ -25,6 +25,11 @@ import { routes } from "@/shared/config/routes";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
 import { EditButton } from "@/shared/ui/dashboard-action-buttons";
+import {
+  CreateScheduleModal,
+  type CreateSchedulePrefill,
+} from "@/features/scheduling/components/create-schedule-modal";
+import { splitApiDateTime, toDateKey } from "@/features/scheduling/utils/scheduling-week.util";
 import { buildCurrentPageBackHref, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 
 function normalizeJobCategory(value: string | null | undefined): string {
@@ -198,6 +203,19 @@ function JobDetailActions({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [scheduleOpen, setScheduleOpen] = React.useState(false);
+
+  const schedulePrefill = React.useMemo<CreateSchedulePrefill>(() => {
+    const clientId = getJobClientId(detail.client);
+    const workerId = getJobAssignedWorkerId(detail);
+    const start = splitApiDateTime(detail.start_date);
+    return {
+      clientId: clientId ?? undefined,
+      jobId: detail.id,
+      workerId: workerId ?? undefined,
+      dateKey: start.date || toDateKey(new Date()),
+    };
+  }, [detail]);
 
   function openEdit() {
     const jobCategory =
@@ -235,6 +253,9 @@ function JobDetailActions({
       {showQualityAssurance ? (
         <JobQualityAssuranceControls jobId={detail.id} onSuccess={onStatusSaved} />
       ) : null}
+      <AppButton type="button" variant="secondary" size="sm" onClick={() => setScheduleOpen(true)}>
+        {t("createSchedule")}
+      </AppButton>
       <AppButton type="button" variant="secondary" size="sm" onClick={onOpenStatus}>
         {t("updateStatus.action")}
       </AppButton>
@@ -246,6 +267,17 @@ function JobDetailActions({
         saving={statusSaving}
         onClose={onCloseStatus}
         onConfirm={(id) => void handleStatusUpdate(id)}
+      />
+      <CreateScheduleModal
+        open={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        technician={null}
+        defaultDateKey={schedulePrefill.dateKey ?? toDateKey(new Date())}
+        prefill={schedulePrefill}
+        onCreated={(scheduleId) => {
+          setScheduleOpen(false);
+          router.push(`${routes.dashboard.scheduling}?schedule=${scheduleId}`);
+        }}
       />
     </div>
   );

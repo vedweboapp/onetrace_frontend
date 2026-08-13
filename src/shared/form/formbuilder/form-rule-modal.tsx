@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import { AppButton } from "@/shared/ui/app-button";
 import { FormRule, RuleCondition, FormRuleOutput, RuleAction } from "./form-rules.types";
+import { RuleFieldSelect, type RuleFieldOption } from "./rule-field-select";
 import MultiSelect from "../components/multi-select";
 import { PhoneNumberInput, DEFAULT_PHONE_COUNTRY, surfaceInputClassName } from "@/shared/ui";
 import { currencyList } from "../components/currency-list";
@@ -15,7 +16,7 @@ const FORM_BUILDER_DRAWER_HEIGHT = "h-[calc(100dvh-7rem)]";
 type FormRuleModalProps = {
   onClose: () => void;
   onSave: (rule: FormRule) => void;
-  fields: { value: string; label: string; type?: string; options?: any[] }[];
+  fields: RuleFieldOption[];
   initialRule?: FormRule | null;
   existingRules?: FormRule[];
 };
@@ -97,6 +98,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
   const triggerFieldOptions = React.useMemo(() => {
     return fields.filter(
       (field) => {
+        if (field.optionKind === "section") return false;
         if (selectedOutputFieldNames.has(field.value)) return false;
         const typeLower = (field.type || "").toLowerCase();
         return (
@@ -290,11 +292,15 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
             onChange={(e) => setRuleValue(e.target.value)}
           >
             <option value="">Select Option</option>
-            {fieldOptions.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
+            {fieldOptions.map((opt) => {
+              const optionValue = typeof opt === "string" ? opt : opt.value;
+              const optionLabel = typeof opt === "string" ? opt : opt.label;
+              return (
+              <option key={optionValue} value={optionValue}>
+                {optionLabel}
               </option>
-            ))}
+              );
+            })}
           </select>
         );
       }
@@ -378,18 +384,15 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
               {/* IF SECTION */}
               <div className="flex flex-col gap-2">
                 <div className="flex gap-3 items-center">
-                  <select
-                    className={`w-64 p-2.5 outline-none border ${errors.triggerField ? 'border-red-500' : 'border-gray-300'} focus:ring-2  focus:ring-[color:var(--dash-accent)] rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+                  <RuleFieldSelect
+                    className="w-64"
                     value={triggerField}
-                    onChange={(e) => setTriggerField(e.target.value)}
-                  >
-                    <option value="">Select Field</option>
-                    {triggerFieldOptions.map((field) => (
-                      <option key={field.value} value={field.value}>
-                        {field.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setTriggerField}
+                    options={triggerFieldOptions}
+                    placeholder="Select Field"
+                    invalid={!!errors.triggerField}
+                    listLabel="Trigger fields"
+                  />
 
                   <select
                     className={`w-52 p-2.5 border outline-none ${errors.condition ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-[color:var(--dash-accent)] rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
@@ -437,16 +440,15 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
                           ))}
                         </select>
 
-                        <select
-                          className={`w-full p-2.5 focus:ring-2 outline-none focus:ring-[color:var(--dash-accent)] border ${!output.field_api_name && errors.outputs ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+                        <RuleFieldSelect
+                          className="w-full"
                           value={output.field_api_name}
-                          onChange={(e) => handleOutputChange(idx, "field_api_name", e.target.value)}
-                        >
-                          <option value="">Select Target Field</option>
-                          {availableFields.map(f => (
-                            <option key={f.value} value={f.value}>{f.label}</option>
-                          ))}
-                        </select>
+                          onChange={(value) => handleOutputChange(idx, "field_api_name", value)}
+                          options={availableFields}
+                          placeholder="Select Target Field"
+                          invalid={!output.field_api_name && !!errors.outputs}
+                          listLabel="Target fields and sections"
+                        />
 
                         <AppButton
                           type="button"

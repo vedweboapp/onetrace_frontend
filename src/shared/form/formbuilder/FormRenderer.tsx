@@ -26,8 +26,8 @@ import CountrySelect from "../components/CountrySelect";
 import StateSelect from "../components/StateSelect";
 import CitySelect from "../components/CitySelect";
 import RichTextEditor from "../components/rich-text-editor";
-import { FormRule } from "./form-rules.types";
-import { buildFieldRuleState, FieldRuleState } from "./form-rules-engine";
+import { FormRule, SECTION_RULE_TARGET_PREFIX } from "./form-rules.types";
+import { buildFieldRuleState, FieldRuleState, RuleTargetGroups } from "./form-rules-engine";
 import { surfaceInputClassName } from "@/shared/ui";
 import { signatureDataUrlToFileSync } from "@/shared/utils/signature-to-file.util";
 import { cn } from "@/core/utils/http.util";
@@ -47,6 +47,8 @@ interface Field {
 }
 
 interface Section {
+  _uid?: string;
+  id?: string | number;
   name?: string;
   column_count?: number;
   is_subform?: boolean;
@@ -219,6 +221,45 @@ const getEditorType = (field: Field) =>
   field.editor_type ??
   (field as { editorType?: string }).editorType ??
   field.properties?.validation_rules?.editor_type;
+
+const getSectionRuleTarget = (section: Section, index: number) =>
+  `${SECTION_RULE_TARGET_PREFIX}${section.sequence ?? index + 1}`;
+
+const buildRuleTargetGroups = (schema: Section[]): RuleTargetGroups => {
+  const groups: RuleTargetGroups = {};
+
+  schema.forEach((section, index) => {
+    const canonicalTarget = getSectionRuleTarget(section, index);
+    const fieldTargets = (section.fields || [])
+      .filter((field) => !field.is_deleted && field.api_name)
+      .map((field) => field.api_name);
+    const expandedTargets = [canonicalTarget, ...fieldTargets];
+    const aliases = [
+      canonicalTarget,
+      section.id != null ? `${SECTION_RULE_TARGET_PREFIX}${section.id}` : "",
+      section._uid ? `${SECTION_RULE_TARGET_PREFIX}${section._uid}` : "",
+      section.name ? `${SECTION_RULE_TARGET_PREFIX}${section.name}` : "",
+    ].filter(Boolean);
+
+    aliases.forEach((alias) => {
+      groups[alias] = expandedTargets;
+    });
+  });
+
+  return groups;
+};
+
+const mergeRuleStates = (
+  fieldState?: FieldRuleState,
+  sectionState?: FieldRuleState,
+): FieldRuleState | undefined => {
+  if (!fieldState && !sectionState) return undefined;
+  return {
+    visible: fieldState?.visible === false || sectionState?.visible === false ? false : true,
+    required: Boolean(fieldState?.required || sectionState?.required),
+    disabled: Boolean(fieldState?.disabled || sectionState?.disabled),
+  };
+};
 
 const buildRichTextValidations = (validations: Record<string, any>, field: Field) => {
   const rules = { ...validations };
@@ -860,12 +901,19 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
 
     const formValues = watch();
     
+    const ruleTargetGroups = React.useMemo(() => {
+      if (!Array.isArray(schema) || schema.length === 0) {
+        return {};
+      }
+      return buildRuleTargetGroups(schema);
+    }, [schema]);
+
     const fieldRuleState = React.useMemo(() => {
       if (!rules || rules.length === 0) {
         return new Map<string, FieldRuleState>();
       }
-      return buildFieldRuleState(rules, formValues);
-    }, [rules, formValues]);
+      return buildFieldRuleState(rules, formValues, ruleTargetGroups);
+    }, [rules, formValues, ruleTargetGroups]);
 
     const getError = (name: string) =>
       touchedFields?.[name] || isSubmitted ? (errors as any)[name] : undefined;
@@ -916,6 +964,9 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
           })
           .map(({ section }) => section)
           .map((section, sIdx) => {
+          const sectionRuleState = fieldRuleState.get(getSectionRuleTarget(section, sIdx));
+          if (sectionRuleState?.visible === false) return null;
+
           if (section.is_subform) {
             const sfKey =
               section.subform_field_name ||
@@ -987,7 +1038,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
                       isSubmitted={isSubmitted}
                       dirtyFields={dirtyFields}
                       sectionFields={section.fields}
-                      ruleState={fieldRuleState.get(f.api_name)}
+                      ruleState={mergeRuleStates(fieldRuleState.get(f.api_name), sectionRuleState)}
                       forceSingleColumn={forceSingleColumn}
                     />
                   ))}

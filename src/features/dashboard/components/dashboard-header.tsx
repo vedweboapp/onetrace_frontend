@@ -3,6 +3,7 @@
 import {
   BookUser,
   Building2,
+  CalendarDays,
   ClipboardList,
   FileText,
   FolderKanban,
@@ -102,6 +103,7 @@ export function DashboardHeader() {
   const jobsHref = routes.dashboard.jobs;
   const serviceJobHref = `${jobsHref}?job_category=servicejob`;
   const projectJobHref = `${jobsHref}?job_category=projectjob`;
+  const schedulingHref = routes.dashboard.scheduling;
   const qrCodesHref = routes.dashboard.qrCodes;
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
@@ -160,6 +162,8 @@ export function DashboardHeader() {
     : "";
   const serviceJobActive = jobsActive && jobCategoryParam === "servicejob";
   const projectJobActive = jobsActive && jobCategoryParam === "projectjob";
+  const schedulingActive =
+    pathname === schedulingHref || pathname.startsWith(`${schedulingHref}/`);
   const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
@@ -232,7 +236,9 @@ export function DashboardHeader() {
                       ? projectJobActive
                         ? tNav("projectJob")
                         : tNav("serviceJob")
-                      : qrCodesActive
+                      : schedulingActive
+                        ? tNav("scheduling")
+                        : qrCodesActive
                         ? tNav("qrCodes")
                         : groupsActive
                           ? tNav("groups")
@@ -420,6 +426,7 @@ export function DashboardHeader() {
                 { href: projectJobHref, label: tNav("flyoutProject"), active: projectJobActive },
               ]}
             />
+            <TopNavLink href={schedulingHref} label={tNav("scheduling")} icon={CalendarDays} active={schedulingActive} resolved={resolved} />
             <TopNavLink href={qrCodesHref} label={tNav("qrCodes")} icon={QrCode} active={qrCodesActive} resolved={resolved} />
             <TopNavLink href={projectsHref} label={tNav("projects")} icon={FolderKanban} active={projectsActive} resolved={resolved} />
             <TopNavLink href={groupsHref} label={tNav("groups")} icon={Layers} active={groupsActive} resolved={resolved} />

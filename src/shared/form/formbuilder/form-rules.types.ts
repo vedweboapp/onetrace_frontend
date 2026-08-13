@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const SECTION_RULE_TARGET_PREFIX = "__section__:";
+
 export type RuleCondition = 
   | 'is' 
   | 'is_not' 

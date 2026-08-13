@@ -21,7 +21,8 @@ import FormRenderer, { FormRendererRef } from "./FormRenderer";
 import FormRuleModal from "./form-rule-modal";
 import RuleTypeModal from "../components/RuleTypeModal";
 import FormAdvancedRuleModal from "./form-advanced-rule-modal";
-import { FormRule } from "./form-rules.types";
+import { FormRule, SECTION_RULE_TARGET_PREFIX } from "./form-rules.types";
+import type { RuleFieldOption } from "./rule-field-select";
 import { Edit2, Monitor, Smartphone, Trash2 } from "lucide-react";
 import type { FormBuilderApiHandlers } from "./form-builder.handlers";
 
@@ -50,13 +51,6 @@ interface Section {
   is_custom?: boolean;
   fields: Field[];
 }
-
-type RuleFieldOption = {
-  value: string;
-  label: string;
-  type?: string;
-  options?: any[];
-};
 
 /** Keep section.sequence aligned with builder order (active sections only). */
 const reindexSectionSequences = (sections: Section[]): Section[] => {
@@ -735,18 +729,37 @@ export default function FormBuilderLayout({
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [tempName, setTempName] = useState("");
 
+  const getSectionRuleTarget = (section: Section, index: number) =>
+    `${SECTION_RULE_TARGET_PREFIX}${section.sequence ?? index + 1}`;
+
   const ruleFieldOptions: RuleFieldOption[] = sections
     .filter((section) => !section.is_deleted)
-    .flatMap((section) =>
-      (section.fields || [])
+    .flatMap((section, sectionIndex) => {
+      const sectionLabel = section.name || "Untitled Section";
+      const sectionKey = String(section.sequence ?? sectionIndex + 1);
+      const sectionOption: RuleFieldOption = {
+        value: getSectionRuleTarget(section, sectionIndex),
+        label: `${sectionLabel} (Section)`,
+        type: "section",
+        sectionKey,
+        sectionLabel,
+        optionKind: "section",
+      };
+      const fieldOptions: RuleFieldOption[] = (section.fields || [])
         .filter((field) => !field.is_deleted && field.api_name)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
         .map((field) => ({
           value: field.api_name,
-          label: `${field.field_label || field.api_name || "Untitled Field"} (${section.name || "Untitled Section"})`,
+          label: field.field_label || field.api_name || "Untitled Field",
           type: field.field_type,
           options: field.options,
-        })),
-    );
+          sectionKey,
+          sectionLabel,
+          optionKind: "field",
+        }));
+
+      return [sectionOption, ...fieldOptions];
+    });
 
   const addFieldToSection = (sectionUid: string, fieldConfig: any) => {
     if (!sectionUid) return;
@@ -1703,20 +1716,6 @@ export default function FormBuilderLayout({
         <FieldConfigModal
           fieldType={showModal?.type}
           initialConfig={showModal?.config || null}
-          existingApiNames={sections
-            .filter((sec) => !sec.is_deleted)
-            .flatMap((sec) =>
-              sec.fields.filter(
-                (f) =>
-                  !f.is_deleted &&
-                  !(
-                    sec._uid === showModal?.sectionUid &&
-                    f._uid === showModal?._fieldUid
-                  ),
-              ),
-            )
-            .map((f) => f.api_name)
-            .filter((name): name is string => Boolean(name))}
           onSave={(config: any) => {
             if (showModal._fieldUid) {
               updateFieldInSection(

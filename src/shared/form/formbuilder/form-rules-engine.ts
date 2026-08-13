@@ -61,7 +61,21 @@ export type FieldRuleState = {
   disabled: boolean;
 };
 
-export function buildFieldRuleState(rules: FormRule[], formValues: Record<string, any>) {
+export type RuleTargetGroups = Record<string, string[]>;
+
+const expandRuleTarget = (
+  target: string,
+  targetGroups?: RuleTargetGroups,
+): string[] => {
+  if (!target) return [];
+  return targetGroups?.[target] || [target];
+};
+
+export function buildFieldRuleState(
+  rules: FormRule[],
+  formValues: Record<string, any>,
+  targetGroups?: RuleTargetGroups,
+) {
   const sortedRules = [...rules].sort((a, b) => a.sequence - b.sequence);
 
   // 1. Establish base state for all target fields across all rules.
@@ -75,48 +89,56 @@ export function buildFieldRuleState(rules: FormRule[], formValues: Record<string
         for (const output of block.output_fields || []) {
           const targetField = output.field_api_name;
           if (!targetField) continue;
-          if (!baseDefaults.has(targetField)) {
-            baseDefaults.set(targetField, { visible: true, required: false, disabled: false });
-          }
-          if (output.action === "show") {
-            baseDefaults.get(targetField)!.visible = false;
-          }
+          expandRuleTarget(targetField, targetGroups).forEach((expandedTarget) => {
+            if (!baseDefaults.has(expandedTarget)) {
+              baseDefaults.set(expandedTarget, { visible: true, required: false, disabled: false });
+            }
+            if (output.action === "show") {
+              baseDefaults.get(expandedTarget)!.visible = false;
+            }
+          });
         }
         // ELSE blocks (new multi-else)
         for (const eb of block.else_blocks || []) {
           for (const output of eb.else_output_fields || []) {
             const targetField = output.field_api_name;
             if (!targetField) continue;
-            if (!baseDefaults.has(targetField)) {
-              baseDefaults.set(targetField, { visible: true, required: false, disabled: false });
-            }
-            if (output.action === "show") {
-              baseDefaults.get(targetField)!.visible = false;
-            }
+            expandRuleTarget(targetField, targetGroups).forEach((expandedTarget) => {
+              if (!baseDefaults.has(expandedTarget)) {
+                baseDefaults.set(expandedTarget, { visible: true, required: false, disabled: false });
+              }
+              if (output.action === "show") {
+                baseDefaults.get(expandedTarget)!.visible = false;
+              }
+            });
           }
         }
         // Legacy single else_output_fields (backward compat)
         for (const output of block.else_output_fields || []) {
           const targetField = output.field_api_name;
           if (!targetField) continue;
-          if (!baseDefaults.has(targetField)) {
-            baseDefaults.set(targetField, { visible: true, required: false, disabled: false });
-          }
-          if (output.action === "show") {
-            baseDefaults.get(targetField)!.visible = false;
-          }
+          expandRuleTarget(targetField, targetGroups).forEach((expandedTarget) => {
+            if (!baseDefaults.has(expandedTarget)) {
+              baseDefaults.set(expandedTarget, { visible: true, required: false, disabled: false });
+            }
+            if (output.action === "show") {
+              baseDefaults.get(expandedTarget)!.visible = false;
+            }
+          });
         }
       }
     } else {
       for (const output of rule.output_fields || []) {
         const targetField = output.field_api_name;
         if (!targetField) continue;
-        if (!baseDefaults.has(targetField)) {
-          baseDefaults.set(targetField, { visible: true, required: false, disabled: false });
-        }
-        if (output.action === "show") {
-          baseDefaults.get(targetField)!.visible = false;
-        }
+        expandRuleTarget(targetField, targetGroups).forEach((expandedTarget) => {
+          if (!baseDefaults.has(expandedTarget)) {
+            baseDefaults.set(expandedTarget, { visible: true, required: false, disabled: false });
+          }
+          if (output.action === "show") {
+            baseDefaults.get(expandedTarget)!.visible = false;
+          }
+        });
       }
     }
   }
@@ -205,16 +227,22 @@ export function buildFieldRuleState(rules: FormRule[], formValues: Record<string
         const showTargetFields = new Set<string>();
         rule.blocks.forEach((block) => {
           (block.output_fields || []).forEach((output) => {
-            if (output.field_api_name && output.action === "show") showTargetFields.add(output.field_api_name);
+            if (output.field_api_name && output.action === "show") {
+              expandRuleTarget(output.field_api_name, targetGroups).forEach((target) => showTargetFields.add(target));
+            }
           });
           (block.else_blocks || []).forEach((eb) => {
             eb.else_output_fields.forEach((output) => {
-              if (output.field_api_name && output.action === "show") showTargetFields.add(output.field_api_name);
+              if (output.field_api_name && output.action === "show") {
+                expandRuleTarget(output.field_api_name, targetGroups).forEach((target) => showTargetFields.add(target));
+              }
             });
           });
           // Legacy
           (block.else_output_fields || []).forEach((output) => {
-            if (output.field_api_name && output.action === "show") showTargetFields.add(output.field_api_name);
+            if (output.field_api_name && output.action === "show") {
+              expandRuleTarget(output.field_api_name, targetGroups).forEach((target) => showTargetFields.add(target));
+            }
           });
         });
 
@@ -226,7 +254,7 @@ export function buildFieldRuleState(rules: FormRule[], formValues: Record<string
             const block = rule.blocks![bIdx];
             // Check THEN
             const hasShowInThen = (block.output_fields || []).some(
-              o => o.field_api_name === targetField && o.action === "show"
+              o => o.action === "show" && expandRuleTarget(o.field_api_name, targetGroups).includes(targetField)
             );
             if (hasShowInThen && blockMatches[bIdx]) {
               shouldShow = true;
@@ -236,7 +264,9 @@ export function buildFieldRuleState(rules: FormRule[], formValues: Record<string
             // Check each else block
             const ebMatches = elseBlockMatches[bIdx] || [];
             const hasShowInElse = (block.else_blocks || []).some((eb, ebIdx) =>
-              ebMatches[ebIdx] && eb.else_output_fields.some(o => o.field_api_name === targetField && o.action === "show")
+              ebMatches[ebIdx] && eb.else_output_fields.some(o =>
+                o.action === "show" && expandRuleTarget(o.field_api_name, targetGroups).includes(targetField)
+              )
             );
             if (hasShowInElse) {
               shouldShow = true;
@@ -245,7 +275,7 @@ export function buildFieldRuleState(rules: FormRule[], formValues: Record<string
 
             // Legacy
             const hasShowInLegacyElse = (block.else_output_fields || []).some(
-              o => o.field_api_name === targetField && o.action === "show"
+              o => o.action === "show" && expandRuleTarget(o.field_api_name, targetGroups).includes(targetField)
             );
             if (hasShowInLegacyElse && legacyElseMatches[bIdx]) {
               shouldShow = true;
@@ -266,14 +296,16 @@ export function buildFieldRuleState(rules: FormRule[], formValues: Record<string
             (block.output_fields || []).forEach((output) => {
               const targetField = output.field_api_name;
               if (!targetField) return;
-              const currentState = nextStateMap.get(targetField);
-              if (currentState) {
-                switch (output.action) {
-                  case "hide": currentState.visible = false; break;
-                  case "require": currentState.required = true; break;
-                  case "disable": currentState.disabled = true; break;
+              expandRuleTarget(targetField, targetGroups).forEach((expandedTarget) => {
+                const currentState = nextStateMap.get(expandedTarget);
+                if (currentState) {
+                  switch (output.action) {
+                    case "hide": currentState.visible = false; break;
+                    case "require": currentState.required = true; break;
+                    case "disable": currentState.disabled = true; break;
+                  }
                 }
-              }
+              });
             });
           }
 
@@ -284,14 +316,16 @@ export function buildFieldRuleState(rules: FormRule[], formValues: Record<string
             eb.else_output_fields.forEach((output) => {
               const targetField = output.field_api_name;
               if (!targetField) return;
-              const currentState = nextStateMap.get(targetField);
-              if (currentState) {
-                switch (output.action) {
-                  case "hide": currentState.visible = false; break;
-                  case "require": currentState.required = true; break;
-                  case "disable": currentState.disabled = true; break;
+              expandRuleTarget(targetField, targetGroups).forEach((expandedTarget) => {
+                const currentState = nextStateMap.get(expandedTarget);
+                if (currentState) {
+                  switch (output.action) {
+                    case "hide": currentState.visible = false; break;
+                    case "require": currentState.required = true; break;
+                    case "disable": currentState.disabled = true; break;
+                  }
                 }
-              }
+              });
             });
           });
 
@@ -300,14 +334,16 @@ export function buildFieldRuleState(rules: FormRule[], formValues: Record<string
             (block.else_output_fields || []).forEach((output) => {
               const targetField = output.field_api_name;
               if (!targetField) return;
-              const currentState = nextStateMap.get(targetField);
-              if (currentState) {
-                switch (output.action) {
-                  case "hide": currentState.visible = false; break;
-                  case "require": currentState.required = true; break;
-                  case "disable": currentState.disabled = true; break;
+              expandRuleTarget(targetField, targetGroups).forEach((expandedTarget) => {
+                const currentState = nextStateMap.get(expandedTarget);
+                if (currentState) {
+                  switch (output.action) {
+                    case "hide": currentState.visible = false; break;
+                    case "require": currentState.required = true; break;
+                    case "disable": currentState.disabled = true; break;
+                  }
                 }
-              }
+              });
             });
           }
         });
@@ -324,15 +360,17 @@ export function buildFieldRuleState(rules: FormRule[], formValues: Record<string
             for (const output of rule.output_fields || []) {
               const targetField = output.field_api_name;
               if (!targetField) continue;
-              const currentState = nextStateMap.get(targetField);
-              if (currentState) {
-                switch (output.action) {
-                  case "show": currentState.visible = true; break;
-                  case "hide": currentState.visible = false; break;
-                  case "require": currentState.required = true; break;
-                  case "disable": currentState.disabled = true; break;
+              expandRuleTarget(targetField, targetGroups).forEach((expandedTarget) => {
+                const currentState = nextStateMap.get(expandedTarget);
+                if (currentState) {
+                  switch (output.action) {
+                    case "show": currentState.visible = true; break;
+                    case "hide": currentState.visible = false; break;
+                    case "require": currentState.required = true; break;
+                    case "disable": currentState.disabled = true; break;
+                  }
                 }
-              }
+              });
             }
           }
         }
