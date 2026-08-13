@@ -3,6 +3,7 @@
 import {
   BookUser,
   Building2,
+  CalendarDays,
   ClipboardList,
   FileText,
   FolderKanban,
@@ -35,6 +36,10 @@ import { useDashboardAppearanceStore } from "@/features/settings/personal-profil
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import { resolveDashboardAccent } from "@/features/dashboard/utils/accent-resolve.util";
 import { dashboardContentHorizontalGutterClassName } from "@/shared/config/dashboard-shell";
+import {
+  JOB_CATEGORY,
+  parseJobCategoryParam,
+} from "@/features/jobs/constants/job-category";
 import {
   isProjectQuoteCategory,
   parseQuoteCategoryParam,
@@ -100,8 +105,9 @@ export function DashboardHeader() {
   const invoicesHref = routes.dashboard.invoices;
   const purchaseOrdersHref = routes.dashboard.purchaseOrders;
   const jobsHref = routes.dashboard.jobs;
-  const serviceJobHref = `${jobsHref}?job_category=servicejob`;
-  const projectJobHref = `${jobsHref}?job_category=projectjob`;
+  const serviceJobHref = `${jobsHref}?job_category=${JOB_CATEGORY.service}`;
+  const projectJobHref = `${jobsHref}?job_category=${JOB_CATEGORY.project}`;
+  const schedulingHref = routes.dashboard.scheduling;
   const qrCodesHref = routes.dashboard.qrCodes;
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
@@ -123,9 +129,13 @@ export function DashboardHeader() {
   const projectTypeHref = routes.dashboard.settingsProjectTypes;
   const installationTypeHref = routes.dashboard.settingsInstallationTypes;
   const vendorTypeHref = routes.dashboard.settingsVendorTypes;
+  const unitTypeHref = routes.dashboard.settingsUnitTypes;
+  const rejectionReasonHref = routes.dashboard.settingsRejectionReasons;
   const checklistTypeHref = routes.dashboard.settingsChecklistTypes;
+  const titleHref = routes.dashboard.settingsTitle;
   const projectFormsHref = routes.dashboard.settingsProjectForms;
   const usersHref = routes.dashboard.settingsUsers;
+  const userGroupsHref = routes.dashboard.settingsUserGroups;
   const integrationsHref = routes.dashboard.settingsIntegrations;
 
   const homeActive = pathname === homeHref;
@@ -155,11 +165,13 @@ export function DashboardHeader() {
   const purchaseOrdersActive =
     pathname === purchaseOrdersHref || pathname.startsWith(`${purchaseOrdersHref}/`);
   const jobsActive = pathname === jobsHref || pathname.startsWith(`${jobsHref}/`);
-  const jobCategoryParam = jobsActive
-    ? (searchParams.get("job_category") ?? "").toLowerCase().replace(/[^a-z]/g, "")
-    : "";
-  const serviceJobActive = jobsActive && jobCategoryParam === "servicejob";
-  const projectJobActive = jobsActive && jobCategoryParam === "projectjob";
+  const jobCategory = jobsActive ? parseJobCategoryParam(searchParams.get("job_category")) : undefined;
+  const serviceJobActive =
+    jobsActive &&
+    (jobCategory == null ? pathname === jobsHref : jobCategory === JOB_CATEGORY.service);
+  const projectJobActive = jobsActive && jobCategory === JOB_CATEGORY.project;
+  const schedulingActive =
+    pathname === schedulingHref || pathname.startsWith(`${schedulingHref}/`);
   const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
@@ -195,14 +207,23 @@ export function DashboardHeader() {
     pathname === installationTypeHref || pathname.startsWith(`${installationTypeHref}/`);
   const vendorTypeActive =
     pathname === vendorTypeHref || pathname.startsWith(`${vendorTypeHref}/`);
+  const unitTypeActive =
+    pathname === unitTypeHref || pathname.startsWith(`${unitTypeHref}/`);
+  const rejectionReasonActive =
+    pathname === rejectionReasonHref || pathname.startsWith(`${rejectionReasonHref}/`);
   const checklistTypeActive =
     pathname === checklistTypeHref || pathname.startsWith(`${checklistTypeHref}/`);
+  const titleActive = pathname === titleHref || pathname.startsWith(`${titleHref}/`);
   const projectFormsActive =
     pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
   const customizationHubActive =
     pathname === customizationHref || pathname.startsWith(`${customizationHref}/`);
   const customizationActive = isCustomizationSettingsPath(pathname);
-  const usersActive = pathname === usersHref || pathname.startsWith(`${usersHref}/`);
+  const usersActive =
+    pathname === usersHref ||
+    pathname.startsWith(`${usersHref}/`) ||
+    pathname === userGroupsHref ||
+    pathname.startsWith(`${userGroupsHref}/`);
   const integrationsActive =
     pathname === integrationsHref || pathname.startsWith(`${integrationsHref}/`);
 
@@ -232,7 +253,9 @@ export function DashboardHeader() {
                       ? projectJobActive
                         ? tNav("projectJob")
                         : tNav("serviceJob")
-                      : qrCodesActive
+                      : schedulingActive
+                        ? tNav("scheduling")
+                        : qrCodesActive
                         ? tNav("qrCodes")
                         : groupsActive
                           ? tNav("groups")
@@ -268,17 +291,23 @@ export function DashboardHeader() {
                                                         ? tSettingsNav("installationTypes")
                                                         : vendorTypeActive
                                                           ? tSettingsNav("vendorTypes")
-                                                          : checklistTypeActive
-                                                            ? tSettingsNav("checklistTypes")
-                                                            : projectTypeActive
-                                                              ? tSettingsNav("projectTypes")
-                                                              : usersActive
-                                                                ? tSettingsNav("users")
-                                                                : integrationsActive
-                                                                  ? tSettingsNav("integrations")
-                                                                  : projectFormsActive
-                                                                    ? tSettingsNav("projectForms")
-                                                                    : tNav("home");
+                                                          : unitTypeActive
+                                                            ? tSettingsNav("unitTypes")
+                                                            : rejectionReasonActive
+                                                              ? tSettingsNav("rejectionReasons")
+                                                              : checklistTypeActive
+                                                                ? tSettingsNav("checklistTypes")
+                                                                : titleActive
+                                                                  ? tSettingsNav("titles")
+                                                                  : projectTypeActive
+                                                                    ? tSettingsNav("projectTypes")
+                                                                    : usersActive
+                                                                      ? tSettingsNav("users")
+                                                                      : integrationsActive
+                                                                        ? tSettingsNav("integrations")
+                                                                        : projectFormsActive
+                                                                          ? tSettingsNav("projectForms")
+                                                                          : tNav("home");
 
   const sidebarToggle = !isHydrogen ? (
     <button
@@ -420,6 +449,7 @@ export function DashboardHeader() {
                 { href: projectJobHref, label: tNav("flyoutProject"), active: projectJobActive },
               ]}
             />
+            <TopNavLink href={schedulingHref} label={tNav("scheduling")} icon={CalendarDays} active={schedulingActive} resolved={resolved} />
             <TopNavLink href={qrCodesHref} label={tNav("qrCodes")} icon={QrCode} active={qrCodesActive} resolved={resolved} />
             <TopNavLink href={projectsHref} label={tNav("projects")} icon={FolderKanban} active={projectsActive} resolved={resolved} />
             <TopNavLink href={groupsHref} label={tNav("groups")} icon={Layers} active={groupsActive} resolved={resolved} />

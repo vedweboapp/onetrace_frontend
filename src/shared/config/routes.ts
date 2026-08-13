@@ -5,6 +5,10 @@ export const routes = {
     signUp: "/sign-up",
     forgotPassword: "/forgot-password",
   },
+  public: {
+    quotation: "/public/quotation",
+    qrCode: (orgId: string, qrUuid: string) => `/${orgId}/${qrUuid}`,
+  },
   dashboard: {
     root: "/home",
     clients: "/clients",
@@ -23,6 +27,7 @@ export const routes = {
       `/jobs/${jobId}/form?formId=${formId}&job_form_id=${job_form_id}`,
     jobPinDetail: (jobId: number | string, pinId: number | string) =>
       `/jobs/${jobId}/pins/${pinId}`,
+    scheduling: "/scheduling",
     qrCodes: "/qr-codes",
     projects: "/projects",
     projectPinDetail: (projectId: number | string, pinId: number | string, drawingId?: number | string) => {
@@ -47,9 +52,11 @@ export const routes = {
     settingsInstallationTypes: "/settings/installation-type",
     settingsVendorTypes: "/settings/vendor-type",
     settingsUnitTypes: "/settings/unit-type",
+    settingsRejectionReasons: "/settings/rejection-reason",
     settingsChecklistTypes: "/settings/checklist-type",
     settingsCustomization: "/settings/customization",
     settingsUsers: "/settings/users",
+    settingsUserGroups: "/settings/user-groups",
     settingsPersonalProfile: "/settings/personal-profile",
     settingsCompanySettings: "/settings/company-settings",
     documentation: "/documentation",

@@ -230,10 +230,10 @@ export type QuotationListItem = {
   quote_name: string;
   primary_customer_contact: number | null | QuotationContactNested;
   additional_customer_contact:
-    | number
-    | QuotationContactNested
-    | Array<number | QuotationContactNested>
-    | null;
+  | number
+  | QuotationContactNested
+  | Array<number | QuotationContactNested>
+  | null;
   site_contact: number | null | QuotationContactNested;
   tags?: Array<number | QuotationTagNested>;
   order_number: string | null;
@@ -266,6 +266,7 @@ export type QuotationDetail = QuotationListItem & {
   grand_total?: number | null;
   site_snapshot?: QuotationSiteSnapshot | null;
   site_snapshots?: QuotationSiteSnapshot[];
+  comment: string | null;
   sites?: Array<{ id: number; site_name: string }>;
 };
 

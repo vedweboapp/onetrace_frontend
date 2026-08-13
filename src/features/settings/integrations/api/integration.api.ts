@@ -9,8 +9,12 @@ import type {
   ZohoConnectResponse,
   ZohoConnectionDetails,
   ZohoKeyMappingData,
+  ZohoPullAllRecordsResponse,
   ZohoSaveKeyMappingPayload,
   ZohoSaveKeyMappingResponse,
+  ZohoSyncJob,
+  ZohoSyncJobStatusResponse,
+  ZohoSyncMode,
   ZohoWebhookSetupData,
 } from "../types/integration.types";
 
@@ -88,10 +92,32 @@ export async function fetchZohoKeyMapping(
   }
 
   const payload = unwrapPayload<ZohoKeyMappingData>(data);
+  const root = data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+  const fullSyncCount =
+    typeof payload.full_sync_count === "number"
+      ? payload.full_sync_count
+      : typeof root.full_sync_count === "number"
+        ? root.full_sync_count
+        : null;
+  const lastSyncedAt =
+    typeof payload.last_synced_at === "string"
+      ? payload.last_synced_at
+      : typeof root.last_synced_at === "string"
+        ? root.last_synced_at
+        : null;
+  const mappingSaved =
+    typeof payload.mapping_saved === "boolean"
+      ? payload.mapping_saved
+      : typeof root.mapping_saved === "boolean"
+        ? root.mapping_saved
+        : null;
   return {
     external_fields: normalizeFieldGroups(payload.external_fields),
     internal_fields: normalizeFieldGroups(payload.internal_fields),
     existing_mapping: Array.isArray(payload.existing_mapping) ? payload.existing_mapping : [],
+    full_sync_count: fullSyncCount,
+    last_synced_at: lastSyncedAt,
+    mapping_saved: mappingSaved,
   };
 }
 
@@ -123,27 +149,79 @@ export async function saveZohoKeyMapping(
   };
 }
 
+function readSyncJob(raw: unknown): ZohoSyncJob | null {
+  if (!raw || typeof raw !== "object") return null;
+  const source = raw as Record<string, unknown>;
+  const nested = source.data && typeof source.data === "object" ? (source.data as Record<string, unknown>) : null;
+  const jobRaw = (source.job ?? nested?.job) as Record<string, unknown> | undefined;
+  if (!jobRaw || typeof jobRaw !== "object") return null;
+  const id = Number(jobRaw.id);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  return {
+    id,
+    resource: typeof jobRaw.resource === "string" ? jobRaw.resource : "",
+    mode: typeof jobRaw.mode === "string" ? jobRaw.mode : "",
+    status: typeof jobRaw.status === "string" ? jobRaw.status : "",
+    current_page: Number(jobRaw.current_page) || 0,
+    next_page: Number(jobRaw.next_page) || 0,
+    processed_count: Number(jobRaw.processed_count) || 0,
+    created_count: Number(jobRaw.created_count) || 0,
+    updated_count: Number(jobRaw.updated_count) || 0,
+    restored_count: Number(jobRaw.restored_count) || 0,
+    skipped_count: Number(jobRaw.skipped_count) || 0,
+    error: typeof jobRaw.error === "string" ? jobRaw.error : null,
+    started_at: typeof jobRaw.started_at === "string" ? jobRaw.started_at : null,
+    completed_at: typeof jobRaw.completed_at === "string" ? jobRaw.completed_at : null,
+  };
+}
+
 export async function pullZohoHistoricalRecords(
   resource: string = ZOHO_DEFAULT_RESOURCE,
-): Promise<{ success?: boolean; message?: string }> {
+  mode: ZohoSyncMode = "full",
+): Promise<ZohoPullAllRecordsResponse> {
   const { data } = await api.post<
-    ApiEnvelope<{ message?: string }> | { success?: boolean; message?: string }
+    ApiEnvelope<ZohoPullAllRecordsResponse> | ZohoPullAllRecordsResponse
   >(INTEGRATION_PATHS.zohoPullAllRecords, {
     resource,
+    mode,
   });
 
   if (data && typeof data === "object" && "success" in data && data.success === false) {
-    assertApiSuccess(data as ApiEnvelope<{ message?: string }>);
+    assertApiSuccess(data as ApiEnvelope<ZohoPullAllRecordsResponse>);
   }
 
-  const raw = data as { success?: boolean; message?: string } & ApiEnvelope<{ message?: string }>;
+  const job = readSyncJob(data);
+  if (!job) {
+    throw new ApiBusinessError("Sync job was not returned by the server");
+  }
+  const raw = data as ZohoPullAllRecordsResponse & ApiEnvelope<ZohoPullAllRecordsResponse>;
   const nested = raw.data && typeof raw.data === "object" ? raw.data : null;
   return {
     success: raw.success ?? true,
     message:
       (typeof raw.message === "string" ? raw.message : undefined) ??
       (nested && typeof nested.message === "string" ? nested.message : undefined) ??
-      "Historical data pull started",
+      "Sync job queued",
+    job,
+  };
+}
+
+export async function fetchZohoSyncJobStatus(jobId: number): Promise<ZohoSyncJobStatusResponse> {
+  const { data } = await api.get<ApiEnvelope<ZohoSyncJobStatusResponse> | ZohoSyncJobStatusResponse>(
+    INTEGRATION_PATHS.zohoSyncJobStatus(jobId),
+  );
+
+  if (data && typeof data === "object" && "success" in data && data.success === false) {
+    assertApiSuccess(data as ApiEnvelope<ZohoSyncJobStatusResponse>);
+  }
+
+  const job = readSyncJob(data);
+  if (!job) {
+    throw new ApiBusinessError("Sync job status was not returned by the server");
+  }
+  return {
+    success: true,
+    job,
   };
 }
 

@@ -12,12 +12,15 @@ import {
 } from "@/features/settings/integrations/api/integration.paths";
 import {
   fetchZohoKeyMapping,
+  fetchZohoSyncJobStatus,
   pullZohoHistoricalRecords,
   saveZohoKeyMapping,
 } from "@/features/settings/integrations/api/integration.api";
 import type {
   ZohoFieldGroup,
   ZohoMappingRow,
+  ZohoSyncJob,
+  ZohoSyncMode,
 } from "@/features/settings/integrations/types/integration.types";
 import {
   buildGroupedMappingRows,
@@ -38,9 +41,44 @@ import { AppButton, CheckmarkSelect, SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import { DetailCollapsibleSection } from "@/shared/components/layout/detail-collapsible-section";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 
 const MAPPING_ROW_GRID =
   "grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_2.5rem_minmax(0,1fr)_2.5rem] lg:items-center";
+const SYNC_POLL_MS = 2500;
+
+function isSyncJobInProgress(status: string | undefined): boolean {
+  const value = (status ?? "").toLowerCase();
+  return value !== "" && !["succeeded", "success", "completed", "failed", "error", "cancelled"].includes(value);
+}
+
+function isSyncJobFailed(status: string | undefined): boolean {
+  const value = (status ?? "").toLowerCase();
+  return value === "failed" || value === "error";
+}
+
+function isSyncJobSucceeded(status: string | undefined): boolean {
+  const value = (status ?? "").toLowerCase();
+  return value === "succeeded" || value === "success" || value === "completed";
+}
+
+function syncStatusBadgeClass(status: string | undefined): string {
+  const value = (status ?? "").toLowerCase();
+  if (value === "queued" || value === "pending") {
+    return "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200";
+  }
+  if (value === "running" || value === "processing" || value === "in_progress") {
+    return "bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200";
+  }
+  if (isSyncJobSucceeded(value)) {
+    return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200";
+  }
+  if (isSyncJobFailed(value)) {
+    return "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200";
+  }
+  return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200";
+}
 
 function MappingArrow() {
   return (
@@ -100,16 +138,22 @@ export function ZohoKeyMappingForm({
 }: ZohoKeyMappingFormProps) {
   const t = useTranslations("Dashboard.integrations.zohoKeyMapping");
   const router = useRouter();
+  const dateFmt = useDashboardDateFormat();
 
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [pullingHistoricalData, setPullingHistoricalData] = React.useState(false);
+  const [syncJob, setSyncJob] = React.useState<ZohoSyncJob | null>(null);
+  const [fullSyncCount, setFullSyncCount] = React.useState<number | null>(null);
+  const [lastSyncedAt, setLastSyncedAt] = React.useState<string | null>(null);
+  const [mappingSaved, setMappingSaved] = React.useState(false);
   const [rows, setRows] = React.useState<ZohoMappingRow[]>([]);
   const [externalGroups, setExternalGroups] = React.useState<ZohoFieldGroup[]>([]);
   const [internalGroups, setInternalGroups] = React.useState<ZohoFieldGroup[]>([]);
   /** Zoho group selected once per SimHo section. */
   const [zohoGroupByInternal, setZohoGroupByInternal] = React.useState<Record<string, string>>({});
+  const pollTimerRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -126,6 +170,13 @@ export function ZohoKeyMappingForm({
         setInternalGroups(nextInternal);
         setExternalGroups(nextExternal);
         setZohoGroupByInternal(zohoByInternal);
+        setFullSyncCount(typeof data.full_sync_count === "number" ? data.full_sync_count : 0);
+        setLastSyncedAt(data.last_synced_at ?? null);
+        setMappingSaved(
+          typeof data.mapping_saved === "boolean"
+            ? data.mapping_saved
+            : (data.existing_mapping?.length ?? 0) > 0,
+        );
         setRows(
           nextRows.map((row) => ({
             ...row,
@@ -202,6 +253,7 @@ export function ZohoKeyMappingForm({
         mappings,
       });
       toastSuccess(result.message ?? t("saved"));
+      setMappingSaved(true);
       if (onSaveSuccess) {
         onSaveSuccess();
       } else {
@@ -214,16 +266,88 @@ export function ZohoKeyMappingForm({
     }
   }
 
-  async function handlePullHistoricalData() {
+  const stopSyncPolling = React.useCallback(() => {
+    if (pollTimerRef.current) {
+      clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+  }, []);
+
+  const refreshSyncMeta = React.useCallback(async () => {
+    try {
+      const data = await fetchZohoKeyMapping(resource);
+      setFullSyncCount(typeof data.full_sync_count === "number" ? data.full_sync_count : 0);
+      setLastSyncedAt(data.last_synced_at ?? null);
+      if (typeof data.mapping_saved === "boolean") setMappingSaved(data.mapping_saved);
+    } catch {
+      // Keep the last known sync meta if refresh fails.
+    }
+  }, [resource]);
+
+  const pollSyncJob = React.useCallback(
+    async (jobId: number) => {
+      try {
+        const result = await fetchZohoSyncJobStatus(jobId);
+        setSyncJob(result.job);
+        if (isSyncJobSucceeded(result.job.status)) {
+          stopSyncPolling();
+          setPullingHistoricalData(false);
+          toastSuccess(t("pullSyncComplete"));
+          await refreshSyncMeta();
+          return;
+        }
+        if (isSyncJobFailed(result.job.status)) {
+          stopSyncPolling();
+          setPullingHistoricalData(false);
+          toastError(result.job.error?.trim() || t("pullSyncFailed"));
+        }
+      } catch (error) {
+        stopSyncPolling();
+        setPullingHistoricalData(false);
+        toastApiError(error, t("pullSyncStatusError"));
+      }
+    },
+    [refreshSyncMeta, stopSyncPolling, t],
+  );
+
+  React.useEffect(() => {
+    return () => stopSyncPolling();
+  }, [stopSyncPolling]);
+
+  async function handlePullHistoricalData(mode: ZohoSyncMode) {
+    stopSyncPolling();
     setPullingHistoricalData(true);
     try {
-      const result = await pullZohoHistoricalRecords(resource);
+      const result = await pullZohoHistoricalRecords(resource, mode);
+      setSyncJob(result.job);
       toastSuccess(result.message ?? t("pullHistoricalDataSuccess"));
+      if (isSyncJobSucceeded(result.job.status)) {
+        setPullingHistoricalData(false);
+        await refreshSyncMeta();
+        return;
+      }
+      if (isSyncJobFailed(result.job.status)) {
+        setPullingHistoricalData(false);
+        toastError(result.job.error?.trim() || t("pullSyncFailed"));
+        return;
+      }
+      pollTimerRef.current = setInterval(() => {
+        void pollSyncJob(result.job.id);
+      }, SYNC_POLL_MS);
+      void pollSyncJob(result.job.id);
     } catch (error) {
-      toastApiError(error, t("pullHistoricalDataError"));
-    } finally {
       setPullingHistoricalData(false);
+      toastApiError(error, t("pullHistoricalDataError"));
     }
+  }
+
+  function syncStatusLabel(status: string): string {
+    const value = status.toLowerCase();
+    if (value === "queued" || value === "pending") return t("pullSyncStatusQueued");
+    if (value === "running" || value === "processing" || value === "in_progress") return t("pullSyncStatusRunning");
+    if (isSyncJobSucceeded(value)) return t("pullSyncStatusSucceeded");
+    if (isSyncJobFailed(value)) return t("pullSyncStatusFailed");
+    return status;
   }
 
   function handleCancel() {
@@ -451,7 +575,7 @@ export function ZohoKeyMappingForm({
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-900/50">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                   {t("pullHistoricalData")}
@@ -459,17 +583,87 @@ export function ZohoKeyMappingForm({
                 <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
                   {t("pullHistoricalDataDescription")}
                 </p>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium text-slate-700 dark:text-slate-300">
+                  <span>{t("pullFullSyncCount", { count: fullSyncCount ?? 0 })}</span>
+                  <span>
+                    {lastSyncedAt
+                      ? t("pullLastSynced", { datetime: formatFlexibleApiDate(lastSyncedAt, dateFmt) })
+                      : t("pullLastSyncedNever")}
+                  </span>
+                </div>
               </div>
-              <AppButton
-                type="button"
-                variant="secondary"
-                size="sm"
-                loading={pullingHistoricalData}
-                disabled={saving}
-                onClick={() => void handlePullHistoricalData()}
-              >
-                {t("pullHistoricalDataAction")}
-              </AppButton>
+              {pullingHistoricalData || isSyncJobInProgress(syncJob?.status) ? (
+                <div className="min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-950 sm:max-w-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold text-slate-900 dark:text-slate-100">{t("pullSyncInProgress")}</p>
+                    {syncJob?.status ? (
+                      <span
+                        className={cn(
+                          "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                          syncStatusBadgeClass(syncJob.status),
+                        )}
+                      >
+                        {syncStatusLabel(syncJob.status)}
+                      </span>
+                    ) : null}
+                  </div>
+                  {syncJob ? (
+                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-slate-600 dark:text-slate-400">
+                      <span>{t("pullSyncProcessed", { count: syncJob.processed_count })}</span>
+                      <span>{t("pullSyncCreated", { count: syncJob.created_count })}</span>
+                      <span>{t("pullSyncUpdated", { count: syncJob.updated_count })}</span>
+                      <span>{t("pullSyncRestored", { count: syncJob.restored_count })}</span>
+                      <span>{t("pullSyncSkipped", { count: syncJob.skipped_count })}</span>
+                    </div>
+                  ) : null}
+                  {syncJob?.error ? (
+                    <p className="mt-1.5 text-red-600 dark:text-red-400">{syncJob.error}</p>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  {syncJob?.status && (isSyncJobSucceeded(syncJob.status) || isSyncJobFailed(syncJob.status)) ? (
+                    <span
+                      className={cn(
+                        "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                        syncStatusBadgeClass(syncJob.status),
+                      )}
+                    >
+                      {syncStatusLabel(syncJob.status)}
+                    </span>
+                  ) : null}
+                  <span
+                    className="inline-flex"
+                    title={!mappingSaved ? t("pullSaveMappingFirst") : t("pullFullSyncHint")}
+                  >
+                    <AppButton
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={saving || !mappingSaved}
+                      onClick={() => void handlePullHistoricalData("full")}
+                    >
+                      {t("pullFullSync")}
+                    </AppButton>
+                  </span>
+                  {(fullSyncCount ?? 0) > 0 ? (
+                    <span
+                      className="inline-flex"
+                      title={!mappingSaved ? t("pullSaveMappingFirst") : t("pullIncrementalSyncHint")}
+                    >
+                      <AppButton
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={saving || !mappingSaved}
+                        onClick={() => void handlePullHistoricalData("incremental")}
+                      >
+                        {t("pullIncrementalSync")}
+                      </AppButton>
+                    </span>
+                  ) : null}
+                </div>
+              )}
             </div>
           </div>
         </div>

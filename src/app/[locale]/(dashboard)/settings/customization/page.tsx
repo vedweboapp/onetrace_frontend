@@ -10,17 +10,15 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function DashboardCustomizationSettingsPage() {
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      <Suspense
-        fallback={
-          <div className="space-y-2 p-6">
-            <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-            <div className="h-40 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
-          </div>
-        }
-      >
-        <CustomizationSettingsHub />
-      </Suspense>
-    </div>
+    <Suspense
+      fallback={
+        <div className="space-y-2">
+          <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+          <div className="h-40 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
+        </div>
+      }
+    >
+      <CustomizationSettingsHub />
+    </Suspense>
   );
 }

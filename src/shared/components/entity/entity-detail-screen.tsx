@@ -43,6 +43,8 @@ export type EntityDetailScreenProps<T> = {
   onDetailChange?: (detail: T | null) => void;
   footer?: ReactNode;
   className?: string;
+  /** When false, skip the white SurfaceShell wrapper (e.g. full scheduling calendar). */
+  wrapSurface?: boolean;
 };
 
 export function EntityDetailScreen<T>({
@@ -61,6 +63,7 @@ export function EntityDetailScreen<T>({
   onDetailChange,
   footer,
   className,
+  wrapSurface = true,
 }: EntityDetailScreenProps<T>) {
   const listBack = useEntityDetailBack(listSection, listRoute);
   const { detail, loading, error, retry, dateFmt } = useEntityDetailScreen({
@@ -104,9 +107,13 @@ export function EntityDetailScreen<T>({
         actions={!loading && !error && detail && actions ? actions({ detail, listBack, retry }) : null}
       />
 
-      <SurfaceShell className={cn(detailRecordSurfaceShellClassName, "mt-3")}>
-        {renderSurface ? renderSurface(screenCtx) : defaultSurface}
-      </SurfaceShell>
+      {wrapSurface ? (
+        <SurfaceShell className={cn(detailRecordSurfaceShellClassName, "mt-3")}>
+          {renderSurface ? renderSurface(screenCtx) : defaultSurface}
+        </SurfaceShell>
+      ) : (
+        (renderSurface ? renderSurface(screenCtx) : defaultSurface)
+      )}
 
       {footer}
     </div>

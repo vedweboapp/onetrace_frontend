@@ -1,4 +1,5 @@
 import type { EntityAddress, EntityAddressPayload } from "@/shared/types/entity-address.types";
+import type { UserAvailabilityPayloadRow } from "@/features/users/types/user-availability.types";
 
 export type AppUserRef = {
   id: number;
@@ -24,6 +25,7 @@ export type UserDetail = {
   addresses?: EntityAddress[] | null;
   base_pay?: string | number | null;
   base_pay_type?: UserBasePayType | string | null;
+  available_days?: UserAvailabilityPayloadRow[] | null;
 };
 
 export type Role = {
@@ -41,6 +43,7 @@ export type UserProfile = {
   addresses?: EntityAddress[] | null;
   base_pay?: string | number | null;
   base_pay_type?: UserBasePayType | string | null;
+  available_days?: UserAvailabilityPayloadRow[] | null;
 };
 
 export type UserPagination = {
@@ -69,6 +72,7 @@ export type InviteUserPayload = {
   addresses?: EntityAddressPayload[];
   base_pay?: number | null;
   base_pay_type?: UserBasePayType | null;
+  available_days?: UserAvailabilityPayloadRow[];
 };
 
 export type UpdateUserProfilePayload = Partial<{
@@ -81,4 +85,5 @@ export type UpdateUserProfilePayload = Partial<{
   addresses: EntityAddressPayload[];
   base_pay: number | null;
   base_pay_type: UserBasePayType | null;
+  available_days?: UserAvailabilityPayloadRow[];
 }>;

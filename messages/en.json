@@ -153,6 +153,14 @@
       "drawingPreviewAlt": "Pin drawing preview",
       "pinMarker": "Pin marker",
       "pinPreviewUnavailable": "Pin preview unavailable"
+    },
+    "qrCode": {
+      "pageTitle": "QR code",
+      "pageDescription": "Public QR code scan page.",
+      "eyebrow": "QR code",
+      "title": "QR code",
+      "noDataTitle": "No data found",
+      "noDataDescription": "This QR code is not assigned yet, so there is nothing to show."
     }
   },
   "Dashboard": {
@@ -254,6 +262,7 @@
       "projectJob": "Project Jobs",
       "flyoutService": "Service",
       "flyoutProject": "Project",
+      "scheduling": "Scheduling",
       "qrCodes": "QR codes",
       "projects": "Projects",
       "groups": "Groups",
@@ -275,10 +284,12 @@
       "jobStatus": "Job Statuses",
       "materialStatus": "Material Statuses",
       "tags": "Tags",
+      "titles": "Titles",
       "projectTypes": "Project Types",
       "installationTypes": "Installation Types",
       "vendorTypes": "Vendor Types",
       "unitTypes": "Unit Types",
+      "rejectionReasons": "Rejection Reasons",
       "checklistTypes": "Checklist Types",
       "users": "Users",
       "personalProfile": "Personal Profile",
@@ -292,7 +303,7 @@
       "customization": {
         "label": "Customization",
         "hubTitle": "Customization",
-        "hubDescription": "Choose what to configure — Project Types, Installation Types, Vendor Types, Unit Types, Checklist Types, Project Statuses, Pin Statuses, Job Statuses, Material Statuses, Tags, and Titles.",
+        "hubDescription": "Choose what to configure — Project Types, Installation Types, Vendor Types, Unit Types, Rejection Reasons, Checklist Types, Project Statuses, Pin Statuses, Job Statuses, Material Statuses, Tags, and Titles.",
         "backToHub": "Back to customization",
         "items": {
           "projectTypes": {
@@ -310,6 +321,10 @@
           "unitTypes": {
             "title": "Unit Types",
             "description": "Units of measure such as Kg, box, or metre."
+          },
+          "rejectionReasons": {
+            "title": "Rejection Reasons",
+            "description": "Reasons used when rejecting quality checks, materials, or related work."
           },
           "checklistTypes": {
             "title": "Checklist Types",
@@ -386,6 +401,27 @@
         "pullHistoricalDataDescription": "Import existing Zoho records for this resource after your mappings are saved.",
         "pullHistoricalDataSuccess": "Historical data pull started",
         "pullHistoricalDataError": "Failed to start the historical data pull. Please try again.",
+        "pullFullSync": "Full sync",
+        "pullIncrementalSync": "Incremental sync",
+        "pullFullSyncHint": "Import all Zoho records for this resource.",
+        "pullIncrementalSyncHint": "Import only records changed since the last sync.",
+        "pullSaveMappingFirst": "Save mapping before pulling data.",
+        "pullFullSyncCount": "Total syncs: {count}",
+        "pullLastSynced": "Last synced: {datetime}",
+        "pullLastSyncedNever": "Last synced: Never",
+        "pullSyncInProgress": "Sync in progress…",
+        "pullSyncComplete": "Sync completed",
+        "pullSyncFailed": "Sync failed",
+        "pullSyncStatusQueued": "Queued",
+        "pullSyncStatusRunning": "Running",
+        "pullSyncStatusSucceeded": "Succeeded",
+        "pullSyncStatusFailed": "Failed",
+        "pullSyncProcessed": "Processed: {count}",
+        "pullSyncCreated": "Created: {count}",
+        "pullSyncUpdated": "Updated: {count}",
+        "pullSyncRestored": "Restored: {count}",
+        "pullSyncSkipped": "Skipped: {count}",
+        "pullSyncStatusError": "Failed to check sync status. Please try again.",
         "saveMapping": "Save mapping",
         "cancel": "Cancel",
         "loadError": "Failed to load field mapping options. Please try again.",
@@ -426,7 +462,8 @@
         "configureMapping": "Configuration",
         "connectionDetailsTitle": "Connection details",
         "connectionDetailsSubtitle": "Status and sync overview for this integration.",
-        "reconnect": "Connect",
+        "reconnect": "Reconnect",
+        "connectAction": "Connect",
         "webhookTitle": "Custom webhook setup",
         "backToDetails": "Back to details",
         "backToIntegrations": "Back to integrations",
@@ -1053,6 +1090,58 @@
       "validationName": "Enter a unit name.",
       "validationShortForm": "Enter a unit short form (e.g. kg)."
     },
+    "rejectionReasons": {
+      "metaTitle": "Rejection Reasons",
+      "title": "Rejection Reasons",
+      "subtitle": "Manage reasons used when rejecting work or materials.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "filterState": "Active state",
+      "table": {
+        "name": "Reason",
+        "status": "Status",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "emptyTitle": "No rejection reasons yet",
+      "emptyDescription": "Create your first rejection reason (e.g. Damaged Product, Wrong Item).",
+      "loadError": "Could not load rejection reasons. Try again.",
+      "modal": {
+        "createTitle": "New rejection reason",
+        "editTitle": "Edit rejection reason",
+        "name": "Name",
+        "namePlaceholder": "e.g. Damaged Product",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this rejection reason?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} rejection reasons",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Rejection reason updated",
+      "created": "Rejection reason created",
+      "deleted": "Rejection reason deleted",
+      "activatedToast": "Rejection reason activated",
+      "deactivatedToast": "Rejection reason deactivated",
+      "toggleActiveError": "Could not update rejection reason status. Try again.",
+      "validationName": "Enter a rejection reason name."
+    },
     "titleSettings": {
       "metaTitle": "Titles",
       "title": "Titles",
@@ -1402,6 +1491,11 @@
       "detailMetaTitle": "User details",
       "title": "Users",
       "subtitle": "Invite and manage users in your organization.",
+      "tabs": {
+        "users": "Users",
+        "groups": "Groups",
+        "aria": "Users sections"
+      },
       "invite": "Add",
       "edit": "Edit",
       "loadError": "Could not load users. Try again.",
@@ -1445,7 +1539,24 @@
         "city": "City",
         "pincode": "Pincode",
         "inviteStatus": "Invite status",
-        "invitationSentAt": "Invitation sent at"
+        "invitationSentAt": "Invitation sent at",
+        "availableDays": "Available days",
+        "availableDaysHint": "Select the days and times this user is available to work."
+      },
+      "availability": {
+        "day": "Day",
+        "available": "Available",
+        "from": "From",
+        "to": "To",
+        "days": {
+          "monday": "Monday",
+          "tuesday": "Tuesday",
+          "wednesday": "Wednesday",
+          "thursday": "Thursday",
+          "friday": "Friday",
+          "saturday": "Saturday",
+          "sunday": "Sunday"
+        }
       },
       "addresses": {
         "add": "Add address",
@@ -1485,7 +1596,9 @@
         "country": "Select country.",
         "state": "Select state.",
         "city": "Select city.",
-        "pincode": "Enter pincode."
+        "pincode": "Enter pincode.",
+        "availabilityTime": "Enter start and end time for each available day.",
+        "availabilityRange": "End time must be after start time."
       },
       "modal": {
         "save": "Save",
@@ -1497,13 +1610,78 @@
         "backAria": "Back to users list",
         "editWithIcon": "Edit",
         "sectionOverview": "Overview",
-        "addressUnavailable": "No addresses on file."
+        "addressUnavailable": "No addresses on file.",
+        "noAvailability": "No available days set.",
+        "tabsAria": "User detail sections",
+        "tabs": {
+          "overview": "Overview",
+          "scheduling": "Scheduling"
+        }
       },
       "page": {
         "createTitle": "Invite user",
         "createSubtitle": "Fill in user details and send invitation.",
         "editTitle": "Edit",
         "editSubtitle": "Update user details and save changes."
+      }
+    },
+    "userGroups": {
+      "metaTitle": "User groups",
+      "detailMetaTitle": "Group details",
+      "title": "Groups",
+      "subtitle": "Group users for scheduling and assignments.",
+      "edit": "Edit",
+      "delete": "Delete",
+      "loadError": "Could not load user groups. Try again.",
+      "detailLoadError": "Could not load group details. Try again.",
+      "usersLoadError": "Could not load users. Try again.",
+      "createdToast": "Group created",
+      "updatedToast": "Group updated",
+      "deleted": "Group deleted",
+      "deleteError": "Could not delete the group. Try again.",
+      "emptyTitle": "No user groups yet",
+      "emptyDescription": "Create a group, then add users to it.",
+      "pageLabel": "Showing {start}-{end} of {total} groups",
+      "prev": "Previous",
+      "next": "Next",
+      "table": {
+        "name": "Group name",
+        "members": "Users",
+        "noMembers": "No users",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "fields": {
+        "name": "Group name",
+        "users": "Users"
+      },
+      "placeholders": {
+        "name": "e.g. Field technicians"
+      },
+      "picker": {
+        "available": "Available users",
+        "selected": "Selected users",
+        "emptyAvailable": "No more users to add",
+        "emptySelected": "Select users to add to this group"
+      },
+      "validation": {
+        "name": "Enter a group name.",
+        "users": "Select at least one user."
+      },
+      "modal": {
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this group?",
+      "deleteConfirmBody": "Users are not deleted. Only the group is removed.",
+      "detail": {
+        "backAria": "Back to groups list",
+        "createdAt": "Created",
+        "byUser": "By {user}"
+      },
+      "page": {
+        "createTitle": "New group",
+        "editTitle": "Edit group"
       }
     },
     "clients": {
@@ -2329,7 +2507,8 @@
         "status": "Active state",
         "createdAt": "Created",
         "updatedAt": "Last updated",
-        "createdBy": "Created by"
+        "createdBy": "Created by",
+        "clientResponse": "Client response"
       },
       "additionalContacts": {
         "add": "Add additional contact",
@@ -3063,6 +3242,160 @@
         "lineBackAria": "Back to dispatch"
       }
     },
+    "scheduling": {
+      "metaTitle": "Scheduling",
+      "title": "Scheduling",
+      "subtitle": "Plan worker schedules on the calendar.",
+      "technicians": "Technicians",
+      "searchTechnicians": "Search technicians…",
+      "searchUsers": "Search users…",
+      "closeSearch": "Close search",
+      "backToUsers": "Back to all users",
+      "workerColumn": "Worker",
+      "usersColumn": "Users",
+      "thisWeek": "This week",
+      "thisMonth": "This month",
+      "today": "Today",
+      "viewMonth": "Month",
+      "viewWeek": "Week",
+      "viewDay": "Day",
+      "monthMoreSchedules": "+{count} more",
+      "allClients": "All clients",
+      "allJobs": "All jobs",
+      "allProjects": "All projects",
+      "allWorkers": "All workers",
+      "allUsers": "All users",
+      "allUserGroups": "All groups",
+      "createSchedule": "Create Schedule",
+      "removeSchedule": "Remove schedule",
+      "emptyTechnicians": "No technicians found.",
+      "emptyUsers": "No users found.",
+      "emptyUsersHint": "Try another group or clear the search to see users.",
+      "clearPeopleFilters": "Clear filters",
+      "legendAvailable": "Available",
+      "legendUnavailable": "Unavailable",
+      "legendScheduled": "Scheduled",
+      "legendTimeOff": "Time off",
+      "legendHint": "Green hours are when the user is available.",
+      "legendHintDrag": "Drag across the timeline to book a job.",
+      "legendHintTimeOff": "Drag across the timeline to mark time off.",
+      "bookJob": "Book job",
+      "markTimeOff": "Time off",
+      "offDuty": "Off",
+      "availableHoursNote": "Available {hours}",
+      "monthJobCount": "{count} jobs",
+      "monthTimeOffCount": "{count} time off",
+      "conflict": {
+        "booked": "That time is already scheduled.",
+        "unavailable": "That time is outside the user’s available hours.",
+        "timeOff": "That time is marked as time off.",
+        "invalidRange": "Choose an end time after the start time."
+      },
+      "agenda": {
+        "title": "Day schedule",
+        "subtitle": "{jobs} jobs · {timeOff} time off",
+        "openDay": "Day view",
+        "emptyJobs": "No jobs scheduled on this day.",
+        "emptyTimeOff": "No time off on this day.",
+        "jobsTab": "Jobs",
+        "timeOffTab": "Time off",
+        "tabsAria": "Day schedule sections",
+        "searchPlaceholder": "Search jobs or users…",
+        "clientLine": "Client – {name}",
+        "assignToLine": "Assign to – {name}"
+      },
+      "loadError": "Could not load schedules. Try again.",
+      "noSchedules": "No schedules",
+      "modal": {
+        "title": "Create Schedule",
+        "rescheduleTitle": "Reschedule",
+        "currentTitle": "Current title — {title}",
+        "technicianFallbackTitle": "Technician",
+        "cancel": "Cancel",
+        "save": "Create Schedule",
+        "saveReschedule": "Save schedule",
+        "saving": "Creating…",
+        "savingReschedule": "Saving…",
+        "successToast": "Schedule created",
+        "successRescheduleToast": "Schedule updated",
+        "errorToast": "Could not create the schedule. Try again.",
+        "errorRescheduleToast": "Could not update the schedule. Try again.",
+        "noUnassignedJobs": "No unassigned jobs for this client.",
+        "loadingJobs": "Loading jobs…"
+      },
+      "timeOff": {
+        "title": "Mark unavailable",
+        "subtitle": "Block this time so jobs are not booked here.",
+        "reason": "Reason",
+        "reasonPlaceholder": "e.g. Leave, training, travel…",
+        "save": "Save time off",
+        "saving": "Saving…",
+        "cancel": "Cancel",
+        "blocked": "Time off",
+        "remove": "Remove time off",
+        "successToast": "Time off saved",
+        "errorToast": "Could not save time off. Try again.",
+        "deletedToast": "Time off removed",
+        "deleteError": "Could not remove time off. Try again.",
+        "deleteConfirmTitle": "Remove time off?",
+        "deleteConfirmBody": "This blocked time will be available again on the calendar."
+      },
+      "detail": {
+        "title": "Schedule on {date}",
+        "close": "Close",
+        "moreOptions": "More options",
+        "edit": "Edit",
+        "createTimesheet": "Create Timesheet",
+        "findReplacement": "Find Replacement",
+        "delete": "Delete",
+        "allDay": "All day",
+        "recurrenceDaily": "Repeats Daily",
+        "recurrenceWeekly": "Repeats Weekly",
+        "recurrenceEnds": "Repeat ends on {date}",
+        "deletedToast": "Schedule deleted",
+        "deleteError": "Could not delete the schedule. Try again.",
+        "deleteConfirmTitle": "Delete schedule?",
+        "deleteConfirmBody": "This schedule will be removed from the calendar.",
+        "timesheetSoon": "Create timesheet will be available when the API is connected.",
+        "replacementSoon": "Find replacement will be available when the API is connected.",
+        "editSoon": "Edit schedule will be available when the API is connected."
+      },
+      "fields": {
+        "worker": "Worker",
+        "client": "Client name",
+        "job": "Job name",
+        "date": "Date",
+        "time": "Time",
+        "startDate": "Start date",
+        "endDate": "End date",
+        "startTime": "Start time",
+        "endTime": "End time",
+        "allDay": "All day",
+        "notes": "Notes",
+        "recurrence": "Recurrence",
+        "recurrenceNone": "Does not repeat",
+        "recurrenceDaily": "Daily",
+        "recurrenceWeekly": "Weekly",
+        "recurrenceEnd": "Repeat ends",
+        "to": "to"
+      },
+      "placeholders": {
+        "client": "Select client",
+        "job": "Select job",
+        "worker": "Select worker",
+        "notes": "Add notes (optional)"
+      },
+      "validation": {
+        "worker": "Select a worker",
+        "client": "Select a client",
+        "job": "Select a job",
+        "startDate": "Start date is required",
+        "endDate": "End date is required",
+        "startTime": "Start time is required",
+        "endTime": "End time is required",
+        "recurrenceEnd": "Repeat end date is required"
+      }
+    },
     "jobs": {
       "metaTitle": "Jobs",
       "detailMetaTitle": "Job details",
@@ -3070,6 +3403,8 @@
       "subtitle": "Schedule and track field work. Assign technicians and update job status as work progresses.",
       "add": "Add",
       "edit": "Edit",
+      "createSchedule": "Create Schedule",
+      "reschedule": "Reschedule",
       "emptyTitle": "No jobs yet",
       "emptyDescription": "Create your first job to assign work to technicians and track status.",
       "loadError": "Could not load jobs. Try again.",
@@ -3151,10 +3486,19 @@
         "tabsAria": "Job detail sections",
         "tabs": {
           "overview": "Overview",
+          "scheduling": "Scheduling",
           "materials": "Materials",
           "dispatch": "Dispatch",
           "returns": "Returns"
         },
+        "schedulingTitle": "Scheduling",
+        "schedulingEmpty": "This job is not scheduled yet.",
+        "schedulingHasSchedule": "Current schedule for this job.",
+        "schedulingLoading": "Loading schedule…",
+        "schedulingLoadError": "Could not load the schedule. Try again.",
+        "schedulingHistory": "Schedule history",
+        "openScheduling": "Schedule",
+        "openSchedulingHint": "View workers and calendar",
         "materialsTitle": "Materials",
         "materialsEmpty": "No materials are linked to this job.",
         "dispatchesTitle": "Dispatches",
@@ -3233,6 +3577,9 @@
       "checklists": {
         "sectionTitle": "Checklists",
         "toggle": "Show or hide checklists",
+        "completeChecks": "Complete Checks",
+        "verifyHint": "Verify and complete all checklists and requirements.",
+        "viewFile": "View File",
         "required": "Required",
         "sequence": "Seq. {n}",
         "checkedAt": "Checked {when}",
@@ -3299,6 +3646,7 @@
         "forms": "Forms",
         "assignedWorker": "Assigned worker",
         "startDate": "Start date & time",
+        "jobTime": "Job time",
         "endDate": "End date & time",
         "jobStatus": "Job status",
         "sectionName": "Section name",

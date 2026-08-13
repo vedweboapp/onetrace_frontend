@@ -9,7 +9,7 @@ import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 
 const MIN_COUNT = 1;
-const MAX_COUNT = 500;
+const MAX_COUNT = 50_000;
 
 type Props = {
   open: boolean;
@@ -74,13 +74,19 @@ export function QrCodeGenerateModal({ open, onClose, onGenerated }: Props) {
           max={MAX_COUNT}
           value={count}
           onChange={(e) => {
-            setCount(e.target.value);
+            const raw = e.target.value;
             if (error) setError(undefined);
+            if (raw === "") {
+              setCount("");
+              return;
+            }
+            const n = Number.parseInt(raw, 10);
+            if (!Number.isFinite(n)) return;
+            setCount(String(Math.min(MAX_COUNT, Math.max(0, n))));
           }}
           className={cn(surfaceInputClassName, "tabular-nums", error && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
           autoComplete="off"
         />
-        <p className="text-xs text-slate-500 dark:text-slate-400">{t("generate.countHint", { min: MIN_COUNT, max: MAX_COUNT })}</p>
         {error ? <p className="text-xs text-red-600 dark:text-red-400">{error}</p> : null}
       </div>
     </AppModal>

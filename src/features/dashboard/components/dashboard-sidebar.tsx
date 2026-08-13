@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
-import { BookOpen, BookUser, Building2, ChevronRight, ClipboardList, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
+import { BookOpen, BookUser, Building2, CalendarDays, ChevronRight, ClipboardList, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -11,6 +11,10 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import { resolveDashboardAccent } from "@/features/dashboard/utils/accent-resolve.util";
+import {
+  JOB_CATEGORY,
+  parseJobCategoryParam,
+} from "@/features/jobs/constants/job-category";
 import {
   isProjectQuoteCategory,
   isServiceQuoteCategory,
@@ -373,6 +377,7 @@ function DashboardMainSidebar({
   const invoicesHref = routes.dashboard.invoices;
   const purchaseOrdersHref = routes.dashboard.purchaseOrders;
   const jobsHref = routes.dashboard.jobs;
+  const schedulingHref = routes.dashboard.scheduling;
   const qrCodesHref = routes.dashboard.qrCodes;
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
@@ -414,6 +419,8 @@ function DashboardMainSidebar({
   const purchaseOrdersActive =
     pathname === purchaseOrdersHref || pathname.startsWith(`${purchaseOrdersHref}/`);
   const jobsActive = pathname === jobsHref || pathname.startsWith(`${jobsHref}/`);
+  const schedulingActive =
+    pathname === schedulingHref || pathname.startsWith(`${schedulingHref}/`);
   const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
@@ -427,11 +434,13 @@ function DashboardMainSidebar({
   const itemsActive = pathname === itemsHref || pathname.startsWith(`${itemsHref}/`);
   const compositeActive = pathname === compositeHref || pathname.startsWith(`${compositeHref}/`);
   const itemsSectionActive = itemsActive || compositeActive;
-  const serviceJobHref = `${routes.dashboard.jobs}?job_category=servicejob`;
-  const projectJobHref = `${routes.dashboard.jobs}?job_category=projectjob`;
-  const currentJobCategory = searchParams.get("job_category");
-  const serviceJobActive = jobsActive && currentJobCategory === "servicejob";
-  const projectJobActive = jobsActive && currentJobCategory === "projectjob";
+  const serviceJobHref = `${routes.dashboard.jobs}?job_category=${JOB_CATEGORY.service}`;
+  const projectJobHref = `${routes.dashboard.jobs}?job_category=${JOB_CATEGORY.project}`;
+  const jobCategory = jobsActive ? parseJobCategoryParam(searchParams.get("job_category")) : undefined;
+  const serviceJobActive =
+    jobsActive &&
+    (jobCategory == null ? pathname === routes.dashboard.jobs : jobCategory === JOB_CATEGORY.service);
+  const projectJobActive = jobsActive && jobCategory === JOB_CATEGORY.project;
 
   return (
     <>
@@ -550,6 +559,14 @@ function DashboardMainSidebar({
           ]}
         />
         <SidebarNavLink
+          href={schedulingHref}
+          active={schedulingActive}
+          label={t("scheduling")}
+          icon={CalendarDays}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
           href={qrCodesHref}
           active={qrCodesActive}
           label={t("qrCodes")}
@@ -632,6 +649,7 @@ function DashboardSettingsSidebar({
   const pathname = usePathname();
   const customizationHref = routes.dashboard.settingsCustomization;
   const usersHref = routes.dashboard.settingsUsers;
+  const userGroupsHref = routes.dashboard.settingsUserGroups;
   const personalProfileHref = routes.dashboard.settingsPersonalProfile;
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
   const modulesHref = routes.dashboard.settingsModules;
@@ -641,7 +659,10 @@ function DashboardSettingsSidebar({
   const customizationActive = isCustomizationSettingsPath(pathname);
 
   const usersActive =
-    pathname === usersHref || pathname.startsWith(`${usersHref}/`);
+    pathname === usersHref ||
+    pathname.startsWith(`${usersHref}/`) ||
+    pathname === userGroupsHref ||
+    pathname.startsWith(`${userGroupsHref}/`);
   const personalProfileActive =
     pathname === personalProfileHref || pathname.startsWith(`${personalProfileHref}/`);
   const companySettingsActive =
