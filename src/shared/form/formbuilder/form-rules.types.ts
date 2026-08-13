@@ -1,4 +1,4 @@
-  import { z } from "zod";
+import { z } from "zod";
 
 export type RuleCondition = 
   | 'is' 
@@ -17,6 +17,14 @@ export type FormRuleOutput = {
   action: RuleAction;
 };
 
+/** A single Else branch inside a rule block */
+export type ElseBlock = {
+  _uid: string;
+  else_condition?: RuleCondition;
+  else_value?: string | string[] | null;
+  else_output_fields: FormRuleOutput[];
+};
+
 export type FormRuleBlock = {
   _uid: string;
   field_api_name: string;
@@ -24,8 +32,13 @@ export type FormRuleBlock = {
   condition: RuleCondition;
   value: string | string[] | null;
   output_fields: FormRuleOutput[];
+  /** Multiple else branches (new multi-else design) */
+  else_blocks?: ElseBlock[];
+  /** @deprecated kept for backward compat – migrated to else_blocks on load */
   else_condition?: RuleCondition;
+  /** @deprecated kept for backward compat */
   else_value?: string | string[] | null;
+  /** @deprecated kept for backward compat */
   else_output_fields?: FormRuleOutput[];
 };
 

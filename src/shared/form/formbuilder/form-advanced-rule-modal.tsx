@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import { AppButton } from "@/shared/ui/app-button";
-import { FormRule, RuleCondition, FormRuleOutput, RuleAction, FormRuleBlock } from "./form-rules.types";
+import { FormRule, RuleCondition, FormRuleOutput, RuleAction, FormRuleBlock, ElseBlock } from "./form-rules.types";
 import MultiSelect from "../components/multi-select";
 import { PhoneNumberInput, DEFAULT_PHONE_COUNTRY } from "@/shared/ui";
 import { currencyList } from "../components/currency-list";
@@ -41,14 +41,42 @@ const actionTypes: { label: string; value: RuleAction }[] = [
   { label: "Disable", value: "disable" },
 ];
 
+const createEmptyElseBlock = (): ElseBlock => ({
+  _uid: `else-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+  else_condition: undefined,
+  else_value: undefined,
+  else_output_fields: [{ field_api_name: "", action: "show" }],
+});
+
 const createEmptyBlock = (): FormRuleBlock => ({
   _uid: `block-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
   field_api_name: "",
   condition: "is",
   value: "",
   output_fields: [{ field_api_name: "", action: "show" }],
-  // else_output_fields is undefined by default (user must explicitly add Else)
+  else_blocks: [],
 });
+
+/** Migrate old single-else fields → else_blocks array */
+const migrateBlock = (b: FormRuleBlock): FormRuleBlock => {
+  const hasSingleElse = b.else_output_fields && b.else_output_fields.length > 0;
+  const hasNewElse = b.else_blocks && b.else_blocks.length > 0;
+  if (hasSingleElse && !hasNewElse) {
+    return {
+      ...b,
+      else_blocks: [{
+        _uid: `else-migrated-${b._uid}`,
+        else_condition: b.else_condition,
+        else_value: b.else_value,
+        else_output_fields: b.else_output_fields!,
+      }],
+      else_condition: undefined,
+      else_value: undefined,
+      else_output_fields: undefined,
+    };
+  }
+  return { ...b, else_blocks: b.else_blocks || [] };
+};
 
 const FormAdvancedRuleModal = ({
   onClose,
@@ -61,72 +89,18 @@ const FormAdvancedRuleModal = ({
   const [blocks, setBlocks] = useState<FormRuleBlock[]>(
     initialRule?.blocks && initialRule.blocks.length > 0
       ? initialRule.blocks.map(b => ({
-          ...b,
+          ...migrateBlock(b),
           _uid: b._uid || `block-${Date.now()}-${Math.random()}`,
           output_fields: b.output_fields?.length
             ? b.output_fields
             : [{ field_api_name: "", action: "show" }],
-          else_output_fields: b.else_output_fields?.length
-            ? b.else_output_fields
-            : undefined,
         }))
       : [createEmptyBlock()]
   );
 
-  // Track which blocks have the Else section expanded
-  const [showElseBlocks, setShowElseBlocks] = useState<Set<string>>(() => {
-    const set = new Set<string>();
-    if (initialRule?.blocks) {
-      initialRule.blocks.forEach(b => {
-        if (b.else_output_fields && b.else_output_fields.length > 0) {
-          set.add(b._uid);
-        }
-      });
-    }
-    return set;
-  });
-
-  const toggleElseSection = (blockUid: string, blockIdx: number, show: boolean) => {
-    setShowElseBlocks(prev => {
-      const next = new Set(prev);
-      if (show) {
-        next.add(blockUid);
-        // Initialise else fields pre-filled from the IF block
-        setBlocks(bs =>
-          bs.map((b, i) =>
-            i === blockIdx && !b.else_output_fields?.length
-              ? {
-                  ...b,
-                  else_condition: undefined,
-                  else_value: undefined,
-                  else_output_fields: [{ field_api_name: "", action: "show" }],
-                }
-              : b
-          )
-        );
-      } else {
-        next.delete(blockUid);
-        // Clear else fields when hidden
-        setBlocks(bs =>
-          bs.map((b, i) =>
-            i === blockIdx
-              ? { ...b, else_condition: undefined, else_value: undefined, else_output_fields: undefined }
-              : b
-          )
-        );
-      }
-      return next;
-    });
-  };
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const allUsedIfFields = React.useMemo(() => {
-    return new Set(blocks.map(b => b.field_api_name).filter(Boolean));
-  }, [blocks]);
-
-  const allUsedThenFields = React.useMemo(() => {
-    return new Set(blocks.flatMap(b => b.output_fields.map(o => o.field_api_name)).filter(Boolean));
-  }, [blocks]);
+  // ─── Field availability helpers ───────────────────────────────────────────
 
   const getAvailableIfFields = (blockIdx: number) => {
     return fields.filter((field) => {
@@ -142,13 +116,14 @@ const FormAdvancedRuleModal = ({
       ) {
         return false;
       }
-      
+
       const isUsedByOtherIf = blocks.some((b, i) => i !== blockIdx && b.field_api_name === field.value);
-      // Disallowed in IF if it is targeted by a THEN action in the current block or any future blocks
       const isUsedByFutureOrCurrentThen = blocks.some((b, i) => {
         if (i < blockIdx) return false;
         const inThen = b.output_fields.some(o => o.field_api_name === field.value);
-        const inElse = (b.else_output_fields || []).some(o => o.field_api_name === field.value);
+        const inElse = (b.else_blocks || []).some(eb =>
+          eb.else_output_fields.some(o => o.field_api_name === field.value)
+        );
         return inThen || inElse;
       });
 
@@ -156,83 +131,179 @@ const FormAdvancedRuleModal = ({
     });
   };
 
-  const getAvailableThenFields = (blockIdx: number, outputIdx: number, isElse = false) => {
+  /**
+   * Get available target fields for a THEN or ELSE action row.
+   * Excludes:
+   *  - Fields used as IF triggers in current/prior blocks
+   *  - Fields used in other THEN rows of the same block (when !isElse)
+   *  - Fields used in OTHER ELSE blocks of the same IF block and other rows within the same else block (when isElse)
+   *  - Fields used in the THEN block of the same IF block (when isElse)
+   */
+  const getAvailableThenFields = (
+    blockIdx: number,
+    outputIdx: number,
+    isElse: boolean,
+    elseBlockIdx?: number
+  ) => {
     const block = blocks[blockIdx];
     return fields.filter((field) => {
-      // Exclude if used as an IF trigger in current or previous blocks (index <= blockIdx)
+      // Exclude IF trigger fields (current and prior blocks)
       const isUsedInCurrentOrPrevIf = blocks.some((b, i) => {
         if (i > blockIdx) return false;
         return b.field_api_name === field.value;
       });
       if (isUsedInCurrentOrPrevIf) return false;
 
-      // Exclude fields used in the current block's other output rows (Then)
-      const isUsedByOtherThenOutput = block.output_fields.some((o, i) => {
-        return !isElse && i !== outputIdx && o.field_api_name === field.value;
-      });
-      if (isUsedByOtherThenOutput) return false;
+      if (!isElse) {
+        // THEN row: exclude other rows in this THEN block
+        const isUsedByOtherThen = block.output_fields.some((o, i) =>
+          i !== outputIdx && o.field_api_name === field.value
+        );
+        if (isUsedByOtherThen) return false;
 
-      // Exclude fields used in the current block's other Else rows
-      const isUsedByOtherElseOutput = (block.else_output_fields || []).some((o, i) => {
-        return isElse && i !== outputIdx && o.field_api_name === field.value;
-      });
-      if (isUsedByOtherElseOutput) return false;
+        // THEN row: exclude fields used by any ELSE block in this IF block
+        const isUsedByElse = (block.else_blocks || []).some(eb =>
+          eb.else_output_fields.some(o => o.field_api_name === field.value)
+        );
+        if (isUsedByElse) return false;
+      } else {
+        // ELSE row: exclude THEN fields of this IF block
+        const isUsedByThen = block.output_fields.some(o => o.field_api_name === field.value);
+        if (isUsedByThen) return false;
+
+        // ELSE row: exclude fields in OTHER else blocks
+        const isUsedByOtherElseBlock = (block.else_blocks || []).some((eb, ebIdx) => {
+          if (ebIdx === elseBlockIdx) return false; // skip self
+          return eb.else_output_fields.some(o => o.field_api_name === field.value);
+        });
+        if (isUsedByOtherElseBlock) return false;
+
+        // ELSE row: exclude other rows within the SAME else block
+        if (elseBlockIdx !== undefined) {
+          const currentElseBlock = (block.else_blocks || [])[elseBlockIdx];
+          if (currentElseBlock) {
+            const isUsedByOtherRowInSameElse = currentElseBlock.else_output_fields.some((o, i) =>
+              i !== outputIdx && o.field_api_name === field.value
+            );
+            if (isUsedByOtherRowInSameElse) return false;
+          }
+        }
+      }
 
       return true;
     });
   };
 
-  const handleAddBlock = () => {
-    setBlocks([...blocks, createEmptyBlock()]);
-  };
+  // ─── Block state handlers ─────────────────────────────────────────────────
+
+  const handleAddBlock = () => setBlocks([...blocks, createEmptyBlock()]);
 
   const handleRemoveBlock = (idx: number) => {
-    if (blocks.length > 1) {
-      setBlocks(blocks.filter((_, i) => i !== idx));
-    }
+    if (blocks.length > 1) setBlocks(blocks.filter((_, i) => i !== idx));
   };
 
   const handleBlockChange = (idx: number, updatedFields: Partial<FormRuleBlock>) => {
-    setBlocks(
-      blocks.map((block, i) => (i === idx ? { ...block, ...updatedFields } : block))
-    );
+    setBlocks(blocks.map((block, i) => (i === idx ? { ...block, ...updatedFields } : block)));
   };
 
-  const handleAddOutput = (blockIdx: number, isElse = false) => {
+  // ─── THEN output row handlers ─────────────────────────────────────────────
+
+  const handleAddThenOutput = (blockIdx: number) => {
     const block = blocks[blockIdx];
-    const key = isElse ? "else_output_fields" : "output_fields";
-    const currentList = (block[key] as FormRuleOutput[]) || [];
-    handleBlockChange(blockIdx, { [key]: [...currentList, { field_api_name: "", action: "show" as RuleAction }] });
+    handleBlockChange(blockIdx, {
+      output_fields: [...block.output_fields, { field_api_name: "", action: "show" as RuleAction }],
+    });
   };
 
-  const handleRemoveOutput = (blockIdx: number, outputIdx: number, isElse = false) => {
+  const handleRemoveThenOutput = (blockIdx: number, outputIdx: number) => {
     const block = blocks[blockIdx];
-    const key = isElse ? "else_output_fields" : "output_fields";
-    const currentList = (block[key] as FormRuleOutput[]) || [];
-    if (currentList.length > 1) {
-      handleBlockChange(blockIdx, { [key]: currentList.filter((_, i) => i !== outputIdx) });
+    if (block.output_fields.length > 1) {
+      handleBlockChange(blockIdx, {
+        output_fields: block.output_fields.filter((_, i) => i !== outputIdx),
+      });
     }
   };
 
-  const handleOutputChange = (
+  const handleThenOutputChange = (
     blockIdx: number,
     outputIdx: number,
     field: keyof FormRuleOutput,
-    value: any,
-    isElse = false
+    value: any
   ) => {
     const block = blocks[blockIdx];
-    const key = isElse ? "else_output_fields" : "output_fields";
-    const currentList = (block[key] as FormRuleOutput[]) || [];
-    const updatedOutputs = currentList.map((output, i) =>
+    const updatedOutputs = block.output_fields.map((output, i) =>
       i === outputIdx ? { ...output, [field]: value } : output
     );
-    handleBlockChange(blockIdx, { [key]: updatedOutputs });
+    handleBlockChange(blockIdx, { output_fields: updatedOutputs });
   };
+
+  // ─── ELSE block handlers ──────────────────────────────────────────────────
+
+  const handleAddElseBlock = (blockIdx: number) => {
+    const block = blocks[blockIdx];
+    handleBlockChange(blockIdx, {
+      else_blocks: [...(block.else_blocks || []), createEmptyElseBlock()],
+    });
+  };
+
+  const handleRemoveElseBlock = (blockIdx: number, elseBlockIdx: number) => {
+    const block = blocks[blockIdx];
+    handleBlockChange(blockIdx, {
+      else_blocks: (block.else_blocks || []).filter((_, i) => i !== elseBlockIdx),
+    });
+  };
+
+  const handleElseBlockChange = (
+    blockIdx: number,
+    elseBlockIdx: number,
+    updatedFields: Partial<ElseBlock>
+  ) => {
+    const block = blocks[blockIdx];
+    const updatedElseBlocks = (block.else_blocks || []).map((eb, i) =>
+      i === elseBlockIdx ? { ...eb, ...updatedFields } : eb
+    );
+    handleBlockChange(blockIdx, { else_blocks: updatedElseBlocks });
+  };
+
+  const handleAddElseOutput = (blockIdx: number, elseBlockIdx: number) => {
+    const block = blocks[blockIdx];
+    const eb = (block.else_blocks || [])[elseBlockIdx];
+    if (!eb) return;
+    const updated = [
+      ...eb.else_output_fields,
+      { field_api_name: "", action: "show" as RuleAction },
+    ];
+    handleElseBlockChange(blockIdx, elseBlockIdx, { else_output_fields: updated });
+  };
+
+  const handleRemoveElseOutput = (blockIdx: number, elseBlockIdx: number, outputIdx: number) => {
+    const block = blocks[blockIdx];
+    const eb = (block.else_blocks || [])[elseBlockIdx];
+    if (!eb || eb.else_output_fields.length <= 1) return;
+    const updated = eb.else_output_fields.filter((_, i) => i !== outputIdx);
+    handleElseBlockChange(blockIdx, elseBlockIdx, { else_output_fields: updated });
+  };
+
+  const handleElseOutputChange = (
+    blockIdx: number,
+    elseBlockIdx: number,
+    outputIdx: number,
+    field: keyof FormRuleOutput,
+    value: any
+  ) => {
+    const block = blocks[blockIdx];
+    const eb = (block.else_blocks || [])[elseBlockIdx];
+    if (!eb) return;
+    const updated = eb.else_output_fields.map((o, i) =>
+      i === outputIdx ? { ...o, [field]: value } : o
+    );
+    handleElseBlockChange(blockIdx, elseBlockIdx, { else_output_fields: updated });
+  };
+
+  // ─── Save ─────────────────────────────────────────────────────────────────
 
   const handleSave = () => {
     const newErrors: Record<string, string> = {};
-
     if (!name.trim()) newErrors.name = "Rule name is required";
     if (name.length > 20) newErrors.name = "Maximum 20 characters";
 
@@ -247,11 +318,12 @@ const FormAdvancedRuleModal = ({
         if (usedIfFields.has(block.field_api_name)) {
           newErrors[`block-${idx}-triggerField`] = "Each field can only be used as a trigger once";
         } else {
-          // Cannot be used as trigger if targeted by THEN in current or future blocks
           const isUsedInCurrentOrFutureThen = blocks.some((b, i) => {
             if (i < idx) return false;
             const inThen = b.output_fields.some(o => o.field_api_name === block.field_api_name);
-            const inElse = (b.else_output_fields || []).some(o => o.field_api_name === block.field_api_name);
+            const inElse = (b.else_blocks || []).some(eb =>
+              eb.else_output_fields.some(o => o.field_api_name === block.field_api_name)
+            );
             return inThen || inElse;
           });
           if (isUsedInCurrentOrFutureThen) {
@@ -262,9 +334,7 @@ const FormAdvancedRuleModal = ({
         }
       }
 
-      if (!block.condition) {
-        newErrors[`block-${idx}-condition`] = "Condition is required";
-      }
+      if (!block.condition) newErrors[`block-${idx}-condition`] = "Condition is required";
       if (
         block.condition !== "is_empty" &&
         block.condition !== "is_not_empty" &&
@@ -273,23 +343,22 @@ const FormAdvancedRuleModal = ({
         newErrors[`block-${idx}-ruleValue`] = "Value is required";
       }
 
-      const validOutputs = block.output_fields.filter((o) => o.field_api_name && o.action);
+      const validOutputs = block.output_fields.filter(o => o.field_api_name && o.action);
       if (validOutputs.length === 0) {
         newErrors[`block-${idx}-outputs`] = "At least one target field is required";
       }
-      
-      block.output_fields.forEach((o) => {
+
+      block.output_fields.forEach(o => {
         if (o.field_api_name) {
           if (usedThenFieldsInBlock.has(o.field_api_name)) {
-            newErrors[`block-${idx}-outputs`] = "Each field can only be targeted by a action once within the same rule block";
+            newErrors[`block-${idx}-outputs`] = "Each field can only be targeted once within the same rule block";
           } else {
-            // Cannot be targeted by THEN if it is used as trigger in current/preceding blocks
             const isUsedInCurrentOrPrevIf = blocks.some((b, i) => {
               if (i > idx) return false;
               return b.field_api_name === o.field_api_name;
             });
             if (isUsedInCurrentOrPrevIf) {
-              newErrors[`block-${idx}-outputs`] = "Field cannot be targeted if used as a trigger in a previous or current block";
+              newErrors[`block-${idx}-outputs`] = "Field cannot be targeted if used as a trigger";
             } else {
               usedThenFieldsInBlock.add(o.field_api_name);
             }
@@ -297,7 +366,7 @@ const FormAdvancedRuleModal = ({
         }
       });
 
-      if (block.field_api_name && validOutputs.some((o) => o.field_api_name === block.field_api_name)) {
+      if (block.field_api_name && validOutputs.some(o => o.field_api_name === block.field_api_name)) {
         newErrors[`block-${idx}-outputs`] = "Target field cannot be the same as trigger field";
       }
     });
@@ -307,37 +376,50 @@ const FormAdvancedRuleModal = ({
       return;
     }
 
-    const formattedBlocks = blocks.map((block) => {
+    // Format blocks for save
+    const formattedBlocks = blocks.map(block => {
       let formattedValue: string | string[] | null = Array.isArray(block.value)
         ? block.value.join(", ")
         : block.value;
-
       if (block.condition === "is_any_one_of" || block.condition === "is_none_of") {
-        formattedValue = String(block.value).split(",").map((s) => s.trim()).filter(Boolean);
+        formattedValue = String(block.value).split(",").map(s => s.trim()).filter(Boolean);
       } else if (block.condition === "is_empty" || block.condition === "is_not_empty") {
         formattedValue = null;
       }
 
-      let formattedElseValue: string | string[] | null | undefined = undefined;
-      if (block.else_output_fields && block.else_output_fields.length > 0 && block.else_condition) {
-        const elseCond = block.else_condition;
-        const elseVal = block.else_value;
-        if (elseCond === "is_any_one_of" || elseCond === "is_none_of") {
-          formattedElseValue = elseVal ? String(elseVal).split(",").map((s) => s.trim()).filter(Boolean) : [];
-        } else if (elseCond === "is_empty" || elseCond === "is_not_empty") {
-          formattedElseValue = null;
-        } else {
-          formattedElseValue = Array.isArray(elseVal) ? elseVal.join(", ") : (elseVal ?? null);
-        }
-      }
+      const formattedElseBlocks = (block.else_blocks || [])
+        .filter(eb => eb.else_output_fields.some(o => o.field_api_name && o.action))
+        .map(eb => {
+          let formattedElseValue: string | string[] | null | undefined = undefined;
+          if (eb.else_condition) {
+            const elseVal = eb.else_value;
+            if (eb.else_condition === "is_any_one_of" || eb.else_condition === "is_none_of") {
+              formattedElseValue = elseVal
+                ? String(elseVal).split(",").map(s => s.trim()).filter(Boolean)
+                : [];
+            } else if (eb.else_condition === "is_empty" || eb.else_condition === "is_not_empty") {
+              formattedElseValue = null;
+            } else {
+              formattedElseValue = Array.isArray(elseVal) ? elseVal.join(", ") : (elseVal ?? null);
+            }
+          }
+          return {
+            ...eb,
+            else_condition: eb.else_condition || undefined,
+            else_value: eb.else_condition ? formattedElseValue : undefined,
+            else_output_fields: eb.else_output_fields.filter(o => o.field_api_name && o.action),
+          };
+        });
 
       return {
         ...block,
         value: formattedValue,
-        else_condition: (block.else_output_fields?.length && block.else_condition) ? block.else_condition : undefined,
-        else_value: (block.else_output_fields?.length && block.else_condition) ? formattedElseValue : undefined,
-        output_fields: block.output_fields.filter((o) => o.field_api_name && o.action),
-        else_output_fields: (block.else_output_fields || []).filter((o) => o.field_api_name && o.action),
+        output_fields: block.output_fields.filter(o => o.field_api_name && o.action),
+        else_blocks: formattedElseBlocks,
+        // clear old deprecated fields
+        else_condition: undefined,
+        else_value: undefined,
+        else_output_fields: undefined,
       };
     });
 
@@ -353,32 +435,41 @@ const FormAdvancedRuleModal = ({
     onSave(rule);
   };
 
-  const renderValueInput = (block: FormRuleBlock, blockIdx: number, isElse = false) => {
-    const condition = isElse ? (block.else_condition || block.condition) : block.condition;
-    const rawValue = isElse ? (block.else_value !== undefined ? block.else_value : block.value) : block.value;
+  // ─── Value input renderer (shared by IF and ELSE) ─────────────────────────
+
+  const renderValueInput = (
+    block: FormRuleBlock,
+    blockIdx: number,
+    elseCtx?: { elseBlock: ElseBlock; elseBlockIdx: number }
+  ) => {
+    const condition = elseCtx ? (elseCtx.elseBlock.else_condition || block.condition) : block.condition;
+    const rawValue = elseCtx
+      ? (elseCtx.elseBlock.else_value !== undefined ? elseCtx.elseBlock.else_value : block.value)
+      : block.value;
     const fieldApiName = block.field_api_name;
+    const errorKey = elseCtx
+      ? `block-${blockIdx}-else${elseCtx.elseBlockIdx}-value`
+      : `block-${blockIdx}-ruleValue`;
 
     const isValueDisabled = condition === "is_empty" || condition === "is_not_empty";
     if (isValueDisabled) {
       return (
         <input
           type="text"
-          className="bg-gray-100 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] dark:bg-slate-800 cursor-not-allowed text-transparent w-full p-2.5 border border-gray-300 dark:border-slate-700 rounded-md outline-none"
+          className="bg-gray-100 outline-none dark:bg-slate-800 cursor-not-allowed text-transparent w-full p-2.5 border border-gray-300 dark:border-slate-700 rounded-md"
           disabled
           value=""
         />
       );
     }
 
-    const selectedField = fields.find((f) => f.value === fieldApiName);
+    const selectedField = fields.find(f => f.value === fieldApiName);
     const fieldType = selectedField?.type;
-
     const blockValue = Array.isArray(rawValue) ? rawValue.join(", ") : (rawValue || "");
-    const errorKey = isElse ? `block-${blockIdx}-elseRuleValue` : `block-${blockIdx}-ruleValue`;
 
     const handleChange = (val: any) => {
-      if (isElse) {
-        handleBlockChange(blockIdx, { else_value: val });
+      if (elseCtx) {
+        handleElseBlockChange(blockIdx, elseCtx.elseBlockIdx, { else_value: val });
       } else {
         handleBlockChange(blockIdx, { value: val });
       }
@@ -386,66 +477,49 @@ const FormAdvancedRuleModal = ({
 
     if (fieldType === "date") {
       return (
-        <input
-          type="date"
-          className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[errorKey] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`}
-          value={blockValue}
-          onChange={(e) => handleChange(e.target.value)}
-        />
+        <input type="date"
+          className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[errorKey] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md`}
+          value={blockValue} onChange={e => handleChange(e.target.value)} />
       );
     }
-
     if (fieldType === "datetime") {
       return (
-        <input
-          type="datetime-local"
-          className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[errorKey] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`}
-          value={blockValue}
-          onChange={(e) => handleChange(e.target.value)}
-        />
+        <input type="datetime-local"
+          className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[errorKey] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md`}
+          value={blockValue} onChange={e => handleChange(e.target.value)} />
       );
     }
-
     if (fieldType === "phone" || fieldType === "mobile") {
       return (
         <div className="surface-phone-root w-full mt-1.5">
           <PhoneNumberInput
-            value={blockValue}
-            onChange={(val) => handleChange(val)}
-            defaultCountry={DEFAULT_PHONE_COUNTRY}
-            placeholder="Enter phone number"
-            className="w-full"
+            value={blockValue} onChange={val => handleChange(val)}
+            defaultCountry={DEFAULT_PHONE_COUNTRY} placeholder="Enter phone number" className="w-full"
             numberInputProps={{
-              className: `w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[errorKey] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`,
+              className: `w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[errorKey] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md`,
             }}
           />
         </div>
       );
     }
-
     if (fieldType === "checkbox") {
       return (
         <select
           className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[errorKey] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
-          value={blockValue}
-          onChange={(e) => handleChange(e.target.value)}
-        >
+          value={blockValue} onChange={e => handleChange(e.target.value)}>
           <option value="">Select Option</option>
           <option value="true">True (Checked)</option>
           <option value="false">False (Unchecked)</option>
         </select>
       );
     }
-
     if (fieldType === "currency") {
       return (
         <select
           className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[errorKey] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
-          value={blockValue}
-          onChange={(e) => handleChange(e.target.value)}
-        >
+          value={blockValue} onChange={e => handleChange(e.target.value)}>
           <option value="">Select Currency</option>
-          {currencyList.map((currency) => (
+          {currencyList.map(currency => (
             <option key={`${currency.countryCode}-${currency.value}`} value={currency.value}>
               {currency.label} - {currency.value}
             </option>
@@ -453,54 +527,40 @@ const FormAdvancedRuleModal = ({
         </select>
       );
     }
-
     if (fieldType === "picklist" || fieldType === "multi_select" || fieldType === "radio") {
       const isMulti = condition === "is_any_one_of" || condition === "is_none_of";
       const fieldOptions = selectedField?.options || [];
-
       if (isMulti) {
-        const parsedValues = blockValue
-          ? blockValue.split(",").map((s) => s.trim()).filter(Boolean)
-          : [];
+        const parsedValues = blockValue ? blockValue.split(",").map(s => s.trim()).filter(Boolean) : [];
         return (
           <div className="w-full">
             <MultiSelect
-              name={`rule-value-multi-${isElse ? "else-" : ""}${blockIdx}`}
-              options={fieldOptions}
-              value={parsedValues}
-              onChange={(newVal) => handleChange(newVal.join(", "))}
-              placeholder="Select options..."
-            />
+              name={`rule-value-multi-${elseCtx ? `else${elseCtx.elseBlockIdx}-` : ""}${blockIdx}`}
+              options={fieldOptions} value={parsedValues}
+              onChange={newVal => handleChange(newVal.join(", "))} placeholder="Select options..." />
           </div>
         );
       } else {
         return (
           <select
             className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[errorKey] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
-            value={blockValue}
-            onChange={(e) => handleChange(e.target.value)}
-          >
+            value={blockValue} onChange={e => handleChange(e.target.value)}>
             <option value="">Select Option</option>
-            {fieldOptions.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
+            {fieldOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
           </select>
         );
       }
     }
 
     return (
-      <input
-        type="text"
+      <input type="text"
         placeholder={condition === "is_any_one_of" || condition === "is_none_of" ? "comma, separated, values" : "Enter value"}
-        className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[errorKey] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md outline-none`}
-        value={blockValue}
-        onChange={(e) => handleChange(e.target.value)}
-      />
+        className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[errorKey] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md`}
+        value={blockValue} onChange={e => handleChange(e.target.value)} />
     );
   };
+
+  // ─── JSX ──────────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -516,18 +576,11 @@ const FormAdvancedRuleModal = ({
         aria-modal="true"
         aria-label="Form Rule"
       >
-        <header className="flex  shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-slate-700">
+        <header className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-slate-700">
           <span className="font-bold text-slate-900 dark:text-slate-100">
             {initialRule ? "Edit Rule" : "Add Rule"}
           </span>
-          <AppButton
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="size-9 p-0"
-            aria-label="Close"
-            onClick={onClose}
-          >
+          <AppButton type="button" variant="ghost" size="sm" className="size-9 p-0" aria-label="Close" onClick={onClose}>
             <X className="size-4" strokeWidth={2} aria-hidden />
           </AppButton>
         </header>
@@ -535,31 +588,25 @@ const FormAdvancedRuleModal = ({
         <div className="min-h-0 flex-1 overflow-y-auto p-6 space-y-6">
           {/* Rule Name */}
           <div className="flex flex-col gap-2 border-b border-gray-200 dark:border-slate-700 pb-4 border-dotted">
-            <label htmlFor="rule-name" className="text-sm font-medium  dark:text-slate-100">
-              Rule Name
-            </label>
+            <label htmlFor="rule-name" className="text-sm font-medium dark:text-slate-100">Rule Name</label>
             <input
-              type="text"
-              id="rule-name"
-              className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors.name ? "border-red-500" : "border-gray-200"} rounded-md dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 outline-none`}
-              placeholder="Enter Rule name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={20}
+              type="text" id="rule-name"
+              className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors.name ? "border-red-500" : "border-gray-200"} rounded-md dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700`}
+              placeholder="Enter Rule name" value={name}
+              onChange={e => setName(e.target.value)} maxLength={20}
             />
             <div className="flex justify-between items-center">
-              {errors.name ? (
-                <span className="text-red-500 text-sm">{errors.name}</span>
-              ) : (
-                <span className="text-slate-500 text-sm">(Maximum 20 characters)</span>
-              )}
+              {errors.name
+                ? <span className="text-red-500 text-sm">{errors.name}</span>
+                : <span className="text-slate-500 text-sm">(Maximum 20 characters)</span>}
             </div>
           </div>
-          
+
           {/* Logic Blocks */}
           <div className="space-y-8">
             {blocks.map((block, idx) => {
               const availableIfFields = getAvailableIfFields(idx);
+              const hasElseBlocks = (block.else_blocks || []).length > 0;
 
               return (
                 <div
@@ -572,8 +619,7 @@ const FormAdvancedRuleModal = ({
                     </span>
                     {blocks.length > 1 && (
                       <AppButton
-                        type="button"
-                        variant="ghost"
+                        type="button" variant="ghost"
                         className="text-red-500 p-2 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
                         onClick={() => handleRemoveBlock(idx)}
                       >
@@ -584,33 +630,22 @@ const FormAdvancedRuleModal = ({
 
                   <div className="flex flex-col">
 
-                    {/* ── 1. IF row ─────────────────────────────────── */}
+                    {/* ── 1. IF row ── */}
                     <div className="flex gap-4 items-stretch">
-                      {/* Left Badge Column */}
                       <div className="flex flex-col items-center shrink-0 w-16">
                         <div className="w-px h-1 bg-transparent" />
-                        <div className="bg-slate-600 text-white text-xs px-3.5 py-1.5 rounded font-medium shadow-sm">
-                          If
-                        </div>
+                        <div className="bg-slate-600 text-white text-xs px-3.5 py-1.5 rounded font-medium shadow-sm">If</div>
                         <div className="w-px flex-1 bg-gray-300 dark:bg-slate-700 mt-1" />
                       </div>
-
-                      {/* Right IF content */}
                       <div className="flex-1 min-w-0 pb-3">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center w-full">
                           <select
                             className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[`block-${idx}-triggerField`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
                             value={block.field_api_name}
-                            onChange={(e) =>
-                              handleBlockChange(idx, {
-                                field_api_name: e.target.value,
-                                value: "",
-                                else_value: undefined,
-                              })
-                            }
+                            onChange={e => handleBlockChange(idx, { field_api_name: e.target.value, value: "", else_blocks: [] })}
                           >
                             <option value="">Select Field</option>
-                            {availableIfFields.map((field) => (
+                            {availableIfFields.map(field => (
                               <option key={field.value} value={field.value}>{field.label}</option>
                             ))}
                           </select>
@@ -618,12 +653,10 @@ const FormAdvancedRuleModal = ({
                           <select
                             className={`w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[`block-${idx}-condition`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
                             value={block.condition}
-                            onChange={(e) => handleBlockChange(idx, { condition: e.target.value as RuleCondition })}
+                            onChange={e => handleBlockChange(idx, { condition: e.target.value as RuleCondition })}
                           >
                             <option value="">Select Condition</option>
-                            {conditionTypes.map((c) => (
-                              <option key={c.value} value={c.value}>{c.label}</option>
-                            ))}
+                            {conditionTypes.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                           </select>
 
                           {renderValueInput(block, idx)}
@@ -634,23 +667,16 @@ const FormAdvancedRuleModal = ({
                       </div>
                     </div>
 
-                    {/* ── 2. THEN row ────────────────────────────────── */}
+                    {/* ── 2. THEN row ── */}
                     <div className="flex gap-4 items-stretch pt-2">
-                      {/* Left Badge Column (Then badge centered vertically with Then actions) */}
                       <div className="flex flex-col items-center shrink-0 w-16">
                         <div className="w-px flex-1 bg-gray-300 dark:bg-slate-700 mb-1" />
-                        <div className="bg-slate-600 text-white text-xs px-3 py-1.5 rounded font-medium shadow-sm my-auto">
-                          Then
-                        </div>
-                        <div className={`w-px flex-1 mt-1 ${showElseBlocks.has(block._uid) ? "bg-gray-300 dark:bg-slate-700" : "bg-transparent"}`} />
+                        <div className="bg-slate-600 text-white text-xs px-3 py-1.5 rounded font-medium shadow-sm my-auto">Then</div>
+                        <div className={`w-px flex-1 mt-1 ${hasElseBlocks ? "bg-gray-300 dark:bg-slate-700" : "bg-transparent"}`} />
                       </div>
-
-                      {/* Right THEN content */}
                       <div className="flex-1 min-w-0 pb-3">
                         <div className="flex flex-col gap-3">
-                          <span className="text-gray-700 text-xs font-medium dark:text-slate-200">
-                            Perform the following actions:
-                          </span>
+                          <span className="text-gray-700 text-xs font-medium dark:text-slate-200">Perform the following actions:</span>
 
                           {block.output_fields.map((output, outIdx) => {
                             const availableThenFields = getAvailableThenFields(idx, outIdx, false);
@@ -659,29 +685,24 @@ const FormAdvancedRuleModal = ({
                                 <select
                                   className="w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border border-gray-300 rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100"
                                   value={output.action}
-                                  onChange={(e) => handleOutputChange(idx, outIdx, "action", e.target.value, false)}
+                                  onChange={e => handleThenOutputChange(idx, outIdx, "action", e.target.value)}
                                 >
-                                  {actionTypes.map((action) => (
-                                    <option key={action.value} value={action.value}>{action.label}</option>
-                                  ))}
+                                  {actionTypes.map(action => <option key={action.value} value={action.value}>{action.label}</option>)}
                                 </select>
 
                                 <select
                                   className={`w-full p-2.5 border outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] ${!output.field_api_name && errors[`block-${idx}-outputs`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
                                   value={output.field_api_name}
-                                  onChange={(e) => handleOutputChange(idx, outIdx, "field_api_name", e.target.value, false)}
+                                  onChange={e => handleThenOutputChange(idx, outIdx, "field_api_name", e.target.value)}
                                 >
                                   <option value="">Select Target Field</option>
-                                  {availableThenFields.map((f) => (
-                                    <option key={f.value} value={f.value}>{f.label}</option>
-                                  ))}
+                                  {availableThenFields.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
                                 </select>
 
                                 <AppButton
-                                  type="button"
-                                  variant="ghost"
+                                  type="button" variant="ghost"
                                   className={`text-red-500 p-2 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 ${block.output_fields.length === 1 ? "opacity-50 cursor-not-allowed" : ""}`}
-                                  onClick={() => handleRemoveOutput(idx, outIdx, false)}
+                                  onClick={() => handleRemoveThenOutput(idx, outIdx)}
                                   disabled={block.output_fields.length === 1}
                                 >
                                   <Trash2 className="size-4" />
@@ -691,11 +712,9 @@ const FormAdvancedRuleModal = ({
                           })}
 
                           <div className="flex justify-between items-center">
-                            <button
-                              type="button"
+                            <button type="button"
                               className="text-[color:var(--dash-accent)] dark:text-blue-400 text-xs font-medium flex items-center gap-1 hover:underline"
-                              onClick={() => handleAddOutput(idx, false)}
-                            >
+                              onClick={() => handleAddThenOutput(idx)}>
                               <Plus className="size-4" /> Add action
                             </button>
                             {errors[`block-${idx}-outputs`] && (
@@ -703,12 +722,11 @@ const FormAdvancedRuleModal = ({
                             )}
                           </div>
 
-                          {!showElseBlocks.has(block._uid) && (
-                            <button
-                              type="button"
+                          {/* Add Else button only when no else blocks exist yet */}
+                          {!hasElseBlocks && (
+                            <button type="button"
                               className="self-start text-slate-500 dark:text-slate-400 text-xs font-medium flex items-center gap-1 hover:text-[color:var(--dash-accent)] hover:underline transition-colors mt-1"
-                              onClick={() => toggleElseSection(block._uid, idx, true)}
-                            >
+                              onClick={() => handleAddElseBlock(idx)}>
                               <Plus className="size-3.5" /> Add Else
                             </button>
                           )}
@@ -716,132 +734,119 @@ const FormAdvancedRuleModal = ({
                       </div>
                     </div>
 
-                    {/* ── ELSE Section (Split into condition row + actions row) ── */}
-                    {showElseBlocks.has(block._uid) && (() => {
-                      const triggerFieldLabel = fields.find(f => f.value === block.field_api_name)?.label || block.field_api_name || "(select IF field first)";
-                      const elseConditionValue = block.else_condition || "";
+                    {/* ── ELSE blocks (multiple) ── */}
+                    {(block.else_blocks || []).map((elseBlock, elseBlockIdx) => {
+                      const triggerFieldLabel = fields.find(f => f.value === block.field_api_name)?.label
+                        || block.field_api_name || "(select IF field first)";
+                      const elseConditionValue = elseBlock.else_condition || "";
+                      const isLastElse = elseBlockIdx === (block.else_blocks || []).length - 1;
+
                       return (
-                        <>
-                          {/* ── 3. ELSE Condition row ── */}
+                        <React.Fragment key={elseBlock._uid}>
+                          {/* ── Else condition row ── */}
                           <div className="flex gap-4 items-stretch pt-2">
-                            {/* Left Badge Column */}
                             <div className="flex flex-col items-center shrink-0 w-16">
                               <div className="w-px flex-1 bg-gray-300 dark:bg-slate-700 mb-1" />
-                              <div className="bg-slate-600 text-white text-xs px-3 py-1.5 rounded font-medium shadow-sm my-auto">
-                                Else
+                              <div className="bg-slate-600 text-white text-xs px-3 py-1.5 rounded font-medium shadow-sm my-auto whitespace-nowrap">
+                                Else {(block.else_blocks || []).length > 1 ? `${elseBlockIdx + 1}` : ""}
                               </div>
                               <div className="w-px flex-1 bg-gray-300 dark:bg-slate-700 mt-1" />
                             </div>
-
-                            {/* Right Content */}
                             <div className="flex-1 min-w-0 pb-3">
                               <div className="flex items-center justify-between mb-2">
                                 <span className="text-gray-700 text-xs font-medium dark:text-slate-200">
-                                  Else — when:
+                                  Else {(block.else_blocks || []).length > 1 ? `#${elseBlockIdx + 1}` : ""} — when:
                                 </span>
-                                <button
-                                  type="button"
+                                <button type="button"
                                   className="text-red-400 text-xs font-medium hover:underline"
-                                  onClick={() => toggleElseSection(block._uid, idx, false)}
-                                >
+                                  onClick={() => handleRemoveElseBlock(idx, elseBlockIdx)}>
                                   Remove Else
                                 </button>
                               </div>
-
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center w-full">
                                 <div className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-800 text-sm text-gray-700 dark:text-slate-300 truncate">
                                   {triggerFieldLabel}
                                 </div>
-
                                 <select
                                   className="w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border border-gray-300 rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100"
                                   value={elseConditionValue}
-                                  onChange={(e) => handleBlockChange(idx, { else_condition: (e.target.value as RuleCondition) || undefined })}
+                                  onChange={e => handleElseBlockChange(idx, elseBlockIdx, {
+                                    else_condition: (e.target.value as RuleCondition) || undefined,
+                                    else_value: undefined,
+                                  })}
                                 >
-                                  <option value="">Otherwise (IF condition is false)</option>
-                                  {conditionTypes.map((c) => (
-                                    <option key={c.value} value={c.value}>{c.label}</option>
-                                  ))}
+                                  <option value="" disabled hidden>Select Condition</option>
+                                  {conditionTypes.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                                 </select>
-
-                                {renderValueInput(block, idx, true)}
+                                {renderValueInput(block, idx, { elseBlock, elseBlockIdx })}
                               </div>
                             </div>
                           </div>
 
-                          {/* ── 4. ELSE Actions row (with Then badge) ── */}
+                          {/* ── Else Then row ── */}
                           <div className="flex gap-4 items-stretch pt-2">
-                            {/* Left Badge Column (Then badge inside Else) */}
                             <div className="flex flex-col items-center shrink-0 w-16">
                               <div className="w-px flex-1 bg-gray-300 dark:bg-slate-700 mb-1" />
-                              <div className="bg-slate-600 text-white text-xs px-3 py-1.5 rounded font-medium shadow-sm my-auto">
-                                Then
-                              </div>
-                              <div className="w-px flex-1 bg-transparent mt-1" />
+                              <div className="bg-slate-600 text-white text-xs px-3 py-1.5 rounded font-medium shadow-sm my-auto">Then</div>
+                              <div className={`w-px flex-1 mt-1 ${!isLastElse ? "bg-gray-300 dark:bg-slate-700" : "bg-transparent"}`} />
                             </div>
-
-                            {/* Right Content */}
-                            <div className="flex-1 min-w-0">
+                            <div className="flex-1 min-w-0 pb-2">
                               <div className="flex flex-col gap-3">
-                                <span className="text-gray-700 text-xs font-medium dark:text-slate-200">
-                                  Perform the following actions:
-                                </span>
-                                {(block.else_output_fields || []).map((elseOutput, elseIdx) => {
-                                  const availableElseFields = getAvailableThenFields(idx, elseIdx, true);
+                                <span className="text-gray-700 text-xs font-medium dark:text-slate-200">Perform the following actions:</span>
+                                {elseBlock.else_output_fields.map((elseOutput, outIdx) => {
+                                  const availableElseFields = getAvailableThenFields(idx, outIdx, true, elseBlockIdx);
                                   return (
-                                    <div key={elseIdx} className="flex gap-3 items-center">
+                                    <div key={outIdx} className="flex gap-3 items-center">
                                       <select
                                         className="w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border border-gray-300 rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100"
                                         value={elseOutput.action}
-                                        onChange={(e) => handleOutputChange(idx, elseIdx, "action", e.target.value, true)}
+                                        onChange={e => handleElseOutputChange(idx, elseBlockIdx, outIdx, "action", e.target.value)}
                                       >
-                                        {actionTypes.map((action) => (
-                                          <option key={action.value} value={action.value}>{action.label}</option>
-                                        ))}
+                                        {actionTypes.map(action => <option key={action.value} value={action.value}>{action.label}</option>)}
                                       </select>
-
                                       <select
-                                        className={`w-full p-2.5 border outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] ${!elseOutput.field_api_name && errors[`block-${idx}-else-outputs`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+                                        className={`w-full p-2.5 border outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] ${!elseOutput.field_api_name && errors[`block-${idx}-else${elseBlockIdx}-outputs`] ? "border-red-500" : "border-gray-300"} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
                                         value={elseOutput.field_api_name}
-                                        onChange={(e) => handleOutputChange(idx, elseIdx, "field_api_name", e.target.value, true)}
+                                        onChange={e => handleElseOutputChange(idx, elseBlockIdx, outIdx, "field_api_name", e.target.value)}
                                       >
                                         <option value="">Select Target Field</option>
-                                        {availableElseFields.map((f) => (
-                                          <option key={f.value} value={f.value}>{f.label}</option>
-                                        ))}
+                                        {availableElseFields.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
                                       </select>
-
                                       <AppButton
-                                        type="button"
-                                        variant="ghost"
-                                        className={`text-red-500 p-2 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 ${(block.else_output_fields?.length ?? 0) <= 1 ? "opacity-50 cursor-not-allowed" : ""}`}
-                                        onClick={() => handleRemoveOutput(idx, elseIdx, true)}
-                                        disabled={(block.else_output_fields?.length ?? 0) <= 1}
+                                        type="button" variant="ghost"
+                                        className={`text-red-500 p-2 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 ${elseBlock.else_output_fields.length <= 1 ? "opacity-50 cursor-not-allowed" : ""}`}
+                                        onClick={() => handleRemoveElseOutput(idx, elseBlockIdx, outIdx)}
+                                        disabled={elseBlock.else_output_fields.length <= 1}
                                       >
                                         <Trash2 className="size-4" />
                                       </AppButton>
                                     </div>
                                   );
                                 })}
-
                                 <div className="flex justify-between items-center mt-1">
-                                  <button
-                                    type="button"
+                                  <button type="button"
                                     className="text-[color:var(--dash-accent)] dark:text-blue-400 text-xs font-medium flex items-center gap-1 hover:underline"
-                                    onClick={() => handleAddOutput(idx, true)}
-                                  >
+                                    onClick={() => handleAddElseOutput(idx, elseBlockIdx)}>
                                     <Plus className="size-4" /> Add action
                                   </button>
-                                  {errors[`block-${idx}-else-outputs`] && (
-                                    <span className="text-red-500 text-xs">{errors[`block-${idx}-else-outputs`]}</span>
+                                  {errors[`block-${idx}-else${elseBlockIdx}-outputs`] && (
+                                    <span className="text-red-500 text-xs">{errors[`block-${idx}-else${elseBlockIdx}-outputs`]}</span>
                                   )}
                                 </div>
+                                {/* Add Else button after the last else block's actions */}
+                                {isLastElse && (
+                                  <button type="button"
+                                    className="self-start text-slate-500 dark:text-slate-400 text-xs font-medium flex items-center gap-1 hover:text-[color:var(--dash-accent)] hover:underline transition-colors mt-1"
+                                    onClick={() => handleAddElseBlock(idx)}>
+                                    <Plus className="size-3.5" /> Add Else
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </div>
-                        </>
+                        </React.Fragment>
                       );
-                    })()}
+                    })}
 
                   </div>
                 </div>
@@ -849,22 +854,16 @@ const FormAdvancedRuleModal = ({
             })}
           </div>
 
-          <button
-            type="button"
-            className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-lg text-gray-500 hover:text-[color:var(--dash-accent)]  hover:border-[color:var(--dash-accent)]  transition-colors flex items-center justify-center gap-2 font-medium"
-            onClick={handleAddBlock}
-          >
+          <button type="button"
+            className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-lg text-gray-500 hover:text-[color:var(--dash-accent)] hover:border-[color:var(--dash-accent)] transition-colors flex items-center justify-center gap-2 font-medium"
+            onClick={handleAddBlock}>
             <Plus className="size-5" /> Add Logic Block (IF/THEN)
           </button>
         </div>
 
         <div className="flex items-center justify-end gap-4 p-4 border-t border-slate-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
-          <AppButton variant="secondary" size="md" onClick={onClose}>
-            Cancel
-          </AppButton>
-          <AppButton size="md" onClick={handleSave}>
-            Save Rule
-          </AppButton>
+          <AppButton variant="secondary" size="md" onClick={onClose}>Cancel</AppButton>
+          <AppButton size="md" onClick={handleSave}>Save Rule</AppButton>
         </div>
       </aside>
     </>
