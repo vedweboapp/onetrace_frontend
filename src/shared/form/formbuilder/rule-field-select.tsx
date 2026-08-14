@@ -19,7 +19,6 @@ export type RuleFieldOption = {
   sectionId?: string | number | null;
   sectionUid?: string;
   s_id?: number | string | null;
-  f_id?: string;
   u_id?: string;
   sectionKey?: string;
   sectionLabel?: string;

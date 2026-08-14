@@ -33,7 +33,6 @@ import type { FormBuilderApiHandlers } from "./form-builder.handlers";
 interface Field {
   _uid: string;
   id?: string | number;
-  f_id?: string;
   u_id?: string;
   s_id?: number | string | null;
   field_type: string;
@@ -808,11 +807,10 @@ export default function FormBuilderLayout({
           targetType: "field" as const,
           fieldId: hasPersistedId(field.id) ? field.id! : null,
           fieldUid: field._uid,
-          f_id: field.f_id ?? field.u_id ?? field._uid,
-          u_id: field.u_id ?? field.f_id ?? field._uid,
+          u_id: field.u_id ?? field._uid,
           s_id: field.s_id ?? section.s_id ?? (hasPersistedId(section.id) ? section.id : section._uid),
           sectionKey,
-sectionLabel,
+          sectionLabel,
           optionKind: "field",
         }));
 
@@ -957,7 +955,6 @@ sectionLabel,
           api_name: f.api_name,
           field_type: f.field_type,
           sequence: fIdx + 1,
-          f_id: f.f_id || f.u_id || f._uid,
           ...(f.s_id != null ? { s_id: f.s_id } : {}),
         };
 
@@ -974,7 +971,6 @@ sectionLabel,
           "id",
           "_uid",
           "u_id",
-          "f_id",
           "s_id",
           "field_label",
           "api_name",
@@ -1023,19 +1019,16 @@ sectionLabel,
       const formatRulesPayload = (rulesList: FormRule[]) => {
         return rulesList.map((r, i) => {
           const ruleId = r.id ?? r.rule_id;
-          const fieldFId = r.f_id ?? r.u_id;
           return {
             ...(ruleId != null && ruleId !== "" ? { id: ruleId } : {}),
             name: r.name,
             ...(r.s_id != null ? { s_id: r.s_id } : {}),
-            ...(fieldFId != null ? { f_id: fieldFId } : {}),
             logic: {
               sequence: i + 1,
               field_api_name: r.field_api_name,
               field_id: r.field_id,
               field_uid: r.field_uid,
               ...(r.s_id != null ? { s_id: r.s_id } : {}),
-              ...(fieldFId != null ? { f_id: fieldFId } : {}),
               condition: r.condition,
               value: r.value,
               output_fields: (r.output_fields || []).map((o) => {
@@ -1043,7 +1036,6 @@ sectionLabel,
                 return {
                   ...cleanO,
                   ...(o.s_id != null ? { s_id: o.s_id } : {}),
-                  ...((o.f_id ?? o.u_id) != null ? { f_id: o.f_id ?? o.u_id } : {}),
                 };
               }),
               rule_type: r.rule_type || "normal",
@@ -1054,13 +1046,11 @@ sectionLabel,
                       return {
                         ...cleanB,
                         ...(b.s_id != null ? { s_id: b.s_id } : {}),
-                        ...((b.f_id ?? b.u_id) != null ? { f_id: b.f_id ?? b.u_id } : {}),
                         output_fields: (b.output_fields || []).map((o) => {
                           const { u_id, ...cleanO } = o as any;
                           return {
                             ...cleanO,
                             ...(o.s_id != null ? { s_id: o.s_id } : {}),
-                            ...((o.f_id ?? o.u_id) != null ? { f_id: o.f_id ?? o.u_id } : {}),
                           };
                         }),
                         ...(b.else_blocks
@@ -1072,7 +1062,6 @@ sectionLabel,
                                   return {
                                     ...cleanO,
                                     ...(o.s_id != null ? { s_id: o.s_id } : {}),
-                                    ...((o.f_id ?? o.u_id) != null ? { f_id: o.f_id ?? o.u_id } : {}),
                                   };
                                 }),
                               })),

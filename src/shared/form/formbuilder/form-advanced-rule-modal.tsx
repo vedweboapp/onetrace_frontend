@@ -245,12 +245,11 @@ const FormAdvancedRuleModal = ({
           field_api_name: value,
           target_type: option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
           field_id: option?.fieldId || null,
-          field_uid: option?.fieldUid || option?.f_id || option?.u_id,
+          field_uid: option?.fieldUid || option?.u_id,
           section_id: option?.sectionId || option?.s_id || null,
           section_uid: option?.sectionUid,
           s_id: option?.s_id ?? option?.sectionId ?? option?.sectionUid,
-          f_id: option?.f_id ?? option?.u_id ?? option?.fieldUid,
-          u_id: option?.u_id ?? option?.f_id ?? option?.fieldUid,
+          u_id: option?.u_id ?? option?.fieldUid,
         };
       }
       return { ...output, [field]: value };
@@ -324,12 +323,11 @@ const FormAdvancedRuleModal = ({
           field_api_name: value,
           target_type: option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
           field_id: option?.fieldId || null,
-          field_uid: option?.fieldUid || option?.f_id || option?.u_id,
+          field_uid: option?.fieldUid || option?.u_id,
           section_id: option?.sectionId || option?.s_id || null,
           section_uid: option?.sectionUid,
           s_id: option?.s_id ?? option?.sectionId ?? option?.sectionUid,
-          f_id: option?.f_id ?? option?.u_id ?? option?.fieldUid,
-          u_id: option?.u_id ?? option?.f_id ?? option?.fieldUid,
+          u_id: option?.u_id ?? option?.fieldUid,
         };
       }
       return { ...o, [field]: value };
@@ -434,12 +432,11 @@ const FormAdvancedRuleModal = ({
             ...o,
             target_type: o.target_type || option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
             field_id: o.field_id ?? option?.fieldId ?? null,
-            field_uid: o.field_uid ?? option?.fieldUid ?? option?.f_id ?? option?.u_id,
+            field_uid: o.field_uid ?? option?.fieldUid ?? option?.u_id,
             section_id: o.section_id ?? option?.sectionId ?? option?.s_id ?? null,
             section_uid: o.section_uid ?? option?.sectionUid,
             s_id: o.s_id ?? option?.s_id ?? option?.sectionId ?? option?.sectionUid,
-            f_id: o.f_id ?? option?.f_id ?? option?.u_id ?? option?.fieldUid,
-            u_id: o.u_id ?? option?.u_id ?? option?.f_id ?? option?.fieldUid,
+            u_id: o.u_id ?? option?.u_id ?? option?.fieldUid,
           };
         });
 
@@ -468,12 +465,11 @@ const FormAdvancedRuleModal = ({
                 ...o,
                 target_type: o.target_type || option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
                 field_id: o.field_id ?? option?.fieldId ?? null,
-                field_uid: o.field_uid ?? option?.fieldUid ?? option?.f_id ?? option?.u_id,
+                field_uid: o.field_uid ?? option?.fieldUid ?? option?.u_id,
                 section_id: o.section_id ?? option?.sectionId ?? option?.s_id ?? null,
                 section_uid: o.section_uid ?? option?.sectionUid,
                 s_id: o.s_id ?? option?.s_id ?? option?.sectionId ?? option?.sectionUid,
-                f_id: o.f_id ?? option?.f_id ?? option?.u_id ?? option?.fieldUid,
-                u_id: o.u_id ?? option?.u_id ?? option?.f_id ?? option?.fieldUid,
+                u_id: o.u_id ?? option?.u_id ?? option?.fieldUid,
               };
             });
 
@@ -488,10 +484,9 @@ const FormAdvancedRuleModal = ({
       return {
         ...block,
         field_id: block.field_id ?? triggerOption?.fieldId ?? null,
-        field_uid: block.field_uid ?? triggerOption?.fieldUid ?? triggerOption?.f_id ?? triggerOption?.u_id,
+        field_uid: block.field_uid ?? triggerOption?.fieldUid ?? triggerOption?.u_id,
         s_id: block.s_id ?? triggerOption?.s_id ?? triggerOption?.sectionId ?? triggerOption?.sectionUid,
-        f_id: block.f_id ?? triggerOption?.f_id ?? triggerOption?.u_id ?? triggerOption?.fieldUid,
-        u_id: block.u_id ?? triggerOption?.u_id ?? triggerOption?.f_id ?? triggerOption?.fieldUid,
+        u_id: block.u_id ?? triggerOption?.u_id ?? triggerOption?.fieldUid,
         value: formattedValue,
         output_fields: enrichedThenOutputs,
         else_blocks: formattedElseBlocks,
