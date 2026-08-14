@@ -269,7 +269,9 @@ const buildRuleTargetGroups = (schema: Section[]): RuleTargetGroups => {
     ].filter(Boolean);
 
     sectionAliases.forEach((alias) => {
-      groups[alias] = [canonicalTarget];
+      // Section targets expand to include all fields in the section + section itself
+      // This allows "show section" to affect all fields within it
+      groups[alias] = [...fieldTargets, canonicalTarget];
     });
 
     // --- Field-level aliases → resolve to individual api_name ---
@@ -318,6 +320,38 @@ const mergeRuleStates = (
     required: Boolean(fieldState?.required || sectionState?.required),
     disabled: Boolean(fieldState?.disabled || sectionState?.disabled),
   };
+};
+
+/**
+ * Post-process rule states to ensure section visibility hierarchy:
+ * If any field in a section is visible, the section should also be visible.
+ * This allows ELSE blocks to show individual fields without explicitly showing the section.
+ */
+const ensureVisibleFieldsHaveSections = (
+  schema: Section[],
+  ruleState: Map<string, FieldRuleState>,
+): Map<string, FieldRuleState> => {
+  const result = new Map(ruleState);
+
+  schema.forEach((section, index) => {
+    const sectionTarget = getSectionRuleTarget(section, index);
+    const activeFields = (section.fields || []).filter((f) => !f.is_deleted && f.api_name);
+
+    // If any field in this section is visible, ensure section is also visible
+    const hasVisibleField = activeFields.some((f) => {
+      const fieldState = result.get(f.api_name);
+      // Consider visible if not explicitly set to false
+      return fieldState?.visible !== false;
+    });
+
+    if (hasVisibleField) {
+      const sectionState = result.get(sectionTarget) || { visible: true, required: false, disabled: false };
+      sectionState.visible = true;
+      result.set(sectionTarget, sectionState);
+    }
+  });
+
+  return result;
 };
 
 const buildRichTextValidations = (validations: Record<string, any>, field: Field) => {
@@ -993,8 +1027,10 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
       if (!rules || rules.length === 0) {
         return new Map<string, FieldRuleState>();
       }
-      return buildFieldRuleState(rules, formValues, ruleTargetGroups);
-    }, [rules, formValues, ruleTargetGroups]);
+      const baseState = buildFieldRuleState(rules, formValues, ruleTargetGroups);
+      // Post-process: ensure sections are visible when their fields are visible
+      return ensureVisibleFieldsHaveSections(schema, baseState);
+    }, [rules, formValues, ruleTargetGroups, schema]);
 
     const getError = (name: string) =>
       touchedFields?.[name] || isSubmitted ? (errors as any)[name] : undefined;
