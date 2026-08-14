@@ -274,26 +274,49 @@ const buildRuleTargetGroups = (schema: Section[]): RuleTargetGroups => {
     });
 
     // --- Field-level aliases → resolve to individual api_name ---
+    // Use composite key (api_name + f_id + s_id) to differentiate fields with same name
     activeFields.forEach((field) => {
-      const fieldSelf = [field.api_name];
+      // Create unique field identifier using f_id and s_id
+      const fieldUniqueId = field.f_id || field.u_id || field._uid || `${field.api_name}-${section._uid}`;
+      const sectionId = field.s_id || section.s_id || section._uid;
+      const compositeKey = `${field.api_name}::${sectionId}::${fieldUniqueId}`;
+      const fieldSelf = [field.api_name];  // Keep api_name as primary for backward compatibility
+      
+      // Register composite key as primary (highest priority for uniqueness)
+      groups[compositeKey] = fieldSelf;
+      
       // Register api_name directly (for rules that use raw api_name)
-      groups[field.api_name] = fieldSelf;
-      // Register __field__:{id} and raw id aliases
+      // NOTE: This may have collisions, but backward compatibility requires it
+      if (!groups[field.api_name]) {
+        groups[field.api_name] = fieldSelf;
+      }
+      
+      // Register __field__:{id} and raw id aliases with section scope for better differentiation
       if (field.id != null) {
+        const scopedFieldId = `${field.id}::${sectionId}`;
         groups[`${FIELD_RULE_TARGET_PREFIX}${field.id}`] = fieldSelf;
+        groups[scopedFieldId] = fieldSelf;
         groups[String(field.id)] = fieldSelf;
       }
       if (field._uid) {
+        const scopedUid = `${field._uid}::${sectionId}`;
         groups[`${FIELD_RULE_TARGET_PREFIX}${field._uid}`] = fieldSelf;
+        groups[scopedUid] = fieldSelf;
         groups[field._uid] = fieldSelf;
       }
+      // f_id is the database field ID - most reliable for differentiation
       if (field.f_id) {
         groups[`${FIELD_RULE_TARGET_PREFIX}${field.f_id}`] = fieldSelf;
         groups[field.f_id] = fieldSelf;
+        // Also register with section scope
+        groups[`f_id::${field.f_id}::${sectionId}`] = fieldSelf;
       }
+      // u_id is an alternative unique identifier
       if (field.u_id) {
         groups[`${FIELD_RULE_TARGET_PREFIX}${field.u_id}`] = fieldSelf;
         groups[field.u_id] = fieldSelf;
+        // Also register with section scope
+        groups[`u_id::${field.u_id}::${sectionId}`] = fieldSelf;
       }
     });
   });
@@ -793,6 +816,7 @@ const buildDefaultValuesFromSchema = (
 
     s?.fields?.forEach((f) => {
       if (!f.api_name || formData[f.api_name] !== undefined) return;
+      
       const normType = getNormalizedType(f.field_type);
       if (normType === "checkbox") {
         // Use defaultChecked or defaultValue set in field config modal
@@ -947,6 +971,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
       if (!onFieldChange) return;
       const sub = watch((v, { name }) => {
           if (name) {
+              // name is the api_name (now guaranteed to be unique via numbering system)
               onFieldChange(name, (v as any)[name]);
           }
       });

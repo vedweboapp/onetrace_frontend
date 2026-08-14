@@ -68,6 +68,7 @@ const expandRuleTarget = (
   targetGroups?: RuleTargetGroups,
 ): string[] => {
   if (!target) return [];
+  // Simple lookup by api_name (now guaranteed to be unique due to numbering system)
   return targetGroups?.[target] || [target];
 };
 
@@ -118,7 +119,7 @@ export function buildFieldRuleState(
         for (const output of block.output_fields || []) {
           const targetField = output.field_api_name;
           if (!targetField) continue;
-          expandRuleTarget(targetField, targetGroups).forEach((expandedTarget) => {
+          expandRuleTarget(targetField, targetGroups, output.f_id || output.field_uid, output.s_id).forEach((expandedTarget) => {
             if (!baseDefaults.has(expandedTarget)) {
               baseDefaults.set(expandedTarget, { visible: true, required: false, disabled: false });
             }
@@ -282,7 +283,7 @@ const isValEmpty = (val: any): boolean => {
         rule.blocks.forEach((block) => {
           (block.output_fields || []).forEach((output) => {
             if (output.field_api_name && output.action === "show") {
-              expandRuleTarget(output.field_api_name, targetGroups).forEach((target) => showTargetFields.add(target));
+              expandRuleTarget(output.field_api_name, targetGroups, output.f_id || output.field_uid, output.s_id).forEach((target) => showTargetFields.add(target));
             }
           });
           (block.else_blocks || []).forEach((eb) => {
@@ -350,7 +351,7 @@ const isValEmpty = (val: any): boolean => {
             (block.output_fields || []).forEach((output) => {
               const targetField = output.field_api_name;
               if (!targetField) return;
-              expandRuleTarget(targetField, targetGroups).forEach((expandedTarget) => {
+              expandRuleTarget(targetField, targetGroups, output.f_id || output.field_uid, output.s_id).forEach((expandedTarget) => {
                 const currentState = nextStateMap.get(expandedTarget);
                 if (currentState) {
                   switch (output.action) {

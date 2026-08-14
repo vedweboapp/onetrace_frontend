@@ -365,6 +365,36 @@ interface FormBuilderLayoutProps {
   projectTypeId?: string;
 }
 
+/**
+ * Generate a unique api_name by appending numbers if duplicate found.
+ * First occurrence keeps original name, subsequent ones get _1, _2, etc.
+ */
+const getUniqueApiName = (desiredApiName: string, sections: Section[]): string => {
+  let nameExists = false;
+  let maxNumber = 0;
+
+  sections.forEach((section) => {
+    section.fields?.forEach((field) => {
+      if (field.api_name === desiredApiName) {
+        nameExists = true;
+      }
+      // Check for numbered versions: name_1, name_2, etc.
+      const numberMatch = field.api_name.match(
+        new RegExp(`^${desiredApiName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}_(\\d+)$`)
+      );
+      if (numberMatch) {
+        maxNumber = Math.max(maxNumber, parseInt(numberMatch[1], 10));
+      }
+    });
+  });
+
+  if (!nameExists) {
+    return desiredApiName;
+  }
+
+  return `${desiredApiName}_${maxNumber + 1}`;
+};
+
 export default function FormBuilderLayout({
   activeModule,
   layoutId,
@@ -422,7 +452,7 @@ export default function FormBuilderLayout({
 
   const [sections, setSections] = useState<Section[]>([
     {
-      _uid: "basic",
+      _uid: `section-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       name: "Basic Information",
       column_count: 2,
       fields: [],
@@ -718,7 +748,7 @@ export default function FormBuilderLayout({
     } else if (purpose === "create_module" || purpose === "create_layout" || purpose === "create_project_form") {
       setSections([
         {
-          _uid: "basic",
+          _uid: `section-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
           name: "Basic Information",
           column_count: 2,
           fields: [],
@@ -791,8 +821,11 @@ sectionLabel,
 
   const addFieldToSection = (sectionUid: string, fieldConfig: any) => {
     if (!sectionUid) return;
-    setSections((prev) =>
-      prev.map((sec) =>
+    setSections((prev) => {
+      // Generate unique api_name if duplicate found
+      const uniqueApiName = getUniqueApiName(fieldConfig.api_name, prev);
+      
+      return prev.map((sec) =>
         sec._uid === sectionUid
           ? {
             ...sec,
@@ -802,12 +835,13 @@ sectionLabel,
                 _uid: `${Date.now()}`,
                 order: sec.fields.length,
                 ...fieldConfig,
+                api_name: uniqueApiName, // Use unique api_name
               },
             ],
           }
           : sec,
-      ),
-    );
+      );
+    });
     setShowModal(null);
     setDirty(true);
   };
