@@ -12,6 +12,15 @@ export type RuleFieldOption = {
   label: string;
   type?: string;
   options?: FieldOption[];
+  apiName?: string;
+  targetType?: "field" | "section";
+  fieldId?: string | number | null;
+  fieldUid?: string;
+  sectionId?: string | number | null;
+  sectionUid?: string;
+  s_id?: number | string | null;
+  f_id?: string;
+  u_id?: string;
   sectionKey?: string;
   sectionLabel?: string;
   optionKind?: "section" | "field";

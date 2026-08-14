@@ -21,12 +21,13 @@ import SignaturePad from "../components/signature-pad";
 import VideoRecorder from "../components/VideoRecorder";
 import UsersSelect from "../components/users-select";
 import ImageUploadField from "../components/image-upload-field";
+import MultiImageUploadField from "../components/multi-image-upload-field";
 import { Country } from "country-state-city";
 import CountrySelect from "../components/CountrySelect";
 import StateSelect from "../components/StateSelect";
 import CitySelect from "../components/CitySelect";
 import RichTextEditor from "../components/rich-text-editor";
-import { FormRule, SECTION_RULE_TARGET_PREFIX } from "./form-rules.types";
+import { FormRule, SECTION_RULE_TARGET_PREFIX, FIELD_RULE_TARGET_PREFIX } from "./form-rules.types";
 import { buildFieldRuleState, FieldRuleState, RuleTargetGroups } from "./form-rules-engine";
 import { surfaceInputClassName } from "@/shared/ui";
 import { signatureDataUrlToFileSync } from "@/shared/utils/signature-to-file.util";
@@ -36,6 +37,9 @@ interface Field {
   api_name: string;
   field_label: string;
   field_type: string;
+  f_id?: string;
+  u_id?: string;
+  s_id?: number | string | null;
   order?: number;
   required?: boolean | string;
   placeholder?: string;
@@ -49,6 +53,7 @@ interface Field {
 interface Section {
   _uid?: string;
   id?: string | number;
+  s_id?: number | string | null;
   name?: string;
   column_count?: number;
   is_subform?: boolean;
@@ -155,6 +160,17 @@ const FIELD_COMPONENTS: Record<string, any> = {
     );
   },
   multi_select: MultiSelect,
+  multi_image_upload: (props: any) => (
+    <MultiImageUploadField
+      {...props}
+      value={props.value}
+      onChange={props.onChange}
+      readOnly={props.readOnly}
+      disabled={props.disabled}
+      maxFileSize={props.maxFileSize ?? props.properties?.maxFileSize}
+      maxFiles={props.maxFiles ?? props.properties?.maxFiles}
+    />
+  ),
   signature: SignaturePad,
   video_recorder: VideoRecorder,
   user: UsersSelect,
@@ -184,6 +200,11 @@ const FIELD_TYPE_ALIASES: Record<string, string> = {
   radio_button: "radio",
   radio_group: "radio",
   "radio-group": "radio",
+  multi_image: "multi_image_upload",
+  multiple_images: "multi_image_upload",
+  multiple_image: "multi_image_upload",
+  multi_images: "multi_image_upload",
+  multiimageupload: "multi_image_upload",
 };
 
 const getNormalizedType = (type: string) => {
@@ -230,19 +251,50 @@ const buildRuleTargetGroups = (schema: Section[]): RuleTargetGroups => {
 
   schema.forEach((section, index) => {
     const canonicalTarget = getSectionRuleTarget(section, index);
-    const fieldTargets = (section.fields || [])
-      .filter((field) => !field.is_deleted && field.api_name)
-      .map((field) => field.api_name);
+    const activeFields = (section.fields || [])
+      .filter((field) => !field.is_deleted && field.api_name);
+    const fieldTargets = activeFields.map((field) => field.api_name);
     const expandedTargets = [canonicalTarget, ...fieldTargets];
-    const aliases = [
+
+    // --- Section-level aliases → expand to section + all its fields ---
+    const sectionAliases = [
       canonicalTarget,
+      section.s_id != null ? `${SECTION_RULE_TARGET_PREFIX}${section.s_id}` : "",
+      section.s_id != null ? String(section.s_id) : "",
       section.id != null ? `${SECTION_RULE_TARGET_PREFIX}${section.id}` : "",
+      section.id != null ? String(section.id) : "",
       section._uid ? `${SECTION_RULE_TARGET_PREFIX}${section._uid}` : "",
+      section._uid ? String(section._uid) : "",
       section.name ? `${SECTION_RULE_TARGET_PREFIX}${section.name}` : "",
+      section.name ? String(section.name) : "",
     ].filter(Boolean);
 
-    aliases.forEach((alias) => {
-      groups[alias] = expandedTargets;
+    sectionAliases.forEach((alias) => {
+      groups[alias] = [canonicalTarget];
+    });
+
+    // --- Field-level aliases → resolve to individual api_name ---
+    activeFields.forEach((field) => {
+      const fieldSelf = [field.api_name];
+      // Register api_name directly (for rules that use raw api_name)
+      groups[field.api_name] = fieldSelf;
+      // Register __field__:{id} and raw id aliases
+      if (field.id != null) {
+        groups[`${FIELD_RULE_TARGET_PREFIX}${field.id}`] = fieldSelf;
+        groups[String(field.id)] = fieldSelf;
+      }
+      if (field._uid) {
+        groups[`${FIELD_RULE_TARGET_PREFIX}${field._uid}`] = fieldSelf;
+        groups[field._uid] = fieldSelf;
+      }
+      if (field.f_id) {
+        groups[`${FIELD_RULE_TARGET_PREFIX}${field.f_id}`] = fieldSelf;
+        groups[field.f_id] = fieldSelf;
+      }
+      if (field.u_id) {
+        groups[`${FIELD_RULE_TARGET_PREFIX}${field.u_id}`] = fieldSelf;
+        groups[field.u_id] = fieldSelf;
+      }
     });
   });
 
@@ -519,7 +571,7 @@ const FormField: React.FC<{
   }
 
   // Use Controller for complex components
-  if (["file_upload", "image_upload", "multi_select", "signature", "video_recorder", "user", "currency"].includes(normType)) {
+  if (["file_upload", "image_upload", "multi_image_upload", "multi_select", "signature", "video_recorder", "user", "currency"].includes(normType)) {
     const currencyDefault = buildCurrencyFieldDefault(field);
     return (
       <div className={fieldShellClass}>
@@ -530,7 +582,7 @@ const FormField: React.FC<{
           defaultValue={
             normType === "currency"
               ? currencyDefault
-              : normType === "multi_select" || normType === "user"
+              : normType === "multi_select" || normType === "user" || normType === "multi_image_upload"
                 ? []
                 : undefined
           }
@@ -584,11 +636,16 @@ const FormField: React.FC<{
           name={field.api_name}
           control={control}
           rules={validations}
-          render={({ field: { onChange, onBlur, value } }) => (
+          render={({ field: { onChange, onBlur, value } }) => {
+            // Coerce to scalar string – prevents React warning when value is object/array
+            const scalarValue = (value != null && typeof value === "object")
+              ? (Array.isArray(value) ? String(value[0] ?? "") : String((value as any).id ?? ""))
+              : (value ?? "");
+            return (
             <Component
               label={label}
               name={field.api_name}
-              value={value ?? ""}
+              value={scalarValue}
               onChange={onChange}
               onBlur={onBlur}
               errors={getError(field.api_name)}
@@ -598,7 +655,8 @@ const FormField: React.FC<{
               placeholder={field.placeholder}
               className="w-full"
             />
-          )}
+            );
+          }}
         />
       </div>
     );
@@ -624,7 +682,7 @@ const FormField: React.FC<{
   );
 };
 
-const FILE_FIELD_TYPES = new Set(["signature", "file_upload", "image_upload", "video_recorder"]);
+const FILE_FIELD_TYPES = new Set(["signature", "file_upload", "image_upload", "multi_image_upload", "video_recorder"]);
 
 function buildCurrencyFieldDefault(field: Field): { amount: string; currency: string } {
   const currency = getFieldCurrencyDefault(field as Record<string, unknown>);
@@ -650,6 +708,13 @@ function resolveCurrencyFieldValue(
 }
 
 function dataUrlToFile(val: unknown, fieldApiName: string): File | unknown {
+  if (Array.isArray(val)) {
+    return val.map((item, idx) =>
+      typeof item === "string" && item.startsWith("data:")
+        ? signatureDataUrlToFileSync(item, `${fieldApiName}_${idx}`) ?? item
+        : item
+    );
+  }
   if (typeof val !== "string" || !val.startsWith("data:")) return val;
   return signatureDataUrlToFileSync(val, `${fieldApiName}`) ?? val;
 }
@@ -743,6 +808,13 @@ const buildDefaultValuesFromSchema = (
           f.defaultValue !== ""
             ? f.defaultValue
             : null;
+      } else if (normType === "multi_image_upload") {
+        formData[f.api_name] =
+          f.defaultValue !== undefined && f.defaultValue !== null
+            ? Array.isArray(f.defaultValue)
+              ? f.defaultValue
+              : [f.defaultValue]
+            : [];
       } else if (normType === "currency") {
         formData[f.api_name] = buildCurrencyFieldDefault(f);
       } else if (normType === "file_upload") {

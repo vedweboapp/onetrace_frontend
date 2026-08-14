@@ -105,6 +105,9 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
           typeLower !== "image_upload" &&
           typeLower !== "imageupload" &&
           typeLower !== "image" &&
+          typeLower !== "multi_image_upload" &&
+          typeLower !== "multi_image" &&
+          typeLower !== "multiple_images" &&
           typeLower !== "file_upload" &&
           typeLower !== "fileupload" &&
           typeLower !== "file" &&
@@ -130,7 +133,23 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
     value: FormRuleOutput[keyof FormRuleOutput],
   ) => {
     const newOutputs = [...outputs];
-    newOutputs[index] = { ...newOutputs[index], [field]: value };
+    if (field === "field_api_name" && typeof value === "string") {
+      const option = fields.find((f) => f.value === value);
+      newOutputs[index] = {
+        ...newOutputs[index],
+        field_api_name: value,
+        target_type: option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
+        field_id: option?.fieldId || null,
+        field_uid: option?.fieldUid || option?.f_id || option?.u_id,
+        section_id: option?.sectionId || option?.s_id || null,
+        section_uid: option?.sectionUid,
+        s_id: option?.s_id ?? option?.sectionId ?? option?.sectionUid,
+        f_id: option?.f_id ?? option?.u_id ?? option?.fieldUid,
+        u_id: option?.u_id ?? option?.f_id ?? option?.fieldUid,
+      };
+    } else {
+      newOutputs[index] = { ...newOutputs[index], [field]: value };
+    }
     setOutputs(newOutputs);
   };
 
@@ -165,15 +184,36 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
       formattedValue = null;
     }
 
+    const selectedTriggerOption = fields.find((f) => f.value === triggerField);
+    const enrichedOutputs = validOutputs.map((o) => {
+      const option = fields.find((f) => f.value === o.field_api_name);
+      return {
+        ...o,
+        target_type: o.target_type || option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
+        field_id: o.field_id ?? option?.fieldId ?? null,
+        field_uid: o.field_uid ?? option?.fieldUid ?? option?.f_id ?? option?.u_id,
+        section_id: o.section_id ?? option?.sectionId ?? option?.s_id ?? null,
+        section_uid: o.section_uid ?? option?.sectionUid,
+        s_id: o.s_id ?? option?.s_id ?? option?.sectionId ?? option?.sectionUid,
+        f_id: o.f_id ?? option?.f_id ?? option?.u_id ?? option?.fieldUid,
+        u_id: o.u_id ?? option?.u_id ?? option?.f_id ?? option?.fieldUid,
+      };
+    });
+
     const rule: FormRule = {
       _uid: initialRule?._uid || `rule-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       id: initialRule?.id,
       name,
       sequence: initialRule?.sequence || 0,
       field_api_name: triggerField,
+      field_id: selectedTriggerOption?.fieldId ?? null,
+      field_uid: selectedTriggerOption?.fieldUid ?? selectedTriggerOption?.f_id ?? selectedTriggerOption?.u_id,
+      s_id: selectedTriggerOption?.s_id ?? selectedTriggerOption?.sectionId ?? selectedTriggerOption?.sectionUid,
+      f_id: selectedTriggerOption?.f_id ?? selectedTriggerOption?.u_id ?? selectedTriggerOption?.fieldUid,
+      u_id: selectedTriggerOption?.u_id ?? selectedTriggerOption?.f_id ?? selectedTriggerOption?.fieldUid,
       condition: condition as RuleCondition,
       value: formattedValue,
-      output_fields: validOutputs,
+      output_fields: enrichedOutputs,
     };
 
     onSave(rule);
@@ -217,6 +257,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
         />
       );
     }
+
     if (fieldType === "phone" || fieldType === "mobile") {
       return (
         <div className="surface-phone-root w-full mt-1.5">

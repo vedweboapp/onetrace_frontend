@@ -71,6 +71,35 @@ const expandRuleTarget = (
   return targetGroups?.[target] || [target];
 };
 
+const getTriggerValue = (
+  triggerField: string,
+  formValues: Record<string, any>,
+  targetGroups?: RuleTargetGroups
+): any => {
+  if (!triggerField) return undefined;
+  if (formValues[triggerField] !== undefined) return formValues[triggerField];
+  const expanded = expandRuleTarget(triggerField, targetGroups);
+  for (const target of expanded) {
+    if (formValues[target] !== undefined) return formValues[target];
+  }
+  return undefined;
+};
+
+const checkTriggerVisible = (
+  triggerField: string,
+  currentStateMap: Map<string, FieldRuleState>,
+  targetGroups?: RuleTargetGroups
+): boolean => {
+  if (!triggerField) return true;
+  const targets = expandRuleTarget(triggerField, targetGroups);
+  for (const t of targets) {
+    if (currentStateMap.has(t) && currentStateMap.get(t)!.visible === false) {
+      return false;
+    }
+  }
+  return true;
+};
+
 export function buildFieldRuleState(
   rules: FormRule[],
   formValues: Record<string, any>,
@@ -176,11 +205,18 @@ export function buildFieldRuleState(
         const blockMatches = rule.blocks.map((block) => {
           const triggerField = block.field_api_name;
           if (!triggerField) return false;
-          const isTriggerVisible = !currentStateMap.has(triggerField) || currentStateMap.get(triggerField)!.visible !== false;
+          const isTriggerVisible = checkTriggerVisible(triggerField, currentStateMap, targetGroups);
           if (!isTriggerVisible) return false;
-          const triggerValue = formValues[triggerField];
+          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups);
           return evaluateCondition(triggerValue, block.condition, block.value);
         });
+
+const isValEmpty = (val: any): boolean => {
+  if (val === undefined || val === null) return true;
+  if (typeof val === 'string' && val.trim() === '') return true;
+  if (Array.isArray(val) && val.length === 0) return true;
+  return false;
+};
 
         // Evaluate each else block independently
         // elseBlockMatches[bIdx][ebIdx] = whether else block ebIdx of rule block bIdx fires
@@ -188,22 +224,31 @@ export function buildFieldRuleState(
           const triggerField = block.field_api_name;
           if (!triggerField) return [];
 
-          const isTriggerVisible = !currentStateMap.has(triggerField) || currentStateMap.get(triggerField)!.visible !== false;
+          const isTriggerVisible = checkTriggerVisible(triggerField, currentStateMap, targetGroups);
           if (!isTriggerVisible) return (block.else_blocks || []).map(() => false);
 
-          const triggerValue = formValues[triggerField];
+          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups);
           const ifMatched = blockMatches[bIdx];
+          const triggerIsEmpty = isValEmpty(triggerValue);
 
           return (block.else_blocks || []).map((eb) => {
             // An else block can only fire if the IF didn't match
             if (ifMatched) return false;
+
+            // If the trigger field is empty/unselected, ELSE should not fire unless explicitly checking 'is_empty'
+            if (triggerIsEmpty) {
+              if (eb.else_condition === 'is_empty') {
+                return true;
+              }
+              return false;
+            }
 
             // If this else block has an explicit condition, evaluate it
             if (eb.else_condition) {
               return evaluateCondition(triggerValue, eb.else_condition, eb.else_value ?? null);
             }
 
-            // No explicit condition → fire whenever IF is false
+            // No explicit condition → fire whenever IF is false and trigger has a value
             return true;
           });
         });
@@ -214,10 +259,19 @@ export function buildFieldRuleState(
           if (blockMatches[bIdx]) return false;
           const triggerField = block.field_api_name;
           if (!triggerField) return false;
-          const isTriggerVisible = !currentStateMap.has(triggerField) || currentStateMap.get(triggerField)!.visible !== false;
+          const isTriggerVisible = checkTriggerVisible(triggerField, currentStateMap, targetGroups);
           if (!isTriggerVisible) return false;
+          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups);
+          const triggerIsEmpty = isValEmpty(triggerValue);
+
+          if (triggerIsEmpty) {
+            if (block.else_condition === 'is_empty') {
+              return true;
+            }
+            return false;
+          }
+
           if (block.else_condition) {
-            const triggerValue = formValues[triggerField];
             return evaluateCondition(triggerValue, block.else_condition, block.else_value ?? null);
           }
           return true;
@@ -350,10 +404,10 @@ export function buildFieldRuleState(
       } else {
         // Simple rule evaluation
         const triggerField = rule.field_api_name || "";
-        const isTriggerVisible = !triggerField || !currentStateMap.has(triggerField) || currentStateMap.get(triggerField)!.visible !== false;
+        const isTriggerVisible = !triggerField || checkTriggerVisible(triggerField, currentStateMap, targetGroups);
 
         if (isTriggerVisible && triggerField) {
-          const triggerValue = formValues[triggerField];
+          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups);
           const isMatch = evaluateCondition(triggerValue, rule.condition!, rule.value);
 
           if (isMatch) {
