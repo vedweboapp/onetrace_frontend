@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Download, Loader2, Send } from "lucide-react";
-import { fetchQuotation, sendQuotation } from "@/features/quotations/api/quotation.api";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import { Download, Loader2 } from "lucide-react";
+import { fetchQuotation } from "@/features/quotations/api/quotation.api";
 import type {
   QuotationDetail,
   QuotationQuoteSection,
@@ -700,7 +699,6 @@ export function QuotationPdfPreviewModal({ open, quotationId, quoteName, onClose
   });
   const [pinSnapshots, setPinSnapshots] = React.useState<Map<string, string>>(new Map());
   const [generationError, setGenerationError] = React.useState<string | null>(null);
-  const [isSending, setIsSending] = React.useState(false);
 
   const { state: dlState, error: dlError, download } = useDownloadPdf(quoteName, quotationId);
 
@@ -784,49 +782,24 @@ export function QuotationPdfPreviewModal({ open, quotationId, quoteName, onClose
       ? "Downloaded!"
       : "Download PDF";
 
-  const handleSendQuotation = async () => {
-    const qId = quotationId ?? quoteDetail?.id;
-    if (!qId) return;
-    setIsSending(true);
-    try {
-      await sendQuotation(qId);
-      toastSuccess("Quotation sent successfully");
-    } catch (err) {
-      toastApiError(err, "Failed to send quotation");
-    } finally {
-      setIsSending(false);
-    }
-  };
-
   return (
     <AppModal
       open={open}
-      onClose={!isBusy && !isSending ? onClose : () => undefined}
+      onClose={!isBusy ? onClose : () => undefined}
       title="PDF Preview"
       size="5xl"
-      closeOnBackdrop={!isBusy && !isSending}
+      closeOnBackdrop={!isBusy}
       footer={
         <>
-          <AppButton type="button" variant="secondary" size="sm" disabled={isBusy || isSending} onClick={onClose}>
+          <AppButton type="button" variant="secondary" size="sm" disabled={isBusy} onClick={onClose}>
             Close
-          </AppButton>
-          <AppButton
-            type="button"
-            variant="secondary"
-            size="sm"
-            loading={isSending}
-            disabled={isBusy || isSending || !quoteDetail || loading}
-            onClick={() => void handleSendQuotation()}
-          >
-            <Send className="mr-1.5 size-4" />
-            Send Quotation
           </AppButton>
           <AppButton
             type="button"
             variant="primary"
             size="sm"
             loading={isBusy}
-            disabled={loading || !!error || !quoteDetail || generationStatus !== "success" || isBusy || isSending}
+            disabled={loading || !!error || !quoteDetail || generationStatus !== "success" || isBusy}
             onClick={() => void download()}
           >
             <Download className="mr-1.5 size-4" />

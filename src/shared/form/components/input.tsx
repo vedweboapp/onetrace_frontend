@@ -15,7 +15,7 @@ import {
 import { cn } from "@/core/utils/http.util";
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & {
-  label?: string;
+  label?: React.ReactNode;
   register?: UseFormRegisterReturn;
   errors?: FieldError;
   readOnly?: boolean;
@@ -26,12 +26,13 @@ type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   fieldRequired?: boolean;
 };
 
-const extractLabelText = (label?: string) => {
-  if (!label || typeof label !== "string") return "";
-  return label.replace(/[*:]/g, "").trim();
+const cleanLabelNode = (label?: React.ReactNode): React.ReactNode => {
+  if (!label) return "";
+  if (typeof label === "string") return label.replace(/[*:]/g, "").trim();
+  return label;
 };
 
-const labelLooksRequired = (label?: string) =>
+const labelLooksRequired = (label?: React.ReactNode) =>
   typeof label === "string" && /\*/.test(label);
 
 const Input = ({
@@ -51,7 +52,7 @@ const Input = ({
 }: InputProps) => {
   const isDateField = isNativeDateInputType(rest.type);
   const inputId = id ?? register?.name ?? name;
-  const cleanLabel = extractLabelText(label);
+  const cleanLabel = cleanLabelNode(label);
   const isRequired = Boolean(fieldRequired ?? required ?? labelLooksRequired(label));
 
   function handleDateClick(e: React.MouseEvent<HTMLInputElement>) {
@@ -71,7 +72,7 @@ const Input = ({
       onClick={isDateField ? handleDateClick : onClick}
       placeholder={
         rest.placeholder ||
-        (cleanLabel ? `Enter ${cleanLabel} here` : rest.placeholder)
+        (typeof cleanLabel === "string" && cleanLabel ? `Enter ${cleanLabel} here` : rest.placeholder)
       }
       aria-invalid={errors ? true : undefined}
       className={cn(

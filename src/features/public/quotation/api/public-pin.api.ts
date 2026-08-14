@@ -331,9 +331,37 @@ export async function fetchPublicQuotationByToken(token: string): Promise<Quotat
   return data as QuotationDetail;
 }
 
+export type PublicRejectionReason = {
+  id: number;
+  label: string;
+};
+
+export async function fetchPublicQuotationRejectionReasons(token: string): Promise<PublicRejectionReason[]> {
+  const response = await api.get<unknown>(`public/quotations/${token}/rejection-reasons/`);
+  const data = unwrapApiData(response.data);
+  const rows = Array.isArray(data)
+    ? data
+    : isObject(data) && Array.isArray(data.results)
+      ? data.results
+      : isObject(data) && Array.isArray(data.items)
+        ? data.items
+        : [];
+
+  return rows
+    .map((row): PublicRejectionReason | null => {
+      if (!isObject(row)) return null;
+      const id = parseNumber(row.id);
+      const label = parseString(row.reason ?? row.name ?? row.title ?? row.label ?? row.description);
+      if (!id || !label) return null;
+      return { id, label };
+    })
+    .filter((row): row is PublicRejectionReason => row !== null);
+}
+
 export type PublicQuotationResponsePayload = {
   status: "approved" | "rejected" | "questioned";
   comment?: string;
+  rejection_reason_ids?: number;
   signature?: File | Blob | string | null;
 };
 
@@ -353,11 +381,29 @@ export async function submitPublicQuotationResponse(
   token: string,
   payload: PublicQuotationResponsePayload,
 ): Promise<void> {
+  if (!payload.signature) {
+    const body: Record<string, string | number> = {
+      status: payload.status,
+    };
+    if (payload.comment?.trim()) {
+      body.comment = payload.comment.trim();
+    }
+    if (typeof payload.rejection_reason_ids === "number") {
+      body.rejection_reason_ids = payload.rejection_reason_ids;
+    }
+    await api.post(`public/quotations/${token}/`, body);
+    return;
+  }
+
   const formData = new FormData();
   formData.append("status", payload.status);
 
   if (payload.comment?.trim()) {
     formData.append("comment", payload.comment.trim());
+  }
+
+  if (typeof payload.rejection_reason_ids === "number") {
+    formData.append("rejection_reason_ids", String(payload.rejection_reason_ids));
   }
 
   if (payload.signature) {

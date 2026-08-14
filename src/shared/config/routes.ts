@@ -57,6 +57,8 @@ export const routes = {
     settingsCustomization: "/settings/customization",
     settingsUsers: "/settings/users",
     settingsUserGroups: "/settings/user-groups",
+    settingsRoles: "/settings/roles",
+    settingsProfiles: "/settings/profiles",
     settingsPersonalProfile: "/settings/personal-profile",
     settingsCompanySettings: "/settings/company-settings",
     documentation: "/documentation",

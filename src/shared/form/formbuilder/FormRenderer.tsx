@@ -21,13 +21,14 @@ import SignaturePad from "../components/signature-pad";
 import VideoRecorder from "../components/VideoRecorder";
 import UsersSelect from "../components/users-select";
 import ImageUploadField from "../components/image-upload-field";
+import MultiImageUploadField from "../components/multi-image-upload-field";
 import { Country } from "country-state-city";
 import CountrySelect from "../components/CountrySelect";
 import StateSelect from "../components/StateSelect";
 import CitySelect from "../components/CitySelect";
 import RichTextEditor from "../components/rich-text-editor";
-import { FormRule } from "./form-rules.types";
-import { buildFieldRuleState, FieldRuleState } from "./form-rules-engine";
+import { FormRule, SECTION_RULE_TARGET_PREFIX, FIELD_RULE_TARGET_PREFIX } from "./form-rules.types";
+import { buildFieldRuleState, FieldRuleState, RuleTargetGroups } from "./form-rules-engine";
 import { surfaceInputClassName } from "@/shared/ui";
 import { signatureDataUrlToFileSync } from "@/shared/utils/signature-to-file.util";
 import { cn } from "@/core/utils/http.util";
@@ -36,6 +37,9 @@ interface Field {
   api_name: string;
   field_label: string;
   field_type: string;
+  f_id?: string;
+  u_id?: string;
+  s_id?: number | string | null;
   order?: number;
   required?: boolean | string;
   placeholder?: string;
@@ -47,6 +51,9 @@ interface Field {
 }
 
 interface Section {
+  _uid?: string;
+  id?: string | number;
+  s_id?: number | string | null;
   name?: string;
   column_count?: number;
   is_subform?: boolean;
@@ -153,6 +160,17 @@ const FIELD_COMPONENTS: Record<string, any> = {
     );
   },
   multi_select: MultiSelect,
+  multi_image_upload: (props: any) => (
+    <MultiImageUploadField
+      {...props}
+      value={props.value}
+      onChange={props.onChange}
+      readOnly={props.readOnly}
+      disabled={props.disabled}
+      maxFileSize={props.maxFileSize ?? props.properties?.maxFileSize}
+      maxFiles={props.maxFiles ?? props.properties?.maxFiles}
+    />
+  ),
   signature: SignaturePad,
   video_recorder: VideoRecorder,
   user: UsersSelect,
@@ -182,6 +200,11 @@ const FIELD_TYPE_ALIASES: Record<string, string> = {
   radio_button: "radio",
   radio_group: "radio",
   "radio-group": "radio",
+  multi_image: "multi_image_upload",
+  multiple_images: "multi_image_upload",
+  multiple_image: "multi_image_upload",
+  multi_images: "multi_image_upload",
+  multiimageupload: "multi_image_upload",
 };
 
 const getNormalizedType = (type: string) => {
@@ -219,6 +242,99 @@ const getEditorType = (field: Field) =>
   field.editor_type ??
   (field as { editorType?: string }).editorType ??
   field.properties?.validation_rules?.editor_type;
+
+const getSectionRuleTarget = (section: Section, index: number) =>
+  `${SECTION_RULE_TARGET_PREFIX}${section.sequence ?? index + 1}`;
+
+const buildRuleTargetGroups = (schema: Section[]): RuleTargetGroups => {
+  const groups: RuleTargetGroups = {};
+
+  schema.forEach((section, index) => {
+    const canonicalTarget = getSectionRuleTarget(section, index);
+    const activeFields = (section.fields || [])
+      .filter((field) => !field.is_deleted && field.api_name);
+    const fieldTargets = activeFields.map((field) => field.api_name);
+    const expandedTargets = [canonicalTarget, ...fieldTargets];
+
+    // --- Section-level aliases → expand to section + all its fields ---
+    const sectionAliases = [
+      canonicalTarget,
+      section.s_id != null ? `${SECTION_RULE_TARGET_PREFIX}${section.s_id}` : "",
+      section.s_id != null ? String(section.s_id) : "",
+      section.id != null ? `${SECTION_RULE_TARGET_PREFIX}${section.id}` : "",
+      section.id != null ? String(section.id) : "",
+      section._uid ? `${SECTION_RULE_TARGET_PREFIX}${section._uid}` : "",
+      section._uid ? String(section._uid) : "",
+      section.name ? `${SECTION_RULE_TARGET_PREFIX}${section.name}` : "",
+      section.name ? String(section.name) : "",
+    ].filter(Boolean);
+
+    sectionAliases.forEach((alias) => {
+      groups[alias] = [canonicalTarget];
+    });
+
+    // --- Field-level aliases → resolve to individual api_name ---
+    // Use composite key (api_name + f_id + s_id) to differentiate fields with same name
+    activeFields.forEach((field) => {
+      // Create unique field identifier using f_id and s_id
+      const fieldUniqueId = field.f_id || field.u_id || field._uid || `${field.api_name}-${section._uid}`;
+      const sectionId = field.s_id || section.s_id || section._uid;
+      const compositeKey = `${field.api_name}::${sectionId}::${fieldUniqueId}`;
+      const fieldSelf = [field.api_name];  // Keep api_name as primary for backward compatibility
+      
+      // Register composite key as primary (highest priority for uniqueness)
+      groups[compositeKey] = fieldSelf;
+      
+      // Register api_name directly (for rules that use raw api_name)
+      // NOTE: This may have collisions, but backward compatibility requires it
+      if (!groups[field.api_name]) {
+        groups[field.api_name] = fieldSelf;
+      }
+      
+      // Register __field__:{id} and raw id aliases with section scope for better differentiation
+      if (field.id != null) {
+        const scopedFieldId = `${field.id}::${sectionId}`;
+        groups[`${FIELD_RULE_TARGET_PREFIX}${field.id}`] = fieldSelf;
+        groups[scopedFieldId] = fieldSelf;
+        groups[String(field.id)] = fieldSelf;
+      }
+      if (field._uid) {
+        const scopedUid = `${field._uid}::${sectionId}`;
+        groups[`${FIELD_RULE_TARGET_PREFIX}${field._uid}`] = fieldSelf;
+        groups[scopedUid] = fieldSelf;
+        groups[field._uid] = fieldSelf;
+      }
+      // f_id is the database field ID - most reliable for differentiation
+      if (field.f_id) {
+        groups[`${FIELD_RULE_TARGET_PREFIX}${field.f_id}`] = fieldSelf;
+        groups[field.f_id] = fieldSelf;
+        // Also register with section scope
+        groups[`f_id::${field.f_id}::${sectionId}`] = fieldSelf;
+      }
+      // u_id is an alternative unique identifier
+      if (field.u_id) {
+        groups[`${FIELD_RULE_TARGET_PREFIX}${field.u_id}`] = fieldSelf;
+        groups[field.u_id] = fieldSelf;
+        // Also register with section scope
+        groups[`u_id::${field.u_id}::${sectionId}`] = fieldSelf;
+      }
+    });
+  });
+
+  return groups;
+};
+
+const mergeRuleStates = (
+  fieldState?: FieldRuleState,
+  sectionState?: FieldRuleState,
+): FieldRuleState | undefined => {
+  if (!fieldState && !sectionState) return undefined;
+  return {
+    visible: fieldState?.visible === false || sectionState?.visible === false ? false : true,
+    required: Boolean(fieldState?.required || sectionState?.required),
+    disabled: Boolean(fieldState?.disabled || sectionState?.disabled),
+  };
+};
 
 const buildRichTextValidations = (validations: Record<string, any>, field: Field) => {
   const rules = { ...validations };
@@ -478,7 +594,7 @@ const FormField: React.FC<{
   }
 
   // Use Controller for complex components
-  if (["file_upload", "image_upload", "multi_select", "signature", "video_recorder", "user", "currency"].includes(normType)) {
+  if (["file_upload", "image_upload", "multi_image_upload", "multi_select", "signature", "video_recorder", "user", "currency"].includes(normType)) {
     const currencyDefault = buildCurrencyFieldDefault(field);
     return (
       <div className={fieldShellClass}>
@@ -489,7 +605,7 @@ const FormField: React.FC<{
           defaultValue={
             normType === "currency"
               ? currencyDefault
-              : normType === "multi_select" || normType === "user"
+              : normType === "multi_select" || normType === "user" || normType === "multi_image_upload"
                 ? []
                 : undefined
           }
@@ -543,11 +659,16 @@ const FormField: React.FC<{
           name={field.api_name}
           control={control}
           rules={validations}
-          render={({ field: { onChange, onBlur, value } }) => (
+          render={({ field: { onChange, onBlur, value } }) => {
+            // Coerce to scalar string – prevents React warning when value is object/array
+            const scalarValue = (value != null && typeof value === "object")
+              ? (Array.isArray(value) ? String(value[0] ?? "") : String((value as any).id ?? ""))
+              : (value ?? "");
+            return (
             <Component
               label={label}
               name={field.api_name}
-              value={value ?? ""}
+              value={scalarValue}
               onChange={onChange}
               onBlur={onBlur}
               errors={getError(field.api_name)}
@@ -557,7 +678,8 @@ const FormField: React.FC<{
               placeholder={field.placeholder}
               className="w-full"
             />
-          )}
+            );
+          }}
         />
       </div>
     );
@@ -583,7 +705,7 @@ const FormField: React.FC<{
   );
 };
 
-const FILE_FIELD_TYPES = new Set(["signature", "file_upload", "image_upload", "video_recorder"]);
+const FILE_FIELD_TYPES = new Set(["signature", "file_upload", "image_upload", "multi_image_upload", "video_recorder"]);
 
 function buildCurrencyFieldDefault(field: Field): { amount: string; currency: string } {
   const currency = getFieldCurrencyDefault(field as Record<string, unknown>);
@@ -609,6 +731,13 @@ function resolveCurrencyFieldValue(
 }
 
 function dataUrlToFile(val: unknown, fieldApiName: string): File | unknown {
+  if (Array.isArray(val)) {
+    return val.map((item, idx) =>
+      typeof item === "string" && item.startsWith("data:")
+        ? signatureDataUrlToFileSync(item, `${fieldApiName}_${idx}`) ?? item
+        : item
+    );
+  }
   if (typeof val !== "string" || !val.startsWith("data:")) return val;
   return signatureDataUrlToFileSync(val, `${fieldApiName}`) ?? val;
 }
@@ -687,6 +816,7 @@ const buildDefaultValuesFromSchema = (
 
     s?.fields?.forEach((f) => {
       if (!f.api_name || formData[f.api_name] !== undefined) return;
+      
       const normType = getNormalizedType(f.field_type);
       if (normType === "checkbox") {
         // Use defaultChecked or defaultValue set in field config modal
@@ -702,6 +832,13 @@ const buildDefaultValuesFromSchema = (
           f.defaultValue !== ""
             ? f.defaultValue
             : null;
+      } else if (normType === "multi_image_upload") {
+        formData[f.api_name] =
+          f.defaultValue !== undefined && f.defaultValue !== null
+            ? Array.isArray(f.defaultValue)
+              ? f.defaultValue
+              : [f.defaultValue]
+            : [];
       } else if (normType === "currency") {
         formData[f.api_name] = buildCurrencyFieldDefault(f);
       } else if (normType === "file_upload") {
@@ -834,6 +971,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
       if (!onFieldChange) return;
       const sub = watch((v, { name }) => {
           if (name) {
+              // name is the api_name (now guaranteed to be unique via numbering system)
               onFieldChange(name, (v as any)[name]);
           }
       });
@@ -860,12 +998,19 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
 
     const formValues = watch();
     
+    const ruleTargetGroups = React.useMemo(() => {
+      if (!Array.isArray(schema) || schema.length === 0) {
+        return {};
+      }
+      return buildRuleTargetGroups(schema);
+    }, [schema]);
+
     const fieldRuleState = React.useMemo(() => {
       if (!rules || rules.length === 0) {
         return new Map<string, FieldRuleState>();
       }
-      return buildFieldRuleState(rules, formValues);
-    }, [rules, formValues]);
+      return buildFieldRuleState(rules, formValues, ruleTargetGroups);
+    }, [rules, formValues, ruleTargetGroups]);
 
     const getError = (name: string) =>
       touchedFields?.[name] || isSubmitted ? (errors as any)[name] : undefined;
@@ -916,6 +1061,9 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
           })
           .map(({ section }) => section)
           .map((section, sIdx) => {
+          const sectionRuleState = fieldRuleState.get(getSectionRuleTarget(section, sIdx));
+          if (sectionRuleState?.visible === false) return null;
+
           if (section.is_subform) {
             const sfKey =
               section.subform_field_name ||
@@ -987,7 +1135,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
                       isSubmitted={isSubmitted}
                       dirtyFields={dirtyFields}
                       sectionFields={section.fields}
-                      ruleState={fieldRuleState.get(f.api_name)}
+                      ruleState={mergeRuleStates(fieldRuleState.get(f.api_name), sectionRuleState)}
                       forceSingleColumn={forceSingleColumn}
                     />
                   ))}

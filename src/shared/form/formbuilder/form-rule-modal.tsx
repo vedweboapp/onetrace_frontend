@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import { AppButton } from "@/shared/ui/app-button";
 import { FormRule, RuleCondition, FormRuleOutput, RuleAction } from "./form-rules.types";
+import { RuleFieldSelect, type RuleFieldOption } from "./rule-field-select";
 import MultiSelect from "../components/multi-select";
 import { PhoneNumberInput, DEFAULT_PHONE_COUNTRY, surfaceInputClassName } from "@/shared/ui";
 import { currencyList } from "../components/currency-list";
@@ -15,7 +16,7 @@ const FORM_BUILDER_DRAWER_HEIGHT = "h-[calc(100dvh-7rem)]";
 type FormRuleModalProps = {
   onClose: () => void;
   onSave: (rule: FormRule) => void;
-  fields: { value: string; label: string; type?: string; options?: any[] }[];
+  fields: RuleFieldOption[];
   initialRule?: FormRule | null;
   existingRules?: FormRule[];
 };
@@ -97,12 +98,16 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
   const triggerFieldOptions = React.useMemo(() => {
     return fields.filter(
       (field) => {
+        if (field.optionKind === "section") return false;
         if (selectedOutputFieldNames.has(field.value)) return false;
         const typeLower = (field.type || "").toLowerCase();
         return (
           typeLower !== "image_upload" &&
           typeLower !== "imageupload" &&
           typeLower !== "image" &&
+          typeLower !== "multi_image_upload" &&
+          typeLower !== "multi_image" &&
+          typeLower !== "multiple_images" &&
           typeLower !== "file_upload" &&
           typeLower !== "fileupload" &&
           typeLower !== "file" &&
@@ -128,7 +133,23 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
     value: FormRuleOutput[keyof FormRuleOutput],
   ) => {
     const newOutputs = [...outputs];
-    newOutputs[index] = { ...newOutputs[index], [field]: value };
+    if (field === "field_api_name" && typeof value === "string") {
+      const option = fields.find((f) => f.value === value);
+      newOutputs[index] = {
+        ...newOutputs[index],
+        field_api_name: value,
+        target_type: option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
+        field_id: option?.fieldId || null,
+        field_uid: option?.fieldUid || option?.f_id || option?.u_id,
+        section_id: option?.sectionId || option?.s_id || null,
+        section_uid: option?.sectionUid,
+        s_id: option?.s_id ?? option?.sectionId ?? option?.sectionUid,
+        f_id: option?.f_id ?? option?.u_id ?? option?.fieldUid,
+        u_id: option?.u_id ?? option?.f_id ?? option?.fieldUid,
+      };
+    } else {
+      newOutputs[index] = { ...newOutputs[index], [field]: value };
+    }
     setOutputs(newOutputs);
   };
 
@@ -163,15 +184,36 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
       formattedValue = null;
     }
 
+    const selectedTriggerOption = fields.find((f) => f.value === triggerField);
+    const enrichedOutputs = validOutputs.map((o) => {
+      const option = fields.find((f) => f.value === o.field_api_name);
+      return {
+        ...o,
+        target_type: o.target_type || option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
+        field_id: o.field_id ?? option?.fieldId ?? null,
+        field_uid: o.field_uid ?? option?.fieldUid ?? option?.f_id ?? option?.u_id,
+        section_id: o.section_id ?? option?.sectionId ?? option?.s_id ?? null,
+        section_uid: o.section_uid ?? option?.sectionUid,
+        s_id: o.s_id ?? option?.s_id ?? option?.sectionId ?? option?.sectionUid,
+        f_id: o.f_id ?? option?.f_id ?? option?.u_id ?? option?.fieldUid,
+        u_id: o.u_id ?? option?.u_id ?? option?.f_id ?? option?.fieldUid,
+      };
+    });
+
     const rule: FormRule = {
       _uid: initialRule?._uid || `rule-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       id: initialRule?.id,
       name,
       sequence: initialRule?.sequence || 0,
       field_api_name: triggerField,
+      field_id: selectedTriggerOption?.fieldId ?? null,
+      field_uid: selectedTriggerOption?.fieldUid ?? selectedTriggerOption?.f_id ?? selectedTriggerOption?.u_id,
+      s_id: selectedTriggerOption?.s_id ?? selectedTriggerOption?.sectionId ?? selectedTriggerOption?.sectionUid,
+      f_id: selectedTriggerOption?.f_id ?? selectedTriggerOption?.u_id ?? selectedTriggerOption?.fieldUid,
+      u_id: selectedTriggerOption?.u_id ?? selectedTriggerOption?.f_id ?? selectedTriggerOption?.fieldUid,
       condition: condition as RuleCondition,
       value: formattedValue,
-      output_fields: validOutputs,
+      output_fields: enrichedOutputs,
     };
 
     onSave(rule);
@@ -215,6 +257,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
         />
       );
     }
+
     if (fieldType === "phone" || fieldType === "mobile") {
       return (
         <div className="surface-phone-root w-full mt-1.5">
@@ -290,11 +333,15 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
             onChange={(e) => setRuleValue(e.target.value)}
           >
             <option value="">Select Option</option>
-            {fieldOptions.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
+            {fieldOptions.map((opt) => {
+              const optionValue = typeof opt === "string" ? opt : opt.value;
+              const optionLabel = typeof opt === "string" ? opt : opt.label;
+              return (
+              <option key={optionValue} value={optionValue}>
+                {optionLabel}
               </option>
-            ))}
+              );
+            })}
           </select>
         );
       }
@@ -378,18 +425,15 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
               {/* IF SECTION */}
               <div className="flex flex-col gap-2">
                 <div className="flex gap-3 items-center">
-                  <select
-                    className={`w-64 p-2.5 outline-none border ${errors.triggerField ? 'border-red-500' : 'border-gray-300'} focus:ring-2  focus:ring-[color:var(--dash-accent)] rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+                  <RuleFieldSelect
+                    className="w-64"
                     value={triggerField}
-                    onChange={(e) => setTriggerField(e.target.value)}
-                  >
-                    <option value="">Select Field</option>
-                    {triggerFieldOptions.map((field) => (
-                      <option key={field.value} value={field.value}>
-                        {field.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setTriggerField}
+                    options={triggerFieldOptions}
+                    placeholder="Select Field"
+                    invalid={!!errors.triggerField}
+                    listLabel="Trigger fields"
+                  />
 
                   <select
                     className={`w-52 p-2.5 border outline-none ${errors.condition ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-[color:var(--dash-accent)] rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
@@ -437,16 +481,15 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
                           ))}
                         </select>
 
-                        <select
-                          className={`w-full p-2.5 focus:ring-2 outline-none focus:ring-[color:var(--dash-accent)] border ${!output.field_api_name && errors.outputs ? 'border-red-500' : 'border-gray-300'} rounded-md dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100`}
+                        <RuleFieldSelect
+                          className="w-full"
                           value={output.field_api_name}
-                          onChange={(e) => handleOutputChange(idx, "field_api_name", e.target.value)}
-                        >
-                          <option value="">Select Target Field</option>
-                          {availableFields.map(f => (
-                            <option key={f.value} value={f.value}>{f.label}</option>
-                          ))}
-                        </select>
+                          onChange={(value) => handleOutputChange(idx, "field_api_name", value)}
+                          options={availableFields}
+                          placeholder="Select Target Field"
+                          invalid={!output.field_api_name && !!errors.outputs}
+                          listLabel="Target fields and sections"
+                        />
 
                         <AppButton
                           type="button"
