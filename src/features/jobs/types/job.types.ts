@@ -113,6 +113,17 @@ export type JobQrCodeRef = {
   qr_image?: string | null;
 };
 
+/** Possible `job_time` object from the API (duration or start/end). */
+export type JobTimeValue = {
+  hours?: number;
+  minutes?: number;
+  seconds?: number;
+  start?: string | null;
+  end?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+};
+
 export type JobMetaCompositeGroupRef = {
   id: number;
   name?: string;
@@ -213,7 +224,8 @@ export type Job = {
   job_status: number | WorkflowColourStatus | null;
   start_date: string;
   end_date: string;
-  job_time?: string | null;
+  /** Duration or clock time — API may send a string, seconds, or `{ hours, minutes }`. */
+  job_time?: string | number | JobTimeValue | null;
   completed_at: string | null;
   is_active: boolean;
   deleted_by: unknown;

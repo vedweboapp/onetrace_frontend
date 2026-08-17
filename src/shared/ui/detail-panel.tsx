@@ -61,11 +61,11 @@ export function DetailPanel({
         )}
       >
         <header className="flex shrink-0 items-start gap-3 border-b border-slate-200 px-4 py-3.5 sm:px-5 dark:border-slate-800">
-          <div className="min-w-0 flex-1 space-y-1">
-            <h2 className="min-w-0 text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+          <div className="min-w-0 flex-1">
+            <div className="min-w-0 text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">
               {title}
-            </h2>
-            {subtitle ? <div className="min-w-0 leading-snug">{subtitle}</div> : null}
+            </div>
+            {subtitle ? <div className="mt-1 min-w-0 leading-snug">{subtitle}</div> : null}
           </div>
           {action ? <div className="flex h-9 shrink-0 items-center">{action}</div> : null}
           {showCloseButton ? (

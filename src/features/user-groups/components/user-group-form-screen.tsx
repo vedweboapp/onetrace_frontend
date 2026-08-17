@@ -6,9 +6,15 @@ import { useRouter } from "@/i18n/navigation";
 import { z } from "zod";
 import { createUserGroup, fetchUserGroup, updateUserGroup } from "@/features/user-groups/api/user-group.api";
 import { UserGroupMemberPicker } from "@/features/user-groups/components/user-group-member-picker";
-import { formatUserGroupLabel, userGroupMemberIds } from "@/features/user-groups/utils/user-group-display.util";
+import type { UserGroupUserRef } from "@/features/user-groups/types/user-group.types";
+import {
+  formatUserGroupLabel,
+  formatUserGroupMemberLabel,
+  userGroupMemberIds,
+} from "@/features/user-groups/utils/user-group-display.util";
 import { fetchUsersPage } from "@/features/users/api/user.api";
 import type { UserProfile } from "@/features/users/types/user.types";
+import { resolveUserProfileSelectId } from "@/features/users/utils/load-users-by-role.util";
 import { reportLocalFormSubmitApiError, zTrimmedNonEmpty } from "@/shared/form";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
@@ -25,11 +31,42 @@ import {
   surfaceInputClassName,
 } from "@/shared/ui";
 
-function userOption(row: UserProfile) {
+type MemberOption = { id: number; label: string; subtitle?: string };
+
+/** Group `users[].id` is the auth user id — prefer `user_detail.id` over profile id. */
+function userOption(row: UserProfile): MemberOption {
+  const id = resolveUserProfileSelectId(row);
   const first = row.user_detail.first_name?.trim() ?? "";
   const last = row.user_detail.last_name?.trim() ?? "";
   const label = `${first} ${last}`.trim() || row.user_detail.email;
-  return { id: row.id, label, subtitle: row.user_detail.email };
+  return { id, label, subtitle: row.user_detail.email };
+}
+
+function memberOptionFromGroupUser(user: UserGroupUserRef): MemberOption {
+  return {
+    id: user.id,
+    label: formatUserGroupMemberLabel(user),
+    subtitle: user.email?.trim() || undefined,
+  };
+}
+
+function mergeMemberOptions(base: MemberOption[], extras: MemberOption[]): MemberOption[] {
+  const byId = new Map<number, MemberOption>();
+  for (const opt of base) byId.set(opt.id, opt);
+  for (const opt of extras) {
+    const existing = byId.get(opt.id);
+    if (!existing) {
+      byId.set(opt.id, opt);
+      continue;
+    }
+    // Prefer richer labels from the group payload when the catalog only has a bare email.
+    if (opt.label && (!existing.label || existing.label === existing.subtitle)) {
+      byId.set(opt.id, { ...existing, label: opt.label, subtitle: opt.subtitle ?? existing.subtitle });
+    } else if (!existing.subtitle && opt.subtitle) {
+      byId.set(opt.id, { ...existing, subtitle: opt.subtitle });
+    }
+  }
+  return [...byId.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export function UserGroupFormScreen({ mode, groupId }: { mode: "create" | "edit"; groupId?: number }) {
@@ -40,7 +77,7 @@ export function UserGroupFormScreen({ mode, groupId }: { mode: "create" | "edit"
 
   const [name, setName] = React.useState("");
   const [selectedIds, setSelectedIds] = React.useState<number[]>([]);
-  const [userOptions, setUserOptions] = React.useState<{ id: number; label: string; subtitle?: string }[]>([]);
+  const [userOptions, setUserOptions] = React.useState<MemberOption[]>([]);
   const [usersLoadError, setUsersLoadError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
@@ -52,7 +89,8 @@ export function UserGroupFormScreen({ mode, groupId }: { mode: "create" | "edit"
     (async () => {
       try {
         const { items } = await fetchUsersPage(1, 500);
-        if (!cancelled) setUserOptions(items.map(userOption));
+        if (cancelled) return;
+        setUserOptions((prev) => mergeMemberOptions(items.map(userOption), prev));
       } catch {
         if (!cancelled) setUsersLoadError(t("usersLoadError"));
       }
@@ -73,6 +111,13 @@ export function UserGroupFormScreen({ mode, groupId }: { mode: "create" | "edit"
         if (cancelled) return;
         setName(formatUserGroupLabel(row));
         setSelectedIds(userGroupMemberIds(row));
+        // Keep existing members visible even if they are missing from the users catalog.
+        setUserOptions((prev) =>
+          mergeMemberOptions(
+            prev,
+            (row.users ?? []).map(memberOptionFromGroupUser),
+          ),
+        );
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
       } finally {

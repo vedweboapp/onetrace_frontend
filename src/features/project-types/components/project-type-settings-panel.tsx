@@ -18,7 +18,6 @@ import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   SettingsDetailActions,
   SettingsDetailColourValue,
-  SettingsDetailIdSubtitle,
   SettingsDetailList,
   SettingsDetailRow,
   SettingsDetailStatusValue,
@@ -436,11 +435,9 @@ export function ProjectTypeSettingsPanel() {
               name={formatProjectTypeLabel(detailRow)}
               bgColour={bgHex(detailRow)}
               textColour={textHex(detailRow)}
+              idLabel={t("detail.idLabel", { id: detailRow.id })}
             />
           ) : null
-        }
-        subtitle={
-          detailRow ? <SettingsDetailIdSubtitle idLabel={t("detail.idLabel", { id: detailRow.id })} /> : undefined
         }
         footer={
           detailRow ? (
