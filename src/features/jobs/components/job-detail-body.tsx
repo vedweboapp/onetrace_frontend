@@ -31,6 +31,10 @@ import {
   formatJobTimeDisplay,
 } from "@/features/jobs/utils/job-nested-fields.util";
 import { formatMoneyDisplay } from "@/features/invoices/utils/invoice-money.util";
+import {
+  normalizeJobMeta,
+  resolveJobMetaCompositeItemId,
+} from "@/features/jobs/utils/job-meta-payload.util";
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
@@ -668,6 +672,8 @@ export function JobDetailBody({
   onOpenScheduling?: () => void;
 }) {
   const t = useTranslations("Dashboard.jobs");
+  const tGroups = useTranslations("Dashboard.groups");
+  const tItems = useTranslations("Dashboard.items");
   const tQa = useTranslations("Dashboard.jobs.qualityAssurance");
   const tMeta = useTranslations("Dashboard.common.detail");
   const tActions = useTranslations("Dashboard.common.actions");
@@ -935,10 +941,11 @@ export function JobDetailBody({
   const projectId =
     detail.project && typeof detail.project === "object" ? detail.project.id : typeof detail.project === "number" ? detail.project : null;
   const siteId = detail.site && typeof detail.site === "object" ? detail.site.id : typeof detail.site === "number" ? detail.site : null;
-  const isServiceJob =
-    (detail.job_category ?? searchParams.get("job_category") ?? "")
-      .toLowerCase()
-      .replace(/[^a-z]/g, "") === "servicejob";
+  const normalizedJobCategory = (detail.job_category ?? searchParams.get("job_category") ?? "")
+    .toLowerCase()
+    .replace(/[^a-z]/g, "");
+  const isServiceJob = normalizedJobCategory === "servicejob";
+  const isProjectJob = normalizedJobCategory === "projectjob";
 
   return (
     <DetailPagePadding>
@@ -1055,15 +1062,16 @@ export function JobDetailBody({
           }}
         />
 
-        {meta && (meta.total != null || compositeRows.length > 0) ? (
+        {!isProjectJob && meta && (meta.total != null || compositeRows.length > 0) ? (
           <DetailPanelCard title={t("detail.sectionWorkScope")}>
             {compositeRows.length > 0 ? (
               <div className="mt-3 space-y-3">
                 <DetailLinkedTable
+                  showRowNumbers={false}
                   tableClassName="min-w-[720px]"
                   columns={[
-                    { id: "group", header: t("fields.plotGroup"), widthClass: "w-[18%]" },
-                    { id: "name", header: t("detail.colCompositeItem"), widthClass: "w-[28%]" },
+                    { id: "group", header: tGroups("title"), widthClass: "w-[18%]" },
+                    { id: "name", header: tItems("title"), widthClass: "w-[28%]" },
                     { id: "qty", header: t("lineItems.qty"), narrow: true, align: "right", widthClass: "w-20" },
                     { id: "unit", header: t("lineItems.rate"), narrow: true, align: "right", widthClass: "w-28" },
                     { id: "amount", header: t("lineItems.amount"), narrow: true, align: "right", widthClass: "w-28" },
