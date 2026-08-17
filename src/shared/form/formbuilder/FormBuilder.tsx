@@ -709,9 +709,13 @@ export default function FormBuilderLayout({
                 validationRules.editorType ??
                 f.properties?.validation_rules?.editor_type;
 
+              const fieldId = f.id != null && !String(f.id).startsWith("field-") ? f.id : null;
+              const fId = f.f_id ?? fieldId ?? (f._uid || `field-${fIdx}-${Date.now()}`);
+
               return {
                 ...f,
-                _uid: f.id?.toString() || `field-${fIdx}-${Date.now()}`,
+                _uid: f.id?.toString() || f._uid || `field-${fIdx}-${Date.now()}`,
+                f_id: fId,
                 order: f.order ?? f.sequence ?? fIdx,
                 original_name: f.api_name || f.name,
                 field_label: f.field_label || f.label || "",
@@ -776,7 +780,7 @@ export default function FormBuilderLayout({
     `${SECTION_RULE_TARGET_PREFIX}${hasPersistedId(section.id) ? section.id : section._uid}`;
 
   const getFieldRuleTarget = (field: Field) =>
-    `${FIELD_RULE_TARGET_PREFIX}${hasPersistedId(field.id) ? field.id : field._uid}`;
+    `${FIELD_RULE_TARGET_PREFIX}${hasPersistedId(field.id) ? field.id : (field.f_id ?? field._uid)}`;
 
   const ruleFieldOptions: RuleFieldOption[] = sections
     .filter((section) => !section.is_deleted)
@@ -798,21 +802,25 @@ export default function FormBuilderLayout({
       const fieldOptions: RuleFieldOption[] = (section.fields || [])
         .filter((field) => !field.is_deleted && field.api_name)
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-        .map((field) => ({
-          value: getFieldRuleTarget(field),
-          label: field.field_label || field.api_name || "Untitled Field",
-          type: field.field_type,
-          options: field.options,
-          apiName: field.api_name,
-          targetType: "field" as const,
-          fieldId: hasPersistedId(field.id) ? field.id! : null,
-          fieldUid: field._uid,
-          u_id: field.u_id ?? field._uid,
-          s_id: field.s_id ?? section.s_id ?? (hasPersistedId(section.id) ? section.id : section._uid),
-          sectionKey,
-          sectionLabel,
-          optionKind: "field",
-        }));
+        .map((field) => {
+          const fId = field.f_id ?? (hasPersistedId(field.id) ? field.id : field._uid);
+          return {
+            value: getFieldRuleTarget(field),
+            label: field.field_label || field.api_name || "Untitled Field",
+            type: field.field_type,
+            options: field.options,
+            apiName: field.api_name,
+            targetType: "field" as const,
+            fieldId: hasPersistedId(field.id) ? field.id! : null,
+            f_id: fId,
+            fieldUid: field._uid,
+            u_id: field.u_id ?? field._uid,
+            s_id: field.s_id ?? section.s_id ?? (hasPersistedId(section.id) ? section.id : section._uid),
+            sectionKey,
+            sectionLabel,
+            optionKind: "field",
+          };
+        });
 
       return [sectionOption, ...fieldOptions];
     });
@@ -822,6 +830,8 @@ export default function FormBuilderLayout({
     setSections((prev) => {
       // Generate unique api_name if duplicate found
       const uniqueApiName = getUniqueApiName(fieldConfig.api_name, prev);
+      const newFieldUid = fieldConfig._uid || `${Date.now()}`;
+      const fId = fieldConfig.f_id ?? (hasPersistedId(fieldConfig.id) ? fieldConfig.id : newFieldUid);
       
       return prev.map((sec) =>
         sec._uid === sectionUid
@@ -830,7 +840,8 @@ export default function FormBuilderLayout({
             fields: [
               ...sec.fields,
               {
-                _uid: `${Date.now()}`,
+                _uid: newFieldUid,
+                f_id: fId,
                 order: sec.fields.length,
                 ...fieldConfig,
                 api_name: uniqueApiName, // Use unique api_name
@@ -955,6 +966,7 @@ export default function FormBuilderLayout({
           api_name: f.api_name,
           field_type: f.field_type,
           sequence: fIdx + 1,
+          ...(f.f_id != null ? { f_id: f.f_id } : {}),
           ...(f.s_id != null ? { s_id: f.s_id } : {}),
         };
 
@@ -972,6 +984,7 @@ export default function FormBuilderLayout({
           "_uid",
           "u_id",
           "s_id",
+          "f_id",
           "field_label",
           "api_name",
           "field_type",
@@ -1026,7 +1039,8 @@ export default function FormBuilderLayout({
             logic: {
               sequence: i + 1,
               field_api_name: r.field_api_name,
-              field_id: r.field_id,
+              field_id: r.field_id ?? r.f_id,
+              f_id: r.f_id ?? r.field_id,
               field_uid: r.field_uid,
               ...(r.s_id != null ? { s_id: r.s_id } : {}),
               condition: r.condition,
@@ -1050,6 +1064,8 @@ export default function FormBuilderLayout({
                           const { u_id, ...cleanO } = o as any;
                           return {
                             ...cleanO,
+                            field_id: o.field_id ?? o.f_id ?? null,
+                            f_id: o.f_id ?? o.field_id ?? null,
                             ...(o.s_id != null ? { s_id: o.s_id } : {}),
                           };
                         }),
@@ -1061,6 +1077,8 @@ export default function FormBuilderLayout({
                                   const { u_id, ...cleanO } = o as any;
                                   return {
                                     ...cleanO,
+                                    field_id: o.field_id ?? o.f_id ?? null,
+                                    f_id: o.f_id ?? o.field_id ?? null,
                                     ...(o.s_id != null ? { s_id: o.s_id } : {}),
                                   };
                                 }),

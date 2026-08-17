@@ -1,4 +1,14 @@
-import { FormRule, RuleCondition } from "./form-rules.types";
+import type { FormRule, RuleCondition } from "./form-rules.types";
+
+const normalizeConditionValue = (value: any): string[] => {
+  if (Array.isArray(value)) {
+    return value.map((v) => String(v).trim().toLowerCase()).filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    return value.split(',').map((v) => v.trim().toLowerCase()).filter(Boolean);
+  }
+  return [String(value ?? '').trim().toLowerCase()].filter(Boolean);
+};
 
 export function evaluateCondition(fieldValue: any, condition: RuleCondition, ruleValue: any): boolean {
   if (fieldValue === undefined || fieldValue === null) {
@@ -7,22 +17,11 @@ export function evaluateCondition(fieldValue: any, condition: RuleCondition, rul
     fieldValue = '';
   }
 
-  // Helper to convert rule value into an array of lowercase strings
-  const toLowerArray = (val: any): string[] => {
-    if (Array.isArray(val)) {
-      return val.map((v) => String(v).trim().toLowerCase()).filter(Boolean);
-    }
-    if (typeof val === 'string') {
-      return val.split(',').map((v) => v.trim().toLowerCase()).filter(Boolean);
-    }
-    return [String(val).trim().toLowerCase()].filter(Boolean);
-  };
-
   const fieldValues = Array.isArray(fieldValue)
     ? fieldValue.map((v) => String(v).trim().toLowerCase())
     : [String(fieldValue).trim().toLowerCase()];
 
-  const ruleValues = toLowerArray(ruleValue);
+  const ruleValues = normalizeConditionValue(ruleValue);
 
   switch (condition) {
     case 'is':
@@ -63,39 +62,105 @@ export type FieldRuleState = {
 
 export type RuleTargetGroups = Record<string, string[]>;
 
+const getRuleTargetAliases = (
+  fieldApiName?: string | null,
+  fieldId?: number | string | null,
+  fId?: number | string | null,
+): string[] => {
+  const aliases = new Set<string>();
+
+  if (fieldApiName) {
+    aliases.add(fieldApiName);
+    aliases.add(`__field__:${fieldApiName}`);
+  }
+
+  const candidateIds = [fieldId, fId].filter((id) => id !== undefined && id !== null && id !== '');
+  candidateIds.forEach((id) => {
+    const value = String(id);
+    aliases.add(value);
+    aliases.add(`__field__:${value}`);
+  });
+
+  return [...aliases];
+};
+
 const expandRuleTarget = (
-  target: string,
+  target: string | number | null | undefined,
   targetGroups?: RuleTargetGroups,
 ): string[] => {
-  if (!target) return [];
-  // Simple lookup by api_name (now guaranteed to be unique due to numbering system)
-  return targetGroups?.[target] || [target];
+  if (target === undefined || target === null || target === "") return [];
+  const aliases = new Set<string>();
+  const normalizedTarget = String(target);
+  aliases.add(normalizedTarget);
+  if (normalizedTarget.startsWith('__field__:')) {
+    aliases.add(normalizedTarget.replace(/^__field__:/, ''));
+  }
+
+  for (const alias of aliases) {
+    const matched = targetGroups?.[alias];
+    if (matched && matched.length) return matched;
+  }
+
+  return [normalizedTarget];
 };
 
 const getTriggerValue = (
-  triggerField: string,
+  triggerField: string | number | null | undefined,
   formValues: Record<string, any>,
-  targetGroups?: RuleTargetGroups
+  targetGroups?: RuleTargetGroups,
+  fallbackFieldApiName?: string | null,
+  fallbackFieldId?: number | string | null,
+  fallbackFId?: number | string | null,
 ): any => {
-  if (!triggerField) return undefined;
-  if (formValues[triggerField] !== undefined) return formValues[triggerField];
-  const expanded = expandRuleTarget(triggerField, targetGroups);
-  for (const target of expanded) {
-    if (formValues[target] !== undefined) return formValues[target];
+  const aliases = new Set(getRuleTargetAliases(fallbackFieldApiName, fallbackFieldId, fallbackFId));
+  if (triggerField !== undefined && triggerField !== null && triggerField !== '') {
+    aliases.add(String(triggerField));
+    aliases.add(`__field__:${String(triggerField)}`);
+  }
+
+  for (const alias of aliases) {
+    if (formValues[alias] !== undefined) return formValues[alias];
+    const expanded = expandRuleTarget(alias, targetGroups);
+    for (const target of expanded) {
+      if (formValues[target] !== undefined) return formValues[target];
+    }
   }
   return undefined;
 };
 
 const checkTriggerVisible = (
-  triggerField: string,
+  triggerField: string | number | null | undefined,
   currentStateMap: Map<string, FieldRuleState>,
-  targetGroups?: RuleTargetGroups
+  targetGroups?: RuleTargetGroups,
+  fieldToSectionMap?: Record<string, string>,
+  fallbackFieldApiName?: string | null,
+  fallbackFieldId?: number | string | null,
+  fallbackFId?: number | string | null,
 ): boolean => {
-  if (!triggerField) return true;
-  const targets = expandRuleTarget(triggerField, targetGroups);
-  for (const t of targets) {
-    if (currentStateMap.has(t) && currentStateMap.get(t)!.visible === false) {
-      return false;
+  const aliases = new Set(getRuleTargetAliases(fallbackFieldApiName, fallbackFieldId, fallbackFId));
+  if (triggerField !== undefined && triggerField !== null && triggerField !== '') {
+    aliases.add(String(triggerField));
+    aliases.add(`__field__:${String(triggerField)}`);
+  }
+
+  for (const alias of aliases) {
+    const targets = expandRuleTarget(alias, targetGroups);
+    for (const t of targets) {
+      if (currentStateMap.has(t) && currentStateMap.get(t)!.visible === false) {
+        return false;
+      }
+      if (fieldToSectionMap) {
+        const secTarget = fieldToSectionMap[t] || fieldToSectionMap[alias];
+        if (secTarget && currentStateMap.has(secTarget) && currentStateMap.get(secTarget)!.visible === false) {
+          return false;
+        }
+      }
+    }
+    if (fieldToSectionMap) {
+      const secTarget = fieldToSectionMap[alias];
+      if (secTarget && currentStateMap.has(secTarget) && currentStateMap.get(secTarget)!.visible === false) {
+        return false;
+      }
     }
   }
   return true;
@@ -105,6 +170,7 @@ export function buildFieldRuleState(
   rules: FormRule[],
   formValues: Record<string, any>,
   targetGroups?: RuleTargetGroups,
+  fieldToSectionMap?: Record<string, string>,
 ) {
   const sortedRules = [...rules].sort((a, b) => a.sequence - b.sequence);
 
@@ -117,7 +183,7 @@ export function buildFieldRuleState(
       for (const block of rule.blocks) {
         // THEN output fields
         for (const output of block.output_fields || []) {
-          const targetField = output.field_api_name;
+          const targetField = output.field_api_name ?? output.field_id ?? output.f_id;
           if (!targetField) continue;
           expandRuleTarget(targetField, targetGroups).forEach((expandedTarget) => {
             if (!baseDefaults.has(expandedTarget)) {
@@ -131,7 +197,7 @@ export function buildFieldRuleState(
         // ELSE blocks (new multi-else)
         for (const eb of block.else_blocks || []) {
           for (const output of eb.else_output_fields || []) {
-            const targetField = output.field_api_name;
+            const targetField = output.field_api_name ?? output.field_id ?? output.f_id;
             if (!targetField) continue;
             expandRuleTarget(targetField, targetGroups).forEach((expandedTarget) => {
               if (!baseDefaults.has(expandedTarget)) {
@@ -145,7 +211,7 @@ export function buildFieldRuleState(
         }
         // Legacy single else_output_fields (backward compat)
         for (const output of block.else_output_fields || []) {
-          const targetField = output.field_api_name;
+          const targetField = output.field_api_name ?? output.field_id ?? output.f_id;
           if (!targetField) continue;
           expandRuleTarget(targetField, targetGroups).forEach((expandedTarget) => {
             if (!baseDefaults.has(expandedTarget)) {
@@ -159,7 +225,7 @@ export function buildFieldRuleState(
       }
     } else {
       for (const output of rule.output_fields || []) {
-        const targetField = output.field_api_name;
+        const targetField = output.field_api_name ?? output.field_id ?? output.f_id;
         if (!targetField) continue;
         expandRuleTarget(targetField, targetGroups).forEach((expandedTarget) => {
           if (!baseDefaults.has(expandedTarget)) {
@@ -204,11 +270,11 @@ export function buildFieldRuleState(
       if (rule.rule_type === "advanced" && rule.blocks) {
         // Evaluate all IF block conditions first
         const blockMatches = rule.blocks.map((block) => {
-          const triggerField = block.field_api_name;
+          const triggerField = block.field_api_name ?? block.field_id ?? block.f_id;
           if (!triggerField) return false;
-          const isTriggerVisible = checkTriggerVisible(triggerField, currentStateMap, targetGroups);
+          const isTriggerVisible = checkTriggerVisible(triggerField, currentStateMap, targetGroups, fieldToSectionMap, block.field_api_name, block.field_id, block.f_id);
           if (!isTriggerVisible) return false;
-          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups);
+          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups, block.field_api_name, block.field_id, block.f_id);
           return evaluateCondition(triggerValue, block.condition, block.value);
         });
 
@@ -222,13 +288,13 @@ const isValEmpty = (val: any): boolean => {
         // Evaluate each else block independently
         // elseBlockMatches[bIdx][ebIdx] = whether else block ebIdx of rule block bIdx fires
         const elseBlockMatches = rule.blocks.map((block, bIdx) => {
-          const triggerField = block.field_api_name;
+          const triggerField = block.field_api_name ?? block.field_id ?? block.f_id;
           if (!triggerField) return [];
 
-          const isTriggerVisible = checkTriggerVisible(triggerField, currentStateMap, targetGroups);
+          const isTriggerVisible = checkTriggerVisible(triggerField, currentStateMap, targetGroups, fieldToSectionMap, block.field_api_name, block.field_id, block.f_id);
           if (!isTriggerVisible) return (block.else_blocks || []).map(() => false);
 
-          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups);
+          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups, block.field_api_name, block.field_id, block.f_id);
           const ifMatched = blockMatches[bIdx];
           const triggerIsEmpty = isValEmpty(triggerValue);
 
@@ -258,11 +324,11 @@ const isValEmpty = (val: any): boolean => {
         const legacyElseMatches = rule.blocks.map((block, bIdx) => {
           if (!block.else_output_fields?.length) return false;
           if (blockMatches[bIdx]) return false;
-          const triggerField = block.field_api_name;
+          const triggerField = block.field_api_name ?? block.field_id ?? block.f_id;
           if (!triggerField) return false;
-          const isTriggerVisible = checkTriggerVisible(triggerField, currentStateMap, targetGroups);
+          const isTriggerVisible = checkTriggerVisible(triggerField, currentStateMap, targetGroups, fieldToSectionMap, block.field_api_name, block.field_id, block.f_id);
           if (!isTriggerVisible) return false;
-          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups);
+          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups, block.field_api_name, block.field_id, block.f_id);
           const triggerIsEmpty = isValEmpty(triggerValue);
 
           if (triggerIsEmpty) {
@@ -282,21 +348,24 @@ const isValEmpty = (val: any): boolean => {
         const showTargetFields = new Set<string>();
         rule.blocks.forEach((block) => {
           (block.output_fields || []).forEach((output) => {
-            if (output.field_api_name && output.action === "show") {
-              expandRuleTarget(output.field_api_name, targetGroups).forEach((target) => showTargetFields.add(target));
+            const targetField = output.field_api_name ?? output.field_id ?? output.f_id;
+            if (targetField && output.action === "show") {
+              expandRuleTarget(targetField, targetGroups).forEach((target) => showTargetFields.add(target));
             }
           });
           (block.else_blocks || []).forEach((eb) => {
             eb.else_output_fields.forEach((output) => {
-              if (output.field_api_name && output.action === "show") {
-                expandRuleTarget(output.field_api_name, targetGroups).forEach((target) => showTargetFields.add(target));
+              const targetField = output.field_api_name ?? output.field_id ?? output.f_id;
+              if (targetField && output.action === "show") {
+                expandRuleTarget(targetField, targetGroups).forEach((target) => showTargetFields.add(target));
               }
             });
           });
           // Legacy
           (block.else_output_fields || []).forEach((output) => {
-            if (output.field_api_name && output.action === "show") {
-              expandRuleTarget(output.field_api_name, targetGroups).forEach((target) => showTargetFields.add(target));
+            const targetField = output.field_api_name ?? output.field_id ?? output.f_id;
+            if (targetField && output.action === "show") {
+              expandRuleTarget(targetField, targetGroups).forEach((target) => showTargetFields.add(target));
             }
           });
         });
@@ -309,7 +378,7 @@ const isValEmpty = (val: any): boolean => {
             const block = rule.blocks![bIdx];
             // Check THEN
             const hasShowInThen = (block.output_fields || []).some(
-              o => o.action === "show" && expandRuleTarget(o.field_api_name, targetGroups).includes(targetField)
+              o => o.action === "show" && expandRuleTarget(o.field_api_name ?? o.field_id ?? o.f_id, targetGroups).includes(targetField)
             );
             if (hasShowInThen && blockMatches[bIdx]) {
               shouldShow = true;
@@ -320,7 +389,7 @@ const isValEmpty = (val: any): boolean => {
             const ebMatches = elseBlockMatches[bIdx] || [];
             const hasShowInElse = (block.else_blocks || []).some((eb, ebIdx) =>
               ebMatches[ebIdx] && eb.else_output_fields.some(o =>
-                o.action === "show" && expandRuleTarget(o.field_api_name, targetGroups).includes(targetField)
+                o.action === "show" && expandRuleTarget(o.field_api_name ?? o.field_id ?? o.f_id, targetGroups).includes(targetField)
               )
             );
             if (hasShowInElse) {
@@ -330,7 +399,7 @@ const isValEmpty = (val: any): boolean => {
 
             // Legacy
             const hasShowInLegacyElse = (block.else_output_fields || []).some(
-              o => o.action === "show" && expandRuleTarget(o.field_api_name, targetGroups).includes(targetField)
+              o => o.action === "show" && expandRuleTarget(o.field_api_name ?? o.field_id ?? o.f_id, targetGroups).includes(targetField)
             );
             if (hasShowInLegacyElse && legacyElseMatches[bIdx]) {
               shouldShow = true;
@@ -349,7 +418,7 @@ const isValEmpty = (val: any): boolean => {
           // Apply THEN actions when IF matches
           if (blockMatches[bIdx]) {
             (block.output_fields || []).forEach((output) => {
-              const targetField = output.field_api_name;
+              const targetField = output.field_api_name ?? output.field_id ?? output.f_id;
               if (!targetField) return;
               expandRuleTarget(targetField, targetGroups).forEach((expandedTarget) => {
                 const currentState = nextStateMap.get(expandedTarget);
@@ -369,7 +438,7 @@ const isValEmpty = (val: any): boolean => {
           (block.else_blocks || []).forEach((eb, ebIdx) => {
             if (!ebMatches[ebIdx]) return;
             eb.else_output_fields.forEach((output) => {
-              const targetField = output.field_api_name;
+              const targetField = output.field_api_name ?? output.field_id ?? output.f_id;
               if (!targetField) return;
               expandRuleTarget(targetField, targetGroups).forEach((expandedTarget) => {
                 const currentState = nextStateMap.get(expandedTarget);
@@ -387,7 +456,7 @@ const isValEmpty = (val: any): boolean => {
           // Legacy single else
           if (legacyElseMatches[bIdx]) {
             (block.else_output_fields || []).forEach((output) => {
-              const targetField = output.field_api_name;
+              const targetField = output.field_api_name ?? output.field_id ?? output.f_id;
               if (!targetField) return;
               expandRuleTarget(targetField, targetGroups).forEach((expandedTarget) => {
                 const currentState = nextStateMap.get(expandedTarget);
@@ -404,16 +473,16 @@ const isValEmpty = (val: any): boolean => {
         });
       } else {
         // Simple rule evaluation
-        const triggerField = rule.field_api_name || "";
-        const isTriggerVisible = !triggerField || checkTriggerVisible(triggerField, currentStateMap, targetGroups);
+        const triggerField = rule.field_api_name ?? rule.field_id ?? rule.f_id ?? "";
+        const isTriggerVisible = !triggerField || checkTriggerVisible(triggerField, currentStateMap, targetGroups, fieldToSectionMap, rule.field_api_name, rule.field_id, rule.f_id);
 
         if (isTriggerVisible && triggerField) {
-          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups);
+          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups, rule.field_api_name, rule.field_id, rule.f_id);
           const isMatch = evaluateCondition(triggerValue, rule.condition!, rule.value);
 
           if (isMatch) {
             for (const output of rule.output_fields || []) {
-              const targetField = output.field_api_name;
+              const targetField = output.field_api_name ?? output.field_id ?? output.f_id;
               if (!targetField) continue;
               expandRuleTarget(targetField, targetGroups).forEach((expandedTarget) => {
                 const currentState = nextStateMap.get(expandedTarget);

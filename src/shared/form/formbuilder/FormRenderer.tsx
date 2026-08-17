@@ -242,22 +242,33 @@ const getEditorType = (field: Field) =>
   (field as { editorType?: string }).editorType ??
   field.properties?.validation_rules?.editor_type;
 
-const getSectionRuleTarget = (section: Section, index: number) =>
-  `${SECTION_RULE_TARGET_PREFIX}${section.sequence ?? index + 1}`;
+const getSectionRuleTarget = (section: Section, index: number) => {
+  const persistedSectionId =
+    section.id != null && section.id !== "" && !String(section.id).startsWith("section-")
+      ? String(section.id)
+      : section._uid || String(section.sequence ?? index + 1);
 
-const buildRuleTargetGroups = (schema: Section[]): RuleTargetGroups => {
+  return `${SECTION_RULE_TARGET_PREFIX}${persistedSectionId}`;
+};
+
+const buildRuleTargetGroups = (
+  schema: Section[],
+): { targetGroups: RuleTargetGroups; fieldToSectionMap: Record<string, string> } => {
   const groups: RuleTargetGroups = {};
+  const fieldToSectionMap: Record<string, string> = {};
 
   schema.forEach((section, index) => {
     const canonicalTarget = getSectionRuleTarget(section, index);
+    const sequenceTarget = `${SECTION_RULE_TARGET_PREFIX}${section.sequence ?? index + 1}`;
     const activeFields = (section.fields || [])
       .filter((field) => !field.is_deleted && field.api_name);
-    const fieldTargets = activeFields.map((field) => field.api_name);
-    const expandedTargets = [canonicalTarget, ...fieldTargets];
 
-    // --- Section-level aliases → expand to section + all its fields ---
+    // Section targets must resolve to the section itself, NOT all child fields.
+    // Child fields maintain their own rule state, while section visibility/disability cascades via mergeRuleStates.
+    const canonicalSectionList = [canonicalTarget];
     const sectionAliases = [
       canonicalTarget,
+      sequenceTarget,
       section.s_id != null ? `${SECTION_RULE_TARGET_PREFIX}${section.s_id}` : "",
       section.s_id != null ? String(section.s_id) : "",
       section.id != null ? `${SECTION_RULE_TARGET_PREFIX}${section.id}` : "",
@@ -269,45 +280,57 @@ const buildRuleTargetGroups = (schema: Section[]): RuleTargetGroups => {
     ].filter(Boolean);
 
     sectionAliases.forEach((alias) => {
-      // Section targets expand to include all fields in the section + section itself
-      // This allows "show section" to affect all fields within it
-      groups[alias] = [...fieldTargets, canonicalTarget];
+      groups[alias] = canonicalSectionList;
     });
 
-    // --- Field-level aliases → resolve to individual api_name ---
-    // api_name is now guaranteed to be unique via auto-numbering system
-    // Fields with same original name get numbered: name, name_1, name_2, etc.
+    // Field-level aliases → resolve to individual api_name
     activeFields.forEach((field) => {
       const fieldSelf = [field.api_name];
       
-      // Register api_name as primary (guaranteed unique)
+      // Register api_name as primary
       groups[field.api_name] = fieldSelf;
+      fieldToSectionMap[field.api_name] = canonicalTarget;
       
-      // Also register __field__: prefix variant for compatibility
+      // Register __field__: prefix variant
       if (field.api_name) {
-        groups[`${FIELD_RULE_TARGET_PREFIX}${field.api_name}`] = fieldSelf;
+        const prefixed = `${FIELD_RULE_TARGET_PREFIX}${field.api_name}`;
+        groups[prefixed] = fieldSelf;
+        fieldToSectionMap[prefixed] = canonicalTarget;
       }
       
-      // Register ID-based variants (used by getFieldRuleTarget in FormBuilder)
-      // Rules created in the form builder use __field__:{id or _uid}
-      if (field.id) {
-        groups[`${FIELD_RULE_TARGET_PREFIX}${field.id}`] = fieldSelf;
-        groups[String(field.id)] = fieldSelf;
+      // Register ID-based variants
+      if (field.id != null && field.id !== "") {
+        const idStr = String(field.id);
+        groups[`${FIELD_RULE_TARGET_PREFIX}${idStr}`] = fieldSelf;
+        groups[idStr] = fieldSelf;
+        fieldToSectionMap[`${FIELD_RULE_TARGET_PREFIX}${idStr}`] = canonicalTarget;
+        fieldToSectionMap[idStr] = canonicalTarget;
+      }
+      if (field.f_id != null && field.f_id !== "") {
+        const fIdStr = String(field.f_id);
+        groups[`${FIELD_RULE_TARGET_PREFIX}${fIdStr}`] = fieldSelf;
+        groups[fIdStr] = fieldSelf;
+        fieldToSectionMap[`${FIELD_RULE_TARGET_PREFIX}${fIdStr}`] = canonicalTarget;
+        fieldToSectionMap[fIdStr] = canonicalTarget;
       }
       if (field._uid) {
-        groups[`${FIELD_RULE_TARGET_PREFIX}${field._uid}`] = fieldSelf;
-        groups[field._uid] = fieldSelf;
+        const uidStr = String(field._uid);
+        groups[`${FIELD_RULE_TARGET_PREFIX}${uidStr}`] = fieldSelf;
+        groups[uidStr] = fieldSelf;
+        fieldToSectionMap[`${FIELD_RULE_TARGET_PREFIX}${uidStr}`] = canonicalTarget;
+        fieldToSectionMap[uidStr] = canonicalTarget;
       }
-      
-      // Register u_id variants if present (for backward compatibility)
       if (field.u_id) {
-        groups[`${FIELD_RULE_TARGET_PREFIX}${field.u_id}`] = fieldSelf;
-        groups[field.u_id] = fieldSelf;
+        const uIdStr = String(field.u_id);
+        groups[`${FIELD_RULE_TARGET_PREFIX}${uIdStr}`] = fieldSelf;
+        groups[uIdStr] = fieldSelf;
+        fieldToSectionMap[`${FIELD_RULE_TARGET_PREFIX}${uIdStr}`] = canonicalTarget;
+        fieldToSectionMap[uIdStr] = canonicalTarget;
       }
     });
   });
 
-  return groups;
+  return { targetGroups: groups, fieldToSectionMap };
 };
 
 const mergeRuleStates = (
@@ -320,38 +343,6 @@ const mergeRuleStates = (
     required: Boolean(fieldState?.required || sectionState?.required),
     disabled: Boolean(fieldState?.disabled || sectionState?.disabled),
   };
-};
-
-/**
- * Post-process rule states to ensure section visibility hierarchy:
- * If any field in a section is visible, the section should also be visible.
- * This allows ELSE blocks to show individual fields without explicitly showing the section.
- */
-const ensureVisibleFieldsHaveSections = (
-  schema: Section[],
-  ruleState: Map<string, FieldRuleState>,
-): Map<string, FieldRuleState> => {
-  const result = new Map(ruleState);
-
-  schema.forEach((section, index) => {
-    const sectionTarget = getSectionRuleTarget(section, index);
-    const activeFields = (section.fields || []).filter((f) => !f.is_deleted && f.api_name);
-
-    // If any field in this section is visible, ensure section is also visible
-    const hasVisibleField = activeFields.some((f) => {
-      const fieldState = result.get(f.api_name);
-      // Consider visible if not explicitly set to false
-      return fieldState?.visible !== false;
-    });
-
-    if (hasVisibleField) {
-      const sectionState = result.get(sectionTarget) || { visible: true, required: false, disabled: false };
-      sectionState.visible = true;
-      result.set(sectionTarget, sectionState);
-    }
-  });
-
-  return result;
 };
 
 const buildRichTextValidations = (validations: Record<string, any>, field: Field) => {
@@ -1015,10 +1006,10 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
     }, [autoPopulateData, schema, reset, defaultValues]);
 
     const formValues = watch();
-    
-    const ruleTargetGroups = React.useMemo(() => {
+
+    const { targetGroups: ruleTargetGroups, fieldToSectionMap } = React.useMemo(() => {
       if (!Array.isArray(schema) || schema.length === 0) {
-        return {};
+        return { targetGroups: {}, fieldToSectionMap: {} };
       }
       return buildRuleTargetGroups(schema);
     }, [schema]);
@@ -1027,10 +1018,8 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
       if (!rules || rules.length === 0) {
         return new Map<string, FieldRuleState>();
       }
-      const baseState = buildFieldRuleState(rules, formValues, ruleTargetGroups);
-      // Post-process: ensure sections are visible when their fields are visible
-      return ensureVisibleFieldsHaveSections(schema, baseState);
-    }, [rules, formValues, ruleTargetGroups, schema]);
+      return buildFieldRuleState(rules, formValues, ruleTargetGroups, fieldToSectionMap);
+    }, [rules, formValues, ruleTargetGroups, fieldToSectionMap]);
 
     const getError = (name: string) =>
       touchedFields?.[name] || isSubmitted ? (errors as any)[name] : undefined;
