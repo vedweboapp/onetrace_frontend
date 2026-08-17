@@ -37,7 +37,6 @@ interface Field {
   api_name: string;
   field_label: string;
   field_type: string;
-  f_id?: string;
   u_id?: string;
   s_id?: number | string | null;
   order?: number;
@@ -270,53 +269,40 @@ const buildRuleTargetGroups = (schema: Section[]): RuleTargetGroups => {
     ].filter(Boolean);
 
     sectionAliases.forEach((alias) => {
-      groups[alias] = [canonicalTarget];
+      // Section targets expand to include all fields in the section + section itself
+      // This allows "show section" to affect all fields within it
+      groups[alias] = [...fieldTargets, canonicalTarget];
     });
 
     // --- Field-level aliases → resolve to individual api_name ---
-    // Use composite key (api_name + f_id + s_id) to differentiate fields with same name
+    // api_name is now guaranteed to be unique via auto-numbering system
+    // Fields with same original name get numbered: name, name_1, name_2, etc.
     activeFields.forEach((field) => {
-      // Create unique field identifier using f_id and s_id
-      const fieldUniqueId = field.f_id || field.u_id || field._uid || `${field.api_name}-${section._uid}`;
-      const sectionId = field.s_id || section.s_id || section._uid;
-      const compositeKey = `${field.api_name}::${sectionId}::${fieldUniqueId}`;
-      const fieldSelf = [field.api_name];  // Keep api_name as primary for backward compatibility
+      const fieldSelf = [field.api_name];
       
-      // Register composite key as primary (highest priority for uniqueness)
-      groups[compositeKey] = fieldSelf;
+      // Register api_name as primary (guaranteed unique)
+      groups[field.api_name] = fieldSelf;
       
-      // Register api_name directly (for rules that use raw api_name)
-      // NOTE: This may have collisions, but backward compatibility requires it
-      if (!groups[field.api_name]) {
-        groups[field.api_name] = fieldSelf;
+      // Also register __field__: prefix variant for compatibility
+      if (field.api_name) {
+        groups[`${FIELD_RULE_TARGET_PREFIX}${field.api_name}`] = fieldSelf;
       }
       
-      // Register __field__:{id} and raw id aliases with section scope for better differentiation
-      if (field.id != null) {
-        const scopedFieldId = `${field.id}::${sectionId}`;
+      // Register ID-based variants (used by getFieldRuleTarget in FormBuilder)
+      // Rules created in the form builder use __field__:{id or _uid}
+      if (field.id) {
         groups[`${FIELD_RULE_TARGET_PREFIX}${field.id}`] = fieldSelf;
-        groups[scopedFieldId] = fieldSelf;
         groups[String(field.id)] = fieldSelf;
       }
       if (field._uid) {
-        const scopedUid = `${field._uid}::${sectionId}`;
         groups[`${FIELD_RULE_TARGET_PREFIX}${field._uid}`] = fieldSelf;
-        groups[scopedUid] = fieldSelf;
         groups[field._uid] = fieldSelf;
       }
-      // f_id is the database field ID - most reliable for differentiation
-      if (field.f_id) {
-        groups[`${FIELD_RULE_TARGET_PREFIX}${field.f_id}`] = fieldSelf;
-        groups[field.f_id] = fieldSelf;
-        // Also register with section scope
-        groups[`f_id::${field.f_id}::${sectionId}`] = fieldSelf;
-      }
-      // u_id is an alternative unique identifier
+      
+      // Register u_id variants if present (for backward compatibility)
       if (field.u_id) {
         groups[`${FIELD_RULE_TARGET_PREFIX}${field.u_id}`] = fieldSelf;
         groups[field.u_id] = fieldSelf;
-        // Also register with section scope
-        groups[`u_id::${field.u_id}::${sectionId}`] = fieldSelf;
       }
     });
   });
@@ -334,6 +320,38 @@ const mergeRuleStates = (
     required: Boolean(fieldState?.required || sectionState?.required),
     disabled: Boolean(fieldState?.disabled || sectionState?.disabled),
   };
+};
+
+/**
+ * Post-process rule states to ensure section visibility hierarchy:
+ * If any field in a section is visible, the section should also be visible.
+ * This allows ELSE blocks to show individual fields without explicitly showing the section.
+ */
+const ensureVisibleFieldsHaveSections = (
+  schema: Section[],
+  ruleState: Map<string, FieldRuleState>,
+): Map<string, FieldRuleState> => {
+  const result = new Map(ruleState);
+
+  schema.forEach((section, index) => {
+    const sectionTarget = getSectionRuleTarget(section, index);
+    const activeFields = (section.fields || []).filter((f) => !f.is_deleted && f.api_name);
+
+    // If any field in this section is visible, ensure section is also visible
+    const hasVisibleField = activeFields.some((f) => {
+      const fieldState = result.get(f.api_name);
+      // Consider visible if not explicitly set to false
+      return fieldState?.visible !== false;
+    });
+
+    if (hasVisibleField) {
+      const sectionState = result.get(sectionTarget) || { visible: true, required: false, disabled: false };
+      sectionState.visible = true;
+      result.set(sectionTarget, sectionState);
+    }
+  });
+
+  return result;
 };
 
 const buildRichTextValidations = (validations: Record<string, any>, field: Field) => {
@@ -1009,8 +1027,10 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
       if (!rules || rules.length === 0) {
         return new Map<string, FieldRuleState>();
       }
-      return buildFieldRuleState(rules, formValues, ruleTargetGroups);
-    }, [rules, formValues, ruleTargetGroups]);
+      const baseState = buildFieldRuleState(rules, formValues, ruleTargetGroups);
+      // Post-process: ensure sections are visible when their fields are visible
+      return ensureVisibleFieldsHaveSections(schema, baseState);
+    }, [rules, formValues, ruleTargetGroups, schema]);
 
     const getError = (name: string) =>
       touchedFields?.[name] || isSubmitted ? (errors as any)[name] : undefined;

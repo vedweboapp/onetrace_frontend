@@ -23,7 +23,6 @@ export type FormRuleOutput = {
   section_id?: number | string | null;
   section_uid?: string;
   s_id?: number | string | null;
-  f_id?: string;
   u_id?: string;
   target_type?: RuleTargetType;
   action: RuleAction;
@@ -43,7 +42,6 @@ export type FormRuleBlock = {
   field_id?: number | string | null;
   field_uid?: string;
   s_id?: number | string | null;
-  f_id?: string;
   u_id?: string;
   condition: RuleCondition;
   value: string | string[] | null;
@@ -69,7 +67,6 @@ export type FormRule = {
   field_id?: number | string | null;
   field_uid?: string;
   s_id?: number | string | null;
-  f_id?: string;
   u_id?: string;
   condition?: RuleCondition;  // optional for advanced
   value?: string | string[] | null; // optional for advanced
