@@ -66,20 +66,29 @@ const getRuleTargetAliases = (
   fieldApiName?: string | null,
   fieldId?: number | string | null,
   fId?: number | string | null,
+  apiName?: string | null,
 ): string[] => {
   const aliases = new Set<string>();
 
-  if (fieldApiName) {
-    aliases.add(fieldApiName);
-    aliases.add(`__field__:${fieldApiName}`);
-  }
-
-  const candidateIds = [fieldId, fId].filter((id) => id !== undefined && id !== null && id !== '');
+  // f_id is top priority
+  const candidateIds = [fId, fieldId].filter((id) => id !== undefined && id !== null && id !== '');
   candidateIds.forEach((id) => {
     const value = String(id);
     aliases.add(value);
     aliases.add(`__field__:${value}`);
   });
+
+  // field_api_name (which may be __field__:<id>) — stored value from dropdown
+  if (fieldApiName) {
+    aliases.add(fieldApiName);
+    aliases.add(`__field__:${fieldApiName}`);
+  }
+
+  // api_name fallback — actual field api_name for post-save resolution
+  if (apiName && apiName !== fieldApiName) {
+    aliases.add(apiName);
+    aliases.add(`__field__:${apiName}`);
+  }
 
   return [...aliases];
 };
@@ -111,8 +120,9 @@ const getTriggerValue = (
   fallbackFieldApiName?: string | null,
   fallbackFieldId?: number | string | null,
   fallbackFId?: number | string | null,
+  fallbackApiName?: string | null,
 ): any => {
-  const aliases = new Set(getRuleTargetAliases(fallbackFieldApiName, fallbackFieldId, fallbackFId));
+  const aliases = new Set(getRuleTargetAliases(fallbackFieldApiName, fallbackFieldId, fallbackFId, fallbackApiName));
   if (triggerField !== undefined && triggerField !== null && triggerField !== '') {
     aliases.add(String(triggerField));
     aliases.add(`__field__:${String(triggerField)}`);
@@ -136,8 +146,9 @@ const checkTriggerVisible = (
   fallbackFieldApiName?: string | null,
   fallbackFieldId?: number | string | null,
   fallbackFId?: number | string | null,
+  fallbackApiName?: string | null,
 ): boolean => {
-  const aliases = new Set(getRuleTargetAliases(fallbackFieldApiName, fallbackFieldId, fallbackFId));
+  const aliases = new Set(getRuleTargetAliases(fallbackFieldApiName, fallbackFieldId, fallbackFId, fallbackApiName));
   if (triggerField !== undefined && triggerField !== null && triggerField !== '') {
     aliases.add(String(triggerField));
     aliases.add(`__field__:${String(triggerField)}`);
@@ -272,9 +283,9 @@ export function buildFieldRuleState(
         const blockMatches = rule.blocks.map((block) => {
           const triggerField = block.field_api_name ?? block.field_id ?? block.f_id;
           if (!triggerField) return false;
-          const isTriggerVisible = checkTriggerVisible(triggerField, currentStateMap, targetGroups, fieldToSectionMap, block.field_api_name, block.field_id, block.f_id);
+          const isTriggerVisible = checkTriggerVisible(triggerField, currentStateMap, targetGroups, fieldToSectionMap, block.field_api_name, block.field_id, block.f_id, block.api_name);
           if (!isTriggerVisible) return false;
-          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups, block.field_api_name, block.field_id, block.f_id);
+          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups, block.field_api_name, block.field_id, block.f_id, block.api_name);
           return evaluateCondition(triggerValue, block.condition, block.value);
         });
 
@@ -291,10 +302,10 @@ const isValEmpty = (val: any): boolean => {
           const triggerField = block.field_api_name ?? block.field_id ?? block.f_id;
           if (!triggerField) return [];
 
-          const isTriggerVisible = checkTriggerVisible(triggerField, currentStateMap, targetGroups, fieldToSectionMap, block.field_api_name, block.field_id, block.f_id);
+          const isTriggerVisible = checkTriggerVisible(triggerField, currentStateMap, targetGroups, fieldToSectionMap, block.field_api_name, block.field_id, block.f_id, block.api_name);
           if (!isTriggerVisible) return (block.else_blocks || []).map(() => false);
 
-          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups, block.field_api_name, block.field_id, block.f_id);
+          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups, block.field_api_name, block.field_id, block.f_id, block.api_name);
           const ifMatched = blockMatches[bIdx];
           const triggerIsEmpty = isValEmpty(triggerValue);
 
@@ -326,9 +337,9 @@ const isValEmpty = (val: any): boolean => {
           if (blockMatches[bIdx]) return false;
           const triggerField = block.field_api_name ?? block.field_id ?? block.f_id;
           if (!triggerField) return false;
-          const isTriggerVisible = checkTriggerVisible(triggerField, currentStateMap, targetGroups, fieldToSectionMap, block.field_api_name, block.field_id, block.f_id);
+          const isTriggerVisible = checkTriggerVisible(triggerField, currentStateMap, targetGroups, fieldToSectionMap, block.field_api_name, block.field_id, block.f_id, block.api_name);
           if (!isTriggerVisible) return false;
-          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups, block.field_api_name, block.field_id, block.f_id);
+          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups, block.field_api_name, block.field_id, block.f_id, block.api_name);
           const triggerIsEmpty = isValEmpty(triggerValue);
 
           if (triggerIsEmpty) {
@@ -474,10 +485,10 @@ const isValEmpty = (val: any): boolean => {
       } else {
         // Simple rule evaluation
         const triggerField = rule.field_api_name ?? rule.field_id ?? rule.f_id ?? "";
-        const isTriggerVisible = !triggerField || checkTriggerVisible(triggerField, currentStateMap, targetGroups, fieldToSectionMap, rule.field_api_name, rule.field_id, rule.f_id);
+        const isTriggerVisible = !triggerField || checkTriggerVisible(triggerField, currentStateMap, targetGroups, fieldToSectionMap, rule.field_api_name, rule.field_id, rule.f_id, rule.api_name);
 
         if (isTriggerVisible && triggerField) {
-          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups, rule.field_api_name, rule.field_id, rule.f_id);
+          const triggerValue = getTriggerValue(triggerField, formValues, targetGroups, rule.field_api_name, rule.field_id, rule.f_id, rule.api_name);
           const isMatch = evaluateCondition(triggerValue, rule.condition!, rule.value);
 
           if (isMatch) {

@@ -243,6 +243,7 @@ const FormAdvancedRuleModal = ({
         return {
           ...output,
           field_api_name: value,
+          api_name: option?.apiName || null,
           target_type: option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
           field_id: option?.fieldId ?? option?.f_id ?? null,
           f_id: option?.f_id ?? option?.fieldId ?? null,
@@ -322,6 +323,7 @@ const FormAdvancedRuleModal = ({
         return {
           ...o,
           field_api_name: value,
+          api_name: option?.apiName || null,
           target_type: option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
           field_id: option?.fieldId ?? option?.f_id ?? null,
           f_id: option?.f_id ?? option?.fieldId ?? null,
@@ -432,6 +434,7 @@ const FormAdvancedRuleModal = ({
           const option = fields.find((f) => f.value === o.field_api_name);
           return {
             ...o,
+            api_name: option?.apiName ?? o.api_name ?? null,
             target_type: o.target_type || option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
             field_id: o.field_id ?? o.f_id ?? option?.fieldId ?? option?.f_id ?? null,
             f_id: o.f_id ?? o.field_id ?? option?.f_id ?? option?.fieldId ?? null,
@@ -466,6 +469,7 @@ const FormAdvancedRuleModal = ({
               const option = fields.find((f) => f.value === o.field_api_name);
               return {
                 ...o,
+                api_name: option?.apiName ?? o.api_name ?? null,
                 target_type: o.target_type || option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
                 field_id: o.field_id ?? o.f_id ?? option?.fieldId ?? option?.f_id ?? null,
                 f_id: o.f_id ?? o.field_id ?? option?.f_id ?? option?.fieldId ?? null,
@@ -487,6 +491,7 @@ const FormAdvancedRuleModal = ({
 
       return {
         ...block,
+        api_name: triggerOption?.apiName ?? block.api_name ?? null,
         field_id: block.field_id ?? block.f_id ?? triggerOption?.fieldId ?? triggerOption?.f_id ?? null,
         f_id: block.f_id ?? block.field_id ?? triggerOption?.f_id ?? triggerOption?.fieldId ?? null,
         field_uid: block.field_uid ?? triggerOption?.fieldUid ?? triggerOption?.u_id,

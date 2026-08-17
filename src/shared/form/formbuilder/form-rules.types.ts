@@ -18,6 +18,7 @@ export type RuleAction = 'show' | 'hide' | 'require' | 'disable';
 
 export type FormRuleOutput = {
   field_api_name: string;
+  api_name?: string | null;
   field_id?: number | string | null;
   f_id?: number | string | null;
   field_uid?: string;
@@ -40,6 +41,7 @@ export type ElseBlock = {
 export type FormRuleBlock = {
   _uid: string;
   field_api_name: string;
+  api_name?: string | null;
   field_id?: number | string | null;
   f_id?: number | string | null;
   field_uid?: string;
@@ -66,6 +68,7 @@ export type FormRule = {
   name: string;              // max 20 chars
   sequence: number;
   field_api_name?: string;    // trigger field (optional for advanced)
+  api_name?: string | null;
   field_id?: number | string | null;
   f_id?: number | string | null;
   field_uid?: string;

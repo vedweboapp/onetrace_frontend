@@ -502,8 +502,9 @@ export default function FormBuilderLayout({
           setModuleName(layoutObj.layout.name);
         }
         const schemaData = layoutObj?.sections || layoutObj?.layout?.sections || [];
+        let initializedSections: Section[] = [];
         if (apiHandlers?.fetchForm && schemaData.length > 0) {
-          const initializedSections: Section[] = [...schemaData]
+          initializedSections = [...schemaData]
             .sort((a: any, b: any) => (a.sequence ?? 0) - (b.sequence ?? 0))
             .map((sec: any, sIdx: number) => ({
               ...sec,
@@ -533,9 +534,14 @@ export default function FormBuilderLayout({
                     validationRules.editorType ??
                     f.properties?.validation_rules?.editor_type;
 
+                  // f_id fallback: backend may not return f_id, use field id
+                  const backendId = f.id != null && !String(f.id).startsWith('field-') ? f.id : null;
+                  const fId = f.f_id ?? backendId ?? (f._uid || `field-${fIdx}-${Date.now()}`);
+
                   return {
                     ...f,
                     _uid: f.id?.toString() || `field-${fIdx}-${Date.now()}`,
+                    f_id: fId,
                     order: f.order ?? f.sequence ?? fIdx,
                     original_name: f.api_name || f.name,
                     field_label: f.field_label || f.label || "",
@@ -608,7 +614,80 @@ export default function FormBuilderLayout({
             }
             return ruleData;
           });
-          setRules(loadedRules);
+
+          /** Re-resolve each rule block's field_api_name against current loaded fields.
+           *  Priority: 1) direct match  2) f_id/field_id  3) api_name fallback  4) leave as-is */
+          const normalizeRuleFieldApiName = (
+            fieldApiName: string | undefined,
+            apiName: string | null | undefined,
+            fId: any,
+            fieldId: any,
+            allSections: Section[],
+          ): string | undefined => {
+            if (!fieldApiName) return fieldApiName;
+
+            const allFields: any[] = [];
+            allSections.forEach(sec => {
+              (sec.fields || []).forEach(f => allFields.push(f));
+            });
+
+            const canonicalFor = (f: any): string => {
+              if (f.id != null && !String(f.id).startsWith('field-')) {
+                return `${FIELD_RULE_TARGET_PREFIX}${f.id}`;
+              }
+              return `${FIELD_RULE_TARGET_PREFIX}${f.f_id ?? f._uid}`;
+            };
+
+            // 1. Already matches a current option → no change needed
+            if (allFields.some(f => canonicalFor(f) === fieldApiName)) return fieldApiName;
+
+            // 2. f_id / field_id is the priority match
+            const rawId = fId ?? fieldId;
+            if (rawId != null && rawId !== '') {
+              const byFId = allFields.find(f =>
+                String(f.f_id) === String(rawId) ||
+                String(f.id) === String(rawId) ||
+                String(f._uid) === String(rawId)
+              );
+              if (byFId) return canonicalFor(byFId);
+            }
+
+            // 3. api_name as fallback when f_id doesn't resolve
+            if (apiName) {
+              const byApiName = allFields.find(f => f.api_name === apiName);
+              if (byApiName) return canonicalFor(byApiName);
+            }
+
+            // 4. No match — leave unchanged (may be a section target like __section__:172)
+            return fieldApiName;
+          };
+
+          const normalizeOutput = (o: any): any => ({
+            ...o,
+            field_api_name: normalizeRuleFieldApiName(o.field_api_name, o.api_name, o.f_id, o.field_id, initializedSections),
+          });
+
+          const normalizeBlock = (b: any): any => ({
+            ...b,
+            field_api_name: normalizeRuleFieldApiName(b.field_api_name, b.api_name, b.f_id, b.field_id, initializedSections),
+            output_fields: (b.output_fields || []).map(normalizeOutput),
+            else_blocks: (b.else_blocks || []).map((eb: any) => ({
+              ...eb,
+              else_output_fields: (eb.else_output_fields || []).map(normalizeOutput),
+            })),
+            else_output_fields: (b.else_output_fields || []).map(normalizeOutput),
+          });
+
+          const normalizedRules = loadedRules.map((r: any) => ({
+            ...r,
+            field_api_name: r.field_api_name
+              ? normalizeRuleFieldApiName(r.field_api_name, r.api_name, r.f_id, r.field_id, initializedSections)
+              : r.field_api_name,
+            output_fields: (r.output_fields || []).map(normalizeOutput),
+            blocks: (r.blocks || []).map(normalizeBlock),
+          }));
+
+          setRules(normalizedRules);
         }
       } else if (
         purpose !== "create_module" &&
@@ -832,7 +911,7 @@ export default function FormBuilderLayout({
       const uniqueApiName = getUniqueApiName(fieldConfig.api_name, prev);
       const newFieldUid = fieldConfig._uid || `${Date.now()}`;
       const fId = fieldConfig.f_id ?? (hasPersistedId(fieldConfig.id) ? fieldConfig.id : newFieldUid);
-      
+
       return prev.map((sec) =>
         sec._uid === sectionUid
           ? {
@@ -1055,39 +1134,39 @@ export default function FormBuilderLayout({
               rule_type: r.rule_type || "normal",
               ...(r.rule_type === "advanced"
                 ? {
-                    blocks: (r.blocks || []).map((b) => {
-                      const { u_id, ...cleanB } = b as any;
-                      return {
-                        ...cleanB,
-                        ...(b.s_id != null ? { s_id: b.s_id } : {}),
-                        output_fields: (b.output_fields || []).map((o) => {
-                          const { u_id, ...cleanO } = o as any;
-                          return {
-                            ...cleanO,
-                            field_id: o.field_id ?? o.f_id ?? null,
-                            f_id: o.f_id ?? o.field_id ?? null,
-                            ...(o.s_id != null ? { s_id: o.s_id } : {}),
-                          };
-                        }),
-                        ...(b.else_blocks
-                          ? {
-                              else_blocks: b.else_blocks.map((eb) => ({
-                                ...eb,
-                                else_output_fields: (eb.else_output_fields || []).map((o) => {
-                                  const { u_id, ...cleanO } = o as any;
-                                  return {
-                                    ...cleanO,
-                                    field_id: o.field_id ?? o.f_id ?? null,
-                                    f_id: o.f_id ?? o.field_id ?? null,
-                                    ...(o.s_id != null ? { s_id: o.s_id } : {}),
-                                  };
-                                }),
-                              })),
-                            }
-                          : {}),
-                      };
-                    }),
-                  }
+                  blocks: (r.blocks || []).map((b) => {
+                    const { u_id, ...cleanB } = b as any;
+                    return {
+                      ...cleanB,
+                      ...(b.s_id != null ? { s_id: b.s_id } : {}),
+                      output_fields: (b.output_fields || []).map((o) => {
+                        const { u_id, ...cleanO } = o as any;
+                        return {
+                          ...cleanO,
+                          field_id: o.field_id ?? o.f_id ?? null,
+                          f_id: o.f_id ?? o.field_id ?? null,
+                          ...(o.s_id != null ? { s_id: o.s_id } : {}),
+                        };
+                      }),
+                      ...(b.else_blocks
+                        ? {
+                          else_blocks: b.else_blocks.map((eb) => ({
+                            ...eb,
+                            else_output_fields: (eb.else_output_fields || []).map((o) => {
+                              const { u_id, ...cleanO } = o as any;
+                              return {
+                                ...cleanO,
+                                field_id: o.field_id ?? o.f_id ?? null,
+                                f_id: o.f_id ?? o.field_id ?? null,
+                                ...(o.s_id != null ? { s_id: o.s_id } : {}),
+                              };
+                            }),
+                          })),
+                        }
+                        : {}),
+                    };
+                  }),
+                }
                 : {}),
             },
           };
@@ -1557,18 +1636,17 @@ export default function FormBuilderLayout({
       }
       {/* Responsive Sub-header */}
       <div
-        className={`z-20 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-gray-700 transition-all duration-300 ${
-          isLargeScreen
+        className={`z-20 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-gray-700 transition-all duration-300 ${isLargeScreen
             ? "fixed top-14 flex items-center justify-between h-14 px-6"
             : "relative w-full flex flex-col gap-4 p-4"
-        }`}
+          }`}
         style={
           isLargeScreen
             ? {
-                left: "var(--subheader-sidebar-w, 200px)",
-                width: "calc(100% - var(--subheader-sidebar-w, 200px))",
-                transition: "left 300ms cubic-bezier(0.4,0,0.2,1), width 300ms cubic-bezier(0.4,0,0.2,1)",
-              }
+              left: "var(--subheader-sidebar-w, 200px)",
+              width: "calc(100% - var(--subheader-sidebar-w, 200px))",
+              transition: "left 300ms cubic-bezier(0.4,0,0.2,1), width 300ms cubic-bezier(0.4,0,0.2,1)",
+            }
             : undefined
         }
       >
@@ -1708,11 +1786,10 @@ export default function FormBuilderLayout({
               </div>
               <div className="flex w-full justify-center">
                 <div
-                  className={`bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm ${
-                    previewLayout === "phone"
+                  className={`bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm ${previewLayout === "phone"
                       ? "rounded-sm p-2 sm:p-4"
                       : "w-full rounded-sm p-3 sm:p-8"
-                  }`}
+                    }`}
                   style={
                     previewLayout === "phone"
                       ? { width: 390, maxWidth: "100%" }
