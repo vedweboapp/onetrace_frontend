@@ -9,16 +9,22 @@ import {
   formatUserGroupLabel,
   formatUserGroupMemberLabel,
 } from "@/features/user-groups/utils/user-group-display.util";
-import { EntityDetailLoadingSkeleton } from "@/shared/components/entity";
-import {
-  SettingsDetailList,
-  SettingsDetailRow,
-  SettingsDetailTextValue,
-  SettingsDetailTimestampValue,
-  settingsDetailUserLabel,
-} from "@/shared/components/settings/settings-detail-view";
+import { DetailSystemMetadataSection, EntityDetailLoadingSkeleton } from "@/shared/components/entity";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
-import { detailRecordSurfaceShellClassName } from "@/shared/components/layout/detail-metric-card";
+import {
+  DetailLinkedTable,
+  DetailLinkedTableRow,
+  DetailLinkedTableTd,
+  detailLinkedTableCellClassName,
+} from "@/shared/components/layout/detail-linked-table";
+import {
+  DetailMetricCard,
+  DetailMetricsGrid,
+  DetailPagePadding,
+  DetailPanelCard,
+  detailPageStackClassName,
+  detailRecordSurfaceShellClassName,
+} from "@/shared/components/layout/detail-metric-card";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useEntityDetailBack } from "@/shared/hooks/use-entity-detail-back";
@@ -28,6 +34,7 @@ import { AppButton, ConfirmDialog, EditButton, SurfaceShell } from "@/shared/ui"
 
 export function UserGroupDetailScreen({ groupId }: { groupId: number }) {
   const t = useTranslations("Dashboard.userGroups");
+  const tMeta = useTranslations("Dashboard.common.detail");
   const dateFmt = useDashboardDateFormat();
   const router = useRouter();
   const pathname = usePathname();
@@ -71,6 +78,7 @@ export function UserGroupDetailScreen({ groupId }: { groupId: number }) {
   }
 
   const title = detail ? formatUserGroupLabel(detail) : t("detailMetaTitle");
+  const members = detail?.users ?? [];
 
   return (
     <div className="min-h-0 w-full pb-8 sm:pb-10">
@@ -103,41 +111,66 @@ export function UserGroupDetailScreen({ groupId }: { groupId: number }) {
         ) : error ? (
           <p className="p-6 text-sm text-red-600 dark:text-red-400">{error}</p>
         ) : detail ? (
-          <div className="p-4 sm:p-6">
-            <SettingsDetailList>
-              <SettingsDetailRow label={t("fields.name")}>
-                <SettingsDetailTextValue>{formatUserGroupLabel(detail)}</SettingsDetailTextValue>
-              </SettingsDetailRow>
-              <SettingsDetailRow label={t("fields.users")}>
-                {detail.users.length === 0 ? (
-                  <SettingsDetailTextValue muted>{t("table.noMembers")}</SettingsDetailTextValue>
+          <DetailPagePadding>
+            <div className={detailPageStackClassName}>
+              <DetailPanelCard title={t("detail.sectionGroup")}>
+                <DetailMetricsGrid columns={2}>
+                  <DetailMetricCard label={t("fields.name")}>
+                    {formatUserGroupLabel(detail)}
+                  </DetailMetricCard>
+                  <DetailMetricCard label={t("table.members")}>
+                    <span className="tabular-nums">{members.length}</span>
+                  </DetailMetricCard>
+                </DetailMetricsGrid>
+              </DetailPanelCard>
+
+              <DetailPanelCard title={t("detail.sectionUsers")}>
+                {members.length === 0 ? (
+                  <p className="text-sm font-normal text-slate-500 dark:text-slate-400">
+                    {t("table.noMembers")}
+                  </p>
                 ) : (
-                  <ul className="space-y-1">
-                    {detail.users.map((user) => (
-                      <li key={user.id} className="text-sm">
-                        {formatUserGroupMemberLabel(user)}
-                        {user.email ? (
-                          <span className="ml-1 text-xs font-normal text-slate-500">({user.email})</span>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
+                  <DetailLinkedTable
+                    columns={[
+                      { id: "name", header: t("detail.userName") },
+                      { id: "email", header: t("detail.userEmail") },
+                    ]}
+                  >
+                    {members.map((user, index) => {
+                      const name = formatUserGroupMemberLabel(user);
+                      const email = user.email?.trim() || "—";
+                      return (
+                        <DetailLinkedTableRow key={user.id} index={index}>
+                          <DetailLinkedTableTd className={detailLinkedTableCellClassName({})}>
+                            {name}
+                          </DetailLinkedTableTd>
+                          <DetailLinkedTableTd className={detailLinkedTableCellClassName({})}>
+                            {email}
+                          </DetailLinkedTableTd>
+                        </DetailLinkedTableRow>
+                      );
+                    })}
+                  </DetailLinkedTable>
                 )}
-              </SettingsDetailRow>
-              <SettingsDetailRow label={t("detail.createdAt")}>
-                <SettingsDetailTimestampValue
-                  dateFmt={dateFmt}
-                  value={detail.created_at}
-                  byUser={settingsDetailUserLabel(detail.created_by)}
-                  byUserTemplate={
-                    settingsDetailUserLabel(detail.created_by) !== "—"
-                      ? t("detail.byUser", { user: settingsDetailUserLabel(detail.created_by) })
-                      : null
-                  }
-                />
-              </SettingsDetailRow>
-            </SettingsDetailList>
-          </div>
+              </DetailPanelCard>
+
+              <DetailSystemMetadataSection
+                createdAt={detail.created_at}
+                modifiedAt={detail.modified_at ?? null}
+                dateFmt={dateFmt}
+                createdBy={detail.created_by ?? null}
+                modifiedBy={detail.modified_by ?? null}
+                labels={{
+                  sectionTitle: tMeta("systemMetadata"),
+                  createdAt: t("fields.createdAt"),
+                  updatedAt: t("fields.updatedAt"),
+                  createdBy: t("fields.createdBy"),
+                  modifiedBy: tMeta("modifiedBy"),
+                  notModifiedYet: tMeta("notModifiedYet"),
+                }}
+              />
+            </div>
+          </DetailPagePadding>
         ) : null}
       </SurfaceShell>
 

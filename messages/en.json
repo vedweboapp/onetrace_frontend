@@ -1655,7 +1655,10 @@
       },
       "fields": {
         "name": "Group name",
-        "users": "Users"
+        "users": "Users",
+        "createdAt": "Created at",
+        "updatedAt": "Updated at",
+        "createdBy": "Created by"
       },
       "placeholders": {
         "name": "e.g. Field technicians"
@@ -1678,6 +1681,10 @@
       "deleteConfirmBody": "Users are not deleted. Only the group is removed.",
       "detail": {
         "backAria": "Back to groups list",
+        "sectionGroup": "Group",
+        "sectionUsers": "Users",
+        "userName": "Name",
+        "userEmail": "Email",
         "createdAt": "Created",
         "byUser": "By {user}"
       },

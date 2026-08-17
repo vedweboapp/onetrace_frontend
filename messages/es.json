@@ -1647,7 +1647,10 @@
       },
       "fields": {
         "name": "Nombre del grupo",
-        "users": "Usuarios"
+        "users": "Usuarios",
+        "createdAt": "Creado",
+        "updatedAt": "Actualizado",
+        "createdBy": "Creado por"
       },
       "placeholders": {
         "name": "p. ej. Técnicos de campo"
@@ -1670,6 +1673,10 @@
       "deleteConfirmBody": "Los usuarios no se eliminan. Solo se quita el grupo.",
       "detail": {
         "backAria": "Volver a la lista de grupos",
+        "sectionGroup": "Grupo",
+        "sectionUsers": "Usuarios",
+        "userName": "Nombre",
+        "userEmail": "Correo",
         "createdAt": "Creado",
         "byUser": "Por {user}"
       },

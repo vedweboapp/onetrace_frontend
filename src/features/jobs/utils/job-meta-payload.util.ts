@@ -55,17 +55,31 @@ function resolveGroupRef(groupRaw: string, groupName?: string): JobMetaComposite
 
 /** Normalize legacy nested `job_meta` to flat API shape for display and edit. */
 export function normalizeJobMeta(
-  meta: JobMetaPayload | JobMetaLegacyPayload | null | undefined,
+  meta: JobMetaPayload | JobMetaLegacyPayload | string | null | undefined,
 ): JobMetaPayload | null {
-  if (!meta) return null;
-  if ("plot" in meta && meta.plot) {
-    const plot = meta.plot;
+  if (meta == null) return null;
+
+  let value: JobMetaPayload | JobMetaLegacyPayload;
+  if (typeof meta === "string") {
+    const trimmed = meta.trim();
+    if (!trimmed) return null;
+    try {
+      value = JSON.parse(trimmed) as JobMetaPayload | JobMetaLegacyPayload;
+    } catch {
+      return null;
+    }
+  } else {
+    value = meta;
+  }
+
+  if ("plot" in value && value.plot) {
+    const plot = value.plot;
     return {
       total: plot.plot_total,
       composite_items: plot.composite_items,
     };
   }
-  const flat = meta as JobMetaPayload;
+  const flat = value as JobMetaPayload;
   return {
     total: flat.total,
     composite_items: flat.composite_items,
