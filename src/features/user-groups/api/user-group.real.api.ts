@@ -33,8 +33,18 @@ function toMember(raw: unknown): UserGroupUserRef | null {
   if (!Number.isFinite(id) || id <= 0) return null;
   return {
     id,
-    email: typeof row.email === "string" ? row.email : typeof nested?.email === "string" ? nested.email : null,
-    username: typeof row.username === "string" ? row.username : null,
+    email:
+      typeof row.email === "string"
+        ? row.email
+        : typeof nested?.email === "string"
+          ? nested.email
+          : null,
+    username:
+      typeof row.username === "string"
+        ? row.username
+        : typeof nested?.username === "string"
+          ? nested.username
+          : null,
     first_name:
       typeof row.first_name === "string"
         ? row.first_name

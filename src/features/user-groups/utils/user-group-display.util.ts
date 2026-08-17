@@ -10,8 +10,6 @@ export function formatUserGroupMemberLabel(user: UserGroupUserRef): string {
   const last = user.last_name?.trim() ?? "";
   const full = `${first} ${last}`.trim();
   if (full) return full;
-  const username = user.username?.trim();
-  if (username) return username;
   const email = user.email?.trim();
   if (email) return email;
   return `User #${user.id}`;

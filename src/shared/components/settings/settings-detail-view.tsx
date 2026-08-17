@@ -36,16 +36,20 @@ function initialsFromLabel(label: string): string {
   return `${parts[0]![0] ?? ""}${parts[1]![0] ?? ""}`.toUpperCase();
 }
 
-/** Header title: colour avatar + plain name (avoids chip-as-title). */
+/** Header title: colour avatar + name, optional ID badge under the name (aligned with text). */
 export function SettingsDetailTitle({
   name,
   bgColour,
   textColour,
+  idLabel,
+  idExtra,
   className,
 }: {
   name: string;
   bgColour?: string | null;
   textColour?: string | null;
+  idLabel?: ReactNode;
+  idExtra?: ReactNode;
   className?: string;
 }) {
   const bg = (bgColour ?? "").trim() || "#e2e8f0";
@@ -59,9 +63,14 @@ export function SettingsDetailTitle({
       >
         {initialsFromLabel(name)}
       </span>
-      <span className="min-w-0 truncate text-base font-semibold leading-tight text-slate-900 dark:text-slate-50">
-        {name}
-      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-base font-semibold leading-tight text-slate-900 dark:text-slate-50">{name}</p>
+        {idLabel != null && idLabel !== "" ? (
+          <div className="mt-1">
+            <SettingsDetailIdSubtitle idLabel={idLabel} extra={idExtra} />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -74,9 +83,13 @@ export function SettingsDetailIdSubtitle({
   extra?: ReactNode;
 }) {
   return (
-    <span className="text-xs font-medium tracking-wide text-slate-500 dark:text-slate-400">
-      {idLabel}
-      {extra ? <span className="text-slate-400 dark:text-slate-500"> · {extra}</span> : null}
+    <span className="inline-flex max-w-full flex-wrap items-center gap-1.5">
+      <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-medium tracking-wide text-slate-600 ring-1 ring-inset ring-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">
+        {idLabel}
+      </span>
+      {extra ? (
+        <span className="truncate font-mono text-[11px] text-slate-400 dark:text-slate-500">{extra}</span>
+      ) : null}
     </span>
   );
 }

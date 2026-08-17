@@ -9,7 +9,7 @@ import {
 import { cn } from "@/core/utils/http.util";
 
 interface TextBoxProps {
-  label?: string;
+  label?: React.ReactNode;
   register?: any;
   errors?: any;
   readOnly?: boolean;
@@ -22,9 +22,10 @@ interface TextBoxProps {
   [key: string]: any;
 }
 
-const extractLabelText = (label?: string) => {
-  if (!label || typeof label !== "string") return "";
-  return label.replace(/[*:]/g, "").trim();
+const cleanLabelNode = (label?: React.ReactNode): React.ReactNode => {
+  if (!label) return "";
+  if (typeof label === "string") return label.replace(/[*:]/g, "").trim();
+  return label;
 };
 
 const TextBox: React.FC<TextBoxProps> = ({
@@ -41,7 +42,7 @@ const TextBox: React.FC<TextBoxProps> = ({
   ...rest
 }) => {
   const inputId = id ?? register?.name ?? name;
-  const cleanLabel = extractLabelText(label);
+  const cleanLabel = cleanLabelNode(label);
   const isRequired = Boolean(
     fieldRequired ?? required ?? (typeof label === "string" && /\*/.test(label)),
   );
@@ -57,7 +58,7 @@ const TextBox: React.FC<TextBoxProps> = ({
       readOnly={readOnly}
       placeholder={
         rest.placeholder ||
-        (cleanLabel ? `Enter ${cleanLabel} here` : rest.placeholder)
+        (typeof cleanLabel === "string" && cleanLabel ? `Enter ${cleanLabel} here` : rest.placeholder)
       }
       aria-invalid={errors ? true : undefined}
       className={cn(

@@ -3,7 +3,7 @@ import {
   Minus, AlignLeft, Mail, Phone, List, Hash,
   Calendar, Clock, ArrowUpDown, DollarSign, Circle,
   Percent, MapPin, CheckSquare, Link, Search,
-  Calculator, User, FileUp, Image, BarChart3,
+  Calculator, User, FileUp, Image, Images, BarChart3,
   Home, ListChecks, Globe, LucideIcon, PenTool,
   Video
 } from "lucide-react";
@@ -159,6 +159,12 @@ export const FormFieldsConfig: FieldConfigItem[] = [
     type: "image_upload",
     label: "Image Upload",
     icon: Image
+  },
+  {
+    key: "multiImageUpload",
+    type: "multi_image_upload",
+    label: "Multiple Images",
+    icon: Images
   },
   // {
   //   key: "country",

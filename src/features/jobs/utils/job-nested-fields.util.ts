@@ -264,3 +264,68 @@ export function userProfileLabel(u: UserProfile): string {
   const full = `${u.user_detail.first_name ?? ""} ${u.user_detail.last_name ?? ""}`.trim();
   return full || u.user_detail.email?.trim() || `#${id}`;
 }
+
+function asTrimmedString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function asFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function formatDurationParts(hours: number, minutes: number, seconds: number): string {
+  const h = Math.max(0, Math.floor(hours));
+  const m = Math.max(0, Math.floor(minutes));
+  const s = Math.max(0, Math.floor(seconds));
+  if (h > 0) {
+    return s > 0
+      ? `${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`
+      : `${h}h ${String(m).padStart(2, "0")}m`;
+  }
+  if (m > 0) {
+    return s > 0 ? `${m}m ${String(s).padStart(2, "0")}s` : `${m}m`;
+  }
+  return `${s}s`;
+}
+
+/** Display `job_time` whether the API sends a string, seconds, or a duration object. */
+export function formatJobTimeDisplay(value: unknown, empty = "—"): string {
+  if (value == null || value === "") return empty;
+  if (typeof value === "boolean") return empty;
+
+  const asString = asTrimmedString(value);
+  if (asString) return asString;
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const total = Math.max(0, Math.round(value));
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
+    return formatDurationParts(hours, minutes, seconds);
+  }
+
+  if (typeof value !== "object") return empty;
+
+  const row = value as Record<string, unknown>;
+  const start = asTrimmedString(row.start ?? row.start_time);
+  const end = asTrimmedString(row.end ?? row.end_time);
+  if (start && end) return `${start} – ${end}`;
+  if (start) return start;
+  if (end) return end;
+
+  const hours = asFiniteNumber(row.hours);
+  const minutes = asFiniteNumber(row.minutes);
+  const seconds = asFiniteNumber(row.seconds);
+  if (hours != null || minutes != null || seconds != null) {
+    return formatDurationParts(hours ?? 0, minutes ?? 0, seconds ?? 0);
+  }
+
+  return empty;
+}

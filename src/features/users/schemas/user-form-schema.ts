@@ -31,6 +31,9 @@ export function createUserFormSchema(messages: UserFormMessages) {
     }),
     gender: z.string().trim().min(1, messages.gender),
     role: z.string().trim().regex(/^\d+$/, messages.role),
+    date_of_birth: z.string().optional(),
+    email_record_id: z.number().int().positive().optional(),
+    phone_record_id: z.number().int().positive().optional(),
     base_pay: z.string().trim(),
     base_pay_type: z.enum(["fixed_amount", "rate_per_hr"]),
     available_days: z.array(

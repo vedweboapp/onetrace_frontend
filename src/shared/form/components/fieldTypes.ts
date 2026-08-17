@@ -18,6 +18,7 @@ import {
   User,
   FileUp,
   Image,
+  Images,
   BarChart3,
   Home,
   ArrowUpDown,
@@ -86,7 +87,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       { type: "text", label: "Placeholder", key: "placeholder" },
       { type: "number", label: "Max Length", key: "maxLength" },
       { type: "number", label: "Min Length", key: "minLength" },
@@ -105,14 +106,14 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       placeholder: "Enter details...",
       required: false,
       rows: 4,
-      maxLength: 5000,
+     maxLenght : 10000,
       markAsPublic: false,
       show_tooltip: false,
       tool_tip: "",
       editor_type: "text",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       {
         type: "radio-group",
         label: "Type",
@@ -144,7 +145,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       { type: "text", label: "Placeholder", key: "placeholder" },
       { type: "checkbox", label: "Is Unique", key: "is_unique" },
       { type: "checkbox", label: "Required", key: "required" },
@@ -167,7 +168,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       { type: "text", label: "Placeholder", key: "placeholder" },
       { type: "number", label: "Max Length", key: "maxLength" },
       { type: "checkbox", label: "Required", key: "required" },
@@ -182,7 +183,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       type: "picklist",
       label: "Status",
       name: "",
-      options: ["Open", "In Progress", "Closed"],
+      options: ["Yes", "No"],
       defaultValue: "Open",
       required: true,
       markAsPublic: false,
@@ -190,7 +191,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 100 },
       {
         type: "options",
         label: "Options (one per line)",
@@ -210,7 +211,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       type: "multi_select",
       label: "Categories",
       name: "",
-      options: ["Option 1", "Option 2", "Option 3"],
+      options: ["Yes", "No",],
       defaultValue: [],
       required: false,
       markAsPublic: false,
@@ -218,7 +219,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 100 },
       {
         type: "options",
         label: "Options (one per line)",
@@ -244,7 +245,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 100 },
       { type: "checkbox", label: "Required", key: "required" },
       // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
       // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
@@ -263,7 +264,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 100 },
       { type: "checkbox", label: "Required", key: "required" },
       // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
       // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
@@ -284,7 +285,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 100 },
       {
         type: "drop-down",
         label: "Number of digits allowed",
@@ -344,7 +345,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       {
         type: "drop-down",
         label: "Default Currency",
@@ -390,7 +391,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       {
         type: "drop-down",
         label: "Maximum digits allowed",
@@ -437,7 +438,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       { type: "text", label: "Placeholder", key: "placeholder" },
       { type: "checkbox", label: "Required", key: "required" },
       // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
@@ -494,7 +495,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       { type: "checkbox", label: "Required", key: "required" },
       { type: "checkbox", label: "Checked by Default", key: "defaultChecked" },
       // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
@@ -508,7 +509,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       type: "radio",
       label: "Choice",
       name: "",
-      options: ["Option 1", "Option 2", "Option 3"],
+      options: ["Yes", "No", ],
       defaultValue: "",
       required: false,
       markAsPublic: false,
@@ -516,7 +517,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       {
         type: "options",
         label: "Options (one per line)",
@@ -544,7 +545,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       { type: "number", label: "Number of characters allowed", key: "max" },
       { type: "text", label: "Placeholder", key: "placeholder" },
       { type: "checkbox", label: "Required", key: "required" },
@@ -629,7 +630,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       { type: "number", label: "Max File Size (MB)", key: "maxFileSize" },
       {
         type: "drop-down", label: "Allowed File Types", key: "allowedTypes", options:
@@ -661,11 +662,32 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       { type: "number", label: "Max File Size (MB)", key: "maxFileSize" },
       { type: "checkbox", label: "Required", key: "required" },
       // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
       // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
+    ],
+  },
+  multi_image_upload: {
+    label: "Multiple Images",
+    icon: Images,
+    defaultConfig: () => ({
+      type: "multi_image_upload",
+      label: "Multiple Images",
+      name: "",
+      maxFileSize: 5,
+      maxFiles: 10,
+      required: false,
+      markAsPublic: false,
+      show_tooltip: false,
+      tool_tip: "",
+    }),
+    configFields: [
+      { type: "text", label: "Field Label", key: "label", required: true, maxLenght: 100 },
+      { type: "number", label: "Max File Size (MB)", key: "maxFileSize" },
+      { type: "number", label: "Max Number of Images", key: "maxFiles" },
+      { type: "checkbox", label: "Required", key: "required" },
     ],
   },
   rollup_summary: {
@@ -681,7 +703,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       { type: "text", label: "Related Object", key: "relatedObject" },
       { type: "text", label: "Summary Type (SUM/COUNT/AVG)", key: "summaryType" },
       // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
@@ -701,7 +723,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       { type: "checkbox", label: "Required", key: "required" },
       // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
       // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
@@ -720,7 +742,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       { type: "checkbox", label: "Required", key: "required" },
     ],
   },
@@ -737,7 +759,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       { type: "checkbox", label: "Required", key: "required" },
     ],
   },
@@ -755,7 +777,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       tool_tip: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       {
         type: "drop-down",
         label: "Lookup Module",
@@ -784,7 +806,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       name: "",
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       {
         type: "drop-down", label: "Lookup Module", key: "lookup_module", required: true, options: [
           { value: "", label: "Select Module" },
@@ -811,7 +833,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       height: 200,
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       { type: "text", label: "Placeholder", key: "placeholder" },
       { type: "number", label: "Canvas Height (px)", key: "height" },
       { type: "checkbox", label: "Required", key: "required" },
@@ -830,7 +852,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
 
     }),
     configFields: [
-      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 50 },
+      { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       { type: "drop-down", label: "Max Size (MB)", key: "maxSize", options: [{ value: "1", label: "1MB" }, { value: "5", label: "5MB" }, { value: "10", label: "10MB" }, { value: "20", label: "20MB" }, { value: "50", label: "50MB" }, { value: "100", label: "100MB" }, { value: "200", label: "200MB" }] },
       { type: "checkbox", label: "Required", key: "required" },
       // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
