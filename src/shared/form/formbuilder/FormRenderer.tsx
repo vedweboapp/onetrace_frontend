@@ -751,16 +751,71 @@ function dataUrlToFile(val: unknown, fieldApiName: string): File | unknown {
   return signatureDataUrlToFileSync(val, `${fieldApiName}`) ?? val;
 }
 
-const sanitizeOutput = (data: any, schema: Section[]) => {
+function getEmptyValueForField(field: Field): any {
+  const normType = getNormalizedType(field.field_type);
+  if (normType === "checkbox") {
+    return false;
+  }
+  if (normType === "multi_image_upload" || ["multi_select", "user"].includes(normType)) {
+    return [];
+  }
+  if (FILE_FIELD_TYPES.has(normType) || normType === "image_upload" || normType === "video_recorder") {
+    return null;
+  }
+  if (normType === "currency") {
+    return buildCurrencyFieldDefault(field);
+  }
+  return "";
+}
+
+function isFieldValueNotEmpty(val: any, normType: string): boolean {
+  if (val === undefined || val === null) return false;
+  if (normType === "checkbox") {
+    return val === true || val === "true" || val === 1 || val === "1";
+  }
+  if (normType === "currency") {
+    if (typeof val === "object" && val !== null) {
+      return !!val.amount && String(val.amount).trim() !== "";
+    }
+    return val !== "" && val !== "0";
+  }
+  if (Array.isArray(val)) {
+    return val.length > 0;
+  }
+  if (typeof val === "string") {
+    return val !== "";
+  }
+  if (typeof val === "number") {
+    return !isNaN(val);
+  }
+  if (typeof val === "object") {
+    return Object.keys(val).length > 0;
+  }
+  return true;
+}
+
+const sanitizeOutput = (
+  data: any,
+  schema: Section[],
+  fieldRuleState?: Map<string, FieldRuleState>,
+) => {
   if (!Array.isArray(schema)) return data;
   const sanitized = { ...data };
 
-  schema.forEach((section) => {
+  schema.forEach((section, sIdx) => {
     if (!section) return;
 
+    const sectionRuleState = fieldRuleState?.get(getSectionRuleTarget(section, sIdx));
+    const isSectionHidden = sectionRuleState?.visible === false;
+
     if (section.is_subform) {
-      const sfKey = section.subform_field_name || section.name;
+      const sfKey = section.subform_field_name || section.name || `subform_${sIdx}`;
       if (!sfKey) return;
+
+      if (isSectionHidden) {
+        delete sanitized[sfKey];
+        return;
+      }
 
       const rawRows = data[sfKey] || [];
       const transformedRows = rawRows
@@ -792,6 +847,14 @@ const sanitizeOutput = (data: any, schema: Section[]) => {
       sanitized[sfKey] = transformedRows;
     } else {
       section?.fields?.forEach((field) => {
+        if (!field.api_name) return;
+
+        const merged = mergeRuleStates(fieldRuleState?.get(field.api_name), sectionRuleState);
+        if (merged?.visible === false) {
+          delete sanitized[field.api_name];
+          return;
+        }
+
         const val = data[field.api_name];
         if (val === undefined || val === null || val === "") return;
         const normType = getNormalizedType(field.field_type);
@@ -1021,14 +1084,51 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
       return buildFieldRuleState(rules, formValues, ruleTargetGroups, fieldToSectionMap);
     }, [rules, formValues, ruleTargetGroups, fieldToSectionMap]);
 
+    // Automatically clear data for any fields or subforms that become hidden by rules
+    useEffect(() => {
+      if (!fieldRuleState || fieldRuleState.size === 0 || !Array.isArray(schema)) return;
+
+      schema.forEach((section, sIdx) => {
+        const sectionRuleTarget = getSectionRuleTarget(section, sIdx);
+        const sectionRuleState = fieldRuleState.get(sectionRuleTarget);
+        const isSectionHidden = sectionRuleState?.visible === false;
+
+        if (section.is_subform) {
+          const sfKey = section.subform_field_name || section.name || `subform_${sIdx}`;
+          if (isSectionHidden) {
+            const currentVal = getValues(sfKey);
+            if (Array.isArray(currentVal) && currentVal.length > 0) {
+              setValue(sfKey, [], { shouldDirty: true, shouldValidate: false });
+              onFieldChange?.(sfKey, []);
+            }
+          }
+          return;
+        }
+
+        section.fields?.forEach((f) => {
+          if (!f.api_name) return;
+          const merged = mergeRuleStates(fieldRuleState.get(f.api_name), sectionRuleState);
+          if (merged?.visible === false) {
+            const currentVal = getValues(f.api_name);
+            const normType = getNormalizedType(f.field_type);
+            if (isFieldValueNotEmpty(currentVal, normType)) {
+              const emptyVal = getEmptyValueForField(f);
+              setValue(f.api_name, emptyVal, { shouldDirty: true, shouldValidate: false });
+              onFieldChange?.(f.api_name, emptyVal);
+            }
+          }
+        });
+      });
+    }, [fieldRuleState, schema, setValue, getValues, onFieldChange]);
+
     const getError = (name: string) =>
       touchedFields?.[name] || isSubmitted ? (errors as any)[name] : undefined;
 
     useImperativeHandle(ref, () => ({
-      getFormData: () => sanitizeOutput(getValues(), schema),
+      getFormData: () => sanitizeOutput(getValues(), schema, fieldRuleState),
       getChangedData: () => {
-        const current = sanitizeOutput(getValues(), schema);
-        const initial = sanitizeOutput({ ...initialValuesRef.current }, schema);
+        const current = sanitizeOutput(getValues(), schema, fieldRuleState);
+        const initial = sanitizeOutput({ ...initialValuesRef.current }, schema, fieldRuleState);
         const changed: any = {};
         Object.keys(current).forEach((key) => {
           if (!deepEqual(current[key], initial[key])) {
@@ -1040,7 +1140,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
       reset: (v) => reset(v),
       submit: (onSuccess, onError) => {
         handleSubmit((data) => {
-          onSuccess(sanitizeOutput(data, schema));
+          onSuccess(sanitizeOutput(data, schema, fieldRuleState));
         }, onError)();
       },
       watch,
