@@ -12,7 +12,6 @@ import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   SettingsDetailActions,
   SettingsDetailColourValue,
-  SettingsDetailIdSubtitle,
   SettingsDetailList,
   SettingsDetailRow,
   SettingsDetailStatusValue,
@@ -456,11 +455,9 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
               name={detailRow.status_name}
               bgColour={normalizeHex(detailRow.bg_colour)}
               textColour={normalizeHex(detailRow.text_colour)}
+              idLabel={t("detail.idLabel", { id: detailRow.id })}
             />
           ) : null
-        }
-        subtitle={
-          detailRow ? <SettingsDetailIdSubtitle idLabel={t("detail.idLabel", { id: detailRow.id })} /> : undefined
         }
         footer={
           detailRow ? (

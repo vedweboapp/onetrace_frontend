@@ -290,7 +290,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                       value={detail.user_detail.first_name ?? ""}
                       kind="text"
                       editAriaLabel={tActions("edit")}
-                      onSave={(next) => patchField({ first_name: next })}
+                      onSave={(next) => patchField({ user_detail: { first_name: next } })}
                     >
                       {detail.user_detail.first_name || "—"}
                     </DetailEditableField>
@@ -299,7 +299,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                       value={detail.user_detail.last_name ?? ""}
                       kind="text"
                       editAriaLabel={tActions("edit")}
-                      onSave={(next) => patchField({ last_name: next })}
+                      onSave={(next) => patchField({ user_detail: { last_name: next } })}
                     >
                       {detail.user_detail.last_name || "—"}
                     </DetailEditableField>
@@ -308,7 +308,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                       value={detail.user_detail.email}
                       kind="email"
                       editAriaLabel={tActions("edit")}
-                      onSave={(next) => patchField({ email: next })}
+                      onSave={(next) => patchField({ user_detail: { email: next } })}
                     >
                       <a
                         href={`mailto:${detail.user_detail.email}`}
@@ -323,7 +323,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                       value={detail.user_detail.phone_number ?? ""}
                       kind="tel"
                       editAriaLabel={tActions("edit")}
-                      onSave={(next) => patchField({ phone_number: next })}
+                      onSave={(next) => patchField({ user_detail: { phone_number: next } })}
                     >
                       {detail.user_detail.phone_number || "—"}
                     </DetailEditableField>
@@ -333,7 +333,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                       kind="select"
                       options={genderOptions}
                       editAriaLabel={tActions("edit")}
-                      onSave={(next) => patchField({ gender: next })}
+                      onSave={(next) => patchField({ user_detail: { gender: next } })}
                     >
                       {detail.user_detail.gender || "—"}
                     </DetailEditableField>
@@ -367,8 +367,10 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                       onSave={(next) => {
                         const n = next.trim() ? Number(next) : null;
                         return patchField({
-                          base_pay: n != null && Number.isFinite(n) ? n : null,
-                          base_pay_type: n != null && Number.isFinite(n) ? basePayType : null,
+                          user_detail: {
+                            base_pay: n != null && Number.isFinite(n) ? n : null,
+                            base_pay_type: n != null && Number.isFinite(n) ? basePayType : null,
+                          },
                         });
                       }}
                     >
@@ -382,8 +384,10 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                       editAriaLabel={tActions("edit")}
                       onSave={(next) =>
                         patchField({
-                          base_pay_type: next === "rate_per_hr" ? "rate_per_hr" : "fixed_amount",
-                          ...(basePay.trim() ? { base_pay: Number(basePay) } : {}),
+                          user_detail: {
+                            base_pay_type: next === "rate_per_hr" ? "rate_per_hr" : "fixed_amount",
+                            ...(basePay.trim() ? { base_pay: Number(basePay) } : {}),
+                          },
                         })
                       }
                     >

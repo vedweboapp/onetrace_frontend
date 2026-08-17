@@ -25,7 +25,6 @@ import { reportLocalFormSubmitApiError, zTrimmedNonEmpty } from "@/shared/form";
 import { ChecklistTypeSortableTable } from "@/features/checklist-types/components/checklist-type-sortable-table";
 import {
   SettingsDetailActions,
-  SettingsDetailIdSubtitle,
   SettingsDetailList,
   SettingsDetailRow,
   SettingsDetailStatusValue,
@@ -705,10 +704,12 @@ if (editing && initialValues) {
         open={detailRow !== null}
         onClose={() => setDetailRow(null)}
         title={
-          detailRow ? <SettingsDetailTitle name={formatChecklistTypeLabel(detailRow)} /> : null
-        }
-        subtitle={
-          detailRow ? <SettingsDetailIdSubtitle idLabel={t("detail.idLabel", { id: detailRow.id })} /> : undefined
+          detailRow ? (
+            <SettingsDetailTitle
+              name={formatChecklistTypeLabel(detailRow)}
+              idLabel={t("detail.idLabel", { id: detailRow.id })}
+            />
+          ) : null
         }
         footer={
           detailRow ? (

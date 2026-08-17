@@ -28,6 +28,8 @@ type Props = {
   children: ReactNode;
   showRowNumbers?: boolean;
   rowNumberHeader?: ReactNode;
+  /** Extra classes on the `<table>` (overrides default min-width stretch). */
+  tableClassName?: string;
 };
 
 function detailLinkedAlignClass(align: DetailLinkedTableColumn["align"]) {
@@ -49,10 +51,11 @@ export function DetailLinkedTable({
   children,
   showRowNumbers = true,
   rowNumberHeader = "#",
+  tableClassName,
 }: Props) {
   return (
     <DataTableScroll className="max-h-[min(28rem,50vh)] rounded-lg border border-slate-200 dark:border-slate-700">
-      <DataTable className="table-fixed">
+      <DataTable className={cn("min-w-0", tableClassName)}>
         <colgroup>
           {showRowNumbers ? <col className="w-11" /> : null}
           {columns.map((col) => (

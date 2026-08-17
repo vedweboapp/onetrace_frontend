@@ -34,9 +34,10 @@ export function UserGroupMemberPicker({
 }: Props) {
   const selectedSet = new Set(selectedIds);
   const available = options.filter((o) => !selectedSet.has(o.id));
-  const selected = selectedIds
-    .map((id) => options.find((o) => o.id === id))
-    .filter((o): o is UserPickerOption => o != null);
+  const selected = selectedIds.map((id) => {
+    const found = options.find((o) => o.id === id);
+    return found ?? { id, label: `User #${id}` };
+  });
 
   function add(id: number) {
     if (disabled || selectedSet.has(id)) return;

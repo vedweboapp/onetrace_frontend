@@ -96,7 +96,9 @@ export type DashboardListSection =
   | "dispatches"
   | "return-to-stock"
   | "settings/users"
-  | "settings/user-groups";
+  | "settings/user-groups"
+  | "settings/roles"
+  | "settings/profiles";
 
 function decodeInternalDashboardPath(raw: string | null | undefined): string | null {
   if (!raw) return null;

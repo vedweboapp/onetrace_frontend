@@ -11,7 +11,6 @@ import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   SettingsDetailActions,
   SettingsDetailColourValue,
-  SettingsDetailIdSubtitle,
   SettingsDetailList,
   SettingsDetailRow,
   SettingsDetailStatusValue,
@@ -391,16 +390,10 @@ export function TagSettingsPanel() {
               name={formatTagRowLabel(detailRow)}
               bgColour={bgHex(detailRow)}
               textColour={textHex(detailRow)}
+              idLabel={t("detail.idLabel", { id: detailRow.id })}
+              idExtra={detailRow.uuid || undefined}
             />
           ) : null
-        }
-        subtitle={
-          detailRow ? (
-            <SettingsDetailIdSubtitle
-              idLabel={t("detail.idLabel", { id: detailRow.id })}
-              extra={detailRow.uuid || undefined}
-            />
-          ) : undefined
         }
         footer={
           detailRow ? (

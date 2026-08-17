@@ -31,7 +31,6 @@ import type { JobLevelSnapshot } from "@/features/jobs/types/job.types";
 import type { JobUpdatePayload } from "@/features/jobs/types/job.types";
 import type { Drawing } from "@/features/projects/types/drawing.types";
 import { resolveDefaultJobStatusId } from "@/features/jobs/utils/job-default-status.util";
-import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import { formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
 import { fetchItemsPage } from "@/features/items/api/item.api";
@@ -58,7 +57,6 @@ import {
   FormFieldRow,
   MultiCheckSelect,
   RequiredMark,
-  SurfaceDateInput,
   SurfaceShell,
   surfaceInputClassName,
   surfaceTextareaClassName,
@@ -90,7 +88,6 @@ export function JobFormScreen({ mode, jobId }: Props) {
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
-  const [workerOptions, setWorkerOptions] = React.useState<Option[]>([]);
   const [formOptions, setFormOptions] = React.useState<Option[]>([]);
   const [jobStatusOptions, setJobStatusOptions] = React.useState<Option[]>([]);
   const [clientOptions, setClientOptions] = React.useState<Option[]>([]);
@@ -119,17 +116,14 @@ export function JobFormScreen({ mode, jobId }: Props) {
 
   const schema = React.useMemo(
     () =>
-      createJobFormSchema(
-        {
-          assignedWorker: t("validation.assignedWorker"),
-          startDate: t("validation.startDate"),
-          optionalId: t("validation.optionalId"),
-          compositeQuantity: t("validation.compositeQuantity"),
-          requiredChecklist: t("validation.requiredChecklist"),
-        },
-        { requireScheduleFields: isEdit },
-      ),
-    [t, isEdit],
+      createJobFormSchema({
+        assignedWorker: t("validation.assignedWorker"),
+        startDate: t("validation.startDate"),
+        optionalId: t("validation.optionalId"),
+        compositeQuantity: t("validation.compositeQuantity"),
+        requiredChecklist: t("validation.requiredChecklist"),
+      }),
+    [t],
   );
 
   const jobCategoryFromUrl = searchParams.get("job_category") ?? "";
@@ -222,11 +216,6 @@ export function JobFormScreen({ mode, jobId }: Props) {
   const openFormsSettings = React.useCallback(() => {
     router.push(routes.dashboard.settingsProjectForms);
   }, [router]);
-  const openUsersSettings = React.useCallback(() => {
-    const qs = searchParams.toString();
-    const current = qs ? `${pathname}?${qs}` : pathname;
-    router.push(buildPathWithStoredBack(`${routes.dashboard.settingsUsers}/new`, current));
-  }, [router, pathname, searchParams]);
   const openJobStatusSettings = React.useCallback(() => {
     router.push(routes.dashboard.settingsJobStatus);
   }, [router]);
@@ -427,12 +416,10 @@ export function JobFormScreen({ mode, jobId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const [workers, statuses] = await Promise.all([
-          loadTechnicianOptions(),
+        const [statuses] = await Promise.all([
           fetchJobStatusesPage(1, 500),
         ]);
         if (!cancelled) {
-          setWorkerOptions(workers);
           setJobStatusOptions(statuses.items.map((s) => ({ value: String(s.id), label: s.status_name })));
           if (!isEdit) {
             const defaultStatusId = resolveDefaultJobStatusId(statuses.items);
@@ -443,7 +430,6 @@ export function JobFormScreen({ mode, jobId }: Props) {
         }
       } catch {
         if (!cancelled) {
-          setWorkerOptions([]);
           setJobStatusOptions([]);
         }
       }
@@ -921,60 +907,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                   )}
                 />
               </FormFieldRow>
-
-              {isEdit ? (
-                <FormFieldRow cols="2">
-                  <Controller
-                    control={control}
-                    name="assigned_worker"
-                    render={({ field }) => (
-                      <div>
-                        <CheckmarkSelect
-                          id="job-worker"
-                          label={t("fields.assignedWorker")}
-                          required
-                          options={workerOptions}
-                          value={field.value}
-                          onChange={field.onChange}
-                          emptyLabel={t("placeholders.assignedWorker")}
-                          disabled={saving || workerOptions.length === 0}
-                          invalid={!!errors.assigned_worker}
-                          listLabel={t("fields.assignedWorker")}
-                          portaled
-                          searchable
-                          onAdd={openUsersSettings}
-                          addAriaLabel="Add user"
-                          addLabel="Add new"
-                        />
-                        <FieldErrorText>{errors.assigned_worker?.message}</FieldErrorText>
-                      </div>
-                    )}
-                  />
-                </FormFieldRow>
-              ) : null}
             </section>
-
-
-            {isEdit ? (
-              <section className="space-y-6">
-                <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  {t("sections.schedule")}
-                </h2>
-                <FormFieldRow cols="1">
-                  <FieldGroup label={t("fields.startDate")} htmlFor="job-start" required>
-                    <SurfaceDateInput
-                      id="job-start"
-                      type="datetime-local"
-                      aria-invalid={errors.start_date ? true : undefined}
-                      invalid={!!errors.start_date}
-                      disabled={saving}
-                      {...register("start_date")}
-                    />
-                    <FieldErrorText>{errors.start_date?.message}</FieldErrorText>
-                  </FieldGroup>
-                </FormFieldRow>
-              </section>
-            ) : null}
 
             {!isProjectJob && (
               <section className="space-y-6">

@@ -21,13 +21,20 @@ import FormRenderer, { FormRendererRef } from "./FormRenderer";
 import FormRuleModal from "./form-rule-modal";
 import RuleTypeModal from "../components/RuleTypeModal";
 import FormAdvancedRuleModal from "./form-advanced-rule-modal";
-import { FormRule } from "./form-rules.types";
+import {
+  FIELD_RULE_TARGET_PREFIX,
+  FormRule,
+  SECTION_RULE_TARGET_PREFIX,
+} from "./form-rules.types";
+import type { RuleFieldOption } from "./rule-field-select";
 import { Edit2, Monitor, Smartphone, Trash2 } from "lucide-react";
 import type { FormBuilderApiHandlers } from "./form-builder.handlers";
 
 interface Field {
   _uid: string;
   id?: string | number;
+  u_id?: string;
+  s_id?: number | string | null;
   field_type: string;
   field_label: string;
   api_name: string;
@@ -41,6 +48,7 @@ interface Field {
 interface Section {
   _uid: string;
   id?: string | number;
+  s_id?: number | string | null;
   name: string;
   column_count: number;
   sequence?: number;
@@ -50,13 +58,6 @@ interface Section {
   is_custom?: boolean;
   fields: Field[];
 }
-
-type RuleFieldOption = {
-  value: string;
-  label: string;
-  type?: string;
-  options?: any[];
-};
 
 /** Keep section.sequence aligned with builder order (active sections only). */
 const reindexSectionSequences = (sections: Section[]): Section[] => {
@@ -363,6 +364,36 @@ interface FormBuilderLayoutProps {
   projectTypeId?: string;
 }
 
+/**
+ * Generate a unique api_name by appending numbers if duplicate found.
+ * First occurrence keeps original name, subsequent ones get _1, _2, etc.
+ */
+const getUniqueApiName = (desiredApiName: string, sections: Section[]): string => {
+  let nameExists = false;
+  let maxNumber = 0;
+
+  sections.forEach((section) => {
+    section.fields?.forEach((field) => {
+      if (field.api_name === desiredApiName) {
+        nameExists = true;
+      }
+      // Check for numbered versions: name_1, name_2, etc.
+      const numberMatch = field.api_name.match(
+        new RegExp(`^${desiredApiName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}_(\\d+)$`)
+      );
+      if (numberMatch) {
+        maxNumber = Math.max(maxNumber, parseInt(numberMatch[1], 10));
+      }
+    });
+  });
+
+  if (!nameExists) {
+    return desiredApiName;
+  }
+
+  return `${desiredApiName}_${maxNumber + 1}`;
+};
+
 export default function FormBuilderLayout({
   activeModule,
   layoutId,
@@ -420,7 +451,7 @@ export default function FormBuilderLayout({
 
   const [sections, setSections] = useState<Section[]>([
     {
-      _uid: "basic",
+      _uid: `section-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       name: "Basic Information",
       column_count: 2,
       fields: [],
@@ -716,7 +747,7 @@ export default function FormBuilderLayout({
     } else if (purpose === "create_module" || purpose === "create_layout" || purpose === "create_project_form") {
       setSections([
         {
-          _uid: "basic",
+          _uid: `section-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
           name: "Basic Information",
           column_count: 2,
           fields: [],
@@ -735,23 +766,64 @@ export default function FormBuilderLayout({
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [tempName, setTempName] = useState("");
 
+  const hasPersistedId = (id: string | number | undefined) =>
+    id != null &&
+    id !== "" &&
+    !String(id).startsWith("section-") &&
+    !String(id).startsWith("field-");
+
+  const getSectionRuleTarget = (section: Section) =>
+    `${SECTION_RULE_TARGET_PREFIX}${hasPersistedId(section.id) ? section.id : section._uid}`;
+
+  const getFieldRuleTarget = (field: Field) =>
+    `${FIELD_RULE_TARGET_PREFIX}${hasPersistedId(field.id) ? field.id : field._uid}`;
+
   const ruleFieldOptions: RuleFieldOption[] = sections
     .filter((section) => !section.is_deleted)
-    .flatMap((section) =>
-      (section.fields || [])
+    .flatMap((section) => {
+      const sectionLabel = section.name || "Untitled Section";
+      const sectionKey = String(hasPersistedId(section.id) ? section.id : section._uid);
+      const sectionOption: RuleFieldOption = {
+        value: getSectionRuleTarget(section),
+        label: `${sectionLabel} (Section)`,
+        type: "section",
+        targetType: "section",
+        sectionId: hasPersistedId(section.id) ? section.id! : null,
+        sectionUid: section._uid,
+        s_id: section.s_id ?? (hasPersistedId(section.id) ? section.id : section._uid),
+        sectionKey,
+        sectionLabel,
+        optionKind: "section",
+      };
+      const fieldOptions: RuleFieldOption[] = (section.fields || [])
         .filter((field) => !field.is_deleted && field.api_name)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
         .map((field) => ({
-          value: field.api_name,
-          label: `${field.field_label || field.api_name || "Untitled Field"} (${section.name || "Untitled Section"})`,
+          value: getFieldRuleTarget(field),
+          label: field.field_label || field.api_name || "Untitled Field",
           type: field.field_type,
           options: field.options,
-        })),
-    );
+          apiName: field.api_name,
+          targetType: "field" as const,
+          fieldId: hasPersistedId(field.id) ? field.id! : null,
+          fieldUid: field._uid,
+          u_id: field.u_id ?? field._uid,
+          s_id: field.s_id ?? section.s_id ?? (hasPersistedId(section.id) ? section.id : section._uid),
+          sectionKey,
+          sectionLabel,
+          optionKind: "field",
+        }));
+
+      return [sectionOption, ...fieldOptions];
+    });
 
   const addFieldToSection = (sectionUid: string, fieldConfig: any) => {
     if (!sectionUid) return;
-    setSections((prev) =>
-      prev.map((sec) =>
+    setSections((prev) => {
+      // Generate unique api_name if duplicate found
+      const uniqueApiName = getUniqueApiName(fieldConfig.api_name, prev);
+      
+      return prev.map((sec) =>
         sec._uid === sectionUid
           ? {
             ...sec,
@@ -761,12 +833,13 @@ export default function FormBuilderLayout({
                 _uid: `${Date.now()}`,
                 order: sec.fields.length,
                 ...fieldConfig,
+                api_name: uniqueApiName, // Use unique api_name
               },
             ],
           }
           : sec,
-      ),
-    );
+      );
+    });
     setShowModal(null);
     setDirty(true);
   };
@@ -882,6 +955,7 @@ export default function FormBuilderLayout({
           api_name: f.api_name,
           field_type: f.field_type,
           sequence: fIdx + 1,
+          ...(f.s_id != null ? { s_id: f.s_id } : {}),
         };
 
         if (f.is_custom !== undefined) {
@@ -896,6 +970,8 @@ export default function FormBuilderLayout({
         const excludeKeys = [
           "id",
           "_uid",
+          "u_id",
+          "s_id",
           "field_label",
           "api_name",
           "field_type",
@@ -919,7 +995,6 @@ export default function FormBuilderLayout({
 
         Object.keys(f).forEach((key) => {
           if (!excludeKeys.includes(key)) {
-            // convert camelCase to snake_case
             const snakeKey = key.replace(
               /[A-Z]/g,
               (letter) => `_${letter.toLowerCase()}`,
@@ -947,15 +1022,55 @@ export default function FormBuilderLayout({
           return {
             ...(ruleId != null && ruleId !== "" ? { id: ruleId } : {}),
             name: r.name,
+            ...(r.s_id != null ? { s_id: r.s_id } : {}),
             logic: {
               sequence: i + 1,
               field_api_name: r.field_api_name,
               field_id: r.field_id,
+              field_uid: r.field_uid,
+              ...(r.s_id != null ? { s_id: r.s_id } : {}),
               condition: r.condition,
               value: r.value,
-              output_fields: r.output_fields,
+              output_fields: (r.output_fields || []).map((o) => {
+                const { u_id, ...cleanO } = o as any;
+                return {
+                  ...cleanO,
+                  ...(o.s_id != null ? { s_id: o.s_id } : {}),
+                };
+              }),
               rule_type: r.rule_type || "normal",
-              ...(r.rule_type === "advanced" ? { blocks: r.blocks } : {}),
+              ...(r.rule_type === "advanced"
+                ? {
+                    blocks: (r.blocks || []).map((b) => {
+                      const { u_id, ...cleanB } = b as any;
+                      return {
+                        ...cleanB,
+                        ...(b.s_id != null ? { s_id: b.s_id } : {}),
+                        output_fields: (b.output_fields || []).map((o) => {
+                          const { u_id, ...cleanO } = o as any;
+                          return {
+                            ...cleanO,
+                            ...(o.s_id != null ? { s_id: o.s_id } : {}),
+                          };
+                        }),
+                        ...(b.else_blocks
+                          ? {
+                              else_blocks: b.else_blocks.map((eb) => ({
+                                ...eb,
+                                else_output_fields: (eb.else_output_fields || []).map((o) => {
+                                  const { u_id, ...cleanO } = o as any;
+                                  return {
+                                    ...cleanO,
+                                    ...(o.s_id != null ? { s_id: o.s_id } : {}),
+                                  };
+                                }),
+                              })),
+                            }
+                          : {}),
+                      };
+                    }),
+                  }
+                : {}),
             },
           };
         });
@@ -964,8 +1079,6 @@ export default function FormBuilderLayout({
       let finalPayload: any;
 
       if (purpose === "edit_layout" || purpose === "edit_project_form") {
-        // Build differential update structure as requested by the API
-        // Get all non-deleted sections sorted by their current position
         const allNonDeletedSections = sections.filter((sec) => !sec.is_deleted);
 
         const createdSections = allNonDeletedSections
@@ -974,9 +1087,9 @@ export default function FormBuilderLayout({
             const activeFields = (sec.fields || []).filter(
               (f) => !f.is_deleted,
             );
-            // Get the correct sequence position for this created section
             const sequencePosition = allNonDeletedSections.indexOf(sec) + 1;
             return {
+              s_id: sec.s_id ?? (hasPersistedId(sec.id) ? sec.id : sec._uid),
               name: sec.name,
               sequence: sequencePosition,
               column_count: sec.column_count,
@@ -1000,10 +1113,10 @@ export default function FormBuilderLayout({
                 return payload;
               });
 
-            // Get the correct sequence position for this updated section
             const sequencePosition = allNonDeletedSections.indexOf(sec) + 1;
             return {
               id: Number(sec.id) || sec.id,
+              s_id: sec.s_id ?? (hasPersistedId(sec.id) ? sec.id : sec._uid),
               name: sec.name,
               sequence: sequencePosition,
               column_count: sec.column_count,
@@ -1076,11 +1189,11 @@ export default function FormBuilderLayout({
           };
         }
       } else {
-        // Fallback/standard flat payload for fresh create_module / create_layout
         const sectionsPayload = sections
           .filter((sec) => !sec.is_deleted)
           .map((sec: any, secIdx: number) => {
             const secPayload: any = {
+              s_id: sec.s_id ?? (hasPersistedId(sec.id) ? sec.id : sec._uid),
               name: sec.name,
               sequence: secIdx + 1,
               column_count: sec.column_count,
@@ -1147,9 +1260,6 @@ export default function FormBuilderLayout({
         (purpose === "create_project_form" || purpose === "edit_project_form") &&
         apiHandlers
       ) {
-        // ── Project Form flow ─────────────────────────────────────────────
-        // Build handler context so injected handlers have all the metadata
-        // they need without reading from the URL themselves.
         const handlerCtx = {
           purpose,
           rawPurpose,
@@ -1159,7 +1269,6 @@ export default function FormBuilderLayout({
           installationTypeId,
         };
 
-        // Step 1: POST /api/v1/forms/ for create, PUT /api/v1/forms/{formId}/ for edit.
         const createdForm =
           purpose === "create_project_form"
             ? await apiHandlers.createForm(finalPayload, handlerCtx)
@@ -1187,7 +1296,6 @@ export default function FormBuilderLayout({
           await apiHandlers.updateForm(formId, finalPayload, handlerCtx);
         }
 
-        // Step 2: POST /api/v1/forms/{formId}/sections/
         if (formId && apiHandlers.createSections) {
           await apiHandlers.createSections(
             formId,
@@ -1196,7 +1304,6 @@ export default function FormBuilderLayout({
           );
         }
 
-        // Step 3: POST /api/v1/forms/{formId}/rules/
         if (formId && apiHandlers.createRules) {
           await apiHandlers.createRules(
             formId,
@@ -1205,7 +1312,6 @@ export default function FormBuilderLayout({
           );
         }
       } else if (purpose === "create_module") {
-        // ── Existing module flow (unchanged) ──────────────────────────────
         await createModule(finalPayload);
       } else if (purpose === "create_layout") {
         await createForm(targetModule, finalPayload, purpose);
@@ -1386,7 +1492,7 @@ export default function FormBuilderLayout({
   return (
 
     <div className="relative flex flex-col h-full -mx-4 -mt-5 lg:mx-0 lg:mt-0">
-      {
+      {/*
         showRuleTypeModal && (
           <RuleTypeModal
             isOpen={showRuleTypeModal}
@@ -1402,7 +1508,7 @@ export default function FormBuilderLayout({
             }}
           />
         )
-      }
+      */}
       {
         showRuleModal && (
           <FormRuleModal
@@ -1620,7 +1726,7 @@ export default function FormBuilderLayout({
                 <AppButton
                   onClick={() => {
                     setEditingRule(null);
-                    setShowRuleTypeModal(true);
+                    setShowAdvancedRuleModal(true);
                   }}
                 >
                   Add Rule
@@ -1703,20 +1809,6 @@ export default function FormBuilderLayout({
         <FieldConfigModal
           fieldType={showModal?.type}
           initialConfig={showModal?.config || null}
-          existingApiNames={sections
-            .filter((sec) => !sec.is_deleted)
-            .flatMap((sec) =>
-              sec.fields.filter(
-                (f) =>
-                  !f.is_deleted &&
-                  !(
-                    sec._uid === showModal?.sectionUid &&
-                    f._uid === showModal?._fieldUid
-                  ),
-              ),
-            )
-            .map((f) => f.api_name)
-            .filter((name): name is string => Boolean(name))}
           onSave={(config: any) => {
             if (showModal._fieldUid) {
               updateFieldInSection(

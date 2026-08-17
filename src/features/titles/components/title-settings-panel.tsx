@@ -11,7 +11,6 @@ import { reportLocalFormSubmitApiError, zTrimmedNonEmpty } from "@/shared/form";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   SettingsDetailActions,
-  SettingsDetailIdSubtitle,
   SettingsDetailList,
   SettingsDetailRow,
   SettingsDetailTextValue,
@@ -344,9 +343,13 @@ export function TitleSettingsPanel() {
       <DetailPanel
         open={detailRow !== null}
         onClose={() => setDetailRow(null)}
-        title={detailRow ? <SettingsDetailTitle name={formatTitleLabel(detailRow)} /> : null}
-        subtitle={
-          detailRow ? <SettingsDetailIdSubtitle idLabel={t("detail.idLabel", { id: detailRow.id })} /> : undefined
+        title={
+          detailRow ? (
+            <SettingsDetailTitle
+              name={formatTitleLabel(detailRow)}
+              idLabel={t("detail.idLabel", { id: detailRow.id })}
+            />
+          ) : null
         }
         footer={
           detailRow ? (

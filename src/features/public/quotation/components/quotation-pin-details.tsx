@@ -7,7 +7,12 @@ import {
   loadQuotationScopePinDetails,
   type QuotationScopePinDetailPayload,
 } from "@/features/quotations/utils/quotation-composite-scope-pins.util";
-import { fetchPublicPinDetails, fetchPublicQuotationByToken, submitPublicQuotationResponse } from "@/features/public/quotation/api/public-pin.api";
+import {
+  fetchPublicPinDetails,
+  fetchPublicQuotationByToken,
+  fetchPublicQuotationRejectionReasons,
+  submitPublicQuotationResponse,
+} from "@/features/public/quotation/api/public-pin.api";
 import { fetchQuotation } from "@/features/quotations/api/quotation.api";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import type { DrawingPlot, DrawingPin } from "@/features/projects/types/drawing.types";
@@ -33,6 +38,7 @@ import {
 } from "lucide-react";
 import { formatOrgMoneyValue } from "@/shared/money/format-money.util";
 import { getOrgCurrencySettings } from "@/shared/money/org-currency.store";
+import { CheckmarkSelect, type CheckmarkSelectOption } from "@/shared/ui";
 
 /* ── Dynamic imports ─────────────────────────────────── */
 
@@ -291,17 +297,6 @@ function SnapshotProgressBar({ completed, total }: { completed: number; total: n
 
 /* ── Rejection dialog ────────────────────────────────── */
 
-const REJECTION_REASONS = [
-  "Price is too high",
-  "Scope of work doesn't match our requirements",
-  "Found a more competitive alternative",
-  "Project has been cancelled or postponed",
-  "Timeline/delivery doesn't suit our schedule",
-  "Terms and conditions are not acceptable",
-  "Budget constraints",
-  "Other",
-];
-
 function RejectionDialog({
   open,
   onClose,
@@ -313,28 +308,49 @@ function RejectionDialog({
   onRefresh?: () => void;
   token?: string | null;
 }) {
-  const [selectedReason, setSelectedReason] = useState<string | null>(null);
-  const [note, setNote] = useState("");
+  const [selectedReasonId, setSelectedReasonId] = useState("");
+  const [reasonOptions, setReasonOptions] = useState<CheckmarkSelectOption[]>([]);
+  const [reasonsLoading, setReasonsLoading] = useState(false);
+  const [reasonsError, setReasonsError] = useState<string | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!open || !token) return;
+    let cancelled = false;
+    setReasonsLoading(true);
+    setReasonsError(null);
+    fetchPublicQuotationRejectionReasons(token)
+      .then((rows) => {
+        if (cancelled) return;
+        setReasonOptions(rows.map((row) => ({ value: String(row.id), label: row.label })));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setReasonsError("Failed to load rejection reasons.");
+        toastApiError(err, "Failed to load rejection reasons");
+      })
+      .finally(() => {
+        if (!cancelled) setReasonsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, token]);
 
   const handleSignatureChange = (value: string) => {
     setSignature(value || null);
   };
 
   const handleSubmit = async () => {
-    if (!token || !selectedReason) return;
+    const rejectionReasonId = Number(selectedReasonId);
+    if (!token || !Number.isFinite(rejectionReasonId) || rejectionReasonId <= 0) return;
     setIsSubmitting(true);
-    const commentParts = [selectedReason];
-    if (note.trim()) {
-      commentParts.push(note.trim());
-    }
-    const comment = commentParts.join(", ");
     try {
       await submitPublicQuotationResponse(token, {
         status: "rejected",
-        comment,
+        rejection_reason_ids: rejectionReasonId,
       });
       setSubmitted(true);
       toastSuccess("Response submitted successfully");
@@ -349,8 +365,7 @@ function RejectionDialog({
     if (submitted) {
       onRefresh?.();
     }
-    setSelectedReason(null);
-    setNote("");
+    setSelectedReasonId("");
     setSignature(null);
     setSubmitted(false);
     onClose();
@@ -369,7 +384,7 @@ function RejectionDialog({
         <div className="bg-[#DC2626] px-6 py-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-0.5">Quotation Response</p>
+              {/* <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-0.5">Quotation Response</p> */}
               <h2 className="text-white text-lg font-bold leading-snug">Reject Quotation</h2>
             </div>
             <button
@@ -416,29 +431,22 @@ function RejectionDialog({
           /* Form */
           <div className="px-6 py-5">
             <p className="text-sm text-slate-500 mb-4">Please select the reason for declining this quotation:</p>
-            <div className="space-y-2.5 mb-5">
-              {REJECTION_REASONS.map((reason) => (
-                <label
-                  key={reason}
-                  className="flex items-start gap-3 cursor-pointer group"
-                >
-                  <div className="relative mt-0.5 shrink-0">
-                    <input
-                      type="radio"
-                      name="rejection-reason"
-                      className="sr-only peer"
-                      checked={selectedReason === reason}
-                      onChange={() => setSelectedReason(reason)}
-                    />
-                    <div className="size-4 rounded-full border-2 border-slate-300 peer-checked:border-red-500 peer-checked:bg-red-500 transition-all flex items-center justify-center">
-                      {selectedReason === reason && (
-                        <div className="size-1.5 rounded-full bg-white" />
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-sm text-slate-700 group-hover:text-slate-900 leading-snug">{reason}</span>
-                </label>
-              ))}
+            <div className="mb-5">
+              <CheckmarkSelect
+                id="rejection-reason"
+                label="Rejection reason"
+                options={reasonOptions}
+                value={selectedReasonId}
+                onChange={setSelectedReasonId}
+                emptyLabel={reasonsLoading ? "Loading reasons..." : "Select a reason"}
+                disabled={reasonsLoading || isSubmitting || reasonOptions.length === 0}
+                invalid={Boolean(reasonsError)}
+                listLabel="Rejection reasons"
+                portaled
+              />
+              {reasonsError && (
+                <p className="mt-1.5 text-xs font-medium text-red-600">{reasonsError}</p>
+              )}
             </div>
 
             {/* Additional comments */}
@@ -481,7 +489,7 @@ function RejectionDialog({
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={!selectedReason || isSubmitting}
+                disabled={!selectedReasonId || isSubmitting}
                 className="px-5 py-2 rounded-lg text-sm font-semibold bg-[#DC2626] text-white hover:bg-red-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 {isSubmitting ? "Rejecting..." : "Reject"}
@@ -560,7 +568,7 @@ function AcceptanceDialog({
         <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-0.5">Quotation Response</p>
+              {/* <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-0.5">Quotation Response</p> */}
               <h2 className="text-white text-lg font-bold leading-snug">Accept Quotation</h2>
             </div>
             <button
@@ -725,7 +733,7 @@ function QuestionDialog({
         <div className="bg-gray-800 px-6 py-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-0.5">Quotation Response</p>
+              {/* <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-0.5">Quotation Response</p> */}
               <h2 className="text-white text-lg font-bold leading-snug">Raise a Question</h2>
             </div>
             <button
@@ -1396,37 +1404,12 @@ export function QuotationPinDetails() {
                 <span className="text-xs text-slate-400 font-mono">#{quoteSerial}</span>
               </div>
             )}
-            {!isAlreadyActioned && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setIsAcceptDialogOpen(true)}
-                  className="px-3.5 py-1.5 rounded-lg text-sm cursor-pointer font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
-                >
-                  Approve
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsQuestionDialogOpen(true)}
-                  className="px-3.5 py-1.5 rounded-lg text-sm cursor-pointer font-semibold bg-transparent border border-slate-900 text-slate-600 hover:bg-slate-200/50 transition-colors"
-                >
-                  Raise a Question
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsRejectDialogOpen(true)}
-                  className="px-3.5 py-1.5 rounded-lg text-sm cursor-pointer font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors"
-                >
-                  Reject
-                </button>
-              </>
-            )}
           </div>
         </div>
       </header>
 
       {/* ── Page body — page scrolls naturally ── */}
-      <div className="px-4 sm:px-6 lg:px-10 py-6">
+      <div className="px-4 sm:px-6 lg:px-10 pt-6 pb-32 sm:pb-28">
         <div className="flex gap-6 items-start">
 
           {/* Left: Quotation PDF — full natural height, PAGE scrolls */}
@@ -1484,12 +1467,39 @@ export function QuotationPinDetails() {
       )}
 
       {/* ── Footer ── */}
-      <footer className="border-t border-slate-200 bg-white mt-10 py-6 px-6 text-center text-xs text-slate-400">
-        <p>
-          This is a secure, read-only quotation review link issued by{" "}
-          <span className="font-semibold text-slate-600">Red 05 Limited</span>.
-          Please do not share this link publicly.
-        </p>
+      <footer className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white px-4 py-3 sm:px-6 lg:px-10">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-center text-xs text-slate-400 sm:text-left">
+            This is a secure, read-only quotation review link issued by{" "}
+            <span className="font-semibold text-slate-600">Red 05 Limited</span>.
+            Please do not share this link publicly.
+          </p>
+          {!isAlreadyActioned && (
+            <div className="flex shrink-0 flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsAcceptDialogOpen(true)}
+                className="px-3.5 py-1.5 rounded-lg text-sm cursor-pointer font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsQuestionDialogOpen(true)}
+                className="px-3.5 py-1.5 rounded-lg text-sm cursor-pointer font-semibold bg-transparent border border-slate-900 text-slate-600 hover:bg-slate-200/50 transition-colors"
+              >
+                Raise a Question
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsRejectDialogOpen(true)}
+                className="px-3.5 py-1.5 rounded-lg text-sm cursor-pointer font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors"
+              >
+                Reject
+              </button>
+            </div>
+          )}
+        </div>
       </footer>
     </div>
   );

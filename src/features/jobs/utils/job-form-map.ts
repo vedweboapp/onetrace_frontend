@@ -15,14 +15,6 @@
     return `${y}-${m}-${day}T${h}:${min}`;
   }
 
-  export function htmlDatetimeLocalToIso(value: string): string {
-    const trimmed = value.trim();
-    if (!trimmed) return trimmed;
-    const d = new Date(trimmed);
-    if (Number.isNaN(d.getTime())) return trimmed;
-    return d.toISOString();
-  }
-
   function parseOptionalIdField(raw: string): number | undefined {
     const s = raw.trim();
     if (!s || !/^\d+$/.test(s)) return undefined;
@@ -122,15 +114,6 @@
       // title: values.title.trim(),
       description: values.description.trim(),
     };
-
-    const workerId = values.assigned_worker.trim();
-    if (workerId && /^\d+$/.test(workerId)) {
-      payload.assigned_worker = Number.parseInt(workerId, 10);
-    }
-
-    if (values.start_date.trim()) {
-      payload.start_date = htmlDatetimeLocalToIso(values.start_date);
-    }
 
     const categoryNorm = (values.job_category ?? "").toLowerCase().replace(/[^a-z]/g, "");
 

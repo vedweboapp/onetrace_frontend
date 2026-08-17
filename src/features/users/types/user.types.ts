@@ -22,10 +22,23 @@ export type UserDetail = {
   invite_status: string | null;
   invitation_sent_at: string | null;
   invitation_expired: boolean;
+  date_of_birth?: string | null;
   addresses?: EntityAddress[] | null;
   base_pay?: string | number | null;
   base_pay_type?: UserBasePayType | string | null;
   available_days?: UserAvailabilityPayloadRow[] | null;
+};
+
+export type UserContactEmail = {
+  id?: number;
+  email: string;
+  is_primary?: boolean;
+};
+
+export type UserContactPhone = {
+  id?: number;
+  phone: string;
+  is_primary?: boolean;
 };
 
 export type Role = {
@@ -41,6 +54,8 @@ export type UserProfile = {
   organization_detail: { id: number; uuid: string; name: string } | null;
   created_at: string;
   addresses?: EntityAddress[] | null;
+  emails?: UserContactEmail[] | null;
+  phones?: UserContactPhone[] | null;
   base_pay?: string | number | null;
   base_pay_type?: UserBasePayType | string | null;
   available_days?: UserAvailabilityPayloadRow[] | null;
@@ -75,15 +90,24 @@ export type InviteUserPayload = {
   available_days?: UserAvailabilityPayloadRow[];
 };
 
-export type UpdateUserProfilePayload = Partial<{
-  email: string;
+export type UpdateUserDetailPayload = Partial<{
   first_name: string;
   last_name: string;
+  email: string;
   phone_number: string;
   gender: string;
-  role: number;
-  addresses: EntityAddressPayload[];
+  date_of_birth: string | null;
+  available_days: UserAvailabilityPayloadRow[];
   base_pay: number | null;
   base_pay_type: UserBasePayType | null;
-  available_days?: UserAvailabilityPayloadRow[];
 }>;
+
+export type UpdateUserProfilePayload = {
+  user_detail?: UpdateUserDetailPayload;
+  role?: number;
+  addresses?: EntityAddressPayload[];
+  emails?: UserContactEmail[];
+  phones?: UserContactPhone[];
+  deleted_email_ids?: number[];
+  deleted_phone_ids?: number[];
+};

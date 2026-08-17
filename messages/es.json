@@ -284,6 +284,8 @@
       "rejectionReasons": "Motivos de rechazo",
       "checklistTypes": "Tipos de Lista de Verificación",
       "users": "Usuarios",
+      "roles": "Roles",
+      "profiles": "Perfiles",
       "personalProfile": "Perfil personal",
       "companySettings": "Ajustes de la empresa",
       "documentation": "Documentación",
@@ -1645,7 +1647,10 @@
       },
       "fields": {
         "name": "Nombre del grupo",
-        "users": "Usuarios"
+        "users": "Usuarios",
+        "createdAt": "Creado",
+        "updatedAt": "Actualizado",
+        "createdBy": "Creado por"
       },
       "placeholders": {
         "name": "p. ej. Técnicos de campo"
@@ -1668,12 +1673,115 @@
       "deleteConfirmBody": "Los usuarios no se eliminan. Solo se quita el grupo.",
       "detail": {
         "backAria": "Volver a la lista de grupos",
+        "sectionGroup": "Grupo",
+        "sectionUsers": "Usuarios",
+        "userName": "Nombre",
+        "userEmail": "Correo",
         "createdAt": "Creado",
         "byUser": "Por {user}"
       },
       "page": {
         "createTitle": "Nuevo grupo",
         "editTitle": "Editar grupo"
+      }
+    },
+    "roles": {
+      "metaTitle": "Roles",
+      "detailMetaTitle": "Detalle del rol",
+      "title": "Roles",
+      "subtitle": "Gestiona los roles de la organización, la jerarquía y la configuración de compartir datos.",
+      "add": "Añadir rol",
+      "edit": "Editar rol",
+      "loadError": "No se pudieron cargar los roles. Inténtalo de nuevo.",
+      "detailLoadError": "No se pudieron cargar los detalles del rol. Inténtalo de nuevo.",
+      "createdToast": "Rol creado correctamente",
+      "updatedToast": "Rol actualizado correctamente",
+      "deletedToast": "Rol eliminado correctamente",
+      "saveError": "No se pudo guardar el rol. Revisa los campos e inténtalo de nuevo.",
+      "emptyTitle": "No se encontraron roles",
+      "emptyDescription": "Crea un rol para gestionar los permisos de los usuarios y la jerarquía.",
+      "fields": {
+        "roleName": "Nombre del rol",
+        "parentRole": "Rol padre",
+        "description": "Descripción",
+        "sharedDataWithPeers": "Compartir datos con pares"
+      },
+      "placeholders": {
+        "roleName": "Introduce el nombre del rol",
+        "parentRole": "Selecciona un rol padre (opcional)",
+        "description": "Introduce una descripción (opcional)",
+        "none": "Ninguno (Nivel superior)"
+      },
+      "hints": {
+        "sharedDataWithPeers": "Permite que los usuarios con este rol vean y compartan datos con pares en el mismo nivel."
+      },
+      "validation": {
+        "roleName": "El nombre del rol es obligatorio."
+      },
+      "modal": {
+        "save": "Guardar",
+        "saveChanges": "Guardar cambios",
+        "cancel": "Cancelar"
+      },
+      "detail": {
+        "backAria": "Volver a la lista de roles",
+        "sectionOverview": "Resumen",
+        "retry": "Reintentar"
+      },
+      "page": {
+        "createTitle": "Crear Rol",
+        "createSubtitle": "Define un nuevo rol organizativo y su jerarquía.",
+        "editTitle": "Editar Rol",
+        "editSubtitle": "Actualiza los detalles del rol y los ajustes de compartir."
+      }
+    },
+    "profiles": {
+      "metaTitle": "Perfiles",
+      "detailMetaTitle": "Detalle del perfil",
+      "title": "Perfiles",
+      "subtitle": "Gestiona los perfiles de la organización y sus tipos.",
+      "add": "Añadir perfil",
+      "edit": "Editar perfil",
+      "view": "Ver perfil",
+      "delete": "Eliminar",
+      "loadError": "No se pudieron cargar los perfiles. Inténtalo de nuevo.",
+      "detailLoadError": "No se pudieron cargar los detalles del perfil. Inténtalo de nuevo.",
+      "createdToast": "Perfil creado correctamente",
+      "updatedToast": "Perfil actualizado correctamente",
+      "deletedToast": "Perfil eliminado correctamente",
+      "saveError": "No se pudo guardar el perfil. Revisa los campos e inténtalo de nuevo.",
+      "emptyTitle": "No se encontraron perfiles",
+      "emptyDescription": "Crea un perfil para organizar los tipos de usuario en tu espacio de trabajo.",
+      "deleteTitle": "Eliminar perfil",
+      "deleteBody": "¿Estás seguro de que deseas eliminar este perfil? Esta acción no se puede deshacer.",
+      "fields": {
+        "profileName": "Nombre del perfil",
+        "profileType": "Tipo de perfil",
+        "description": "Descripción"
+      },
+      "placeholders": {
+        "profileName": "Introduce el nombre del perfil",
+        "profileType": "Introduce el tipo de perfil (opcional)",
+        "description": "Introduce una descripción (opcional)"
+      },
+      "validation": {
+        "profileName": "El nombre del perfil es obligatorio."
+      },
+      "modal": {
+        "save": "Guardar",
+        "saveChanges": "Guardar cambios",
+        "cancel": "Cancelar"
+      },
+      "detail": {
+        "backAria": "Volver a la lista de perfiles",
+        "sectionOverview": "Resumen",
+        "retry": "Reintentar"
+      },
+      "page": {
+        "createTitle": "Crear Perfil",
+        "createSubtitle": "Define un nuevo perfil para tu organización.",
+        "editTitle": "Editar Perfil",
+        "editSubtitle": "Actualiza los detalles del perfil."
       }
     },
     "clients": {
@@ -3709,8 +3817,9 @@
       "searchPlaceholder": "Buscar…",
       "searchAria": "Buscar en esta lista",
       "rowsPerPage": "Filas por página",
-      "tableView": "Vista de tarjetas",
+      "tableView": "Vista de tabla",
       "listView": "Vista de tabla",
+      "cardView": "Vista de tarjetas",
       "openRowActions": "Abrir acciones de la fila",
       "noResultsTitle": "No hay resultados",
       "noResultsDescription": "Nada coincide con tu búsqueda o filtros. Ajústalos o borra los filtros para ver más elementos.",

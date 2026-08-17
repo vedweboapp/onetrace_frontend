@@ -28,7 +28,9 @@ import {
   jobFormEntries,
   jobProjectLabel,
   jobSiteLabel,
+  formatJobTimeDisplay,
 } from "@/features/jobs/utils/job-nested-fields.util";
+import { formatMoneyDisplay } from "@/features/invoices/utils/invoice-money.util";
 import {
   normalizeJobMeta,
   resolveJobMetaCompositeItemId,
@@ -670,6 +672,8 @@ export function JobDetailBody({
   onOpenScheduling?: () => void;
 }) {
   const t = useTranslations("Dashboard.jobs");
+  const tGroups = useTranslations("Dashboard.groups");
+  const tItems = useTranslations("Dashboard.items");
   const tQa = useTranslations("Dashboard.jobs.qualityAssurance");
   const tMeta = useTranslations("Dashboard.common.detail");
   const tActions = useTranslations("Dashboard.common.actions");
@@ -795,6 +799,13 @@ export function JobDetailBody({
   const statusRow = getJobStatusRow(detail);
   const meta = normalizeJobMeta(detail.job_meta);
   const compositeRows = meta?.composite_items ?? [];
+  const scopeTotal =
+    meta?.total != null && Number.isFinite(meta.total)
+      ? meta.total
+      : compositeRows.reduce(
+          (sum, row) => sum + (row.amount != null && Number.isFinite(row.amount) ? row.amount : 0),
+          0,
+        );
   const formEntries = jobFormEntries(detail);
   const checklistEntries = jobChecklistEntries(detail);
   const checklistMarked = jobChecklistIsMarked(detail);
@@ -930,10 +941,11 @@ export function JobDetailBody({
   const projectId =
     detail.project && typeof detail.project === "object" ? detail.project.id : typeof detail.project === "number" ? detail.project : null;
   const siteId = detail.site && typeof detail.site === "object" ? detail.site.id : typeof detail.site === "number" ? detail.site : null;
-  const isServiceJob =
-    (detail.job_category ?? searchParams.get("job_category") ?? "")
-      .toLowerCase()
-      .replace(/[^a-z]/g, "") === "servicejob";
+  const normalizedJobCategory = (detail.job_category ?? searchParams.get("job_category") ?? "")
+    .toLowerCase()
+    .replace(/[^a-z]/g, "");
+  const isServiceJob = normalizedJobCategory === "servicejob";
+  const isProjectJob = normalizedJobCategory === "projectjob";
 
   return (
     <DetailPagePadding>
@@ -1050,47 +1062,51 @@ export function JobDetailBody({
           }}
         />
 
-        {meta && (meta.total != null || compositeRows.length > 0) ? (
+        {!isProjectJob && meta && (meta.total != null || compositeRows.length > 0) ? (
           <DetailPanelCard title={t("detail.sectionWorkScope")}>
-           
             {compositeRows.length > 0 ? (
-              <div className="mt-3">
+              <div className="mt-3 space-y-3">
                 <DetailLinkedTable
+                  showRowNumbers={false}
+                  tableClassName="min-w-[720px]"
                   columns={[
-                    { id: "name", header: t("detail.colCompositeItem"), widthClass: "w-[34%]" },
-                    { id: "qty", header: t("fields.compositeQuantity"), narrow: true, align: "right", widthClass: "w-[14%]" },
-                    // { id: "unit", header: t("detail.colUnitPrice"), narrow: true, align: "right", widthClass: "w-[18%]" },
-                    // { id: "line", header: t("detail.colLineTotal"), narrow: true, align: "right", widthClass: "w-[18%]" },
+                    { id: "group", header: tGroups("title"), widthClass: "w-[18%]" },
+                    { id: "name", header: tItems("title"), widthClass: "w-[28%]" },
+                    { id: "qty", header: t("lineItems.qty"), narrow: true, align: "right", widthClass: "w-20" },
+                    { id: "unit", header: t("lineItems.rate"), narrow: true, align: "right", widthClass: "w-28" },
+                    { id: "amount", header: t("lineItems.amount"), narrow: true, align: "right", widthClass: "w-28" },
                   ]}
                 >
                   {compositeRows.map((row, index) => {
-                    // const unit =
-                    //   row.amount != null &&
-                    //   Number.isFinite(row.amount) &&
-                    //   row.quantity > 0
-                    //     ? row.amount / row.quantity
-                    //     : typeof row.selling_price === "number" && Number.isFinite(row.selling_price)
-                    //       ? row.selling_price
-                    //       : row.item &&
-                    //           typeof row.item === "object" &&
-                    //           typeof row.item.selling_price === "number" &&
-                    //           Number.isFinite(row.item.selling_price)
-                    //         ? row.item.selling_price
-                    //         : 0;
-                    // const lineTotal =
-                    //   row.amount != null && Number.isFinite(row.amount)
-                    //     ? row.amount
-                    //     : unit > 0
-                    //       ? unit * row.quantity
-                    //       : 0;
+                    const qty = Number.isFinite(row.quantity) ? row.quantity : 0;
+                    const lineTotal =
+                      row.amount != null && Number.isFinite(row.amount)
+                        ? row.amount
+                        : 0;
+                    const unitFromAmount = qty > 0 && lineTotal > 0 ? lineTotal / qty : 0;
+                    const unitFromPrice =
+                      typeof row.selling_price === "number" && Number.isFinite(row.selling_price)
+                        ? row.selling_price
+                        : row.item &&
+                            typeof row.item === "object" &&
+                            typeof row.item.selling_price === "number" &&
+                            Number.isFinite(row.item.selling_price)
+                          ? row.item.selling_price
+                          : 0;
+                    const unit = unitFromAmount > 0 ? unitFromAmount : unitFromPrice;
+                    const amount = lineTotal > 0 ? lineTotal : unit > 0 ? unit * qty : 0;
                     const itemId = compositeItemId(row);
                     const name =
                       row.name?.trim() ||
                       (row.item && typeof row.item === "object" && row.item.name?.trim()) ||
                       (itemId != null ? compositeNameById.get(itemId) : undefined) ||
                       "—";
+                    const groupName = row.group?.name?.trim() || "—";
                     return (
                       <DetailLinkedTableRow key={`${itemId ?? "row"}-${index}`} index={index}>
+                        <DetailLinkedTableTd className={detailLinkedTableCellClassName({})}>
+                          {groupName}
+                        </DetailLinkedTableTd>
                         <DetailLinkedTableTd
                           className={detailLinkedTableCellClassName({
                             cellClassName: "font-medium text-slate-900 dark:text-slate-100",
@@ -1109,15 +1125,23 @@ export function JobDetailBody({
                         </DetailLinkedTableTd>
                         <DetailLinkedTableTd
                           narrow
-                          className={detailLinkedTableCellClassName({ align: "right", narrow: true, cellClassName: "tabular-nums" })}
+                          className={detailLinkedTableCellClassName({
+                            align: "right",
+                            narrow: true,
+                            cellClassName: "tabular-nums",
+                          })}
                         >
-                          {row.quantity}
+                          {qty || "—"}
                         </DetailLinkedTableTd>
-                        {/* <DetailLinkedTableTd
+                        <DetailLinkedTableTd
                           narrow
-                          className={detailLinkedTableCellClassName({ align: "right", narrow: true, cellClassName: "tabular-nums" })}
+                          className={detailLinkedTableCellClassName({
+                            align: "right",
+                            narrow: true,
+                            cellClassName: "tabular-nums",
+                          })}
                         >
-                          {unit > 0 ? formatMoneyDisplay(unit, loc) : "—"}
+                          {unit > 0 ? formatMoneyDisplay(unit, locale) : "—"}
                         </DetailLinkedTableTd>
                         <DetailLinkedTableTd
                           narrow
@@ -1127,12 +1151,22 @@ export function JobDetailBody({
                             cellClassName: "tabular-nums font-medium",
                           })}
                         >
-                          {lineTotal > 0 ? formatMoneyDisplay(lineTotal, loc) : "—"}
-                        </DetailLinkedTableTd> */}
+                          {amount > 0 ? formatMoneyDisplay(amount, locale) : "—"}
+                        </DetailLinkedTableTd>
                       </DetailLinkedTableRow>
                     );
                   })}
                 </DetailLinkedTable>
+                <div className="ml-auto max-w-xs rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                  <div className="flex items-center justify-between gap-6">
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">
+                      {t("fields.scopeTotal")}
+                    </span>
+                    <span className="text-xl font-bold tabular-nums">
+                      {formatMoneyDisplay(scopeTotal, locale)}
+                    </span>
+                  </div>
+                </div>
               </div>
             ) : null}
           </DetailPanelCard>
@@ -1154,7 +1188,7 @@ export function JobDetailBody({
         <DetailPanelCard title={t("detail.sectionSchedule")}>
           <DetailMetricsGrid>
             <DetailMetricCard label={t("fields.jobTime")}>
-              {detail.job_time?.trim() ? detail.job_time.trim() : "—"}
+              {formatJobTimeDisplay(detail.job_time)}
             </DetailMetricCard>
             <DetailEditableField
               label={t("fields.startDate")}
