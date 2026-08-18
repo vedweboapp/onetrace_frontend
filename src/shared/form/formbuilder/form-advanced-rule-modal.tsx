@@ -243,8 +243,11 @@ const FormAdvancedRuleModal = ({
         return {
           ...output,
           field_api_name: value,
+          api_name: option?.apiName || null,
+          section_name: option?.optionKind === "section" ? (option.sectionLabel || option.label) : null,
           target_type: option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
-          field_id: option?.fieldId || null,
+          field_id: option?.fieldId ?? option?.f_id ?? null,
+          f_id: option?.f_id ?? option?.fieldId ?? null,
           field_uid: option?.fieldUid || option?.u_id,
           section_id: option?.sectionId || option?.s_id || null,
           section_uid: option?.sectionUid,
@@ -321,8 +324,11 @@ const FormAdvancedRuleModal = ({
         return {
           ...o,
           field_api_name: value,
+          api_name: option?.apiName || null,
+          section_name: option?.optionKind === "section" ? (option.sectionLabel || option.label) : null,
           target_type: option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
-          field_id: option?.fieldId || null,
+          field_id: option?.fieldId ?? option?.f_id ?? null,
+          f_id: option?.f_id ?? option?.fieldId ?? null,
           field_uid: option?.fieldUid || option?.u_id,
           section_id: option?.sectionId || option?.s_id || null,
           section_uid: option?.sectionUid,
@@ -430,8 +436,11 @@ const FormAdvancedRuleModal = ({
           const option = fields.find((f) => f.value === o.field_api_name);
           return {
             ...o,
+            api_name: option?.apiName ?? o.api_name ?? null,
+            section_name: option?.optionKind === "section" ? (option.sectionLabel || option.label) : (o.section_name ?? null),
             target_type: o.target_type || option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
-            field_id: o.field_id ?? option?.fieldId ?? null,
+            field_id: o.field_id ?? o.f_id ?? option?.fieldId ?? option?.f_id ?? null,
+            f_id: o.f_id ?? o.field_id ?? option?.f_id ?? option?.fieldId ?? null,
             field_uid: o.field_uid ?? option?.fieldUid ?? option?.u_id,
             section_id: o.section_id ?? option?.sectionId ?? option?.s_id ?? null,
             section_uid: o.section_uid ?? option?.sectionUid,
@@ -463,8 +472,11 @@ const FormAdvancedRuleModal = ({
               const option = fields.find((f) => f.value === o.field_api_name);
               return {
                 ...o,
+                api_name: option?.apiName ?? o.api_name ?? null,
+                section_name: option?.optionKind === "section" ? (option.sectionLabel || option.label) : (o.section_name ?? null),
                 target_type: o.target_type || option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
-                field_id: o.field_id ?? option?.fieldId ?? null,
+                field_id: o.field_id ?? o.f_id ?? option?.fieldId ?? option?.f_id ?? null,
+                f_id: o.f_id ?? o.field_id ?? option?.f_id ?? option?.fieldId ?? null,
                 field_uid: o.field_uid ?? option?.fieldUid ?? option?.u_id,
                 section_id: o.section_id ?? option?.sectionId ?? option?.s_id ?? null,
                 section_uid: o.section_uid ?? option?.sectionUid,
@@ -483,7 +495,9 @@ const FormAdvancedRuleModal = ({
 
       return {
         ...block,
-        field_id: block.field_id ?? triggerOption?.fieldId ?? null,
+        api_name: triggerOption?.apiName ?? block.api_name ?? null,
+        field_id: block.field_id ?? block.f_id ?? triggerOption?.fieldId ?? triggerOption?.f_id ?? null,
+        f_id: block.f_id ?? block.field_id ?? triggerOption?.f_id ?? triggerOption?.fieldId ?? null,
         field_uid: block.field_uid ?? triggerOption?.fieldUid ?? triggerOption?.u_id,
         s_id: block.s_id ?? triggerOption?.s_id ?? triggerOption?.sectionId ?? triggerOption?.sectionUid,
         u_id: block.u_id ?? triggerOption?.u_id ?? triggerOption?.fieldUid,
