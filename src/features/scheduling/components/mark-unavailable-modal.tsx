@@ -9,7 +9,7 @@ import {
   combineDateAndTimeToIso,
 } from "@/features/scheduling/utils/scheduling-week.util";
 import { toastApiError, toastError, toastSuccess } from "@/shared/feedback/app-toast";
-import { AppButton, AppModal, FieldErrorText, FieldGroup, surfaceInputClassName } from "@/shared/ui";
+import { AppButton, AppModal, FieldErrorText, FieldGroup, SurfaceDateInput, surfaceInputClassName } from "@/shared/ui";
 
 export type TimeOffPrefill = {
   dateKey: string;
@@ -121,7 +121,7 @@ export function MarkUnavailableModal({
 
       <div className="grid grid-cols-2 gap-3">
         <FieldGroup label={t("fields.startDate")} htmlFor="timeoff-start-date" required>
-          <input
+          <SurfaceDateInput
             id="timeoff-start-date"
             type="date"
             value={startDate}
@@ -132,7 +132,7 @@ export function MarkUnavailableModal({
           <FieldErrorText>{errors.startDate}</FieldErrorText>
         </FieldGroup>
         <FieldGroup label={t("fields.endDate")} htmlFor="timeoff-end-date" required>
-          <input
+          <SurfaceDateInput
             id="timeoff-end-date"
             type="date"
             value={endDate}
@@ -143,7 +143,7 @@ export function MarkUnavailableModal({
           <FieldErrorText>{errors.endDate}</FieldErrorText>
         </FieldGroup>
         <FieldGroup label={t("fields.startTime")} htmlFor="timeoff-start-time" required>
-          <input
+          <SurfaceDateInput
             id="timeoff-start-time"
             type="time"
             value={startTime}
@@ -154,7 +154,7 @@ export function MarkUnavailableModal({
           <FieldErrorText>{errors.startTime}</FieldErrorText>
         </FieldGroup>
         <FieldGroup label={t("fields.endTime")} htmlFor="timeoff-end-time" required>
-          <input
+          <SurfaceDateInput
             id="timeoff-end-time"
             type="time"
             value={endTime}
