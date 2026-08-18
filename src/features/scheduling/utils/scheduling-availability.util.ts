@@ -172,7 +172,11 @@ export function buildDayTimeSegments<TSchedule extends { start_at: string; end_a
 
   if (points.size < 2) {
     if (input.knownAvailability && !input.window) {
-      return [{ startMinutes: 9 * 60, endMinutes: 17 * 60, kind: "unavailable" }];
+      return [{
+        startMinutes: SCHEDULE_DAY_START_HOUR * 60,
+        endMinutes: SCHEDULE_DAY_END_HOUR * 60,
+        kind: "unavailable",
+      }];
     }
     return [];
   }
@@ -312,8 +316,7 @@ export function isRangeWithinAvailability(
   window: AvailabilityWindow | null,
   knownAvailability: boolean,
 ): boolean {
-  if (!knownAvailability) return true;
-  if (!window) return false;
+  if (!knownAvailability || !window) return false;
   return startMinutes >= window.startMinutes && endMinutes <= window.endMinutes;
 }
 
@@ -322,12 +325,10 @@ export function hasFreeBookableSlot(
   knownAvailability: boolean,
   occupied: OccupiedRange[],
   minMinutes = 30,
-  startHour = SCHEDULE_DAY_START_HOUR,
-  endHour = SCHEDULE_DAY_END_HOUR,
 ): boolean {
-  if (knownAvailability && !window) return false;
-  const start = window?.startMinutes ?? startHour * 60;
-  const end = window?.endMinutes ?? endHour * 60;
+  if (!knownAvailability || !window) return false;
+  const start = window.startMinutes;
+  const end = window.endMinutes;
   if (end - start < minMinutes) return false;
   const ranges = [...occupied].sort((a, b) => a.startMinutes - b.startMinutes);
   let cursor = start;
@@ -396,6 +397,17 @@ export function mergeTones(tones: AvailabilityTone[]): AvailabilityTone {
   return "unknown";
 }
 
+/** Color a shared day only when every worker has the same availability. */
+export function mergeTonesUnanimous(tones: AvailabilityTone[]): AvailabilityTone {
+  if (tones.length === 0) return "unknown";
+  const unique = new Set(tones);
+  if (unique.size === 1) return tones[0]!;
+  if (tones.every((tone) => tone === "unavailable" || tone === "timeoff")) {
+    return tones.includes("timeoff") ? "timeoff" : "unavailable";
+  }
+  return "unknown";
+}
+
 export function availabilityToneClass(tone: AvailabilityTone, strong = false): string {
   if (tone === "available") {
     return strong
@@ -415,12 +427,12 @@ export function availabilityToneClass(tone: AvailabilityTone, strong = false): s
   return "";
 }
 
-/** Solid bar for week/day column headers so availability color is not clipped to a sliver. */
+/** Thin top accent on week/day column headers. Unknown days stay uncolored. */
 export function availabilityHeaderBarClass(tone: AvailabilityTone): string {
   if (tone === "available") return "bg-emerald-400 dark:bg-emerald-500";
-  if (tone === "unavailable") return "bg-slate-400 dark:bg-slate-500";
+  if (tone === "unavailable") return "bg-slate-300 dark:bg-slate-600";
   if (tone === "timeoff") return "bg-amber-400 dark:bg-amber-500";
-  return "bg-sky-400 dark:bg-sky-500";
+  return "bg-transparent";
 }
 
 export function toDateKeysInclusive(startIso: string, endIso: string): string[] {

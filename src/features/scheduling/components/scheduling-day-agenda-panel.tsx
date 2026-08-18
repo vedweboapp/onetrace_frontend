@@ -10,6 +10,7 @@ import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedu
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
 import type { UserGroup } from "@/features/user-groups/types/user-group.types";
 import { formatDayHeader } from "@/features/scheduling/utils/scheduling-week.util";
+import { scheduleJobLabel, scheduleWorkerIds } from "@/features/scheduling/utils/schedule-map.util";
 import { AppButton, AppTabs, CheckmarkSelect, DetailPanel, surfaceInputClassName } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import { cn } from "@/core/utils/http.util";
@@ -81,10 +82,12 @@ export function SchedulingDayAgendaPanel({
   const query = search.trim().toLowerCase();
 
   const filteredSchedules = schedules
-    .filter((row) => workerInGroup(row.worker_id, groupId, userGroups, technicians))
+    .filter((row) =>
+      scheduleWorkerIds(row).some((id) => workerInGroup(id, groupId, userGroups, technicians)),
+    )
     .filter((row) => {
       if (!query) return true;
-      return `${row.job_title} ${row.client_name} ${row.worker_name}`.toLowerCase().includes(query);
+      return `${scheduleJobLabel(row)} ${row.client_name} ${row.worker_name}`.toLowerCase().includes(query);
     })
     .sort((a, b) => a.start_at.localeCompare(b.start_at));
 

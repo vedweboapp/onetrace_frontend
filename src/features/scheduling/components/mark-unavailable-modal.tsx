@@ -8,7 +8,7 @@ import {
   combineDateAndTimeEndToIso,
   combineDateAndTimeToIso,
 } from "@/features/scheduling/utils/scheduling-week.util";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastApiError, toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { AppButton, AppModal, FieldErrorText, FieldGroup, surfaceInputClassName } from "@/shared/ui";
 
 export type TimeOffPrefill = {
@@ -21,11 +21,23 @@ type Props = {
   open: boolean;
   technician: CreateScheduleTechnician | null;
   prefill: TimeOffPrefill | null;
+  getBookingConflict?: (input: {
+    workerId: number;
+    startAt: string;
+    endAt: string;
+  }) => string | null;
   onClose: () => void;
   onSaved?: () => void;
 };
 
-export function MarkUnavailableModal({ open, technician, prefill, onClose, onSaved }: Props) {
+export function MarkUnavailableModal({
+  open,
+  technician,
+  prefill,
+  getBookingConflict,
+  onClose,
+  onSaved,
+}: Props) {
   const t = useTranslations("Dashboard.scheduling");
   const [startDate, setStartDate] = React.useState("");
   const [endDate, setEndDate] = React.useState("");
@@ -59,13 +71,19 @@ export function MarkUnavailableModal({ open, technician, prefill, onClose, onSav
 
   async function handleSave() {
     if (!validate() || !technician) return;
+    const startAt = combineDateAndTimeToIso(startDate, startTime, false);
+    const endAt = combineDateAndTimeEndToIso(endDate, endTime, false);
+    const conflict = getBookingConflict?.({ workerId: technician.id, startAt, endAt });
+    if (conflict) {
+      toastError(conflict);
+      return;
+    }
     setSaving(true);
     try {
       await createWorkerTimeOff({
-        worker_id: technician.id,
-        worker_name: technician.name,
-        start_at: combineDateAndTimeToIso(startDate, startTime, false),
-        end_at: combineDateAndTimeEndToIso(endDate, endTime, false),
+        worker: technician.id,
+        start_at: startAt,
+        end_at: endAt,
         reason: reason.trim(),
       });
       toastSuccess(t("timeOff.successToast"));

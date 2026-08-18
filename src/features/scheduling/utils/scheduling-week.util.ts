@@ -93,14 +93,15 @@ export function formatMonthDay(d: Date, locale: string): string {
   return new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" }).format(d);
 }
 
-/** Extract YYYY-MM-DD from an API datetime / date string. */
+/** Extract YYYY-MM-DD for calendar day matching (local date for datetimes). */
 export function apiDateToKey(raw: string | null | undefined): string | null {
   if (!raw?.trim()) return null;
-  const m = raw.trim().match(/^(\d{4}-\d{2}-\d{2})/);
-  if (m) return m[1] ?? null;
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return null;
-  return toDateKey(d);
+  const trimmed = raw.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const d = new Date(trimmed);
+  if (!Number.isNaN(d.getTime())) return toDateKey(d);
+  const m = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+  return m?.[1] ?? null;
 }
 
 export function formatTimeRange(

@@ -105,6 +105,15 @@ function resolveFileFieldValue(
   const urls = files.map((f) => f.file_url).filter(Boolean);
   if (urls.length === 0) return "";
   const norm = (fieldType ?? files[0]?.field_type ?? "").toLowerCase();
+  if (
+    norm === "multi_image_upload" ||
+    norm === "multiple_images" ||
+    norm === "multi_images" ||
+    norm === "multiple_image" ||
+    norm === "multiimageupload"
+  ) {
+    return urls;
+  }
   if (norm === "image_upload" && urls.length > 1) {
     return urls;
   }
@@ -153,6 +162,20 @@ function coerceFileValue(value: unknown, fileName: string): File | null {
   return new File([bytes], fileName, { type: mime });
 }
 
+function coerceFileValues(value: unknown, fieldApiName: string): File[] {
+  if (value == null || value === "") return [];
+  if (Array.isArray(value)) {
+    const files: File[] = [];
+    value.forEach((item, idx) => {
+      const f = coerceFileValue(item, `${fieldApiName}_${idx}`);
+      if (f) files.push(f);
+    });
+    return files;
+  }
+  const single = coerceFileValue(value, fieldApiName);
+  return single ? [single] : [];
+}
+
 function parseStoredValue(raw: string, fieldType?: string): unknown {
   const trimmed = raw.trim();
   if (!trimmed) return "";
@@ -183,7 +206,18 @@ function parseStoredValue(raw: string, fieldType?: string): unknown {
 }
 
 /** Field types whose values are binary files, not JSON-serialisable strings. */
-const FILE_FIELD_TYPES = new Set(["signature", "file_upload", "image_upload", "file"]);
+const FILE_FIELD_TYPES = new Set([
+  "signature",
+  "file_upload",
+  "image_upload",
+  "multi_image_upload",
+  "multiple_images",
+  "multiple_image",
+  "multi_images",
+  "multiimageupload",
+  "video_recorder",
+  "file",
+]);
 
 function areValuesEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
@@ -226,8 +260,14 @@ export function mapFormDataToSubmissionValues(
 
       // File-type fields are handled exclusively as binary multipart entries.
       if (FILE_FIELD_TYPES.has(field.field_type)) continue;
-      // File objects are sent as multipart entries — skip them from the JSON values array
+      // File objects or arrays of Files/data URLs are sent as multipart entries — skip them from the JSON values array
       if (typeof File !== "undefined" && raw instanceof File) continue;
+      if (
+        Array.isArray(raw) &&
+        raw.some((item) => (typeof File !== "undefined" && item instanceof File) || isDataUrl(item))
+      ) {
+        continue;
+      }
 
       if (field.field_type === "currency" && raw && typeof raw === "object" && !Array.isArray(raw)) {
         const currencyValue = raw as { amount?: unknown; currency?: unknown };
@@ -321,23 +361,25 @@ export function buildJobFormSubmissionFormData(
 
       const hasFieldKey = field.api_name in formData;
       const val = hasFieldKey ? formData[field.api_name] : undefined;
-      const fileValue = coerceFileValue(val, field.api_name);
+      const fileList = coerceFileValues(val, field.api_name);
       const hasExistingFile =
-        typeof extra?.defaultValues?.[field.api_name] === "string" &&
-        extra.defaultValues[field.api_name] !== "";
+        (typeof extra?.defaultValues?.[field.api_name] === "string" && extra.defaultValues[field.api_name] !== "") ||
+        (Array.isArray(extra?.defaultValues?.[field.api_name]) && (extra.defaultValues[field.api_name] as any[]).length > 0);
 
-      if (fileValue) {
-        fd.append(`values[${fileIndex}][field_id]`, String(field.id));
-        fd.append(`values[${fileIndex}][field_type]`, field.field_type ?? "file");
-        fd.append(`values[${fileIndex}][value]`, fileValue, fileValue.name);
-        fileIndex++;
+      if (fileList.length > 0) {
+        for (const fileValue of fileList) {
+          fd.append(`values[${fileIndex}][field_id]`, String(field.id));
+          fd.append(`values[${fileIndex}][field_type]`, field.field_type ?? "file");
+          fd.append(`values[${fileIndex}][value]`, fileValue, fileValue.name);
+          fileIndex++;
+        }
         continue;
       }
 
       if (!FILE_FIELD_TYPES.has(field.field_type)) continue;
 
       if (!hasFieldKey) {
-        if (!hasExistingFile && field.field_type === "file_upload") {
+        if (!hasExistingFile && (field.field_type === "file_upload" || field.field_type === "image_upload")) {
           fd.append(`values[${fileIndex}][field_id]`, String(field.id));
           fd.append(`values[${fileIndex}][field_type]`, field.field_type ?? "file");
           fd.append(`values[${fileIndex}][value]`, "");
@@ -346,7 +388,7 @@ export function buildJobFormSubmissionFormData(
         continue;
       }
 
-      if (hasExistingFile && (val === null || val === "" || val === undefined)) {
+      if (hasExistingFile && (val === null || val === "" || val === undefined || (Array.isArray(val) && val.length === 0))) {
         fd.append(`values[${fileIndex}][field_id]`, String(field.id));
         fd.append(`values[${fileIndex}][field_type]`, field.field_type ?? "file");
         fd.append(`values[${fileIndex}][is_deleted]`, "true");

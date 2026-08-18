@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Search } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import {
     DataTable,
     DataTableBody,
@@ -11,31 +11,26 @@ import {
     DataTableTd,
     DataTableTh,
     SurfaceShell,
-    DashboardEmptyState,
     AppButton,
     DataTablePaginationBar,
-    ListPageSearchField
+    ListPageSearchField,
+    AddButton,
+    ListPageEmptyStates,
 } from "@/shared/ui";
 import { useUrlParams } from "@/shared/hooks/use-url-params";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { useRouter } from "@/i18n/navigation";
 import { routes } from "@/shared/config/routes";
 import { getModulesList } from "../api/modules.api";
 
-interface ModuleItem {
-    id: number;
-    displayName: string;
-    moduleName: string;
-    lastModified: string;
-}
-
 const ModulesDetails = () => {
+    const t = useTranslations("Dashboard.modules");
     const [params, setParam, setPageSize] = useUrlParams({
         page_size: 10,
     });
     const page = params.page ?? 1;
     const pageSize = params.page_size ?? 10;
 
-    // Local search state - NOT in URL
     const [search, setSearch] = useState("");
 
     const [items, setItems] = useState<any[]>([]);
@@ -51,35 +46,50 @@ const ModulesDetails = () => {
         page_size: 10
     });
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const route = useRouter();
 
-    useEffect(() => {
-        const fetchModules = async () => {
-            try {
-                setLoading(true);
-                const queryParams: any = {};
-                if (search) queryParams.search = search;
-                queryParams.page = page;
-                queryParams.page_size = pageSize;
+    const createModuleHref = `${routes.dashboard.settingsModules}/create?purpose=create_module`;
 
-                const response = await getModulesList(queryParams);
-                const modulesArray = response?.data || [];
-                setItems(modulesArray);
-                if (response?.pagination) {
-                    setPagination(response.pagination);
-                }
-            } catch (err) {
-                console.error("Failed to load modules", err);
-            } finally {
-                setLoading(false);
+    const loadModules = useCallback(async () => {
+        try {
+            setLoading(true);
+            setLoadError(null);
+            const queryParams: Record<string, string | number> = {
+                page,
+                page_size: pageSize,
+            };
+            if (search) queryParams.search = search;
+
+            const response = await getModulesList(queryParams);
+            setItems(response?.data || []);
+            if (response?.pagination) {
+                setPagination(response.pagination);
             }
-        };
-        fetchModules();
-    }, [search, page, pageSize]); //Triggers on search change
+        } catch (err) {
+            console.error("Failed to load modules", err);
+            setLoadError(t("loadError"));
+            setItems([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [page, pageSize, search, t]);
+
+    useEffect(() => {
+        void loadModules();
+    }, [loadModules]);
 
     const totalRecords = pagination.total_records;
     const totalPages = pagination.total_pages;
     const currentPage = page;
+    const hasActiveFilters = Boolean(search.trim());
+
+    const { emptyStateKind } = useSimpleListEmptyState({
+        loading,
+        loadError,
+        itemsLength: totalRecords,
+        hasActiveFilters,
+    });
 
     const startIndex = (currentPage - 1) * pageSize;
     const endIndex = Math.min(startIndex + items.length, totalRecords);
@@ -103,26 +113,29 @@ const ModulesDetails = () => {
         });
     };
 
+    function clearFilters() {
+        setSearch("");
+        setParam("page", 1);
+    }
+
     return (
         <div className="w-full space-y-5 animate-in fade-in duration-500">
-            {/* Search Header Section */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[8px] p-4 gap-4 shadow-sm">
                 <ListPageSearchField
                     value={search}
                     onCommit={(val) => {
                         setSearch(val || "");
-                        setParam("page", 1); // Reset to page 1
+                        setParam("page", 1);
                     }}
-                    placeholder="Search module..."
-                    ariaLabel="Search module"
+                    placeholder={t("searchPlaceholder")}
+                    ariaLabel={t("searchAria")}
                     className="max-w-[280px]"
                 />
-                <AppButton variant="primary" size="sm" onClick={() => route.push(`${routes.dashboard.settingsModules}/create?purpose=create_module`)}>
-                    Create New Module
-                </AppButton>
+                <AddButton size="sm" onClick={() => route.push(createModuleHref)}>
+                    {t("add")}
+                </AddButton>
             </div>
 
-            {/* Table Section */}
             <SurfaceShell className="rounded-[8px]">
                 {loading ? (
                     <div className="p-6 space-y-4">
@@ -136,22 +149,39 @@ const ModulesDetails = () => {
                             </div>
                         ))}
                     </div>
-                ) : totalRecords === 0 ? (
-                    <DashboardEmptyState
-                        iconName="noResults"
-                        title="No search results found"
-                        description={`We couldn't find any modules matching "${search}"`}
-                    />
+                ) : loadError ? (
+                    <div className="p-6 text-center">
+                        <p className="text-sm font-medium text-red-600 dark:text-red-400">{loadError}</p>
+                        <AppButton variant="secondary" size="sm" className="mt-3" onClick={() => void loadModules()}>
+                            Retry
+                        </AppButton>
+                    </div>
+                ) : emptyStateKind !== "none" ? (
+                    <div className="p-8">
+                        <ListPageEmptyStates
+                            emptyStateKind={emptyStateKind}
+                            onboarding={{
+                                title: t("emptyTitle"),
+                                description: t("emptyDescription"),
+                                action: (
+                                    <AddButton onClick={() => route.push(createModuleHref)}>
+                                        {t("add")}
+                                    </AddButton>
+                                ),
+                            }}
+                            onClearFilters={clearFilters}
+                        />
+                    </div>
                 ) : (
                     <>
                         <DataTableScroll>
                             <DataTable>
                                 <DataTableHead>
                                     <tr>
-                                        <DataTableTh>Displayed in tabs as</DataTableTh>
-                                        <DataTableTh>Module Name</DataTableTh>
-                                        <DataTableTh>Created By</DataTableTh>
-                                        <DataTableTh className="hidden sm:table-cell">Last Modified</DataTableTh>
+                                        <DataTableTh>{t("table.displayName")}</DataTableTh>
+                                        <DataTableTh>{t("table.moduleName")}</DataTableTh>
+                                        <DataTableTh>{t("table.createdBy")}</DataTableTh>
+                                        <DataTableTh className="hidden sm:table-cell">{t("table.lastModified")}</DataTableTh>
                                     </tr>
                                 </DataTableHead>
                                 <DataTableBody>
@@ -190,14 +220,18 @@ const ModulesDetails = () => {
                                     total_pages: totalPages,
                                     total_records: totalRecords
                                 }}
-                                summary={`Showing ${totalRecords === 0 ? 0 : startIndex + 1}–${endIndex} of ${totalRecords}`}
-                                prevLabel="Previous"
-                                nextLabel="Next"
+                                summary={t("pagination.summary", {
+                                    start: totalRecords === 0 ? 0 : startIndex + 1,
+                                    end: endIndex,
+                                    total: totalRecords,
+                                })}
+                                prevLabel={t("pagination.prev")}
+                                nextLabel={t("pagination.next")}
                                 onPrev={() => setParam("page", Math.max(1, currentPage - 1))}
                                 onNext={() => setParam("page", Math.min(totalPages, currentPage + 1))}
                                 onPageSelect={(p) => setParam("page", p)}
                                 pageSizeControl={{
-                                    listLabel: "Rows per page",
+                                    listLabel: t("pagination.rowsPerPage"),
                                     value: pageSize,
                                     options: pageSizeOptions,
                                     onChange: (size) => setPageSize(Number(size))
