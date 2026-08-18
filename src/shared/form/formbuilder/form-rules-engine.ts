@@ -104,6 +104,9 @@ const expandRuleTarget = (
   if (normalizedTarget.startsWith('__field__:')) {
     aliases.add(normalizedTarget.replace(/^__field__:/, ''));
   }
+  if (normalizedTarget.startsWith('__section__:')) {
+    aliases.add(normalizedTarget.replace(/^__section__:/, ''));
+  }
 
   for (const alias of aliases) {
     const matched = targetGroups?.[alias];

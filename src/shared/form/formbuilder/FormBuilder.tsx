@@ -615,61 +615,154 @@ export default function FormBuilderLayout({
             return ruleData;
           });
 
-          /** Re-resolve each rule block's field_api_name against current loaded fields.
-           *  Priority: 1) direct match  2) f_id/field_id  3) api_name fallback  4) leave as-is */
-          const normalizeRuleFieldApiName = (
-            fieldApiName: string | undefined,
+          /** Re-resolve each rule block or output target against current loaded fields and sections.
+           *  For sections:
+           *    Priority: 1) direct match  2) s_id / section_id / section_uid / raw ID  3) section_name / api_name  4) sequence
+           *  For fields:
+           *    Priority: 1) direct match  2) f_id / field_id  3) api_name fallback */
+          const normalizeRuleTarget = (
+            target: string | undefined,
+            targetType: string | undefined,
             apiName: string | null | undefined,
+            sectionName: string | null | undefined,
             fId: any,
             fieldId: any,
+            sId: any,
+            sectionId: any,
+            sectionUid: any,
             allSections: Section[],
           ): string | undefined => {
-            if (!fieldApiName) return fieldApiName;
+            if (!target) return target;
 
+            const isSection =
+              targetType === "section" ||
+              String(target).startsWith(SECTION_RULE_TARGET_PREFIX) ||
+              (!fId && !fieldId && (sId != null || sectionId != null || sectionUid != null));
+
+            if (isSection) {
+              const canonicalForSection = (s: Section, sIdx: number): string => {
+                if (s.id != null && !String(s.id).startsWith("section-")) {
+                  return `${SECTION_RULE_TARGET_PREFIX}${s.id}`;
+                }
+                return `${SECTION_RULE_TARGET_PREFIX}${s.s_id ?? s._uid ?? (s.sequence ?? sIdx + 1)}`;
+              };
+
+              // 1. Direct match
+              if (allSections.some((s, sIdx) => canonicalForSection(s, sIdx) === target)) {
+                return target;
+              }
+
+              // 2. Priority match by s_id / section_id / section_uid / raw ID in target string
+              const rawTargetId = String(target).replace(SECTION_RULE_TARGET_PREFIX, "");
+              const candidateIds = [sId, sectionId, sectionUid, rawTargetId].filter(
+                (id) => id != null && id !== ""
+              );
+
+              const byId = allSections.find((s) =>
+                candidateIds.some(
+                  (cid) =>
+                    String(s.s_id) === String(cid) ||
+                    String(s.id) === String(cid) ||
+                    String(s._uid) === String(cid)
+                )
+              );
+              if (byId) {
+                const sIdx = allSections.indexOf(byId);
+                return canonicalForSection(byId, sIdx);
+              }
+
+              // 3. Fallback match by section_name or api_name
+              const nameToMatch = sectionName || apiName;
+              if (nameToMatch) {
+                const byName = allSections.find(
+                  (s) => s.name?.trim().toLowerCase() === String(nameToMatch).trim().toLowerCase()
+                );
+                if (byName) {
+                  const sIdx = allSections.indexOf(byName);
+                  return canonicalForSection(byName, sIdx);
+                }
+              }
+
+              // 4. Fallback match by sequence if raw target ID is a sequence number
+              const numSeq = Number(rawTargetId);
+              if (!isNaN(numSeq) && numSeq > 0) {
+                const bySeq = allSections.find((s, idx) => (s.sequence ?? idx + 1) === numSeq);
+                if (bySeq) {
+                  const sIdx = allSections.indexOf(bySeq);
+                  return canonicalForSection(bySeq, sIdx);
+                }
+              }
+
+              return target;
+            }
+
+            // --- Field normalization ---
             const allFields: any[] = [];
-            allSections.forEach(sec => {
-              (sec.fields || []).forEach(f => allFields.push(f));
+            allSections.forEach((sec) => {
+              (sec.fields || []).forEach((f) => allFields.push(f));
             });
 
-            const canonicalFor = (f: any): string => {
-              if (f.id != null && !String(f.id).startsWith('field-')) {
+            const canonicalForField = (f: any): string => {
+              if (f.id != null && !String(f.id).startsWith("field-")) {
                 return `${FIELD_RULE_TARGET_PREFIX}${f.id}`;
               }
               return `${FIELD_RULE_TARGET_PREFIX}${f.f_id ?? f._uid}`;
             };
 
-            // 1. Already matches a current option → no change needed
-            if (allFields.some(f => canonicalFor(f) === fieldApiName)) return fieldApiName;
+            // 1. Direct match
+            if (allFields.some((f) => canonicalForField(f) === target)) return target;
 
-            // 2. f_id / field_id is the priority match
+            // 2. Priority match by f_id / field_id
             const rawId = fId ?? fieldId;
-            if (rawId != null && rawId !== '') {
-              const byFId = allFields.find(f =>
-                String(f.f_id) === String(rawId) ||
-                String(f.id) === String(rawId) ||
-                String(f._uid) === String(rawId)
+            if (rawId != null && rawId !== "") {
+              const byFId = allFields.find(
+                (f) =>
+                  String(f.f_id) === String(rawId) ||
+                  String(f.id) === String(rawId) ||
+                  String(f._uid) === String(rawId)
               );
-              if (byFId) return canonicalFor(byFId);
+              if (byFId) return canonicalForField(byFId);
             }
 
-            // 3. api_name as fallback when f_id doesn't resolve
+            // 3. Fallback match by api_name
             if (apiName) {
-              const byApiName = allFields.find(f => f.api_name === apiName);
-              if (byApiName) return canonicalFor(byApiName);
+              const byApiName = allFields.find((f) => f.api_name === apiName);
+              if (byApiName) return canonicalForField(byApiName);
             }
 
-            // 4. No match — leave unchanged (may be a section target like __section__:172)
-            return fieldApiName;
+            return target;
           };
 
           const normalizeOutput = (o: any): any => ({
             ...o,
-            field_api_name: normalizeRuleFieldApiName(o.field_api_name, o.api_name, o.f_id, o.field_id, initializedSections),
+            field_api_name: normalizeRuleTarget(
+              o.field_api_name,
+              o.target_type,
+              o.api_name,
+              o.section_name,
+              o.f_id,
+              o.field_id,
+              o.s_id,
+              o.section_id,
+              o.section_uid,
+              initializedSections,
+            ),
           });
 
           const normalizeBlock = (b: any): any => ({
             ...b,
-            field_api_name: normalizeRuleFieldApiName(b.field_api_name, b.api_name, b.f_id, b.field_id, initializedSections),
+            field_api_name: normalizeRuleTarget(
+              b.field_api_name,
+              "field",
+              b.api_name,
+              b.section_name,
+              b.f_id,
+              b.field_id,
+              b.s_id,
+              undefined,
+              undefined,
+              initializedSections,
+            ),
             output_fields: (b.output_fields || []).map(normalizeOutput),
             else_blocks: (b.else_blocks || []).map((eb: any) => ({
               ...eb,
@@ -681,7 +774,18 @@ export default function FormBuilderLayout({
           const normalizedRules = loadedRules.map((r: any) => ({
             ...r,
             field_api_name: r.field_api_name
-              ? normalizeRuleFieldApiName(r.field_api_name, r.api_name, r.f_id, r.field_id, initializedSections)
+              ? normalizeRuleTarget(
+                  r.field_api_name,
+                  "field",
+                  r.api_name,
+                  r.section_name,
+                  r.f_id,
+                  r.field_id,
+                  r.s_id,
+                  undefined,
+                  undefined,
+                  initializedSections,
+                )
               : r.field_api_name,
             output_fields: (r.output_fields || []).map(normalizeOutput),
             blocks: (r.blocks || []).map(normalizeBlock),
@@ -876,6 +980,7 @@ export default function FormBuilderLayout({
         s_id: section.s_id ?? (hasPersistedId(section.id) ? section.id : section._uid),
         sectionKey,
         sectionLabel,
+        apiName: sectionLabel,
         optionKind: "section",
       };
       const fieldOptions: RuleFieldOption[] = (section.fields || [])

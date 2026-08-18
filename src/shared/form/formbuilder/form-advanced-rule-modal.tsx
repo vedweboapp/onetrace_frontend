@@ -244,6 +244,7 @@ const FormAdvancedRuleModal = ({
           ...output,
           field_api_name: value,
           api_name: option?.apiName || null,
+          section_name: option?.optionKind === "section" ? (option.sectionLabel || option.label) : null,
           target_type: option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
           field_id: option?.fieldId ?? option?.f_id ?? null,
           f_id: option?.f_id ?? option?.fieldId ?? null,
@@ -324,6 +325,7 @@ const FormAdvancedRuleModal = ({
           ...o,
           field_api_name: value,
           api_name: option?.apiName || null,
+          section_name: option?.optionKind === "section" ? (option.sectionLabel || option.label) : null,
           target_type: option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
           field_id: option?.fieldId ?? option?.f_id ?? null,
           f_id: option?.f_id ?? option?.fieldId ?? null,
@@ -435,6 +437,7 @@ const FormAdvancedRuleModal = ({
           return {
             ...o,
             api_name: option?.apiName ?? o.api_name ?? null,
+            section_name: option?.optionKind === "section" ? (option.sectionLabel || option.label) : (o.section_name ?? null),
             target_type: o.target_type || option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
             field_id: o.field_id ?? o.f_id ?? option?.fieldId ?? option?.f_id ?? null,
             f_id: o.f_id ?? o.field_id ?? option?.f_id ?? option?.fieldId ?? null,
@@ -470,6 +473,7 @@ const FormAdvancedRuleModal = ({
               return {
                 ...o,
                 api_name: option?.apiName ?? o.api_name ?? null,
+                section_name: option?.optionKind === "section" ? (option.sectionLabel || option.label) : (o.section_name ?? null),
                 target_type: o.target_type || option?.targetType || (option?.optionKind === "section" ? "section" : "field"),
                 field_id: o.field_id ?? o.f_id ?? option?.fieldId ?? option?.f_id ?? null,
                 f_id: o.f_id ?? o.field_id ?? option?.f_id ?? option?.fieldId ?? null,

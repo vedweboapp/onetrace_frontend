@@ -293,3 +293,48 @@ test('complex multi-level section & field rule chaining with f_id and s_id', () 
   assert.equal(s4.get('s3_input')?.required ?? false, false);
 });
 
+test('buildFieldRuleState correctly targets sections via s_id and __section__: alias outputs', () => {
+  const rules = [
+    {
+      _uid: 'rule-sec',
+      name: 'show section 2 when access is Yes',
+      sequence: 1,
+      rule_type: 'advanced',
+      blocks: [
+        {
+          _uid: 'b-1',
+          field_api_name: '__field__:743',
+          f_id: '743',
+          api_name: 'access',
+          condition: 'is',
+          value: 'Yes',
+          output_fields: [
+            {
+              field_api_name: '__section__:172',
+              s_id: '172',
+              section_id: '172',
+              section_name: 'Door Leaf',
+              target_type: 'section',
+              action: 'show',
+            },
+          ],
+        },
+      ],
+    },
+  ] as any;
+
+  const targetGroups = {
+    '__field__:743': ['access'],
+    '743': ['access'],
+    'access': ['access'],
+    '__section__:172': ['__section__:172'],
+    '172': ['__section__:172'],
+  };
+
+  const hiddenState = buildFieldRuleState(rules, { access: 'No' }, targetGroups);
+  assert.equal(hiddenState.get('__section__:172')?.visible, false);
+
+  const visibleState = buildFieldRuleState(rules, { access: 'Yes' }, targetGroups);
+  assert.equal(visibleState.get('__section__:172')?.visible, true);
+});
+
