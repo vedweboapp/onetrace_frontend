@@ -1784,6 +1784,28 @@
         "editSubtitle": "Actualiza los detalles del perfil."
       }
     },
+    "modules": {
+      "title": "Módulos",
+      "subtitle": "Crea y gestiona módulos personalizados para tu organización.",
+      "add": "Crear nuevo módulo",
+      "searchPlaceholder": "Buscar módulo...",
+      "searchAria": "Buscar módulo",
+      "loadError": "No se pudieron cargar los módulos. Inténtalo de nuevo.",
+      "emptyTitle": "No se encontraron módulos",
+      "emptyDescription": "Crea un módulo para organizar datos personalizados en tu espacio de trabajo.",
+      "table": {
+        "displayName": "Mostrado en pestañas como",
+        "moduleName": "Nombre del módulo",
+        "createdBy": "Creado por",
+        "lastModified": "Última modificación"
+      },
+      "pagination": {
+        "summary": "Mostrando {start}–{end} de {total}",
+        "prev": "Anterior",
+        "next": "Siguiente",
+        "rowsPerPage": "Filas por página"
+      }
+    },
     "clients": {
       "metaTitle": "Clientes",
       "detailMetaTitle": "Detalle del cliente",
@@ -3387,6 +3409,8 @@
       "conflict": {
         "booked": "Ese horario ya está programado.",
         "unavailable": "Ese horario está fuera de la disponibilidad del usuario.",
+        "noAvailability": "Este usuario no tiene horas disponibles ese día.",
+        "jobAlreadyScheduled": "Este trabajo ya está programado y solo puede asignarse a un trabajador.",
         "timeOff": "Ese horario está marcado como tiempo libre.",
         "invalidRange": "Elige una hora de fin posterior a la de inicio."
       },
@@ -3404,7 +3428,7 @@
         "assignToLine": "Asignar a – {name}"
       },
       "loadError": "No se pudieron cargar las programaciones. Inténtalo de nuevo.",
-      "noSchedules": "Sin programaciones",
+      "jobScheduledOnlyWorker": "Este trabajo ya está programado. Solo se muestra el trabajador asignado.",
       "modal": {
         "title": "Crear programación",
         "rescheduleTitle": "Reprogramar",

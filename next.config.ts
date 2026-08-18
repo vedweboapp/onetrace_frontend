@@ -25,13 +25,14 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: googleMapsKey,
     NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID: googleMapsMapId,
   },
+
   async redirects() {
     return [
       {
         source: "/:locale(en|es)/dashboard/:path*",
         destination: "/:path*",
         permanent: true,
-        
+ 
       },
       {
         source: "/:locale(en|es)/dashboard",

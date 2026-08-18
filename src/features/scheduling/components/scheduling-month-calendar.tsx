@@ -5,12 +5,13 @@ import { useLocale, useTranslations } from "next-intl";
 import { ScheduleCreateCellButton } from "@/features/scheduling/components/schedule-create-cell-button";
 import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
+import { rowsForTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
 import {
   availabilityToneClass,
   dayTone,
   getDayAvailabilityWindow,
   hasAvailabilityData,
-  mergeTones,
+  mergeTonesUnanimous,
   occupiedRangesForDay,
 } from "@/features/scheduling/utils/scheduling-availability.util";
 import {
@@ -92,23 +93,21 @@ export function SchedulingMonthCalendar({
               ? dayTone(
                   getDayAvailabilityWindow(singleWorker.availableDays, day),
                   hasAvailabilityData(singleWorker.availableDays),
-                  occupiedRangesForDay(dayTimeOffs, dayKey),
+                  occupiedRangesForDay(rowsForTechnician(dayTimeOffs, singleWorker), dayKey),
                 )
-              : mergeTones(
+              : mergeTonesUnanimous(
                   technicians.map((tech) =>
                     dayTone(
                       getDayAvailabilityWindow(tech.availableDays, day),
                       hasAvailabilityData(tech.availableDays),
-                      occupiedRangesForDay(
-                        dayTimeOffs.filter((row) => row.worker_id === tech.id),
-                        dayKey,
-                      ),
+                      occupiedRangesForDay(rowsForTechnician(dayTimeOffs, tech), dayKey),
                     ),
                   ),
                 );
             const blocked =
-              Boolean(singleWorker) && (tone === "unavailable" || tone === "timeoff");
-            const canCreate = Boolean(onCreateSchedule) && inMonth && !blocked;
+              Boolean(singleWorker) && (tone === "unavailable" || tone === "timeoff" || tone === "unknown");
+            const canCreate =
+              Boolean(onCreateSchedule) && inMonth && !blocked && (!singleWorker || tone === "available");
 
             return (
               <div

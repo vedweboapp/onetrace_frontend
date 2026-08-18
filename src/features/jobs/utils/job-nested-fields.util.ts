@@ -295,6 +295,47 @@ function formatDurationParts(hours: number, minutes: number, seconds: number): s
   return `${s}s`;
 }
 
+/** Parse `job_time` into total minutes when it represents a duration. */
+export function parseJobDurationMinutes(value: unknown): number | null {
+  if (value == null || value === "" || typeof value === "boolean") return null;
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(0, Math.ceil(value / 60));
+  }
+
+  if (typeof value === "string") {
+    const text = value.trim();
+    if (!text) return null;
+    const hhmm = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/u.exec(text);
+    if (hhmm) {
+      const hours = Number(hhmm[1] ?? 0);
+      const minutes = Number(hhmm[2] ?? 0);
+      const seconds = Number(hhmm[3] ?? 0);
+      return Math.max(0, hours * 60 + minutes + (seconds > 0 ? 1 : 0));
+    }
+    const hoursMatch = /(\d+(?:\.\d+)?)\s*h/iu.exec(text);
+    const minutesMatch = /(\d+(?:\.\d+)?)\s*m/iu.exec(text);
+    const secondsMatch = /(\d+(?:\.\d+)?)\s*s/iu.exec(text);
+    if (hoursMatch || minutesMatch || secondsMatch) {
+      const hours = hoursMatch ? Number(hoursMatch[1]) : 0;
+      const minutes = minutesMatch ? Number(minutesMatch[1]) : 0;
+      const seconds = secondsMatch ? Number(secondsMatch[1]) : 0;
+      return Math.max(0, Math.ceil(hours * 60 + minutes + seconds / 60));
+    }
+    return null;
+  }
+
+  if (typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  const hours = asFiniteNumber(row.hours) ?? 0;
+  const minutes = asFiniteNumber(row.minutes) ?? 0;
+  const seconds = asFiniteNumber(row.seconds) ?? 0;
+  if ("hours" in row || "minutes" in row || "seconds" in row) {
+    return Math.max(0, Math.ceil(hours * 60 + minutes + seconds / 60));
+  }
+  return null;
+}
+
 /** Display `job_time` whether the API sends a string, seconds, or a duration object. */
 export function formatJobTimeDisplay(value: unknown, empty = "—"): string {
   if (value == null || value === "") return empty;

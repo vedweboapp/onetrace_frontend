@@ -81,11 +81,6 @@ export function createSiteFormSchema(messages: SiteFormMessages) {
         if (firstIndex !== undefined) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            path: ["contacts", firstIndex, "contact"],
-            message: messages.contactPersonDuplicate,
-          });
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
             path: ["contacts", i, "contact"],
             message: messages.contactPersonDuplicate,
           });

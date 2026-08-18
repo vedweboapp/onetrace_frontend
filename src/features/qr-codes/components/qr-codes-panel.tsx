@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { deleteQrCode, fetchAllQrCodeIds, fetchQrCodesPage } from "@/features/qr-codes/api/qr-code.api";
 import { fetchJobsPage } from "@/features/jobs/api/job.api";
+import { QrCodeImage } from "@/features/qr-codes/components/qr-code-image";
 import { QrCodeGenerateModal } from "@/features/qr-codes/components/qr-code-generate-modal";
 import { QrCodeGenerateResultModal } from "@/features/qr-codes/components/qr-code-generate-result-modal";
 import type {
@@ -221,12 +222,16 @@ export function QrCodesPanel() {
         t("table.qrImage"),
         (row) =>
           row.qr_image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={row.qr_image}
-              alt={row.qr_code_id}
-              className="size-12 shrink-0 rounded-md border border-slate-200 bg-white object-contain p-1 dark:border-slate-700 dark:bg-slate-950"
-            />
+            <a href={row.public_url || row.qr_image} target="_blank" rel="noopener noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={row.qr_image}
+                alt={row.qr_code_id}
+                className="size-12 shrink-0 rounded-md border border-slate-200 bg-white object-contain p-1 dark:border-slate-700 dark:bg-slate-950"
+              />
+            </a>
+          ) : row.public_url ? (
+            <QrCodeImage value={row.public_url} size={48} className="!p-0.5" />
           ) : (
             <span
               className="inline-flex size-12 shrink-0 items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50 text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-900"
@@ -412,12 +417,16 @@ export function QrCodesPanel() {
                       <div className="flex items-start gap-2">
                         {massSel.cardLeading(row)}
                         {row.qr_image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={row.qr_image}
-                            alt={row.qr_code_id}
-                            className="size-16 shrink-0 rounded-md border border-slate-200 bg-white object-contain p-1 dark:border-slate-700"
-                          />
+                          <a href={row.public_url || row.qr_image} target="_blank" rel="noopener noreferrer">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={row.qr_image}
+                              alt={row.qr_code_id}
+                              className="size-16 shrink-0 rounded-md border border-slate-200 bg-white object-contain p-1 dark:border-slate-700"
+                            />
+                          </a>
+                        ) : row.public_url ? (
+                          <QrCodeImage value={row.public_url} size={64} className="!p-0.5" />
                         ) : null}
                       </div>
                     }

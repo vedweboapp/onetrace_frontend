@@ -40,7 +40,7 @@ type Catalog = {
 };
 
 let catalogCache: Catalog | null = null;
-const CATALOG_VERSION = 2;
+const CATALOG_VERSION = 3;
 let catalogCacheVersion = 0;
 let catalogPromise: Promise<Catalog> | null = null;
 const jobsByClientCache = new Map<number, Job[]>();

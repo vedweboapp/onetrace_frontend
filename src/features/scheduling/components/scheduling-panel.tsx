@@ -42,16 +42,20 @@ import {
   mergeTones,
   minutesToTime,
   occupiedRangesForDay,
+  timeToMinutes,
 } from "@/features/scheduling/utils/scheduling-availability.util";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
+import { rowsForTechnician, technicianMatchesWorkerId, technicianWorkerIds, workerDayRows } from "@/features/scheduling/utils/scheduling-technician.util";
+import { scheduleJobLabel, scheduleMatchesJob, scheduleWorkerIds } from "@/features/scheduling/utils/schedule-map.util";
 import {
   addDays,
   addMonths,
   apiDateToKey,
   buildMonthGrid,
   buildWeekDays,
+  combineDateAndTimeEndToIso,
+  combineDateAndTimeToIso,
   formatDayHeader,
-  formatMonthDay,
   formatMonthYearLabel,
   formatWeekRangeLabel,
   formatWeekdayShort,
@@ -60,7 +64,7 @@ import {
   toDateKey,
 } from "@/features/scheduling/utils/scheduling-week.util";
 import { useDashboardChromeStore } from "@/features/dashboard/store/dashboard-chrome.store";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastApiError, toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { dashboardContentHorizontalGutterClassName } from "@/shared/config/dashboard-shell";
 import { routes } from "@/shared/config/routes";
 import {
@@ -86,6 +90,12 @@ export type SchedulingPanelProps = {
   fixedWorkerId?: number;
   /** Pre-select a job filter (e.g. job detail scheduling tab). */
   defaultJobId?: number;
+  /** Client for the job when creating from the job scheduling tab. */
+  defaultClientId?: number;
+  /** Assigned worker on the job record (fallback when schedule worker ids are missing). */
+  defaultAssignedWorkerId?: number;
+  /** Job serial (e.g. JB390) used to match schedules when job_id is missing. */
+  defaultJobSerial?: string | null;
   /** Sync view/filters to URL search params. Default true on /scheduling. */
   syncUrl?: boolean;
 };
@@ -102,7 +112,14 @@ function scheduleOverlapsDay(schedule: { start_at: string; end_at: string }, day
   return dayKey >= startKey && dayKey <= end;
 }
 
-export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }: SchedulingPanelProps) {
+export function SchedulingPanel({
+  fixedWorkerId,
+  defaultJobId,
+  defaultClientId,
+  defaultAssignedWorkerId,
+  defaultJobSerial,
+  syncUrl = true,
+}: SchedulingPanelProps) {
   const t = useTranslations("Dashboard.scheduling");
   const tList = useTranslations("Dashboard.list");
   const locale = useLocale();
@@ -112,13 +129,20 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
   const setSecondaryRow = useDashboardChromeStore((s) => s.setSecondaryRow);
 
   const [localViewMode, setLocalViewMode] = React.useState<ViewMode>("day");
-  const [localClientFilter, setLocalClientFilter] = React.useState("");
+  const [localClientFilter, setLocalClientFilter] = React.useState(() =>
+    typeof defaultClientId === "number" && defaultClientId > 0 ? String(defaultClientId) : "",
+  );
   const [localJobFilter, setLocalJobFilter] = React.useState(() =>
     typeof defaultJobId === "number" && defaultJobId > 0 ? String(defaultJobId) : "",
   );
   const [localProjectFilter, setLocalProjectFilter] = React.useState("");
   const [localWorkerFilter, setLocalWorkerFilter] = React.useState("");
   const [localGroupFilter, setLocalGroupFilter] = React.useState("");
+
+  const jobScopedId =
+    typeof defaultJobId === "number" && defaultJobId > 0 ? defaultJobId : null;
+  const jobScopedClientId =
+    typeof defaultClientId === "number" && defaultClientId > 0 ? defaultClientId : null;
 
   const viewMode = (
     syncUrl ? parseViewMode(searchParams.get("view")) : localViewMode
@@ -128,8 +152,16 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
     : syncUrl
       ? (searchParams.get("worker") ?? "")
       : localWorkerFilter;
-  const clientFilter = syncUrl ? (searchParams.get("client") ?? "") : localClientFilter;
-  const jobFilter = syncUrl ? (searchParams.get("job") ?? "") : localJobFilter;
+  const clientFilter = jobScopedClientId
+    ? String(jobScopedClientId)
+    : syncUrl
+      ? (searchParams.get("client") ?? "")
+      : localClientFilter;
+  const jobFilter = jobScopedId
+    ? String(jobScopedId)
+    : syncUrl
+      ? (searchParams.get("job") ?? "")
+      : localJobFilter;
   const projectFilter = syncUrl ? (searchParams.get("project") ?? "") : localProjectFilter;
   const groupFilter = syncUrl ? (searchParams.get("group") ?? "") : localGroupFilter;
   const scheduleIdParam = syncUrl ? searchParams.get("schedule") : null;
@@ -144,6 +176,7 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
   });
 
   const [schedules, setSchedules] = React.useState<Schedule[]>([]);
+  const [jobScopedSchedules, setJobScopedSchedules] = React.useState<Schedule[]>([]);
   const [timeOffs, setTimeOffs] = React.useState<WorkerTimeOff[]>([]);
   const [loadingSchedules, setLoadingSchedules] = React.useState(true);
   const [techSearch, setTechSearch] = React.useState("");
@@ -188,21 +221,24 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
     setLoadingSchedules(true);
     try {
       const filters: Parameters<typeof fetchSchedules>[0] = { from: rangeFrom, to: rangeTo };
-      if (workerFilter && Number.isFinite(Number(workerFilter))) {
+      if (!jobScopedId && workerFilter && Number.isFinite(Number(workerFilter))) {
         filters.worker_id = Number(workerFilter);
       }
-      if (clientFilter && Number.isFinite(Number(clientFilter))) {
+      if (!jobScopedId && clientFilter && Number.isFinite(Number(clientFilter))) {
         filters.client_id = Number(clientFilter);
       }
-      if (jobFilter && Number.isFinite(Number(jobFilter))) {
+      if (!jobScopedId && jobFilter && Number.isFinite(Number(jobFilter))) {
         filters.job_id = Number(jobFilter);
       }
       const timeOffFilters: Parameters<typeof fetchWorkerTimeOff>[0] = { from: rangeFrom, to: rangeTo };
       if (workerFilter && Number.isFinite(Number(workerFilter))) {
         timeOffFilters.worker_id = Number(workerFilter);
       }
-      const [rows, offs] = await Promise.all([
+      const [rows, scopedRows, offs] = await Promise.all([
         fetchSchedules(filters),
+        jobScopedId
+          ? fetchSchedules({ job_id: jobScopedId }).catch(() => [] as Schedule[])
+          : Promise.resolve([] as Schedule[]),
         fetchWorkerTimeOff(timeOffFilters).catch(() => [] as WorkerTimeOff[]),
       ]);
       let nextRows = rows;
@@ -215,15 +251,39 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
         });
       }
       setSchedules(nextRows);
+      if (jobScopedId) {
+        const seen = new Set<number>();
+        const scoped: Schedule[] = [];
+        for (const row of [...scopedRows, ...nextRows]) {
+          if (seen.has(row.id) || !scheduleMatchesJob(row, jobScopedId, defaultJobSerial)) continue;
+          seen.add(row.id);
+          scoped.push(row);
+        }
+        setJobScopedSchedules(scoped);
+      } else {
+        setJobScopedSchedules([]);
+      }
       setTimeOffs(offs);
     } catch (error) {
       toastApiError(error, t("loadError"));
       setSchedules([]);
+      setJobScopedSchedules([]);
       setTimeOffs([]);
     } finally {
       setLoadingSchedules(false);
     }
-  }, [rangeFrom, rangeTo, workerFilter, clientFilter, jobFilter, projectFilter, catalog, t]);
+  }, [
+    rangeFrom,
+    rangeTo,
+    workerFilter,
+    clientFilter,
+    jobFilter,
+    projectFilter,
+    catalog,
+    jobScopedId,
+    defaultJobSerial,
+    t,
+  ]);
 
   React.useEffect(() => {
     void reloadSchedules();
@@ -313,13 +373,16 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
 
   function clearFilters() {
     patchSearchParams({
-      client: null,
-      job: null,
+      client: jobScopedId ? clientFilter || null : null,
+      job: jobScopedId ? jobFilter || null : null,
       project: null,
+      group: null,
     });
   }
 
-  const hasActiveFilters = Boolean(clientFilter || projectFilter || jobFilter);
+  const hasActiveFilters = Boolean(
+    (!jobScopedId && (clientFilter || jobFilter)) || projectFilter || groupFilter,
+  );
 
   React.useEffect(() => {
     if (!filtersOpen) return;
@@ -385,11 +448,34 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
     return [...all, ...(catalog.userGroups ?? []).map((g) => ({ value: String(g.id), label: g.name }))];
   }, [catalog, t]);
 
+  const jobAssignedWorkerIds = React.useMemo(() => {
+    const ids = new Set<number>();
+    if (!jobScopedId) return ids;
+    for (const row of jobScopedSchedules) {
+      for (const id of scheduleWorkerIds(row)) {
+        if (id > 0) ids.add(id);
+      }
+    }
+    if (ids.size === 0 && typeof defaultAssignedWorkerId === "number" && defaultAssignedWorkerId > 0) {
+      ids.add(defaultAssignedWorkerId);
+    }
+    return ids;
+  }, [jobScopedId, jobScopedSchedules, defaultAssignedWorkerId]);
+
+  const jobIsScheduled = Boolean(jobScopedId && jobScopedSchedules.length > 0);
+  const visibleSchedules = jobScopedId && jobIsScheduled ? jobScopedSchedules : schedules;
+  const allowCreate = !jobScopedId || !jobIsScheduled;
+
   const filteredTechs = React.useMemo(() => {
     if (!catalog) return [];
     let rows = catalog.technicians;
+    if (jobScopedId && jobIsScheduled && jobAssignedWorkerIds.size > 0) {
+      rows = rows.filter((tech) =>
+        [...jobAssignedWorkerIds].some((id) => technicianMatchesWorkerId(tech, id)),
+      );
+    }
     if (workerFilter && Number.isFinite(Number(workerFilter))) {
-      rows = rows.filter((r) => r.id === Number(workerFilter));
+      rows = rows.filter((r) => r.id === Number(workerFilter) || r.profileId === Number(workerFilter));
     }
     if (groupFilter && Number.isFinite(Number(groupFilter))) {
       const group = (catalog.userGroups ?? []).find((g) => g.id === Number(groupFilter));
@@ -399,26 +485,28 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
     const q = techSearch.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter((row) => row.searchText.includes(q));
-  }, [catalog, workerFilter, groupFilter, techSearch]);
+  }, [catalog, workerFilter, groupFilter, techSearch, jobScopedId, jobIsScheduled, jobAssignedWorkerIds]);
 
   const schedulesByWorkerDay = React.useMemo(() => {
     const map = new Map<string, Schedule[]>();
-    for (const schedule of schedules) {
+    for (const schedule of visibleSchedules) {
       for (const day of days) {
         const key = toDateKey(day);
         if (!scheduleOverlapsDay(schedule, key)) continue;
-        const mapKey = `${schedule.worker_id}:${key}`;
-        const list = map.get(mapKey) ?? [];
-        list.push(schedule);
-        map.set(mapKey, list);
+        for (const workerId of scheduleWorkerIds(schedule)) {
+          const mapKey = `${workerId}:${key}`;
+          const list = map.get(mapKey) ?? [];
+          list.push(schedule);
+          map.set(mapKey, list);
+        }
       }
     }
     return map;
-  }, [schedules, days]);
+  }, [visibleSchedules, days]);
 
   const schedulesByDay = React.useMemo(() => {
     const map = new Map<string, Schedule[]>();
-    for (const schedule of schedules) {
+    for (const schedule of visibleSchedules) {
       for (const day of days) {
         const key = toDateKey(day);
         if (!scheduleOverlapsDay(schedule, key)) continue;
@@ -432,22 +520,30 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
       map.set(key, list);
     }
     return map;
-  }, [schedules, days]);
+  }, [visibleSchedules, days]);
 
   const timeOffsByWorkerDay = React.useMemo(() => {
     const map = new Map<string, WorkerTimeOff[]>();
+    const techByWorker = new Map<number, SchedulingTechnician>();
+    for (const tech of filteredTechs) {
+      for (const id of technicianWorkerIds(tech)) techByWorker.set(id, tech);
+    }
     for (const row of timeOffs) {
       for (const day of days) {
         const key = toDateKey(day);
         if (!scheduleOverlapsDay(row, key)) continue;
-        const mapKey = `${row.worker_id}:${key}`;
-        const list = map.get(mapKey) ?? [];
-        list.push(row);
-        map.set(mapKey, list);
+        const tech = techByWorker.get(row.worker_id);
+        const workerKeys = tech ? technicianWorkerIds(tech) : [row.worker_id];
+        for (const workerId of workerKeys) {
+          const mapKey = `${workerId}:${key}`;
+          const list = map.get(mapKey) ?? [];
+          list.push(row);
+          map.set(mapKey, list);
+        }
       }
     }
     return map;
-  }, [timeOffs, days]);
+  }, [timeOffs, days, filteredTechs]);
 
   const timeOffsByDay = React.useMemo(() => {
     const map = new Map<string, WorkerTimeOff[]>();
@@ -481,23 +577,48 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
     day: Date,
     times?: { startTime: string; endTime: string },
   ) {
+    if (jobScopedId && jobIsScheduled) {
+      toastError(t("conflict.jobAlreadyScheduled"));
+      return;
+    }
     setCreateTech(tech ? toCreateTech(tech) : null);
     setCreateDateKey(toDateKey(day));
+    const jobPrefill: CreateSchedulePrefill = {
+      dateKey: toDateKey(day),
+      startTime: times?.startTime,
+      endTime: times?.endTime,
+      jobId: jobScopedId ?? undefined,
+      clientId: jobScopedClientId ?? undefined,
+      lockJob: Boolean(jobScopedId),
+      workerId: tech?.id,
+    };
     if (!tech) {
-      setCreatePrefill({
-        dateKey: toDateKey(day),
-        startTime: times?.startTime,
-        endTime: times?.endTime,
-      });
+      setCreatePrefill(jobPrefill);
       setCreateOpen(true);
       return;
     }
     const window = getDayAvailabilityWindow(tech.availableDays, day);
-    const startTime = times?.startTime ?? (window ? minutesToTime(window.startMinutes) : undefined);
+    if (!window) {
+      toastError(t("conflict.noAvailability"));
+      return;
+    }
+    if (times) {
+      const startMin = timeToMinutes(times.startTime);
+      const endMin = timeToMinutes(times.endTime);
+      if (
+        startMin == null ||
+        endMin == null ||
+        startMin < window.startMinutes ||
+        endMin > window.endMinutes
+      ) {
+        toastError(t("conflict.unavailable"));
+        return;
+      }
+    }
+    const startTime = times?.startTime ?? minutesToTime(window.startMinutes);
     const endTime =
-      times?.endTime ??
-      (window ? minutesToTime(Math.min(window.startMinutes + 60, window.endMinutes)) : undefined);
-    setCreatePrefill(startTime && endTime ? { dateKey: toDateKey(day), startTime, endTime } : { dateKey: toDateKey(day) });
+      times?.endTime ?? minutesToTime(Math.min(window.startMinutes + 60, window.endMinutes));
+    setCreatePrefill({ ...jobPrefill, startTime, endTime });
     setCreateOpen(true);
   }
 
@@ -507,12 +628,15 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
     endAt: string;
     ignoreScheduleId?: number;
   }): string | null {
-    const tech = catalog?.technicians.find((row) => row.id === input.workerId);
+    const tech = catalog?.technicians.find(
+      (row) => row.id === input.workerId || row.profileId === input.workerId,
+    );
     const start = new Date(input.startAt);
     const end = new Date(input.endAt);
     if (!(start < end)) return t("conflict.invalidRange");
 
-    if (tech && hasAvailabilityData(tech.availableDays)) {
+    if (tech) {
+      if (!hasAvailabilityData(tech.availableDays)) return t("conflict.noAvailability");
       const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
       const last = new Date(end.getFullYear(), end.getMonth(), end.getDate());
       while (cursor <= last) {
@@ -531,7 +655,9 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
 
     const booked = schedules.some(
       (row) =>
-        row.worker_id === input.workerId &&
+        (tech
+          ? scheduleWorkerIds(row).some((id) => technicianMatchesWorkerId(tech, id))
+          : scheduleWorkerIds(row).includes(input.workerId)) &&
         row.id !== input.ignoreScheduleId &&
         isoOverlaps(input.startAt, input.endAt, row.start_at, row.end_at),
     );
@@ -539,7 +665,8 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
 
     const off = timeOffs.some(
       (row) =>
-        row.worker_id === input.workerId && isoOverlaps(input.startAt, input.endAt, row.start_at, row.end_at),
+        (tech ? technicianMatchesWorkerId(tech, row.worker_id) : row.worker_id === input.workerId) &&
+        isoOverlaps(input.startAt, input.endAt, row.start_at, row.end_at),
     );
     if (off) return t("conflict.timeOff");
     return null;
@@ -547,11 +674,35 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
 
   function openTimeOffForDay(tech: SchedulingTechnician, day: Date, times?: { startTime: string; endTime: string }) {
     const window = getDayAvailabilityWindow(tech.availableDays, day);
+    if (!window) {
+      toastError(t("conflict.noAvailability"));
+      return;
+    }
+    if (times) {
+      const startMin = timeToMinutes(times.startTime);
+      const endMin = timeToMinutes(times.endTime);
+      if (
+        startMin == null ||
+        endMin == null ||
+        startMin < window.startMinutes ||
+        endMin > window.endMinutes
+      ) {
+        toastError(t("conflict.unavailable"));
+        return;
+      }
+      const startAt = combineDateAndTimeToIso(toDateKey(day), times.startTime, false);
+      const endAt = combineDateAndTimeEndToIso(toDateKey(day), times.endTime, false);
+      const conflict = getBookingConflict({ workerId: tech.id, startAt, endAt });
+      if (conflict) {
+        toastError(conflict);
+        return;
+      }
+    }
     setCreateTech(toCreateTech(tech));
     setTimeOffPrefill({
       dateKey: toDateKey(day),
-      startTime: times?.startTime ?? (window ? minutesToTime(window.startMinutes) : "09:00"),
-      endTime: times?.endTime ?? (window ? minutesToTime(window.endMinutes) : "17:00"),
+      startTime: times?.startTime ?? minutesToTime(window.startMinutes),
+      endTime: times?.endTime ?? minutesToTime(window.endMinutes),
     });
     setTimeOffOpen(true);
   }
@@ -652,54 +803,67 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
 
   const peopleHeader = (
     <SchedulingPeopleHeader
-      groupOptions={groupOptions}
-      groupValue={groupFilter}
       search={techSearch}
       focusedWorker={focusedWorker}
       prominent={false}
       onBack={!fixedWorkerId && focusedWorker ? () => setWorkerFilter("") : undefined}
-      onGroupChange={setGroupFilter}
       onSearchChange={setTechSearch}
     />
   );
 
   const filterFields = (
     <>
+      {jobScopedId ? null : (
+        <>
+          <CheckmarkSelect
+            listLabel={t("allClients")}
+            buttonAriaLabel={t("allClients")}
+            options={clientOptions}
+            value={clientFilter}
+            searchable
+            portaled
+            clearable
+            className="min-w-[9.5rem] shrink-0"
+            size="sm"
+            onChange={setClientFilter}
+          />
+          <CheckmarkSelect
+            listLabel={t("allProjects")}
+            buttonAriaLabel={t("allProjects")}
+            options={projectOptions}
+            value={projectFilter}
+            searchable
+            portaled
+            clearable
+            className="min-w-[9.5rem] shrink-0"
+            size="sm"
+            onChange={setProjectFilter}
+          />
+          <CheckmarkSelect
+            listLabel={t("allJobs")}
+            buttonAriaLabel={t("allJobs")}
+            options={jobOptions}
+            value={jobFilter}
+            searchable
+            portaled
+            clearable
+            className="min-w-[9.5rem] shrink-0"
+            size="sm"
+            onChange={setJobFilter}
+          />
+        </>
+      )}
       <CheckmarkSelect
-        listLabel={t("allClients")}
-        buttonAriaLabel={t("allClients")}
-        options={clientOptions}
-        value={clientFilter}
+        listLabel={t("allUserGroups")}
+        buttonAriaLabel={t("allUserGroups")}
+        options={groupOptions}
+        value={groupFilter}
         searchable
         portaled
         clearable
         className="min-w-[9.5rem] shrink-0"
         size="sm"
-        onChange={setClientFilter}
-      />
-      <CheckmarkSelect
-        listLabel={t("allProjects")}
-        buttonAriaLabel={t("allProjects")}
-        options={projectOptions}
-        value={projectFilter}
-        searchable
-        portaled
-        clearable
-        className="min-w-[9.5rem] shrink-0"
-        size="sm"
-        onChange={setProjectFilter}
-      />
-      <CheckmarkSelect
-        listLabel={t("allJobs")}
-        buttonAriaLabel={t("allJobs")}
-        options={jobOptions}
-        value={jobFilter}
-        searchable
-        portaled
-        clearable
-        className="min-w-[9.5rem] shrink-0"
-        size="sm"
-        onChange={setJobFilter}
+        onChange={setGroupFilter}
       />
       {hasActiveFilters ? (
         <AppButton type="button" variant="secondary" size="sm" className="shrink-0" onClick={clearFilters}>
@@ -821,6 +985,11 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       {syncUrl ? null : toolbarRow}
+      {jobIsScheduled ? (
+        <p className="shrink-0 border-b border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-medium text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+          {t("jobScheduledOnlyWorker")}
+        </p>
+      ) : null}
 
       {focusedWorker || (singleWorker && viewMode !== "month") ? (
         <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 px-1 py-1 dark:border-slate-800 sm:px-2">
@@ -875,7 +1044,7 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
                       getDayAvailabilityWindow(tech.availableDays, day),
                       hasAvailabilityData(tech.availableDays),
                       occupiedRangesForDay(
-                        (timeOffsByDay.get(key) ?? []).filter((row) => row.worker_id === tech.id),
+                        rowsForTechnician(timeOffsByDay.get(key) ?? [], tech),
                         key,
                       ),
                     ),
@@ -917,16 +1086,20 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
               <SchedulingWeekCalendar
                 days={[days[0]]}
                 technician={focusedWorker}
-                schedules={schedules}
+                schedules={visibleSchedules}
                 timeOffs={timeOffs}
                 dragMode={dragMode}
+                allowCreate={allowCreate}
                 hideDayHeaders
                 fillHeight
-                onCreate={(day, startTime, endTime) =>
-                  dragMode === "timeoff"
-                    ? openTimeOffForDay(focusedWorker, day, { startTime, endTime })
-                    : openCreateSchedule(focusedWorker, day, { startTime, endTime })
-                }
+                onCreate={(day, startTime, endTime) => {
+                  if (dragMode === "timeoff") {
+                    openTimeOffForDay(focusedWorker, day, { startTime, endTime });
+                    return;
+                  }
+                  if (!allowCreate) return;
+                  openCreateSchedule(focusedWorker, day, { startTime, endTime });
+                }}
                 onScheduleClick={openJobDetail}
                 onRemoveSchedule={setDeleteTarget}
                 onRemoveTimeOff={setDeleteTimeOff}
@@ -935,13 +1108,14 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
               <SchedulingDayTimeline
                 day={days[0]}
                 technicians={filteredTechs}
-                schedules={schedules}
+                schedules={visibleSchedules}
                 timeOffs={timeOffs}
                 peopleHeader={peopleHeader}
                 dragMode={dragMode}
+                allowCreate={allowCreate}
                 onClearPeopleFilters={hasPeopleFilters ? clearPeopleFilters : undefined}
                 onCreateSchedule={openCreateSchedule}
-                onRangeSelect={onTimelineRangeSelect}
+                onRangeSelect={allowCreate ? onTimelineRangeSelect : undefined}
                 onScheduleClick={openJobDetail}
                 onRemoveSchedule={setDeleteTarget}
                 onRemoveTimeOff={setDeleteTimeOff}
@@ -967,8 +1141,7 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
             technicians={filteredTechs}
             loading={false}
             singleWorker={singleWorker}
-            onDayClick={setAgendaDay}
-            onCreateSchedule={openCreateSchedule}
+            onCreateSchedule={allowCreate ? openCreateSchedule : undefined}
           />
         )
       ) : loading ? (
@@ -984,15 +1157,19 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
           <SchedulingWeekCalendar
             days={days}
             technician={focusedWorker}
-            schedules={schedules}
+            schedules={visibleSchedules}
             timeOffs={timeOffs}
             dragMode={dragMode}
+            allowCreate={allowCreate}
             onDayHeaderClick={setAgendaDay}
-            onCreate={(day, startTime, endTime) =>
-              dragMode === "timeoff"
-                ? openTimeOffForDay(focusedWorker, day, { startTime, endTime })
-                : openCreateSchedule(focusedWorker, day, { startTime, endTime })
-            }
+            onCreate={(day, startTime, endTime) => {
+              if (dragMode === "timeoff") {
+                openTimeOffForDay(focusedWorker, day, { startTime, endTime });
+                return;
+              }
+              if (!allowCreate) return;
+              openCreateSchedule(focusedWorker, day, { startTime, endTime });
+            }}
             onScheduleClick={openJobDetail}
             onRemoveSchedule={setDeleteTarget}
             onRemoveTimeOff={setDeleteTimeOff}
@@ -1017,7 +1194,7 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
                       getDayAvailabilityWindow(tech.availableDays, day),
                       hasAvailabilityData(tech.availableDays),
                       occupiedRangesForDay(
-                        (timeOffsByDay.get(dayKey) ?? []).filter((row) => row.worker_id === tech.id),
+                        rowsForTechnician(timeOffsByDay.get(dayKey) ?? [], tech),
                         dayKey,
                       ),
                     ),
@@ -1027,25 +1204,22 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
                   <button
                     type="button"
                     key={dayKey}
-                    className="flex min-w-0 flex-col overflow-hidden border-r border-slate-200 text-center last:border-r-0 dark:border-slate-800"
+                    className="relative flex h-[4.25rem] min-w-0 flex-col items-center justify-center border-r border-slate-200 px-1 text-center last:border-r-0 dark:border-slate-800"
                     onClick={() => setAgendaDay(day)}
                   >
-                    <span className={cn("block h-1.5 w-full shrink-0", availabilityHeaderBarClass(tone))} />
+                    <span className={cn("absolute inset-x-0 top-0 h-1", availabilityHeaderBarClass(tone))} />
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      {formatWeekdayShort(day, locale)}
+                    </span>
                     <span
                       className={cn(
-                        "px-2 py-2 sm:px-3",
-                        availabilityToneClass(tone) || (isToday ? "bg-slate-50 dark:bg-slate-900/60" : ""),
+                        "mt-0.5 inline-flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-sm font-semibold",
+                        isToday
+                          ? "bg-sky-600 text-white"
+                          : "text-slate-800 dark:text-slate-100",
                       )}
                     >
-                      {isToday ? (
-                        <span className="mx-auto mb-1 block h-1 w-10 rounded-full bg-slate-900 dark:bg-slate-100" />
-                      ) : null}
-                      <span className="block text-[11px] font-bold uppercase tracking-wide">
-                        {formatWeekdayShort(day, locale)}
-                      </span>
-                      <span className="block text-sm font-semibold">
-                        {formatMonthDay(day, locale)}
-                      </span>
+                      {day.getDate()}
                     </span>
                   </button>
                 );
@@ -1085,22 +1259,24 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
 
                 {days.map((day) => {
                   const dayKey = toDateKey(day);
-                  const cellSchedules = schedulesByWorkerDay.get(`${tech.id}:${dayKey}`) ?? [];
-                  const cellTimeOffs = timeOffsByWorkerDay.get(`${tech.id}:${dayKey}`) ?? [];
+                  const cellSchedules = workerDayRows(schedulesByWorkerDay, tech, dayKey);
+                  const cellTimeOffs = workerDayRows(timeOffsByWorkerDay, tech, dayKey);
                   return (
                     <div
                       key={`${tech.id}-${dayKey}`}
-                      className="min-h-[6rem] border-r border-slate-100 p-1 last:border-r-0 dark:border-slate-800/60"
+                      className="min-h-[4.5rem] border-r border-slate-100 p-1 last:border-r-0 dark:border-slate-800/60"
                     >
                       <SchedulingWeekDayStrip
                         tech={tech}
                         day={day}
                         schedules={cellSchedules}
                         timeOffs={cellTimeOffs}
-                        onCreate={(startTime, endTime) =>
+                        onCreate={
                           dragMode === "timeoff"
-                            ? openTimeOffForDay(tech, day, { startTime, endTime })
-                            : openCreateSchedule(tech, day, { startTime, endTime })
+                            ? (startTime, endTime) => openTimeOffForDay(tech, day, { startTime, endTime })
+                            : allowCreate
+                              ? (startTime, endTime) => openCreateSchedule(tech, day, { startTime, endTime })
+                              : undefined
                         }
                         onScheduleClick={openJobDetail}
                         onRemoveSchedule={setDeleteTarget}
@@ -1134,6 +1310,7 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
         userGroups={catalog?.userGroups ?? []}
         groupOptions={groupOptions}
         canCreate={
+          allowCreate &&
           agendaDay != null &&
           (singleWorker
             ? hasFreeBookableSlot(
@@ -1150,11 +1327,11 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
                   hasAvailabilityData(tech.availableDays),
                   [
                     ...occupiedRangesForDay(
-                      (schedulesByDay.get(toDateKey(agendaDay)) ?? []).filter((row) => row.worker_id === tech.id),
+                      rowsForTechnician(schedulesByDay.get(toDateKey(agendaDay)) ?? [], tech),
                       toDateKey(agendaDay),
                     ),
                     ...occupiedRangesForDay(
-                      (timeOffsByDay.get(toDateKey(agendaDay)) ?? []).filter((row) => row.worker_id === tech.id),
+                      rowsForTechnician(timeOffsByDay.get(toDateKey(agendaDay)) ?? [], tech),
                       toDateKey(agendaDay),
                     ),
                   ],
@@ -1184,6 +1361,7 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
         open={timeOffOpen}
         technician={createTech}
         prefill={timeOffPrefill}
+        getBookingConflict={getBookingConflict}
         onClose={() => setTimeOffOpen(false)}
         onSaved={onScheduleCreated}
       />
@@ -1192,7 +1370,7 @@ export function SchedulingPanel({ fixedWorkerId, defaultJobId, syncUrl = true }:
         open={deleteTarget != null}
         title={t("detail.deleteConfirmTitle")}
         body={t("detail.deleteConfirmBody")}
-        highlight={deleteTarget ? `${deleteTarget.worker_name} · ${deleteTarget.job_title}` : undefined}
+        highlight={deleteTarget ? `${deleteTarget.worker_name} · ${scheduleJobLabel(deleteTarget)}` : undefined}
         confirmLabel={t("detail.delete")}
         cancelLabel={t("modal.cancel")}
         isBusy={deleting}

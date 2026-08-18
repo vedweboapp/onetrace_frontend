@@ -4,6 +4,7 @@ export type Schedule = {
   id: number;
   job_id: number;
   worker_id: number;
+  worker_ids: number[];
   client_id: number;
   client_name: string;
   job_title: string;
@@ -11,24 +12,22 @@ export type Schedule = {
   worker_name: string;
   worker_title: string;
   project_id: number | null;
+  project_name: string | null;
   start_at: string;
   end_at: string;
   notes: string | null;
   recurrence: ScheduleRecurrence;
   recurrence_end_at: string | null;
   all_day: boolean;
+  status: string;
   created_at: string;
 };
 
 export type CreateSchedulePayload = {
   job_id: number;
   worker_id: number;
+  worker_ids: number[];
   client_id: number;
-  client_name: string;
-  job_title: string;
-  job_serial: string | null;
-  worker_name: string;
-  worker_title: string;
   project_id?: number | null;
   start_at: string;
   end_at: string;
@@ -61,14 +60,14 @@ export type WorkerTimeOff = {
 };
 
 export type CreateWorkerTimeOffPayload = {
-  worker_id: number;
-  worker_name: string;
+  worker: number;
   start_at: string;
   end_at: string;
   reason: string;
 };
 
 export type WorkerTimeOffListFilters = {
+  worker?: number;
   worker_id?: number;
   from?: string;
   to?: string;
