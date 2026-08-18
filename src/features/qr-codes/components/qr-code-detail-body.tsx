@@ -34,17 +34,15 @@ export function QrCodeDetailBody({ detail, dateFmt }: Props) {
       <div className={detailPageStackClassName}>
         <DetailPanelCard title={t("detail.sectionQr")}>
           <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
-            {detail.qr_image ? (
-              <a href={detail.public_url || detail.qr_image} target="_blank" rel="noopener noreferrer">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={detail.qr_image}
-                  alt={detail.qr_code_id}
-                  className="size-48 shrink-0 rounded-lg border border-slate-200 bg-white object-contain p-2 dark:border-slate-700 dark:bg-slate-950"
-                />
-              </a>
-            ) : detail.public_url ? (
+            {detail.public_url ? (
               <QrCodeImage value={detail.public_url} size={192} />
+            ) : detail.qr_image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={detail.qr_image}
+                alt={detail.qr_code_id}
+                className="size-48 shrink-0 rounded-lg border border-slate-200 bg-white object-contain p-2 dark:border-slate-700 dark:bg-slate-950"
+              />
             ) : null}
             <div className="min-w-0 space-y-1">
               <p className="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">{detail.qr_code_id}</p>
@@ -52,16 +50,6 @@ export function QrCodeDetailBody({ detail, dateFmt }: Props) {
                 active={assigned}
                 label={assigned ? t("status.assigned") : t("status.notAssigned")}
               />
-              {detail.public_url ? (
-                <a
-                  href={detail.public_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1 block truncate text-xs text-sky-600 hover:underline dark:text-sky-400"
-                >
-                  {detail.public_url}
-                </a>
-              ) : null}
             </div>
           </div>
         </DetailPanelCard>
