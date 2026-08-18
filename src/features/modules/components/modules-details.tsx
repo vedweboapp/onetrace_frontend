@@ -131,7 +131,7 @@ const ModulesDetails = () => {
                     ariaLabel={t("searchAria")}
                     className="max-w-[280px]"
                 />
-                <AddButton size="sm" onClick={() => route.push(createModuleHref)}>
+                <AddButton onClick={() => route.push(createModuleHref)}>
                     {t("add")}
                 </AddButton>
             </div>

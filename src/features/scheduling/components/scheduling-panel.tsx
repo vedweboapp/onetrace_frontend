@@ -1141,6 +1141,7 @@ export function SchedulingPanel({
             technicians={filteredTechs}
             loading={false}
             singleWorker={singleWorker}
+            onDayClick={(day) => setAnchorDate(day)}
             onCreateSchedule={allowCreate ? openCreateSchedule : undefined}
           />
         )
