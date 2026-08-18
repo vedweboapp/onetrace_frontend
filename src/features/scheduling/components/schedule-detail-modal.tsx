@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { deleteSchedule } from "@/features/scheduling/api/schedule.api";
 import type { Schedule } from "@/features/scheduling/types/schedule.types";
+import { scheduleJobLabel } from "@/features/scheduling/utils/schedule-map.util";
 import { formatDurationHours } from "@/features/scheduling/utils/scheduling-time.util";
 import {
   apiDateToKey,
@@ -82,9 +83,7 @@ export function ScheduleDetailModal({ schedule, open, onClose, onDeleted, onEdit
     }
   }
 
-  const jobLabel = schedule.job_serial
-    ? `${schedule.job_serial}, ${schedule.job_title}`
-    : schedule.job_title;
+  const jobLabel = scheduleJobLabel(schedule);
 
   return (
     <>

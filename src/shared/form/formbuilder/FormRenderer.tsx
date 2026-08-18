@@ -242,22 +242,33 @@ const getEditorType = (field: Field) =>
   (field as { editorType?: string }).editorType ??
   field.properties?.validation_rules?.editor_type;
 
-const getSectionRuleTarget = (section: Section, index: number) =>
-  `${SECTION_RULE_TARGET_PREFIX}${section.sequence ?? index + 1}`;
+const getSectionRuleTarget = (section: Section, index: number) => {
+  const persistedSectionId =
+    section.id != null && section.id !== "" && !String(section.id).startsWith("section-")
+      ? String(section.id)
+      : section._uid || String(section.sequence ?? index + 1);
 
-const buildRuleTargetGroups = (schema: Section[]): RuleTargetGroups => {
+  return `${SECTION_RULE_TARGET_PREFIX}${persistedSectionId}`;
+};
+
+const buildRuleTargetGroups = (
+  schema: Section[],
+): { targetGroups: RuleTargetGroups; fieldToSectionMap: Record<string, string> } => {
   const groups: RuleTargetGroups = {};
+  const fieldToSectionMap: Record<string, string> = {};
 
   schema.forEach((section, index) => {
     const canonicalTarget = getSectionRuleTarget(section, index);
+    const sequenceTarget = `${SECTION_RULE_TARGET_PREFIX}${section.sequence ?? index + 1}`;
     const activeFields = (section.fields || [])
       .filter((field) => !field.is_deleted && field.api_name);
-    const fieldTargets = activeFields.map((field) => field.api_name);
-    const expandedTargets = [canonicalTarget, ...fieldTargets];
 
-    // --- Section-level aliases → expand to section + all its fields ---
+    // Section targets must resolve to the section itself, NOT all child fields.
+    // Child fields maintain their own rule state, while section visibility/disability cascades via mergeRuleStates.
+    const canonicalSectionList = [canonicalTarget];
     const sectionAliases = [
       canonicalTarget,
+      sequenceTarget,
       section.s_id != null ? `${SECTION_RULE_TARGET_PREFIX}${section.s_id}` : "",
       section.s_id != null ? String(section.s_id) : "",
       section.id != null ? `${SECTION_RULE_TARGET_PREFIX}${section.id}` : "",
@@ -269,45 +280,57 @@ const buildRuleTargetGroups = (schema: Section[]): RuleTargetGroups => {
     ].filter(Boolean);
 
     sectionAliases.forEach((alias) => {
-      // Section targets expand to include all fields in the section + section itself
-      // This allows "show section" to affect all fields within it
-      groups[alias] = [...fieldTargets, canonicalTarget];
+      groups[alias] = canonicalSectionList;
     });
 
-    // --- Field-level aliases → resolve to individual api_name ---
-    // api_name is now guaranteed to be unique via auto-numbering system
-    // Fields with same original name get numbered: name, name_1, name_2, etc.
+    // Field-level aliases → resolve to individual api_name
     activeFields.forEach((field) => {
       const fieldSelf = [field.api_name];
       
-      // Register api_name as primary (guaranteed unique)
+      // Register api_name as primary
       groups[field.api_name] = fieldSelf;
+      fieldToSectionMap[field.api_name] = canonicalTarget;
       
-      // Also register __field__: prefix variant for compatibility
+      // Register __field__: prefix variant
       if (field.api_name) {
-        groups[`${FIELD_RULE_TARGET_PREFIX}${field.api_name}`] = fieldSelf;
+        const prefixed = `${FIELD_RULE_TARGET_PREFIX}${field.api_name}`;
+        groups[prefixed] = fieldSelf;
+        fieldToSectionMap[prefixed] = canonicalTarget;
       }
       
-      // Register ID-based variants (used by getFieldRuleTarget in FormBuilder)
-      // Rules created in the form builder use __field__:{id or _uid}
-      if (field.id) {
-        groups[`${FIELD_RULE_TARGET_PREFIX}${field.id}`] = fieldSelf;
-        groups[String(field.id)] = fieldSelf;
+      // Register ID-based variants
+      if (field.id != null && field.id !== "") {
+        const idStr = String(field.id);
+        groups[`${FIELD_RULE_TARGET_PREFIX}${idStr}`] = fieldSelf;
+        groups[idStr] = fieldSelf;
+        fieldToSectionMap[`${FIELD_RULE_TARGET_PREFIX}${idStr}`] = canonicalTarget;
+        fieldToSectionMap[idStr] = canonicalTarget;
+      }
+      if (field.f_id != null && field.f_id !== "") {
+        const fIdStr = String(field.f_id);
+        groups[`${FIELD_RULE_TARGET_PREFIX}${fIdStr}`] = fieldSelf;
+        groups[fIdStr] = fieldSelf;
+        fieldToSectionMap[`${FIELD_RULE_TARGET_PREFIX}${fIdStr}`] = canonicalTarget;
+        fieldToSectionMap[fIdStr] = canonicalTarget;
       }
       if (field._uid) {
-        groups[`${FIELD_RULE_TARGET_PREFIX}${field._uid}`] = fieldSelf;
-        groups[field._uid] = fieldSelf;
+        const uidStr = String(field._uid);
+        groups[`${FIELD_RULE_TARGET_PREFIX}${uidStr}`] = fieldSelf;
+        groups[uidStr] = fieldSelf;
+        fieldToSectionMap[`${FIELD_RULE_TARGET_PREFIX}${uidStr}`] = canonicalTarget;
+        fieldToSectionMap[uidStr] = canonicalTarget;
       }
-      
-      // Register u_id variants if present (for backward compatibility)
       if (field.u_id) {
-        groups[`${FIELD_RULE_TARGET_PREFIX}${field.u_id}`] = fieldSelf;
-        groups[field.u_id] = fieldSelf;
+        const uIdStr = String(field.u_id);
+        groups[`${FIELD_RULE_TARGET_PREFIX}${uIdStr}`] = fieldSelf;
+        groups[uIdStr] = fieldSelf;
+        fieldToSectionMap[`${FIELD_RULE_TARGET_PREFIX}${uIdStr}`] = canonicalTarget;
+        fieldToSectionMap[uIdStr] = canonicalTarget;
       }
     });
   });
 
-  return groups;
+  return { targetGroups: groups, fieldToSectionMap };
 };
 
 const mergeRuleStates = (
@@ -320,38 +343,6 @@ const mergeRuleStates = (
     required: Boolean(fieldState?.required || sectionState?.required),
     disabled: Boolean(fieldState?.disabled || sectionState?.disabled),
   };
-};
-
-/**
- * Post-process rule states to ensure section visibility hierarchy:
- * If any field in a section is visible, the section should also be visible.
- * This allows ELSE blocks to show individual fields without explicitly showing the section.
- */
-const ensureVisibleFieldsHaveSections = (
-  schema: Section[],
-  ruleState: Map<string, FieldRuleState>,
-): Map<string, FieldRuleState> => {
-  const result = new Map(ruleState);
-
-  schema.forEach((section, index) => {
-    const sectionTarget = getSectionRuleTarget(section, index);
-    const activeFields = (section.fields || []).filter((f) => !f.is_deleted && f.api_name);
-
-    // If any field in this section is visible, ensure section is also visible
-    const hasVisibleField = activeFields.some((f) => {
-      const fieldState = result.get(f.api_name);
-      // Consider visible if not explicitly set to false
-      return fieldState?.visible !== false;
-    });
-
-    if (hasVisibleField) {
-      const sectionState = result.get(sectionTarget) || { visible: true, required: false, disabled: false };
-      sectionState.visible = true;
-      result.set(sectionTarget, sectionState);
-    }
-  });
-
-  return result;
 };
 
 const buildRichTextValidations = (validations: Record<string, any>, field: Field) => {
@@ -760,16 +751,71 @@ function dataUrlToFile(val: unknown, fieldApiName: string): File | unknown {
   return signatureDataUrlToFileSync(val, `${fieldApiName}`) ?? val;
 }
 
-const sanitizeOutput = (data: any, schema: Section[]) => {
+function getEmptyValueForField(field: Field): any {
+  const normType = getNormalizedType(field.field_type);
+  if (normType === "checkbox") {
+    return false;
+  }
+  if (normType === "multi_image_upload" || ["multi_select", "user"].includes(normType)) {
+    return [];
+  }
+  if (FILE_FIELD_TYPES.has(normType) || normType === "image_upload" || normType === "video_recorder") {
+    return null;
+  }
+  if (normType === "currency") {
+    return buildCurrencyFieldDefault(field);
+  }
+  return "";
+}
+
+function isFieldValueNotEmpty(val: any, normType: string): boolean {
+  if (val === undefined || val === null) return false;
+  if (normType === "checkbox") {
+    return val === true || val === "true" || val === 1 || val === "1";
+  }
+  if (normType === "currency") {
+    if (typeof val === "object" && val !== null) {
+      return !!val.amount && String(val.amount).trim() !== "";
+    }
+    return val !== "" && val !== "0";
+  }
+  if (Array.isArray(val)) {
+    return val.length > 0;
+  }
+  if (typeof val === "string") {
+    return val !== "";
+  }
+  if (typeof val === "number") {
+    return !isNaN(val);
+  }
+  if (typeof val === "object") {
+    return Object.keys(val).length > 0;
+  }
+  return true;
+}
+
+const sanitizeOutput = (
+  data: any,
+  schema: Section[],
+  fieldRuleState?: Map<string, FieldRuleState>,
+) => {
   if (!Array.isArray(schema)) return data;
   const sanitized = { ...data };
 
-  schema.forEach((section) => {
+  schema.forEach((section, sIdx) => {
     if (!section) return;
 
+    const sectionRuleState = fieldRuleState?.get(getSectionRuleTarget(section, sIdx));
+    const isSectionHidden = sectionRuleState?.visible === false;
+
     if (section.is_subform) {
-      const sfKey = section.subform_field_name || section.name;
+      const sfKey = section.subform_field_name || section.name || `subform_${sIdx}`;
       if (!sfKey) return;
+
+      if (isSectionHidden) {
+        delete sanitized[sfKey];
+        return;
+      }
 
       const rawRows = data[sfKey] || [];
       const transformedRows = rawRows
@@ -801,6 +847,14 @@ const sanitizeOutput = (data: any, schema: Section[]) => {
       sanitized[sfKey] = transformedRows;
     } else {
       section?.fields?.forEach((field) => {
+        if (!field.api_name) return;
+
+        const merged = mergeRuleStates(fieldRuleState?.get(field.api_name), sectionRuleState);
+        if (merged?.visible === false) {
+          delete sanitized[field.api_name];
+          return;
+        }
+
         const val = data[field.api_name];
         if (val === undefined || val === null || val === "") return;
         const normType = getNormalizedType(field.field_type);
@@ -1015,10 +1069,10 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
     }, [autoPopulateData, schema, reset, defaultValues]);
 
     const formValues = watch();
-    
-    const ruleTargetGroups = React.useMemo(() => {
+
+    const { targetGroups: ruleTargetGroups, fieldToSectionMap } = React.useMemo(() => {
       if (!Array.isArray(schema) || schema.length === 0) {
-        return {};
+        return { targetGroups: {}, fieldToSectionMap: {} };
       }
       return buildRuleTargetGroups(schema);
     }, [schema]);
@@ -1027,19 +1081,54 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
       if (!rules || rules.length === 0) {
         return new Map<string, FieldRuleState>();
       }
-      const baseState = buildFieldRuleState(rules, formValues, ruleTargetGroups);
-      // Post-process: ensure sections are visible when their fields are visible
-      return ensureVisibleFieldsHaveSections(schema, baseState);
-    }, [rules, formValues, ruleTargetGroups, schema]);
+      return buildFieldRuleState(rules, formValues, ruleTargetGroups, fieldToSectionMap);
+    }, [rules, formValues, ruleTargetGroups, fieldToSectionMap]);
+
+    // Automatically clear data for any fields or subforms that become hidden by rules
+    useEffect(() => {
+      if (!fieldRuleState || fieldRuleState.size === 0 || !Array.isArray(schema)) return;
+
+      schema.forEach((section, sIdx) => {
+        const sectionRuleTarget = getSectionRuleTarget(section, sIdx);
+        const sectionRuleState = fieldRuleState.get(sectionRuleTarget);
+        const isSectionHidden = sectionRuleState?.visible === false;
+
+        if (section.is_subform) {
+          const sfKey = section.subform_field_name || section.name || `subform_${sIdx}`;
+          if (isSectionHidden) {
+            const currentVal = getValues(sfKey);
+            if (Array.isArray(currentVal) && currentVal.length > 0) {
+              setValue(sfKey, [], { shouldDirty: true, shouldValidate: false });
+              onFieldChange?.(sfKey, []);
+            }
+          }
+          return;
+        }
+
+        section.fields?.forEach((f) => {
+          if (!f.api_name) return;
+          const merged = mergeRuleStates(fieldRuleState.get(f.api_name), sectionRuleState);
+          if (merged?.visible === false) {
+            const currentVal = getValues(f.api_name);
+            const normType = getNormalizedType(f.field_type);
+            if (isFieldValueNotEmpty(currentVal, normType)) {
+              const emptyVal = getEmptyValueForField(f);
+              setValue(f.api_name, emptyVal, { shouldDirty: true, shouldValidate: false });
+              onFieldChange?.(f.api_name, emptyVal);
+            }
+          }
+        });
+      });
+    }, [fieldRuleState, schema, setValue, getValues, onFieldChange]);
 
     const getError = (name: string) =>
       touchedFields?.[name] || isSubmitted ? (errors as any)[name] : undefined;
 
     useImperativeHandle(ref, () => ({
-      getFormData: () => sanitizeOutput(getValues(), schema),
+      getFormData: () => sanitizeOutput(getValues(), schema, fieldRuleState),
       getChangedData: () => {
-        const current = sanitizeOutput(getValues(), schema);
-        const initial = sanitizeOutput({ ...initialValuesRef.current }, schema);
+        const current = sanitizeOutput(getValues(), schema, fieldRuleState);
+        const initial = sanitizeOutput({ ...initialValuesRef.current }, schema, fieldRuleState);
         const changed: any = {};
         Object.keys(current).forEach((key) => {
           if (!deepEqual(current[key], initial[key])) {
@@ -1051,7 +1140,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
       reset: (v) => reset(v),
       submit: (onSuccess, onError) => {
         handleSubmit((data) => {
-          onSuccess(sanitizeOutput(data, schema));
+          onSuccess(sanitizeOutput(data, schema, fieldRuleState));
         }, onError)();
       },
       watch,

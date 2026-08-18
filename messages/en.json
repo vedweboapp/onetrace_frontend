@@ -1792,6 +1792,28 @@
         "editSubtitle": "Update profile details."
       }
     },
+    "modules": {
+      "title": "Modules",
+      "subtitle": "Create and manage custom modules for your organization.",
+      "add": "Create New Module",
+      "searchPlaceholder": "Search module...",
+      "searchAria": "Search module",
+      "loadError": "Could not load modules. Try again.",
+      "emptyTitle": "No modules found",
+      "emptyDescription": "Create a module to organize custom data in your workspace.",
+      "table": {
+        "displayName": "Displayed in tabs as",
+        "moduleName": "Module Name",
+        "createdBy": "Created By",
+        "lastModified": "Last Modified"
+      },
+      "pagination": {
+        "summary": "Showing {start}–{end} of {total}",
+        "prev": "Previous",
+        "next": "Next",
+        "rowsPerPage": "Rows per page"
+      }
+    },
     "clients": {
       "metaTitle": "Clients",
       "detailMetaTitle": "Client details",
@@ -3396,6 +3418,8 @@
       "conflict": {
         "booked": "That time is already scheduled.",
         "unavailable": "That time is outside the user’s available hours.",
+        "noAvailability": "This user has no available hours on that day.",
+        "jobAlreadyScheduled": "This job is already scheduled and can only be assigned to one worker.",
         "timeOff": "That time is marked as time off.",
         "invalidRange": "Choose an end time after the start time."
       },
@@ -3413,7 +3437,7 @@
         "assignToLine": "Assign to – {name}"
       },
       "loadError": "Could not load schedules. Try again.",
-      "noSchedules": "No schedules",
+      "jobScheduledOnlyWorker": "This job is already scheduled. Only the assigned worker is shown.",
       "modal": {
         "title": "Create Schedule",
         "rescheduleTitle": "Reschedule",

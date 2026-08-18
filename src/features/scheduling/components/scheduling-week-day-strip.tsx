@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { ScheduleCreateCellButton } from "@/features/scheduling/components/schedule-create-cell-button";
 import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
+import { scheduleJobLabel } from "@/features/scheduling/utils/schedule-map.util";
 import {
   buildDayTimeSegments,
   formatMinutesRange,
@@ -66,33 +67,32 @@ export function SchedulingWeekDayStrip({
 
   if (known && !window && segments.every((segment) => segment.kind === "unavailable")) {
     return (
-      <div className="flex h-full min-h-[8rem] w-full items-center justify-center rounded-md bg-slate-100 text-[10px] font-medium text-slate-400 dark:bg-slate-800/70">
+      <div className="flex h-full min-h-[4.5rem] w-full items-center justify-center rounded-md bg-slate-100 text-[10px] font-medium text-slate-400 dark:bg-slate-800/70">
         {t("offDuty")}
       </div>
     );
   }
 
   if (segments.length === 0) {
-    return (
-      <div className="group/cell relative flex h-full min-h-[8rem] w-full items-center justify-center rounded-md">
-        {onCreate ? (
-          <div className="opacity-0 transition group-hover/cell:opacity-100 max-sm:opacity-100">
-            <ScheduleCreateCellButton iconOnly className="size-6 sm:size-7" onClick={() => onCreate("09:00", "10:00")} />
-          </div>
-        ) : null}
-      </div>
-    );
+    return <div className="h-full min-h-[4.5rem] w-full rounded-md" />;
   }
 
+  const hasBlocks = schedules.length > 0 || timeOffs.length > 0;
+
   return (
-    <div className="flex h-full min-h-[10rem] flex-col overflow-hidden rounded-md">
+    <div
+      className={cn(
+        "flex h-full flex-col overflow-hidden rounded-md",
+        hasBlocks ? "min-h-[7.5rem]" : "min-h-[4.5rem]",
+      )}
+    >
       {segments.map((segment) => {
         const flexGrow = Math.max(15, segment.endMinutes - segment.startMinutes);
         const label = formatMinutesRange(segment.startMinutes, segment.endMinutes, locale);
         const minHeight =
           segment.kind === "scheduled" || segment.kind === "timeoff"
             ? 44
-            : Math.max(22, (flexGrow / Math.max(total, 1)) * 160);
+            : Math.max(12, (flexGrow / Math.max(total, 1)) * (hasBlocks ? 120 : 72));
         const start = minutesToTime(segment.startMinutes);
 
         if (segment.kind === "scheduled" && segment.schedule) {
@@ -103,7 +103,7 @@ export function SchedulingWeekDayStrip({
               style={{ flexGrow, flexBasis: 0, minHeight }}
             >
               <button type="button" className="block w-full truncate text-left" onClick={() => onScheduleClick(segment.schedule!)}>
-                <span className="block truncate pr-4 text-[10px] font-semibold leading-tight">{segment.schedule.job_title}</span>
+                <span className="block truncate pr-4 text-[10px] font-semibold leading-tight">{scheduleJobLabel(segment.schedule)}</span>
                 <span className="block truncate text-[9px] leading-tight opacity-80">{label}</span>
               </button>
               {onRemoveSchedule ? (
@@ -150,9 +150,13 @@ export function SchedulingWeekDayStrip({
           );
         }
 
-        const canAdd = (segment.kind === "available" || segment.kind === "free") && Boolean(onCreate);
+        const canAdd = segment.kind === "available" && Boolean(onCreate);
         const title =
-          segment.kind === "available" ? t("legendAvailable") : segment.kind === "unavailable" ? t("offDuty") : "";
+          segment.kind === "available"
+            ? `${t("legendAvailable")} · ${label}`
+            : segment.kind === "unavailable"
+              ? t("offDuty")
+              : undefined;
 
         return (
           <div
@@ -162,9 +166,8 @@ export function SchedulingWeekDayStrip({
               KIND_CLASS[segment.kind],
             )}
             style={{ flexGrow, flexBasis: 0, minHeight }}
-            title={title ? `${title} · ${label}` : label}
+            title={title}
           >
-            <span className="truncate text-[9px] font-medium leading-tight opacity-80">{label}</span>
             {canAdd ? (
               <div
                 className={cn(

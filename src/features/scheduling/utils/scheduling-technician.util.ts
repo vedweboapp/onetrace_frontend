@@ -5,7 +5,7 @@ import {
   resolveUserProfileSelectId,
   userProfileSelectLabel,
 } from "@/features/users/utils/load-users-by-role.util";
-import { isValidAvailabilityDay } from "@/features/scheduling/utils/scheduling-availability.util";
+import { parseUserAvailabilityRows } from "@/features/users/utils/user-availability.util";
 
 export type SchedulingTechnician = {
   id: number;
@@ -17,18 +17,60 @@ export type SchedulingTechnician = {
   availableDays: UserAvailabilityPayloadRow[];
 };
 
+type UserDetailWithAvailability = UserProfile["user_detail"] & {
+  available_days?: unknown;
+  availableDays?: unknown;
+};
+
 function resolveUserAvailableDays(user: UserProfile): UserAvailabilityPayloadRow[] {
-  const source = user.available_days ?? user.user_detail?.available_days ?? null;
-  if (!Array.isArray(source)) return [];
-  const rows: UserAvailabilityPayloadRow[] = [];
-  for (const row of source) {
-    if (!row || !isValidAvailabilityDay(row.day)) continue;
-    const start_time = String(row.start_time ?? "").slice(0, 5);
-    const end_time = String(row.end_time ?? "").slice(0, 5);
-    if (!start_time || !end_time) continue;
-    rows.push({ day: row.day, start_time, end_time });
+  const detail = user.user_detail as UserDetailWithAvailability | undefined;
+  return parseUserAvailabilityRows(
+    user.available_days ??
+      detail?.available_days ??
+      (user as UserProfile & { availableDays?: unknown }).availableDays ??
+      detail?.availableDays ??
+      null,
+  );
+}
+
+export function technicianMatchesWorkerId(
+  tech: Pick<SchedulingTechnician, "id" | "profileId">,
+  workerId: number,
+): boolean {
+  return workerId === tech.id || workerId === tech.profileId;
+}
+
+export function technicianWorkerIds(tech: Pick<SchedulingTechnician, "id" | "profileId">): number[] {
+  if (tech.profileId > 0 && tech.profileId !== tech.id) return [tech.id, tech.profileId];
+  return [tech.id];
+}
+
+export function rowsForTechnician<T extends { id: number; worker_id: number; worker_ids?: number[] }>(
+  rows: T[],
+  tech: Pick<SchedulingTechnician, "id" | "profileId">,
+): T[] {
+  return rows.filter((row) =>
+    (Array.isArray(row.worker_ids) && row.worker_ids.length > 0 ? row.worker_ids : [row.worker_id]).some((id) =>
+      technicianMatchesWorkerId(tech, id),
+    ),
+  );
+}
+
+export function workerDayRows<T extends { id: number }>(
+  map: Map<string, T[]>,
+  tech: Pick<SchedulingTechnician, "id" | "profileId">,
+  dayKey: string,
+): T[] {
+  const seen = new Set<number>();
+  const out: T[] = [];
+  for (const id of technicianWorkerIds(tech)) {
+    for (const row of map.get(`${id}:${dayKey}`) ?? []) {
+      if (seen.has(row.id)) continue;
+      seen.add(row.id);
+      out.push(row);
+    }
   }
-  return rows;
+  return out;
 }
 
 export function initialsFromName(name: string): string {
@@ -41,15 +83,22 @@ export function initialsFromName(name: string): string {
 async function enrichMissingAvailability(users: UserProfile[]): Promise<UserProfile[]> {
   const missing = users.filter((user) => resolveUserAvailableDays(user).length === 0);
   if (missing.length === 0) return users;
-  const details = await Promise.all(
-    missing.slice(0, 80).map((user) => fetchUserProfile(user.id).catch(() => null)),
-  );
+  const details: Array<UserProfile | null> = [];
+  const chunkSize = 25;
+  for (let i = 0; i < missing.length; i += chunkSize) {
+    const chunk = missing.slice(i, i + chunkSize);
+    const loaded = await Promise.all(chunk.map((user) => fetchUserProfile(user.id).catch(() => null)));
+    details.push(...loaded);
+  }
   const byId = new Map<number, UserProfile>();
   for (const detail of details) {
-    if (detail) byId.set(detail.id, detail);
+    if (!detail) continue;
+    byId.set(detail.id, detail);
+    const nestedId = detail.user_detail?.id;
+    if (typeof nestedId === "number" && nestedId > 0) byId.set(nestedId, detail);
   }
   if (byId.size === 0) return users;
-  return users.map((user) => byId.get(user.id) ?? user);
+  return users.map((user) => byId.get(user.id) ?? byId.get(user.user_detail?.id ?? -1) ?? user);
 }
 
 export async function loadSchedulingTechnicians(fallbackTitle: string): Promise<SchedulingTechnician[]> {

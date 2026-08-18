@@ -4,10 +4,13 @@ import * as React from "react";
 import { X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
-import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
+import {
+  rowsForTechnician,
+  type SchedulingTechnician,
+} from "@/features/scheduling/utils/scheduling-technician.util";
+import { scheduleJobLabel } from "@/features/scheduling/utils/schedule-map.util";
 import {
   availabilityHeaderBarClass,
-  availabilityToneClass,
   buildDayTimeSegments,
   dayTone,
   formatMinutesLabel,
@@ -40,6 +43,7 @@ type Props = {
   schedules: Schedule[];
   timeOffs: WorkerTimeOff[];
   dragMode?: "book" | "timeoff";
+  allowCreate?: boolean;
   hideDayHeaders?: boolean;
   fillHeight?: boolean;
   onDayHeaderClick?: (day: Date) => void;
@@ -70,6 +74,7 @@ export function SchedulingWeekCalendar({
   schedules,
   timeOffs,
   dragMode = "book",
+  allowCreate = true,
   hideDayHeaders = false,
   fillHeight = false,
   onDayHeaderClick,
@@ -98,9 +103,10 @@ export function SchedulingWeekCalendar({
       const dayKey = toDateKey(day);
       const window = getDayAvailabilityWindow(technician.availableDays, day);
       const known = hasAvailabilityData(technician.availableDays);
-      const daySchedules = schedules.filter((row) => row.worker_id === technician.id);
-      const dayTimeOffs = timeOffs.filter((row) => row.worker_id === technician.id);
-      const occupied = [...occupiedRangesForDay(daySchedules, dayKey), ...occupiedRangesForDay(dayTimeOffs, dayKey)];
+      const daySchedules = rowsForTechnician(schedules, technician);
+      const dayTimeOffs = rowsForTechnician(timeOffs, technician);
+      const timeOffOccupied = occupiedRangesForDay(dayTimeOffs, dayKey);
+      const occupied = [...occupiedRangesForDay(daySchedules, dayKey), ...timeOffOccupied];
       const segments = buildDayTimeSegments({
         dayKey,
         window,
@@ -110,7 +116,7 @@ export function SchedulingWeekCalendar({
         spanStartMinutes: START_HOUR * 60,
         spanEndMinutes: END_HOUR * 60,
       });
-      return { day, dayKey, window, known, segments, occupied };
+      return { day, dayKey, window, known, segments, occupied, timeOffOccupied };
     });
   }, [days, technician, schedules, timeOffs]);
 
@@ -123,9 +129,9 @@ export function SchedulingWeekCalendar({
 
   function canStartAt(model: (typeof dayModels)[number], minute: number) {
     if (dragMode === "timeoff") {
-      if (model.known && !model.window) return false;
-      return isRangeFree(minute, minute + 15, model.occupied);
+      return minuteIsBookable(minute, model.window, model.known, model.occupied);
     }
+    if (dragMode === "book" && !allowCreate) return false;
     return minuteIsBookable(minute, model.window, model.known, model.occupied);
   }
 
@@ -134,9 +140,7 @@ export function SchedulingWeekCalendar({
     const end = Math.max(startMin, endMin);
     if (end - start < 15) return false;
     if (!isRangeFree(start, end, model.occupied)) return false;
-    if (dragMode === "book") return isRangeWithinAvailability(start, end, model.window, model.known);
-    if (model.known && !model.window) return false;
-    return true;
+    return isRangeWithinAvailability(start, end, model.window, model.known);
   }
 
   const colTemplate = `${TIME_COL_PX}px repeat(${days.length}, minmax(0, 1fr))`;
@@ -172,32 +176,25 @@ export function SchedulingWeekCalendar({
             </div>
             {dayModels.map((model) => {
               const isToday = isSameLocalDay(model.day, new Date());
-              const tone = dayTone(model.window, model.known, model.occupied);
+              const tone = dayTone(model.window, model.known, model.timeOffOccupied);
               return (
                 <button
                   key={model.dayKey}
                   type="button"
-                  className="flex min-w-0 flex-col overflow-hidden border-r border-slate-200 text-center last:border-r-0 dark:border-slate-800"
+                  className="relative flex h-[4.25rem] min-w-0 flex-col items-center justify-center overflow-hidden border-r border-slate-200 last:border-r-0 dark:border-slate-800"
                   onClick={() => onDayHeaderClick?.(model.day)}
                 >
-                  <span className={cn("block h-1.5 w-full shrink-0", availabilityHeaderBarClass(tone))} />
+                  <span className={cn("absolute inset-x-0 top-0 h-1", availabilityHeaderBarClass(tone))} />
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    {formatWeekdayShort(model.day, locale)}
+                  </span>
                   <span
                     className={cn(
-                      "px-2 py-2",
-                      availabilityToneClass(tone) || (isToday ? "bg-sky-50 dark:bg-sky-950/30" : ""),
+                      "mt-0.5 inline-flex size-7 items-center justify-center rounded-full text-sm font-semibold",
+                      isToday ? "bg-sky-600 text-white" : "text-slate-800 dark:text-slate-100",
                     )}
                   >
-                    <span className="block text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                      {formatWeekdayShort(model.day, locale)}
-                    </span>
-                    <span
-                      className={cn(
-                        "mx-auto mt-1 inline-flex size-8 items-center justify-center rounded-full text-sm font-semibold",
-                        isToday ? "bg-sky-600 text-white" : "text-slate-800 dark:text-slate-100",
-                      )}
-                    >
-                      {model.day.getDate()}
-                    </span>
+                    {model.day.getDate()}
                   </span>
                 </button>
               );
@@ -267,15 +264,23 @@ export function SchedulingWeekCalendar({
                 }}
                 onPointerMove={(e) => {
                   if (!drag || drag.dayKey !== model.dayKey) return;
+                  let endMin = timeFromClientY(e.clientY, e.currentTarget);
+                  if ((dragMode === "book" || dragMode === "timeoff") && model.window) {
+                    endMin = Math.min(model.window.endMinutes, Math.max(model.window.startMinutes, endMin));
+                  }
                   setDrag({
                     ...drag,
-                    endMin: timeFromClientY(e.clientY, e.currentTarget),
+                    endMin,
                   });
                 }}
                 onPointerUp={(e) => {
                   if (!drag || drag.dayKey !== model.dayKey) return;
-                  const start = Math.min(drag.startMin, drag.endMin);
-                  const end = Math.max(drag.startMin, drag.endMin);
+                  let endMin = timeFromClientY(e.clientY, e.currentTarget);
+                  if ((dragMode === "book" || dragMode === "timeoff") && model.window) {
+                    endMin = Math.min(model.window.endMinutes, Math.max(model.window.startMinutes, endMin));
+                  }
+                  const start = Math.min(drag.startMin, endMin);
+                  const end = Math.max(drag.startMin, endMin);
                   const valid = rangeValid(model, start, end);
                   setDrag(null);
                   if (!valid) return;
@@ -353,7 +358,7 @@ export function SchedulingWeekCalendar({
                           onClick={() => onScheduleClick(segment.schedule!)}
                         >
                           <p className="truncate pr-4 text-[11px] font-semibold text-sky-950 dark:text-sky-100">
-                            {segment.schedule.job_title}
+                            {scheduleJobLabel(segment.schedule)}
                           </p>
                           <p className="truncate text-[10px] text-sky-800/80 dark:text-sky-200/80">
                             {formatMinutesLabel(segment.startMinutes, locale)} –{" "}

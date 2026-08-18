@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import { X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import type { Schedule } from "@/features/scheduling/types/schedule.types";
+import { scheduleJobLabel } from "@/features/scheduling/utils/schedule-map.util";
 import { formatTimeRange } from "@/features/scheduling/utils/scheduling-week.util";
 import { cn } from "@/core/utils/http.util";
 
@@ -41,7 +42,7 @@ export function ScheduleEventChip({
     >
       <button type="button" className="block w-full px-2 py-1.5 text-left" onClick={onOpen}>
         <p className="truncate pr-5 text-[11px] font-semibold text-sky-950 dark:text-sky-100">
-          {schedule.job_title}
+          {scheduleJobLabel(schedule)}
         </p>
         <p className="truncate text-[10px] text-sky-900/80 dark:text-sky-200/80">
           {schedule.all_day

@@ -5,14 +5,19 @@ import { useTranslations } from "next-intl";
 import { Building2, Briefcase } from "lucide-react";
 import { fetchJob } from "@/features/jobs/api/job.api";
 import type { Job } from "@/features/jobs/types/job.types";
-import { getJobAssignedWorkerId, getJobProjectId } from "@/features/jobs/utils/job-nested-fields.util";
-import { createSchedule, updateSchedule } from "@/features/scheduling/api/schedule.api";
+import {
+  getJobAssignedWorkerId,
+  getJobProjectId,
+  parseJobDurationMinutes,
+} from "@/features/jobs/utils/job-nested-fields.util";
+import { createSchedule, fetchSchedules, updateSchedule } from "@/features/scheduling/api/schedule.api";
 import {
   jobSelectLabel,
   loadUnassignedJobsForClient,
   useSchedulingCatalog,
 } from "@/features/scheduling/hooks/use-scheduling-catalog";
 import type { Schedule } from "@/features/scheduling/types/schedule.types";
+import { scheduleMatchesJob } from "@/features/scheduling/utils/schedule-map.util";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
 import {
   combineDateAndTimeEndToIso,
@@ -41,6 +46,8 @@ export type CreateSchedulePrefill = {
   dateKey?: string;
   startTime?: string;
   endTime?: string;
+  /** Lock client + job (job detail scheduling tab). */
+  lockJob?: boolean;
 };
 
 type Props = {
@@ -62,6 +69,29 @@ type Props = {
 function isUnassignedJob(job: Job): boolean {
   const id = getJobAssignedWorkerId(job);
   return id == null || id <= 0;
+}
+
+function addMinutesToDateTime(dateKey: string, timeValue: string, minutesToAdd: number): { date: string; time: string } | null {
+  if (!dateKey || !timeValue || !Number.isFinite(minutesToAdd)) return null;
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const [hours, minutes] = timeValue.split(":").map(Number);
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes)
+  ) {
+    return null;
+  }
+  const next = new Date(year, month - 1, day, hours, minutes + minutesToAdd, 0, 0);
+  const nextDate = [
+    String(next.getFullYear()).padStart(4, "0"),
+    String(next.getMonth() + 1).padStart(2, "0"),
+    String(next.getDate()).padStart(2, "0"),
+  ].join("-");
+  const nextTime = `${String(next.getHours()).padStart(2, "0")}:${String(next.getMinutes()).padStart(2, "0")}`;
+  return { date: nextDate, time: nextTime };
 }
 
 export function CreateScheduleModal({
@@ -93,7 +123,7 @@ export function CreateScheduleModal({
   const [allDay, setAllDay] = React.useState(false);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
 
-  const lockClientJob = Boolean(prefill?.clientId && prefill?.jobId) || isReschedule;
+  const lockClientJob = Boolean(prefill?.lockJob || (prefill?.clientId && prefill?.jobId)) || isReschedule;
   const includeJobId = existingSchedule?.job_id ?? prefill?.jobId;
 
   const clientOptions = React.useMemo(() => {
@@ -200,6 +230,21 @@ export function CreateScheduleModal({
     setJobId(nextJobId);
     const job = map[Number(nextJobId)];
     if (!job) return;
+    const durationMinutes = parseJobDurationMinutes(job.job_time);
+    const keepCalendarStart = Boolean(prefill?.dateKey || prefill?.startTime || startDate || startTime);
+    if (!allDay && durationMinutes && durationMinutes > 0 && keepCalendarStart) {
+      const baseDate = startDate || prefill?.dateKey || defaultDateKey;
+      const baseTime = startTime || prefill?.startTime || "09:00";
+      const next = addMinutesToDateTime(baseDate, baseTime, durationMinutes);
+      if (baseDate) setStartDate(baseDate);
+      if (baseTime) setStartTime(baseTime);
+      if (next) {
+        setEndDate(next.date);
+        setEndTime(next.time);
+        return;
+      }
+    }
+    if (prefill?.dateKey || prefill?.startTime) return;
     const start = splitApiDateTime(job.start_date);
     const end = splitApiDateTime(job.end_date || job.start_date);
     if (start.date) setStartDate(start.date);
@@ -241,23 +286,27 @@ export function CreateScheduleModal({
     if (!Number.isFinite(jobNum) || jobNum <= 0 || !Number.isFinite(clientNum)) return;
 
     const job = jobsById[jobNum];
-    const clientLabel =
-      clientOptions.find((o) => o.value === clientId)?.label ?? existingSchedule?.client_name ?? "";
 
     setSaving(true);
     try {
+      const alreadyBooked = (await fetchSchedules({ job_id: jobNum })).some(
+        (row) =>
+          row.id !== existingSchedule?.id &&
+          scheduleMatchesJob(row, jobNum, job?.job_serial_number),
+      );
+      if (alreadyBooked) {
+        setErrors((prev) => ({ ...prev, job: t("conflict.jobAlreadyScheduled") }));
+        return;
+      }
+
       const startIso = combineDateAndTimeToIso(startDate, startTime, allDay);
       const endIso = combineDateAndTimeEndToIso(endDate, endTime, allDay);
 
       const payload = {
         job_id: jobNum,
         worker_id: selectedWorker.id,
+        worker_ids: [selectedWorker.id],
         client_id: clientNum,
-        client_name: clientLabel,
-        job_title: job?.title?.trim() || existingSchedule?.job_title || `Job #${jobNum}`,
-        job_serial: job?.job_serial_number?.trim() || existingSchedule?.job_serial || null,
-        worker_name: selectedWorker.name,
-        worker_title: selectedWorker.title?.trim() || t("modal.technicianFallbackTitle"),
         project_id: (job ? getJobProjectId(job.project) : null) ?? existingSchedule?.project_id ?? null,
         start_at: startIso,
         end_at: endIso,

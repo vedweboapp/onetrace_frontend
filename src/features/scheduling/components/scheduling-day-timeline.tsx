@@ -8,9 +8,12 @@ import { ScheduleEventChip } from "@/features/scheduling/components/schedule-eve
 import { TimeOffChip } from "@/features/scheduling/components/time-off-chip";
 import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
+import { technicianWorkerIds } from "@/features/scheduling/utils/scheduling-technician.util";
+import { scheduleWorkerIds, timeOffWorkerIds } from "@/features/scheduling/utils/schedule-map.util";
 import {
   availabilityHeaderBarClass,
   availabilityToneClass,
+  buildDayTimeSegments,
   formatAvailabilityHours,
   getDayAvailabilityWindow,
   hasAvailabilityData,
@@ -78,6 +81,7 @@ type Props = {
   peopleHeader?: React.ReactNode;
   onClearPeopleFilters?: () => void;
   dragMode?: "book" | "timeoff";
+  allowCreate?: boolean;
   onCreateSchedule: (tech: SchedulingTechnician, day: Date) => void;
   onRangeSelect?: (range: TimelineRangeSelect) => void;
   onScheduleClick: (schedule: Schedule) => void;
@@ -95,6 +99,7 @@ export function SchedulingDayTimeline({
   peopleHeader,
   onClearPeopleFilters,
   dragMode = "book",
+  allowCreate = true,
   onCreateSchedule,
   onRangeSelect,
   onScheduleClick,
@@ -118,9 +123,11 @@ export function SchedulingDayTimeline({
       if (!startKey) continue;
       const end = endKey && endKey >= startKey ? endKey : startKey;
       if (dayKey < startKey || dayKey > end) continue;
-      const list = map.get(row.worker_id) ?? [];
-      list.push(row);
-      map.set(row.worker_id, list);
+      for (const workerId of scheduleWorkerIds(row)) {
+        const list = map.get(workerId) ?? [];
+        list.push(row);
+        map.set(workerId, list);
+      }
     }
     return map;
   }, [schedules, dayKey]);
@@ -133,17 +140,39 @@ export function SchedulingDayTimeline({
       if (!startKey) continue;
       const end = endKey && endKey >= startKey ? endKey : startKey;
       if (dayKey < startKey || dayKey > end) continue;
-      const list = map.get(row.worker_id) ?? [];
-      list.push(row);
-      map.set(row.worker_id, list);
+      for (const workerId of timeOffWorkerIds(row)) {
+        const list = map.get(workerId) ?? [];
+        list.push(row);
+        map.set(workerId, list);
+      }
     }
     return map;
   }, [timeOffs, dayKey]);
 
+  function rowsFromWorkerMap<T extends { id: number }>(
+    map: Map<number, T[]>,
+    tech: SchedulingTechnician,
+  ): T[] {
+    const seen = new Set<number>();
+    const out: T[] = [];
+    for (const id of technicianWorkerIds(tech)) {
+      for (const row of map.get(id) ?? []) {
+        if (seen.has(row.id)) continue;
+        seen.add(row.id);
+        out.push(row);
+      }
+    }
+    return out;
+  }
+
+  function scheduleOccupiedFor(tech: SchedulingTechnician): OccupiedRange[] {
+    return occupiedRangesForDay(rowsFromWorkerMap(schedulesByWorker, tech), dayKey);
+  }
+
   function occupiedFor(tech: SchedulingTechnician): OccupiedRange[] {
     return [
-      ...occupiedRangesForDay(schedulesByWorker.get(tech.id) ?? [], dayKey),
-      ...occupiedRangesForDay(timeOffByWorker.get(tech.id) ?? [], dayKey),
+      ...scheduleOccupiedFor(tech),
+      ...occupiedRangesForDay(rowsFromWorkerMap(timeOffByWorker, tech), dayKey),
     ];
   }
 
@@ -154,8 +183,7 @@ export function SchedulingDayTimeline({
     const window = getDayAvailabilityWindow(tech.availableDays, day);
     const known = hasAvailabilityData(tech.availableDays);
     const occupied = occupiedFor(tech);
-    if (dragMode === "book" && !isRangeWithinAvailability(start, end, window, known)) return false;
-    if (dragMode === "timeoff" && known && !window) return false;
+    if (!isRangeWithinAvailability(start, end, window, known)) return false;
     return isRangeFree(start, end, occupied);
   }
 
@@ -166,9 +194,17 @@ export function SchedulingDayTimeline({
     if (!rangeIsValid(tech, start, end)) {
       const window = getDayAvailabilityWindow(tech.availableDays, day);
       const known = hasAvailabilityData(tech.availableDays);
-      toastError(
-        !isRangeWithinAvailability(start, end, window, known) ? t("conflict.unavailable") : t("conflict.booked"),
-      );
+      const scheduleOccupied = scheduleOccupiedFor(tech);
+      const fullOccupied = occupiedFor(tech);
+      if (!isRangeWithinAvailability(start, end, window, known)) {
+        toastError(t("conflict.unavailable"));
+      } else if (!isRangeFree(start, end, scheduleOccupied)) {
+        toastError(t("conflict.booked"));
+      } else if (!isRangeFree(start, end, fullOccupied)) {
+        toastError(t("conflict.timeOff"));
+      } else {
+        toastError(t("conflict.unavailable"));
+      }
       return;
     }
     onRangeSelect({
@@ -186,7 +222,7 @@ export function SchedulingDayTimeline({
           hour,
           getDayAvailabilityWindow(tech.availableDays, day),
           hasAvailabilityData(tech.availableDays),
-          occupiedRangesForDay(timeOffByWorker.get(tech.id) ?? [], dayKey),
+          occupiedRangesForDay(rowsFromWorkerMap(timeOffByWorker, tech), dayKey),
         ),
       ),
     ),
@@ -253,8 +289,8 @@ export function SchedulingDayTimeline({
         </div>
 
         {technicians.map((tech) => {
-          const cellSchedules = schedulesByWorker.get(tech.id) ?? [];
-          const cellTimeOffs = timeOffByWorker.get(tech.id) ?? [];
+          const cellSchedules = rowsFromWorkerMap(schedulesByWorker, tech);
+          const cellTimeOffs = rowsFromWorkerMap(timeOffByWorker, tech);
           const window = getDayAvailabilityWindow(tech.availableDays, day);
           const knownAvailability = hasAvailabilityData(tech.availableDays);
           const occupied = occupiedFor(tech);
@@ -265,11 +301,17 @@ export function SchedulingDayTimeline({
               ? SCHEDULED_ROW_HEIGHT_PX
               : EMPTY_ROW_HEIGHT_PX;
           const activeDrag = drag?.techId === tech.id ? drag : null;
-          const canCreate =
-            dragMode === "book" &&
-            (!knownAvailability || window != null) &&
-            cellSchedules.length === 0 &&
-            cellTimeOffs.length === 0;
+          const canBook = allowCreate && dragMode === "book" && window != null && knownAvailability;
+          const canMarkTimeOff = dragMode === "timeoff" && window != null && knownAvailability;
+          const availabilityBands = buildDayTimeSegments({
+            dayKey,
+            window,
+            knownAvailability,
+            schedules: cellSchedules,
+            timeOffs: cellTimeOffs,
+            spanStartMinutes: SCHEDULE_DAY_START_HOUR * 60,
+            spanEndMinutes: SCHEDULE_DAY_END_HOUR * 60,
+          }).filter((segment) => segment.kind === "available" || segment.kind === "unavailable" || segment.kind === "free");
 
           return (
             <div
@@ -311,7 +353,7 @@ export function SchedulingDayTimeline({
               <div
                 className={cn(
                   "group/cell relative shrink-0 select-none",
-                  onRangeSelect ? "cursor-crosshair" : null,
+                  onRangeSelect && (canMarkTimeOff || canBook) ? "cursor-crosshair" : null,
                 )}
                 style={{ width: timelineWidth, minHeight: rowHeight, touchAction: "none" }}
                 onPointerDown={(e) => {
@@ -319,20 +361,23 @@ export function SchedulingDayTimeline({
                   const target = e.target as HTMLElement;
                   if (target.closest("[data-schedule-chip],[data-timeoff-chip],button")) return;
                   const startMin = pointerToMinutes(e.clientX, e.currentTarget);
-                  if (!minuteIsBookable(startMin, window, knownAvailability, occupied) && dragMode === "book") return;
-                  if (dragMode === "timeoff" && knownAvailability && !window) return;
-                  if (dragMode === "timeoff" && !isRangeFree(startMin, startMin + 15, occupied)) return;
+                  if (dragMode === "book" && !minuteIsBookable(startMin, window, knownAvailability, occupied)) return;
+                  if (dragMode === "timeoff" && !minuteIsBookable(startMin, window, knownAvailability, occupied)) return;
+                  const endMin = startMin + 15;
                   setDrag({
                     techId: tech.id,
                     startMin,
-                    endMin: startMin + 15,
-                    valid: rangeIsValid(tech, startMin, startMin + 15),
+                    endMin,
+                    valid: rangeIsValid(tech, startMin, endMin),
                   });
                   e.currentTarget.setPointerCapture(e.pointerId);
                 }}
                 onPointerMove={(e) => {
                   if (!drag || drag.techId !== tech.id) return;
-                  const endMin = pointerToMinutes(e.clientX, e.currentTarget);
+                  let endMin = pointerToMinutes(e.clientX, e.currentTarget);
+                  if ((dragMode === "book" || dragMode === "timeoff") && window) {
+                    endMin = Math.min(window.endMinutes, Math.max(window.startMinutes, endMin));
+                  }
                   setDrag({
                     ...drag,
                     endMin,
@@ -342,31 +387,64 @@ export function SchedulingDayTimeline({
                 onPointerUp={(e) => {
                   if (!drag || drag.techId !== tech.id) return;
                   const startMin = drag.startMin;
-                  const endMin = pointerToMinutes(e.clientX, e.currentTarget);
+                  let endMin = pointerToMinutes(e.clientX, e.currentTarget);
+                  if ((dragMode === "book" || dragMode === "timeoff") && window) {
+                    endMin = Math.min(window.endMinutes, Math.max(window.startMinutes, endMin));
+                  }
                   setDrag(null);
                   commitDrag(tech, startMin, endMin);
                 }}
                 onPointerCancel={() => setDrag(null)}
               >
-                <div className="pointer-events-none absolute inset-0 flex">
-                  {hours.map((hour) => {
-                    const tone = hourTone(
-                      hour,
-                      window,
-                      knownAvailability,
-                      occupiedRangesForDay(cellTimeOffs, dayKey),
-                    );
+                <div className="absolute inset-0">
+                  {availabilityBands.map((segment) => {
+                    const { leftPct, widthPct } = minutesBandPct(segment.startMinutes, segment.endMinutes);
+                    const isAvailable = segment.kind === "available";
+                    const startTime = minutesToTime(segment.startMinutes);
+                    const endTime = minutesToTime(Math.min(segment.startMinutes + 60, segment.endMinutes));
                     return (
                       <div
-                        key={hour}
+                        key={`${segment.kind}-${segment.startMinutes}`}
                         className={cn(
-                          "shrink-0 border-r border-slate-100/80 dark:border-slate-800/60",
-                          availabilityToneClass(tone) || "bg-white dark:bg-slate-950",
+                          "absolute inset-y-0",
+                          isAvailable ? "group/avail" : "pointer-events-none",
+                          segment.kind === "available"
+                            ? "bg-emerald-100/90 dark:bg-emerald-950/45"
+                            : segment.kind === "unavailable"
+                              ? "bg-slate-200/80 dark:bg-slate-800/80"
+                              : "bg-white dark:bg-slate-950",
                         )}
-                        style={{ width: HOUR_WIDTH_PX }}
-                      />
+                        style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
+                      >
+                        {canBook && isAvailable && !activeDrag ? (
+                          <div
+                            className={cn(
+                              "pointer-events-none absolute inset-0 z-[1] flex items-center justify-center",
+                              "opacity-0 transition group-hover/avail:opacity-100 max-sm:opacity-100",
+                            )}
+                          >
+                            <ScheduleCreateCellButton
+                              className="pointer-events-auto"
+                              onClick={() =>
+                                onRangeSelect
+                                  ? onRangeSelect({ tech, day, startTime, endTime })
+                                  : onCreateSchedule(tech, day)
+                              }
+                            />
+                          </div>
+                        ) : null}
+                      </div>
                     );
                   })}
+                  <div className="pointer-events-none absolute inset-0 flex">
+                    {hours.map((hour) => (
+                      <div
+                        key={hour}
+                        className="shrink-0 border-r border-slate-100/80 dark:border-slate-800/60"
+                        style={{ width: HOUR_WIDTH_PX }}
+                      />
+                    ))}
+                  </div>
                 </div>
 
                 {activeDrag ? (
@@ -424,20 +502,6 @@ export function SchedulingDayTimeline({
                     />
                   );
                 })}
-
-                {canCreate ? (
-                  <div
-                    className={cn(
-                      "pointer-events-none absolute inset-y-0 left-2 z-[1] flex items-center",
-                      "opacity-0 transition group-hover/cell:opacity-100 max-sm:opacity-100",
-                    )}
-                  >
-                    <ScheduleCreateCellButton
-                      className="pointer-events-auto"
-                      onClick={() => onCreateSchedule(tech, day)}
-                    />
-                  </div>
-                ) : null}
               </div>
             </div>
           );

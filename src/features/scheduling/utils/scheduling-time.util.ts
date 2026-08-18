@@ -1,5 +1,5 @@
-/** Day timeline configuration (local hours, end is exclusive — 24 = midnight). */
-export const SCHEDULE_DAY_START_HOUR = 6;
+/** Day timeline configuration (local hours, 0 = 12 AM, end is exclusive — 24 = next midnight). */
+export const SCHEDULE_DAY_START_HOUR = 0;
 export const SCHEDULE_DAY_END_HOUR = 24;
 
 export function buildDayHourLabels(startHour = SCHEDULE_DAY_START_HOUR, endHour = SCHEDULE_DAY_END_HOUR): number[] {

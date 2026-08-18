@@ -15,6 +15,7 @@ export type RuleFieldOption = {
   apiName?: string;
   targetType?: "field" | "section";
   fieldId?: string | number | null;
+  f_id?: string | number | null;
   fieldUid?: string;
   sectionId?: string | number | null;
   sectionUid?: string;

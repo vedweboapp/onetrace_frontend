@@ -1,32 +1,24 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, Search, Users, X } from "lucide-react";
+import { ChevronLeft, Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { CheckmarkSelect } from "@/shared/ui";
-import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
 import { cn } from "@/core/utils/http.util";
 
 type Props = {
-  groupOptions: CheckmarkSelectOption[];
-  groupValue: string;
   search: string;
   focusedWorker?: SchedulingTechnician | null;
   prominent?: boolean;
   onBack?: () => void;
-  onGroupChange: (value: string) => void;
   onSearchChange: (value: string) => void;
 };
 
 export function SchedulingPeopleHeader({
-  groupOptions,
-  groupValue,
   search,
   focusedWorker,
   prominent = false,
   onBack,
-  onGroupChange,
   onSearchChange,
 }: Props) {
   const t = useTranslations("Dashboard.scheduling");
@@ -84,35 +76,6 @@ export function SchedulingPeopleHeader({
     );
   }
 
-  const groupLabel = groupOptions.find((opt) => opt.value === groupValue)?.label ?? t("allUserGroups");
-
-  const groupButton = (
-    <div className="relative size-8 shrink-0" title={groupLabel}>
-      <CheckmarkSelect
-        listLabel={t("allUserGroups")}
-        buttonAriaLabel={groupLabel}
-        options={groupOptions}
-        value={groupValue}
-        searchable
-        portaled
-        size="sm"
-        menuMinWidth={280}
-        emptyLabel=" "
-        className={cn(
-          "absolute inset-0 w-8",
-          "[&_button]:size-8 [&_button]:min-h-8 [&_button]:w-8 [&_button]:justify-center [&_button]:px-0",
-          "[&_button>span]:invisible [&_button>svg]:hidden",
-          groupValue && "[&_button]:border-sky-400 [&_button]:bg-sky-50 dark:[&_button]:border-sky-700 dark:[&_button]:bg-sky-950/40",
-        )}
-        onChange={onGroupChange}
-      />
-      <Users className="pointer-events-none absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300" />
-      {groupValue ? (
-        <span className="pointer-events-none absolute right-0.5 top-0.5 size-1.5 rounded-full bg-sky-600" aria-hidden />
-      ) : null}
-    </div>
-  );
-
   return (
     <div className="flex w-full min-w-0 items-center gap-1.5">
       <span className="min-w-0 shrink-0 text-xs font-bold uppercase tracking-wide text-slate-500">
@@ -151,23 +114,20 @@ export function SchedulingPeopleHeader({
       ) : (
         <span className="min-w-0 flex-1" aria-hidden />
       )}
-      <div className="ml-auto flex shrink-0 items-center gap-1.5">
-        {groupButton}
-        {expanded ? null : (
-          <button
-            type="button"
-            title={t("searchUsers")}
-            aria-label={t("searchUsers")}
-            className={cn(
-              "inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500",
-              "hover:bg-slate-50 hover:text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800",
-            )}
-            onClick={() => setSearchOpen(true)}
-          >
-            <Search className="size-3.5" strokeWidth={2} />
-          </button>
-        )}
-      </div>
+      {expanded ? null : (
+        <button
+          type="button"
+          title={t("searchUsers")}
+          aria-label={t("searchUsers")}
+          className={cn(
+            "ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500",
+            "hover:bg-slate-50 hover:text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800",
+          )}
+          onClick={() => setSearchOpen(true)}
+        >
+          <Search className="size-3.5" strokeWidth={2} />
+        </button>
+      )}
     </div>
   );
 }
