@@ -33,6 +33,11 @@ function initPdfJsBrowser(): typeof PdfJsType | null {
   return _pdfjsInstance;
 }
 
+// Ensure side-effect imports configure pdfjs immediately in the browser.
+if (typeof window !== "undefined") {
+  initPdfJsBrowser();
+}
+
 export async function getPdfjs(): Promise<typeof PdfJsType> {
   if (typeof window === "undefined") {
     throw new Error("PDF.js is only available in browser environment.");

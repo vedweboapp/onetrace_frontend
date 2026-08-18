@@ -398,10 +398,8 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                   </DetailMetricsGrid>
                 </DetailPanelCard>
 
-                <DetailPanelCard title={t("fields.availableDays")} variant="flat">
-                  {availableDays.length === 0 ? (
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.noAvailability")}</p>
-                  ) : (
+                {availableDays.length > 0 ? (
+                  <DetailPanelCard title={t("fields.availableDays")} variant="flat">
                     <ul className="space-y-2">
                       {availableDays.map((row) => (
                         <li
@@ -417,8 +415,8 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                         </li>
                       ))}
                     </ul>
-                  )}
-                </DetailPanelCard>
+                  </DetailPanelCard>
+                ) : null}
 
                 <DetailPanelCard
                   title={t("fields.addresses")}

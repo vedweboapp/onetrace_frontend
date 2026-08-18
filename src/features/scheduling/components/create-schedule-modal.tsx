@@ -32,6 +32,7 @@ import {
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
+  SurfaceDateInput,
   surfaceInputClassName,
 } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
@@ -469,7 +470,7 @@ export function CreateScheduleModal({
             {t("fields.date")} <span className="text-red-500">*</span>
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <input
+            <SurfaceDateInput
               type="date"
               value={startDate}
               disabled={saving}
@@ -478,7 +479,7 @@ export function CreateScheduleModal({
               onChange={(e) => setStartDate(e.target.value)}
             />
             <span className="text-sm text-slate-500">{t("fields.to")}</span>
-            <input
+            <SurfaceDateInput
               type="date"
               value={endDate}
               disabled={saving}
@@ -506,7 +507,7 @@ export function CreateScheduleModal({
               {t("fields.time")} <span className="text-red-500">*</span>
             </p>
             <div className="flex flex-wrap items-center gap-2">
-              <input
+              <SurfaceDateInput
                 type="time"
                 value={startTime}
                 disabled={saving}
@@ -515,7 +516,7 @@ export function CreateScheduleModal({
                 onChange={(e) => setStartTime(e.target.value)}
               />
               <span className="text-sm text-slate-500">{t("fields.to")}</span>
-              <input
+              <SurfaceDateInput
                 type="time"
                 value={endTime}
                 disabled={saving}
