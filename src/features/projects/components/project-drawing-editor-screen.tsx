@@ -240,7 +240,7 @@ type PinMarkerProps = {
 };
 
 const PinMarker = ({ label, abbreviation, color = "#10b981" }: PinMarkerProps) => (
-  <svg width="40" height="46" viewBox="0 0 40 46" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: "drop-shadow(0 2px 5px rgba(0,0,0,0.2))" }}>
+  <svg width="40" height="46" viewBox="0 0 40 46" fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <path id="textCurve" d="M 10 25 A 10 10 0 0 1 30 25" />
     </defs>
@@ -384,6 +384,36 @@ const DetailRow = ({
   );
 };
 
+const PdfDrawingCanvas = React.memo(
+  function PdfDrawingCanvas({
+    pdfFile,
+    onLoadSuccess,
+    onLoadError,
+  }: {
+    pdfFile: any;
+    onLoadSuccess: (page: any) => void;
+    onLoadError: () => void;
+  }) {
+    return (
+      <Document
+        file={pdfFile}
+        loading={null}
+        error={null}
+        onLoadError={onLoadError}
+      >
+        <Page
+          pageNumber={1}
+          scale={1}
+          renderAnnotationLayer={false}
+          renderTextLayer={false}
+          onLoadSuccess={onLoadSuccess}
+        />
+      </Document>
+    );
+  },
+  (prevProps, nextProps) => prevProps.pdfFile === nextProps.pdfFile,
+);
+
 export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const t = useTranslations("Dashboard.projects.drawings.editor");
   const router = useRouter();
@@ -453,19 +483,19 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     pageSizeRef.current = pageSize;
   }, [pageSize]);
 
-    // Auto-fit zoom: once the real document dimensions arrive, scale to fill the viewport (both width and height).
-    React.useEffect(() => {
-      if (didAutoFitRef.current) return; // only run once per document
-      if (pageSize.width === 1200 && pageSize.height === 900) return; // still placeholder
-      const vp = viewportRef.current;
-      if (!vp) return;
-      const PADDING = 80; // leave breathing room on each side/top/bottom
-      const widthFit = (vp.clientWidth - PADDING) / pageSize.width;
-      const heightFit = (vp.clientHeight - PADDING) / pageSize.height;
-      const fitZoom = Math.min(widthFit, heightFit);
-      setZoom(Math.min(Math.max(fitZoom, 0.2), 3)); // clamp between 0.2× and 3×
-      didAutoFitRef.current = true;
-    }, [pageSize]);
+  // Auto-fit zoom: once the real document dimensions arrive, scale to fill the viewport (both width and height).
+  React.useEffect(() => {
+    if (didAutoFitRef.current) return; // only run once per document
+    if (pageSize.width === 1200 && pageSize.height === 900) return; // still placeholder
+    const vp = viewportRef.current;
+    if (!vp) return;
+    const PADDING = 80; // leave breathing room on each side/top/bottom
+    const widthFit = (vp.clientWidth - PADDING) / pageSize.width;
+    const heightFit = (vp.clientHeight - PADDING) / pageSize.height;
+    const fitZoom = Math.min(widthFit, heightFit);
+    setZoom(Math.min(Math.max(fitZoom, 0.2), 5)); // clamp between 0.2× and 5×
+    didAutoFitRef.current = true;
+  }, [pageSize]);
 
   const [panMode, setPanMode] = React.useState(false);
   const [panStart, setPanStart] = React.useState({ x: 0, y: 0 });
@@ -477,6 +507,85 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const stageRef = React.useRef<HTMLDivElement>(null);
   const nameInputRef = React.useRef<HTMLInputElement>(null);
   const lastPinConstraintToastRef = React.useRef(0);
+
+  const zoomRef = React.useRef(zoom);
+  React.useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+
+  const [isSpacePressed, setIsSpacePressed] = React.useState(false);
+
+  React.useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.code === "Space" && !e.repeat) {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable) return;
+        e.preventDefault();
+        setIsSpacePressed(true);
+      }
+    }
+
+    function handleKeyUp(e: KeyboardEvent) {
+      if (e.code === "Space") {
+        setIsSpacePressed(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    const vp = viewportRef.current;
+    if (!vp) return;
+
+    let rAF: number | null = null;
+
+    function handleWheel(e: WheelEvent) {
+      const container = viewportRef.current;
+      const stage = stageRef.current;
+      if (!container || !stage) return;
+      e.preventDefault();
+
+      const rect = container.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const currentZoom = zoomRef.current;
+      const contentX = (container.scrollLeft + mouseX) / currentZoom;
+      const contentY = (container.scrollTop + mouseY) / currentZoom;
+
+      const delta = e.deltaMode === 1 ? e.deltaY * 20 : e.deltaY;
+      const scaleFactor = Math.pow(0.9985, delta);
+      const newZoom = Math.min(5, Math.max(0.2, Number((currentZoom * scaleFactor).toFixed(4))));
+
+      if (Math.abs(newZoom - currentZoom) < 0.0005) return;
+
+      zoomRef.current = newZoom;
+
+      if (rAF) cancelAnimationFrame(rAF);
+      rAF = requestAnimationFrame(() => {
+        const el = viewportRef.current;
+        const st = stageRef.current;
+        if (el && st) {
+          st.style.transform = `scale(${newZoom})`;
+          el.scrollLeft = contentX * newZoom - mouseX;
+          el.scrollTop = contentY * newZoom - mouseY;
+        }
+        setZoom(newZoom);
+      });
+    }
+
+    vp.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      vp.removeEventListener("wheel", handleWheel);
+      if (rAF) cancelAnimationFrame(rAF);
+    };
+  }, []);
 
 
   const selectedPlot = React.useMemo(
@@ -504,6 +613,15 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   React.useEffect(() => {
     if (pdfFailed) toastError(t("pdfRenderError"));
   }, [pdfFailed, t]);
+
+  const handlePdfPageLoadSuccess = React.useCallback((page: any) => {
+    const vp = page.getViewport({ scale: 1 });
+    setPageSize({ width: Math.round(vp.width), height: Math.round(vp.height) });
+  }, []);
+
+  const handlePdfLoadError = React.useCallback(() => {
+    toastError(t("pdfRenderError"));
+  }, [t]);
 
   const groupOptions = React.useMemo(
     () => [{ value: "", label: t("allGroups") }, ...groups.map((g) => ({ value: String(g.id), label: g.name }))],
@@ -726,7 +844,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       if (key === "b") setActiveTool("plot-select");
       if (key === "a") setActiveTool("pin");
       if (key === "h") setActiveTool("hand");
-      if (key === "+") setZoom((z) => Math.min(3, Number((z + 0.1).toFixed(2))));
+      if (key === "+") setZoom((z) => Math.min(5, Number((z + 0.1).toFixed(2))));
       if (key === "-") setZoom((z) => Math.max(0.4, Number((z - 0.1).toFixed(2))));
       if (key === "0") setZoom(1);
       if (key === "backspace" && activeTool === "pen") {
@@ -872,7 +990,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
 
   function onStageClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (activeTool === "hand") return;
+    if (activeTool === "hand" || panMode || isSpacePressed || e.button === 1) return;
     if (activeTool === "select") {
       setDetailPin(null);
       setPinEditData({});
@@ -968,7 +1086,9 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   }
 
   function onPointerDown(e: React.MouseEvent<HTMLDivElement>) {
-    if (activeTool === "hand") {
+    if (e.button === 1 || isSpacePressed || activeTool === "hand") {
+      e.preventDefault();
+      e.stopPropagation();
       const vp = viewportRef.current;
       if (!vp) return;
       setPanMode(true);
@@ -985,20 +1105,22 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   }
 
   function onPointerMove(e: React.MouseEvent<HTMLDivElement>) {
-    const pt = stagePointFromEvent(e);
-    if (!pt) {
-      if (panMode) {
-        const vp = viewportRef.current;
-        if (!vp) return;
-        const dx = e.clientX - panStart.x;
-        const dy = e.clientY - panStart.y;
-        vp.scrollLeft = scrollStart.left - dx;
-        vp.scrollTop = scrollStart.top - dy;
-      }
+    if (panMode || e.buttons === 4) {
+      const vp = viewportRef.current;
+      if (!vp) return;
+      const dx = e.clientX - panStart.x;
+      const dy = e.clientY - panStart.y;
+      vp.scrollLeft = scrollStart.left - dx;
+      vp.scrollTop = scrollStart.top - dy;
       return;
     }
 
-    if (activeTool === "pin") {
+    const pt = stagePointFromEvent(e);
+    if (!pt) return;
+
+    if (isSpacePressed || activeTool === "hand") {
+      e.currentTarget.style.cursor = panMode ? "grabbing" : "grab";
+    } else if (activeTool === "pin") {
       let isInsidePlot = false;
       for (const plot of plots) {
         const poly = plot.coordinates.map((c) => percentToPixel(c, pageSize));
@@ -1010,8 +1132,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       e.currentTarget.style.cursor = isInsidePlot ? "crosshair" : "not-allowed";
     } else if (activeTool === "pen" || activeTool === "plot-select") {
       e.currentTarget.style.cursor = "crosshair";
-    } else if (activeTool === "hand") {
-      e.currentTarget.style.cursor = "grab";
     } else {
       e.currentTarget.style.cursor = "default";
     }
@@ -1028,15 +1148,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         void placePin(pt);
       }
       return;
-    }
-
-    if (panMode) {
-      const vp = viewportRef.current;
-      if (!vp) return;
-      const dx = e.clientX - panStart.x;
-      const dy = e.clientY - panStart.y;
-      vp.scrollLeft = scrollStart.left - dx;
-      vp.scrollTop = scrollStart.top - dy;
     }
   }
 
@@ -1332,27 +1443,30 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       return;
     }
 
-    let plot = targetPlot ?? selectedPlot;
-
-    // If no plot matches or we are clicking a different one, try to find the actual plot under the point
-    const plotUnderPoint = plots.find(p => {
-      const poly = p.coordinates.map(c => percentToPixel(c, pageSize));
+    // Auto-detect the plot under the clicked point
+    const plotUnderPoint = plots.find((p) => {
+      const poly = p.coordinates.map((c) => percentToPixel(c, pageSize));
       return inside(point, poly);
     });
 
-    if (plotUnderPoint) {
-      plot = plotUnderPoint;
-      if (String(plot.id) !== selectedPlotId) {
-        setSelectedPlotId(String(plot.id));
-      }
+    let plot = plotUnderPoint ?? targetPlot ?? selectedPlot;
+
+    if (!plot && plots.length === 1 && plots[0]) {
+      plot = plots[0];
+    }
+
+    if (plot && String(plot.id) !== selectedPlotId) {
+      setSelectedPlotId(String(plot.id));
     }
 
     if (!plot) {
+      toastError("Click inside a plot area to place a pin.");
       return;
     }
 
     const plotStageCoordinates = plot.coordinates.map((p) => percentToPixel(p, pageSize));
     if (!inside(point, plotStageCoordinates)) {
+      toastError("Pin must be inside a plot area.");
       return;
     }
 
@@ -1709,7 +1823,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
             type="button"
             variant="secondary"
             className="size-12 rounded-lg p-0 hover:bg-slate-100 dark:hover:bg-slate-800"
-            onClick={() => setZoom((z) => Math.min(4, Number((z + 0.1).toFixed(2))))}
+            onClick={() => setZoom((z) => Math.min(5, Number((z + 0.1).toFixed(2))))}
           >
             <ZoomIn className="size-5" />
           </AppButton>
@@ -1742,8 +1856,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         <div
           ref={viewportRef}
           className={cn(
-            "relative flex h-[calc(100vh-210px)] min-h-[400px] w-full flex-col overflow-hidden bg-slate-100 p-1 transition-all dark:bg-slate-900/60",
-            activeTool === "hand" && "cursor-grab"
+            "relative flex h-[calc(100vh-210px)] min-h-[400px] w-full flex-col overflow-auto bg-slate-100 p-1 dark:bg-slate-900/60 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+            (activeTool === "hand" || isSpacePressed) && (panMode ? "cursor-grabbing" : "cursor-grab")
           )}
           onMouseMove={onPointerMove}
           onMouseUp={onPointerUp}
@@ -1792,13 +1906,13 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
               >
                 <div
                   ref={stageRef}
-                  className="relative select-none shadow-2xl transition-transform duration-200"
+                  className="relative select-none shadow-2xl"
                   style={{
                     transform: `scale(${zoom})`,
                     transformOrigin: "top left",
                     width: pageSize.width,
                     height: pageSize.height,
-                    cursor: activeTool === "hand" ? "grab" : activeTool === "pen" ? "crosshair" : activeTool === "pin" ? "crosshair" : activeTool === "plot-select" ? "crosshair" : "default",
+                    cursor: panMode ? "grabbing" : (isSpacePressed || activeTool === "hand") ? "grab" : activeTool === "pen" ? "crosshair" : activeTool === "pin" ? "crosshair" : activeTool === "plot-select" ? "crosshair" : "default",
                   }}
                   onClick={onStageClick}
                   onMouseDown={onPointerDown}
@@ -1833,23 +1947,11 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                 >
                   {isPdf ? (
                     pdfFile ? (
-                      <Document
-                        file={pdfFile}
-                        loading={null}
-                        error={null}
-                        onLoadError={() => toastError(t("pdfRenderError"))}
-                      >
-                        <Page
-                          pageNumber={1}
-                          scale={1}
-                          renderAnnotationLayer={false}
-                          renderTextLayer={false}
-                          onLoadSuccess={(page) => {
-                            const vp = page.getViewport({ scale: 1 });
-                            setPageSize({ width: Math.round(vp.width), height: Math.round(vp.height) });
-                          }}
-                        />
-                      </Document>
+                      <PdfDrawingCanvas
+                        pdfFile={pdfFile}
+                        onLoadSuccess={handlePdfPageLoadSuccess}
+                        onLoadError={handlePdfLoadError}
+                      />
                     ) : null
                   ) : (
                     <img
@@ -2029,25 +2131,33 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                         const productName = pin.item_detail?.name || compositeLabelById[pin.item ?? 0] || "PIN";
                         const abbreviation = resolvePinMarkerAbbreviation(pin, groupItemAbbrevByKey, productName);
                         const pinQuantity = resolvePinDisplayQuantity(pin);
-                        const isHovered = hoveredPinId === pin.id;
+                        const isPinTool = activeTool === "pin";
+                        const isHovered = !isPinTool && hoveredPinId === pin.id;
                         const innerScaleClass = draggingPinId === pin.id ? "scale-125" : isHovered ? "scale-110" : "";
-
                         return (
                           <div
                             key={`pin-${pin.id}`}
-                            className="absolute"
+                            className={cn(
+                              "absolute transition-opacity duration-200",
+                              isPinTool && "pointer-events-none"
+                            )}
                             style={{
                               left: pinX,
                               top: pinY,
                               transformOrigin: "bottom center",
                               transform: `translate(-50%, -100%) scale(${1 / zoom})`,
                               zIndex: draggingPinId === pin.id ? 200 : isHovered ? 100 : 20,
-                              cursor: activeTool === "select" ? (draggingPinId === pin.id ? "grabbing" : "grab") : "pointer",
+                              cursor: activeTool === "select" ? (draggingPinId === pin.id ? "grabbing" : "grab") : isPinTool ? "crosshair" : "pointer",
+                              pointerEvents: isPinTool ? "none" : "auto",
+                              opacity: isPinTool ? 0.4 : 1,
                             }}
-                            onMouseEnter={() => setHoveredPinId(pin.id)}
+                            onMouseEnter={() => {
+                              if (isPinTool) return;
+                              setHoveredPinId(pin.id);
+                            }}
                             onMouseLeave={() => setHoveredPinId(null)}
                             onMouseDown={(e) => {
-                              if (activeTool !== "select") return;
+                              if (isPinTool || activeTool !== "select") return;
                               e.stopPropagation();
                               e.preventDefault();
                               draggingPinIdRef.current = pin.id;
@@ -2060,6 +2170,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               };
                             }}
                             onClick={(e) => {
+                              if (isPinTool) return;
                               e.stopPropagation();
                               if (wasDraggingRef.current) return;
 
@@ -2079,8 +2190,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               setIsPinEditing(false);
                             }}
                           >
-                            {isHovered && <PinTooltip pin={pin} productName={productName} quantity={pinQuantity} />}
-                            <div className={cn("relative duration-200 origin-bottom", innerScaleClass, "cursor-grab")}>
+                            {!isPinTool && isHovered && <PinTooltip pin={pin} productName={productName} quantity={pinQuantity} />}
+                            <div className={cn("relative duration-200 origin-bottom", innerScaleClass, !isPinTool && "cursor-grab")}>
                               <PinMarker label={pinLabels.get(pin.id) || (index + 1)} abbreviation={abbreviation} color={color} />
                             </div>
                           </div>
@@ -2088,7 +2199,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                       })}
                     </React.Fragment>
                   ))}
-                  
+
                   {/* Plot Labels Layer (Top) */}
                   <svg
                     className="absolute left-0 top-0 pointer-events-none"
@@ -2101,11 +2212,11 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                       if (hoveredPlotId === String(plot.id)) return null;
                       const plotPoints = plot.coordinates.map((p) => percentToPixel(p, pageSize));
                       if (plotPoints.length < 3) return null;
-                      
+
                       const [labelX, labelY] = getCentroid(plotPoints);
                       const labelText = plot.name.length > 24 ? `${plot.name.slice(0, 24)}...` : plot.name;
                       const badgeWidth = Math.max(90, Math.min(220, labelText.length * 7 + 20));
-                      
+
                       return (
                         <g key={`plot-label-${plot.id}`}>
                           <rect
@@ -2238,7 +2349,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               <path d="M21.44 11.05 12 20.5a5 5 0 0 1-7.07-7.07l9.44-9.44a3.5 3.5 0 0 1 4.95 4.95L10.5 16a2 2 0 0 1-2.83-2.83l8.48-8.48" />
                             </svg>
                           </div>
-                          <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Product Attachments</span>
+                          <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{t("productAttachments")}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           {attachments.map((att, idx) => {

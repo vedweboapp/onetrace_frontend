@@ -23,7 +23,7 @@ const FormBuilderForm = ({
     BackUrl
 }: FormBuilderFormProps) => {
     return (
-        <div>
+        <div className="flex h-full min-h-0 flex-1 flex-col">
             <DndProvider backend={HTML5Backend}>
                 <FormBuilder
                     activeModule={activeModule}

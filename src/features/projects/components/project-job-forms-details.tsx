@@ -21,7 +21,7 @@ const ProjectJobFormsDetails = () => {
   const { id: projectId } = useParams<{ id: string }>();
 
   return (
-    <div>
+    <div className="flex h-full min-h-0 flex-1 flex-col">
       <FormBuilderForm
         activeModule="project-form"
         apiHandlers={projectJobFormHandlers}
