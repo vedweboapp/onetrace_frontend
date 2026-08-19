@@ -123,7 +123,7 @@ const DrawingBottomToolbar = ({
                             nameKey: "toolPin",
                             fallback: "Pin",
                             shortcut: "A",
-                            disabled: !selectedPlot || !selectedCompositeId || savingPin,
+                            disabled: !selectedCompositeId || savingPin,
                         },
                         { id: "hand", icon: <Hand className="size-4" />, nameKey: "toolHand", fallback: "Hand", shortcut: "H" },
                     ].map((tool) => {
