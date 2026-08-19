@@ -106,6 +106,16 @@ export function ContactFormScreen({ mode, contactId }: Props) {
 
   /** Client contacts → only Client; Vendor contacts → only Vendor (from URL / loaded record). */
   const urlContactType = parseContactTypeParam(searchParams.get(QUICK_CREATE_CONTACT_TYPE_PARAM));
+  const urlClientId = searchParams.get(QUICK_CREATE_CLIENT_PARAM);
+  const urlVendorId = searchParams.get(QUICK_CREATE_VENDOR_PARAM);
+  const lockClient =
+    !isEdit &&
+    (urlContactType === "client" || urlContactType == null) &&
+    Boolean(urlClientId && /^\d+$/.test(urlClientId));
+  const lockVendor =
+    !isEdit &&
+    (urlContactType === "vendor" || urlContactType == null) &&
+    Boolean(urlVendorId && /^\d+$/.test(urlVendorId));
   const lockedContactType: ContactType | null = React.useMemo(() => {
     if (!isEdit && urlContactType) return urlContactType;
     if (isEdit && !loadingExisting && (contactType === "client" || contactType === "vendor")) {
@@ -172,11 +182,13 @@ export function ContactFormScreen({ mode, contactId }: Props) {
 
   const clientQuickCreate = useQuickCreate({
     kind: "client",
-    getFormDraft: !isEdit ? getFormDraft : undefined,
+    getFormDraft: !isEdit && !lockClient ? getFormDraft : undefined,
+    addDisabled: lockClient,
   });
   const vendorQuickCreate = useQuickCreate({
     kind: "vendor",
-    getFormDraft: !isEdit ? getFormDraft : undefined,
+    getFormDraft: !isEdit && !lockVendor ? getFormDraft : undefined,
+    addDisabled: lockVendor,
   });
 
   React.useEffect(() => {
@@ -203,11 +215,13 @@ export function ContactFormScreen({ mode, contactId }: Props) {
     },
     onApplySelect: ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {
+        if (lockClient || lockVendor) return;
         setValue("contact_type", "client", { shouldDirty: true, shouldValidate: true });
         setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
         return;
       }
       if (selectTarget === "vendor") {
+        if (lockClient || lockVendor) return;
         setValue("contact_type", "vendor", { shouldDirty: true, shouldValidate: true });
         setValue("vendor", selectId, { shouldDirty: true, shouldValidate: true });
       }
@@ -271,7 +285,20 @@ export function ContactFormScreen({ mode, contactId }: Props) {
     }
   }
 
-  const noParents = contactType === "vendor" ? vendorOptions.length === 0 : clientOptions.length === 0;
+  const noParents =
+    lockClient || lockVendor
+      ? false
+      : contactType === "vendor"
+        ? vendorOptions.length === 0
+        : clientOptions.length === 0;
+  const lockedClientLabel =
+    lockClient && urlClientId
+      ? clientOptions.find((o) => o.value === urlClientId)?.label
+      : undefined;
+  const lockedVendorLabel =
+    lockVendor && urlVendorId
+      ? vendorOptions.find((o) => o.value === urlVendorId)?.label
+      : undefined;
 
   return (
     <div className="pb-12">
@@ -336,30 +363,50 @@ export function ContactFormScreen({ mode, contactId }: Props) {
                 <FieldErrorText>{errors.contact_type?.message}</FieldErrorText>
               </FieldGroup>
               {contactType === "vendor" ? (
-                <FieldGroup label={t("fields.vendor")} htmlFor="contact-vendor" required>
-                  <Controller
-                    control={control}
-                    name="vendor"
-                    render={({ field }) => (
-                      <CheckmarkSelect
-                        id="contact-vendor"
-                        portaled
-                        searchable
-                        listLabel={t("fields.vendor")}
-                        options={vendorOptions}
-                        value={field.value}
-                        emptyLabel={t("placeholders.vendor")}
-                        disabled={saving || noParents}
-                        invalid={!!errors.vendor}
-                        onBlur={field.onBlur}
-                        onChange={field.onChange}
-                        onAdd={vendorQuickCreate.onAdd}
-                        addAriaLabel={vendorQuickCreate.addAriaLabel}
-                        addLabel={vendorQuickCreate.addLabel}
-                      />
-                    )}
+                lockVendor ? (
+                  <FieldGroup label={t("fields.vendor")} htmlFor="contact-vendor-locked">
+                    <input
+                      id="contact-vendor-locked"
+                      readOnly
+                      value={lockedVendorLabel ?? ""}
+                      className={cn(surfaceInputClassName, "cursor-default bg-slate-50 dark:bg-slate-900/60")}
+                    />
+                  </FieldGroup>
+                ) : (
+                  <FieldGroup label={t("fields.vendor")} htmlFor="contact-vendor" required>
+                    <Controller
+                      control={control}
+                      name="vendor"
+                      render={({ field }) => (
+                        <CheckmarkSelect
+                          id="contact-vendor"
+                          portaled
+                          searchable
+                          listLabel={t("fields.vendor")}
+                          options={vendorOptions}
+                          value={field.value}
+                          emptyLabel={t("placeholders.vendor")}
+                          disabled={saving || noParents}
+                          invalid={!!errors.vendor}
+                          onBlur={field.onBlur}
+                          onChange={field.onChange}
+                          onAdd={vendorQuickCreate.onAdd}
+                          addAriaLabel={vendorQuickCreate.addAriaLabel}
+                          addLabel={vendorQuickCreate.addLabel}
+                        />
+                      )}
+                    />
+                    <FieldErrorText>{errors.vendor?.message}</FieldErrorText>
+                  </FieldGroup>
+                )
+              ) : lockClient ? (
+                <FieldGroup label={t("fields.client")} htmlFor="contact-client-locked">
+                  <input
+                    id="contact-client-locked"
+                    readOnly
+                    value={lockedClientLabel ?? ""}
+                    className={cn(surfaceInputClassName, "cursor-default bg-slate-50 dark:bg-slate-900/60")}
                   />
-                  <FieldErrorText>{errors.vendor?.message}</FieldErrorText>
                 </FieldGroup>
               ) : (
                 <FieldGroup label={t("fields.client")} htmlFor="contact-client" required>

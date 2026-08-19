@@ -31,7 +31,7 @@ export type SchedulingProjectOption = {
   clientId: number | null;
 };
 
-type Catalog = {
+export type SchedulingCatalog = {
   technicians: SchedulingTechnician[];
   clients: SchedulingNamedOption[];
   jobs: SchedulingJobOption[];
@@ -39,15 +39,28 @@ type Catalog = {
   userGroups: UserGroup[];
 };
 
-let catalogCache: Catalog | null = null;
-const CATALOG_VERSION = 3;
+type FilterCatalog = Pick<SchedulingCatalog, "clients" | "jobs" | "projects" | "userGroups">;
+
+const CATALOG_VERSION = 4;
 let catalogCacheVersion = 0;
-let catalogPromise: Promise<Catalog> | null = null;
+let techniciansCache: SchedulingTechnician[] | null = null;
+let techniciansPromise: Promise<SchedulingTechnician[]> | null = null;
+let filterCache: FilterCatalog | null = null;
+let filterPromise: Promise<FilterCatalog> | null = null;
 const jobsByClientCache = new Map<number, Job[]>();
 
+const EMPTY_FILTERS: FilterCatalog = {
+  clients: [],
+  jobs: [],
+  projects: [],
+  userGroups: [],
+};
+
 export function invalidateSchedulingCatalog(): void {
-  catalogCache = null;
-  catalogPromise = null;
+  techniciansCache = null;
+  techniciansPromise = null;
+  filterCache = null;
+  filterPromise = null;
   catalogCacheVersion = 0;
   jobsByClientCache.clear();
 }
@@ -59,70 +72,88 @@ export function jobSelectLabel(job: Job): string {
   return title || serial || `Job #${job.id}`;
 }
 
-async function loadCatalog(fallbackTechnicianTitle: string): Promise<Catalog> {
-  const [technicians, clientsRes, jobsRes, projectsRes, groupsRes] = await Promise.all([
-    loadSchedulingTechnicians(fallbackTechnicianTitle),
-    fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
-    fetchJobsPage(1, 500, { is_active: true }, { silent: true }),
-    fetchProjectsPage(1, 500, { is_active: true }).catch(() => ({ items: [] })),
-    fetchUserGroupsPage(1, 500).catch(() => ({ items: [] as UserGroup[] })),
-  ]);
-  return {
-    technicians,
-    clients: clientsRes.items.map((c) => ({ id: c.id, name: c.name })),
-    jobs: jobsRes.items.map((job) => ({
-      id: job.id,
-      label: jobSelectLabel(job),
-      clientId: getJobClientId(job.client),
-      projectId: getJobProjectId(job.project),
-    })),
-    projects: projectsRes.items.map((p) => ({
-      id: p.id,
-      name: p.name,
-      clientId: typeof p.client === "number" ? p.client : (p.client?.id ?? null),
-    })),
-    userGroups: groupsRes.items,
-  };
+async function loadTechnicians(fallbackTechnicianTitle: string): Promise<SchedulingTechnician[]> {
+  if (techniciansCache && catalogCacheVersion === CATALOG_VERSION) return techniciansCache;
+  if (!techniciansPromise) {
+    techniciansPromise = loadSchedulingTechnicians(fallbackTechnicianTitle)
+      .then((rows) => {
+        techniciansCache = rows;
+        catalogCacheVersion = CATALOG_VERSION;
+        return rows;
+      })
+      .finally(() => {
+        techniciansPromise = null;
+      });
+  }
+  return techniciansPromise;
 }
 
-export function useSchedulingCatalog(fallbackTechnicianTitle: string) {
-  const [catalog, setCatalog] = React.useState<Catalog | null>(
-    catalogCache && catalogCacheVersion === CATALOG_VERSION ? catalogCache : null,
+async function loadFilterCatalog(): Promise<FilterCatalog> {
+  if (filterCache && catalogCacheVersion === CATALOG_VERSION) return filterCache;
+  if (!filterPromise) {
+    filterPromise = Promise.all([
+      fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
+      fetchJobsPage(1, 500, { is_active: true }, { silent: true }),
+      fetchProjectsPage(1, 500, { is_active: true }).catch(() => ({ items: [] })),
+      fetchUserGroupsPage(1, 500).catch(() => ({ items: [] as UserGroup[] })),
+    ])
+      .then(([clientsRes, jobsRes, projectsRes, groupsRes]) => {
+        const next: FilterCatalog = {
+          clients: clientsRes.items.map((c) => ({ id: c.id, name: c.name })),
+          jobs: jobsRes.items.map((job) => ({
+            id: job.id,
+            label: jobSelectLabel(job),
+            clientId: getJobClientId(job.client),
+            projectId: getJobProjectId(job.project),
+          })),
+          projects: projectsRes.items.map((p) => ({
+            id: p.id,
+            name: p.name,
+            clientId: typeof p.client === "number" ? p.client : (p.client?.id ?? null),
+          })),
+          userGroups: groupsRes.items,
+        };
+        filterCache = next;
+        catalogCacheVersion = CATALOG_VERSION;
+        return next;
+      })
+      .finally(() => {
+        filterPromise = null;
+      });
+  }
+  return filterPromise;
+}
+
+export function useSchedulingCatalog(
+  fallbackTechnicianTitle: string,
+  options?: { includeFilters?: boolean },
+) {
+  const includeFilters = Boolean(options?.includeFilters);
+  const [technicians, setTechnicians] = React.useState<SchedulingTechnician[]>(
+    techniciansCache && catalogCacheVersion === CATALOG_VERSION ? techniciansCache : [],
   );
-  const [loading, setLoading] = React.useState(!(catalogCache && catalogCacheVersion === CATALOG_VERSION));
+  const [filters, setFilters] = React.useState<FilterCatalog>(
+    filterCache && catalogCacheVersion === CATALOG_VERSION ? filterCache : EMPTY_FILTERS,
+  );
+  const [loading, setLoading] = React.useState(
+    !(techniciansCache && catalogCacheVersion === CATALOG_VERSION),
+  );
   const [error, setError] = React.useState<unknown>(null);
 
   React.useEffect(() => {
-    if (catalogCache && catalogCacheVersion === CATALOG_VERSION) {
-      setCatalog(catalogCache);
-      setLoading(false);
-      return;
-    }
-    catalogCache = null;
-    if (!catalogPromise) {
-      catalogPromise = loadCatalog(fallbackTechnicianTitle)
-        .then((data) => {
-          catalogCache = data;
-          catalogCacheVersion = CATALOG_VERSION;
-          return data;
-        })
-        .finally(() => {
-          catalogPromise = null;
-        });
-    }
     let cancelled = false;
-    setLoading(true);
-    catalogPromise
-      .then((data) => {
+    setLoading(!(techniciansCache && catalogCacheVersion === CATALOG_VERSION));
+    loadTechnicians(fallbackTechnicianTitle)
+      .then((rows) => {
         if (!cancelled) {
-          setCatalog(data);
+          setTechnicians(rows);
           setError(null);
         }
       })
       .catch((err) => {
         if (!cancelled) {
           setError(err);
-          setCatalog(null);
+          setTechnicians([]);
         }
       })
       .finally(() => {
@@ -132,6 +163,36 @@ export function useSchedulingCatalog(fallbackTechnicianTitle: string) {
       cancelled = true;
     };
   }, [fallbackTechnicianTitle]);
+
+  React.useEffect(() => {
+    if (!includeFilters) return;
+    if (filterCache && catalogCacheVersion === CATALOG_VERSION) {
+      setFilters(filterCache);
+      return;
+    }
+    let cancelled = false;
+    void loadFilterCatalog()
+      .then((next) => {
+        if (!cancelled) setFilters(next);
+      })
+      .catch(() => {
+        if (!cancelled) setFilters(EMPTY_FILTERS);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [includeFilters]);
+
+  const catalog = React.useMemo<SchedulingCatalog>(
+    () => ({
+      technicians,
+      clients: filters.clients,
+      jobs: filters.jobs,
+      projects: filters.projects,
+      userGroups: filters.userGroups,
+    }),
+    [technicians, filters],
+  );
 
   return { catalog, loading, error };
 }

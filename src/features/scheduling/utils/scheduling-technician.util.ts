@@ -1,4 +1,4 @@
-import { fetchUserProfile, fetchUsersPage } from "@/features/users/api/user.api";
+import { fetchUsersPage } from "@/features/users/api/user.api";
 import type { UserAvailabilityPayloadRow } from "@/features/users/types/user-availability.types";
 import type { UserProfile } from "@/features/users/types/user.types";
 import {
@@ -80,33 +80,11 @@ export function initialsFromName(name: string): string {
   return `${parts[0]!.slice(0, 1)}${parts[parts.length - 1]!.slice(0, 1)}`.toUpperCase();
 }
 
-async function enrichMissingAvailability(users: UserProfile[]): Promise<UserProfile[]> {
-  const missing = users.filter((user) => resolveUserAvailableDays(user).length === 0);
-  if (missing.length === 0) return users;
-  const details: Array<UserProfile | null> = [];
-  const chunkSize = 25;
-  for (let i = 0; i < missing.length; i += chunkSize) {
-    const chunk = missing.slice(i, i + chunkSize);
-    const loaded = await Promise.all(chunk.map((user) => fetchUserProfile(user.id).catch(() => null)));
-    details.push(...loaded);
-  }
-  const byId = new Map<number, UserProfile>();
-  for (const detail of details) {
-    if (!detail) continue;
-    byId.set(detail.id, detail);
-    const nestedId = detail.user_detail?.id;
-    if (typeof nestedId === "number" && nestedId > 0) byId.set(nestedId, detail);
-  }
-  if (byId.size === 0) return users;
-  return users.map((user) => byId.get(user.id) ?? byId.get(user.user_detail?.id ?? -1) ?? user);
-}
-
 export async function loadSchedulingTechnicians(fallbackTitle: string): Promise<SchedulingTechnician[]> {
   const { items } = await fetchUsersPage(1, 500);
-  const enriched = await enrichMissingAvailability(items);
   const seen = new Set<number>();
   const rows: SchedulingTechnician[] = [];
-  for (const user of enriched) {
+  for (const user of items) {
     const id = resolveUserProfileSelectId(user);
     if (!Number.isFinite(id) || id <= 0 || seen.has(id)) continue;
     seen.add(id);

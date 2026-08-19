@@ -107,7 +107,9 @@ export function CreateScheduleModal({
 }: Props) {
   const t = useTranslations("Dashboard.scheduling");
   const isReschedule = Boolean(existingSchedule);
-  const { catalog, loading: catalogLoading } = useSchedulingCatalog(t("modal.technicianFallbackTitle"));
+  const { catalog, loading: catalogLoading } = useSchedulingCatalog(t("modal.technicianFallbackTitle"), {
+    includeFilters: open,
+  });
 
   const [jobOptions, setJobOptions] = React.useState<CheckmarkSelectOption[]>([]);
   const [jobsById, setJobsById] = React.useState<Record<number, Job>>({});

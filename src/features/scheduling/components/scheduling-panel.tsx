@@ -198,7 +198,11 @@ export function SchedulingPanel({
   const filterAnchorRef = React.useRef<HTMLButtonElement>(null);
   const filterRowRef = React.useRef<HTMLDivElement>(null);
 
-  const { catalog, loading: catalogLoading } = useSchedulingCatalog(t("modal.technicianFallbackTitle"));
+  const { catalog, loading: catalogLoading } = useSchedulingCatalog(t("modal.technicianFallbackTitle"), {
+    includeFilters:
+      filtersOpen ||
+      Boolean((!jobScopedId && (clientFilter || jobFilter)) || projectFilter || groupFilter),
+  });
 
   const weekStart = React.useMemo(() => startOfWeekMonday(anchorDate), [anchorDate]);
   const days = React.useMemo(() => {
