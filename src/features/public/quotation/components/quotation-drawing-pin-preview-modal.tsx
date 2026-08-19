@@ -867,7 +867,7 @@ export function DrawingPinPreviewModal({
                         <div className="text-slate-400">
                           <Paperclip className="h-[18px] w-[18px]" />
                         </div>
-                        <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Product Attachments</span>
+                        <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{t("productAttachments")}</span>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         {attachments.map((att, idx) => {
