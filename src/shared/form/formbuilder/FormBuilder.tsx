@@ -480,7 +480,7 @@ export default function FormBuilderLayout({
   }, [clearSchema, resolvedLayoutId, targetModule, purpose]);
 
   const fetchAndHydrateSchema = useCallback(
-    async (targetId?: string | number, overridePurpose?: string) => {
+    async (targetId?: string | number, overridePurpose?: string | null) => {
       const activeLayoutId = targetId ?? resolvedLayoutId;
       const activePurpose = overridePurpose ?? purpose;
 
