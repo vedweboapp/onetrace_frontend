@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useFormHandler } from "../hook/useFormHandler";
 import FieldConfigModal from "../components/FieldConfigModal";
 import { useDrop } from "react-dnd";
@@ -479,22 +479,27 @@ export default function FormBuilderLayout({
     };
   }, [clearSchema, resolvedLayoutId, targetModule, purpose]);
 
-  useEffect(() => {
-    const loadSchema = async () => {
+  const fetchAndHydrateSchema = useCallback(
+    async (targetId?: string | number, overridePurpose?: string) => {
+      const activeLayoutId = targetId ?? resolvedLayoutId;
+      const activePurpose = overridePurpose ?? purpose;
+
       setDeletedRuleIds([]);
       if (
-        (purpose === "edit_layout" || purpose === "edit_project_form") &&
-        resolvedLayoutId
+        (activePurpose === "edit_layout" || activePurpose === "edit_project_form") &&
+        activeLayoutId
       ) {
         const handlerCtx = {
-          purpose,
+          purpose: activePurpose,
+          rawPurpose,
           targetModule,
-          resolvedLayoutId,
+          resolvedLayoutId: activeLayoutId,
           projectTypeId,
+          installationTypeId,
         };
         const data = apiHandlers?.fetchForm
-          ? await apiHandlers.fetchForm(resolvedLayoutId, handlerCtx)
-          : await getFormSchemaById(resolvedLayoutId, routeModuleId);
+          ? await apiHandlers.fetchForm(activeLayoutId, handlerCtx)
+          : await getFormSchemaById(activeLayoutId, routeModuleId);
         const layoutObj = data?.data || data;
         if (layoutObj?.name) {
           setModuleName(layoutObj.name);
@@ -794,11 +799,11 @@ export default function FormBuilderLayout({
           setRules(normalizedRules);
         }
       } else if (
-        purpose !== "create_module" &&
-        purpose !== "create_layout" &&
-        purpose !== "edit_layout" &&
-        purpose !== "edit_project_form" &&
-        purpose !== "create_project_form"
+        activePurpose !== "create_module" &&
+        activePurpose !== "create_layout" &&
+        activePurpose !== "edit_layout" &&
+        activePurpose !== "edit_project_form" &&
+        activePurpose !== "create_project_form"
       ) {
         const data = await getFormSchema(targetModule);
         const layoutObj = data?.data || data;
@@ -845,18 +850,24 @@ export default function FormBuilderLayout({
           setRules(loadedRules);
         }
       }
-    };
-    loadSchema();
-  }, [
-    apiHandlers,
-    getFormSchema,
-    getFormSchemaById,
-    projectTypeId,
-    resolvedLayoutId,
-    routeModuleId,
-    targetModule,
-    purpose,
-  ]);
+    },
+    [
+      apiHandlers,
+      getFormSchema,
+      getFormSchemaById,
+      installationTypeId,
+      projectTypeId,
+      purpose,
+      rawPurpose,
+      resolvedLayoutId,
+      routeModuleId,
+      targetModule,
+    ],
+  );
+
+  useEffect(() => {
+    fetchAndHydrateSchema();
+  }, [fetchAndHydrateSchema]);
 
   useEffect(() => {
     if (formSchema && formSchema.length > 0) {
@@ -1539,6 +1550,13 @@ export default function FormBuilderLayout({
 
       setDirty(false);
       setDeletedRuleIds([]);
+
+      const targetFormId = savedFormId || resolvedLayoutId;
+      if (targetFormId && !isClose) {
+        const nextPurpose =
+          purpose === "create_project_form" ? "edit_project_form" : purpose;
+        await fetchAndHydrateSchema(targetFormId, nextPurpose);
+      }
 
       let successMessage = t("layoutSavedToast");
       if (purpose === "create_module") {
