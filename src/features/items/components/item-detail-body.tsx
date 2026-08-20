@@ -10,6 +10,7 @@ import { fetchItemsPage, updateItem } from "@/features/items/api/item.api";
 import { getInstallationTypeId, resolveInstallationTypeChipData } from "@/features/items/utils/item-installation-type.util";
 import { getUnitTypeId, resolveUnitTypeShortLabel } from "@/features/items/utils/item-unit-type.util";
 import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
+import { formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
 import { fetchInstallationTypesPage } from "@/features/installation-types/api/installation-type.api";
 import type { UnitType } from "@/features/unit-types/types/unit-type.types";
 import type { InstallationCostType } from "@/features/items/types/item.types";
@@ -34,8 +35,11 @@ import {
   DetailStatusMetric,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
+import { parseOrgMoneyInput } from "@/shared/money/format-money.util";
+import { getOrgCurrencySettings } from "@/shared/money/org-currency.store";
 import { useOrgCurrency } from "@/shared/money/use-org-currency";
+import { useOrgNumber } from "@/shared/number/use-org-number";
 
 function installationCostTypeLabel(
   value: InstallationCostType | string | null | undefined,
@@ -44,10 +48,10 @@ function installationCostTypeLabel(
   return value === "rate_per_hr" ? t("installationCostRate") : t("installationCostFixed");
 }
 
-function formatQuantityWithUnit(quantity: Item["quantity"], unitLabel: string): string {
+function formatQuantityWithUnit(quantity: Item["quantity"], unitLabel: string, formatted: string): string {
   if (quantity == null) return "—";
-  if (unitLabel !== "—") return `${quantity} ${unitLabel}`;
-  return String(quantity);
+  if (unitLabel !== "—") return `${formatted} ${unitLabel}`;
+  return formatted;
 }
 
 function formatValueWithUnit(value: string | number | null | undefined, unit: string | null | undefined): string {
@@ -59,6 +63,14 @@ function formatValueWithUnit(value: string | number | null | undefined, unit: st
 
 function parseRequiredNumber(next: string): number {
   const n = Number(String(next).trim());
+  if (!Number.isFinite(n)) {
+    throw new Error("Invalid number");
+  }
+  return n;
+}
+
+function parseRequiredMoney(next: string): number {
+  const n = parseOrgMoneyInput(next, getOrgCurrencySettings());
   if (!Number.isFinite(n)) {
     throw new Error("Invalid number");
   }
@@ -80,6 +92,7 @@ export function ItemDetailBody({
   const tActions = useTranslations("Dashboard.common.actions");
   const tStatus = useTranslations("Dashboard.clients.status");
   const { formatMoneyValue: moneyDisplay } = useOrgCurrency();
+  const { formatQuantity } = useOrgNumber();
   const [childItemsById, setChildItemsById] = React.useState<Map<number, Item>>(new Map());
   const [groupName, setGroupName] = React.useState<string | null>(null);
   const [unitTypesById, setUnitTypesById] = React.useState<Record<number, Pick<UnitType, "id" | "name" | "short_form">>>({});
@@ -105,16 +118,11 @@ export function ItemDetailBody({
       : null;
   const hasInstallationHours = Boolean(detail.is_composite && installationHoursRaw);
 
-  async function patchField(body: Parameters<typeof updateItem>[1]) {
-    try {
-      await updateItem(detail.id, body);
-      toastSuccess(t("modal.updatedToast"));
-      onSaved?.();
-    } catch (error) {
-      toastApiError(error, t("loadError"));
-      throw error;
-    }
-  }
+  const patchField = useDetailPatch(
+    (body: Parameters<typeof updateItem>[1]) => updateItem(detail.id, body),
+    { success: t("modal.updatedToast"), error: t("loadError") },
+    onSaved,
+  );
 
   React.useEffect(() => {
     if (!detail.is_composite || components.length === 0) {
@@ -164,7 +172,7 @@ export function ItemDetailBody({
         setUnitTypesById(
           Object.fromEntries(items.map((u) => [u.id, { id: u.id, name: u.name, short_form: u.short_form }])),
         );
-        setUnitTypeOptions(items.map((u) => ({ value: String(u.id), label: u.name?.trim() || `#${u.id}` })));
+        setUnitTypeOptions(items.map((u) => ({ value: String(u.id), label: formatUnitTypeShortLabel(u) })));
       } catch {
         if (!cancelled) {
           setUnitTypesById({});
@@ -234,8 +242,8 @@ export function ItemDetailBody({
             >
               <span className="tabular-nums">
                 {unitTypeLabel !== "—"
-                  ? formatQuantityWithUnit(detail.quantity, unitTypeLabel)
-                  : (detail.quantity ?? null)}
+                  ? formatQuantityWithUnit(detail.quantity, unitTypeLabel, formatQuantity(detail.quantity))
+                  : formatQuantity(detail.quantity)}
               </span>
             </DetailEditableField>
             {unitTypeOptions.length > 0 ? (
@@ -261,23 +269,23 @@ export function ItemDetailBody({
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ reorder_quantity: parseRequiredNumber(next) })}
             >
-              <span className="tabular-nums">{detail.reorder_quantity ?? null}</span>
+              <span className="tabular-nums">{formatQuantity(detail.reorder_quantity)}</span>
             </DetailEditableField>
             <DetailEditableField
               label={t("detail.cost")}
               value={detail.cost_price != null ? String(detail.cost_price) : ""}
-              kind="text"
+              kind="money"
               editAriaLabel={tActions("edit")}
-              onSave={(next) => patchField({ cost_price: parseRequiredNumber(next) })}
+              onSave={(next) => patchField({ cost_price: parseRequiredMoney(next) })}
             >
               <span className="tabular-nums">{moneyDisplay(detail.cost_price)}</span>
             </DetailEditableField>
             <DetailEditableField
               label={t("detail.sell")}
               value={detail.selling_price != null ? String(detail.selling_price) : ""}
-              kind="text"
+              kind="money"
               editAriaLabel={tActions("edit")}
-              onSave={(next) => patchField({ selling_price: parseRequiredNumber(next) })}
+              onSave={(next) => patchField({ selling_price: parseRequiredMoney(next) })}
             >
               <span className="tabular-nums">{moneyDisplay(detail.selling_price)}</span>
             </DetailEditableField>
@@ -342,7 +350,7 @@ export function ItemDetailBody({
               <DetailMetricCard label={t("detail.group")}>
                 <DetailEntityLink
                   href={`${routes.dashboard.groups}/${groupId}`}
-                  className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                  className="font-semibold text-blue-600 underline-offset-2 hover:underline"
                 >
                   {groupName ?? "—"}
                 </DetailEntityLink>
@@ -368,7 +376,7 @@ export function ItemDetailBody({
                           href={href}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="block truncate text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                          className="block truncate text-blue-600 underline-offset-2 hover:underline"
                         >
                           {label}
                         </a>
@@ -409,7 +417,7 @@ export function ItemDetailBody({
                       >
                         <DetailEntityLink
                           href={`${routes.dashboard.items}/${component.child_item}`}
-                          className="block truncate text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                          className="block truncate text-blue-600 underline-offset-2 hover:underline"
                         >
                           {child?.name ?? "—"}
                         </DetailEntityLink>

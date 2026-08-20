@@ -15,7 +15,7 @@ type NumberingPlanWithTypes = {
   type?: (numberType: string) => { possibleLengths?: () => number[] } | undefined;
 };
 
-/** Default calling code for phone fields across the app (+1 United States). */
+/** Last-resort calling-code country when device timezone/locale cannot be detected. */
 export const DEFAULT_PHONE_COUNTRY_CODE = "US" as const;
 
 const PHONE_E164_MAX_DIGITS = FIELD_MAX_LENGTH.PHONE_DIGITS;
@@ -69,8 +69,8 @@ export function resolvePrimaryAddressCountryIso(
 
 export function resolvePhoneCountryFromAddressIso(
   iso: string | null | undefined,
-  fallback: Country = DEFAULT_PHONE_COUNTRY_CODE,
-): Country {
+  fallback?: Country,
+): Country | undefined {
   return countryIsoToPhoneCountry(iso) ?? fallback;
 }
 

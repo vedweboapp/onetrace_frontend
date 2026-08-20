@@ -4,7 +4,6 @@ import {
   AppButton,
   CheckmarkSelect,
   ListPageEmptyStates,
-  ListPageSearchField,
   MultiCheckSelect,
   surfaceInputClassName,
 } from "@/shared/ui";
@@ -760,7 +759,6 @@ const ProjectPinsListTab = ({
     [collapsedLevelIds],
   );
 
-  const [search, setSearch] = useState<string>("");
   const [levelFilter, setLevelFilter] = useState<number | undefined>();
   const [plotFilter, setPlotFilter] = useState<number | undefined>();
   const [locations, setLocations] = useState<Drawing[]>([]);
@@ -801,7 +799,6 @@ const ProjectPinsListTab = ({
   const [jobStatusOptions, setJobStatusOptions] = useState<
     { value: string; label: string }[]
   >([]);
-  const [loadingJobStatuses, setLoadingJobStatuses] = useState(false);
   const [selectedJobStatus, setSelectedJobStatus] = useState("false");
   const [selectedQuoteStatus, setSelectedQuoteStatus] = useState("approved");
   const [selectedAction, setSelectedAction] = useState("");
@@ -820,7 +817,6 @@ const ProjectPinsListTab = ({
 
   useEffect(() => {
     let cancelled = false;
-    setLoadingJobStatuses(true);
     fetchJobStatusesPage(1, 500)
       .then((res) => {
         if (!cancelled) {
@@ -830,22 +826,17 @@ const ProjectPinsListTab = ({
           }));
           setJobStatusOptions(options);
 
-          // Find "To Do" (or "todo") by default from dynamic list
           const todoOption = options.find((opt) =>
             opt.label.toLowerCase().includes("to do") || opt.label.toLowerCase().includes("todo"),
           ) ?? options[0];
 
           if (todoOption) {
             setDialogJobStatusId(Number.parseInt(todoOption.value, 10));
-            setValue("job_status", todoOption.value, { shouldValidate: true });
           }
         }
       })
       .catch(() => {
         if (!cancelled) setJobStatusOptions([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingJobStatuses(false);
       });
     return () => {
       cancelled = true;
@@ -875,7 +866,7 @@ const ProjectPinsListTab = ({
           Number(id),
           page,
           pageSize,
-          search || undefined,
+          undefined,
           params,
         );
         setLocations((prev) => (page === 1 ? items : [...prev, ...items]));
@@ -895,7 +886,7 @@ const ProjectPinsListTab = ({
         }
       }
     },
-    [id, page, pageSize, search, selectedJobStatus, selectedQuoteStatus],
+    [id, page, pageSize, selectedJobStatus, selectedQuoteStatus],
   );
 
   useEffect(() => {
@@ -905,7 +896,7 @@ const ProjectPinsListTab = ({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, page, pageSize, search, selectedJobStatus, selectedQuoteStatus]);
+  }, [id, page, pageSize, selectedJobStatus, selectedQuoteStatus]);
 
   useEffect(() => {
     if (!id || !/^\d+$/.test(id)) {
@@ -985,23 +976,6 @@ const ProjectPinsListTab = ({
     [projectTypeId],
   );
 
-  const commitSearch = useCallback(
-    (value: string) => {
-      setSearch(value);
-      setPage(1);
-      setLocations([]);
-      setPagination({
-        total_records: 0,
-        total_pages: 1,
-        current_page: 1,
-        page_size: pageSize,
-        next: null,
-        previous: null,
-      });
-    },
-    [pageSize],
-  );
-
   useEffect(() => {
     if (!dialogVisible) return;
     const timeout = window.setTimeout(() => {
@@ -1049,56 +1023,31 @@ const ProjectPinsListTab = ({
   const {
     handleSubmit,
     reset,
-    register,
     control,
-    setValue,
     formState: { errors },
   } = useForm<{
     site: string;
     checklists: string[];
-    job_status: string;
   }>({
     defaultValues: {
       site: "",
       checklists: [],
-      job_status: "",
     },
   });
 
   const filteredLocations = useMemo(() => {
-    const searchActive = search.trim() !== "";
     return locations
       .filter((level) => levelFilter == null || level.id === levelFilter)
       .map((level) => {
         const plots = (level.plots ?? [])
           .filter((plot) => plotFilter == null || plot.id === plotFilter)
-          .map((plot) => {
-            const pins = (plot.pins ?? []).filter((pin) => {
-              const q = search.trim().toLowerCase();
-              if (!q) return true;
-              const pinId = String(pin.id);
-              const productName = (
-                pin.item_detail?.name ||
-                pin.group_detail?.name ||
-                ""
-              ).toLowerCase();
-              const sku = (pin.item_detail?.sku || "").toLowerCase();
-              const description = (pin.description || "").toLowerCase();
-              return (
-                pinId.includes(q) ||
-                productName.includes(q) ||
-                sku.includes(q) ||
-                description.includes(q)
-              );
-            });
-            return { ...plot, pins };
-          })
-          .filter((p) => p.pins.length > 0); // always hide plots with no pins
+          .map((plot) => ({ ...plot, pins: plot.pins ?? [] }))
+          .filter((p) => p.pins.length > 0);
 
         return { ...level, plots };
       })
-      .filter((level) => level.plots.length > 0); // always hide levels with no plots
-  }, [locations, search, levelFilter, plotFilter]);
+      .filter((level) => level.plots.length > 0);
+  }, [locations, levelFilter, plotFilter]);
 
   const levelOptions = useMemo(
     () =>
@@ -1244,7 +1193,6 @@ const ProjectPinsListTab = ({
   }, [loading, loadError, locations.length, filteredLocations.length]);
 
   const clearFilters = useCallback(() => {
-    setSearch("");
     setLevelFilter(undefined);
     setPlotFilter(undefined);
   }, []);
@@ -1252,7 +1200,6 @@ const ProjectPinsListTab = ({
   const handleCreateJob = async (formData: {
     site: string;
     checklists: string[];
-    job_status: string;
   }): Promise<void> => {
     setIsSubmitting(true);
     try {
@@ -1261,9 +1208,7 @@ const ProjectPinsListTab = ({
         pin_ids: jobEligiblePinIds,
         site: formData.site ? Number(formData.site) : undefined,
         checklists: formData.checklists.map(Number),
-        job_status: formData.job_status
-          ? Number(formData.job_status)
-          : undefined,
+        job_status: dialogJobStatusId,
         job_category: JOB_CATEGORY.project,
       });
       setDialogVisible(false);
@@ -1423,43 +1368,6 @@ const ProjectPinsListTab = ({
                   </p>
                 )}
               </div>
-
-              <div>
-                <label className="text-md font-semibold text-slate-800 dark:text-slate-200">
-                  Job Status <span className="text-red-500">*</span>
-                </label>
-                <CheckmarkSelect
-                  listLabel="Job Status"
-                  buttonAriaLabel="Job Status"
-                  options={jobStatusOptions}
-                  value={
-                    dialogJobStatusId != null ? String(dialogJobStatusId) : ""
-                  }
-                  emptyLabel="Select Job Status"
-                  portaled
-                  searchable
-                  clearable
-                  className="w-full"
-                  disabled={loadingJobStatuses || jobStatusOptions.length === 0}
-                  onChange={(value) => {
-                    setDialogJobStatusId(
-                      value ? Number.parseInt(value, 10) : undefined,
-                    );
-                    setValue("job_status", value ?? "", { shouldValidate: true });
-                  }}
-                />
-                <input
-                  type="hidden"
-                  {...register("job_status", {
-                    required: t("requiredJobStatus") || "Job status is required",
-                  })}
-                />
-                {errors.job_status && (
-                  <p className="mt-1 text-sm text-red-500">
-                    {errors.job_status.message}
-                  </p>
-                )}
-              </div>
             </div>
 
             <div className="shrink-0 flex justify-end gap-2 px-6 pb-6 pt-2">
@@ -1590,13 +1498,6 @@ const ProjectPinsListTab = ({
 
           {/* Filters — wrap on mobile, single row on sm+ */}
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <ListPageSearchField
-              value={search}
-              onCommit={commitSearch}
-              placeholder={t("searchPlaceholder")}
-              ariaLabel={t("searchAria")}
-              className="w-full min-w-0 sm:w-48"
-            />
             <CheckmarkSelect
               listLabel={t("quoteStatus")}
               buttonAriaLabel={t("quoteStatus")}
@@ -1782,7 +1683,6 @@ const ProjectPinsListTab = ({
 
                   if (todoOption) {
                     setDialogJobStatusId(Number.parseInt(todoOption.value, 10));
-                    setValue("job_status", todoOption.value, { shouldValidate: true });
                   }
 
                   if (alreadyJobPins.length > 0) {

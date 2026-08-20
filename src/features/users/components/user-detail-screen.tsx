@@ -14,8 +14,10 @@ import { SchedulingPanel } from "@/features/scheduling/components/scheduling-pan
 import { routes } from "@/shared/config/routes";
 import { DetailSystemMetadataSection, EntityDetailLoadingSkeleton } from "@/shared/components/entity";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
+import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
+  detailRecordInnerClassName,
   detailRecordSurfaceShellClassName,
   DetailMetricCard,
   DetailMetricsGrid,
@@ -24,7 +26,6 @@ import {
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useEntityDetailBack } from "@/shared/hooks/use-entity-detail-back";
 import { formatSettingsDetailDate } from "@/shared/components/settings/settings-detail-view";
 import {
@@ -33,6 +34,9 @@ import {
 } from "@/shared/utils/detail-from-list.util";
 import { AppButton, AppTabs, EditButton, SurfaceShell, type AppTabItem, type CheckmarkSelectOption } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
+import { parseOrgMoneyInput } from "@/shared/money/format-money.util";
+import { getOrgCurrencySettings } from "@/shared/money/org-currency.store";
+import { useOrgCurrency } from "@/shared/money/use-org-currency";
 
 function userRoleLabel(row: UserProfile | null): string {
   if (!row?.role_detail) return "—";
@@ -71,6 +75,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
   const t = useTranslations("Dashboard.users");
   const tMeta = useTranslations("Dashboard.common.detail");
   const tActions = useTranslations("Dashboard.common.actions");
+  const { formatMoneyValue } = useOrgCurrency();
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -178,16 +183,11 @@ export function UserDetailScreen({ userId }: { userId: number }) {
     );
   }
 
-  async function patchField(body: Parameters<typeof updateUserProfile>[1]) {
-    try {
-      await updateUserProfile(userId, body);
-      toastSuccess(t("updatedToast"));
-      setRefreshNonce((k) => k + 1);
-    } catch (error) {
-      toastApiError(error, t("saveError"));
-      throw error;
-    }
-  }
+  const patchField = useDetailPatch(
+    (body: Parameters<typeof updateUserProfile>[1]) => updateUserProfile(userId, body),
+    { success: t("updatedToast"), error: t("saveError") },
+    () => setRefreshNonce((k) => k + 1),
+  );
 
   const addresses = detail ? resolveUserAddresses(detail) : [];
   const basePay = detail ? resolveBasePay(detail) : "";
@@ -217,7 +217,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                 <Mail className="size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
                 <a
                   href={`mailto:${detail.user_detail.email}`}
-                  className="text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                  className="text-blue-600 underline-offset-2 hover:underline"
                 >
                   {detail.user_detail.email}
                 </a>
@@ -266,6 +266,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
         </div>
       ) : (
         <SurfaceShell className={cn(detailRecordSurfaceShellClassName, "mt-3")}>
+          <div className={detailRecordInnerClassName}>
           {loading ? (
             <EntityDetailLoadingSkeleton />
           ) : error ? (
@@ -312,7 +313,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                     >
                       <a
                         href={`mailto:${detail.user_detail.email}`}
-                        className="break-all font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                        className="break-all font-medium text-blue-600 underline-offset-2 hover:underline"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {detail.user_detail.email}
@@ -361,11 +362,11 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                     <DetailEditableField
                       label={t("fields.basePay")}
                       value={basePay}
-                      kind="text"
+                      kind="money"
                       editAriaLabel={tActions("edit")}
                       empty="—"
                       onSave={(next) => {
-                        const n = next.trim() ? Number(next) : null;
+                        const n = next.trim() ? parseOrgMoneyInput(next, getOrgCurrencySettings()) : null;
                         return patchField({
                           user_detail: {
                             base_pay: n != null && Number.isFinite(n) ? n : null,
@@ -374,7 +375,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                         });
                       }}
                     >
-                      {basePay || "—"}
+                      {basePay ? formatMoneyValue(basePay) : "—"}
                     </DetailEditableField>
                     <DetailEditableField
                       label={t("fields.basePayType")}
@@ -486,6 +487,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
               </div>
             </DetailPagePadding>
           ) : null}
+          </div>
         </SurfaceShell>
       )}
     </div>

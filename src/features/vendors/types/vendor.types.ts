@@ -12,12 +12,16 @@ export type VendorAddressPayload = EntityAddressPayload;
 
 export type VendorTypeRef = Pick<VendorType, "id" | "name" | "bg_color" | "text_color">;
 
+export type VendorTypeValue = number | VendorTypeRef | Array<number | VendorTypeRef> | null;
+
 export type Vendor = {
   id: number;
   name: string;
   email: string;
   phone: string;
-  type: number | VendorTypeRef | null;
+  type: VendorTypeValue;
+  types?: VendorTypeValue;
+  vendor_types?: VendorTypeValue;
   addresses: VendorAddress[];
   is_active: boolean;
   created_at: string;
@@ -49,7 +53,7 @@ export type VendorCreatePayload = {
   name: string;
   email: string;
   phone: string;
-  type: number;
+  type: number[];
   addresses: VendorAddressPayload[];
 };
 

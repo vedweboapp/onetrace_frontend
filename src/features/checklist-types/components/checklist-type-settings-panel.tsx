@@ -40,10 +40,9 @@ import {
   getApiErrorDisplayMessage,
 } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import {
   hasListActiveFilters,
-  parseIsActiveParam,
   useListUrlState,
 } from "@/shared/hooks/use-list-url-state";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
@@ -69,7 +68,6 @@ import {
   listPageRootClassName,
   DetailPanel,
   FieldGroup,
-  ListPageActiveFilter,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
@@ -110,13 +108,11 @@ export function ChecklistTypeSettingsPanel() {
     pageSize,
     listViewMode,
     search,
-    isActiveParam,
     setUrl,
     setPage,
     setPageSize,
     setListViewMode,
   } = useListUrlState();
-  const isActiveFilter = parseIsActiveParam(isActiveParam) ?? true;
 
   const projectTypeParam = searchParams.get("project_type");
   const projectTypeFilter =
@@ -214,7 +210,6 @@ export function ChecklistTypeSettingsPanel() {
         const { items: nextItems, pagination: p } =
           await fetchChecklistTypesPage(page, pageSize, {
             search: search || undefined,
-            is_active: isActiveFilter,
             project_type: projectTypeFilter,
           });
         if (!cancelled) {
@@ -238,39 +233,19 @@ export function ChecklistTypeSettingsPanel() {
     pageSize,
     refreshNonce,
     search,
-    isActiveFilter,
     projectTypeFilter,
     t,
   ]);
 
   const hasActiveFilters = hasListActiveFilters({
     search,
-    isActiveParam,
     projectTypeParam,
   });
-  const countInactive = React.useCallback(async () => {
-    const { pagination: p } = await fetchChecklistTypesPage(1, 1, {
-      search: search || undefined,
-      is_active: false,
-      project_type: projectTypeFilter,
-    });
-    return p.total_records;
-  }, [search, projectTypeFilter]);
-  const {
-    hideListChrome,
-    listLoading,
-    emptyStateKind,
-    filtersActive,
-    switchToInactive,
-  } = useListActiveInactiveEmptyState({
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
     loading,
     loadError,
     itemsLength: items.length,
-    isActiveParam,
-    isActiveFilter,
     hasActiveFilters,
-    setUrl,
-    countInactive,
   });
 
 const openEdit = React.useCallback((row: ChecklistType) => {
@@ -511,19 +486,6 @@ if (editing && initialValues) {
                   )
                 }
               />
-              <ListPageActiveFilter
-                activeLabel={t("status.active")}
-                inactiveLabel={t("status.inactive")}
-                filterLabel={t("filterState")}
-                filterAriaLabel={t("filterState")}
-                isActiveParam={isActiveParam}
-                onChange={(active) =>
-                  setUrl(
-                    { is_active: active ? null : "false", page: null },
-                    { replace: true },
-                  )
-                }
-              />
             </div>
           }
         />
@@ -570,7 +532,6 @@ if (editing && initialValues) {
                 { replace: true },
               )
             }
-            onSwitchToInactive={switchToInactive}
           />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">

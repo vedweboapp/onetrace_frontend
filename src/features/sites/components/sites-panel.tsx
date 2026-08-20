@@ -16,8 +16,8 @@ import {
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
-import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
   ActiveStatusBadge,
@@ -30,7 +30,6 @@ import {
   listPageRootClassName,
   DataTablePaginationBar,
   DataTableRowActionsMenu,
-  ListPageActiveFilter,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
@@ -81,9 +80,8 @@ export function SitesPanel() {
     [listHref, pathname, router],
   );
 
-  const { page, pageSize, listViewMode, search, isActiveParam, setUrl, setPage, setPageSize, setListViewMode } =
+  const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } =
     useListUrlState();
-  const isActiveFilter = parseIsActiveParam(isActiveParam) ?? true;
   const clientParam = searchParams.get("client");
   const clientFilter = clientParam && /^\d+$/.test(clientParam) ? Number.parseInt(clientParam, 10) : undefined;
 
@@ -120,10 +118,9 @@ export function SitesPanel() {
   const listFilters = React.useMemo(
     () => ({
       search: search || undefined,
-      is_active: isActiveFilter,
       client: clientFilter,
     }),
-    [search, isActiveFilter, clientFilter],
+    [search, clientFilter],
   );
 
   const massUpdateFields = React.useMemo(
@@ -154,7 +151,7 @@ export function SitesPanel() {
     totalRecords: pagination.total_records,
     pageItems: items,
     fetchAllIds,
-    resetDeps: [pageSize, search, isActiveFilter, clientFilter],
+    resetDeps: [pageSize, search, clientFilter],
     updateFields: massUpdateFields,
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
@@ -175,7 +172,6 @@ export function SitesPanel() {
       try {
         const { items: nextItems, pagination: p } = await fetchSitesPage(page, pageSize, {
           search: search || undefined,
-          is_active: isActiveFilter,
           client: clientFilter,
         });
         if (!cancelled) {
@@ -194,7 +190,7 @@ export function SitesPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, search, isActiveFilter, clientFilter, refreshNonce, t]);
+  }, [page, pageSize, search, clientFilter, refreshNonce, t]);
 
   const clientLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -205,26 +201,13 @@ export function SitesPanel() {
     return m;
   }, [clientOptions]);
 
-  const hasActiveFilters = hasListActiveFilters({ search, isActiveParam, clientParam });
-  const countInactive = React.useCallback(async () => {
-    const { pagination: p } = await fetchSitesPage(1, 1, {
-      search: search || undefined,
-      is_active: false,
-      client: clientFilter,
-    });
-    return p.total_records;
-  }, [search, clientFilter]);
-  const { hideListChrome, listLoading, emptyStateKind, filtersActive, switchToInactive } =
-    useListActiveInactiveEmptyState({
-      loading,
-      loadError,
-      itemsLength: items.length,
-      isActiveParam,
-      isActiveFilter,
-      hasActiveFilters,
-      setUrl,
-      countInactive,
-    });
+  const hasActiveFilters = hasListActiveFilters({ search, clientParam });
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
   const pageRange = getListPageRange(pagination);
 
   async function handleToggleActive(row: Site, next: boolean) {
@@ -316,16 +299,6 @@ export function SitesPanel() {
                 }}
                 onChange={(v) => setUrl({ client: v || null, page: null }, { replace: true })}
               />
-              <ListPageActiveFilter
-                activeLabel={t("status.active")}
-                inactiveLabel={t("status.inactive")}
-                filterLabel={t("filterState")}
-                filterAriaLabel={t("filterState")}
-                isActiveParam={isActiveParam}
-                onChange={(isActive) =>
-                  setUrl({ is_active: isActive ? null : "false", page: null }, { replace: true })
-                }
-              />
             </div>
           }
         />
@@ -366,7 +339,6 @@ export function SitesPanel() {
             onClearFilters={() =>
               setUrl({ search: null, is_active: null, client: null, page: null }, { replace: true })
             }
-            onSwitchToInactive={switchToInactive}
           />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">

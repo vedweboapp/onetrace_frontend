@@ -39,6 +39,8 @@ import {
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
+  MoneyInput,
+  NumericInput,
   RequiredMark,
   SurfaceDateInput,
   SurfaceShell,
@@ -724,28 +726,29 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                             </div>
                           </td>
                           <td className="px-3 py-2 align-top">
-                            <input
-                              type="number"
-                              min={0}
-                              step="any"
-                              aria-invalid={errors.line_items?.[index]?.quantity ? true : undefined}
-                              className={cn(
-                                surfaceInputClassName,
-                                "h-8 w-24 px-2.5 text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
-                                errors.line_items?.[index]?.quantity && "border-red-500",
-                              )}
+                            <NumericInput
+                              size="sm"
+                              integer
+                              value={row?.quantity ?? ""}
+                              invalid={Boolean(errors.line_items?.[index]?.quantity)}
                               disabled={saving}
-                              {...register(`line_items.${index}.quantity`)}
+                              onChange={(next) =>
+                                setValue(`line_items.${index}.quantity`, next, {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                })
+                              }
                             />
                             <FieldErrorText>{errors.line_items?.[index]?.quantity?.message}</FieldErrorText>
                           </td>
                           <td className="px-3 py-2 align-top">
-                            <input
-                              className={cn(surfaceInputClassName, "h-8 w-28 px-2.5 text-sm")}
+                            <input type="hidden" {...register(`line_items.${index}.rate`)} />
+                            <MoneyInput
+                              size="sm"
                               readOnly
                               tabIndex={-1}
                               aria-readonly
-                              {...register(`line_items.${index}.rate`)}
+                              value={row?.rate ?? ""}
                             />
                           </td>
                           <td className="px-3 py-2 align-top">

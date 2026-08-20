@@ -204,7 +204,7 @@ export function MultiCheckSelect({
   }
 
   const triggerClass = cn(
-    "min-h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-left text-sm text-slate-900 outline-none transition",
+    "min-h-9 w-full min-w-0 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-left text-sm text-slate-900 outline-none transition",
     "hover:border-[color:var(--dash-accent,#111111)] hover:bg-slate-50",
     "focus-visible:border-[color:var(--dash-accent,#111111)] focus-visible:ring-2 focus-visible:ring-[color:var(--dash-accent,#111111)]/20",
     "dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-800/90",
@@ -228,7 +228,7 @@ export function MultiCheckSelect({
               position: "fixed",
               top: placement.top,
               left: placement.left,
-              width: Math.max(placement.width, 220),
+              width: Math.max(placement.width, 280),
               transform: placement.transform,
               maxHeight: panelMaxHeight,
             }
@@ -320,13 +320,13 @@ export function MultiCheckSelect({
           {selectedOptions.length === 0 ? (
             <span className="truncate text-slate-400 dark:text-slate-500">{placeholder}</span>
           ) : (
-            <div className="flex min-h-6 flex-1 flex-wrap gap-1.5">
+            <div className="flex min-h-6 flex-1 flex-wrap content-start gap-1">
               {selectedOptions.map((opt) => (
                 <span
                   key={opt.value}
-                  className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  className="inline-flex max-w-full items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] leading-tight text-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
-                  {opt.label}
+                  <span className="truncate">{opt.label}</span>
                   <span
                     role="button"
                     tabIndex={0}

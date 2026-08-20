@@ -29,6 +29,7 @@ const defaultOrgDetails: OrganizationDetails = {
   symbolPosition: "before",
   digitSeparator: "1,234,567.89",
   decimalPlaces: 2,
+  numberFormat: "1,234,567.89",
   startTime: "09:00",
   endTime: "17:00",
   workingDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],

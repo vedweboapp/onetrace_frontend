@@ -331,7 +331,7 @@ const SECTIONS: DocSection[] = [
       p("Purpose — master record for each customer organisation. Almost every commercial and project flow starts here."),
       label("List page"),
       ul([
-        "Search, Active / Inactive filter, Card / Table view",
+        "Search, Card / Table view",
         "Add client",
         "Mass update, mass delete, mass export",
         "Mass-update examples: name, email, phone, address fields, active",
@@ -368,7 +368,7 @@ const SECTIONS: DocSection[] = [
       p("Purpose — suppliers you buy from. Required for purchase orders and vendor contacts."),
       label("List page"),
       ul([
-        "Search, Active / Inactive, Card / Table, Add",
+        "Search, Card / Table, Add",
         "Row actions: edit, activate/deactivate, delete",
         "No shared mass-action bar on this list",
       ]),

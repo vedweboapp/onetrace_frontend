@@ -412,7 +412,8 @@ export function CreateScheduleModal({
               listLabel={t("fields.client")}
               options={clientOptions}
               value={clientId}
-              disabled={saving || catalogLoading || lockClientJob}
+              disabled={saving || catalogLoading}
+              locked={lockClientJob}
               searchable
               portaled
               emptyLabel={t("placeholders.client")}
@@ -425,10 +426,12 @@ export function CreateScheduleModal({
                 });
               }}
             />
-            <Building2
-              className="pointer-events-none absolute right-9 top-1/2 size-4 -translate-y-1/2 text-slate-400"
-              aria-hidden
-            />
+            {lockClientJob ? null : (
+              <Building2
+                className="pointer-events-none absolute right-9 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+                aria-hidden
+              />
+            )}
           </div>
           <FieldErrorText>{errors.client}</FieldErrorText>
         </FieldGroup>
@@ -440,7 +443,8 @@ export function CreateScheduleModal({
               listLabel={t("fields.job")}
               options={jobOptions}
               value={jobId}
-              disabled={saving || !clientId || loadingJobs || lockClientJob}
+              disabled={saving || !clientId || loadingJobs}
+              locked={lockClientJob}
               searchable
               portaled
               emptyLabel={
@@ -459,10 +463,12 @@ export function CreateScheduleModal({
                 });
               }}
             />
-            <Briefcase
-              className="pointer-events-none absolute right-9 top-1/2 size-4 -translate-y-1/2 text-slate-400"
-              aria-hidden
-            />
+            {lockClientJob ? null : (
+              <Briefcase
+                className="pointer-events-none absolute right-9 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+                aria-hidden
+              />
+            )}
           </div>
           <FieldErrorText>{errors.job}</FieldErrorText>
         </FieldGroup>

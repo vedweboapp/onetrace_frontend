@@ -29,7 +29,7 @@ import {
   DetailPanelCard,
 } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 import { ActiveStatusBadge } from "@/shared/ui";
 
 const AddressMiniMap = dynamic(
@@ -75,27 +75,17 @@ export function SiteDetailBody({
     [t],
   );
 
-  async function patchActive(is_active: boolean) {
-    try {
-      await patchSite(detail.id, { is_active });
-      toastSuccess(t("updatedToast"));
-      onSaved?.();
-    } catch (error) {
-      toastApiError(error, t("toggleActiveError"));
-      throw error;
-    }
-  }
+  const patchActive = useDetailPatch(
+    (is_active: boolean) => patchSite(detail.id, { is_active }),
+    { success: t("updatedToast"), error: t("toggleActiveError") },
+    onSaved,
+  );
 
-  async function patchSiteField(body: Partial<SiteUpdatePayload>) {
-    try {
-      await updateSite(detail.id, body as SiteUpdatePayload);
-      toastSuccess(t("updatedToast"));
-      onSaved?.();
-    } catch (error) {
-      toastApiError(error, t("toggleActiveError"));
-      throw error;
-    }
-  }
+  const patchSiteField = useDetailPatch(
+    (body: Partial<SiteUpdatePayload>) => updateSite(detail.id, body as SiteUpdatePayload),
+    { success: t("updatedToast"), error: t("toggleActiveError") },
+    onSaved,
+  );
 
   const addressParts = {
     line1: detail.address_line_1,
@@ -126,7 +116,7 @@ export function SiteDetailBody({
     <DetailPagePadding>
       <DetailPageMapLayout map={mapNode} mapTitle={t("detail.sectionMap")} showMap>
         <DetailPanelCard title={t("detail.sectionOverview")}>
-          <DetailMetricsGrid compact>
+          <DetailMetricsGrid>
             <DetailEditableField
               label={t("fields.siteName")}
               value={detail.site_name}
@@ -153,7 +143,7 @@ export function SiteDetailBody({
               {clientId ? (
                 <DetailEntityLink
                   href={`${routes.dashboard.clients}/${clientId}`}
-                  className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                  className="font-semibold text-blue-600 underline-offset-2 hover:underline"
                 >
                   {clientName ?? "—"}
                 </DetailEntityLink>
@@ -206,7 +196,7 @@ export function SiteDetailBody({
                     {contactId ? (
                       <DetailEntityLink
                         href={`${routes.dashboard.contacts}/${contactId}`}
-                        className="text-sm font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                        className="text-sm font-semibold text-blue-600 underline-offset-2 hover:underline"
                       >
                         {contactLabel}
                       </DetailEntityLink>
@@ -222,7 +212,7 @@ export function SiteDetailBody({
         </DetailPanelCard>
 
         <DetailPanelCard title={t("detail.sectionAddress")}>
-          <DetailMetricsGrid compact>
+          <DetailMetricsGrid>
             <DetailEditableField
               label={t("fields.addressLine1")}
               value={addressParts.line1 ?? ""}

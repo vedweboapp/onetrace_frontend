@@ -1,6 +1,6 @@
 import type { Vendor, VendorCreatePayload } from "@/features/vendors/types/vendor.types";
 import type { VendorFormValues } from "@/features/vendors/schemas/vendor-form-schema";
-import { getVendorTypeId } from "@/features/vendors/utils/vendor-nested-fields.util";
+import { getVendorTypeIds } from "@/features/vendors/utils/vendor-nested-fields.util";
 import {
   emptyEntityAddressFormRow,
   mapEntityAddressApiToFormRow,
@@ -13,19 +13,18 @@ export function emptyVendorFormDefaults(): VendorFormValues {
     name: "",
     email: "",
     phone: "",
-    type: "",
+    type: [],
     addresses: [emptyEntityAddressFormRow({ address_type: "billing", is_primary: true })],
   };
 }
 
 export function vendorToFormDefaults(vendor: Vendor): VendorFormValues {
-  const typeId = getVendorTypeId(vendor);
   const addresses = vendor.addresses ?? [];
   return {
     name: vendor.name ?? "",
     email: vendor.email ?? "",
     phone: vendor.phone ?? "",
-    type: typeId != null ? String(typeId) : "",
+    type: getVendorTypeIds(vendor).map(String),
     addresses:
       addresses.length > 0
         ? addresses.map((addr) => mapEntityAddressApiToFormRow(addr))
@@ -38,7 +37,9 @@ export function mapVendorFormToPayload(values: VendorFormValues): VendorCreatePa
     name: values.name.trim(),
     email: values.email.trim(),
     phone: values.phone.trim(),
-    type: Number.parseInt(values.type, 10),
+    type: values.type
+      .map((id) => Number.parseInt(id, 10))
+      .filter((id) => Number.isFinite(id) && id > 0),
     addresses: normalizePrimaryEntityAddresses(values.addresses).map(mapEntityAddressFormRowToPayload),
   };
 }

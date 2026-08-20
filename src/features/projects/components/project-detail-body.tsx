@@ -12,13 +12,14 @@ import { resolveProjectTypeChipData } from "@/features/projects/utils/project-ty
 import { routes } from "@/shared/config/routes";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import {
+  DetailFieldsLayout,
   DetailMetricCard,
   DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
@@ -103,16 +104,11 @@ export function ProjectDetailBody({
     [statusOptions],
   );
 
-  async function patchField(body: Parameters<typeof updateProject>[1]) {
-    try {
-      await updateProject(detail.id, body);
-      toastSuccess(t("updatedToast"));
-      onSaved?.();
-    } catch (error) {
-      toastApiError(error, t("toggleActiveError"));
-      throw error;
-    }
-  }
+  const patchField = useDetailPatch(
+    (body: Parameters<typeof updateProject>[1]) => updateProject(detail.id, body),
+    { success: t("updatedToast"), error: t("toggleActiveError") },
+    onSaved,
+  );
 
   return (
     <DetailPagePadding>
@@ -148,7 +144,7 @@ export function ProjectDetailBody({
               {clientId ? (
                 <DetailEntityLink
                   href={`${routes.dashboard.clients}/${clientId}`}
-                  className="break-words text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                  className="break-words text-blue-600 underline-offset-2 hover:underline"
                 >
                   {clientName ?? "—"}
                 </DetailEntityLink>
@@ -189,17 +185,20 @@ export function ProjectDetailBody({
         </DetailPanelCard>
 
         <DetailPanelCard title={t("detail.panelDescription")}>
-          <DetailEditableField
-            label={<span className="sr-only">{t("fields.description")}</span>}
-            value={detail.description ?? ""}
-            kind="text"
-            editAriaLabel={tActions("edit")}
-            onSave={(next) => patchField({ description: next })}
-          >
-            {detail.description?.trim() ? (
-              <span className="whitespace-pre-wrap font-normal leading-relaxed">{detail.description}</span>
-            ) : null}
-          </DetailEditableField>
+          <DetailFieldsLayout>
+            <DetailEditableField
+              label={<span className="sr-only">{t("fields.description")}</span>}
+              value={detail.description ?? ""}
+              kind="text"
+              multiline
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchField({ description: next })}
+            >
+              {detail.description?.trim() ? (
+                <span className="whitespace-pre-wrap font-normal leading-relaxed">{detail.description}</span>
+              ) : null}
+            </DetailEditableField>
+          </DetailFieldsLayout>
         </DetailPanelCard>
 
         <DetailPanelCard title={t("detail.panelSites")}>
@@ -222,7 +221,7 @@ export function ProjectDetailBody({
                   <li key={row.id} className="min-w-0 border-t border-slate-200/80 pt-3 first:border-t-0 first:pt-0 dark:border-slate-800">
                     <DetailEntityLink
                       href={`${routes.dashboard.sites}/${row.id}`}
-                      className="block min-w-0 font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                      className="block min-w-0 font-semibold text-blue-600 underline-offset-2 hover:underline"
                     >
                       <span className="break-words">{row.label}</span>
                     </DetailEntityLink>

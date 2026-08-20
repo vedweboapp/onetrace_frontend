@@ -13,7 +13,9 @@ import {
   EntityDetailErrorState,
   EntityDetailLoadingSkeleton,
   EntityDetailScreen,
+  EntityDetailTabLoadingState,
 } from "@/shared/components/entity";
+import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton, AppTabs, ConfirmDialog, type AppTabItem } from "@/shared/ui";
@@ -156,17 +158,18 @@ export function VendorDetailScreen({ vendorId }: Props) {
           role="tabpanel"
           id={`vendor-detail-tab-${activeTab}`}
           aria-labelledby={`vendor-detail-tab-trigger-${activeTab}`}
+          className={entityDetailTabPanelClassName}
         >
           {loading && activeTab === "details" ? (
-            <EntityDetailLoadingSkeleton />
+            <EntityDetailLoadingSkeleton fill />
           ) : error && activeTab === "details" ? (
-            <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
+            <EntityDetailErrorState fill message={error} retryLabel={t("detail.retry")} onRetry={retry} />
           ) : detail && activeTab === "details" ? (
             <VendorDetailBody detail={detail} dateFmt={dateFmt} onSaved={retry} />
           ) : loading ? (
-            <EntityDetailLoadingSkeleton />
+            <EntityDetailTabLoadingState />
           ) : error ? (
-            <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
+            <EntityDetailErrorState fill message={error} retryLabel={t("detail.retry")} onRetry={retry} />
           ) : detail && activeTab === "contacts" ? (
             <EntityContactsTab entityType="vendor" entityId={detail.id} />
           ) : null}

@@ -18,6 +18,7 @@ export interface OrganizationDetails {
     symbolPosition?: string;
     digitSeparator?: string;
     decimalPlaces?: number;
+    numberFormat?: string;
     startTime?: string;
     endTime?: string;
     workingDays?: string[];

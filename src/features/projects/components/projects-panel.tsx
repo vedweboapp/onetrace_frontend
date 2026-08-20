@@ -16,8 +16,8 @@ import { projectTypesById, resolveProjectTypeChipData } from "@/features/project
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
-import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
   AddButton,
@@ -30,7 +30,6 @@ import {
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
-  ListPageActiveFilter,
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
@@ -85,13 +84,11 @@ export function ProjectsPanel() {
     pageSize,
     listViewMode,
     search,
-    isActiveParam,
     setUrl,
     setPage,
     setPageSize,
     setListViewMode,
   } = useListUrlState();
-  const isActiveFilter = parseIsActiveParam(isActiveParam) ?? true;
 
   const [items, setItems] = React.useState<Project[]>([]);
   const [pagination, setPagination] = React.useState({
@@ -162,7 +159,6 @@ export function ProjectsPanel() {
       try {
         const { items: nextItems, pagination: p } = await fetchProjectsPage(page, pageSize, {
           search: search || undefined,
-          is_active: isActiveFilter,
         });
         if (!cancelled) {
           setItems(nextItems);
@@ -180,7 +176,7 @@ export function ProjectsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, search, isActiveFilter, refreshNonce, t]);
+  }, [page, pageSize, search, refreshNonce, t]);
 
   const clientLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -201,8 +197,8 @@ export function ProjectsPanel() {
   );
 
   const listFilters = React.useMemo(
-    () => ({ search: search || undefined, is_active: isActiveFilter }),
-    [search, isActiveFilter],
+    () => ({ search: search || undefined }),
+    [search],
   );
 
   const massUpdateFields = React.useMemo(
@@ -231,7 +227,7 @@ export function ProjectsPanel() {
     totalRecords: pagination.total_records,
     pageItems: items,
     fetchAllIds,
-    resetDeps: [pageSize, search, isActiveFilter],
+    resetDeps: [pageSize, search],
     updateFields: massUpdateFields,
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
@@ -369,25 +365,13 @@ export function ProjectsPanel() {
     ];
   }, [t, tList, clientLabelById, projectTypeById, togglingId, massSel.tableColumn]);
 
-  const hasActiveFilters = hasListActiveFilters({ search, isActiveParam });
-  const countInactive = React.useCallback(async () => {
-    const { pagination: p } = await fetchProjectsPage(1, 1, {
-      search: search || undefined,
-      is_active: false,
-    });
-    return p.total_records;
-  }, [search]);
-  const { hideListChrome, listLoading, emptyStateKind, filtersActive, switchToInactive } =
-    useListActiveInactiveEmptyState({
-      loading,
-      loadError,
-      itemsLength: items.length,
-      isActiveParam,
-      isActiveFilter,
-      hasActiveFilters,
-      setUrl,
-      countInactive,
-    });
+  const hasActiveFilters = hasListActiveFilters({ search });
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
   const pageRange = getListPageRange(pagination);
 
   return (
@@ -410,16 +394,6 @@ export function ProjectsPanel() {
                 placeholder={tList("searchPlaceholder")}
                 ariaLabel={tList("searchAria")}
                 className="sm:max-w-sm"
-              />
-              <ListPageActiveFilter
-                activeLabel={t("status.active")}
-                inactiveLabel={t("status.inactive")}
-                filterLabel={t("filterState")}
-                filterAriaLabel={t("filterState")}
-                isActiveParam={isActiveParam}
-                onChange={(isActive) =>
-                  setUrl({ is_active: isActive ? null : "false", page: null }, { replace: true })
-                }
               />
             </div>
           }
@@ -466,7 +440,6 @@ export function ProjectsPanel() {
             onClearFilters={() =>
               setUrl({ search: null, is_active: null, page: null }, { replace: true })
             }
-            onSwitchToInactive={switchToInactive}
           />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">

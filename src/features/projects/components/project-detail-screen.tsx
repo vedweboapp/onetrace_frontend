@@ -22,7 +22,9 @@ import {
   EntityDetailErrorState,
   EntityDetailLoadingSkeleton,
   EntityDetailScreen,
+  EntityDetailTabLoadingState,
 } from "@/shared/components/entity";
+import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -40,6 +42,7 @@ import { fetchProjectStatusesPage } from "@/features/project-status/api/project-
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
+import { cn } from "@/core/utils/http.util";
 
 type Props = {
   projectId: number;
@@ -383,13 +386,17 @@ export function ProjectDetailScreen({ projectId }: Props) {
           role="tabpanel"
           id={`project-detail-tab-${activeTab}`}
           aria-labelledby={`project-detail-tab-trigger-${activeTab}`}
-          className={activeTab === "location" ? "w-full overflow-y-auto" : undefined}
+          className={
+            activeTab === "location"
+              ? cn(entityDetailTabPanelClassName, "w-full overflow-y-auto")
+              : entityDetailTabPanelClassName
+          }
           style={activeTab === "location" ? { maxHeight: "calc(100dvh - 200px)" } : undefined}
         >
           {loading && activeTab === "details" ? (
-            <EntityDetailLoadingSkeleton />
+            <EntityDetailLoadingSkeleton fill />
           ) : error && activeTab === "details" ? (
-            <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
+            <EntityDetailErrorState fill message={error} retryLabel={t("detail.retry")} onRetry={retry} />
           ) : detail && activeTab === "details" ? (
             <ProjectDetailBody
               detail={detail}
@@ -402,9 +409,9 @@ export function ProjectDetailScreen({ projectId }: Props) {
               onSaved={retry}
             />
           ) : loading ? (
-            <EntityDetailLoadingSkeleton />
+            <EntityDetailTabLoadingState />
           ) : error ? (
-            <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
+            <EntityDetailErrorState fill message={error} retryLabel={t("detail.retry")} onRetry={retry} />
           ) : detail && activeTab === "drawings" ? (
             <ProjectDrawingsTab projectId={detail.id} />
           ) : detail && activeTab === "forms" ? (

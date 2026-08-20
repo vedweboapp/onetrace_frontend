@@ -23,7 +23,6 @@ import type { EntityTableColumn } from "@/shared/components/entity";
 import {
   detailTabBodyClassName,
   detailTabErrorClassName,
-  detailTabFilterBarClassName,
   detailTabSectionClassName,
   detailTabTitleClassName,
 } from "@/shared/components/layout/detail-tab-layout";
@@ -36,7 +35,6 @@ import {
   DataTable,
   DataTableBody,
   DataTableHead,
-  ListPageSearchField,
   ListPageEmptyStates,
   DataTablePaginationBar,
   DataTableRow,
@@ -120,7 +118,6 @@ export function ProjectQuotationsTab({ projectId }: Props) {
     [listBack, router],
   );
 
-  const [search, setSearch] = React.useState("");
   const [items, setItems] = React.useState<QuotationListItem[]>([]);
   const [pagination, setPagination] = React.useState({
     total_records: 0,
@@ -138,11 +135,6 @@ export function ProjectQuotationsTab({ projectId }: Props) {
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [siteOptions, setSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [tagLabelById, setTagLabelById] = React.useState<Record<number, string>>({});
-
-  const commitSearch = React.useCallback((q: string) => {
-    setSearch(q.trim());
-    setPage(1);
-  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -184,7 +176,6 @@ export function ProjectQuotationsTab({ projectId }: Props) {
       try {
         const { items: nextItems, pagination: p } = await fetchQuotationsPage(page, pageSize, {
           project: projectId,
-          search: search || undefined,
         });
         if (!cancelled) {
           setItems(nextItems);
@@ -202,7 +193,7 @@ export function ProjectQuotationsTab({ projectId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [projectId, page, pageSize, search, t]);
+  }, [projectId, page, pageSize, t]);
 
   const clientLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -265,12 +256,10 @@ export function ProjectQuotationsTab({ projectId }: Props) {
     ];
   }, [tQuotations, dateFmt, dueFmt, clientLabelById, siteLabelById, tagLabelById, quoteStatusLabel]);
 
-  const hasActiveFilters = search.trim() !== "";
   const emptyStateKind = React.useMemo(() => {
     if (loading || loadError || items.length > 0) return "none" as const;
-    if (hasActiveFilters) return "filtered" as const;
     return "onboarding" as const;
-  }, [loading, loadError, items.length, hasActiveFilters]);
+  }, [loading, loadError, items.length]);
 
   return (
     <div className={detailTabSectionClassName}>
@@ -281,16 +270,6 @@ export function ProjectQuotationsTab({ projectId }: Props) {
         <p className="mt-0.5 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
           {t("subtitle")}
         </p>
-      </div>
-
-      <div className={detailTabFilterBarClassName}>
-        <ListPageSearchField
-          value={search}
-          onCommit={commitSearch}
-          placeholder={t("searchPlaceholder")}
-          ariaLabel={t("searchAria")}
-          className="sm:max-w-sm"
-        />
       </div>
 
       <div className={detailTabBodyClassName}>
@@ -313,10 +292,7 @@ export function ProjectQuotationsTab({ projectId }: Props) {
               description: t("emptyDescription"),
               action: null,
             }}
-            onClearFilters={() => {
-              setSearch("");
-              setPage(1);
-            }}
+            onClearFilters={() => {}}
           />
         ) : (
           <DataTableScroll>

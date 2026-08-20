@@ -6,7 +6,7 @@ import { AppButton } from "@/shared/ui/app-button";
 import { FormRule, RuleCondition, FormRuleOutput, RuleAction, FormRuleBlock, ElseBlock } from "./form-rules.types";
 import { RuleFieldSelect, type RuleFieldOption } from "./rule-field-select";
 import MultiSelect from "../components/multi-select";
-import { PhoneNumberInput, DEFAULT_PHONE_COUNTRY } from "@/shared/ui";
+import { PhoneNumberInput } from "@/shared/ui";
 import { currencyList } from "../components/currency-list";
 
 const FORM_BUILDER_SUBHEADER_OFFSET = "top-28";
@@ -582,7 +582,7 @@ const FormAdvancedRuleModal = ({
         <div className="surface-phone-root w-full mt-1.5">
           <PhoneNumberInput
             value={blockValue} onChange={val => handleChange(val)}
-            defaultCountry={DEFAULT_PHONE_COUNTRY} placeholder="Enter phone number" className="w-full"
+            placeholder="Enter phone number" className="w-full"
             numberInputProps={{
               className: `w-full p-2.5 outline-none focus:ring-2 focus:ring-[color:var(--dash-accent)] border ${errors[errorKey] ? "border-red-500" : "border-gray-300"} dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-md`,
             }}

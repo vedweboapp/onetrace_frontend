@@ -9,9 +9,10 @@ import {
 } from "@/shared/components/layout/detail-metric-card";
 import { ActiveStatusBadge } from "@/shared/ui";
 import { formatSettingsDetailDate } from "@/shared/components/settings/settings-detail-view";
+import { cn } from "@/core/utils/http.util";
+import { entityNameLinkClassName } from "@/shared/components/entity/detail-entity-link";
 
-const linkClassName =
-  "break-all font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline";
+const linkClassName = cn("break-all font-semibold", entityNameLinkClassName);
 
 export function DetailEmailLink({ email }: { email: string }) {
   return (

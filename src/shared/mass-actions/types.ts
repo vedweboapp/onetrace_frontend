@@ -10,6 +10,7 @@ export type MassUpdateFieldValueType =
   | "title"
   | "email"
   | "number"
+  | "money"
   | "phone"
   | "digits"
   | "select"

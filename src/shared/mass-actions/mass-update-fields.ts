@@ -40,6 +40,10 @@ function numberField(name: string, label: string): MassUpdateFieldDef {
   return { name, label, valueType: "number" };
 }
 
+function moneyField(name: string, label: string): MassUpdateFieldDef {
+  return { name, label, valueType: "money", valueCoerce: "number" };
+}
+
 function phoneField(name: string, label: string): MassUpdateFieldDef {
   return { name, label, valueType: "phone", maxLength: FIELD_MAX_LENGTH.PHONE_DIGITS };
 }
@@ -366,8 +370,8 @@ export function buildItemMassUpdateFields(labels: ItemMassUpdateLabels): MassUpd
     titleField("name", labels.name),
     textField("sku", labels.sku),
     numberField("quantity", labels.quantity),
-    numberField("cost_price", labels.costPrice),
-    numberField("selling_price", labels.sellingPrice),
+    moneyField("cost_price", labels.costPrice),
+    moneyField("selling_price", labels.sellingPrice),
     selectField("is_active", labels.isActive, activeInactiveSelectOptions(labels.activeLabel, labels.inactiveLabel), "boolean"),
   ];
 }
@@ -388,8 +392,8 @@ export function buildCompositeItemMassUpdateFields(
     titleField("name", labels.name),
     textField("sku", labels.sku),
     numberField("quantity", labels.quantity),
-    numberField("cost_price", labels.costPrice),
-    numberField("selling_price", labels.sellingPrice),
+    moneyField("cost_price", labels.costPrice),
+    moneyField("selling_price", labels.sellingPrice),
     selectField("group", labels.group, options.groupOptions, "number"),
     selectField("installation_type", labels.installationType, options.installationTypeOptions, "number"),
     selectField("is_active", labels.isActive, activeInactiveSelectOptions(labels.activeLabel, labels.inactiveLabel), "boolean"),

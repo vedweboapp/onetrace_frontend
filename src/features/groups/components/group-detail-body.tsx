@@ -10,6 +10,7 @@ import type { Group } from "@/features/groups/types/group.types";
 import { routes } from "@/shared/config/routes";
 import { useOrgCurrency } from "@/shared/money/use-org-currency";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
+import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 import {
   DetailLinkedTable,
   DetailLinkedTableRow,
@@ -24,7 +25,6 @@ import {
   DetailStatusMetric,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 
 function formatLinkedItemLabel(name: string, abbreviation?: string | null) {
   const abbr = abbreviation?.trim();
@@ -54,16 +54,11 @@ export function GroupDetailBody({
   const linkedItems = detail.items ?? [];
   const [compositeById, setCompositeById] = React.useState<Map<number, CompositeItem>>(new Map());
 
-  async function patchField(body: Parameters<typeof updateGroup>[1]) {
-    try {
-      await updateGroup(detail.id, body);
-      toastSuccess(t("modal.updatedToast"));
-      onSaved?.();
-    } catch (error) {
-      toastApiError(error, t("detailLoadError"));
-      throw error;
-    }
-  }
+  const patchField = useDetailPatch(
+    (body: Parameters<typeof updateGroup>[1]) => updateGroup(detail.id, body),
+    { success: t("modal.updatedToast"), error: t("detailLoadError") },
+    onSaved,
+  );
 
   React.useEffect(() => {
     if (linkedItems.length === 0) {
@@ -143,7 +138,7 @@ export function GroupDetailBody({
                     >
                       <DetailEntityLink
                         href={`${routes.dashboard.compositeItems}/${entry.item}`}
-                        className="block truncate text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                        className="block truncate text-blue-600 underline-offset-2 hover:underline"
                       >
                         {formatLinkedItemLabel(displayName, entry.abbreviation)}
                       </DetailEntityLink>

@@ -13,7 +13,7 @@ import {
   jobChecklistUpdatePayload,
   requiredJobChecklistsComplete,
 } from "@/features/jobs/utils/job-nested-fields.util";
-import { toastApiError, toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastApiError, toastError } from "@/shared/feedback/app-toast";
 import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import type { JobChecklistItem } from "@/features/jobs/types/job.types";
@@ -37,6 +37,7 @@ import {
 } from "@/features/jobs/utils/job-meta-payload.util";
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
+import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
 import {
   DetailLinkedTable,
@@ -45,6 +46,7 @@ import {
   detailLinkedTableCellClassName,
 } from "@/shared/components/layout/detail-linked-table";
 import {
+  DetailFieldsLayout,
   DetailMetricCard,
   DetailMetricsGrid,
   DetailPagePadding,
@@ -812,16 +814,11 @@ export function JobDetailBody({
 
   const checklistsComplete = requiredJobChecklistsComplete(checklistEntries, { isMarked: checklistMarked });
 
-  async function patchField(body: Parameters<typeof updateJob>[1]) {
-    try {
-      await updateJob(detail.id, body);
-      toastSuccess(t("updatedToast"));
-      onSaved?.();
-    } catch (error) {
-      toastApiError(error, t("updateError"));
-      throw error;
-    }
-  }
+  const patchField = useDetailPatch(
+    (body: Parameters<typeof updateJob>[1]) => updateJob(detail.id, body),
+    { success: t("updatedToast"), error: t("updateError") },
+    onSaved,
+  );
 
   async function handleGateConfirm(items: JobChecklistItem[]) {
     setGateSaving(true);
@@ -1008,7 +1005,7 @@ export function JobDetailBody({
               {clientId != null ? (
                 <DetailEntityLink
                   href={`${routes.dashboard.clients}/${clientId}`}
-                  className="font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                  className="font-medium text-blue-600 underline-offset-2 hover:underline"
                 >
                   {jobClientLabel(detail.client)}
                 </DetailEntityLink>
@@ -1021,7 +1018,7 @@ export function JobDetailBody({
                 {projectId != null ? (
                   <DetailEntityLink
                     href={`${routes.dashboard.projects}/${projectId}`}
-                    className="font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                    className="font-medium text-blue-600 underline-offset-2 hover:underline"
                   >
                     {jobProjectLabel(detail.project)}
                   </DetailEntityLink>
@@ -1034,7 +1031,7 @@ export function JobDetailBody({
               {siteId != null ? (
                 <DetailEntityLink
                   href={`${routes.dashboard.sites}/${siteId}`}
-                  className="font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                  className="font-medium text-blue-600 underline-offset-2 hover:underline"
                 >
                   {jobSiteLabel(detail.site)}
                 </DetailEntityLink>
@@ -1115,7 +1112,7 @@ export function JobDetailBody({
                           {itemId != null ? (
                             <DetailEntityLink
                               href={`${routes.dashboard.items}/${itemId}`}
-                              className="text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                              className="text-blue-600 underline-offset-2 hover:underline"
                             >
                               {name}
                             </DetailEntityLink>
@@ -1213,20 +1210,23 @@ export function JobDetailBody({
         </DetailPanelCard>
 
         <DetailPanelCard title={t("detail.sectionDescription")}>
-          <DetailEditableField
-            label={t("fields.description")}
-            value={detail.description?.trim() ?? ""}
-            kind="text"
-            editAriaLabel={tActions("edit")}
-            empty="—"
-            onSave={(next) => patchField({ description: next })}
-          >
-            {detail.description?.trim() ? (
-              <p className="whitespace-pre-wrap text-sm font-normal text-slate-700 dark:text-slate-300">
-                {detail.description}
-              </p>
-            ) : null}
-          </DetailEditableField>
+          <DetailFieldsLayout>
+            <DetailEditableField
+              label={t("fields.description")}
+              value={detail.description?.trim() ?? ""}
+              kind="text"
+              multiline
+              editAriaLabel={tActions("edit")}
+              empty="—"
+              onSave={(next) => patchField({ description: next })}
+            >
+              {detail.description?.trim() ? (
+                <p className="whitespace-pre-wrap text-sm font-normal text-slate-700 dark:text-slate-300">
+                  {detail.description}
+                </p>
+              ) : null}
+            </DetailEditableField>
+          </DetailFieldsLayout>
         </DetailPanelCard>
 
         {levels.length > 0 && (

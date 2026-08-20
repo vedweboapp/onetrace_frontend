@@ -6,6 +6,7 @@ import type { CSSProperties } from "react";
 import { Check, ChevronDown, Plus, X } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import { fieldRequiredMarkClassName } from "./field-primitives";
+import { LockedSurfaceField } from "./locked-surface-field";
 
 /** Portaled lists are under `document.body` and skip inherited theme vars; copy from trigger. */
 function readDashAccent(el: HTMLElement | null): string {
@@ -75,6 +76,10 @@ type Props = {
   required?: boolean;
   /** Label when `value` is set but missing from `options` (e.g. after async reload). */
   fallbackLabel?: string;
+  /** When true, the field cannot be opened or changed (parent context). */
+  locked?: boolean;
+  /** Tooltip shown on hover/focus when `locked` is true. */
+  lockedHint?: string;
   /** Called when the dropdown opens or closes (e.g. to lazy-load options). */
   onOpenChange?: (open: boolean) => void;
   /** Called when the search query changes inside the dropdown. */
@@ -197,6 +202,8 @@ export function CheckmarkSelect({
   addLabel,
   required,
   fallbackLabel,
+  locked = false,
+  lockedHint,
   onOpenChange,
   onSearchChange,
 }: Props) {
@@ -226,8 +233,8 @@ export function CheckmarkSelect({
     return [{ value: id, label }, ...options];
   }, [options, safeValue, fallbackLabel]);
   const selected = resolvedOptions.find((o) => o.value === safeValue);
-  const canClear = Boolean(clearable && !disabled && safeValue.trim() !== "");
-  const showAdd = Boolean(onAdd && !disabled);
+  const canClear = Boolean(clearable && !disabled && !locked && safeValue.trim() !== "");
+  const showAdd = Boolean(onAdd && !disabled && !locked);
   // Show add action only in dropdown footer, not on trigger.
   const useSplitTrigger = canClear;
   const dropdownPlacement = useDropdownPlacement(open, anchorRef, side);
@@ -455,6 +462,24 @@ export function CheckmarkSelect({
           "dark:hover:bg-slate-800 dark:hover:text-slate-100 dark:focus-visible:bg-slate-800/90",
         ),
   );
+
+  if (locked) {
+    return (
+      <div className={cn("relative", className)}>
+        {label ? (
+          <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.1em] text-[color:var(--dash-accent,#111111)]">
+            {label}
+            {required ? (
+              <span className={cn(fieldRequiredMarkClassName, "field-required-asterisk")} aria-hidden>
+                *
+              </span>
+            ) : null}
+          </span>
+        ) : null}
+        <LockedSurfaceField id={id} value={displayLabel} hint={lockedHint} />
+      </div>
+    );
+  }
 
   return (
     <div ref={rootRef} className={cn("relative", className)}>

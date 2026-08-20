@@ -167,9 +167,13 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     [reset],
   );
 
+  const urlClientId = searchParams.get(QUICK_CREATE_CLIENT_PARAM);
+  const lockClient = !isEdit && Boolean(urlClientId && /^\d+$/.test(urlClientId));
+
   const clientQuickCreate = useQuickCreate({
     kind: "client",
-    getFormDraft: !isEdit ? getFormDraft : undefined,
+    getFormDraft: !isEdit && !lockClient ? getFormDraft : undefined,
+    addDisabled: lockClient,
   });
 
   const clientIdForQuick =
@@ -209,6 +213,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     },
     onApplySelect: ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {
+        if (lockClient) return;
         setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
         setValue("sites", [], { shouldDirty: true, shouldValidate: true });
         return;
@@ -378,7 +383,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     }
   }
 
-  const noClients = clientOptions.length === 0;
+  const noClients = !lockClient && clientOptions.length === 0;
   const noProjectTypes = projectTypeOptions.length === 0;
 
   return (
@@ -459,6 +464,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                         value={field.value}
                         emptyLabel={t("placeholders.client")}
                         disabled={saving || noClients}
+                        locked={lockClient}
                         invalid={!!errors.client}
                         onBlur={field.onBlur}
                         onChange={(v) => {

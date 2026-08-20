@@ -51,6 +51,7 @@ const Input = ({
   ...rest
 }: InputProps) => {
   const isDateField = isNativeDateInputType(rest.type);
+  const isNumberField = rest.type === "number";
   const inputId = id ?? register?.name ?? name;
   const cleanLabel = cleanLabelNode(label);
   const isRequired = Boolean(fieldRequired ?? required ?? labelLooksRequired(label));
@@ -61,15 +62,29 @@ const Input = ({
     openNativeDatePicker(e.currentTarget);
   }
 
+  const { type: _inputType, onKeyDown, onWheel, inputMode, ...inputRest } = rest;
+
   const control = (
     <input
       id={inputId}
       name={name}
       {...register}
-      {...rest}
+      {...inputRest}
+      type={isNumberField ? "text" : rest.type}
+      inputMode={isNumberField ? inputMode ?? "decimal" : inputMode}
       required={required}
       readOnly={readOnly}
       onClick={isDateField ? handleDateClick : onClick}
+      onWheel={(e) => {
+        if (isNumberField) e.currentTarget.blur();
+        onWheel?.(e);
+      }}
+      onKeyDown={(e) => {
+        if (isNumberField && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+          e.preventDefault();
+        }
+        onKeyDown?.(e);
+      }}
       placeholder={
         rest.placeholder ||
         (typeof cleanLabel === "string" && cleanLabel ? `Enter ${cleanLabel} here` : rest.placeholder)
@@ -78,6 +93,8 @@ const Input = ({
       className={cn(
         surfaceInputClassName,
         "field-control",
+        isNumberField &&
+          "tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
         isDateField && !readOnly && nativeDatePickerHitAreaClassName,
         readOnly &&
           "cursor-not-allowed border-slate-200 bg-slate-50 select-none focus-visible:border-slate-200 focus-visible:ring-0 dark:border-slate-700 dark:bg-slate-800/50",

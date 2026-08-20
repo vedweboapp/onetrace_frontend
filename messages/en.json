@@ -223,6 +223,10 @@
         "createdBy": "Created by",
         "modifiedBy": "Modified by",
         "notModifiedYet": "Not modified yet"
+      },
+      "lockedField": {
+        "aria": "Locked, read only",
+        "hint": "This field is locked and cannot be changed."
       }
     },
     "brand": {
@@ -1876,14 +1880,18 @@
         "tabs": {
           "details": "Overview",
           "contacts": "Contacts",
-          "sites": "Sites"
+          "sites": "Sites",
+          "projects": "Projects"
         },
         "contactsEmptyTitle": "No contacts for this client",
         "contactsEmptyDescription": "Contacts linked to this client will appear here.",
         "addContact": "Add contact",
         "sitesEmptyTitle": "No sites for this client",
         "sitesEmptyDescription": "Sites linked to this client will appear here.",
-        "addSite": "Add site"
+        "addSite": "Add site",
+        "projectsEmptyTitle": "No projects for this client",
+        "projectsEmptyDescription": "Projects linked to this client will appear here.",
+        "addProject": "Add project"
       },
       "detailLoadError": "Could not load client details. Try again.",
       "form": {
@@ -1994,7 +2002,7 @@
         "name": "Name",
         "email": "Email",
         "phone": "Phone",
-        "type": "Vendor type",
+        "type": "Vendor types",
         "status": "Status",
         "addresses": "Addresses",
         "addressType": "Address type",
@@ -2012,7 +2020,7 @@
         "country": "Select country",
         "state": "Select state",
         "city": "Select city",
-        "type": "Select vendor type"
+        "type": "Select vendor types"
       },
       "addresses": {
         "add": "Add address",
@@ -2056,7 +2064,7 @@
         "name": "Enter a vendor name.",
         "email": "Enter a valid email address.",
         "phoneInvalid": "Enter a valid phone number.",
-        "type": "Select a vendor type.",
+        "type": "Select at least one vendor type.",
         "addressLine1": "Enter address line 1.",
         "country": "Select a country.",
         "state": "Select a state or region.",
@@ -2162,6 +2170,11 @@
       "updatedToast": "Contact updated successfully",
       "noClientsHint": "Add at least one client before you can create a contact.",
       "noVendorsHint": "Add at least one vendor before you can create a vendor contact.",
+      "locked": {
+        "contactType": "Contact type is set from the client or vendor you are adding this contact to.",
+        "client": "Client is set from the record you are adding this contact to.",
+        "vendor": "Vendor is set from the record you are adding this contact to."
+      },
       "tabsAria": "Contact type",
       "tabs": {
         "client": "Client",
@@ -4455,7 +4468,10 @@
         "fulfilmentDetails": "Fulfilment details",
         "dimensions": "Dimensions",
         "dimensionsPlaceholder": "L*W*H",
-        "dimensionsHint": "Enter length, then space or * for width, then height (e.g. 22*10*5).",
+        "dimensionsHint": "(Length X Width X Height)",
+        "dimensionsLength": "Length",
+        "dimensionsWidth": "Width",
+        "dimensionsHeight": "Height",
         "dimensionsUnit": "Dimensions unit",
         "weight": "Weight",
         "weightUnit": "Weight unit",
@@ -4567,7 +4583,10 @@
         "fulfilmentDetails": "Fulfilment details",
         "dimensions": "Dimensions",
         "dimensionsPlaceholder": "L*W*H",
-        "dimensionsHint": "Enter length, then space or * for width, then height (e.g. 22*10*5).",
+        "dimensionsHint": "(Length X Width X Height)",
+        "dimensionsLength": "Length",
+        "dimensionsWidth": "Width",
+        "dimensionsHeight": "Height",
         "dimensionsUnit": "Dimensions unit",
         "weight": "Weight",
         "weightUnit": "Weight unit",

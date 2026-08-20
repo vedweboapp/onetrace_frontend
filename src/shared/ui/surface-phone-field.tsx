@@ -6,6 +6,7 @@ import type { Control, FieldPath, FieldValues, RegisterOptions } from "react-hoo
 import { useController } from "react-hook-form";
 import type { Country } from "react-phone-number-input";
 import { cn } from "@/core/utils/http.util";
+import { useSystemPhoneCountry } from "@/shared/hooks/use-system-phone-country";
 import {
   clampPhoneE164ToCountryMax,
   countryIsoToPhoneCountry,
@@ -15,7 +16,7 @@ import {
 import { FieldErrorText, FieldGroup } from "./field-primitives";
 import { PhoneNumberInput } from "./phone-number-input";
 
-/** Default calling code for phone fields across the app (+1 United States). */
+/** Last-resort calling-code country when device timezone/locale cannot be detected. */
 export const DEFAULT_PHONE_COUNTRY: Country = DEFAULT_PHONE_COUNTRY_CODE;
 
 export type SurfacePhoneFieldProps<TFieldValues extends FieldValues> = {
@@ -49,7 +50,7 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
   disabled,
   error,
   describedBy,
-  defaultCountry = DEFAULT_PHONE_COUNTRY,
+  defaultCountry,
   countryIso,
   placeholder,
   className,
@@ -60,7 +61,8 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
   const errId = error ? `${id}-error` : undefined;
   const described = [describedBy, errId].filter(Boolean).join(" ") || undefined;
 
-  const resolvedCountry = countryIsoToPhoneCountry(countryIso) ?? defaultCountry;
+  const systemCountry = useSystemPhoneCountry();
+  const resolvedCountry = countryIsoToPhoneCountry(countryIso) ?? defaultCountry ?? systemCountry;
 
   const displayValue = React.useMemo(() => {
     const normalized = normalizePhoneForPhoneInput(typeof value === "string" ? value : "");

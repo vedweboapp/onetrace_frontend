@@ -8,10 +8,7 @@ import { createItem, updateItem } from "@/features/items/api/item.api";
 import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
 import { formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
 import { getUnitTypeId, resolveDefaultUnitTypeSelectValue } from "@/features/items/utils/item-unit-type.util";
-import {
-  formatDimensionsInputAsTyped,
-  parseDimensionsInput,
-} from "@/features/items/utils/item-dimensions-input.util";
+import { parseDimensionsInput } from "@/features/items/utils/item-dimensions-input.util";
 import type { DimensionUnit, Item, WeightUnit } from "@/features/items/types/item.types";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { getApiFieldErrorMap } from "@/shared/form/report-form-api-error.util";
@@ -23,11 +20,13 @@ import {
   AppButton,
   AppModal,
   CheckmarkSelect,
+  DimensionsLwhInput,
   FieldErrorText,
   FieldGroup,
   FieldLabel,
   InputWithEndSelect,
   MoneyInput,
+  NumericInput,
   surfaceInputClassName,
 } from "@/shared/ui";
 
@@ -103,15 +102,6 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
   const [height, setHeight] = React.useState(() =>
     mode === "edit" && item ? (item.height != null ? String(item.height) : "") : "",
   );
-  const [dimensionsInput, setDimensionsInput] = React.useState(() =>
-    mode === "edit" && item
-      ? item.length != null && item.width != null && item.height != null
-        ? `${item.length}*${item.width}*${item.height}`
-        : typeof item.dimensions === "string"
-          ? item.dimensions
-          : ""
-      : "",
-  );
   const [dimensionsUnit, setDimensionsUnit] = React.useState<DimensionUnit>(() =>
     mode === "edit" && item
       ? item.dimensions_unit === "cm" || item.dimensions_unit === "mm" || item.dimensions_unit === "m" || item.dimensions_unit === "in" || item.dimensions_unit === "ft"
@@ -150,13 +140,16 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
             ? item.dimensions_unit
             : "cm";
       setDimensionsUnit(dimUnit);
-      setDimensionsInput(
-        item.length != null && item.width != null && item.height != null
-          ? `${item.length}*${item.width}*${item.height}`
-          : typeof item.dimensions === "string"
-            ? item.dimensions
-            : "",
-      );
+      if (
+        (item.length == null || item.width == null || item.height == null) &&
+        typeof item.dimensions === "string" &&
+        item.dimensions.trim()
+      ) {
+        const parsed = parseDimensionsInput(item.dimensions);
+        setLength(parsed.length);
+        setWidth(parsed.width);
+        setHeight(parsed.height);
+      }
       setWeight(item.weight != null && String(item.weight).trim() !== "" ? String(item.weight) : "");
       setWeightUnit(item.weight_unit === "g" || item.weight_unit === "lb" ? (item.weight_unit as WeightUnit) : "kg");
     } else {
@@ -222,7 +215,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
     const dimensionsFields = dimensionsPayload(length, width, height);
     const hasDimensions = Object.keys(dimensionsFields).length > 0;
     const dimensionsUnitPayload =
-      dimensionsInput.trim().length === 0
+      !length.trim() && !width.trim() && !height.trim()
         ? { length: null, width: null, height: null, dimensions_unit: null }
         : hasDimensions
           ? { ...dimensionsFields, dimensions_unit: dimensionsUnit }
@@ -356,15 +349,12 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
           </div>
           <div>
             <FieldLabel htmlFor={qtyId}>{t("quantity")}</FieldLabel>
-            <input
+            <NumericInput
               id={qtyId}
-              type="number"
-              inputMode="numeric"
-              min={0}
+              integer
               value={qty}
-              onChange={(e) => setQty(e.target.value)}
+              onChange={setQty}
               disabled={submitting}
-              className={surfaceInputClassName}
             />
           </div>
           <div>
@@ -401,34 +391,26 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
             <div>
               <FieldLabel htmlFor="modal-item-dimensions">{t("dimensions")}</FieldLabel>
               <div className="mt-1.5">
-                <InputWithEndSelect
-                  inputId="modal-item-dimensions"
-                  inputValue={dimensionsInput}
-                  onInputChange={(v) => {
-                    const formatted = formatDimensionsInputAsTyped(v);
-                    setDimensionsInput(formatted);
-                    const parsed = parseDimensionsInput(formatted);
-                    setLength(parsed.length);
-                    setWidth(parsed.width);
-                    setHeight(parsed.height);
+                <DimensionsLwhInput
+                  id="modal-item-dimensions"
+                  length={length}
+                  width={width}
+                  height={height}
+                  onChange={(next) => {
+                    setLength(next.length);
+                    setWidth(next.width);
+                    setHeight(next.height);
                   }}
-                  inputType="text"
+                  unit={dimensionsUnit}
+                  onUnitChange={(v) => setDimensionsUnit((v as DimensionUnit) || "cm")}
+                  unitAriaLabel={t("dimensionsUnit")}
+                  lengthAriaLabel={t("dimensionsLength")}
+                  widthAriaLabel={t("dimensionsWidth")}
+                  heightAriaLabel={t("dimensionsHeight")}
                   disabled={submitting}
-                  placeholder={t("dimensionsPlaceholder")}
-                  selectValue={dimensionsUnit}
-                  onSelectChange={(v) => setDimensionsUnit((v as DimensionUnit) || "cm")}
-                  selectOptions={[
-                    { value: "cm", label: "cm" },
-                    { value: "mm", label: "mm" },
-                    { value: "m", label: "m" },
-                    { value: "in", label: "in" },
-                    { value: "ft", label: "ft" },
-                  ]}
-                  selectAriaLabel={t("dimensionsUnit")}
-                  selectDisabled={false}
                 />
               </div>
-              <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{t("dimensionsHint")}</p>
+              <p className="mt-1.5 text-center text-xs text-slate-500 dark:text-slate-400">{t("dimensionsHint")}</p>
             </div>
             <div>
               <FieldLabel htmlFor="modal-item-weight">{t("weight")}</FieldLabel>

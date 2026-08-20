@@ -47,6 +47,7 @@ import {
   useEntityListMassActions,
 } from "@/shared/mass-actions";
 import { useOrgCurrency } from "@/shared/money/use-org-currency";
+import { useOrgNumber } from "@/shared/number/use-org-number";
 
 function installationTypeCell(row: CompositeItem) {
   const chip = resolveInstallationTypeChipData(row.installation_type);
@@ -58,6 +59,7 @@ export function CompositeItemsPanel() {
   const t = useTranslations("Dashboard.compositeItems");
   const tList = useTranslations("Dashboard.list");
   const { formatMoneyValue: moneyDisplay } = useOrgCurrency();
+  const { formatQuantity } = useOrgNumber();
   const dateFmt = useDashboardDateFormat();
   const router = useRouter();
   const pathname = usePathname();
@@ -263,7 +265,7 @@ export function CompositeItemsPanel() {
       c.primary("name", t("table.name"), (r) => r.name),
       c.custom("installationType", t("table.installationType"), (r) => installationTypeCell(r)),
       c.mono("sku", t("modal.sku"), (r) => r.sku || "—", { cellClassName: "text-slate-600 dark:text-slate-400" }),
-      c.tabular("qty", t("modal.quantity"), (r) => r.quantity ?? "—", {
+      c.tabular("qty", t("modal.quantity"), (r) => formatQuantity(r.quantity), {
         cellClassName: "text-slate-600 dark:text-slate-400",
       }),
       c.tabular("cost", t("modal.costPrice"), (r) => moneyDisplay(r.cost_price), {
@@ -303,7 +305,7 @@ export function CompositeItemsPanel() {
       //   />
       // )),
     ];
-  }, [t, tList, dateFmt, massSel.tableColumn]);
+  }, [t, tList, dateFmt, massSel.tableColumn, formatQuantity, moneyDisplay]);
 
   return (
     <div className={listPageRootClassName()}>
@@ -381,7 +383,7 @@ export function CompositeItemsPanel() {
                   leading={massSel.cardLeading(row)}
                   title={row.name}
                   subtitle={row.sku ? <span className="font-mono text-xs">{row.sku}</span> : undefined}
-                  description={`Qty: ${row.quantity ?? "—"} · Cost: ${moneyDisplay(row.cost_price)} · Sell: ${moneyDisplay(row.selling_price)}`}
+                  description={`Qty: ${formatQuantity(row.quantity)} · Cost: ${moneyDisplay(row.cost_price)} · Sell: ${moneyDisplay(row.selling_price)}`}
                   footer={
                     <div className="flex w-full flex-wrap items-center justify-between gap-2">
                       {installationTypeCell(row)}

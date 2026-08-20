@@ -63,13 +63,17 @@ export function buildEntityDetailHrefAfterSave(
 ): string {
   const detailPath = `${entityListPath}/${entityId}`;
   let listBack = (listBackHref?.trim() || entityListPath).split("#")[0] ?? entityListPath;
+  const listBackPath = pathWithoutQueryAndHash(listBack);
 
   // Edit forms store the detail page as back; after save, restore the detail page's prior back (usually the list).
-  if (pathWithoutQueryAndHash(listBack) === detailPath) {
+  if (listBackPath === detailPath) {
     const priorBack = readBackHrefForPath(detailPath);
     listBack = priorBack?.trim()
       ? (priorBack.split("#")[0] ?? priorBack)
       : entityListPath;
+  } else if (listBackPath.endsWith("/new") || /\/\d+\/edit$/.test(listBackPath)) {
+    // Never send the detail back-arrow to a create/edit form.
+    listBack = entityListPath;
   }
 
   return buildPathWithStoredBack(detailPath, listBack);

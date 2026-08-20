@@ -31,7 +31,7 @@ import {
   DetailSectionCountBadge,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 import { routes } from "@/shared/config/routes";
 import {
   formatApiDateForHtmlDateInput,
@@ -94,16 +94,11 @@ export function MaterialRequestDetailBody({
   const statusValue = normalizeMaterialRequestStatus(detail.status);
   const notes = detail.notes?.trim() ?? "";
 
-  async function patchField(body: Parameters<typeof updateMaterialRequest>[1]) {
-    try {
-      await updateMaterialRequest(detail.id, body);
-      toastSuccess(t("updatedToast"));
-      onSaved?.();
-    } catch (error) {
-      toastApiError(error, t("loadError"));
-      throw error;
-    }
-  }
+  const patchField = useDetailPatch(
+    (body: Parameters<typeof updateMaterialRequest>[1]) => updateMaterialRequest(detail.id, body),
+    { success: t("updatedToast"), error: t("loadError") },
+    onSaved,
+  );
 
   return (
     <DetailPagePadding>
@@ -148,7 +143,7 @@ export function MaterialRequestDetailBody({
               <li key={dispatchId} className="py-3 first:pt-0 last:pb-0">
                 <DetailEntityLink
                   href={`${routes.dashboard.dispatches}/${dispatchId}`}
-                  className="font-semibold text-slate-900 underline-offset-2 hover:underline dark:text-slate-100"
+                  className="font-semibold text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
                 >
                   {t("detail.dispatchLink")}
                 </DetailEntityLink>
@@ -173,7 +168,7 @@ export function MaterialRequestDetailBody({
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {(detail.jobs ?? []).map((job) => (
               <div key={job.id} className="py-3 first:pt-0 last:pb-0">
-                <Link href={`${routes.dashboard.jobs}/${job.id}`} className="font-semibold text-slate-900 underline-offset-2 hover:underline dark:text-slate-100">
+                <Link href={`${routes.dashboard.jobs}/${job.id}`} className="font-semibold text-blue-600 underline-offset-2 hover:underline dark:text-blue-400">
                 #{job.serial_number ?? job.id}
                 </Link>
                 <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-slate-500">

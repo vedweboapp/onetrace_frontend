@@ -12,8 +12,8 @@ import { contactParentName } from "@/features/contacts/utils/contact-nested-fiel
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
-import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
   ActiveStatusBadge,
@@ -27,7 +27,6 @@ import {
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
-  ListPageActiveFilter,
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
@@ -63,9 +62,8 @@ export function ContactsPanel() {
     return `${pathname}${qs ? `?${qs}` : ""}`;
   }, [pathname, searchParams]);
 
-  const { page, pageSize, listViewMode, search, isActiveParam, setUrl, setPage, setPageSize, setListViewMode } =
+  const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } =
     useListUrlState();
-  const isActiveFilter = parseIsActiveParam(isActiveParam) ?? true;
   const contactTypeParam = searchParams.get("contact_type");
   const activeContactType = parseContactTypeParam(contactTypeParam);
   const clientParam = searchParams.get("client");
@@ -133,12 +131,11 @@ export function ContactsPanel() {
   const listFilters = React.useMemo(
     () => ({
       search: search || undefined,
-      is_active: isActiveFilter,
       contact_type: activeContactType,
       client: activeContactType === "client" ? clientFilter : undefined,
       vendor: activeContactType === "vendor" ? vendorFilter : undefined,
     }),
-    [search, isActiveFilter, activeContactType, clientFilter, vendorFilter],
+    [search, activeContactType, clientFilter, vendorFilter],
   );
 
   const massUpdateFields = React.useMemo(
@@ -168,7 +165,7 @@ export function ContactsPanel() {
     totalRecords: pagination.total_records,
     pageItems: items,
     fetchAllIds,
-    resetDeps: [pageSize, search, isActiveFilter, activeContactType, clientFilter, vendorFilter],
+    resetDeps: [pageSize, search, activeContactType, clientFilter, vendorFilter],
     updateFields: massUpdateFields,
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
@@ -247,28 +244,15 @@ export function ContactsPanel() {
 
   const hasActiveFilters = hasListActiveFilters({
     search,
-    isActiveParam,
     clientParam: activeContactType === "client" ? clientParam : null,
     vendorParam: activeContactType === "vendor" ? vendorParam : null,
   });
-  const countInactive = React.useCallback(async () => {
-    const { pagination: p } = await fetchContactsPage(1, 1, {
-      ...listFilters,
-      is_active: false,
-    });
-    return p.total_records;
-  }, [listFilters]);
-  const { hideListChrome, listLoading, emptyStateKind, filtersActive, switchToInactive } =
-    useListActiveInactiveEmptyState({
-      loading,
-      loadError,
-      itemsLength: items.length,
-      isActiveParam,
-      isActiveFilter,
-      hasActiveFilters,
-      setUrl,
-      countInactive,
-    });
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
   const pageRange = getListPageRange(pagination);
 
   async function handleToggleActive(row: Contact, next: boolean) {
@@ -399,16 +383,6 @@ export function ContactsPanel() {
                   onChange={(v) => setUrl({ client: v || null, page: null }, { replace: true })}
                 />
               )}
-              <ListPageActiveFilter
-                activeLabel={t("status.active")}
-                inactiveLabel={t("status.inactive")}
-                filterLabel={t("filterState")}
-                filterAriaLabel={t("filterState")}
-                isActiveParam={isActiveParam}
-                onChange={(isActive) =>
-                  setUrl({ is_active: isActive ? null : "false", page: null }, { replace: true })
-                }
-              />
             </div>
           }
         />
@@ -457,7 +431,6 @@ export function ContactsPanel() {
                 { replace: true },
               )
             }
-            onSwitchToInactive={switchToInactive}
           />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">

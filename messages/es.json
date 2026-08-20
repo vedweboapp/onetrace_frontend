@@ -215,6 +215,10 @@
         "createdBy": "Creado por",
         "modifiedBy": "Modificado por",
         "notModifiedYet": "Sin modificar"
+      },
+      "lockedField": {
+        "aria": "Bloqueado, solo lectura",
+        "hint": "Este campo está bloqueado y no se puede cambiar."
       }
     },
     "brand": {
@@ -1868,14 +1872,18 @@
         "tabs": {
           "details": "Resumen",
           "contacts": "Contactos",
-          "sites": "Sitios"
+          "sites": "Sitios",
+          "projects": "Proyectos"
         },
         "contactsEmptyTitle": "No hay contactos para este cliente",
         "contactsEmptyDescription": "Los contactos vinculados a este cliente aparecerán aquí.",
         "addContact": "Añadir contacto",
         "sitesEmptyTitle": "No hay sitios para este cliente",
         "sitesEmptyDescription": "Los sitios vinculados a este cliente aparecerán aquí.",
-        "addSite": "Añadir sitio"
+        "addSite": "Añadir sitio",
+        "projectsEmptyTitle": "No hay proyectos para este cliente",
+        "projectsEmptyDescription": "Los proyectos vinculados a este cliente aparecerán aquí.",
+        "addProject": "Añadir proyecto"
       },
       "detailLoadError": "No se pudieron cargar los datos del cliente. Inténtalo de nuevo.",
       "form": {
@@ -1986,7 +1994,7 @@
         "name": "Nombre",
         "email": "Correo",
         "phone": "Teléfono",
-        "type": "Tipo de proveedor",
+        "type": "Tipos de proveedor",
         "status": "Estado",
         "addresses": "Direcciones",
         "addressType": "Tipo de dirección",
@@ -2004,7 +2012,7 @@
         "country": "Seleccionar país",
         "state": "Seleccionar estado",
         "city": "Seleccionar ciudad",
-        "type": "Seleccionar tipo de proveedor"
+        "type": "Seleccionar tipos de proveedor"
       },
       "addresses": {
         "add": "Añadir dirección",
@@ -2048,7 +2056,7 @@
         "name": "Introduce el nombre del proveedor.",
         "email": "Introduce un correo válido.",
         "phoneInvalid": "Introduce un número de teléfono válido.",
-        "type": "Selecciona un tipo de proveedor.",
+        "type": "Selecciona al menos un tipo de proveedor.",
         "addressLine1": "Introduce la línea 1 de la dirección.",
         "country": "Selecciona un país.",
         "state": "Selecciona un estado o provincia.",
@@ -2154,6 +2162,11 @@
       "updatedToast": "Contacto actualizado correctamente",
       "noClientsHint": "Añade al menos un cliente antes de poder crear un contacto.",
       "noVendorsHint": "Añade al menos un proveedor antes de poder crear un contacto de proveedor.",
+      "locked": {
+        "contactType": "El tipo de contacto se toma del cliente o proveedor al que estás añadiendo este contacto.",
+        "client": "El cliente se toma del registro desde el que estás añadiendo este contacto.",
+        "vendor": "El proveedor se toma del registro desde el que estás añadiendo este contacto."
+      },
       "tabsAria": "Tipo de contacto",
       "tabs": {
         "client": "Cliente",
@@ -4438,7 +4451,10 @@
         "fulfilmentDetails": "Detalles de cumplimiento",
         "dimensions": "Dimensiones",
         "dimensionsPlaceholder": "L*A*H",
-        "dimensionsHint": "Introduce el largo, luego espacio o * para el ancho, luego la altura (p. ej. 22*10*5).",
+        "dimensionsHint": "(Largo X Ancho X Alto)",
+        "dimensionsLength": "Largo",
+        "dimensionsWidth": "Ancho",
+        "dimensionsHeight": "Alto",
         "dimensionsUnit": "Unidad de dimensiones",
         "weight": "Peso",
         "weightUnit": "Unidad de peso",
@@ -4549,7 +4565,10 @@
         "fulfilmentDetails": "Detalles de cumplimiento",
         "dimensions": "Dimensiones",
         "dimensionsPlaceholder": "L*A*H",
-        "dimensionsHint": "Introduce el largo, luego espacio o * para el ancho, luego la altura (p. ej. 22*10*5).",
+        "dimensionsHint": "(Largo X Ancho X Alto)",
+        "dimensionsLength": "Largo",
+        "dimensionsWidth": "Ancho",
+        "dimensionsHeight": "Alto",
         "dimensionsUnit": "Unidad de dimensiones",
         "weight": "Peso",
         "weightUnit": "Unidad de peso",

@@ -16,6 +16,10 @@ import { AppButton, FieldGroup, surfaceInputClassName, surfaceSelectClassName } 
 import { useOrgCurrencyStore } from "@/shared/money/org-currency.store";
 import { formatOrgMoney } from "@/shared/money/format-money.util";
 import { normalizeOrgCurrencySettings } from "@/shared/money/org-currency.types";
+import { ORG_NUMBER_FORMATS, normalizeOrgNumberFormat } from "@/shared/number/digit-grouping.util";
+import { formatOrgNumber } from "@/shared/number/format-number.util";
+import { useOrgNumberStore } from "@/shared/number/org-number.store";
+import { NumericInput } from "@/shared/ui/numeric-input";
 import { cn } from "@/core/utils/http.util";
 
 interface CurrencySettings {
@@ -26,6 +30,7 @@ interface CurrencySettings {
   symbolPosition: "before" | "after";
   digitSeparator: string;
   decimalPlaces: number;
+  numberFormat: string;
 }
 
 interface CompanySettingsCurrencyProps {
@@ -50,6 +55,7 @@ const CompanySettingsCurrency = ({
     digitSeparator: initialData.digitSeparator || "1,234,567.89",
     decimalPlaces:
       initialData.decimalPlaces !== undefined ? initialData.decimalPlaces : 2,
+    numberFormat: normalizeOrgNumberFormat(initialData.numberFormat || initialData.digitSeparator),
   });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -61,6 +67,7 @@ const CompanySettingsCurrency = ({
 
   React.useEffect(() => {
     useOrgCurrencyStore.getState().setSettings(settings);
+    useOrgNumberStore.getState().setNumberFormat(settings.numberFormat);
   }, [settings]);
 
   const formatCurrencyValue = (
@@ -164,11 +171,12 @@ const CompanySettingsCurrency = ({
   return (
     <div
       className={cn(
-        "mt-2 flex w-full flex-col gap-8 rounded-xl border border-slate-200/90 bg-white p-6 dark:border-slate-700 dark:bg-slate-950 sm:flex-row sm:p-8",
+        "mt-2 flex w-full flex-col gap-8 rounded-xl border border-slate-200/90 bg-white p-6 dark:border-slate-700 dark:bg-slate-950 sm:p-8",
         "transition-opacity duration-500",
         isMounted ? "animate-in fade-in opacity-100" : "opacity-0",
       )}
     >
+      <div className="grid w-full gap-8 sm:grid-cols-2">
       <div className="w-full space-y-3">
         <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           Home Currency
@@ -206,6 +214,54 @@ const CompanySettingsCurrency = ({
           <AppButton variant="primary" onClick={handleOpenCustomize}>
             Customize
           </AppButton>
+        </div>
+      </div>
+      </div>
+
+      <div className="w-full space-y-3">
+        <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          Number format
+        </h3>
+        <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h4 className="text-lg font-semibold tracking-tight text-slate-800 dark:text-slate-100">
+              {formatOrgNumber(1234567.89, 2, settings.numberFormat)}
+            </h4>
+            <p className="text-[length:var(--dash-label-size,0.875rem)] text-slate-500">
+              Used for quantity and other number-only fields
+            </p>
+          </div>
+          <select
+            aria-label="Number format"
+            value={settings.numberFormat}
+            onChange={(e) => {
+              const next = normalizeOrgNumberFormat(e.target.value);
+              setSettings((prev) => ({ ...prev, numberFormat: next }));
+              void (async () => {
+                try {
+                  const current: OrganizationDetails = {
+                    ...initialData,
+                    ...settings,
+                    numberFormat: next,
+                  };
+                  const patch = buildDirtyOrganizationPatch(initialData, current, ["numberFormat"]);
+                  if (!hasDirtyFields(patch)) return;
+                  const updated = await updateOrganizationDetails(1, patch);
+                  toastSuccess(t("currencyUpdatedToast"));
+                  onSaveSuccess?.(updated);
+                } catch (error) {
+                  toastApiError(error);
+                }
+              })();
+            }}
+            className={cn(surfaceSelectClassName, "field-control max-w-xs")}
+          >
+            {ORG_NUMBER_FORMATS.map((fmt) => (
+              <option key={fmt} value={fmt}>
+                {fmt}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -300,17 +356,30 @@ const CompanySettingsCurrency = ({
               </FieldGroup>
 
               <FieldGroup label="Decimal Places" htmlFor="currency-decimals" required>
-                <input
+                <NumericInput
                   id="currency-decimals"
-                  type="number"
-                  min={0}
-                  max={6}
+                  integer
                   value={tempSettings.decimalPlaces}
-                  onChange={(e) =>
-                    handleTempChange("decimalPlaces", parseInt(e.target.value, 10) || 0)
-                  }
-                  className={cn(surfaceInputClassName, "field-control")}
+                  onChange={(next) => {
+                    const n = Number.parseInt(next, 10);
+                    handleTempChange("decimalPlaces", Number.isFinite(n) ? Math.max(0, Math.min(6, n)) : 0);
+                  }}
                 />
+              </FieldGroup>
+
+              <FieldGroup label="Number format" htmlFor="org-number-format">
+                <select
+                  id="org-number-format"
+                  value={tempSettings.numberFormat}
+                  onChange={(e) => handleTempChange("numberFormat", normalizeOrgNumberFormat(e.target.value))}
+                  className={cn(surfaceSelectClassName, "field-control")}
+                >
+                  {ORG_NUMBER_FORMATS.map((fmt) => (
+                    <option key={fmt} value={fmt}>
+                      {fmt}
+                    </option>
+                  ))}
+                </select>
               </FieldGroup>
 
               <div className="mt-2 flex items-center gap-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60">

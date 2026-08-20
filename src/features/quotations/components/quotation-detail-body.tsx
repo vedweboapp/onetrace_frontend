@@ -52,7 +52,7 @@ import {
   DetailPagePadding,
   DetailPanelCard,
 } from "@/shared/components/layout/detail-metric-card";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 import { AppTabs } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import { routes } from "@/shared/config/routes";
@@ -143,7 +143,7 @@ function QuotationDetailPeopleSection({
           <DetailUserAttribution user={quotationContactToAudit(detail.primary_customer_contact)} />
         </DetailEditableField>
         <DetailEditableField
-          className="sm:col-span-2"
+          span="full"
           label={t("fields.additionalContacts")}
           kind="multiselect"
           values={additionalIds.map(String)}
@@ -187,7 +187,7 @@ const AddressMultiMiniMap = dynamic(
 );
 
 const detailEntityLinkClassName =
-  "font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline";
+  "font-medium text-blue-600 underline-offset-2 hover:underline";
 
 type Props = {
   detail: QuotationDetail;
@@ -250,16 +250,11 @@ export function QuotationDetailBody({
     [t],
   );
 
-  async function patchField(body: Parameters<typeof updateQuotation>[1]) {
-    try {
-      await updateQuotation(detail.id, body);
-      toastSuccess(t("updatedToast"));
-      onSaved?.();
-    } catch (error) {
-      toastApiError(error, t("saveError"));
-      throw error;
-    }
-  }
+  const patchField = useDetailPatch(
+    (body: Parameters<typeof updateQuotation>[1]) => updateQuotation(detail.id, body),
+    { success: t("updatedToast"), error: t("saveError") },
+    onSaved,
+  );
 
   const goToTab = React.useCallback(
     (tab: "project" | "pricing") => {
@@ -321,7 +316,7 @@ export function QuotationDetailBody({
 
   const overviewCard = (
     <DetailPanelCard title={t("detail.sectionOverview")}>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <DetailMetricsGrid>
         <DetailEditableField
           label={t("table.status")}
           value={statusValue}
@@ -446,10 +441,11 @@ export function QuotationDetailBody({
           ) : "-"}
         </DetailEditableField>
         <DetailEditableField
-          className="sm:col-span-2"
+          span="full"
           label={t("fields.description")}
           value={desc}
           kind="text"
+          multiline
           editAriaLabel={tActions("edit")}
           empty={t("detail.noDescription")}
           onSave={(next) => patchField({ description: next || null })}
@@ -460,7 +456,7 @@ export function QuotationDetailBody({
             </p>
           ) : null}
         </DetailEditableField>
-      </div>
+      </DetailMetricsGrid>
     </DetailPanelCard>
   );
 
