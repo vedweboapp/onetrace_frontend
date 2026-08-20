@@ -4117,7 +4117,9 @@
           "savedAll": "Todos los cambios guardados.",
           "saveAllError": "No se pudieron guardar todos los cambios.",
           "loading": "Cargando editor...",
-          "noFormWithInstallationType": "No se encontró ningún formulario con el tipo de instalación en el proyecto. Asigne un formulario o cree uno nuevo."
+          "noFormWithInstallationType": "No se encontró ningún formulario con el tipo de instalación en el proyecto. Asigne un formulario o cree uno nuevo.",
+          "productAttachments": "Manual de Instalación",
+          "installationManual": "Manual de Instalación"
         }
       },
       "formsTab": {
