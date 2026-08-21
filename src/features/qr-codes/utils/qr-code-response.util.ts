@@ -107,11 +107,11 @@ export function parseQrCodeGenerateResponse(data: unknown): QrCodeGenerateResult
       ? (data as { message: string }).message
       : undefined;
 
+  const envelopeData =
+    "data" in data ? (data as { data?: unknown }).data : undefined;
   const payload =
-    "success" in data &&
-    typeof (data as { data?: unknown }).data === "object" &&
-    (data as { data?: unknown }).data !== null
-      ? (data as { data: unknown }).data
+    "success" in data && typeof envelopeData === "object" && envelopeData !== null
+      ? envelopeData
       : data;
 
   if (typeof payload === "object" && payload !== null && "batch" in payload) {
