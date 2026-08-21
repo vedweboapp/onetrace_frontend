@@ -132,7 +132,8 @@ export type JobMetaCompositeGroupRef = {
 export type JobMetaCompositeItem = {
   id?: number;
   name?: string;
-  group?: JobMetaCompositeGroupRef | null;
+  /** Nested group ref, or legacy numeric group id. */
+  group?: JobMetaCompositeGroupRef | number | null;
   quantity: number;
   amount?: number;
   /** Legacy read paths (older API / drafts). */

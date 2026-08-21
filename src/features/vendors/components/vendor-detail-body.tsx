@@ -7,8 +7,9 @@ import { fetchVendorTypesPage } from "@/features/vendor-types/api/vendor-type.ap
 import { updateVendor } from "@/features/vendors/api/vendor.api";
 import type { Vendor } from "@/features/vendors/types/vendor.types";
 import { VendorTypeChip } from "@/features/vendor-types/components/vendor-type-chip";
-import { getVendorTypeId, getVendorTypeRow, parseVendorCoord } from "@/features/vendors/utils/vendor-nested-fields.util";
+import { getVendorTypeIds, getVendorTypeRows, parseVendorCoord } from "@/features/vendors/utils/vendor-nested-fields.util";
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
+import { DetailAddressBlock } from "@/shared/components/layout/detail-address-block";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { DetailEntityAddressFields } from "@/shared/components/layout/detail-entity-address-fields";
 import {
@@ -22,8 +23,8 @@ import {
   DetailPanelCard,
 } from "@/shared/components/layout/detail-metric-card";
 import type { AddressMapPoint } from "@/shared/components/maps/google-address-multi-mini-map";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
-import { ActiveStatusBadge } from "@/shared/ui";
+import { entityAddressTypeOptions, sortEntityAddressesForDisplay } from "@/shared/form/entity-address-form.util";
+import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 
 const AddressMultiMiniMap = dynamic(
   () => import("@/shared/components/maps/address-multi-mini-map").then((m) => m.AddressMultiMiniMap),
@@ -46,18 +47,20 @@ export function VendorDetailBody({
   const t = useTranslations("Dashboard.vendors");
   const tMeta = useTranslations("Dashboard.common.detail");
   const tActions = useTranslations("Dashboard.common.actions");
-  const typeRow = getVendorTypeRow(detail);
-  const typeId = getVendorTypeId(detail);
+  const typeRows = getVendorTypeRows(detail);
+  const typeIds = getVendorTypeIds(detail);
   const addresses = detail.addresses ?? [];
+  const sortedAddresses = React.useMemo(() => sortEntityAddressesForDisplay(addresses), [addresses]);
+  const addressTypeOptions = React.useMemo(() => entityAddressTypeOptions((key) => t(key)), [t]);
   const [vendorTypeOptions, setVendorTypeOptions] = React.useState<{ value: string; label: string }[]>([]);
 
-  const statusOptions = React.useMemo(
-    () => [
-      { value: "true", label: t("status.active") },
-      { value: "false", label: t("status.inactive") },
-    ],
-    [t],
-  );
+  const vendorTypeSelectOptions = React.useMemo(() => {
+    const optionIds = new Set(vendorTypeOptions.map((opt) => opt.value));
+    const extra = typeRows
+      .filter((row) => !optionIds.has(String(row.id)))
+      .map((row) => ({ value: String(row.id), label: row.name?.trim() || `#${row.id}` }));
+    return extra.length > 0 ? [...vendorTypeOptions, ...extra] : vendorTypeOptions;
+  }, [vendorTypeOptions, typeRows]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -76,46 +79,53 @@ export function VendorDetailBody({
     };
   }, []);
 
-  async function patchField(body: Parameters<typeof updateVendor>[1]) {
-    try {
-      await updateVendor(detail.id, body);
-      toastSuccess(t("updatedToast"));
-      onSaved?.();
-    } catch (error) {
-      toastApiError(error, t("toggleActiveError"));
-      throw error;
-    }
-  }
+  const patchField = useDetailPatch(
+    (body: Parameters<typeof updateVendor>[1]) => updateVendor(detail.id, body),
+    { success: t("updatedToast"), error: t("toggleActiveError") },
+    onSaved,
+  );
 
-  async function patchAddresses(addressPayloads: Parameters<typeof updateVendor>[1]["addresses"]) {
-    try {
-      await updateVendor(detail.id, { addresses: addressPayloads ?? [] });
-      toastSuccess(t("updatedToast"));
-      onSaved?.();
-    } catch (error) {
-      toastApiError(error, t("toggleActiveError"));
-      throw error;
-    }
-  }
+  const patchAddresses = useDetailPatch(
+    (addressPayloads: Parameters<typeof updateVendor>[1]["addresses"]) =>
+      updateVendor(detail.id, { addresses: addressPayloads ?? [] }),
+    { success: t("updatedToast"), error: t("toggleActiveError") },
+    onSaved,
+  );
 
   const addressFieldLabels = React.useMemo(
     () => ({
+      addressType: t("fields.addressType"),
       addressLine1: t("fields.addressLine1"),
       addressLine2: t("fields.addressLine2"),
       pincode: t("fields.pincode"),
       country: t("fields.country"),
       state: t("fields.stateProvince"),
       city: t("fields.city"),
+      primary: t("addresses.primary"),
     }),
     [t],
   );
 
-  const mapPoints: AddressMapPoint[] = addresses.map((addr, index) => {
+  const addressRequiredMessages = React.useMemo(
+    () => ({
+      addressType: t("validation.addressType"),
+      addressLine1: t("validation.addressLine1"),
+      pincode: t("validation.pincode"),
+      country: t("validation.country"),
+      state: t("validation.state"),
+      city: t("validation.city"),
+    }),
+    [t],
+  );
+
+  const mapPoints: AddressMapPoint[] = sortedAddresses.map(({ address: addr, displayIndex }) => {
     const lat = parseVendorCoord(addr.latitude);
     const lon = parseVendorCoord(addr.longitude);
     return {
-      id: addr.id ?? index,
-      label: addr.is_primary ? t("addresses.primary") : t("addresses.rowLabel", { index: index + 1 }),
+      id: addr.id ?? displayIndex,
+      label: addr.is_primary
+        ? t("addresses.primary")
+        : t("addresses.rowLabel", { index: displayIndex + 1 }),
       addressParts: {
         line1: addr.address_line_1,
         line2: addr.address_line_2,
@@ -136,49 +146,61 @@ export function VendorDetailBody({
     <DetailPagePadding>
       <DetailPageMapLayout map={mapNode} mapTitle={t("detail.sectionMap")} showMap>
         <DetailPanelCard title={t("detail.sectionOverview")}>
-          <DetailMetricsGrid compact>
+          <DetailMetricsGrid from="xl" wide>
             <DetailEditableField
               label={t("fields.name")}
               value={detail.name}
               kind="text"
+              required
+              requiredMessage={t("validation.name")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ name: next })}
             >
               {detail.name}
             </DetailEditableField>
-            <DetailEditableField
-              label={t("fields.status")}
-              value={detail.is_active ? "true" : "false"}
-              kind="select"
-              options={statusOptions}
-              editAriaLabel={tActions("edit")}
-              onSave={(next) => patchField({ is_active: next === "true" })}
-            >
-              <ActiveStatusBadge
-                active={detail.is_active}
-                label={detail.is_active ? t("status.active") : t("status.inactive")}
-              />
-            </DetailEditableField>
-            {vendorTypeOptions.length > 0 ? (
+            {vendorTypeSelectOptions.length > 0 ? (
               <DetailEditableField
                 label={t("fields.type")}
-                value={typeId != null ? String(typeId) : ""}
-                kind="select"
-                options={vendorTypeOptions}
+                kind="multiselect"
+                values={typeIds.map(String)}
+                options={vendorTypeSelectOptions}
                 editAriaLabel={tActions("edit")}
-                onSave={(next) => patchField({ type: Number(next) })}
+                span="full"
+                required
+                requiredMessage={t("validation.type")}
+                onSaveValues={(next) =>
+                  patchField({
+                    vendor_types: next.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0),
+                  })
+                }
               >
-                {typeRow ? <VendorTypeChip row={typeRow} /> : null}
+                {typeRows.length > 0 ? (
+                  <span className="flex flex-wrap gap-1.5">
+                    {typeRows.map((row) => (
+                      <VendorTypeChip key={row.id} row={row} />
+                    ))}
+                  </span>
+                ) : null}
               </DetailEditableField>
             ) : (
               <DetailMetricCard label={t("fields.type")}>
-                {typeRow ? <VendorTypeChip row={typeRow} /> : "—"}
+                {typeRows.length > 0 ? (
+                  <span className="flex flex-wrap gap-1.5">
+                    {typeRows.map((row) => (
+                      <VendorTypeChip key={row.id} row={row} />
+                    ))}
+                  </span>
+                ) : (
+                  "—"
+                )}
               </DetailMetricCard>
             )}
             <DetailEditableField
               label={t("fields.email")}
               value={detail.email}
               kind="email"
+              required
+              requiredMessage={t("validation.email")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ email: next })}
             >
@@ -188,6 +210,8 @@ export function VendorDetailBody({
               label={t("fields.phone")}
               value={detail.phone ?? ""}
               kind="tel"
+              required
+              requiredMessage={t("validation.phoneInvalid")}
               editAriaLabel={tActions("edit")}
               empty={t("detail.notProvided")}
               onSave={(next) => patchField({ phone: next })}
@@ -201,30 +225,29 @@ export function VendorDetailBody({
           {addresses.length === 0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>
           ) : (
-            <ul className="space-y-4">
-              {addresses.map((addr, index) => (
+            <ul className="space-y-4 overflow-visible">
+              {sortedAddresses.map(({ address: addr, originalIndex, displayIndex }) => (
                 <li
-                  key={addr.id ?? index}
-                  className="rounded-lg border border-slate-100 p-4 dark:border-slate-800"
+                  key={addr.id ?? originalIndex}
+                  className="min-w-0 overflow-visible rounded-lg border border-slate-100 p-4 dark:border-slate-800"
                 >
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                      {t(`addressType.${addr.address_type ?? "other"}`)}
-                    </span>
-                    {addr.is_primary ? (
-                      <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        {t("addresses.primary")}
-                      </span>
-                    ) : null}
-                  </div>
-                  <DetailEntityAddressFields
-                    address={addr}
-                    addressIndex={index}
-                    allAddresses={addresses}
-                    labels={addressFieldLabels}
-                    editAriaLabel={tActions("edit")}
-                    onSaveAddresses={patchAddresses}
-                  />
+                  <DetailAddressBlock
+                    heading={t("addresses.rowLabel", { index: displayIndex + 1 })}
+                    primaryLabel={t("addresses.primary")}
+                    isPrimary={Boolean(addr.is_primary)}
+                  >
+                    <DetailEntityAddressFields
+                      address={addr}
+                      addressIndex={originalIndex}
+                      allAddresses={addresses}
+                      labels={addressFieldLabels}
+                      requiredMessages={addressRequiredMessages}
+                      addressTypeOptions={addressTypeOptions}
+                      addressTypeValue={t(`addressType.${addr.address_type ?? "other"}`)}
+                      editAriaLabel={tActions("edit")}
+                      onSaveAddresses={patchAddresses}
+                    />
+                  </DetailAddressBlock>
                 </li>
               ))}
             </ul>

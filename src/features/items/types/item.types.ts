@@ -87,6 +87,15 @@ export type Item = {
   weight?: string | number | null;
   weight_unit?: WeightUnit | string | null;
   attachments?: ItemAttachment[] | null;
+  /** Linked vendor ids (write/read). */
+  vendor_ids?: number[] | null;
+  /** Expanded vendor refs when the API returns nested objects. */
+  vendors?: Array<number | ItemVendorRef> | null;
+};
+
+export type ItemVendorRef = {
+  id: number;
+  name?: string | null;
 };
 
 export type ItemCreatePayload = {
@@ -114,6 +123,7 @@ export type ItemCreatePayload = {
   weight_unit?: WeightUnit;
   components?: ItemComponentRef[];
   attachments?: Array<{ id: number; is_deleted?: boolean }>;
+  vendor_ids?: number[];
 };
 
 export type ItemUpdatePayload = Partial<ItemCreatePayload>;

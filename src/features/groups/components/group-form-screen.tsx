@@ -20,8 +20,9 @@ import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
-import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import {
+  QUICK_CREATE_SELECT_TARGET_PARAM,
+  hrefAfterEntityCreate,
   resolveFormBackUrl,
 } from "@/shared/utils/quick-create-navigation.util";
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
@@ -256,7 +257,14 @@ export function GroupFormScreen({ mode, groupId }: Props) {
           : await createGroup({ name: name.trim(), items: compositeItems });
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
-      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.groups, saved.id, safeBack));
+      router.replace(
+        hrefAfterEntityCreate({
+          createdId: saved.id,
+          selectTarget: isEdit ? null : searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
+          backHref: safeBack,
+          listPath: routes.dashboard.groups,
+        }),
+      );
     } catch (error) {
       toastApiError(error, t("loadError"));
     } finally {

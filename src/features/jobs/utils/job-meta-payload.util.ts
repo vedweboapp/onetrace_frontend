@@ -45,6 +45,39 @@ export function resolveJobMetaCompositeItemId(
   return null;
 }
 
+/** Resolve group id from API `group` (object, number, or missing). */
+export function resolveJobMetaCompositeGroupId(
+  row: Pick<JobMetaCompositeItem, "group">,
+): number | null {
+  const g = row.group;
+  if (typeof g === "number" && g > 0) return g;
+  if (g && typeof g === "object" && typeof g.id === "number" && g.id > 0) return g.id;
+  return null;
+}
+
+/** Display label for group column; empty group → em dash. */
+export function resolveJobMetaCompositeGroupLabel(
+  row: Pick<JobMetaCompositeItem, "group">,
+  groupLabelById?: Map<string, string> | Record<string, string>,
+): string {
+  const g = row.group;
+  if (g && typeof g === "object") {
+    const name = g.name?.trim();
+    if (name) return name;
+  }
+  const id = resolveJobMetaCompositeGroupId(row);
+  if (id == null) return "—";
+  const key = String(id);
+  if (groupLabelById instanceof Map) {
+    const label = groupLabelById.get(key)?.trim();
+    if (label) return label;
+  } else if (groupLabelById) {
+    const label = groupLabelById[key]?.trim();
+    if (label) return label;
+  }
+  return "—";
+}
+
 function resolveGroupRef(groupRaw: string, groupName?: string): JobMetaCompositeGroupRef | null {
   const trimmed = groupRaw.trim();
   if (!/^\d+$/.test(trimmed)) return null;

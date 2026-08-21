@@ -7,22 +7,26 @@ import { useSearchParams } from "next/navigation";
 import { fetchClient, updateClient } from "@/features/clients/api/client.api";
 import { ClientContactsTab } from "@/features/clients/components/client-contacts-tab";
 import { ClientDetailBody } from "@/features/clients/components/client-detail-body";
+import { ClientProjectsTab } from "@/features/clients/components/client-projects-tab";
 import { ClientSitesTab } from "@/features/clients/components/client-sites-tab";
 import {
   EntityDetailEditButton,
   EntityDetailErrorState,
   EntityDetailLoadingSkeleton,
   EntityDetailScreen,
+  EntityDetailTabLoadingState,
 } from "@/shared/components/entity";
+import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
 
 type Props = {
   clientId: number;
+  className?: string;
 };
 
-export function ClientDetailScreen({ clientId }: Props) {
+export function ClientDetailScreen({ clientId, className }: Props) {
   const t = useTranslations("Dashboard.clients");
   const router = useRouter();
   const pathname = usePathname();
@@ -33,6 +37,7 @@ export function ClientDetailScreen({ clientId }: Props) {
       { id: "details", label: t("detail.tabs.details") },
       { id: "contacts", label: t("detail.tabs.contacts") },
       { id: "sites", label: t("detail.tabs.sites") },
+      { id: "projects", label: t("detail.tabs.projects") },
     ],
     [t],
   );
@@ -41,7 +46,7 @@ export function ClientDetailScreen({ clientId }: Props) {
 
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = React.useState(() =>
-    tabFromUrl && ["details", "contacts", "sites"].includes(tabFromUrl) ? tabFromUrl : "details",
+    tabFromUrl && ["details", "contacts", "sites", "projects"].includes(tabFromUrl) ? tabFromUrl : "details",
   );
 
   React.useEffect(() => {
@@ -58,6 +63,7 @@ export function ClientDetailScreen({ clientId }: Props) {
   return (
     <EntityDetailScreen
       entityId={clientId}
+      className={className}
       listSection="clients"
       listRoute={routes.dashboard.clients}
       loadError={t("detailLoadError")}
@@ -124,21 +130,34 @@ export function ClientDetailScreen({ clientId }: Props) {
           role="tabpanel"
           id={`client-detail-tab-${activeTab}`}
           aria-labelledby={`client-detail-tab-trigger-${activeTab}`}
+          className={entityDetailTabPanelClassName}
         >
           {loading && activeTab === "details" ? (
-            <EntityDetailLoadingSkeleton />
+            <EntityDetailLoadingSkeleton fill />
           ) : error && activeTab === "details" ? (
-            <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
+            <EntityDetailErrorState
+              fill
+              message={error}
+              retryLabel={t("detail.retry")}
+              onRetry={retry}
+            />
           ) : detail && activeTab === "details" ? (
             <ClientDetailBody detail={detail} dateFmt={dateFmt} onSaved={retry} />
           ) : loading ? (
-            <EntityDetailLoadingSkeleton />
+            <EntityDetailTabLoadingState />
           ) : error ? (
-            <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
+            <EntityDetailErrorState
+              fill
+              message={error}
+              retryLabel={t("detail.retry")}
+              onRetry={retry}
+            />
           ) : detail && activeTab === "contacts" ? (
             <ClientContactsTab clientId={detail.id} />
           ) : detail && activeTab === "sites" ? (
             <ClientSitesTab clientId={detail.id} />
+          ) : detail && activeTab === "projects" ? (
+            <ClientProjectsTab clientId={detail.id} />
           ) : null}
         </div>
       )}

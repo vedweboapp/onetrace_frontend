@@ -24,7 +24,7 @@ import {
   DetailPanelCard,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 import {
   formatApiDateForHtmlDateInput,
   formatFlexibleApiDate,
@@ -138,16 +138,11 @@ export function InvoiceDetailBody({
     [t],
   );
 
-  async function patchField(body: Parameters<typeof updateInvoice>[1]) {
-    try {
-      await updateInvoice(detail.id, body);
-      toastSuccess(t("updatedToast"));
-      onSaved?.();
-    } catch (error) {
-      toastApiError(error, t("updateError"));
-      throw error;
-    }
-  }
+  const patchField = useDetailPatch(
+    (body: Parameters<typeof updateInvoice>[1]) => updateInvoice(detail.id, body),
+    { success: t("updatedToast"), error: t("updateError") },
+    onSaved,
+  );
 
   return (
     <DetailPagePadding>

@@ -12,7 +12,6 @@ import {
   emptyContactFormDefaults,
   mapContactFormToPayload,
 } from "@/features/contacts/utils/contact-form-map";
-import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { routes } from "@/shared/config/routes";
@@ -30,7 +29,6 @@ import {
   FormFieldRow,
   SurfacePhoneField,
   SurfaceTextField,
-  surfaceInputClassName,
 } from "@/shared/ui";
 
 const FORM_DOM_ID = "contact-create-form";
@@ -139,10 +137,6 @@ export function ContactFormModal({
   }, [clientOptions]);
 
   const noClients = !lockClient && localClientOptions.length === 0;
-  const lockedClientLabel =
-    lockClient && initialClientId
-      ? localClientOptions.find((o) => o.value === initialClientId)?.label
-      : undefined;
 
   const clientQuickCreate = useQuickCreate({ kind: "client", addDisabled: lockClient });
 
@@ -186,12 +180,17 @@ export function ContactFormModal({
                 error={errors.name?.message}
               />
           {lockClient ? (
-            <FieldGroup label={t("fields.client")} htmlFor="contact-client-locked">
-              <input
-                id="contact-client-locked"
-                readOnly
-                value={lockedClientLabel ?? ""}
-                className={cn(surfaceInputClassName, "cursor-default bg-slate-50 dark:bg-slate-900/60")}
+            <FieldGroup label={t("fields.client")} htmlFor="contact-client" required>
+              <CheckmarkSelect
+                id="contact-client"
+                portaled
+                listLabel={t("fields.client")}
+                options={localClientOptions}
+                value={initialClientId ?? ""}
+                emptyLabel={t("placeholders.client")}
+                locked
+                lockedHint={t("locked.client")}
+                onChange={() => undefined}
               />
             </FieldGroup>
           ) : (

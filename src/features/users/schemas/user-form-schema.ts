@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { isAppValidPhoneNumber } from "@/shared/utils/phone-input.util";
 import { zEmail, zRequiredName } from "@/shared/form";
+import { parseOrgMoneyInput } from "@/shared/money/format-money.util";
+import { getOrgCurrencySettings } from "@/shared/money/org-currency.store";
 import {
   createEntityAddressesArraySchema,
   type EntityAddressFormMessages,
@@ -47,7 +49,7 @@ export function createUserFormSchema(messages: UserFormMessages) {
     addresses: createEntityAddressesArraySchema(messages),
   }).superRefine((data, ctx) => {
     if (data.base_pay.trim()) {
-      const n = Number(data.base_pay);
+      const n = parseOrgMoneyInput(data.base_pay, getOrgCurrencySettings());
       if (!Number.isFinite(n) || n < 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

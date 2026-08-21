@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import type { ReactNode } from "react";
 import { cn } from "@/core/utils/http.util";
 import {
@@ -32,6 +33,8 @@ type Props = {
   tableClassName?: string;
 };
 
+const DetailLinkedTableRowNumbersContext = React.createContext(true);
+
 function detailLinkedAlignClass(align: DetailLinkedTableColumn["align"]) {
   if (align === "right") return "text-right";
   if (align === "center") return "text-center";
@@ -54,50 +57,55 @@ export function DetailLinkedTable({
   tableClassName,
 }: Props) {
   return (
-    <DataTableScroll className="max-h-[min(28rem,50vh)] rounded-lg border border-slate-200 dark:border-slate-700">
-      <DataTable className={cn("min-w-0", tableClassName)}>
-        <colgroup>
-          {showRowNumbers ? <col className="w-11" /> : null}
-          {columns.map((col) => (
-            <col key={col.id} className={col.widthClass ?? (col.narrow ? "w-24" : undefined)} />
-          ))}
-        </colgroup>
-        <DataTableHead>
-          <tr>
-            {showRowNumbers ? (
-              <DataTableTh narrow className="text-center">
-                {rowNumberHeader}
-              </DataTableTh>
-            ) : null}
+    <DetailLinkedTableRowNumbersContext.Provider value={showRowNumbers}>
+      <DataTableScroll className="max-h-[min(28rem,50vh)] rounded-lg border border-slate-200 dark:border-slate-700">
+        <DataTable className={cn("min-w-0 table-fixed", tableClassName)}>
+          <colgroup>
+            {showRowNumbers ? <col className="w-11" /> : null}
             {columns.map((col) => (
-              <DataTableTh
-                key={col.id}
-                narrow={col.narrow}
-                className={cn(detailLinkedAlignClass(col.align), col.headerClassName)}
-              >
-                {col.header}
-              </DataTableTh>
+              <col key={col.id} className={col.widthClass ?? (col.narrow ? "w-24" : undefined)} />
             ))}
-          </tr>
-        </DataTableHead>
-        <DataTableBody>{children}</DataTableBody>
-      </DataTable>
-    </DataTableScroll>
+          </colgroup>
+          <DataTableHead>
+            <tr>
+              {showRowNumbers ? (
+                <DataTableTh narrow className="text-center">
+                  {rowNumberHeader}
+                </DataTableTh>
+              ) : null}
+              {columns.map((col) => (
+                <DataTableTh
+                  key={col.id}
+                  narrow={col.narrow}
+                  className={cn(detailLinkedAlignClass(col.align), col.headerClassName)}
+                >
+                  {col.header}
+                </DataTableTh>
+              ))}
+            </tr>
+          </DataTableHead>
+          <DataTableBody>{children}</DataTableBody>
+        </DataTable>
+      </DataTableScroll>
+    </DetailLinkedTableRowNumbersContext.Provider>
   );
 }
 
 export function DetailLinkedTableRow({
   index,
-  showRowNumber = true,
+  showRowNumber,
   children,
 }: {
   index: number;
+  /** Defaults to the parent `DetailLinkedTable` `showRowNumbers` value. */
   showRowNumber?: boolean;
   children: ReactNode;
 }) {
+  const parentShowRowNumbers = React.useContext(DetailLinkedTableRowNumbersContext);
+  const show = showRowNumber ?? parentShowRowNumbers;
   return (
     <DataTableRow>
-      {showRowNumber ? (
+      {show ? (
         <DataTableTd narrow className="text-center tabular-nums text-slate-500 dark:text-slate-400">
           {index + 1}
         </DataTableTd>

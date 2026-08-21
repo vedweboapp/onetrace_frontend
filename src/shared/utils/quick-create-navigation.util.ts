@@ -4,6 +4,7 @@ import { isQuickCreateKind, type QuickCreateKind } from "@/shared/types/quick-cr
 import {
   buildEntityDetailHrefAfterSave,
   mergeUrlQueryParam,
+  pathWithoutQueryAndHash,
   readBackHrefForPath,
   sanitizeInternalListBack,
   storeBackHrefForPath,
@@ -102,8 +103,8 @@ export function buildQuickCreateReturnHref(back: string, createdId: number, sele
 }
 
 /**
- * After create: return to the parent form with `?select=` when launched via quick-create,
- * otherwise open the new entity detail page.
+ * After create: return to the parent (form or entity tab) when launched via quick-create
+ * or from a nested parent tab; otherwise open the new entity detail page.
  */
 export function hrefAfterEntityCreate(args: {
   createdId: number;
@@ -114,5 +115,13 @@ export function hrefAfterEntityCreate(args: {
   if (isQuickCreateKind(args.selectTarget)) {
     return buildQuickCreateReturnHref(args.backHref, args.createdId, args.selectTarget);
   }
+
+  const backPath = pathWithoutQueryAndHash(args.backHref);
+  const listPath = pathWithoutQueryAndHash(args.listPath);
+  const backIsSameModule = backPath === listPath || backPath.startsWith(`${listPath}/`);
+  if (!backIsSameModule && args.backHref.trim()) {
+    return mergeUrlQueryParam(args.backHref, "highlight", String(args.createdId));
+  }
+
   return buildEntityDetailHrefAfterSave(args.listPath, args.createdId, args.backHref);
 }

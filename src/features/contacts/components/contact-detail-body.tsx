@@ -18,26 +18,38 @@ import {
 } from "@/shared/components/layout/detail-address-location-fields";
 import { countryIsoFromName } from "@/shared/form/entity-address-form.util";
 import {
-  DetailMetricCard,
+  DetailActiveStatusField,
   DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
+  detailPageBodyPaddingClassName,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
-import { ActiveStatusBadge } from "@/shared/ui";
+import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
+import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 
 type Props = {
   detail: Contact;
   clientName?: string;
   vendorName?: string;
+  clientOptions: CheckmarkSelectOption[];
+  vendorOptions: CheckmarkSelectOption[];
+  contactTypeOptions: CheckmarkSelectOption[];
   dateFmt: Intl.DateTimeFormat;
-  /** Refresh detail after a successful quick-edit PATCH. */
   onSaved?: () => void;
 };
 
-export function ContactDetailBody({ detail, clientName, vendorName, dateFmt, onSaved }: Props) {
+export function ContactDetailBody({
+  detail,
+  clientName,
+  vendorName,
+  clientOptions,
+  vendorOptions,
+  contactTypeOptions,
+  dateFmt,
+  onSaved,
+}: Props) {
   const t = useTranslations("Dashboard.contacts");
   const tMeta = useTranslations("Dashboard.common.detail");
   const tActions = useTranslations("Dashboard.common.actions");
@@ -45,109 +57,134 @@ export function ContactDetailBody({ detail, clientName, vendorName, dateFmt, onS
   const clientId = getContactClientId(detail);
   const vendorId = getContactVendorId(detail);
 
-  const statusOptions = React.useMemo(
-    () => [
-      { value: "true", label: t("status.active") },
-      { value: "false", label: t("status.inactive") },
-    ],
-    [t],
+  const patchField = useDetailPatch(
+    (body: Parameters<typeof updateContact>[1]) => updateContact(detail.id, body),
+    { success: t("updatedToast"), error: t("toggleActiveError") },
+    onSaved,
   );
 
-  async function patchField(body: Parameters<typeof updateContact>[1]) {
-    try {
-      await updateContact(detail.id, body);
-      toastSuccess(t("updatedToast"));
-      onSaved?.();
-    } catch (error) {
-      toastApiError(error, t("toggleActiveError"));
-      throw error;
-    }
-  }
-
   return (
-    <DetailPagePadding>
+    <DetailPagePadding className={detailPageBodyPaddingClassName}>
       <div className={detailPageStackClassName}>
-        <DetailPanelCard title={t("detail.sectionOverview")}>
+        <DetailPanelCard title={t("detail.sectionOverview")} variant="flat">
           <DetailMetricsGrid>
+            <DetailEditableField
+              label={t("fields.contactType")}
+              value={contactType}
+              kind="select"
+              options={contactTypeOptions}
+              required
+              requiredMessage={t("validation.contactType")}
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => {
+                const type = next === "vendor" ? "vendor" : "client";
+                return patchField(
+                  type === "client"
+                    ? { contact_type: type, client: clientId ?? undefined, vendor: undefined }
+                    : { contact_type: type, vendor: vendorId ?? undefined, client: undefined },
+                );
+              }}
+            >
+              {contactType === "vendor" ? t("tabs.vendor") : t("tabs.client")}
+            </DetailEditableField>
+
+            {contactType === "vendor" ? (
+              <DetailEditableField
+                label={t("fields.vendor")}
+                value={vendorId != null ? String(vendorId) : ""}
+                kind="select"
+                options={vendorOptions}
+                selectSearchable
+                required
+                requiredMessage={t("validation.vendor")}
+                editAriaLabel={tActions("edit")}
+                onSave={(next) => patchField({ vendor: Number(next), contact_type: "vendor" })}
+              >
+                {vendorId ? (
+                  <DetailEntityLink href={`${routes.dashboard.vendors}/${vendorId}`}>
+                    {vendorName ?? "—"}
+                  </DetailEntityLink>
+                ) : (
+                  vendorName ?? "—"
+                )}
+              </DetailEditableField>
+            ) : (
+              <DetailEditableField
+                label={t("fields.client")}
+                value={clientId != null ? String(clientId) : ""}
+                kind="select"
+                options={clientOptions}
+                selectSearchable
+                required
+                requiredMessage={t("validation.client")}
+                editAriaLabel={tActions("edit")}
+                onSave={(next) => patchField({ client: Number(next), contact_type: "client" })}
+              >
+                {clientId ? (
+                  <DetailEntityLink href={`${routes.dashboard.clients}/${clientId}`}>
+                    {clientName ?? "—"}
+                  </DetailEntityLink>
+                ) : (
+                  clientName ?? "—"
+                )}
+              </DetailEditableField>
+            )}
+
             <DetailEditableField
               label={t("fields.name")}
               value={detail.name}
               kind="text"
+              required
+              requiredMessage={t("validation.name")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ name: next })}
             >
               {detail.name}
             </DetailEditableField>
-            <DetailEditableField
-              label={t("fields.status")}
-              value={detail.is_active ? "true" : "false"}
-              kind="select"
-              options={statusOptions}
-              editAriaLabel={tActions("edit")}
-              onSave={(next) => patchField({ is_active: next === "true" })}
-            >
-              <ActiveStatusBadge
-                active={detail.is_active}
-                label={detail.is_active ? t("status.active") : t("status.inactive")}
-              />
-            </DetailEditableField>
-            <DetailMetricCard label={t("fields.contactType")}>
-              {contactType === "vendor" ? t("tabs.vendor") : t("tabs.client")}
-            </DetailMetricCard>
-            {contactType === "vendor" ? (
-              <DetailMetricCard label={t("fields.vendor")}>
-                {vendorId ? (
-                  <DetailEntityLink
-                    href={`${routes.dashboard.vendors}/${vendorId}`}
-                    className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                  >
-                    {vendorName ?? "—"}
-                  </DetailEntityLink>
-                ) : (
-                  <span>{vendorName ?? "—"}</span>
-                )}
-              </DetailMetricCard>
-            ) : (
-              <DetailMetricCard label={t("fields.client")}>
-                {clientId ? (
-                  <DetailEntityLink
-                    href={`${routes.dashboard.clients}/${clientId}`}
-                    className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
-                  >
-                    {clientName ?? "—"}
-                  </DetailEntityLink>
-                ) : (
-                  <span>{clientName ?? "—"}</span>
-                )}
-              </DetailMetricCard>
-            )}
-            <DetailEditableField
-              label={t("fields.email")}
-              value={detail.email}
-              kind="email"
-              editAriaLabel={tActions("edit")}
-              onSave={(next) => patchField({ email: next })}
-            >
-              {detail.email}
-            </DetailEditableField>
+
             <DetailEditableField
               label={t("fields.phone")}
               value={detail.phone ?? ""}
               kind="tel"
+              required
+              requiredMessage={t("validation.phoneInvalid")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ phone: next })}
             >
               {detail.phone?.trim() ? detail.phone : null}
             </DetailEditableField>
+
+            <DetailEditableField
+              label={t("fields.email")}
+              value={detail.email}
+              kind="email"
+              required
+              requiredMessage={t("validation.email")}
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchField({ email: next })}
+            >
+              {detail.email}
+            </DetailEditableField>
+
+            <DetailActiveStatusField
+              label={t("fields.status")}
+              isActive={detail.is_active}
+              activeLabel={t("status.active")}
+              inactiveLabel={t("status.inactive")}
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchField({ is_active: next })}
+            />
           </DetailMetricsGrid>
         </DetailPanelCard>
 
-        <DetailPanelCard title={t("detail.sectionAddress")}>
+        <DetailPanelCard title={t("detail.sectionAddress")} variant="flat">
           <DetailMetricsGrid>
             <DetailEditableField
               label={t("fields.addressLine1")}
               value={detail.address_line_1 ?? ""}
               kind="text"
+              required
+              requiredMessage={t("validation.addressLine1")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ address_line_1: next })}
             >
@@ -173,6 +210,11 @@ export function ContactDetailBody({ detail, clientName, vendorName, dateFmt, onS
                 city: t("fields.city"),
               }}
               editAriaLabel={tActions("edit")}
+              requiredMessages={{
+                country: t("validation.country"),
+                state: t("validation.state"),
+                city: t("validation.city"),
+              }}
               onSaveCountry={async (countryIso) => {
                 await patchField({
                   country: detailLocationCountryPayload(countryIso),
@@ -193,6 +235,8 @@ export function ContactDetailBody({ detail, clientName, vendorName, dateFmt, onS
               label={t("fields.pincode")}
               value={detail.pincode ?? ""}
               kind="text"
+              required
+              requiredMessage={t("validation.pincode")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ pincode: next })}
             >

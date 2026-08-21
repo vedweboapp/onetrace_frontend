@@ -11,6 +11,7 @@ import { fetchVendorTypesPage } from "@/features/vendor-types/api/vendor-type.ap
 import { VendorTypeFormModal } from "@/features/vendor-types/components/vendor-type-form-modal";
 import type { VendorType } from "@/features/vendor-types/types/vendor-type.types";
 import { createVendor, fetchVendor, updateVendor } from "@/features/vendors/api/vendor.api";
+import { getVendorTypeRows } from "@/features/vendors/utils/vendor-nested-fields.util";
 import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
 import { usePhoneCountryFromAddresses } from "@/shared/hooks/use-phone-country-from-address";
 import { createVendorFormSchema, type VendorFormValues } from "@/features/vendors/schemas/vendor-form-schema";
@@ -31,10 +32,10 @@ import {
 } from "@/shared/utils/quick-create-navigation.util";
 import {
   AppButton,
-  CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
+  MultiCheckSelect,
   SurfacePhoneField,
   SurfaceTextField,
   SurfaceShell,
@@ -93,6 +94,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
     register,
     reset,
     setValue,
+    getValues,
     setError,
     handleSubmit,
     formState: { errors },
@@ -131,9 +133,12 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
         }
         return [...prev, next];
       });
-      setValue("type", String(row.id), { shouldDirty: true, shouldValidate: true });
+      const current = getValues("type") ?? [];
+      if (!current.includes(String(row.id))) {
+        setValue("type", [...current, String(row.id)], { shouldDirty: true, shouldValidate: true });
+      }
     },
-    [setValue],
+    [getValues, setValue],
   );
 
   React.useEffect(() => {
@@ -144,7 +149,19 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
       setScreenError(null);
       try {
         const row = await fetchVendor(vendorId);
-        if (!cancelled) reset(vendorToFormDefaults(row));
+        if (!cancelled) {
+          reset(vendorToFormDefaults(row));
+          setTypeOptions((prev) => {
+            const byValue = new Map(prev.map((opt) => [opt.value, opt]));
+            for (const typeRow of getVendorTypeRows(row)) {
+              const value = String(typeRow.id);
+              if (!byValue.has(value)) {
+                byValue.set(value, { value, label: typeRow.name?.trim() || `#${typeRow.id}` });
+              }
+            }
+            return Array.from(byValue.values());
+          });
+        }
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
       } finally {
@@ -230,16 +247,18 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
                 name="type"
                 render={({ field }) => (
                   <FieldGroup label={t("fields.type")} htmlFor="vendor-type" required>
-                    <CheckmarkSelect
+                    <MultiCheckSelect
                       id="vendor-type"
                       options={typeOptions}
-                      value={field.value}
+                      values={field.value ?? []}
                       onChange={field.onChange}
-                      emptyLabel={t("placeholders.type")}
+                      onBlur={field.onBlur}
+                      placeholder={t("placeholders.type")}
                       disabled={saving || typeOptions.length === 0}
                       invalid={!!errors.type}
                       listLabel={t("fields.type")}
                       portaled
+                      searchable
                       onAdd={vendorTypeQuickAdd.onAdd}
                       addAriaLabel={vendorTypeQuickAdd.addAriaLabel}
                       addLabel={vendorTypeQuickAdd.addLabel}

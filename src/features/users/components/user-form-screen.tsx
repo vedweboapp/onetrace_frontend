@@ -312,10 +312,9 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
                       render={({ field: typeField }) => (
                         <InputWithEndSelect
                           inputId="user-base-pay"
-                          inputType="number"
+                          orgMoney
+                          showCurrencyAffix
                           inputMode="decimal"
-                          min={0}
-                          step="0.01"
                           inputValue={payField.value}
                           onInputChange={payField.onChange}
                           placeholder={t("placeholders.basePay")}

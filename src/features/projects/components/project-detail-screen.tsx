@@ -4,7 +4,7 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
-import { fetchClient } from "@/features/clients/api/client.api";
+import { fetchClient, fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import type { ProjectType } from "@/features/project-types/types/project-type.types";
 import { createQuotationFromProject } from "@/features/quotations/api/quotation.api";
@@ -22,7 +22,9 @@ import {
   EntityDetailErrorState,
   EntityDetailLoadingSkeleton,
   EntityDetailScreen,
+  EntityDetailTabLoadingState,
 } from "@/shared/components/entity";
+import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -40,6 +42,7 @@ import { fetchProjectStatusesPage } from "@/features/project-status/api/project-
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
+import { cn } from "@/core/utils/http.util";
 
 type Props = {
   projectId: number;
@@ -55,6 +58,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
   const dateOnlyFmt = useDashboardDateFormat({ dateOnly: true });
 
   const [clientName, setClientName] = React.useState<string | null>(null);
+  const [clientOptions, setClientOptions] = React.useState<CheckmarkSelectOption[]>([]);
   const [projectTypeById, setProjectTypeById] = React.useState<Record<number, ProjectType>>({});
   const [detailForClient, setDetailForClient] = React.useState<Project | null>(null);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
@@ -82,6 +86,23 @@ export function ProjectDetailScreen({ projectId }: Props) {
       }
     })();
     return () => { cancelled = true; };
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchClientsPage(1, 500, { is_active: true });
+        if (!cancelled) {
+          setClientOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
+        }
+      } catch {
+        if (!cancelled) setClientOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   React.useEffect(() => {
@@ -383,28 +404,33 @@ export function ProjectDetailScreen({ projectId }: Props) {
           role="tabpanel"
           id={`project-detail-tab-${activeTab}`}
           aria-labelledby={`project-detail-tab-trigger-${activeTab}`}
-          className={activeTab === "location" ? "w-full overflow-y-auto" : undefined}
+          className={
+            activeTab === "location"
+              ? cn(entityDetailTabPanelClassName, "w-full overflow-y-auto")
+              : entityDetailTabPanelClassName
+          }
           style={activeTab === "location" ? { maxHeight: "calc(100dvh - 200px)" } : undefined}
         >
           {loading && activeTab === "details" ? (
-            <EntityDetailLoadingSkeleton />
+            <EntityDetailLoadingSkeleton fill />
           ) : error && activeTab === "details" ? (
-            <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
+            <EntityDetailErrorState fill message={error} retryLabel={t("detail.retry")} onRetry={retry} />
           ) : detail && activeTab === "details" ? (
             <ProjectDetailBody
               detail={detail}
               dateFmt={dateFmt}
               dateOnlyFmt={dateOnlyFmt}
               clientName={clientName}
+              clientOptions={clientOptions}
               projectTypeById={projectTypeById}
               statusOptions={statusOptions}
               siteOptions={siteOptions}
               onSaved={retry}
             />
           ) : loading ? (
-            <EntityDetailLoadingSkeleton />
+            <EntityDetailTabLoadingState />
           ) : error ? (
-            <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
+            <EntityDetailErrorState fill message={error} retryLabel={t("detail.retry")} onRetry={retry} />
           ) : detail && activeTab === "drawings" ? (
             <ProjectDrawingsTab projectId={detail.id} />
           ) : detail && activeTab === "forms" ? (

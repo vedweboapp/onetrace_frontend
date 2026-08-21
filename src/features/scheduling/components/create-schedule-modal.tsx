@@ -10,14 +10,13 @@ import {
   getJobProjectId,
   parseJobDurationMinutes,
 } from "@/features/jobs/utils/job-nested-fields.util";
-import { createSchedule, fetchSchedules, updateSchedule } from "@/features/scheduling/api/schedule.api";
+import { createSchedule, updateSchedule } from "@/features/scheduling/api/schedule.api";
 import {
   jobSelectLabel,
   loadUnassignedJobsForClient,
   useSchedulingCatalog,
 } from "@/features/scheduling/hooks/use-scheduling-catalog";
 import type { Schedule } from "@/features/scheduling/types/schedule.types";
-import { scheduleMatchesJob } from "@/features/scheduling/utils/schedule-map.util";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
 import {
   combineDateAndTimeEndToIso,
@@ -292,16 +291,6 @@ export function CreateScheduleModal({
 
     setSaving(true);
     try {
-      const alreadyBooked = (await fetchSchedules({ job_id: jobNum })).some(
-        (row) =>
-          row.id !== existingSchedule?.id &&
-          scheduleMatchesJob(row, jobNum, job?.job_serial_number),
-      );
-      if (alreadyBooked) {
-        setErrors((prev) => ({ ...prev, job: t("conflict.jobAlreadyScheduled") }));
-        return;
-      }
-
       const startIso = combineDateAndTimeToIso(startDate, startTime, allDay);
       const endIso = combineDateAndTimeEndToIso(endDate, endTime, allDay);
 
@@ -412,7 +401,8 @@ export function CreateScheduleModal({
               listLabel={t("fields.client")}
               options={clientOptions}
               value={clientId}
-              disabled={saving || catalogLoading || lockClientJob}
+              disabled={saving || catalogLoading}
+              locked={lockClientJob}
               searchable
               portaled
               emptyLabel={t("placeholders.client")}
@@ -425,10 +415,12 @@ export function CreateScheduleModal({
                 });
               }}
             />
-            <Building2
-              className="pointer-events-none absolute right-9 top-1/2 size-4 -translate-y-1/2 text-slate-400"
-              aria-hidden
-            />
+            {lockClientJob ? null : (
+              <Building2
+                className="pointer-events-none absolute right-9 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+                aria-hidden
+              />
+            )}
           </div>
           <FieldErrorText>{errors.client}</FieldErrorText>
         </FieldGroup>
@@ -440,7 +432,8 @@ export function CreateScheduleModal({
               listLabel={t("fields.job")}
               options={jobOptions}
               value={jobId}
-              disabled={saving || !clientId || loadingJobs || lockClientJob}
+              disabled={saving || !clientId || loadingJobs}
+              locked={lockClientJob}
               searchable
               portaled
               emptyLabel={
@@ -459,10 +452,12 @@ export function CreateScheduleModal({
                 });
               }}
             />
-            <Briefcase
-              className="pointer-events-none absolute right-9 top-1/2 size-4 -translate-y-1/2 text-slate-400"
-              aria-hidden
-            />
+            {lockClientJob ? null : (
+              <Briefcase
+                className="pointer-events-none absolute right-9 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+                aria-hidden
+              />
+            )}
           </div>
           <FieldErrorText>{errors.job}</FieldErrorText>
         </FieldGroup>

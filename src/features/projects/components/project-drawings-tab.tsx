@@ -28,7 +28,6 @@ import {
   AddButton,
   AppButton,
   DataTablePaginationBar,
-  ListPageSearchField,
 } from "@/shared/ui";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions, normalizeListPageSize } from "@/shared/utils/list-page-size.util";
@@ -279,7 +278,6 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
 
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
-  const [search, setSearch] = React.useState("");
   const [items, setItems] = React.useState<Drawing[]>([]);
   const [pagination, setPagination] = React.useState({
     total_records: 0,
@@ -297,11 +295,6 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
-  const commitSearch = React.useCallback((q: string) => {
-    setSearch(q.trim());
-    setPage(1);
-  }, []);
-
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -312,7 +305,6 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
           projectId,
           page,
           pageSize,
-          search || undefined,
         );
         if (!cancelled) {
           setItems(next);
@@ -330,7 +322,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     return () => {
       cancelled = true;
     };
-  }, [projectId, page, pageSize, search, refreshNonce, t]);
+  }, [projectId, page, pageSize, refreshNonce, t]);
 
   const suggestedOrder = React.useMemo(() => {
     if (items.length === 0) return 1;
@@ -423,7 +415,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   return (
     <div className={detailTabSectionClassName}>
       <div className={detailTabToolbarClassName}>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1 text-left">
           <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{t("title")}</h2>
           <p className="mt-0.5 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
         </div>
@@ -437,14 +429,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
         />
       </div>
 
-      <div className={cn(detailTabFilterBarClassName, "sm:justify-between")}>
-        <ListPageSearchField
-          value={search}
-          onCommit={commitSearch}
-          placeholder={t("searchPlaceholder")}
-          ariaLabel={t("searchAria")}
-          className="sm:max-w-md"
-        />
+      <div className={cn(detailTabFilterBarClassName, "sm:justify-end")}>
         {viewToggle}
       </div>
 

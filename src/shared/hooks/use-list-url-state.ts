@@ -47,8 +47,6 @@ export function hasListActiveFilters(args: {
   quoteCategoryParam?: string | null;
 }): boolean {
   if (args.search.trim() !== "") return true;
-  /** Default list is active-only; only “inactive” is treated as an applied filter. */
-  if (args.isActiveParam === "false") return true;
   if (args.groupParam != null && args.groupParam.trim() !== "") return true;
   if (args.clientParam != null && args.clientParam.trim() !== "") return true;
   if (args.vendorParam != null && args.vendorParam.trim() !== "") return true;

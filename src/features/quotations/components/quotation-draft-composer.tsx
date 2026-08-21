@@ -30,7 +30,7 @@ import { cn } from "@/core/utils/http.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn, type QuickCreateSelectApplied } from "@/shared/hooks/use-quick-create-return";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
-import { AppButton, AppModal, CheckmarkSelect, DataTableRowActionsMenu, FieldLabel, surfaceInputClassName } from "@/shared/ui";
+import { AppButton, AppModal, CheckmarkSelect, DataTableRowActionsMenu, FieldLabel, NumericInput, surfaceInputClassName } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui";
 
 type DndPayload =
@@ -235,17 +235,15 @@ function DraftCompositeAddRow({
         </div>
         <div className="w-[5.5rem] shrink-0">
           <FieldLabel htmlFor={qtyId}>{t("qty")}</FieldLabel>
-          <input
+          <NumericInput
             id={qtyId}
-            type="number"
-            inputMode="decimal"
-            min={0.01}
-            step="any"
+            size="sm"
+            maxDecimals={4}
             value={quantity}
-            onChange={(e) => onQuantityChange(e.target.value)}
+            onChange={onQuantityChange}
             disabled={saving}
-            className={cn(surfaceInputClassName, "tabular-nums")}
             aria-label={t("qty")}
+            className="w-full"
           />
         </div>
         <AppButton type="button" variant="secondary" size="sm" disabled={saveDisabled || saving} onClick={onSave}>
@@ -1404,15 +1402,12 @@ export function QuotationDraftComposer({
         <div className="space-y-3">
           <div>
             <FieldLabel htmlFor={duplicateCountFieldId}>{t("duplicateCountLabel")}</FieldLabel>
-            <input
+            <NumericInput
               id={duplicateCountFieldId}
-              type="number"
-              inputMode="numeric"
-              min={DUPLICATE_COUNT_MIN}
-              max={DUPLICATE_COUNT_MAX}
+              integer
               value={duplicateCountInput}
-              onChange={(e) => {
-                setDuplicateCountInput(e.target.value);
+              onChange={(next) => {
+                setDuplicateCountInput(next);
                 setDuplicateCountError(null);
               }}
               onKeyDown={(e) => {
@@ -1421,10 +1416,10 @@ export function QuotationDraftComposer({
                   confirmDuplicatePrompt();
                 }
               }}
-              className={cn(surfaceInputClassName, "mt-1.5 w-full max-w-[12rem] tabular-nums")}
+              className="mt-1.5 w-full max-w-[12rem]"
               disabled={saving}
               autoFocus
-              aria-invalid={duplicateCountError != null}
+              invalid={duplicateCountError != null}
             />
         
           </div>

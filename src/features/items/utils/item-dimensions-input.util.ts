@@ -23,7 +23,7 @@ export function composeDimensionsInput(lengthRaw: string, widthRaw: string, heig
   return `${l}*${w}*${h}`;
 }
 
-function sanitizeDimensionSegment(segment: string): string {
+export function sanitizeDimensionSegment(segment: string): string {
   const cleaned = segment.replace(/[^0-9.]/g, "");
   const dot = cleaned.indexOf(".");
   if (dot === -1) return cleaned;

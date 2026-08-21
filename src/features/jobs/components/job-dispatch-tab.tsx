@@ -94,7 +94,7 @@ export function JobDispatchTab({ detail }: Props) {
                     >
                       <DetailEntityLink
                         href={`${routes.dashboard.dispatches}/${row.id}`}
-                        className="text-(--dash-accent) underline-offset-2 hover:underline"
+                        className="text-blue-600 underline-offset-2 hover:underline"
                       >
                         {row.dispatch_order_number || `#${row.id}`}
                       </DetailEntityLink>

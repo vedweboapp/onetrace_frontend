@@ -16,6 +16,7 @@ import {
   Tags,
 } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
+import { detailTabFillStateClassName } from "@/shared/components/layout/detail-tab-layout";
 
 export type DashboardEmptyStateIconName =
   | "default"
@@ -42,6 +43,8 @@ type DashboardEmptyStateProps = {
   className?: string;
   /** Shorter layout for embedded tabs/panels (no forced fill). */
   compact?: boolean;
+  /** Fill the tab/detail pane and center content (list empty states on detail pages). */
+  fill?: boolean;
 };
 
 /**
@@ -57,6 +60,7 @@ export function DashboardEmptyState({
   secondaryAction,
   className,
   compact = false,
+  fill = false,
 }: DashboardEmptyStateProps) {
   const iconByName: Record<DashboardEmptyStateIconName, LucideIcon> = {
     default: Hammer,
@@ -78,10 +82,12 @@ export function DashboardEmptyState({
   return (
     <div
       className={cn(
-        "flex w-full flex-col items-center justify-center px-6 text-center",
-        compact
-          ? "min-h-0 py-10 sm:py-14"
-          : "min-h-0 flex-1 py-12 sm:py-16",
+        fill
+          ? detailTabFillStateClassName
+          : cn(
+              "flex w-full flex-col items-center justify-center px-6 text-center",
+              compact ? "min-h-0 py-10 sm:py-14" : "min-h-0 flex-1 py-12 sm:py-16",
+            ),
         className,
       )}
     >

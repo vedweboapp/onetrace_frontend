@@ -2,7 +2,10 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@/core/utils/http.util";
-import { ActiveStatusBadge } from "@/shared/ui";
+import { ActiveStatusBadge, FormFieldRow, FormFieldSpanFull } from "@/shared/ui";
+import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
+import { fieldLabelClassName } from "@/shared/ui/field-primitives";
+import { DetailEditableField, detailValueSurfaceClassName } from "./detail-editable-field";
 import { DetailCollapsibleSection } from "./detail-collapsible-section";
 
 /** Soft canvas behind a single flat detail surface (avoid card-in-card). */
@@ -11,47 +14,107 @@ export const detailRecordSurfaceShellClassName = cn(
   "dark:border-slate-800 dark:bg-slate-950",
 );
 
-/** Vertical stack for detail sections — spacing only, no divider lines between sections. */
-export const detailPageStackClassName = "flex flex-col gap-1";
+/** Detail record shell — full width, left-aligned (matches create/edit forms). */
+export const detailRecordInnerClassName = "w-full min-w-0";
 
-/** Responsive grid for label/value pairs inside a detail section */
+/** Form-like max width for detail field blocks on wide screens (Zoho-style). */
+export const detailFieldsLayoutClassName = "w-full min-w-0 max-w-4xl";
+
+export function DetailFieldsLayout({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn(detailFieldsLayoutClassName, className)}>{children}</div>;
+}
+
+/** Span full row inside `DetailMetricsGrid` (same as form `FormFieldSpanFull`). */
+export { FormFieldSpanFull as DetailFieldSpanFull };
+
+/** Vertical stack for detail sections with light dividers (flat record surface). */
+export const detailPageStackClassName = "flex flex-col divide-y divide-slate-100 dark:divide-slate-800";
+
+/** Flat detail body: no extra padding inside the white record shell. */
+export const detailPageBodyPaddingClassName = "!px-0 !py-0 sm:!px-0 sm:!py-0";
+
+/** Shared flat section chrome (title row + body padding). */
+export const detailFlatSectionHeaderClassName =
+  "flex flex-col gap-1.5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-3.5";
+export const detailFlatSectionBodyClassName = "px-4 pt-4 pb-5 sm:px-6 sm:pt-5 sm:pb-6";
+export const detailFlatSectionTitleClassName =
+  "text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100";
+
+export function activeStatusSelectOptions(
+  activeLabel: string,
+  inactiveLabel: string,
+): CheckmarkSelectOption[] {
+  return [
+    { value: "true", label: activeLabel },
+    { value: "false", label: inactiveLabel },
+  ];
+}
+
+/** Inline-editable active/inactive status (shared across entity detail pages). */
+export function DetailActiveStatusField({
+  label,
+  isActive,
+  activeLabel,
+  inactiveLabel,
+  editAriaLabel,
+  onSave,
+}: {
+  label: ReactNode;
+  isActive: boolean;
+  activeLabel: string;
+  inactiveLabel: string;
+  editAriaLabel: string;
+  onSave: (next: boolean) => Promise<void>;
+}) {
+  return (
+    <DetailEditableField
+      label={label}
+      value={isActive ? "true" : "false"}
+      kind="select"
+      options={activeStatusSelectOptions(activeLabel, inactiveLabel)}
+      editAriaLabel={editAriaLabel}
+      onSave={(next) => onSave(next === "true")}
+    >
+      <ActiveStatusBadge active={isActive} label={isActive ? activeLabel : inactiveLabel} />
+    </DetailEditableField>
+  );
+}
+
+/** Responsive grid — max **two** fields per row; reuses form field row layout. */
 export function DetailMetricsGrid({
   children,
   className,
   compact,
-  columns = "auto",
+  columns = 2,
+  wide = false,
+  /** Delay 2-col until this breakpoint (use `xl` next to a map side column). */
+  from = "sm",
 }: {
   children: ReactNode;
   className?: string;
-  /** Pack fields by content width (flex wrap) — avoids wide empty gaps beside maps. */
+  /** @deprecated Same 2-column grid; kept for call-site compatibility. */
   compact?: boolean;
-  /** `2` / `3` stretch to full section width; `auto` keeps compact label/value cells. */
-  columns?: "auto" | 2 | 3;
+  /** Only `1` or `2` columns; default is two fields per row. */
+  columns?: 1 | 2;
+  /** When true, field grid spans full record width (e.g. beside a map column). */
+  wide?: boolean;
+  from?: "sm" | "md" | "lg" | "xl";
 }) {
-  if (compact) {
-    return (
-      <div
+  void compact;
+  return (
+    <div className="detail-metrics-host">
+      <FormFieldRow
+        cols={columns === 1 ? "1" : "2"}
+        from={from}
         className={cn(
-          "flex flex-wrap items-start gap-x-6 gap-y-4 [&>*]:min-w-[9rem] [&>*]:max-w-[15rem] [&>*]:basis-[calc(25%-1.125rem)] [&>*]:grow-0",
+          "detail-metrics-grid",
+          !wide && detailFieldsLayoutClassName,
+          "gap-y-5",
           className,
         )}
       >
         {children}
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={cn(
-        "grid grid-cols-1 gap-x-6 gap-y-4",
-        columns === "auto" && "sm:grid-cols-[repeat(auto-fill,minmax(10rem,13.5rem))]",
-        columns === 2 && "sm:grid-cols-2",
-        columns === 3 && "sm:grid-cols-2 lg:grid-cols-3",
-        className,
-      )}
-    >
-      {children}
+      </FormFieldRow>
     </div>
   );
 }
@@ -66,11 +129,21 @@ export function DetailMetricCard({
   className?: string;
 }) {
   return (
-    <div className={cn("min-w-0", className)}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
+    <div className={cn("field-group detail-field min-w-0", className)}>
+      <p
+        className={cn(
+          fieldLabelClassName,
+          "text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400",
+        )}
+      >
         {label}
       </p>
-      <div className="mt-1.5 min-w-0 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
+      <div
+        className={cn(
+          "field-control-wrap min-w-0 flex-1",
+          detailValueSurfaceClassName,
+        )}
+      >
         {children}
       </div>
     </div>
@@ -106,11 +179,18 @@ export function DetailWideCard({
   className?: string;
 }) {
   return (
-    <div className={cn("min-w-0", className)}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
+    <div className={cn("field-group detail-field min-w-0", className)}>
+      <p
+        className={cn(
+          fieldLabelClassName,
+          "text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400",
+        )}
+      >
         {label}
       </p>
-      <div className="mt-1.5 min-w-0 text-sm leading-relaxed text-slate-700 dark:text-slate-300">{children}</div>
+      <div className="field-control-wrap min-w-0 flex-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+        {children}
+      </div>
     </div>
   );
 }
@@ -122,7 +202,7 @@ export function DetailSectionTitle({ children }: { children: ReactNode }) {
 }
 
 export function DetailPagePadding({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("w-full", className)}>{children}</div>;
+  return <div className={cn("w-full", detailPageBodyPaddingClassName, className)}>{children}</div>;
 }
 
 /** White section card for detail pages (overview, address, system metadata, etc.). */
@@ -162,11 +242,10 @@ export function DetailPanelCard({
           headerRight={headerRight}
           defaultOpen={defaultOpen}
           className={cn(
-            "rounded-none border-0 border-b-0 bg-transparent shadow-none [&]:border-0 dark:bg-transparent",
-            "[&>div:first-child]:border-b-0",
+            "overflow-visible rounded-none border-0 bg-transparent shadow-none dark:bg-transparent",
             className,
           )}
-          bodyClassName={cn("px-4 pb-4 pt-0 sm:px-5 sm:pb-5", bodyClassName)}
+          bodyClassName={cn(detailFlatSectionBodyClassName, bodyClassName)}
           toggleAriaLabel={toggleAriaLabel}
         >
           {children}
@@ -177,8 +256,8 @@ export function DetailPanelCard({
     return (
       <section className={cn("bg-transparent", className)}>
         {title ? (
-          <div className="flex flex-col gap-1.5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-            <h2 className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">{title}</h2>
+          <div className={detailFlatSectionHeaderClassName}>
+            <h2 className={detailFlatSectionTitleClassName}>{title}</h2>
             {headerRight || badge ? (
               <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
                 {badge}
@@ -187,7 +266,7 @@ export function DetailPanelCard({
             ) : null}
           </div>
         ) : null}
-        <div className={cn("px-4 pb-4 sm:px-5 sm:pb-5", bodyClassName)}>{children}</div>
+        <div className={cn(detailFlatSectionBodyClassName, bodyClassName)}>{children}</div>
       </section>
     );
   }

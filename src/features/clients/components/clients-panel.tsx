@@ -9,11 +9,10 @@ import { deleteClient, fetchAllClientIds, fetchClientsPage, updateClient } from 
 import type { Client } from "@/features/clients/types/client.types";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
-import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
-  ActiveStatusBadge,
   AddButton,
   ConfirmDialog,
   DataTablePaginationBar,
@@ -24,7 +23,6 @@ import {
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
-  ListPageActiveFilter,
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
@@ -67,13 +65,11 @@ export function ClientsPanel() {
     pageSize,
     listViewMode,
     search,
-    isActiveParam,
     setUrl,
     setPage,
     setPageSize,
     setListViewMode,
   } = useListUrlState();
-  const isActiveFilter = parseIsActiveParam(isActiveParam) ?? true;
 
   const [items, setItems] = React.useState<Client[]>([]);
   const [pagination, setPagination] = React.useState({
@@ -98,9 +94,8 @@ export function ClientsPanel() {
   const listFilters = React.useMemo(
     () => ({
       search: search || undefined,
-      is_active: isActiveFilter,
     }),
-    [search, isActiveFilter],
+    [search],
   );
 
   const massUpdateFields = React.useMemo(
@@ -132,7 +127,7 @@ export function ClientsPanel() {
     totalRecords: pagination.total_records,
     pageItems: items,
     fetchAllIds,
-    resetDeps: [pageSize, search, isActiveFilter],
+    resetDeps: [pageSize, search],
     updateFields: massUpdateFields,
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
@@ -153,7 +148,6 @@ export function ClientsPanel() {
       try {
         const { items: nextItems, pagination: p } = await fetchClientsPage(page, pageSize, {
           search: search || undefined,
-          is_active: isActiveFilter,
         });
         if (!cancelled) {
           setItems(nextItems);
@@ -171,7 +165,7 @@ export function ClientsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, search, isActiveFilter, refreshNonce, t]);
+  }, [page, pageSize, search, refreshNonce, t]);
 
   function openCreate() {
     router.push(buildPathWithStoredBack(`${pathname}/new`, listHref));
@@ -238,7 +232,6 @@ export function ClientsPanel() {
       c.primary("name", t("table.name"), (r) => r.name),
       c.truncate("email", t("table.email"), (r) => r.email),
       c.phone("phone", t("table.phone"), (r) => r.phone),
-      c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive")),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
       // c.actions("actions", t("table.actions"), (row) => (
       //   <DataTableRowActionsMenu
@@ -276,25 +269,13 @@ export function ClientsPanel() {
     ];
   }, [t, tList, dateFmt, togglingId, mass, items.length]);
 
-  const hasActiveFilters = hasListActiveFilters({ search, isActiveParam });
-  const countInactive = React.useCallback(async () => {
-    const { pagination: p } = await fetchClientsPage(1, 1, {
-      search: search || undefined,
-      is_active: false,
-    });
-    return p.total_records;
-  }, [search]);
-  const { hideListChrome, listLoading, emptyStateKind, filtersActive, switchToInactive } =
-    useListActiveInactiveEmptyState({
-      loading,
-      loadError,
-      itemsLength: items.length,
-      isActiveParam,
-      isActiveFilter,
-      hasActiveFilters,
-      setUrl,
-      countInactive,
-    });
+  const hasActiveFilters = hasListActiveFilters({ search });
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
   const pageRange = getListPageRange(pagination);
 
   return (
@@ -315,16 +296,6 @@ export function ClientsPanel() {
                 placeholder={tList("searchPlaceholder")}
                 ariaLabel={tList("searchAria")}
                 className="sm:max-w-sm"
-              />
-              <ListPageActiveFilter
-                activeLabel={t("status.active")}
-                inactiveLabel={t("status.inactive")}
-                filterLabel={t("filterState")}
-                filterAriaLabel={t("filterState")}
-                isActiveParam={isActiveParam}
-                onChange={(isActive) =>
-                  setUrl({ is_active: isActive ? null : "false", page: null }, { replace: true })
-                }
               />
             </div>
           }
@@ -371,7 +342,6 @@ export function ClientsPanel() {
             onClearFilters={() =>
               setUrl({ search: null, is_active: null, page: null }, { replace: true })
             }
-            onSwitchToInactive={switchToInactive}
           />
         ) : listViewMode === "list" ? (
           <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-6">
@@ -401,10 +371,6 @@ export function ClientsPanel() {
                             <span className="tabular-nums">{row.phone.trim()}</span>
                           </span>
                         ) : null}
-                        <ActiveStatusBadge
-                          active={row.is_active}
-                          label={row.is_active ? t("status.active") : t("status.inactive")}
-                        />
                       </div>
                       <span className="text-xs text-slate-500 dark:text-slate-400">
                         {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}

@@ -26,12 +26,8 @@ import {
 } from "@/shared/components/settings/settings-detail-view";
 import { getApiErrorDisplayMessage, toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
-import {
-  hasListActiveFilters,
-  parseIsActiveParam,
-  useListUrlState,
-} from "@/shared/hooks/use-list-url-state";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
+import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
@@ -46,7 +42,6 @@ import {
   DataTablePaginationBar,
   DetailPanel,
   FieldGroup,
-  ListPageActiveFilter,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
@@ -68,9 +63,8 @@ export function RejectionReasonSettingsPanel() {
   const tList = useTranslations("Dashboard.list");
   const tCustomization = useTranslations("Dashboard.settingsNav.customization");
   const dateFmt = useDashboardDateFormat();
-  const { page, pageSize, listViewMode, search, isActiveParam, setUrl, setPage, setPageSize, setListViewMode } =
+  const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } =
     useListUrlState();
-  const isActiveFilter = parseIsActiveParam(isActiveParam) ?? true;
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
   const commitSearch = React.useCallback(
@@ -113,7 +107,6 @@ export function RejectionReasonSettingsPanel() {
       try {
         const { items: nextItems, pagination: p } = await fetchRejectionReasonsPage(page, pageSize, {
           search: search || undefined,
-          is_active: isActiveFilter,
         });
         if (!cancelled) {
           setItems(nextItems);
@@ -131,27 +124,15 @@ export function RejectionReasonSettingsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, refreshNonce, search, isActiveFilter, t]);
+  }, [page, pageSize, refreshNonce, search, t]);
 
-  const hasActiveFilters = hasListActiveFilters({ search, isActiveParam });
-  const countInactive = React.useCallback(async () => {
-    const { pagination: p } = await fetchRejectionReasonsPage(1, 1, {
-      search: search || undefined,
-      is_active: false,
-    });
-    return p.total_records;
-  }, [search]);
-  const { hideListChrome, listLoading, emptyStateKind, filtersActive, switchToInactive } =
-    useListActiveInactiveEmptyState({
-      loading,
-      loadError,
-      itemsLength: items.length,
-      isActiveParam,
-      isActiveFilter,
-      hasActiveFilters,
-      setUrl,
-      countInactive,
-    });
+  const hasActiveFilters = hasListActiveFilters({ search });
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
 
   function openCreate() {
     setDetailRow(null);
@@ -296,16 +277,6 @@ export function RejectionReasonSettingsPanel() {
                 ariaLabel={tList("searchAria")}
                 className="sm:max-w-sm"
               />
-              <ListPageActiveFilter
-                activeLabel={t("status.active")}
-                inactiveLabel={t("status.inactive")}
-                filterLabel={t("filterState")}
-                filterAriaLabel={t("filterState")}
-                isActiveParam={isActiveParam}
-                onChange={(active) =>
-                  setUrl({ is_active: active ? null : "false", page: null }, { replace: true })
-                }
-              />
             </div>
           }
         />
@@ -342,7 +313,6 @@ export function RejectionReasonSettingsPanel() {
             onClearFilters={() =>
               setUrl({ search: null, is_active: null, page: null }, { replace: true })
             }
-            onSwitchToInactive={switchToInactive}
           />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">

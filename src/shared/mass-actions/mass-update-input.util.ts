@@ -59,6 +59,7 @@ export function sanitizeMassUpdateFieldInput(field: MassUpdateFieldDef | null, r
     return sanitizeFieldInput("digits", raw, { maxLength });
   }
   if (field.valueType === "number") return sanitizeFieldInput("number", raw);
+  if (field.valueType === "money") return raw;
   if (field.valueType === "textarea") {
     return sanitizeFieldInput("description", raw, { maxLength });
   }

@@ -3,7 +3,7 @@ import type {
   QuotationPlotPin,
   QuotationQuoteSectionSourcePin,
 } from "@/features/quotations/types/quotation.types";
-import { formatOrgMoney } from "@/shared/money/format-money.util";
+import { formatOrgMoney, parseOrgMoneyInput } from "@/shared/money/format-money.util";
 import { getOrgCurrencySettings } from "@/shared/money/org-currency.store";
 
 export type AggregatedCompositeLine = {
@@ -79,12 +79,8 @@ function sourcePinFromPlotPin(pin: QuotationPlotPin): QuotationQuoteSectionSourc
 }
 
 export function parseMoneyValue(raw: unknown): number {
-  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
-  if (typeof raw === "string" && raw.trim()) {
-    const n = Number.parseFloat(raw);
-    return Number.isFinite(n) ? n : 0;
-  }
-  return 0;
+  const n = parseOrgMoneyInput(raw, getOrgCurrencySettings());
+  return Number.isFinite(n) ? n : 0;
 }
 
 export function formatMoneyDisplay(amount: number, _locale?: string): string {

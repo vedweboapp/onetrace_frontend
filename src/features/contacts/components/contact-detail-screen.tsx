@@ -82,6 +82,24 @@ export function ContactDetailScreen({ contactId }: Props) {
     [pathname, router, searchParams],
   );
 
+  const contactTypeOptions = React.useMemo(
+    () => [
+      { value: "client", label: t("tabs.client") },
+      { value: "vendor", label: t("tabs.vendor") },
+    ],
+    [t],
+  );
+
+  const clientOptions = React.useMemo(
+    () => Object.entries(clientNames).map(([id, name]) => ({ value: id, label: name })),
+    [clientNames],
+  );
+
+  const vendorOptions = React.useMemo(
+    () => Object.entries(vendorNames).map(([id, name]) => ({ value: id, label: name })),
+    [vendorNames],
+  );
+
   function resolveParentNames(detail: Contact) {
     const type = getContactType(detail);
     return {
@@ -148,6 +166,9 @@ export function ContactDetailScreen({ contactId }: Props) {
             detail={detail}
             clientName={clientName}
             vendorName={vendorName}
+            clientOptions={clientOptions}
+            vendorOptions={vendorOptions}
+            contactTypeOptions={contactTypeOptions}
             dateFmt={dateFmt}
             onSaved={retry}
           />

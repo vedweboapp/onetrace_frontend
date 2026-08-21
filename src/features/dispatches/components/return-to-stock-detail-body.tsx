@@ -90,7 +90,7 @@ export function ReturnToStockDetailBody({ detail, dueFmt }: Props) {
                       {line.dispatch_order_number ? (
                         <DetailEntityLink
                           href={`${routes.dashboard.dispatches}/${line.dispatch_id}`}
-                          className="font-medium text-slate-800 underline-offset-2 hover:underline dark:text-slate-200"
+                          className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
                         >
                           {line.dispatch_order_number}
                         </DetailEntityLink>

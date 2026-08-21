@@ -1,5 +1,6 @@
 import { Construction } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
+import { detailTabFillStateClassName, detailTabFillViewportClassName } from "@/shared/components/layout/detail-tab-layout";
 
 type DashboardUnderDevelopmentStateProps = {
   title: string;
@@ -19,7 +20,9 @@ export function DashboardUnderDevelopmentState({
   return (
     <div
       className={cn(
-        "flex h-full min-h-0 w-full flex-1 flex-col items-center justify-center px-5 py-10 text-center sm:px-8 sm:py-14",
+        detailTabFillViewportClassName,
+        detailTabFillStateClassName,
+        "px-5 sm:px-8",
         className,
       )}
     >

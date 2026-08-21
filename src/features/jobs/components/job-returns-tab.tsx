@@ -94,7 +94,7 @@ export function JobReturnsTab({ detail }: Props) {
                     >
                       <DetailEntityLink
                         href={`${routes.dashboard.returnToStock}/${row.id}`}
-                        className="text-(--dash-accent) underline-offset-2 hover:underline"
+                        className="text-blue-600 underline-offset-2 hover:underline"
                       >
                         {row.request_number || `#${row.id}`}
                       </DetailEntityLink>

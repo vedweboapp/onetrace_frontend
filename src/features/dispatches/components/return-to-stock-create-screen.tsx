@@ -289,7 +289,7 @@ export function ReturnToStockCreateScreen({
                         </span>
                         <DetailEntityLink
                           href={`${routes.dashboard.dispatches}/${d.id}`}
-                          className="font-bold text-slate-900 hover:underline dark:text-slate-100"
+                          className="font-bold text-blue-600 hover:underline dark:text-blue-400"
                         >
                           {d.dispatch_order_number}
                         </DetailEntityLink>

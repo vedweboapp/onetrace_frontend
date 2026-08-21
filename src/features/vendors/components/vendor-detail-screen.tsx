@@ -7,13 +7,16 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { EntityContactsTab } from "@/features/contacts/components/entity-contacts-tab";
 import { deleteVendor, fetchVendor, updateVendor } from "@/features/vendors/api/vendor.api";
 import { VendorDetailBody } from "@/features/vendors/components/vendor-detail-body";
+import { VendorItemsTab } from "@/features/vendors/components/vendor-items-tab";
 import type { Vendor } from "@/features/vendors/types/vendor.types";
 import {
   EntityDetailDeleteEditActions,
   EntityDetailErrorState,
   EntityDetailLoadingSkeleton,
   EntityDetailScreen,
+  EntityDetailTabLoadingState,
 } from "@/shared/components/entity";
+import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton, AppTabs, ConfirmDialog, type AppTabItem } from "@/shared/ui";
@@ -36,6 +39,7 @@ export function VendorDetailScreen({ vendorId }: Props) {
     () => [
       { id: "details", label: t("detail.tabs.details") },
       { id: "contacts", label: t("detail.tabs.contacts") },
+      { id: "items", label: t("detail.tabs.items") },
     ],
     [t],
   );
@@ -44,7 +48,7 @@ export function VendorDetailScreen({ vendorId }: Props) {
 
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = React.useState(() =>
-    tabFromUrl && ["details", "contacts"].includes(tabFromUrl) ? tabFromUrl : "details",
+    tabFromUrl && allowedDetailTabIds.has(tabFromUrl) ? tabFromUrl : "details",
   );
 
   React.useEffect(() => {
@@ -156,19 +160,22 @@ export function VendorDetailScreen({ vendorId }: Props) {
           role="tabpanel"
           id={`vendor-detail-tab-${activeTab}`}
           aria-labelledby={`vendor-detail-tab-trigger-${activeTab}`}
+          className={entityDetailTabPanelClassName}
         >
           {loading && activeTab === "details" ? (
-            <EntityDetailLoadingSkeleton />
+            <EntityDetailLoadingSkeleton fill />
           ) : error && activeTab === "details" ? (
-            <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
+            <EntityDetailErrorState fill message={error} retryLabel={t("detail.retry")} onRetry={retry} />
           ) : detail && activeTab === "details" ? (
             <VendorDetailBody detail={detail} dateFmt={dateFmt} onSaved={retry} />
           ) : loading ? (
-            <EntityDetailLoadingSkeleton />
+            <EntityDetailTabLoadingState />
           ) : error ? (
-            <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
+            <EntityDetailErrorState fill message={error} retryLabel={t("detail.retry")} onRetry={retry} />
           ) : detail && activeTab === "contacts" ? (
             <EntityContactsTab entityType="vendor" entityId={detail.id} />
+          ) : detail && activeTab === "items" ? (
+            <VendorItemsTab vendorId={detail.id} />
           ) : null}
         </div>
       )}

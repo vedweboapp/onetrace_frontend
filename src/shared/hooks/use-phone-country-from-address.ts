@@ -13,7 +13,7 @@ import {
 export function usePhoneCountryFromAddresses<TFieldValues extends FieldValues>(
   control: Control<TFieldValues>,
   addressesName: FieldPath<TFieldValues> = "addresses" as FieldPath<TFieldValues>,
-): Country {
+): Country | undefined {
   const addresses = useWatch({
     control,
     name: addressesName,
@@ -34,7 +34,7 @@ export function usePhoneCountryFromAddresses<TFieldValues extends FieldValues>(
 export function usePhoneCountryFromCountryIso<TFieldValues extends FieldValues>(
   control: Control<TFieldValues>,
   countryIsoName: FieldPath<TFieldValues> = "country_iso" as FieldPath<TFieldValues>,
-): Country {
+): Country | undefined {
   const countryIso = useWatch({ control, name: countryIsoName });
 
   return React.useMemo(

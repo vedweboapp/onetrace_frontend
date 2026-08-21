@@ -79,7 +79,11 @@ function findPinInLevels(
   for (const level of levels) {
     const plots = (level.plots ?? []) as DrawingPlot[];
     for (const plot of plots) {
-      const pin = (plot.pins ?? []).find((entry) => entry.id === pinId);
+      const pin = (plot.pins ?? []).find((entry) => {
+        if (entry.id === pinId) return true;
+        const jobPinId = Number(entry.job_pin_id);
+        return Number.isFinite(jobPinId) && jobPinId > 0 && jobPinId === pinId;
+      });
       if (pin) {
         return {
           pin,
@@ -90,6 +94,49 @@ function findPinInLevels(
         };
       }
     }
+  }
+  return null;
+}
+
+async function resolvePinFromProjectDrawings(
+  projectId: number,
+  pinId: number,
+  drawingIdHint?: number | null,
+): Promise<Omit<PinContext, "formMeta"> | null> {
+  if (drawingIdHint != null && drawingIdHint > 0) {
+    const drawing = await fetchDrawingDetail(projectId, drawingIdHint);
+    const found = findPinInLevels(
+      [
+        {
+          id: drawing.id,
+          name: drawing.name,
+          drawing_file: drawing.drawing_file,
+          plots: drawing.plots,
+        },
+      ],
+      pinId,
+    );
+    if (found) return { ...found, projectId };
+  }
+
+  const page = await fetchDrawingsPage(projectId, 1, 200);
+  for (const drawing of page.items) {
+    const detail =
+      drawing.plots && drawing.plots.length > 0
+        ? drawing
+        : await fetchDrawingDetail(projectId, drawing.id);
+    const found = findPinInLevels(
+      [
+        {
+          id: detail.id,
+          name: detail.name,
+          drawing_file: detail.drawing_file,
+          plots: detail.plots,
+        },
+      ],
+      pinId,
+    );
+    if (found) return { ...found, projectId };
   }
   return null;
 }
@@ -153,12 +200,6 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
           };
           const rawLevels = typed.levels ?? typed.level;
           const levels = Array.isArray(rawLevels) ? rawLevels : rawLevels ? [rawLevels] : [];
-          const found = findPinInLevels(levels, pinId);
-          if (!found) {
-            setContext(null);
-            setLoadError(tPins("loadError"));
-            return;
-          }
           const formEntries = jobFormEntries(job);
           const resolvedProjectId =
             typeof typed.project === "number"
@@ -166,72 +207,44 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
               : typed.project && typeof typed.project === "object"
                 ? typed.project.id
                 : undefined;
+
+          let found: Omit<PinContext, "formMeta"> | null = (() => {
+            const inJob = findPinInLevels(levels, pinId);
+            return inJob ? { ...inJob, projectId: resolvedProjectId } : null;
+          })();
+          // Job payload may omit full pin geometry — fall back to project drawings API.
+          if (!found && resolvedProjectId != null && resolvedProjectId > 0) {
+            found = await resolvePinFromProjectDrawings(
+              resolvedProjectId,
+              pinId,
+              drawingIdHint,
+            );
+          }
+
+          if (!found) {
+            setContext(null);
+            setLoadError(tPins("loadError"));
+            return;
+          }
           setContext({
             ...found,
-            projectId: resolvedProjectId,
+            projectId: resolvedProjectId ?? found.projectId,
             formMeta: resolvePinFormMeta(found.pin, { formEntries }),
           });
           return;
         }
 
         if (projectId != null && projectId > 0) {
-          if (drawingIdHint != null && drawingIdHint > 0) {
-            const drawing = await fetchDrawingDetail(projectId, drawingIdHint);
-            if (cancelled) return;
-            const found = findPinInLevels(
-              [
-                {
-                  id: drawing.id,
-                  name: drawing.name,
-                  drawing_file: drawing.drawing_file,
-                  plots: drawing.plots,
-                },
-              ],
-              pinId,
-            );
-            if (!found) {
-              setContext(null);
-              setLoadError(tPins("loadError"));
-              return;
-            }
-            setContext({
-              ...found,
-              projectId,
-              formMeta: resolvePinFormMeta(found.pin),
-            });
+          const found = await resolvePinFromProjectDrawings(projectId, pinId, drawingIdHint);
+          if (!found) {
+            setContext(null);
+            setLoadError(tPins("loadError"));
             return;
           }
-
-          const page = await fetchDrawingsPage(projectId, 1, 200);
-          if (cancelled) return;
-          for (const drawing of page.items) {
-            const detail =
-              drawing.plots && drawing.plots.length > 0
-                ? drawing
-                : await fetchDrawingDetail(projectId, drawing.id);
-            if (cancelled) return;
-            const found = findPinInLevels(
-              [
-                {
-                  id: detail.id,
-                  name: detail.name,
-                  drawing_file: detail.drawing_file,
-                  plots: detail.plots,
-                },
-              ],
-              pinId,
-            );
-            if (found) {
-              setContext({
-                ...found,
-                projectId,
-                formMeta: resolvePinFormMeta(found.pin),
-              });
-              return;
-            }
-          }
-          setContext(null);
-          setLoadError(tPins("loadError"));
+          setContext({
+            ...found,
+            formMeta: resolvePinFormMeta(found.pin),
+          });
           return;
         }
 

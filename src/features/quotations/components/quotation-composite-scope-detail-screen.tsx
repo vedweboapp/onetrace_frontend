@@ -320,7 +320,7 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
               <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
                 <DetailEntityLink
                   href={`${routes.dashboard.compositeItems}/${detail.id}`}
-                  className="font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                  className="font-medium text-blue-600 underline-offset-2 hover:underline"
                 >
                   {t("openCatalogItem")}
                 </DetailEntityLink>
@@ -355,7 +355,7 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
                         >
                           <DetailEntityLink
                             href={`${routes.dashboard.items}/${component.child_item}`}
-                            className="block truncate text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                            className="block truncate text-blue-600 underline-offset-2 hover:underline"
                           >
                             {child?.name ?? "—"}
                           </DetailEntityLink>

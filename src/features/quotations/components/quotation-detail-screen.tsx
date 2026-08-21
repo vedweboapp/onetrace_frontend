@@ -321,6 +321,7 @@ function QuotationDetailActions({
     try {
       await sendQuotation(quotationId);
       toastSuccess("Quotation sent successfully");
+      onStatusSaved();
     } catch (error) {
       toastApiError(error, "Failed to send quotation");
     } finally {

@@ -19,12 +19,7 @@ import {
   normalizePrimaryEntityAddresses,
 } from "@/shared/form/entity-address-form.util";
 
-function toNumberOrNull(raw: string): number | null {
-  const t = raw.trim();
-  if (!t) return null;
-  const n = Number(t);
-  return Number.isFinite(n) ? n : null;
-}
+import { parseOrgMoneyOrNull } from "@/shared/money/format-money.util";
 
 function pickPrimaryContact<T extends { is_primary?: boolean }>(rows: T[] | null | undefined): T | undefined {
   if (!Array.isArray(rows) || rows.length === 0) return undefined;
@@ -126,7 +121,7 @@ function mapUserFormAddresses(values: UserFormValues) {
 
 function mapUserFormCore(values: UserFormValues) {
   const addresses = mapUserFormAddresses(values);
-  const basePay = toNumberOrNull(values.base_pay);
+  const basePay = parseOrgMoneyOrNull(values.base_pay);
   const available_days = mapUserAvailabilityToPayload(values.available_days);
   return {
     email: values.email.trim(),
@@ -149,7 +144,7 @@ export function mapInviteUserFormToPayload(values: UserFormValues): InviteUserPa
 
 export function mapUserFormToUpdatePayload(values: UserFormValues): UpdateUserProfilePayload {
   const addresses = mapUserFormAddresses(values);
-  const basePay = toNumberOrNull(values.base_pay);
+  const basePay = parseOrgMoneyOrNull(values.base_pay);
   const available_days = mapUserAvailabilityToPayload(values.available_days);
   const email = values.email.trim();
   const phone = values.phone_number.trim();

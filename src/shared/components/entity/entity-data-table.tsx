@@ -1,7 +1,12 @@
 "use client";
 
+import * as React from "react";
 import type { ReactNode } from "react";
 import { cn } from "@/core/utils/http.util";
+import {
+  DetailEntityLink,
+  entityNameLinkClassName,
+} from "@/shared/components/entity/detail-entity-link";
 import type { EntityTableColumn } from "@/shared/components/entity/entity-table-columns";
 import { entityResponsiveClass } from "@/shared/components/entity/entity-table-columns";
 import { ActiveStatusBadge } from "@/shared/ui";
@@ -18,6 +23,46 @@ import {
 import { DataTableTextModeToggle } from "@/shared/ui/data-table-text-mode-toggle";
 import { useDataTableTextModeStore } from "@/shared/ui/data-table-text-mode.store";
 import { formatSettingsDetailDate } from "@/shared/components/settings/settings-detail-view";
+
+/** Sets native `title` when clipped cell text overflows (ellipsis). */
+function TableTruncatedCell({
+  children,
+  title,
+  className,
+}: {
+  children: ReactNode;
+  title?: string;
+  className?: string;
+}) {
+  const ref = React.useRef<HTMLSpanElement>(null);
+  const [tooltip, setTooltip] = React.useState<string | undefined>(undefined);
+
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const explicit = title?.trim();
+    if (explicit) {
+      setTooltip(explicit);
+      return;
+    }
+
+    const text = el.textContent?.trim();
+    if (!text) {
+      setTooltip(undefined);
+      return;
+    }
+
+    const clipped = el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
+    setTooltip(clipped ? text : undefined);
+  }, [children, title]);
+
+  return (
+    <span ref={ref} className={cn("block min-w-0 truncate", className)} title={tooltip}>
+      {children}
+    </span>
+  );
+}
 
 const TRUNCATE_MAX = {
   sm: "max-w-[14rem]",
@@ -48,31 +93,51 @@ function columnCellClassName<T>(column: EntityTableColumn<T>, wrap: boolean): st
   );
 }
 
+function wrapClippedCell(content: ReactNode, wrap: boolean, title?: string): ReactNode {
+  if (wrap) {
+    return <span className="block whitespace-normal break-words">{content}</span>;
+  }
+  return <TableTruncatedCell title={title}>{content}</TableTruncatedCell>;
+}
+
 function renderEntityTableCell<T>(column: EntityTableColumn<T>, row: T, wrap: boolean): ReactNode {
   switch (column.variant) {
     case "primary":
-      return column.value(row);
+      return wrapClippedCell(column.value(row), wrap);
     case "text":
-      return column.value(row);
+      return wrapClippedCell(column.value(row), wrap);
     case "truncate": {
       const title = column.title?.(row);
-      return (
-        <span className={cn("block", wrap ? "whitespace-normal break-words" : "truncate")} title={title}>
-          {column.value(row)}
-        </span>
-      );
+      return wrapClippedCell(column.value(row), wrap, title);
+    }
+    case "link": {
+      const label = column.label(row)?.trim() || "—";
+      const href = column.href?.(row)?.trim() || null;
+      const title = column.title?.(row) ?? (label !== "—" ? label : undefined);
+      const empty = label === "—";
+      const content =
+        !empty && href ? (
+          <DetailEntityLink href={href} className="font-medium" onClick={(e) => e.stopPropagation()}>
+            {label}
+          </DetailEntityLink>
+        ) : empty ? (
+          <span className="text-slate-400 dark:text-slate-500">—</span>
+        ) : (
+          <span className={cn(entityNameLinkClassName, "font-medium")}>{label}</span>
+        );
+      return wrapClippedCell(content, wrap, title);
     }
     case "phone": {
       const raw = column.value(row);
       const trimmed = typeof raw === "string" ? raw.trim() : "";
-      return trimmed || "—";
+      return wrapClippedCell(trimmed || "—", wrap, trimmed || undefined);
     }
     case "mono":
-      return column.value(row);
+      return wrapClippedCell(column.value(row), wrap);
     case "tabular":
-      return column.value(row);
+      return wrapClippedCell(column.value(row), wrap);
     case "muted":
-      return column.value(row);
+      return wrapClippedCell(column.value(row), wrap);
     case "date":
       return formatEntityTableDate(column.value(row), column.dateFmt);
     case "status":
@@ -96,10 +161,16 @@ function entityTableTdClassName<T>(column: EntityTableColumn<T>, wrap: boolean):
   switch (column.variant) {
     case "primary":
       return cn(
-        "font-semibold text-slate-900 dark:text-slate-100",
+        "font-semibold",
+        entityNameLinkClassName,
         wrap ? "whitespace-normal break-words" : "truncate",
       );
     case "truncate": {
+      if (wrap) return "whitespace-normal break-words";
+      const max = column.maxWidth ? TRUNCATE_MAX[column.maxWidth] : TRUNCATE_MAX.sm;
+      return cn(max, "truncate");
+    }
+    case "link": {
       if (wrap) return "whitespace-normal break-words";
       const max = column.maxWidth ? TRUNCATE_MAX[column.maxWidth] : TRUNCATE_MAX.sm;
       return cn(max, "truncate");

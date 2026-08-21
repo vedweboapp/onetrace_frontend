@@ -24,7 +24,7 @@ import {
   DetailPanelCard,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 import {
   formatApiDateForHtmlDateInput,
   formatFlexibleApiDate,
@@ -125,16 +125,11 @@ export function PurchaseOrderDetailBody({
     [t],
   );
 
-  async function patchField(body: Parameters<typeof updatePurchaseOrder>[1]) {
-    try {
-      await updatePurchaseOrder(detail.id, body);
-      toastSuccess(t("updatedToast"));
-      onSaved?.();
-    } catch (error) {
-      toastApiError(error, t("updateError"));
-      throw error;
-    }
-  }
+  const patchField = useDetailPatch(
+    (body: Parameters<typeof updatePurchaseOrder>[1]) => updatePurchaseOrder(detail.id, body),
+    { success: t("updatedToast"), error: t("updateError") },
+    onSaved,
+  );
 
   return (
     <DetailPagePadding>

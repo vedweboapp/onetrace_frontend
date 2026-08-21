@@ -48,3 +48,8 @@ export function mapRoleFormToPayload(values: RoleFormValues): RolePayload {
     shared_data_with_peers: values.shared_data_with_peers,
   };
 }
+
+/** Merge a single-field change into a full PUT payload from the loaded record. */
+export function mergeRoleDetailPayload(role: Role, patch: Partial<RolePayload>): RolePayload {
+  return { ...mapRoleFormToPayload(roleToFormDefaults(role)), ...patch };
+}

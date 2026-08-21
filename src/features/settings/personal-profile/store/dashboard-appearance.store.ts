@@ -105,7 +105,7 @@ export const useDashboardAppearanceStore = create<State>()(
       fontFamily: "inter",
       fontSize: "medium",
       sidebarLayout: "lithium",
-      formLabelPlacement: "top",
+      formLabelPlacement: "left",
       requiredIndicator: "asterisk",
       setAccentPreset: (accent) => set({ accentKind: "preset", accent }),
       setAccentCustom: (hex) =>

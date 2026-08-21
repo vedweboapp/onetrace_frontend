@@ -23,7 +23,7 @@ import {
 import { FIELD_MAX_LENGTH } from "@/shared/form/field-max-length.util";
 import { sanitizeAddressInput, sanitizeDigitsInput } from "@/shared/form/field-input.util";
 import type { PlaceSuggestion } from "@/shared/types/place-suggestion.types";
-import { buildAddressSearchContext } from "@/shared/utils/address-place-form.util";
+import { applyPlaceSuggestionToForm, buildAddressSearchContext } from "@/shared/utils/address-place-form.util";
 import {
   AppButton,
   CascadingLocationFields,
@@ -72,16 +72,13 @@ function applyPlaceToRow<T extends FieldValues>(
   setValue: UseFormSetValue<T>,
   index: number,
   place: PlaceSuggestion,
+  withCoordinates: boolean,
 ) {
-  const base = `addresses.${index}` as Path<T>;
-  if (place.line1) setValue(`${base}.address_line_1` as Path<T>, place.line1 as never, { shouldValidate: true });
-  if (place.line2) setValue(`${base}.address_line_2` as Path<T>, place.line2 as never);
-  if (place.countryIso) setValue(`${base}.country_iso` as Path<T>, place.countryIso as never, { shouldValidate: true });
-  setValue(`${base}.state_iso` as Path<T>, (place.stateIso ?? "") as never, { shouldValidate: true });
-  setValue(`${base}.city` as Path<T>, (place.city ?? "") as never, { shouldValidate: true });
-  if (place.pincode) setValue(`${base}.pincode` as Path<T>, place.pincode as never, { shouldValidate: true });
-  setValue(`${base}.latitude` as Path<T>, String(place.lat) as never);
-  setValue(`${base}.longitude` as Path<T>, String(place.lon) as never);
+  applyPlaceSuggestionToForm(setValue, place, {
+    line: "1",
+    withCoordinates,
+    fieldPrefix: `addresses.${index}`,
+  });
 }
 
 export function EntityAddressesFields<T extends FieldValues>({
@@ -236,7 +233,7 @@ export function EntityAddressesFields<T extends FieldValues>({
                           ? String(rowErrors.address_line_1.message ?? "")
                           : undefined
                       }
-                      onSelectPlace={(place) => applyPlaceToRow(setValue, index, place)}
+                      onSelectPlace={(place) => applyPlaceToRow(setValue, index, place, includeGeo)}
                       maxLength={FIELD_MAX_LENGTH.ADDRESS_LINE}
                     />
                   </FieldGroup>

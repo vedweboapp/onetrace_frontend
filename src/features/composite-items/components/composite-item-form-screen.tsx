@@ -18,7 +18,6 @@ import { formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-
 import { getUnitTypeId, resolveDefaultUnitTypeSelectValue } from "@/features/items/utils/item-unit-type.util";
 import {
   composeDimensionsInput,
-  formatDimensionsInputAsTyped,
   parseDimensionsInput,
 } from "@/features/items/utils/item-dimensions-input.util";
 import type { ItemAttachmentWriteRef } from "@/features/items/utils/item-write-form-data.util";
@@ -45,21 +44,30 @@ import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import {
+  QUICK_CREATE_SELECT_TARGET_PARAM,
+  hrefAfterEntityCreate,
   resolveFormBackUrl,
 } from "@/shared/utils/quick-create-navigation.util";
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
+import {
+  formatCompositePriceInput,
+  sumCompositeComponentPrices,
+} from "@/features/composite-items/utils/composite-component-prices.util";
 import {
   AppButton,
   CheckmarkSelect,
   type CheckmarkSelectOption,
   FieldLabel,
   fieldErrorTextClassName,
+  DimensionsLwhInput,
   InputWithEndSelect,
   MoneyInput,
+  NumericInput,
   SurfaceShell,
   surfaceInputClassName,
 } from "@/shared/ui";
+import { parseOrgMoneyOrNull } from "@/shared/money/format-money.util";
 
 type Props = {
   mode: "create" | "edit";
@@ -144,7 +152,7 @@ function installationCostPayload(
   costRaw: string,
   typeRaw: InstallationCostType,
 ): { installation_cost?: number; installation_cost_type?: InstallationCostType } {
-  const cost = toNumberOrNull(costRaw);
+  const cost = parseOrgMoneyOrNull(costRaw);
   if (cost == null || cost < 0) return {};
   return { installation_cost: cost, installation_cost_type: typeRaw };
 }
@@ -200,6 +208,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
   const [qty, setQty] = React.useState("0");
   const [cost, setCost] = React.useState("0");
   const [sell, setSell] = React.useState("0");
+  const costManualRef = React.useRef(isEdit);
+  const sellManualRef = React.useRef(isEdit);
   const [rows, setRows] = React.useState<ComponentRow[]>([{ id: nextRowId(), child_item: "", quantity: "1" }]);
   const [deletedComponents, setDeletedComponents] = React.useState<
     { id: number; child_item: number; quantity: number; is_deleted: true }[]
@@ -333,8 +343,14 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     if (typeof saved.name === "string") setName(saved.name);
     if (typeof saved.sku === "string") setSku(saved.sku);
     if (typeof saved.qty === "string") setQty(saved.qty);
-    if (typeof saved.cost === "string") setCost(saved.cost);
-    if (typeof saved.sell === "string") setSell(saved.sell);
+    if (typeof saved.cost === "string") {
+      setCost(saved.cost);
+      costManualRef.current = true;
+    }
+    if (typeof saved.sell === "string") {
+      setSell(saved.sell);
+      sellManualRef.current = true;
+    }
     if (typeof saved.installationType === "string") setInstallationType(saved.installationType);
     if (typeof saved.unitType === "string") setUnitType(saved.unitType);
     if (typeof saved.installationCost === "string") setInstallationCost(saved.installationCost);
@@ -364,6 +380,13 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     }
     if (Array.isArray(saved.rows) && saved.rows.length > 0) setRows(saved.rows);
   }, []);
+
+  React.useEffect(() => {
+    if (costManualRef.current && sellManualRef.current) return;
+    const totals = sumCompositeComponentPrices(rows, itemOptions);
+    if (!costManualRef.current) setCost(formatCompositePriceInput(totals.cost));
+    if (!sellManualRef.current) setSell(formatCompositePriceInput(totals.sell));
+  }, [rows, itemOptions]);
 
   const reloadItems = React.useCallback(async () => {
     setItemsError(null);
@@ -597,6 +620,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
           setQty(String(item.quantity ?? 0));
           setCost(String(item.cost_price ?? 0));
           setSell(String(item.selling_price ?? 0));
+          costManualRef.current = true;
+          sellManualRef.current = true;
           const installationTypeId = getInstallationTypeId(item.installation_type);
           setInstallationType(installationTypeId != null ? String(installationTypeId) : "");
           const unitTypeId = getUnitTypeId(item.unit_type);
@@ -625,11 +650,21 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
           setDimensionsUnit(dimUnit);
           setDimensionsInput(
             item.length != null && item.width != null && item.height != null
-              ? `${item.length}*${item.width}*${item.height}`
+              ? composeDimensionsInput(String(item.length), String(item.width), String(item.height))
               : typeof item.dimensions === "string"
                 ? item.dimensions
                 : "",
           );
+          if (
+            (item.length == null || item.width == null || item.height == null) &&
+            typeof item.dimensions === "string" &&
+            item.dimensions.trim()
+          ) {
+            const parsed = parseDimensionsInput(item.dimensions);
+            setLength(parsed.length);
+            setWidth(parsed.width);
+            setHeight(parsed.height);
+          }
           setWeight(item.weight != null && String(item.weight).trim() !== "" ? String(item.weight) : "");
           setWeightUnit(item.weight_unit === "g" || item.weight_unit === "lb" ? item.weight_unit : "kg");
           const attDrafts = mapApiAttachments(item.attachments);
@@ -783,7 +818,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
           payload.unit_type = currentUnitType;
         }
 
-        const currentInstCost = installationCost.trim() ? toNumberOrNull(installationCost) : null;
+        const currentInstCost = installationCost.trim() ? parseOrgMoneyOrNull(installationCost) : null;
         if (currentInstCost !== init.installation_cost) {
           payload.installation_cost = currentInstCost;
         }
@@ -862,7 +897,14 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
 
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
-      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.compositeItems, saved.id, safeBack));
+      router.replace(
+        hrefAfterEntityCreate({
+          createdId: saved.id,
+          selectTarget: isEdit ? null : searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
+          backHref: safeBack,
+          listPath: routes.dashboard.compositeItems,
+        }),
+      );
     } catch (error) {
       toastApiError(error, t("loadError"));
     } finally {
@@ -983,15 +1025,12 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
               </div>
               <div>
                 <FieldLabel htmlFor={qtyId} required>{tModal("quantity")}</FieldLabel>
-                <input
+                <NumericInput
                   id={qtyId}
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
+                  integer
                   value={qty}
-                  onChange={(e) => setQty(e.target.value)}
+                  onChange={setQty}
                   disabled={submitting}
-                  className={surfaceInputClassName}
                 />
               </div>
             </div>
@@ -1024,10 +1063,9 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                 <FieldLabel htmlFor="composite-installation-cost">{tModal("installationCost")}</FieldLabel>
                 <InputWithEndSelect
                   inputId="composite-installation-cost"
-                  inputType="number"
+                  orgMoney
+                  showCurrencyAffix
                   inputMode="decimal"
-                  min={0}
-                  step="0.01"
                   inputValue={installationCost}
                   onInputChange={setInstallationCost}
                   placeholder={tModal("installationCostPlaceholder")}
@@ -1040,17 +1078,13 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
               </div>
               <div>
                 <FieldLabel htmlFor="composite-installation-hours">{tModal("installationHours")}</FieldLabel>
-                <input
+                <NumericInput
                   id="composite-installation-hours"
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  step="0.01"
+                  maxDecimals={2}
                   value={installationHours}
-                  onChange={(e) => setInstallationHours(e.target.value)}
+                  onChange={setInstallationHours}
                   placeholder={tModal("installationHoursPlaceholder")}
                   disabled={submitting}
-                  className={surfaceInputClassName}
                 />
               </div>
             </div>
@@ -1062,7 +1096,10 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   type="number"
                   inputMode="decimal"
                   value={cost}
-                  onChange={(e) => setCost(e.target.value)}
+                  onChange={(e) => {
+                    costManualRef.current = true;
+                    setCost(e.target.value);
+                  }}
                   disabled={submitting}
                   min={0}
                   step="0.01"
@@ -1075,7 +1112,10 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   type="number"
                   inputMode="decimal"
                   value={sell}
-                  onChange={(e) => setSell(e.target.value)}
+                  onChange={(e) => {
+                    sellManualRef.current = true;
+                    setSell(e.target.value);
+                  }}
                   disabled={submitting}
                   min={0}
                   step="0.01"
@@ -1088,34 +1128,27 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                 <div>
                   <FieldLabel htmlFor="composite-dimensions">{tModal("dimensions")}</FieldLabel>
                   <div className="mt-1.5">
-                    <InputWithEndSelect
-                      inputId="composite-dimensions"
-                      inputValue={dimensionsInput}
-                        onInputChange={(v) => {
-                          const formatted = formatDimensionsInputAsTyped(v);
-                          setDimensionsInput(formatted);
-                          const parsed = parseDimensionsInput(formatted);
-                          setLength(parsed.length);
-                          setWidth(parsed.width);
-                          setHeight(parsed.height);
-                        }}
-                      inputType="text"
+                    <DimensionsLwhInput
+                      id="composite-dimensions"
+                      length={length}
+                      width={width}
+                      height={height}
+                      onChange={(next) => {
+                        setLength(next.length);
+                        setWidth(next.width);
+                        setHeight(next.height);
+                        setDimensionsInput(composeDimensionsInput(next.length, next.width, next.height));
+                      }}
+                      unit={dimensionsUnit}
+                      onUnitChange={(v) => setDimensionsUnit((v as DimensionUnit) ?? "cm")}
+                      unitAriaLabel={tModal("dimensionsUnit")}
+                      lengthAriaLabel={tModal("dimensionsLength")}
+                      widthAriaLabel={tModal("dimensionsWidth")}
+                      heightAriaLabel={tModal("dimensionsHeight")}
                       disabled={submitting}
-                      placeholder={tModal("dimensionsPlaceholder")}
-                      selectValue={dimensionsUnit}
-                      onSelectChange={(v) => setDimensionsUnit((v as DimensionUnit) ?? "cm")}
-                      selectOptions={[
-                        { value: "cm", label: "cm" },
-                        { value: "mm", label: "mm" },
-                        { value: "m", label: "m" },
-                        { value: "in", label: "in" },
-                        { value: "ft", label: "ft" },
-                      ]}
-                      selectAriaLabel={tModal("dimensionsUnit")}
-                      selectDisabled={false}
                     />
                   </div>
-                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{tModal("dimensionsHint")}</p>
+                  <p className="mt-1.5 text-center text-xs text-slate-500 dark:text-slate-400">{tModal("dimensionsHint")}</p>
                 </div>
                 <div>
                   <FieldLabel htmlFor="composite-weight">{tModal("weight")}</FieldLabel>
@@ -1141,7 +1174,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
               {itemsError ? <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">{itemsError}</p> : null}
               <div className="mt-2 space-y-2">
                 {rows.map((r, idx) => (
-                  <div key={r.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_140px_auto] sm:items-end">
+                  <div key={r.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(14rem,22rem)_8rem_auto] sm:items-end">
                     <div>
                       <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">{tModal("childItem")}<span className="ml-1 text-red-500">*</span></span>
                       <CheckmarkSelect
@@ -1169,7 +1202,12 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                     </div>
                     <div>
                       <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">{tModal("componentQuantity")}</span>
-                      <input type="number" min={1} inputMode="numeric" value={r.quantity} onChange={(e) => setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, quantity: e.target.value } : x)))} disabled={submitting} className={surfaceInputClassName} />
+                      <NumericInput
+                        integer
+                        value={r.quantity}
+                        onChange={(v) => setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, quantity: v } : x)))}
+                        disabled={submitting}
+                      />
                     </div>
                     <div className="flex gap-2 sm:justify-end">
                       <AppButton type="button" variant="secondary" size="sm" onClick={() => removeRow(r.id)} disabled={submitting || rows.length <= 1}>{tModal("removeComponent")}</AppButton>
@@ -1215,7 +1253,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                             href={href}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="min-w-0 truncate text-[color:var(--dash-accent,#111111)] underline-offset-2 hover:underline"
+                            className="min-w-0 truncate text-blue-600 underline-offset-2 hover:underline"
                           >
                             {attachmentLabel(draft)}
                           </a>

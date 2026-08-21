@@ -17,5 +17,6 @@ export default async function DashboardClientDetailPage({ params }: PageProps) {
   const numericId = Number.parseInt(id, 10);
   if (!Number.isFinite(numericId) || numericId <= 0) notFound();
 
+  // Single scroll: outer dashboard page container scrolls; do not nest h-full overflow shells.
   return <ClientDetailScreen clientId={numericId} />;
 }

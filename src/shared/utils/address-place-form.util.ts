@@ -34,44 +34,45 @@ export function buildAddressSearchContext(input: {
 export type ApplyPlaceSuggestionOptions = {
   line?: "1" | "2" | "reverse";
   withCoordinates?: boolean;
+  /** Nested row prefix, e.g. `addresses.0`. */
+  fieldPrefix?: string;
 };
+
+function text(value: string | null | undefined): string {
+  return (value ?? "").trim();
+}
 
 export function applyPlaceSuggestionToForm<T extends FieldValues>(
   setValue: UseFormSetValue<T>,
   place: PlaceSuggestion,
   options: ApplyPlaceSuggestionOptions = {},
 ): void {
-  const { line = "1", withCoordinates = false } = options;
+  const { line = "1", withCoordinates = false, fieldPrefix = "" } = options;
+  const prefix = fieldPrefix ? `${fieldPrefix}.` : "";
 
-  if (line === "1" || line === "reverse") {
-    const set = (name: Path<T>, value: PathValue<T, Path<T>>) => {
-      setValue(name, value, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
-    };
-
-    if (place.line1) {
-      set("address_line_1" as Path<T>, place.line1 as PathValue<T, Path<T>>);
-    }
-    if (place.line2) {
-      set("address_line_2" as Path<T>, place.line2 as PathValue<T, Path<T>>);
-    }
-    if (place.countryIso) {
-      set("country_iso" as Path<T>, place.countryIso as PathValue<T, Path<T>>);
-    }
-    set("state_iso" as Path<T>, place.stateIso as PathValue<T, Path<T>>);
-    set("city" as Path<T>, place.city as PathValue<T, Path<T>>);
-    if (place.pincode) {
-      set("pincode" as Path<T>, place.pincode as PathValue<T, Path<T>>);
-    }
-  } else if (place.line2) {
-    setValue("address_line_2" as Path<T>, place.line2 as PathValue<T, Path<T>>, {
+  const set = (name: string, value: string) => {
+    setValue(`${prefix}${name}` as Path<T>, value as PathValue<T, Path<T>>, {
       shouldDirty: true,
       shouldTouch: true,
       shouldValidate: true,
     });
+  };
+
+  // Always overwrite derived fields so a second pick cannot keep the previous
+  // place's address line 2, pincode, city, etc. when the new place omits them.
+  if (line === "1" || line === "reverse") {
+    set("address_line_1", text(place.line1));
+    set("address_line_2", text(place.line2));
+    set("country_iso", text(place.countryIso));
+    set("state_iso", text(place.stateIso));
+    set("city", text(place.city));
+    set("pincode", text(place.pincode));
+  } else {
+    set("address_line_2", text(place.line2));
   }
 
   if (withCoordinates) {
-    setValue("latitude" as Path<T>, String(place.lat) as PathValue<T, Path<T>>);
-    setValue("longitude" as Path<T>, String(place.lon) as PathValue<T, Path<T>>);
+    set("latitude", Number.isFinite(place.lat) ? String(place.lat) : "");
+    set("longitude", Number.isFinite(place.lon) ? String(place.lon) : "");
   }
 }

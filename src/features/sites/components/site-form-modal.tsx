@@ -137,10 +137,6 @@ export function SiteFormModal({
 
   const localClientOptions = clientOptions;
   const noClients = !lockClient && localClientOptions.length === 0;
-  const lockedClientLabel =
-    lockClient && initialClientId
-      ? localClientOptions.find((o) => o.value === initialClientId)?.label
-      : undefined;
 
   const clientQuickCreate = useQuickCreate({ kind: "client", addDisabled: lockClient });
   const pendingContactRowRef = React.useRef<number | null>(null);
@@ -195,12 +191,16 @@ export function SiteFormModal({
                 <FieldErrorText id="site-name-err">{errors.site_name?.message}</FieldErrorText>
               </FieldGroup>
               {lockClient ? (
-                <FieldGroup label={t("fields.client")} htmlFor="site-client-locked">
-                  <input
-                    id="site-client-locked"
-                    readOnly
-                    value={lockedClientLabel ?? ""}
-                    className={cn(surfaceInputClassName, "cursor-default bg-slate-50 dark:bg-slate-900/60")}
+                <FieldGroup label={t("fields.client")} htmlFor="site-client" required>
+                  <CheckmarkSelect
+                    id="site-client"
+                    portaled
+                    listLabel={t("fields.client")}
+                    options={localClientOptions}
+                    value={initialClientId ?? ""}
+                    emptyLabel={t("placeholders.client")}
+                    locked
+                    onChange={() => undefined}
                   />
                 </FieldGroup>
               ) : (

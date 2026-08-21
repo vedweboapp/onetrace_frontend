@@ -28,6 +28,11 @@ const mapResponseToOrganization = (responseData: Record<string, unknown>): Organ
     digitSeparator: (responseData.digit_separator as string) || "1,234,567.89",
     decimalPlaces:
       responseData.decimal_places !== undefined ? Number(responseData.decimal_places) : 2,
+    numberFormat:
+      (responseData.number_format as string) ||
+      (responseData.numberFormat as string) ||
+      (responseData.digit_separator as string) ||
+      "1,234,567.89",
     startTime: (responseData.start_time as string) || "09:00",
     endTime: (responseData.end_time as string) || "17:00",
     workingDays:
@@ -74,6 +79,7 @@ const mapPatchToApiPayload = (patch: Partial<UpdateOrganizationRequest>): Record
   if ("symbolPosition" in patch) set("symbol_position", patch.symbolPosition);
   if ("digitSeparator" in patch) set("digit_separator", patch.digitSeparator);
   if ("decimalPlaces" in patch) set("decimal_places", patch.decimalPlaces);
+  if ("numberFormat" in patch) set("number_format", patch.numberFormat);
 
   if ("startTime" in patch) set("start_time", patch.startTime);
   if ("endTime" in patch) set("end_time", patch.endTime);

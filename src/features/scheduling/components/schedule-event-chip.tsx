@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { X } from "lucide-react";
+import { Copy, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import type { Schedule } from "@/features/scheduling/types/schedule.types";
 import { scheduleJobLabel } from "@/features/scheduling/utils/schedule-map.util";
@@ -12,6 +12,7 @@ type Props = {
   schedule: Schedule;
   onOpen: () => void;
   onRemove?: () => void;
+  onCopy?: () => void;
   compact?: boolean;
   detailed?: boolean;
   className?: string;
@@ -22,6 +23,7 @@ export function ScheduleEventChip({
   schedule,
   onOpen,
   onRemove,
+  onCopy,
   compact,
   detailed,
   className,
@@ -29,6 +31,7 @@ export function ScheduleEventChip({
 }: Props) {
   const t = useTranslations("Dashboard.scheduling");
   const locale = useLocale();
+  const actionCount = Number(Boolean(onCopy)) + Number(Boolean(onRemove));
 
   return (
     <div
@@ -40,8 +43,12 @@ export function ScheduleEventChip({
       )}
       style={style}
     >
-      <button type="button" className="block w-full px-2 py-1.5 text-left" onClick={onOpen}>
-        <p className="truncate pr-5 text-[11px] font-semibold text-sky-950 dark:text-sky-100">
+      <button
+        type="button"
+        className={cn("block w-full px-2 py-1.5 text-left", actionCount > 0 && "pr-10")}
+        onClick={onOpen}
+      >
+        <p className="truncate text-[11px] font-semibold text-sky-950 dark:text-sky-100">
           {scheduleJobLabel(schedule)}
         </p>
         <p className="truncate text-[10px] text-sky-900/80 dark:text-sky-200/80">
@@ -62,22 +69,43 @@ export function ScheduleEventChip({
           <p className="truncate text-[10px] text-sky-800/70 dark:text-sky-300/70">{schedule.client_name}</p>
         ) : null}
       </button>
-      {onRemove ? (
-        <button
-          type="button"
-          title={t("removeSchedule")}
-          aria-label={t("removeSchedule")}
-          className={cn(
-            "absolute right-1 top-1 inline-flex size-5 items-center justify-center rounded text-sky-800/70",
-            "hover:bg-red-50 hover:text-red-600 dark:text-sky-200/80 dark:hover:bg-red-950/50 dark:hover:text-red-300",
-          )}
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove();
-          }}
-        >
-          <X className="size-3" strokeWidth={2.5} />
-        </button>
+      {actionCount > 0 ? (
+        <div className="absolute right-0.5 top-0.5 flex items-center gap-0.5">
+          {onCopy ? (
+            <button
+              type="button"
+              title={t("copy.action")}
+              aria-label={t("copy.action")}
+              className={cn(
+                "inline-flex size-5 items-center justify-center rounded text-sky-800/70",
+                "hover:bg-sky-100 hover:text-sky-950 dark:text-sky-200/80 dark:hover:bg-sky-900 dark:hover:text-sky-50",
+              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCopy();
+              }}
+            >
+              <Copy className="size-3" strokeWidth={2.5} />
+            </button>
+          ) : null}
+          {onRemove ? (
+            <button
+              type="button"
+              title={t("removeSchedule")}
+              aria-label={t("removeSchedule")}
+              className={cn(
+                "inline-flex size-5 items-center justify-center rounded text-sky-800/70",
+                "hover:bg-red-50 hover:text-red-600 dark:text-sky-200/80 dark:hover:bg-red-950/50 dark:hover:text-red-300",
+              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+            >
+              <X className="size-3" strokeWidth={2.5} />
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

@@ -45,16 +45,22 @@ import { DetailPageHeader } from "@/shared/components/layout/detail-page-header"
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
-import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack, mergeUrlQueryParam, sanitizeJobsBackHref } from "@/shared/utils/detail-from-list.util";
+import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack, mergeUrlQueryParam, pathWithoutQueryAndHash, sanitizeJobsBackHref } from "@/shared/utils/detail-from-list.util";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { ensureCheckmarkOption } from "@/shared/utils/checkmark-options.util";
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
+import {
+  QUICK_CREATE_SELECT_TARGET_PARAM,
+  hrefAfterEntityCreate,
+} from "@/shared/utils/quick-create-navigation.util";
 import {
   AppButton,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
+  MoneyInput,
+  NumericInput,
   MultiCheckSelect,
   RequiredMark,
   SurfaceShell,
@@ -658,7 +664,21 @@ export function JobFormScreen({ mode, jobId }: Props) {
       }
       const saved = await createJob(createPayload);
       toastSuccess(t("createdToast"));
-      router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.jobs, saved.id, listBack));
+      const nextHref = hrefAfterEntityCreate({
+        createdId: saved.id,
+        selectTarget: searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
+        backHref: listBack,
+        listPath: routes.dashboard.jobs,
+      });
+      const jobCategory =
+        jobCategoryFromUrl ||
+        values.job_category?.trim() ||
+        (typeof saved.job_category === "string" ? saved.job_category.trim() : "");
+      router.replace(
+        jobCategory && pathWithoutQueryAndHash(nextHref).startsWith(`${routes.dashboard.jobs}/`)
+          ? mergeUrlQueryParam(nextHref, "job_category", jobCategory)
+          : nextHref,
+      );
     } catch (error) {
       reportFormSubmitApiError(error, setError, isEdit ? t("updateError") : t("createError"));
     } finally {
@@ -1059,28 +1079,29 @@ export function JobFormScreen({ mode, jobId }: Props) {
                               </div>
                             </td>
                             <td className="px-3 py-2 align-top">
-                              <input
-                                type="number"
-                                min={0}
-                                step="any"
-                                aria-invalid={errors.job_meta_items?.[index]?.quantity ? true : undefined}
-                                className={cn(
-                                  surfaceInputClassName,
-                                  "h-8 w-24 px-2.5 text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
-                                  errors.job_meta_items?.[index]?.quantity && "border-red-500",
-                                )}
+                              <NumericInput
+                                size="sm"
+                                integer
+                                value={row?.quantity ?? ""}
+                                invalid={Boolean(errors.job_meta_items?.[index]?.quantity)}
                                 disabled={saving}
-                                {...register(`job_meta_items.${index}.quantity`)}
+                                onChange={(next) =>
+                                  setValue(`job_meta_items.${index}.quantity`, next, {
+                                    shouldDirty: true,
+                                    shouldValidate: true,
+                                  })
+                                }
                               />
                               <FieldErrorText>{errors.job_meta_items?.[index]?.quantity?.message}</FieldErrorText>
                             </td>
                             <td className="px-3 py-2 align-top">
-                              <input
-                                className={cn(surfaceInputClassName, "h-8 w-28 px-2.5 text-sm")}
+                              <input type="hidden" {...register(`job_meta_items.${index}.rate`)} />
+                              <MoneyInput
+                                size="sm"
                                 readOnly
                                 tabIndex={-1}
                                 aria-readonly
-                                {...register(`job_meta_items.${index}.rate`)}
+                                value={row?.rate ?? ""}
                               />
                             </td>
                             <td className="px-3 py-2 align-middle">

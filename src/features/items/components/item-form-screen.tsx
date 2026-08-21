@@ -18,14 +18,13 @@ import {
 } from "@/shared/utils/quick-create-navigation.util";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import type { InputWithEndSelectOption } from "@/shared/ui";
-import { AppButton, CheckmarkSelect, FieldErrorText, FieldGroup, FieldLabel, InputWithEndSelect, MoneyInput, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
+import { AppButton, CheckmarkSelect, DimensionsLwhInput, FieldErrorText, FieldGroup, FieldLabel, InputWithEndSelect, MoneyInput, MultiCheckSelect, NumericInput, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
 import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
 import { formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
 import { getUnitTypeId, resolveDefaultUnitTypeSelectValue } from "@/features/items/utils/item-unit-type.util";
-import {
-  formatDimensionsInputAsTyped,
-  parseDimensionsInput,
-} from "@/features/items/utils/item-dimensions-input.util";
+import { parseDimensionsInput } from "@/features/items/utils/item-dimensions-input.util";
+import { getItemVendorIds, vendorIdsPayload } from "@/features/items/utils/item-vendors.util";
+import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import type { DimensionUnit, WeightUnit } from "@/features/items/types/item.types";
 import { useSearchParams } from "next/navigation";
 
@@ -105,10 +104,13 @@ export function ItemFormScreen({ mode, itemId }: Props) {
   const [length, setLength] = React.useState("");
   const [width, setWidth] = React.useState("");
   const [height, setHeight] = React.useState("");
-  const [dimensionsInput, setDimensionsInput] = React.useState("");
   const [dimensionsUnit, setDimensionsUnit] = React.useState<DimensionUnit>("cm");
   const [weight, setWeight] = React.useState("");
   const [weightUnit, setWeightUnit] = React.useState<WeightUnit>("kg");
+  const [vendorIds, setVendorIds] = React.useState<string[]>([]);
+  const [vendorOptions, setVendorOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [vendorFallbackLabels, setVendorFallbackLabels] = React.useState<Record<string, string>>({});
+  const [vendorsError, setVendorsError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!isEdit || !itemId) return;
@@ -136,19 +138,34 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                 ? item.dimensions_unit
                 : "cm";
           setDimensionsUnit(dimUnit);
-          setDimensionsInput(
-            item.length != null && item.width != null && item.height != null
-              ? `${item.length}*${item.width}*${item.height}`
-              : typeof item.dimensions === "string"
-                ? item.dimensions
-                : "",
-          );
+          if (
+            (item.length == null || item.width == null || item.height == null) &&
+            typeof item.dimensions === "string" &&
+            item.dimensions.trim()
+          ) {
+            const parsed = parseDimensionsInput(item.dimensions);
+            setLength(parsed.length);
+            setWidth(parsed.width);
+            setHeight(parsed.height);
+          }
           setWeight(item.weight != null && String(item.weight).trim() !== "" ? String(item.weight) : "");
           setWeightUnit(
             item.weight_unit === "g" || item.weight_unit === "lb"
               ? item.weight_unit
               : "kg",
           );
+          const loadedVendorIds = getItemVendorIds(item);
+          setVendorIds(loadedVendorIds.map(String));
+          const fallback: Record<string, string> = {};
+          if (Array.isArray(item.vendors)) {
+            for (const entry of item.vendors) {
+              if (entry && typeof entry === "object" && typeof entry.id === "number") {
+                const name = typeof entry.name === "string" ? entry.name.trim() : "";
+                if (name) fallback[String(entry.id)] = name;
+              }
+            }
+          }
+          setVendorFallbackLabels(fallback);
           setTouched({});
         }
       } catch {
@@ -178,6 +195,24 @@ export function ItemFormScreen({ mode, itemId }: Props) {
         }
       } catch {
         if (!cancelled) setUnitTypesError(tModal("unitTypesLoadError"));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tModal]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setVendorsError(null);
+      try {
+        const { items } = await fetchVendorsPage(1, 500, { is_active: true });
+        if (!cancelled) {
+          setVendorOptions(items.map((v) => ({ value: String(v.id), label: v.name })));
+        }
+      } catch {
+        if (!cancelled) setVendorsError(tModal("vendorsLoadError"));
       }
     })();
     return () => {
@@ -217,12 +252,13 @@ export function ItemFormScreen({ mode, itemId }: Props) {
       const dimensionsFields = dimensionsPayload(length, width, height);
       const hasDimensions = Object.keys(dimensionsFields).length > 0;
       const dimensionsUnitPayload =
-        dimensionsInput.trim().length === 0
+        !length.trim() && !width.trim() && !height.trim()
           ? { length: null, width: null, height: null, dimensions_unit: null }
           : hasDimensions
             ? { ...dimensionsFields, dimensions_unit: dimensionsUnit }
             : {};
       const weightFields = weightPayload(weight, weightUnit);
+      const vendorsPayload = vendorIdsPayload(vendorIds);
 
       const saved =
         isEdit && itemId
@@ -235,6 +271,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
               ...unitTypePayload,
               ...dimensionsUnitPayload,
               ...weightFields,
+              ...vendorsPayload,
             })
           : await createItem({
               name: nameTrim,
@@ -246,6 +283,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
               ...unitTypePayload,
               ...dimensionsUnitPayload,
               ...weightFields,
+              ...vendorsPayload,
             });
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
       router.replace(
@@ -360,15 +398,12 @@ export function ItemFormScreen({ mode, itemId }: Props) {
               </div>
               <div>
                 <FieldLabel htmlFor={qtyId}>{tModal("quantity")}</FieldLabel>
-                <input
+                <NumericInput
                   id={qtyId}
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
+                  integer
                   value={qty}
-                  onChange={(e) => setQty(e.target.value)}
+                  onChange={setQty}
                   disabled={submitting}
-                  className={surfaceInputClassName}
                 />
               </div>
               <FieldGroup label={tModal("costPrice")} htmlFor={costId} required>
@@ -403,40 +438,49 @@ export function ItemFormScreen({ mode, itemId }: Props) {
               </FieldGroup>
             </div>
 
+            <FieldGroup label={tModal("vendors")} htmlFor="item-vendors">
+              <MultiCheckSelect
+                id="item-vendors"
+                options={vendorOptions}
+                values={vendorIds}
+                onChange={setVendorIds}
+                disabled={submitting}
+                placeholder={tModal("vendorsPlaceholder")}
+                listLabel={tModal("vendors")}
+                searchable
+                fallbackLabels={vendorFallbackLabels}
+              />
+              {vendorsError ? (
+                <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{vendorsError}</p>
+              ) : null}
+            </FieldGroup>
+
             <div className="space-y-4 pt-1">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tModal("fulfilmentDetails")}</h3>
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-start">
                 <div>
                   <FieldLabel htmlFor="item-dimensions">{tModal("dimensions")}</FieldLabel>
                   <div className="mt-1.5">
-                    <InputWithEndSelect
-                      inputId="item-dimensions"
-                      inputValue={dimensionsInput}
-                      onInputChange={(v) => {
-                        const formatted = formatDimensionsInputAsTyped(v);
-                        setDimensionsInput(formatted);
-                        const parsed = parseDimensionsInput(formatted);
-                        setLength(parsed.length);
-                        setWidth(parsed.width);
-                        setHeight(parsed.height);
+                    <DimensionsLwhInput
+                      id="item-dimensions"
+                      length={length}
+                      width={width}
+                      height={height}
+                      onChange={(next) => {
+                        setLength(next.length);
+                        setWidth(next.width);
+                        setHeight(next.height);
                       }}
-                      inputType="text"
+                      unit={dimensionsUnit}
+                      onUnitChange={(v) => setDimensionsUnit((v as DimensionUnit) || "cm")}
+                      unitAriaLabel={tModal("dimensionsUnit")}
+                      lengthAriaLabel={tModal("dimensionsLength")}
+                      widthAriaLabel={tModal("dimensionsWidth")}
+                      heightAriaLabel={tModal("dimensionsHeight")}
                       disabled={submitting}
-                      placeholder={tModal("dimensionsPlaceholder")}
-                      selectValue={dimensionsUnit}
-                      onSelectChange={(v) => setDimensionsUnit((v as DimensionUnit) || "cm")}
-                      selectOptions={[
-                        { value: "cm", label: "cm" },
-                        { value: "mm", label: "mm" },
-                        { value: "m", label: "m" },
-                        { value: "in", label: "in" },
-                        { value: "ft", label: "ft" },
-                      ]}
-                      selectAriaLabel={tModal("dimensionsUnit")}
-                      selectDisabled={false}
                     />
                   </div>
-                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{tModal("dimensionsHint")}</p>
+                  <p className="mt-1.5 text-center text-xs text-slate-500 dark:text-slate-400">{tModal("dimensionsHint")}</p>
                 </div>
                 <div>
                   <FieldLabel htmlFor="item-weight">{tModal("weight")}</FieldLabel>

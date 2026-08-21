@@ -8,7 +8,7 @@ import { ScheduleEventChip } from "@/features/scheduling/components/schedule-eve
 import { TimeOffChip } from "@/features/scheduling/components/time-off-chip";
 import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
-import { technicianWorkerIds } from "@/features/scheduling/utils/scheduling-technician.util";
+import { technicianMatchesWorkerId, technicianWorkerIds } from "@/features/scheduling/utils/scheduling-technician.util";
 import { scheduleWorkerIds, timeOffWorkerIds } from "@/features/scheduling/utils/schedule-map.util";
 import {
   availabilityHeaderBarClass,
@@ -82,10 +82,15 @@ type Props = {
   onClearPeopleFilters?: () => void;
   dragMode?: "book" | "timeoff";
   allowCreate?: boolean;
+  /** When set, show Paste on worker rows that are not already on this schedule. */
+  copiedSchedule?: Schedule | null;
+  pasteDisabled?: boolean;
   onCreateSchedule: (tech: SchedulingTechnician, day: Date) => void;
   onRangeSelect?: (range: TimelineRangeSelect) => void;
   onScheduleClick: (schedule: Schedule) => void;
   onRemoveSchedule?: (schedule: Schedule) => void;
+  onCopySchedule?: (schedule: Schedule) => void;
+  onPasteSchedule?: (tech: SchedulingTechnician) => void;
   onRemoveTimeOff?: (timeOff: WorkerTimeOff) => void;
   onWorkerClick: (tech: SchedulingTechnician) => void;
 };
@@ -100,10 +105,14 @@ export function SchedulingDayTimeline({
   onClearPeopleFilters,
   dragMode = "book",
   allowCreate = true,
+  copiedSchedule = null,
+  pasteDisabled = false,
   onCreateSchedule,
   onRangeSelect,
   onScheduleClick,
   onRemoveSchedule,
+  onCopySchedule,
+  onPasteSchedule,
   onRemoveTimeOff,
   onWorkerClick,
 }: Props) {
@@ -330,7 +339,7 @@ export function SchedulingDayTimeline({
                   >
                     {tech.initials}
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <button
                       type="button"
                       className="block w-full truncate text-left text-sm font-semibold text-sky-700 hover:underline dark:text-sky-400"
@@ -345,6 +354,22 @@ export function SchedulingDayTimeline({
                       </p>
                     ) : knownAvailability ? (
                       <p className="mt-0.5 truncate text-[10px] font-medium text-slate-400">{t("offDuty")}</p>
+                    ) : null}
+                    {copiedSchedule &&
+                    onPasteSchedule &&
+                    !scheduleWorkerIds(copiedSchedule).some((id) => technicianMatchesWorkerId(tech, id)) ? (
+                      <button
+                        type="button"
+                        disabled={pasteDisabled}
+                        className={cn(
+                          "mt-1 rounded border border-sky-300 bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800",
+                          "hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50",
+                          "dark:border-sky-800 dark:bg-sky-950/50 dark:text-sky-100 dark:hover:bg-sky-900",
+                        )}
+                        onClick={() => onPasteSchedule(tech)}
+                      >
+                        {t("copy.pasteHere")}
+                      </button>
                     ) : null}
                   </div>
                 </div>
@@ -498,6 +523,7 @@ export function SchedulingDayTimeline({
                       className="absolute top-1.5 z-[1] h-[calc(100%-12px)] min-h-[44px]"
                       style={{ left: `${leftPct}%`, width: `max(${widthPct}%, 7rem)` }}
                       onOpen={() => onScheduleClick(schedule)}
+                      onCopy={onCopySchedule ? () => onCopySchedule(schedule) : undefined}
                       onRemove={onRemoveSchedule ? () => onRemoveSchedule(schedule) : undefined}
                     />
                   );

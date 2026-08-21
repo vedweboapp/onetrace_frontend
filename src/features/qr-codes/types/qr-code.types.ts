@@ -12,6 +12,14 @@ export type QrCodeBatchDetail = {
   batch_number: string;
 };
 
+/** Nested job when QR is assigned (`assigned_to_id` / `assigned_to_detail`). */
+export type QrCodeAssignedJobRef = {
+  id: number;
+  title?: string | null;
+  job_serial_number?: string | null;
+  name?: string | null;
+};
+
 export type QrCode = {
   id: number;
   qr_code_id: string;
@@ -25,7 +33,7 @@ export type QrCode = {
   modified_at: string | null;
   created_by?: QrCodeUserRef | null;
   modified_by?: QrCodeUserRef | null;
-  assigned_to_detail?: unknown;
+  assigned_to_detail?: QrCodeAssignedJobRef | null;
   batch_detail?: QrCodeBatchDetail | null;
   /** Scan landing URL, e.g. `http://host:5001/org1/{uuid}`. */
   public_url?: string | null;

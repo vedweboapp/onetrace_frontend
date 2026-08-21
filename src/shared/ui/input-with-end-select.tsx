@@ -4,6 +4,9 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
+import { OrgMoneyPlainInput } from "@/shared/ui/money-input";
+import { NumericInput } from "@/shared/ui/numeric-input";
+import { useOrgCurrency } from "@/shared/money/use-org-currency";
 
 export type InputWithEndSelectOption = {
   value: string;
@@ -11,9 +14,10 @@ export type InputWithEndSelectOption = {
 };
 
 type Props = {
+  startSlot?: React.ReactNode;
   inputId?: string;
-  inputValue: string;
-  onInputChange: (value: string) => void;
+  inputValue?: string;
+  onInputChange?: (value: string) => void;
   inputType?: React.HTMLInputTypeAttribute;
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
   min?: number;
@@ -28,6 +32,10 @@ type Props = {
   selectPlaceholder?: string;
   selectDisabled?: boolean;
   className?: string;
+  /** Format the amount using Company Settings currency grouping/decimals. */
+  orgMoney?: boolean;
+  /** Show org currency symbol/code before the amount (with `orgMoney`). */
+  showCurrencyAffix?: boolean;
 };
 
 const frameClassName = cn(
@@ -58,8 +66,9 @@ function readDashOnAccent(el: HTMLElement | null): string {
 }
 
 export function InputWithEndSelect({
+  startSlot,
   inputId,
-  inputValue,
+  inputValue = "",
   onInputChange,
   inputType = "text",
   inputMode,
@@ -75,7 +84,11 @@ export function InputWithEndSelect({
   selectPlaceholder,
   selectDisabled = false,
   className,
+  orgMoney = false,
+  showCurrencyAffix = false,
 }: Props) {
+  const { settings, affix } = useOrgCurrency();
+  const currencyBefore = settings.symbolPosition === "before";
   const [open, setOpen] = React.useState(false);
   const [pos, setPos] = React.useState({ top: 0, left: 0, width: 0 });
   const [accent, setAccent] = React.useState("#111111");
@@ -145,18 +158,55 @@ export function InputWithEndSelect({
         className,
       )}
     >
-      <input
-        id={inputId}
-        type={inputType}
-        inputMode={inputMode}
-        min={min}
-        step={step}
-        value={inputValue}
-        onChange={(e) => onInputChange(e.target.value)}
-        placeholder={placeholder}
-        disabled={disabled}
-        className={inputClassName}
-      />
+      {startSlot ?? (
+        <>
+          {orgMoney && showCurrencyAffix && currencyBefore ? (
+            <span className="shrink-0 pl-3.5 text-sm font-medium text-slate-500 dark:text-slate-400" aria-hidden>
+              {affix}
+            </span>
+          ) : null}
+          {orgMoney ? (
+            <OrgMoneyPlainInput
+              id={inputId}
+              value={inputValue}
+              onChange={(next) => onInputChange?.(next)}
+              placeholder={placeholder}
+              disabled={disabled}
+              invalid={invalid}
+              className={cn(inputClassName, showCurrencyAffix && currencyBefore && "pl-1.5")}
+            />
+          ) : inputType === "number" ? (
+            <NumericInput
+              id={inputId}
+              variant="plain"
+              value={inputValue}
+              onChange={(next) => onInputChange?.(next)}
+              placeholder={placeholder}
+              disabled={disabled}
+              invalid={invalid}
+              className={inputClassName}
+            />
+          ) : (
+            <input
+              id={inputId}
+              type={inputType}
+              inputMode={inputMode}
+              min={min}
+              step={step}
+              value={inputValue}
+              onChange={(e) => onInputChange?.(e.target.value)}
+              placeholder={placeholder}
+              disabled={disabled}
+              className={inputClassName}
+            />
+          )}
+          {orgMoney && showCurrencyAffix && !currencyBefore ? (
+            <span className="shrink-0 pr-2 text-sm font-medium text-slate-500 dark:text-slate-400" aria-hidden>
+              {affix}
+            </span>
+          ) : null}
+        </>
+      )}
       <div className={selectWrapClassName}>
         <button
           ref={triggerRef}

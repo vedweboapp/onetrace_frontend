@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { MapPin } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { PlaceSuggestion } from "@/shared/types/place-suggestion.types";
@@ -40,6 +41,12 @@ type Props = {
   error?: string;
   variant?: "primary" | "secondary";
   maxLength?: number;
+  /** Override input/textarea surface (detail inline edit). */
+  inputClassName?: string;
+  /** Grow like detail display values (wrap long address lines). */
+  multiline?: boolean;
+  /** Portal suggestions so narrow columns don't squash the menu. */
+  portaled?: boolean;
 };
 
 export function AddressPlaceAutocomplete({
@@ -61,6 +68,9 @@ export function AddressPlaceAutocomplete({
   error,
   variant = "primary",
   maxLength = FIELD_MAX_LENGTH.ADDRESS_LINE,
+  inputClassName,
+  multiline = false,
+  portaled = false,
 }: Props) {
   const t = useTranslations("Dashboard.sites.location");
   const listId = `${id}-suggestions`;
@@ -76,8 +86,14 @@ export function AddressPlaceAutocomplete({
   >([]);
   const [activeIndex, setActiveIndex] = React.useState(-1);
   const [resolvingPlace, setResolvingPlace] = React.useState(false);
+  const [menuPos, setMenuPos] = React.useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
 
   const wrapRef = React.useRef<HTMLDivElement>(null);
+  const controlRef = React.useRef<HTMLInputElement | HTMLTextAreaElement>(null);
   const skipSearchRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -157,7 +173,10 @@ export function AddressPlaceAutocomplete({
 
   React.useEffect(() => {
     function onDocClick(e: MouseEvent) {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node | null;
+      if (wrapRef.current?.contains(target)) return;
+      if (target instanceof Element && target.closest("[data-ot-place-suggest]")) return;
+      setOpen(false);
     }
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
@@ -210,7 +229,31 @@ export function AddressPlaceAutocomplete({
     value.trim().length >= 2 &&
     (loading || resolvingPlace || totalCount > 0);
 
-  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  React.useEffect(() => {
+    if (!showList || !portaled) {
+      setMenuPos(null);
+      return;
+    }
+    function updatePos() {
+      const el = controlRef.current ?? wrapRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setMenuPos({
+        top: r.bottom + 4,
+        left: r.left,
+        width: Math.max(r.width, 280),
+      });
+    }
+    updatePos();
+    window.addEventListener("resize", updatePos);
+    window.addEventListener("scroll", updatePos, true);
+    return () => {
+      window.removeEventListener("resize", updatePos);
+      window.removeEventListener("scroll", updatePos, true);
+    };
+  }, [showList, portaled, value]);
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
     if (!showList || totalCount === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -232,8 +275,106 @@ export function AddressPlaceAutocomplete({
     }
   }
 
+  const controlClassName = cn(
+    multiline
+      ? cn(
+          surfaceInputClassName,
+          "h-auto min-h-[2.5rem] resize-none py-1.5 leading-normal [field-sizing:content]",
+        )
+      : surfaceInputClassName,
+    invalid && "border-red-500 dark:border-red-500",
+    inputClassName,
+  );
+
+  const textareaRows = Math.min(
+    6,
+    Math.max(2, Math.ceil(Math.max(value.length, 1) / 42)),
+  );
+
+  const listBody = (
+    <>
+      {loading || resolvingPlace ? (
+        <li className="px-3 py-2.5 text-sm text-slate-500">
+          {resolvingPlace ? t("resolvingPlace") : t("searching")}
+        </li>
+      ) : useGooglePlaces ? (
+        googleCount === 0 ? (
+          <li className="px-3 py-2.5 text-sm text-slate-500">{t("noResults")}</li>
+        ) : (
+          googlePredictions.map((prediction, idx) => {
+            const pincodeQuery = isPincodeLikeQuery(value);
+            const main =
+              prediction.structured_formatting?.main_text ?? prediction.description;
+            const secondary = prediction.structured_formatting?.secondary_text ?? "";
+            const displayLabel = pincodeQuery
+              ? prediction.description
+              : secondary
+                ? `${main}, ${secondary}`
+                : main;
+            return (
+              <li key={prediction.placeId} role="option" aria-selected={idx === activeIndex}>
+                <button
+                  type="button"
+                  className={cn(
+                    "flex w-full gap-2.5 px-3 py-2.5 text-left text-sm transition-colors",
+                    idx === activeIndex
+                      ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100"
+                      : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/60",
+                  )}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => void pickGoogle(prediction)}
+                >
+                  <MapPin
+                    className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500"
+                    aria-hidden
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block break-words font-medium text-slate-900 dark:text-slate-100">
+                      {pincodeQuery ? displayLabel : main}
+                    </span>
+                    {!pincodeQuery && secondary ? (
+                      <span className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">
+                        {secondary}
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              </li>
+            );
+          })
+        )
+      ) : nominatimCount === 0 ? (
+        <li className="px-3 py-2.5 text-sm text-slate-500">{t("noResults")}</li>
+      ) : (
+        nominatimItems.map((place, idx) => (
+          <li key={place.id} role="option" aria-selected={idx === activeIndex}>
+            <button
+              type="button"
+              className={cn(
+                "w-full px-3 py-2.5 text-left text-sm transition-colors",
+                idx === activeIndex
+                  ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100"
+                  : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/60",
+              )}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => void pickNominatim(place)}
+            >
+              <span className="block break-words font-medium">{place.line1}</span>
+              <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+                {place.label}
+              </span>
+            </button>
+          </li>
+        ))
+      )}
+    </>
+  );
+
+  const listClassName =
+    "z-[500] max-h-72 overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900";
+
   return (
-    <div ref={wrapRef} className="relative w-full min-w-0">
+    <div ref={wrapRef} className="relative w-full min-w-0 overflow-visible">
       {label != null && label !== "" ? (
         <label htmlFor={id} className={fieldLabelClassName}>
           {label}
@@ -244,142 +385,116 @@ export function AddressPlaceAutocomplete({
           ) : null}
         </label>
       ) : null}
-      <input
-        id={id}
-        type="text"
-        role="combobox"
-        aria-expanded={showList}
-        aria-controls={showList ? listId : undefined}
-        aria-autocomplete="list"
-        autoComplete="off"
-        disabled={disabled || resolvingPlace}
-        placeholder={
-          placeholder ??
-          (variant === "primary"
-            ? useGooglePlaces
-              ? t("googleSearchPlaceholder")
-              : t("searchPlaceholder")
-            : t("searchPlaceholderLine2"))
-        }
-        value={value}
-        maxLength={maxLength}
-        onChange={(e) => {
-          onChange(sanitizeAddressInput(e.target.value, maxLength));
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => {
-          window.setTimeout(() => {
-            setOpen(false);
-            onBlur?.();
-          }, 200);
-        }}
-        onKeyDown={onKeyDown}
-        className={cn(
-          surfaceInputClassName,
-          invalid && "border-red-500 dark:border-red-500",
-        )}
-      />
+      {multiline ? (
+        <textarea
+          ref={controlRef as React.RefObject<HTMLTextAreaElement>}
+          id={id}
+          role="combobox"
+          aria-expanded={showList}
+          aria-controls={showList ? listId : undefined}
+          aria-autocomplete="list"
+          autoComplete="off"
+          disabled={disabled || resolvingPlace}
+          placeholder={
+            placeholder ??
+            (variant === "primary"
+              ? useGooglePlaces
+                ? t("googleSearchPlaceholder")
+                : t("searchPlaceholder")
+              : t("searchPlaceholderLine2"))
+          }
+          value={value}
+          maxLength={maxLength}
+          rows={textareaRows}
+          onChange={(e) => {
+            onChange(sanitizeAddressInput(e.target.value, maxLength));
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => {
+            window.setTimeout(() => {
+              setOpen(false);
+              onBlur?.();
+            }, 200);
+          }}
+          onKeyDown={onKeyDown}
+          className={controlClassName}
+        />
+      ) : (
+        <input
+          ref={controlRef as React.RefObject<HTMLInputElement>}
+          id={id}
+          type="text"
+          role="combobox"
+          aria-expanded={showList}
+          aria-controls={showList ? listId : undefined}
+          aria-autocomplete="list"
+          autoComplete="off"
+          disabled={disabled || resolvingPlace}
+          placeholder={
+            placeholder ??
+            (variant === "primary"
+              ? useGooglePlaces
+                ? t("googleSearchPlaceholder")
+                : t("searchPlaceholder")
+              : t("searchPlaceholderLine2"))
+          }
+          value={value}
+          maxLength={maxLength}
+          onChange={(e) => {
+            onChange(sanitizeAddressInput(e.target.value, maxLength));
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => {
+            window.setTimeout(() => {
+              setOpen(false);
+              onBlur?.();
+            }, 200);
+          }}
+          onKeyDown={onKeyDown}
+          className={controlClassName}
+        />
+      )}
       {error ? (
         <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>
       ) : null}
 
-      {showList ? (
+      {showList && !portaled ? (
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-[500] mt-1 max-h-72 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
-        >
-          {loading || resolvingPlace ? (
-            <li className="px-3 py-2.5 text-sm text-slate-500">
-              {resolvingPlace ? t("resolvingPlace") : t("searching")}
-            </li>
-          ) : useGooglePlaces ? (
-            googleCount === 0 ? (
-              <li className="px-3 py-2.5 text-sm text-slate-500">
-                {t("noResults")}
-              </li>
-            ) : (
-              googlePredictions.map((prediction, idx) => {
-                const pincodeQuery = isPincodeLikeQuery(value);
-                const main =
-                  prediction.structured_formatting?.main_text ??
-                  prediction.description;
-                const secondary =
-                  prediction.structured_formatting?.secondary_text ?? "";
-                const displayLabel = pincodeQuery
-                  ? prediction.description
-                  : secondary
-                    ? `${main}, ${secondary}`
-                    : main;
-                return (
-                  <li
-                    key={prediction.placeId}
-                    role="option"
-                    aria-selected={idx === activeIndex}
-                  >
-                    <button
-                      type="button"
-                      className={cn(
-                        "flex w-full gap-2.5 px-3 py-2.5 text-left text-sm transition-colors",
-                        idx === activeIndex
-                          ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100"
-                          : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/60",
-                      )}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => void pickGoogle(prediction)}
-                    >
-                      <MapPin
-                        className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500"
-                        aria-hidden
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-medium text-slate-900 dark:text-slate-100">
-                          {pincodeQuery ? displayLabel : main}
-                        </span>
-                        {!pincodeQuery && secondary ? (
-                          <span className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">
-                            {secondary}
-                          </span>
-                        ) : null}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })
-            )
-          ) : nominatimCount === 0 ? (
-            <li className="px-3 py-2.5 text-sm text-slate-500">
-              {t("noResults")}
-            </li>
-          ) : (
-            nominatimItems.map((place, idx) => (
-              <li
-                key={place.id}
-                role="option"
-                aria-selected={idx === activeIndex}
-              >
-                <button
-                  type="button"
-                  className={cn(
-                    "w-full px-3 py-2.5 text-left text-sm transition-colors",
-                    idx === activeIndex
-                      ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100"
-                      : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/60",
-                  )}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => void pickNominatim(place)}
-                >
-                  <span className="block font-medium">{place.line1}</span>
-                  <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
-                    {place.label}
-                  </span>
-                </button>
-              </li>
-            ))
+          className={cn(
+            listClassName,
+            "absolute left-0 right-0 mt-1 min-w-full w-max max-w-[min(28rem,calc(100vw-1.5rem))]",
           )}
+        >
+          {listBody}
         </ul>
       ) : null}
+
+      {showList &&
+      portaled &&
+      menuPos &&
+      typeof document !== "undefined"
+        ? createPortal(
+            <ul
+              id={listId}
+              role="listbox"
+              data-ot-place-suggest=""
+              className={listClassName}
+              style={{
+                position: "fixed",
+                top: menuPos.top,
+                left: Math.min(menuPos.left, window.innerWidth - menuPos.width - 8),
+                width: menuPos.width,
+              }}
+            >
+              {listBody}
+            </ul>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

@@ -20,6 +20,8 @@ export type ItemListFilters = {
   isActive?: boolean;
   isComposite?: boolean;
   groupId?: number;
+  /** Filter items linked to a vendor (`item/?vendor_id=`). */
+  vendorId?: number;
 };
 
 export async function fetchItemsPage(
@@ -37,6 +39,9 @@ export async function fetchItemsPage(
   if (filters?.isActive != null) params.is_active = filters.isActive;
   if (filters?.isComposite != null) params.is_composite = filters.isComposite;
   if (filters?.groupId != null) params.group = filters.groupId;
+  if (typeof filters?.vendorId === "number" && Number.isFinite(filters.vendorId) && filters.vendorId > 0) {
+    params.vendor_id = filters.vendorId;
+  }
 
   const { data } = await api.get<ItemListResponse>(ITEM_PATHS.list, { params });
   assertEnvelopeSuccess(data);

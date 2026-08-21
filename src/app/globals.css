@@ -1,6 +1,17 @@
 @import "tailwindcss";
 @import "react-phone-number-input/style.css";
 
+/* Number fields: type to enter only — no spinner arrows. */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 @layer utilities {
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
@@ -167,21 +178,22 @@ html[data-font-size] :is(.text-2xl) {
   display: grid;
   /* Label hugs text — no empty leading gap before the label. */
   grid-template-columns: max-content minmax(0, 1fr);
-  align-items: start;
+  /* Center label with control (multi-select / textarea / single-line). */
+  align-items: center;
   column-gap: 0.75rem;
   row-gap: 0.25rem;
 }
 
 .dash-appearance-scope[data-form-label="left"] .field-label {
   margin-bottom: 0;
-  padding-top: 0.7rem;
+  padding-top: 0;
   text-align: left;
   white-space: nowrap;
 }
 
 .dash-appearance-scope[data-form-label="right"] .field-label {
   margin-bottom: 0;
-  padding-top: 0.7rem;
+  padding-top: 0;
   text-align: left;
   white-space: nowrap;
   order: 2;
@@ -189,6 +201,62 @@ html[data-font-size] :is(.text-2xl) {
 
 .dash-appearance-scope[data-form-label="right"] .field-control-wrap {
   order: 1;
+}
+
+/* Detail pages: keep label on first line of the value (not mid-block). */
+.dash-appearance-scope[data-form-label="left"] .detail-field.field-group,
+.dash-appearance-scope[data-form-label="right"] .detail-field.field-group {
+  align-items: start;
+  row-gap: 0;
+  container-type: inline-size;
+  container-name: detail-field;
+}
+
+.dash-appearance-scope[data-form-label="left"] .detail-field .field-label,
+.dash-appearance-scope[data-form-label="right"] .detail-field .field-label {
+  /* Optical match to value text-sm / leading-normal + py-1 */
+  padding-top: 0.4rem;
+  align-self: start;
+  line-height: 1.25;
+}
+
+.dash-appearance-scope[data-form-label="left"] .detail-field .field-control-wrap,
+.dash-appearance-scope[data-form-label="right"] .detail-field .field-control-wrap {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  overflow: visible;
+}
+
+/* When a detail field is extremely narrow, stack label above value. */
+@container detail-field (max-width: 11rem) {
+  .field-label {
+    grid-column: 1 / -1;
+    padding-top: 0 !important;
+    margin-bottom: 0.25rem;
+    white-space: normal;
+    order: 0 !important;
+  }
+
+  .field-control-wrap {
+    grid-column: 1 / -1;
+    order: 0 !important;
+  }
+}
+
+.detail-metrics-host {
+  container-type: inline-size;
+  container-name: detail-metrics;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Beside a map / narrow pane: one field per row until the pane is wide enough. */
+@container detail-metrics (max-width: 36rem) {
+  .detail-metrics-grid.form-field-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
 }
 
 @media (max-width: 639px) {
@@ -205,6 +273,11 @@ html[data-font-size] :is(.text-2xl) {
   }
   .dash-appearance-scope[data-form-label="right"] .field-control-wrap {
     order: 0;
+  }
+
+  .dash-appearance-scope[data-form-label="left"] .detail-field .field-label,
+  .dash-appearance-scope[data-form-label="right"] .detail-field .field-label {
+    padding-top: 0;
   }
 }
 

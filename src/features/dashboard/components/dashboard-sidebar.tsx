@@ -48,7 +48,7 @@ export function DashboardSidebar() {
   const isHydrogen = sidebarLayout === "hydrogen";
 
   const shell = cn(
-    "hidden h-full min-h-0 shrink-0 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain bg-white dark:bg-slate-900",
+    "hidden h-full min-h-0 shrink-0 flex-col overflow-hidden bg-white dark:bg-slate-900",
     isBoron
       ? "border-l border-slate-200 dark:border-slate-800"
       : "border-r border-slate-200 dark:border-slate-800",
@@ -201,7 +201,7 @@ function SidebarNestedNav({
           <div
             role="group"
             aria-label={label}
-            className="ml-4 mt-0.5 flex flex-col gap-0.5 border-l border-slate-200 pl-2.5 dark:border-slate-700"
+            className="mb-2 ml-4 mt-0.5 flex flex-col gap-1 border-l border-slate-200 pb-1.5 pl-2.5 dark:border-slate-700"
           >
             {items.map((item) => (
               <Link
@@ -446,13 +446,18 @@ function DashboardMainSidebar({
     <>
       <div
         className={cn(
-          "flex h-14 min-w-0 shrink-0 items-center overflow-hidden border-b border-slate-200 dark:border-slate-800",
+          "sticky top-0 z-10 flex h-14 min-w-0 shrink-0 items-center overflow-hidden border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900",
           expanded ? "px-4" : "justify-center px-0",
         )}
       >
         <DashboardAppBrand collapsed={!expanded} />
       </div>
-      <nav className={cn("flex min-h-0 min-w-0 flex-1 flex-col gap-0.5", expanded ? "p-3" : "items-center px-0 py-3")}>
+      <nav
+        className={cn(
+          "flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-x-hidden overflow-y-auto overscroll-y-contain",
+          expanded ? "p-3 pb-8" : "items-center px-0 py-3 pb-8",
+        )}
+      >
         <SidebarNavLink
           href={homeHref}
           active={homeActive}
@@ -682,14 +687,18 @@ function DashboardSettingsSidebar({
     <>
       <div
         className={cn(
-          "flex h-14 min-w-0 shrink-0 items-center overflow-hidden border-b border-slate-200 dark:border-slate-800",
+          "sticky top-0 z-10 flex h-14 min-w-0 shrink-0 items-center overflow-hidden border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900",
           expanded ? "px-4" : "justify-center px-0",
         )}
       >
         <DashboardAppBrand collapsed={!expanded} />
       </div>
-      <nav className={cn("flex min-h-0 min-w-0 flex-1 flex-col gap-0.5", expanded ? "p-3" : "items-center px-0 py-3")}>
-
+      <nav
+        className={cn(
+          "flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-x-hidden overflow-y-auto overscroll-y-contain",
+          expanded ? "p-3 pb-8" : "items-center px-0 py-3 pb-8",
+        )}
+      >
         <SidebarNavLink
           href={personalProfileHref}
           active={personalProfileActive}

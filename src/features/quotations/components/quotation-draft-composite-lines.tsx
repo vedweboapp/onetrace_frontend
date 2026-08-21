@@ -93,7 +93,7 @@ export function QuotationDraftCompositeLines({
                   {row.compositeItemId ? (
                     <button
                       type="button"
-                      className="truncate text-left text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                      className="truncate text-left text-blue-600 underline-offset-2 hover:underline"
                       onClick={() =>
                         onCompositeClick?.({
                           compositeItemId: row.compositeItemId as number,

@@ -3,21 +3,26 @@ import {
   orgCurrencyAffix,
   type OrgCurrencySettings,
 } from "@/shared/money/org-currency.types";
+import {
+  formatGroupedNumber,
+  groupedDecimalSeparator,
+  parseGroupedNumber,
+  sanitizeGroupedNumberDraft,
+} from "@/shared/number/digit-grouping.util";
 
-function formatIntegerPart(integerPart: string, digitSeparator: string): string {
-  if (digitSeparator === "12,34,567.89") {
-    let lastThree = integerPart.substring(integerPart.length - 3);
-    const otherBits = integerPart.substring(0, integerPart.length - 3);
-    if (otherBits !== "") lastThree = "," + lastThree;
-    return otherBits.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
-  }
-  if (digitSeparator === "1.234.567,89") {
-    return integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  }
-  if (digitSeparator === "1 234 567.89") {
-    return integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  }
-  return integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+/** Decimal mark from Company Settings → Currencies digit grouping. */
+export function orgMoneyDecimalSeparator(settings: OrgCurrencySettings = DEFAULT_ORG_CURRENCY): "." | "," {
+  return groupedDecimalSeparator(settings.digitSeparator);
+}
+
+/** Amount only (grouping + decimals), no currency symbol/code. */
+export function formatOrgMoneyNumber(
+  amount: number,
+  settings: OrgCurrencySettings = DEFAULT_ORG_CURRENCY,
+): string {
+  if (!Number.isFinite(amount)) return "";
+  const decimals = Number.isFinite(settings.decimalPlaces) ? settings.decimalPlaces : 2;
+  return formatGroupedNumber(amount, decimals, settings.digitSeparator);
 }
 
 /** Format a number using organization currency settings (Company Settings → Currencies). */
@@ -27,21 +32,39 @@ export function formatOrgMoney(
 ): string {
   if (!Number.isFinite(amount)) return "—";
 
-  const decimals = Number.isFinite(settings.decimalPlaces) ? settings.decimalPlaces : 2;
-  const parts = Math.abs(amount).toFixed(decimals).split(".");
-  const integerPart = parts[0] ?? "0";
-  const fraction = parts[1];
-
-  const formattedInteger = formatIntegerPart(integerPart, settings.digitSeparator);
-  const formattedNumber =
-    settings.digitSeparator === "1.234.567,89"
-      ? formattedInteger + (fraction ? `,${fraction}` : "")
-      : formattedInteger + (fraction ? `.${fraction}` : "");
-
-  const signed = amount < 0 ? `-${formattedNumber}` : formattedNumber;
+  const signed = formatOrgMoneyNumber(amount, settings);
   const affix = orgCurrencyAffix(settings);
 
   return settings.symbolPosition === "after" ? `${signed} ${affix}` : `${affix} ${signed}`;
+}
+
+/**
+ * Parse a typed/pasted amount using org grouping and decimal separators.
+ * Returns NaN when empty or invalid.
+ */
+export function parseOrgMoneyInput(
+  raw: unknown,
+  settings: OrgCurrencySettings = DEFAULT_ORG_CURRENCY,
+): number {
+  return parseGroupedNumber(raw, settings.digitSeparator);
+}
+
+export function parseOrgMoneyOrNull(
+  raw: unknown,
+  settings: OrgCurrencySettings = DEFAULT_ORG_CURRENCY,
+): number | null {
+  const n = parseOrgMoneyInput(raw, settings);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Keep digits, one decimal mark, grouping chars, and an optional leading minus. */
+export function sanitizeOrgMoneyDraft(raw: string, settings: OrgCurrencySettings = DEFAULT_ORG_CURRENCY): string {
+  return sanitizeGroupedNumberDraft(raw, settings.digitSeparator, true);
+}
+
+export function toCanonicalMoneyString(amount: number): string {
+  if (!Number.isFinite(amount)) return "";
+  return String(amount);
 }
 
 /** Coerce API/unknown values then format with org currency. */
@@ -53,7 +76,7 @@ export function formatOrgMoneyValue(
     typeof value === "number"
       ? value
       : typeof value === "string" && value.trim()
-        ? Number(value)
+        ? parseOrgMoneyInput(value, settings)
         : Number.NaN;
   return formatOrgMoney(n, settings);
 }

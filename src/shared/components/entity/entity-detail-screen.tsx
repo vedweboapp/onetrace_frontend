@@ -2,8 +2,17 @@
 
 import * as React from "react";
 import type { ReactNode } from "react";
-import { detailRecordSurfaceShellClassName } from "@/shared/components/layout/detail-metric-card";
+import {
+  detailRecordInnerClassName,
+  detailRecordSurfaceShellClassName,
+} from "@/shared/components/layout/detail-metric-card";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
+import {
+  entityDetailPageClassName,
+  entityDetailSurfaceClassName,
+  entityDetailSurfaceInnerClassName,
+  entityDetailTabPanelClassName,
+} from "@/shared/components/layout/detail-tab-layout";
 import { EntityDetailErrorState } from "@/shared/components/entity/entity-detail-error";
 import { EntityDetailLoadingSkeleton } from "@/shared/components/entity/entity-detail-loading";
 import { useEntityDetailBack } from "@/shared/hooks/use-entity-detail-back";
@@ -96,7 +105,7 @@ export function EntityDetailScreen<T>({
     ) : null;
 
   return (
-    <div className={cn("min-h-0 w-full pb-8 sm:pb-10", className)}>
+    <div className={cn(entityDetailPageClassName, "pb-8 sm:pb-10", className)}>
       <DetailPageHeader
         title={title}
         titleLoading={titleLoading}
@@ -108,11 +117,19 @@ export function EntityDetailScreen<T>({
       />
 
       {wrapSurface ? (
-        <SurfaceShell className={cn(detailRecordSurfaceShellClassName, "mt-3")}>
-          {renderSurface ? renderSurface(screenCtx) : defaultSurface}
+        <SurfaceShell className={cn(detailRecordSurfaceShellClassName, entityDetailSurfaceClassName)}>
+          <div className={cn(detailRecordInnerClassName, entityDetailSurfaceInnerClassName)}>
+            {renderSurface ? (
+              <div className={entityDetailTabPanelClassName}>{renderSurface(screenCtx)}</div>
+            ) : (
+              defaultSurface
+            )}
+          </div>
         </SurfaceShell>
+      ) : renderSurface ? (
+        <div className={entityDetailTabPanelClassName}>{renderSurface(screenCtx)}</div>
       ) : (
-        (renderSurface ? renderSurface(screenCtx) : defaultSurface)
+        defaultSurface
       )}
 
       {footer}

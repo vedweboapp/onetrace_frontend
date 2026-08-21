@@ -16,6 +16,12 @@ export type DetailAddressLocationLabels = {
   city: React.ReactNode;
 };
 
+export type DetailAddressLocationRequiredMessages = {
+  country?: string;
+  state?: string;
+  city?: string;
+};
+
 type Props = {
   country: string | null | undefined;
   state: string | null | undefined;
@@ -23,6 +29,8 @@ type Props = {
   labels: DetailAddressLocationLabels;
   editAriaLabel: string;
   empty?: React.ReactNode;
+  /** When set, matching fields show required mark and block empty save. */
+  requiredMessages?: DetailAddressLocationRequiredMessages;
   /** Receives ISO code; caller maps to API country name and may clear state/city. */
   onSaveCountry: (countryIso: string) => Promise<void>;
   /** Receives ISO code; caller maps to API state name and may clear city. */
@@ -37,6 +45,7 @@ export function DetailAddressLocationFields({
   labels,
   editAriaLabel,
   empty = "—",
+  requiredMessages,
   onSaveCountry,
   onSaveState,
   onSaveCity,
@@ -72,6 +81,10 @@ export function DetailAddressLocationFields({
   const showStateSelect = stateOptions.length > 0;
   const showCitySelect = cityOptions.length > 0;
 
+  const countryRequired = Boolean(requiredMessages?.country);
+  const stateRequired = Boolean(requiredMessages?.state) && showStateSelect;
+  const cityRequired = Boolean(requiredMessages?.city) && showCitySelect;
+
   return (
     <>
       <DetailEditableField
@@ -82,6 +95,8 @@ export function DetailAddressLocationFields({
         selectSearchable
         editAriaLabel={editAriaLabel}
         empty={empty}
+        required={countryRequired}
+        requiredMessage={requiredMessages?.country}
         onSave={onSaveCountry}
       >
         {countryDisplay || null}
@@ -96,6 +111,8 @@ export function DetailAddressLocationFields({
           selectSearchable
           editAriaLabel={editAriaLabel}
           empty={empty}
+          required={stateRequired}
+          requiredMessage={requiredMessages?.state}
           onSave={onSaveState}
         >
           {stateDisplay || null}
@@ -122,6 +139,8 @@ export function DetailAddressLocationFields({
           selectSearchable
           editAriaLabel={editAriaLabel}
           empty={empty}
+          required={cityRequired}
+          requiredMessage={requiredMessages?.city}
           onSave={onSaveCity}
         >
           {cityDisplay || null}
