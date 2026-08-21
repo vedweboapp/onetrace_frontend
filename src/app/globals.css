@@ -278,10 +278,65 @@ html[data-font-size] :is(.text-2xl) {
   min-width: 0;
 }
 
+/*
+ * Very light CRM-style row rules between detail fields.
+ * Column gap is padding so borders read as one continuous line across both columns.
+ */
+.dash-appearance-scope .detail-metrics-grid > .detail-field {
+  border-bottom: 1px solid rgb(241 245 249); /* slate-100 */
+  padding-top: 0.7rem;
+  padding-bottom: 0.7rem;
+}
+
+.dash-appearance-scope.dark .detail-metrics-grid > .detail-field,
+:is(.dark) .dash-appearance-scope .detail-metrics-grid > .detail-field {
+  border-bottom-color: rgb(30 41 59 / 0.9); /* slate-800 */
+}
+
+@media (min-width: 640px) {
+  .dash-appearance-scope .detail-metrics-grid.sm\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(odd) {
+    padding-right: 1.25rem;
+  }
+  .dash-appearance-scope .detail-metrics-grid.sm\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(even) {
+    padding-left: 1.25rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .dash-appearance-scope .detail-metrics-grid.md\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(odd) {
+    padding-right: 1.25rem;
+  }
+  .dash-appearance-scope .detail-metrics-grid.md\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(even) {
+    padding-left: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .dash-appearance-scope .detail-metrics-grid.lg\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(odd) {
+    padding-right: 1.25rem;
+  }
+  .dash-appearance-scope .detail-metrics-grid.lg\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(even) {
+    padding-left: 1.25rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .dash-appearance-scope .detail-metrics-grid.xl\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(odd) {
+    padding-right: 1.25rem;
+  }
+  .dash-appearance-scope .detail-metrics-grid.xl\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(even) {
+    padding-left: 1.25rem;
+  }
+}
+
 /* Beside a map / narrow pane: one field per row until the pane is wide enough. */
 @container detail-metrics (max-width: 36rem) {
   .detail-metrics-grid.form-field-row {
     grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .dash-appearance-scope .detail-metrics-grid > .detail-field {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
 }
 

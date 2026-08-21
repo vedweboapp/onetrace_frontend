@@ -77,6 +77,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
     register,
     reset,
     setValue,
+    clearErrors,
     setError,
     handleSubmit,
     formState: { errors },
@@ -206,6 +207,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
               control={control}
               register={register}
               setValue={setValue}
+              clearErrors={clearErrors}
               errors={errors}
               disabled={saving}
               idPrefix="client-address"

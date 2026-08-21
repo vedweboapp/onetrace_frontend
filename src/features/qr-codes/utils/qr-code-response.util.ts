@@ -101,19 +101,51 @@ export function parseQrCodeGenerateResponse(data: unknown): QrCodeGenerateResult
   if (typeof data !== "object" || data === null) {
     throw new ApiBusinessError("Unexpected QR generate response");
   }
+
+  const message =
+    "message" in data && typeof (data as { message?: unknown }).message === "string"
+      ? (data as { message: string }).message
+      : undefined;
+
+  const payload =
+    "success" in data &&
+    typeof (data as { data?: unknown }).data === "object" &&
+    (data as { data?: unknown }).data !== null
+      ? (data as { data: unknown }).data
+      : data;
+
+  if (typeof payload === "object" && payload !== null && "batch" in payload) {
+    const raw = payload as {
+      batch: QrCodeGenerateResult["batch"];
+      qr_codes?: QrCode[];
+    };
+    const batch = raw.batch;
+    if (typeof batch === "object" && batch !== null && typeof batch.id === "number") {
+      const qrCodes = Array.isArray(raw.qr_codes) ? raw.qr_codes.map(normalizeQrCode) : [];
+      return normalizeQrCodeGenerateResult(
+        {
+          batch: {
+            id: batch.id,
+            batch_number: typeof batch.batch_number === "string" ? batch.batch_number : "",
+            quantity:
+              typeof batch.quantity === "number" && Number.isFinite(batch.quantity)
+                ? batch.quantity
+                : qrCodes.length,
+            created_at: typeof batch.created_at === "string" ? batch.created_at : "",
+            created_by: batch.created_by ?? null,
+          },
+          qr_codes: qrCodes,
+        },
+        message,
+      );
+    }
+  }
+
   if ("success" in data) {
     const envelope = data as ApiEnvelope<QrCodeGenerateResult | QrCode[]>;
     if (!envelope.success || envelope.data == null) {
       const msg = typeof envelope.message === "string" ? envelope.message : "Request failed";
       throw new ApiBusinessError(msg);
-    }
-    if (
-      typeof envelope.data === "object" &&
-      envelope.data !== null &&
-      "batch" in envelope.data &&
-      "qr_codes" in envelope.data
-    ) {
-      return normalizeQrCodeGenerateResult(envelope.data as QrCodeGenerateResult, envelope.message);
     }
     if (Array.isArray(envelope.data)) {
       return {
@@ -129,16 +161,7 @@ export function parseQrCodeGenerateResponse(data: unknown): QrCodeGenerateResult
       };
     }
   }
-  if (
-    "data" in data &&
-    typeof (data as { data?: unknown }).data === "object" &&
-    (data as { data?: unknown }).data !== null &&
-    "batch" in ((data as { data: QrCodeGenerateResult }).data) &&
-    "qr_codes" in ((data as { data: QrCodeGenerateResult }).data)
-  ) {
-    const body = data as { data: QrCodeGenerateResult; message?: string };
-    return normalizeQrCodeGenerateResult(body.data, body.message);
-  }
+
   if ("results" in data && Array.isArray((data as QrCodeDrfListResponse).results)) {
     return {
       batch: {

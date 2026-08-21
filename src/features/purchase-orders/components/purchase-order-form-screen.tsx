@@ -113,6 +113,7 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
     reset,
     setValue,
     getValues,
+    clearErrors,
     setError,
     handleSubmit,
     formState: { errors },
@@ -532,6 +533,7 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
                 control={control}
                 register={register}
                 setValue={setValue}
+                clearErrors={clearErrors}
                 errors={errors}
                 disabled={saving}
                 idPrefix="po-address"
