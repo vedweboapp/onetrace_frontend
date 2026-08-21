@@ -184,7 +184,6 @@ export function ClientProjectsTab({ clientId }: Props) {
         <EntityDataTable
           columns={columns}
           rows={items}
-          minBodyRows={pageSize}
           onRowClick={(row) => openProjectDetail(row.id)}
         />
         <DataTablePaginationBar

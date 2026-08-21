@@ -111,25 +111,47 @@ function SidebarNavLink({
   /** Kept for call-site consistency; leaf items use soft active styles. */
   resolved?: ReturnType<typeof resolveDashboardAccent>;
 }) {
+  const iconEl = (
+    <Icon
+      className={cn(
+        "size-[18px] shrink-0",
+        active ? "opacity-100" : "text-slate-500 dark:text-slate-400",
+      )}
+      strokeWidth={1.75}
+      aria-hidden
+    />
+  );
+
+  if (!expanded) {
+    return (
+      <Link
+        href={href}
+        title={label}
+        className="flex w-full shrink-0 justify-center py-0.5"
+      >
+        <span
+          className={cn(
+            "inline-flex size-9 items-center justify-center rounded-lg text-sm font-medium transition",
+            active ? navLeafActive() : navInactive(),
+          )}
+        >
+          {iconEl}
+          <span className="sr-only">{label}</span>
+        </span>
+      </Link>
+    );
+  }
+
   return (
     <Link
       href={href}
-      title={expanded ? undefined : label}
       className={cn(
-        "flex items-center rounded-lg text-sm font-medium transition",
-        expanded ? "gap-3 px-3 py-2" : "mx-auto size-10 justify-center p-0",
+        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
         active ? navLeafActive() : navInactive(),
       )}
     >
-      <Icon
-        className={cn(
-          "size-[18px] shrink-0",
-          active ? "opacity-100" : "text-slate-500 dark:text-slate-400",
-        )}
-        strokeWidth={1.75}
-        aria-hidden
-      />
-      {expanded ? <span className="truncate">{label}</span> : <span className="sr-only">{label}</span>}
+      {iconEl}
+      <span className="truncate">{label}</span>
     </Link>
   );
 }
@@ -303,7 +325,7 @@ function SidebarCollapsedFlyout({
   return (
     <div
       ref={triggerRef}
-      className="relative"
+      className="relative flex w-full shrink-0 justify-center py-0.5"
       onMouseEnter={openMenu}
       onMouseLeave={scheduleClose}
     >
@@ -313,7 +335,7 @@ function SidebarCollapsedFlyout({
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
-          "mx-auto flex size-10 items-center justify-center rounded-lg text-sm font-medium transition",
+          "inline-flex size-9 items-center justify-center rounded-lg text-sm font-medium transition",
           active ? navParentActive() : navInactive(),
         )}
       >
@@ -469,7 +491,9 @@ function DashboardMainSidebar({
       <nav
         className={cn(
           "flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain",
-          expanded ? "gap-0.5 p-2.5 pb-8" : "items-center gap-1.5 px-1.5 py-3 pb-8",
+          expanded
+            ? "gap-0.5 p-2.5 pb-8"
+            : "items-stretch gap-0.5 px-0 py-3 pb-8 scrollbar-hide",
         )}
       >
         <SidebarNavLink
@@ -710,7 +734,9 @@ function DashboardSettingsSidebar({
       <nav
         className={cn(
           "flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain",
-          expanded ? "gap-0.5 p-2.5 pb-8" : "items-center gap-1.5 px-1.5 py-3 pb-8",
+          expanded
+            ? "gap-0.5 p-2.5 pb-8"
+            : "items-stretch gap-0.5 px-0 py-3 pb-8 scrollbar-hide",
         )}
       >
         <SidebarNavLink

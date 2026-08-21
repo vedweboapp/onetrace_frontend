@@ -32,6 +32,7 @@ import {
   detailTabBodyClassName,
   detailTabErrorClassName,
   detailTabFilterBarClassName,
+  detailTabFillViewportClassName,
   detailTabSectionClassName,
   detailTabTitleClassName,
 } from "@/shared/components/layout/detail-tab-layout";
@@ -532,16 +533,18 @@ export function ProjectJobsTab({ projectId }: Props) {
             </div>
           </SurfaceShell>
         ) : tableRows.length === 0 ? (
-          <ListPageEmptyStates
-            emptyStateKind={emptyStateKind}
-            onboarding={{
-              iconName: "jobStatus",
-              title: t("emptyTitle"),
-              description: t("emptyDescription"),
-              action: null,
-            }}
-            onClearFilters={clearFilters}
-          />
+          <div className={detailTabFillViewportClassName}>
+            <ListPageEmptyStates
+              emptyStateKind={emptyStateKind}
+              onboarding={{
+                iconName: "jobStatus",
+                title: t("emptyTitle"),
+                description: t("emptyDescription"),
+                action: null,
+              }}
+              onClearFilters={clearFilters}
+            />
+          </div>
         ) : (
           <SurfaceShell className="rounded-none border-0">
             <EntityDataTable
