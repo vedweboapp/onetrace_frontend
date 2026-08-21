@@ -9,6 +9,7 @@ import type { Contact, ContactType } from "@/features/contacts/types/contact.typ
 import { EntityDataTable, EntityDetailTabLoadingState, entityCol } from "@/shared/components/entity";
 import { DetailTabListShell } from "@/shared/components/layout/detail-tab-list-shell";
 import { detailTabToolbarClassName } from "@/shared/components/layout/detail-tab-layout";
+import { cn } from "@/core/utils/http.util";
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
@@ -148,7 +149,7 @@ export function EntityContactsTab({ entityType, entityId }: Props) {
       isEmpty={items.length === 0}
       toolbar={
         !loading && !loadError && items.length > 0 ? (
-          <div className={detailTabToolbarClassName}>{addContactButton}</div>
+          <div className={cn(detailTabToolbarClassName, "justify-end")}>{addContactButton}</div>
         ) : null
       }
       loadingFallback={<EntityDetailTabLoadingState />}

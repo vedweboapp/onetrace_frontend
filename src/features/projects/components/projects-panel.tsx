@@ -14,7 +14,8 @@ import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { projectTypesById, resolveProjectTypeChipData } from "@/features/projects/utils/project-type-id.util";
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
-import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { DetailEntityLink, EntityDataTable, entityCol, entityNameLinkClassName } from "@/shared/components/entity";
+import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
@@ -294,7 +295,15 @@ export function ProjectsPanel() {
     return [
       massSel.tableColumn,
       c.primary("name", t("table.name"), (r) => r.name),
-      c.text("client", t("table.client"), (r) => projectRowClientLabel(r, clientLabelById)),
+      c.link(
+        "client",
+        t("table.client"),
+        (r) => projectRowClientLabel(r, clientLabelById),
+        (r) => {
+          const id = getProjectClientId(r);
+          return id != null ? `${routes.dashboard.clients}/${id}` : null;
+        },
+      ),
       c.custom("projectType", t("table.projectType"), (r) => {
         const chip = resolveProjectTypeChipData(r, projectTypeById);
         return chip ? <ProjectTypeChip row={chip} /> : "—";
@@ -446,14 +455,28 @@ export function ProjectsPanel() {
             <ListPageCardGrid>
               {items.map((row) => {
                 const typeChip = resolveProjectTypeChipData(row, projectTypeById);
+                const clientId = getProjectClientId(row);
+                const clientLabel = projectRowClientLabel(row, clientLabelById);
                 return (
                 <ListPageCard
                   key={row.id}
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
                   leading={massSel.cardLeading(row)}
-                  title={row.name}
-                  subtitle={projectRowClientLabel(row, clientLabelById)}
+                  title={<span className={entityNameLinkClassName}>{row.name}</span>}
+                  subtitle={
+                    clientId != null ? (
+                      <DetailEntityLink
+                        href={`${routes.dashboard.clients}/${clientId}`}
+                        className="font-medium"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {clientLabel}
+                      </DetailEntityLink>
+                    ) : (
+                      clientLabel
+                    )
+                  }
                   meta={`${formatDay(row.start_date)} – ${formatDay(row.end_date)}`}
                   description={row.description?.trim() || undefined}
                   footer={
@@ -523,7 +546,7 @@ export function ProjectsPanel() {
                     />
                   }
                 />
-              );
+                );
               })}
             </ListPageCardGrid>
           </div>

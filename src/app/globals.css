@@ -178,21 +178,22 @@ html[data-font-size] :is(.text-2xl) {
   display: grid;
   /* Label hugs text — no empty leading gap before the label. */
   grid-template-columns: max-content minmax(0, 1fr);
-  align-items: start;
+  /* Center label with control (multi-select / textarea / single-line). */
+  align-items: center;
   column-gap: 0.75rem;
   row-gap: 0.25rem;
 }
 
 .dash-appearance-scope[data-form-label="left"] .field-label {
   margin-bottom: 0;
-  padding-top: 0.7rem;
+  padding-top: 0;
   text-align: left;
   white-space: nowrap;
 }
 
 .dash-appearance-scope[data-form-label="right"] .field-label {
   margin-bottom: 0;
-  padding-top: 0.7rem;
+  padding-top: 0;
   text-align: left;
   white-space: nowrap;
   order: 2;
@@ -228,8 +229,8 @@ html[data-font-size] :is(.text-2xl) {
   overflow: visible;
 }
 
-/* When a detail field is squeezed, stack label above value (span full grid). */
-@container detail-field (max-width: 18rem) {
+/* When a detail field is extremely narrow, stack label above value. */
+@container detail-field (max-width: 11rem) {
   .field-label {
     grid-column: 1 / -1;
     padding-top: 0 !important;

@@ -14,7 +14,8 @@ import {
   useEntityListMassActions,
 } from "@/shared/mass-actions";
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
-import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { DetailEntityLink, EntityDataTable, entityCol, entityNameLinkClassName } from "@/shared/components/entity";
+import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
@@ -251,7 +252,15 @@ export function SitesPanel() {
         { narrow: true },
       ),
       c.primary("name", t("table.name"), (r) => r.site_name),
-      c.text("client", t("table.client"), (r) => siteClientName(r, clientLabelById)),
+      c.link(
+        "client",
+        t("table.client"),
+        (r) => siteClientName(r, clientLabelById),
+        (r) => {
+          const id = siteClientId(r);
+          return id != null ? `${routes.dashboard.clients}/${id}` : null;
+        },
+      ),
       c.truncate("address", t("table.address"), (r) => r.address_line_1?.trim() || "—", { maxWidth: "md" }),
       c.truncate("what3words", t("table.what3words"), (r) => r.what3words?.trim() || "—", { maxWidth: "sm", responsive: "md" }),
       c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive")),
@@ -343,7 +352,10 @@ export function SitesPanel() {
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>
-              {items.map((row) => (
+              {items.map((row) => {
+                const clientId = siteClientId(row);
+                const clientLabel = siteClientName(row, clientLabelById);
+                return (
                 <ListPageCard
                   key={row.id}
                   dataListRowId={row.id}
@@ -357,8 +369,20 @@ export function SitesPanel() {
                       onChange={() => mass.selection.toggleRowSelected(row.id)}
                     />
                   }
-                  title={row.site_name}
-                  subtitle={siteClientName(row, clientLabelById)}
+                  title={<span className={entityNameLinkClassName}>{row.site_name}</span>}
+                  subtitle={
+                    clientId != null ? (
+                      <DetailEntityLink
+                        href={`${routes.dashboard.clients}/${clientId}`}
+                        className="font-medium"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {clientLabel}
+                      </DetailEntityLink>
+                    ) : (
+                      clientLabel
+                    )
+                  }
                   meta={row.city?.trim() || row.state?.trim() || row.country?.trim() || "—"}
                   footer={<div className="flex w-full items-center justify-between gap-3"><ActiveStatusBadge active={row.is_active} label={row.is_active ? t("status.active") : t("status.inactive")} /><span className="text-xs text-slate-500 dark:text-slate-400">{tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}</span></div>}
                   onCardClick={() => openSiteDetail(row.id)}
@@ -369,25 +393,14 @@ export function SitesPanel() {
                         { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => router.push(buildPathWithStoredBack(`${pathname}/${row.id}/edit`, listHref)) },
                         { id: "delete", label: t("delete"), icon: Trash2, tone: "danger", onSelect: () => { setDeletingSite(row); setDeleteOpen(true); } },
                         row.is_active
-                          ? {
-                              id: "deactivate",
-                              label: t("deactivate"),
-                              icon: PowerOff,
-                              onSelect: () => void handleToggleActive(row, false),
-                              disabled: togglingId === row.id,
-                            }
-                          : {
-                              id: "activate",
-                              label: t("activate"),
-                              icon: Power,
-                              onSelect: () => void handleToggleActive(row, true),
-                              disabled: togglingId === row.id,
-                            },
+                          ? { id: "deactivate", label: t("deactivate"), icon: PowerOff, onSelect: () => void handleToggleActive(row, false), disabled: togglingId === row.id }
+                          : { id: "activate", label: t("activate"), icon: Power, onSelect: () => void handleToggleActive(row, true), disabled: togglingId === row.id },
                       ]}
                     />
                   }
                 />
-              ))}
+                );
+              })}
             </ListPageCardGrid>
           </div>
         ) : (

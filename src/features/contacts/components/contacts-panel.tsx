@@ -8,9 +8,10 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchAllContactIds, fetchContactsPage, updateContact } from "@/features/contacts/api/contact.api";
 import type { Contact, ContactType } from "@/features/contacts/types/contact.types";
-import { contactParentName } from "@/features/contacts/utils/contact-nested-fields.util";
+import { contactParentName, getContactClientId, getContactType, getContactVendorId } from "@/features/contacts/utils/contact-nested-fields.util";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
-import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { DetailEntityLink, EntityDataTable, entityCol, entityNameLinkClassName } from "@/shared/components/entity";
+import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
@@ -296,7 +297,19 @@ export function ContactsPanel() {
         { narrow: true },
       ),
       c.primary("name", t("table.name"), (r) => r.name),
-      c.text("parent", parentColumnLabel, (r) => contactParentName(r, parentLabels)),
+      c.link(
+        "parent",
+        parentColumnLabel,
+        (r) => contactParentName(r, parentLabels),
+        (r) => {
+          if (getContactType(r) === "vendor") {
+            const id = getContactVendorId(r);
+            return id != null ? `${routes.dashboard.vendors}/${id}` : null;
+          }
+          const id = getContactClientId(r);
+          return id != null ? `${routes.dashboard.clients}/${id}` : null;
+        },
+      ),
       c.truncate("email", t("table.email"), (r) => r.email),
       c.phone("phone", t("table.phone"), (r) => r.phone),
       c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive")),
@@ -435,7 +448,19 @@ export function ContactsPanel() {
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>
-              {items.map((row) => (
+              {items.map((row) => {
+                const parentHref =
+                  getContactType(row) === "vendor"
+                    ? (() => {
+                        const id = getContactVendorId(row);
+                        return id != null ? `${routes.dashboard.vendors}/${id}` : null;
+                      })()
+                    : (() => {
+                        const id = getContactClientId(row);
+                        return id != null ? `${routes.dashboard.clients}/${id}` : null;
+                      })();
+                const parentLabel = contactParentName(row, parentLabels);
+                return (
                 <ListPageCard
                   key={row.id}
                   dataListRowId={row.id}
@@ -449,8 +474,20 @@ export function ContactsPanel() {
                       onChange={() => mass.selection.toggleRowSelected(row.id)}
                     />
                   }
-                  title={row.name}
-                  subtitle={contactParentName(row, parentLabels)}
+                  title={<span className={entityNameLinkClassName}>{row.name}</span>}
+                  subtitle={
+                    parentHref ? (
+                      <DetailEntityLink
+                        href={parentHref}
+                        className="font-medium"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {parentLabel}
+                      </DetailEntityLink>
+                    ) : (
+                      parentLabel
+                    )
+                  }
                   meta={row.email}
                   footer={
                     <div className="flex w-full flex-wrap items-center justify-between gap-3">
@@ -501,7 +538,8 @@ export function ContactsPanel() {
                     />
                   }
                 />
-              ))}
+                );
+              })}
             </ListPageCardGrid>
           </div>
         ) : (

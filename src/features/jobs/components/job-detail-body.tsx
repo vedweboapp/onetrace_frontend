@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { fetchItemsPage } from "@/features/items/api/item.api";
 import type { Job } from "@/features/jobs/types/job.types";
 import { JobFormsSection } from "@/features/job-forms/components/job-forms-section";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -18,6 +17,7 @@ import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import type { JobChecklistItem } from "@/features/jobs/types/job.types";
 import { JobChecklistsSection } from "@/features/jobs/components/job-checklists-section";
+import { JobDetailWorkScopeEditor } from "@/features/jobs/components/job-detail-work-scope-editor";
 import {
   getJobStatusId,
   getJobStatusRow,
@@ -30,21 +30,10 @@ import {
   jobSiteLabel,
   formatJobTimeDisplay,
 } from "@/features/jobs/utils/job-nested-fields.util";
-import { formatMoneyDisplay } from "@/features/invoices/utils/invoice-money.util";
-import {
-  normalizeJobMeta,
-  resolveJobMetaCompositeItemId,
-} from "@/features/jobs/utils/job-meta-payload.util";
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
-import {
-  DetailLinkedTable,
-  DetailLinkedTableRow,
-  DetailLinkedTableTd,
-  detailLinkedTableCellClassName,
-} from "@/shared/components/layout/detail-linked-table";
 import {
   DetailFieldsLayout,
   DetailMetricCard,
@@ -54,10 +43,8 @@ import {
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
-import {
-  formatApiDateForHtmlDateInput,
-  formatFlexibleApiDate,
-} from "@/shared/utils/api-date-parse.util";
+import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
+import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { cn } from "@/core/utils/http.util";
 import { CalendarDays, ChevronRight, Layers, MapPinned } from "lucide-react";
 import { DrawingPinPreviewModal } from "@/features/projects/components/drawing-pin-preview-modal";
@@ -674,8 +661,6 @@ export function JobDetailBody({
   onOpenScheduling?: () => void;
 }) {
   const t = useTranslations("Dashboard.jobs");
-  const tGroups = useTranslations("Dashboard.groups");
-  const tItems = useTranslations("Dashboard.items");
   const tQa = useTranslations("Dashboard.jobs.qualityAssurance");
   const tMeta = useTranslations("Dashboard.common.detail");
   const tActions = useTranslations("Dashboard.common.actions");
@@ -799,15 +784,6 @@ export function JobDetailBody({
   const levelSnapshots = useLevelSnapshots(levelsAsDrawings);
 
   const statusRow = getJobStatusRow(detail);
-  const meta = normalizeJobMeta(detail.job_meta);
-  const compositeRows = meta?.composite_items ?? [];
-  const scopeTotal =
-    meta?.total != null && Number.isFinite(meta.total)
-      ? meta.total
-      : compositeRows.reduce(
-          (sum, row) => sum + (row.amount != null && Number.isFinite(row.amount) ? row.amount : 0),
-          0,
-        );
   const formEntries = jobFormEntries(detail);
   const checklistEntries = jobChecklistEntries(detail);
   const checklistMarked = jobChecklistIsMarked(detail);
@@ -902,37 +878,6 @@ export function JobDetailBody({
     },
     [detail.id, formEntries],
   );
-
-  const [rawCompositeNameById, setRawCompositeNameById] = React.useState<Map<number, string>>(new Map());
-  const compositeNameById = React.useMemo(
-    () => (compositeRows.length === 0 ? new Map<number, string>() : rawCompositeNameById),
-    [compositeRows.length, rawCompositeNameById],
-  );
-
-  React.useEffect(() => {
-    if (compositeRows.length === 0) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items } = await fetchItemsPage(1, 500, { isActive: true });
-        if (cancelled) return;
-        const map = new Map<number, string>();
-        for (const item of items) {
-          map.set(item.id, item.name?.trim() || item.sku?.trim() || "—");
-        }
-        setRawCompositeNameById(map);
-      } catch {
-        if (!cancelled) setRawCompositeNameById(new Map());
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [compositeRows.length]);
-
-  function compositeItemId(row: (typeof compositeRows)[number]): number | null {
-    return resolveJobMetaCompositeItemId(row);
-  }
 
   const clientId = detail.client && typeof detail.client === "object" ? detail.client.id : typeof detail.client === "number" ? detail.client : null;
   const projectId =
@@ -1059,113 +1004,12 @@ export function JobDetailBody({
           }}
         />
 
-        {!isProjectJob && meta && (meta.total != null || compositeRows.length > 0) ? (
+        {!isProjectJob ? (
           <DetailPanelCard title={t("detail.sectionWorkScope")}>
-            {compositeRows.length > 0 ? (
-              <div className="mt-3 space-y-3">
-                <DetailLinkedTable
-                  showRowNumbers={false}
-                  tableClassName="min-w-[720px]"
-                  columns={[
-                    { id: "group", header: tGroups("title"), widthClass: "w-[18%]" },
-                    { id: "name", header: tItems("title"), widthClass: "w-[28%]" },
-                    { id: "qty", header: t("lineItems.qty"), narrow: true, align: "right", widthClass: "w-20" },
-                    { id: "unit", header: t("lineItems.rate"), narrow: true, align: "right", widthClass: "w-28" },
-                    { id: "amount", header: t("lineItems.amount"), narrow: true, align: "right", widthClass: "w-28" },
-                  ]}
-                >
-                  {compositeRows.map((row, index) => {
-                    const qty = Number.isFinite(row.quantity) ? row.quantity : 0;
-                    const lineTotal =
-                      row.amount != null && Number.isFinite(row.amount)
-                        ? row.amount
-                        : 0;
-                    const unitFromAmount = qty > 0 && lineTotal > 0 ? lineTotal / qty : 0;
-                    const unitFromPrice =
-                      typeof row.selling_price === "number" && Number.isFinite(row.selling_price)
-                        ? row.selling_price
-                        : row.item &&
-                            typeof row.item === "object" &&
-                            typeof row.item.selling_price === "number" &&
-                            Number.isFinite(row.item.selling_price)
-                          ? row.item.selling_price
-                          : 0;
-                    const unit = unitFromAmount > 0 ? unitFromAmount : unitFromPrice;
-                    const amount = lineTotal > 0 ? lineTotal : unit > 0 ? unit * qty : 0;
-                    const itemId = compositeItemId(row);
-                    const name =
-                      row.name?.trim() ||
-                      (row.item && typeof row.item === "object" && row.item.name?.trim()) ||
-                      (itemId != null ? compositeNameById.get(itemId) : undefined) ||
-                      "—";
-                    const groupName = row.group?.name?.trim() || "—";
-                    return (
-                      <DetailLinkedTableRow key={`${itemId ?? "row"}-${index}`} index={index}>
-                        <DetailLinkedTableTd className={detailLinkedTableCellClassName({})}>
-                          {groupName}
-                        </DetailLinkedTableTd>
-                        <DetailLinkedTableTd
-                          className={detailLinkedTableCellClassName({
-                            cellClassName: "font-medium text-slate-900 dark:text-slate-100",
-                          })}
-                        >
-                          {itemId != null ? (
-                            <DetailEntityLink
-                              href={`${routes.dashboard.items}/${itemId}`}
-                              className="text-blue-600 underline-offset-2 hover:underline"
-                            >
-                              {name}
-                            </DetailEntityLink>
-                          ) : (
-                            name
-                          )}
-                        </DetailLinkedTableTd>
-                        <DetailLinkedTableTd
-                          narrow
-                          className={detailLinkedTableCellClassName({
-                            align: "right",
-                            narrow: true,
-                            cellClassName: "tabular-nums",
-                          })}
-                        >
-                          {qty || "—"}
-                        </DetailLinkedTableTd>
-                        <DetailLinkedTableTd
-                          narrow
-                          className={detailLinkedTableCellClassName({
-                            align: "right",
-                            narrow: true,
-                            cellClassName: "tabular-nums",
-                          })}
-                        >
-                          {unit > 0 ? formatMoneyDisplay(unit, locale) : "—"}
-                        </DetailLinkedTableTd>
-                        <DetailLinkedTableTd
-                          narrow
-                          className={detailLinkedTableCellClassName({
-                            align: "right",
-                            narrow: true,
-                            cellClassName: "tabular-nums font-medium",
-                          })}
-                        >
-                          {amount > 0 ? formatMoneyDisplay(amount, locale) : "—"}
-                        </DetailLinkedTableTd>
-                      </DetailLinkedTableRow>
-                    );
-                  })}
-                </DetailLinkedTable>
-                <div className="ml-auto max-w-xs rounded-xl border border-slate-200 p-3 dark:border-slate-700">
-                  <div className="flex items-center justify-between gap-6">
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">
-                      {t("fields.scopeTotal")}
-                    </span>
-                    <span className="text-xl font-bold tabular-nums">
-                      {formatMoneyDisplay(scopeTotal, locale)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ) : null}
+            <JobDetailWorkScopeEditor
+              detail={detail}
+              onSave={(job_meta) => patchField({ job_meta })}
+            />
           </DetailPanelCard>
         ) : null}
 
@@ -1187,15 +1031,9 @@ export function JobDetailBody({
             <DetailMetricCard label={t("fields.jobTime")}>
               {formatJobTimeDisplay(detail.job_time)}
             </DetailMetricCard>
-            <DetailEditableField
-              label={t("fields.startDate")}
-              value={formatApiDateForHtmlDateInput(detail.start_date)}
-              kind="text"
-              editAriaLabel={tActions("edit")}
-              onSave={(next) => patchField({ start_date: next })}
-            >
+            <DetailMetricCard label={t("fields.startDate")}>
               {formatFlexibleApiDate(detail.start_date, dateFmt)}
-            </DetailEditableField>
+            </DetailMetricCard>
             <DetailMetricCard label={t("fields.endDate")}>
               {detail.completed_at
                 ? formatFlexibleApiDate(detail.completed_at, dateFmt)
@@ -1284,11 +1122,14 @@ export function JobDetailBody({
                               });
                             }}
                             onOpenPinDetail={(pin) => {
-                              router.push(
-                                `${routes.dashboard.jobPinDetail(detail.id, pin.id)}?back=${encodeURIComponent(
-                                  `${routes.dashboard.jobs}/${detail.id}`,
-                                )}`,
-                              );
+                              const backHref = `${routes.dashboard.jobs}/${detail.id}`;
+                              // Project jobs: open via project pin route (loads pin from drawings API).
+                              // Service jobs without a project: keep job-scoped pin route.
+                              const detailHref =
+                                projectId != null
+                                  ? routes.dashboard.projectPinDetail(projectId, pin.id, level.id)
+                                  : routes.dashboard.jobPinDetail(detail.id, pin.id, level.id);
+                              router.push(mergeUrlQueryParam(detailHref, "back", backHref));
                             }}
                             getPinForm={getPinForm}
                             checklistsComplete={checklistsComplete}

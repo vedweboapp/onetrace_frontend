@@ -68,6 +68,18 @@ export function ClientDetailBody({
     [t],
   );
 
+  const addressRequiredMessages = React.useMemo(
+    () => ({
+      addressType: t("validation.addressType"),
+      addressLine1: t("validation.addressLine1"),
+      pincode: t("validation.pincode"),
+      country: t("validation.country"),
+      state: t("validation.state"),
+      city: t("validation.city"),
+    }),
+    [t],
+  );
+
   return (
     <DetailPagePadding className={detailPageBodyPaddingClassName}>
       <div className={detailPageStackClassName}>
@@ -77,6 +89,8 @@ export function ClientDetailBody({
               label={t("fields.name")}
               value={detail.name}
               kind="text"
+              required
+              requiredMessage={t("validation.name")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ name: next })}
             >
@@ -86,6 +100,8 @@ export function ClientDetailBody({
               label={t("fields.email")}
               value={detail.email}
               kind="email"
+              required
+              requiredMessage={t("validation.email")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ email: next })}
             >
@@ -95,6 +111,8 @@ export function ClientDetailBody({
               label={t("fields.phone")}
               value={detail.phone ?? ""}
               kind="tel"
+              required
+              requiredMessage={t("validation.phoneInvalid")}
               editAriaLabel={tActions("edit")}
               empty={t("detail.notProvided")}
               onSave={(next) => patchField({ phone: next })}
@@ -122,6 +140,7 @@ export function ClientDetailBody({
                       addressIndex={originalIndex}
                       allAddresses={addresses}
                       labels={addressFieldLabels}
+                      requiredMessages={addressRequiredMessages}
                       addressTypeOptions={addressTypeOptions}
                       addressTypeValue={t(`addressType.${addr.address_type}`)}
                       editAriaLabel={tActions("edit")}

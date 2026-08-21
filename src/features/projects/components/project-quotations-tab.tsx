@@ -18,7 +18,7 @@ import {
   quotationTagsLabels,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
 import type { Tag } from "@/features/tags/types/tag.types";
-import { entityCol } from "@/shared/components/entity";
+import { DetailEntityLink, entityCol, entityNameLinkClassName } from "@/shared/components/entity";
 import type { EntityTableColumn } from "@/shared/components/entity";
 import {
   detailTabBodyClassName,
@@ -57,7 +57,11 @@ const TRUNCATE_MAX = {
 function quotationTableCellClassName(column: EntityTableColumn<QuotationListItem>): string | undefined {
   switch (column.variant) {
     case "primary":
-      return "font-semibold text-slate-900 dark:text-slate-100";
+      return cn("font-semibold", entityNameLinkClassName);
+    case "link": {
+      const max = column.maxWidth ? TRUNCATE_MAX[column.maxWidth] : TRUNCATE_MAX.sm;
+      return cn(max, "truncate");
+    }
     case "truncate": {
       const max = column.maxWidth ? TRUNCATE_MAX[column.maxWidth] : TRUNCATE_MAX.sm;
       return cn(max, "truncate");
@@ -76,6 +80,27 @@ function renderQuotationTableCell(column: EntityTableColumn<QuotationListItem>, 
     case "text":
     case "tabular":
       return column.value(row);
+    case "link": {
+      const label = column.label(row)?.trim() || "—";
+      const href = column.href?.(row)?.trim() || null;
+      const title = column.title?.(row) ?? (label !== "—" ? label : undefined);
+      const empty = label === "—";
+      const content =
+        !empty && href ? (
+          <DetailEntityLink href={href} className="font-medium" onClick={(e) => e.stopPropagation()}>
+            {label}
+          </DetailEntityLink>
+        ) : empty ? (
+          <span className="text-slate-400 dark:text-slate-500">—</span>
+        ) : (
+          <span className={cn(entityNameLinkClassName, "font-medium")}>{label}</span>
+        );
+      return (
+        <span className="block truncate" title={title}>
+          {content}
+        </span>
+      );
+    }
     case "truncate": {
       const title = column.title?.(row);
       return (
@@ -240,10 +265,22 @@ export function ProjectQuotationsTab({ projectId }: Props) {
     const tagsDisplay = (row: QuotationListItem) => quotationTagsLabels(row.tags, tagLabelById);
 
     return [
-      c.primary("quote", tQuotations("table.quote"), (r) => r.quotation_serial_number),
-      c.truncate("customer", tQuotations("table.customer"), (r) => customerDisplay(r), {
-        title: (r) => customerDisplay(r),
-      }),
+      c.link(
+        "quote",
+        tQuotations("table.quote"),
+        (r) => r.quotation_serial_number?.trim() || "—",
+        (r) => `${routes.dashboard.quotations}/${r.id}`,
+      ),
+      c.link(
+        "customer",
+        tQuotations("table.customer"),
+        (r) => customerDisplay(r),
+        (r) => {
+          const customerId = getQuotationCustomerId(r.customer);
+          return customerId != null ? `${routes.dashboard.clients}/${customerId}` : null;
+        },
+        { title: (r) => customerDisplay(r) },
+      ),
       // c.truncate("site", tQuotations("table.site"), (r) => siteDisplay(r), {
       //   title: (r) => siteDisplay(r),
       // }),

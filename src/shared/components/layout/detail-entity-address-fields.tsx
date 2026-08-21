@@ -28,6 +28,15 @@ export type DetailEntityAddressFieldLabels = {
   primary?: React.ReactNode;
 };
 
+export type DetailEntityAddressRequiredMessages = {
+  addressType?: string;
+  addressLine1?: string;
+  pincode?: string;
+  country?: string;
+  state?: string;
+  city?: string;
+};
+
 type Props = {
   address: EntityAddress;
   labels: DetailEntityAddressFieldLabels;
@@ -35,6 +44,7 @@ type Props = {
   addressTypeOptions: CheckmarkSelectOption[];
   editAriaLabel: string;
   line2Empty?: React.ReactNode;
+  requiredMessages?: DetailEntityAddressRequiredMessages;
   onSaveAddresses: (addresses: EntityAddressPayload[]) => Promise<void>;
   allAddresses: EntityAddress[];
   addressIndex: number;
@@ -44,11 +54,15 @@ function DetailAddressLine1Field({
   address,
   label,
   editAriaLabel,
+  required,
+  requiredMessage,
   onSave,
 }: {
   address: EntityAddress;
   label: React.ReactNode;
   editAriaLabel: string;
+  required?: boolean;
+  requiredMessage?: string;
   onSave: (updater: (row: EntityAddressFormRow) => EntityAddressFormRow) => Promise<void>;
 }) {
   const row = React.useMemo(() => mapEntityAddressApiToFormRow(address), [address]);
@@ -71,6 +85,8 @@ function DetailAddressLine1Field({
       kind="text"
       multiline
       editAriaLabel={editAriaLabel}
+      required={required}
+      requiredMessage={requiredMessage}
       onEditStart={() => {
         pickedPlaceRef.current = null;
       }}
@@ -137,6 +153,7 @@ export function DetailEntityAddressFields({
   addressTypeOptions,
   editAriaLabel,
   line2Empty = "—",
+  requiredMessages,
   onSaveAddresses,
   allAddresses,
   addressIndex,
@@ -158,6 +175,8 @@ export function DetailEntityAddressFields({
         kind="select"
         options={addressTypeOptions}
         editAriaLabel={editAriaLabel}
+        required={Boolean(requiredMessages?.addressType)}
+        requiredMessage={requiredMessages?.addressType}
         onSave={(next) =>
           patchRow((r) => ({
             ...r,
@@ -171,6 +190,8 @@ export function DetailEntityAddressFields({
         address={address}
         label={labels.addressLine1}
         editAriaLabel={editAriaLabel}
+        required={Boolean(requiredMessages?.addressLine1)}
+        requiredMessage={requiredMessages?.addressLine1}
         onSave={patchRow}
       />
       <DetailEditableField
@@ -189,6 +210,8 @@ export function DetailEntityAddressFields({
         value={address.pincode ?? ""}
         kind="text"
         editAriaLabel={editAriaLabel}
+        required={Boolean(requiredMessages?.pincode)}
+        requiredMessage={requiredMessages?.pincode}
         onSave={(next) => patchRow((r) => ({ ...r, pincode: next }))}
       >
         {address.pincode?.trim() ? address.pincode : null}
@@ -203,6 +226,11 @@ export function DetailEntityAddressFields({
           city: labels.city,
         }}
         editAriaLabel={editAriaLabel}
+        requiredMessages={{
+          country: requiredMessages?.country,
+          state: requiredMessages?.state,
+          city: requiredMessages?.city,
+        }}
         onSaveCountry={async (countryIso) => {
           await patchRow((r) => ({
             ...r,

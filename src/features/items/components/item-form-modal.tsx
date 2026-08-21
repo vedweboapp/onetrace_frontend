@@ -26,9 +26,12 @@ import {
   FieldLabel,
   InputWithEndSelect,
   MoneyInput,
+  MultiCheckSelect,
   NumericInput,
   surfaceInputClassName,
 } from "@/shared/ui";
+import { getItemVendorIds, vendorIdsPayload } from "@/features/items/utils/item-vendors.util";
+import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 
 type Props = {
   open: boolean;
@@ -115,6 +118,12 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
       ? (item.weight_unit as WeightUnit)
       : "kg",
   );
+  const [vendorIds, setVendorIds] = React.useState<string[]>(() =>
+    mode === "edit" && item ? getItemVendorIds(item).map(String) : [],
+  );
+  const [vendorOptions, setVendorOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [vendorFallbackLabels, setVendorFallbackLabels] = React.useState<Record<string, string>>({});
+  const [vendorsError, setVendorsError] = React.useState<string | null>(null);
 
   const [submitting, setSubmitting] = React.useState(false);
   const [touched, setTouched] = React.useState<{ name?: boolean; sku?: boolean }>({});
@@ -152,6 +161,17 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
       }
       setWeight(item.weight != null && String(item.weight).trim() !== "" ? String(item.weight) : "");
       setWeightUnit(item.weight_unit === "g" || item.weight_unit === "lb" ? (item.weight_unit as WeightUnit) : "kg");
+      setVendorIds(getItemVendorIds(item).map(String));
+      const fallback: Record<string, string> = {};
+      if (Array.isArray(item.vendors)) {
+        for (const entry of item.vendors) {
+          if (entry && typeof entry === "object" && typeof entry.id === "number") {
+            const name = typeof entry.name === "string" ? entry.name.trim() : "";
+            if (name) fallback[String(entry.id)] = name;
+          }
+        }
+      }
+      setVendorFallbackLabels(fallback);
     } else {
       setName("");
       setSku("");
@@ -164,6 +184,8 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
       setHeight("");
       setWeight("");
       setWeightUnit("kg");
+      setVendorIds([]);
+      setVendorFallbackLabels({});
     }
     setTouched({});
   }, [open, mode, item]);
@@ -185,6 +207,25 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
         }
       } catch {
         if (!cancelled) setUnitTypesError(t("unitTypesLoadError"));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, t]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      setVendorsError(null);
+      try {
+        const { items } = await fetchVendorsPage(1, 500, { is_active: true });
+        if (!cancelled) {
+          setVendorOptions(items.map((v) => ({ value: String(v.id), label: v.name })));
+        }
+      } catch {
+        if (!cancelled) setVendorsError(t("vendorsLoadError"));
       }
     })();
     return () => {
@@ -221,6 +262,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
           ? { ...dimensionsFields, dimensions_unit: dimensionsUnit }
           : {};
     const weightFields = weightPayload(weight, weightUnit);
+    const vendorsPayload = vendorIdsPayload(vendorIds);
 
     setSubmitting(true);
     try {
@@ -234,6 +276,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
           ...unitTypePayload,
           ...dimensionsUnitPayload,
           ...weightFields,
+          ...vendorsPayload,
         });
         toastSuccess(t("updatedToast"));
         onSaved();
@@ -250,6 +293,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
           ...unitTypePayload,
           ...dimensionsUnitPayload,
           ...weightFields,
+          ...vendorsPayload,
         });
         toastSuccess(t("createdToast"));
         onSaved();
@@ -384,6 +428,23 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
             />
           </div>
         </div>
+
+        <FieldGroup label={t("vendors")} htmlFor="modal-item-vendors">
+          <MultiCheckSelect
+            id="modal-item-vendors"
+            options={vendorOptions}
+            values={vendorIds}
+            onChange={setVendorIds}
+            disabled={submitting}
+            placeholder={t("vendorsPlaceholder")}
+            listLabel={t("vendors")}
+            searchable
+            fallbackLabels={vendorFallbackLabels}
+          />
+          {vendorsError ? (
+            <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{vendorsError}</p>
+          ) : null}
+        </FieldGroup>
 
         <div className="space-y-4 pt-1">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("fulfilmentDetails")}</h3>

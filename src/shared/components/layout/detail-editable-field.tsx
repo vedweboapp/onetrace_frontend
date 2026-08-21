@@ -8,10 +8,14 @@ import { CheckmarkSelect, type CheckmarkSelectOption } from "@/shared/ui/checkma
 import { MultiCheckSelect } from "@/shared/ui/multi-check-select";
 import { PhoneNumberInput } from "@/shared/ui/phone-number-input";
 import { MoneyInput } from "@/shared/ui/money-input";
+import { FieldErrorText, RequiredMark, fieldLabelClassName } from "@/shared/ui/field-primitives";
+import { isAppValidPhoneNumber, normalizePhoneForPhoneInput } from "@/shared/utils/phone-input.util";
 import {
-  fieldLabelClassName,
-} from "@/shared/ui/field-primitives";
-import { normalizePhoneForPhoneInput } from "@/shared/utils/phone-input.util";
+  claimDetailInlineEdit,
+  isDetailInlineEditBlocked,
+  releaseDetailInlineEdit,
+  subscribeDetailInlineEditLock,
+} from "@/shared/components/layout/detail-inline-edit-lock";
 
 export type DetailEditableFieldKind = "text" | "email" | "tel" | "select" | "multiselect" | "money";
 
@@ -31,15 +35,20 @@ export const detailValueSurfaceClassName = cn(
 
 export const detailInlineEditorClassName = cn(
   detailValueSurfaceClassName,
-  "border border-slate-200/90 bg-slate-50 outline-none transition",
+  "box-border w-full min-w-0 border border-slate-200/90 bg-white outline-none transition",
   "focus-visible:border-slate-300 focus-visible:ring-2 focus-visible:ring-slate-900/10",
   "dark:border-slate-700 dark:bg-slate-900/80",
+);
+
+const detailInlineActionBtnClassName = cn(
+  "inline-flex size-7 shrink-0 items-center justify-center rounded-full border transition",
+  "disabled:pointer-50 disabled:pointer-events-none",
 );
 
 /**
  * Zoho-style detail field: uppercase label above value.
  * Click opens an inline editor; tick saves that field only, cross cancels.
- * With only `onEdit`, click navigates (legacy full-form edit).
+ * Only one field can be in edit mode at a time (global lock).
  */
 export function DetailEditableField({
   label,
@@ -56,6 +65,10 @@ export function DetailEditableField({
   className,
   empty = "—",
   disabled = false,
+  /** Marks field required (asterisk / red line from Appearance). */
+  required = false,
+  /** Message when required and user tries to save empty. */
+  requiredMessage = "This field is required.",
   /** Use textarea editor and preserve line breaks (descriptions, notes). */
   multiline = false,
   /** Span both columns inside `DetailMetricsGrid`. */
@@ -84,12 +97,15 @@ export function DetailEditableField({
   className?: string;
   empty?: ReactNode;
   disabled?: boolean;
+  required?: boolean;
+  requiredMessage?: string;
   multiline?: boolean;
   span?: "full";
   renderEditor?: (props: DetailEditableFieldEditorProps) => ReactNode;
   onEditStart?: () => void;
   onEditCancel?: () => void;
 }) {
+  const fieldId = React.useId();
   const hasValue = children != null && children !== "";
   const canInline =
     !disabled &&
@@ -103,9 +119,22 @@ export function DetailEditableField({
   const [draft, setDraft] = React.useState("");
   const [draftValues, setDraftValues] = React.useState<string[]>([]);
   const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [, setLockTick] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const skipBlurCommit = React.useRef(false);
+
+  React.useEffect(() => subscribeDetailInlineEditLock(() => setLockTick((n) => n + 1)), []);
+
+  React.useEffect(() => {
+    return () => {
+      releaseDetailInlineEdit(fieldId);
+    };
+  }, [fieldId]);
+
+  const editBlocked = isDetailInlineEditBlocked(fieldId);
+  const canStartEdit = editable && !editBlocked;
 
   const useGrowingEditor =
     multiline ||
@@ -125,6 +154,8 @@ export function DetailEditableField({
   function startEdit(e?: React.SyntheticEvent) {
     e?.stopPropagation();
     if (canInline) {
+      if (!claimDetailInlineEdit(fieldId)) return;
+      setError(null);
       onEditStart?.();
       if (kind === "multiselect") {
         setDraftValues(multiValues ?? []);
@@ -137,30 +168,46 @@ export function DetailEditableField({
       setEditing(true);
       return;
     }
+    if (editBlocked) return;
     onEdit?.();
   }
 
   function cancelEdit() {
     onEditCancel?.();
     skipBlurCommit.current = true;
+    setError(null);
     setEditing(false);
     setDraft(value ?? "");
     setDraftValues(multiValues ?? []);
+    releaseDetailInlineEdit(fieldId);
+  }
+
+  function isEmptyDraft(next: string, nextValues: string[]): boolean {
+    if (kind === "multiselect") return nextValues.length === 0;
+    if (kind === "tel") return !isAppValidPhoneNumber(next);
+    return !next.trim();
   }
 
   async function commit(nextValue?: string) {
     if (!canInline || saving) return;
     if (kind === "multiselect") {
       const next = draftValues;
+      if (required && isEmptyDraft("", next)) {
+        setError(requiredMessage);
+        return;
+      }
+      setError(null);
       const prev = multiValues ?? [];
       if (next.length === prev.length && next.every((v, i) => v === prev[i])) {
         setEditing(false);
+        releaseDetailInlineEdit(fieldId);
         return;
       }
       setSaving(true);
       try {
         await onSaveValues?.(next);
         setEditing(false);
+        releaseDetailInlineEdit(fieldId);
       } catch {
         // Caller shows toast; keep editor open.
       } finally {
@@ -169,15 +216,22 @@ export function DetailEditableField({
       return;
     }
     const next = (nextValue ?? draft).trim();
+    if (required && isEmptyDraft(next, [])) {
+      setError(requiredMessage);
+      return;
+    }
+    setError(null);
     const prev = (value ?? "").trim();
     if (next === prev) {
       setEditing(false);
+      releaseDetailInlineEdit(fieldId);
       return;
     }
     setSaving(true);
     try {
       await onSave?.(next);
       setEditing(false);
+      releaseDetailInlineEdit(fieldId);
     } catch {
       // Caller shows toast; keep editor open.
     } finally {
@@ -194,9 +248,11 @@ export function DetailEditableField({
     <div
       className={cn(
         "field-group detail-field group/field min-w-0",
+        required && "field-group--required",
         span === "full" && "col-span-full",
         className,
       )}
+      data-required={required ? "true" : undefined}
     >
       <p
         className={cn(
@@ -205,11 +261,13 @@ export function DetailEditableField({
         )}
       >
         {label}
+        {required ? <RequiredMark /> : null}
       </p>
 
-      <div className="field-control-wrap min-w-0 flex-1 overflow-visible">
+      <div className="field-control-wrap min-w-0 w-full flex-1 overflow-visible">
         {editing && canInline ? (
-          <div className="flex min-w-0 items-start gap-1">
+          <div className="flex w-full min-w-0 flex-col gap-1">
+            <div className="flex w-full min-w-0 items-center gap-1.5">
             <div className="min-w-0 flex-1 overflow-visible">
               {renderEditor ? (
                 renderEditor({
@@ -217,7 +275,10 @@ export function DetailEditableField({
                   setDraft,
                   saving,
                   editAriaLabel,
-                  editorClassName: detailInlineEditorClassName,
+                  editorClassName: cn(
+                    detailInlineEditorClassName,
+                    error && "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/20",
+                  ),
                 })
               ) : kind === "select" && options ? (
                 <CheckmarkSelect
@@ -230,7 +291,9 @@ export function DetailEditableField({
                   menuMinWidth={240}
                   searchable={selectSearchable}
                   className="w-full min-w-0"
+                  invalid={Boolean(error)}
                   onChange={(v) => {
+                    setError(null);
                     setDraft(v);
                   }}
                 />
@@ -241,15 +304,24 @@ export function DetailEditableField({
                   values={draftValues}
                   disabled={saving}
                   portaled
+                  searchable={selectSearchable}
                   className="w-full min-w-0"
-                  onChange={setDraftValues}
+                  invalid={Boolean(error)}
+                  onChange={(next) => {
+                    setError(null);
+                    setDraftValues(next);
+                  }}
                 />
               ) : kind === "tel" ? (
-                <div className="surface-phone-root">
+                <div className={cn("surface-phone-root w-full min-w-0", error && "surface-phone-invalid")}>
                   <PhoneNumberInput
                     value={draft}
-                    onChange={setDraft}
+                    onChange={(next) => {
+                      setError(null);
+                      setDraft(next);
+                    }}
                     disabled={saving}
+                    className="w-full"
                     numberInputProps={{
                       onKeyDown: (e) => {
                         if (e.key === "Enter") {
@@ -270,7 +342,11 @@ export function DetailEditableField({
                   value={draft}
                   disabled={saving}
                   aria-label={editAriaLabel}
-                  onChange={(e) => setDraft(e.target.value)}
+                  className={cn("w-full", error && "border-red-500")}
+                  onChange={(e) => {
+                    setError(null);
+                    setDraft(e.target.value);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -296,11 +372,16 @@ export function DetailEditableField({
                   disabled={saving}
                   rows={textareaRows}
                   aria-label={editAriaLabel}
+                  aria-invalid={Boolean(error)}
                   className={cn(
                     detailInlineEditorClassName,
-                    "resize-none break-words [field-sizing:content] [overflow-wrap:anywhere]",
+                    "resize-none break-words [overflow-wrap:anywhere]",
+                    error && "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/20",
                   )}
-                  onChange={(e) => setDraft(e.target.value)}
+                  onChange={(e) => {
+                    setError(null);
+                    setDraft(e.target.value);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Escape") {
                       e.preventDefault();
@@ -315,8 +396,16 @@ export function DetailEditableField({
                   value={draft}
                   disabled={saving}
                   aria-label={editAriaLabel}
-                  className={cn(detailInlineEditorClassName, "h-auto min-h-[1.75rem]")}
-                  onChange={(e) => setDraft(e.target.value)}
+                  aria-invalid={Boolean(error)}
+                  className={cn(
+                    detailInlineEditorClassName,
+                    "h-auto min-h-[1.75rem]",
+                    error && "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/20",
+                  )}
+                  onChange={(e) => {
+                    setError(null);
+                    setDraft(e.target.value);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -337,11 +426,15 @@ export function DetailEditableField({
                 />
               )}
             </div>
-            <div className="flex shrink-0 items-center gap-0 pt-0.5">
+            <div className="flex shrink-0 items-center gap-1 self-center">
               <button
                 type="button"
                 disabled={saving}
-                className="inline-flex size-6 items-center justify-center rounded text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+                className={cn(
+                  detailInlineActionBtnClassName,
+                  "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+                  "dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400 dark:hover:bg-emerald-950",
+                )}
                 aria-label="Save"
                 onMouseDown={() => {
                   skipBlurCommit.current = true;
@@ -349,37 +442,44 @@ export function DetailEditableField({
                 onClick={() => void commit()}
               >
                 {saving ? (
-                  <Loader2 className="size-3.5 animate-spin" strokeWidth={2} />
+                  <Loader2 className="size-3.5 animate-spin" strokeWidth={2.25} />
                 ) : (
-                  <Check className="size-3.5" strokeWidth={2} />
+                  <Check className="size-3.5" strokeWidth={2.25} />
                 )}
               </button>
               <button
                 type="button"
                 disabled={saving}
-                className="inline-flex size-6 items-center justify-center rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className={cn(
+                  detailInlineActionBtnClassName,
+                  "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700",
+                  "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800",
+                )}
                 aria-label="Cancel"
                 onMouseDown={() => {
                   skipBlurCommit.current = true;
                 }}
                 onClick={cancelEdit}
               >
-                <X className="size-3.5" strokeWidth={2} />
+                <X className="size-3.5" strokeWidth={2.25} />
               </button>
             </div>
+            </div>
+            {error ? <FieldErrorText>{error}</FieldErrorText> : null}
           </div>
         ) : (
           <div
             className={cn(
-              "relative",
+              "relative w-full",
               detailValueSurfaceClassName,
               "break-words [overflow-wrap:anywhere]",
-              editable &&
+              canStartEdit &&
                 "cursor-pointer group-hover/field:bg-slate-100/90 dark:group-hover/field:bg-slate-800/80",
+              editBlocked && editable && "cursor-not-allowed opacity-70",
             )}
-            onClick={editable ? startEdit : undefined}
+            onClick={canStartEdit ? startEdit : undefined}
             onKeyDown={
-              editable
+              canStartEdit
                 ? (e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
@@ -388,8 +488,9 @@ export function DetailEditableField({
                   }
                 : undefined
             }
-            role={editable ? "button" : undefined}
-            tabIndex={editable ? 0 : undefined}
+            role={canStartEdit ? "button" : undefined}
+            tabIndex={canStartEdit ? 0 : undefined}
+            title={editBlocked ? "Finish editing the current field first" : undefined}
           >
             <div
               className={cn(
@@ -399,10 +500,10 @@ export function DetailEditableField({
             >
               {hasValue ? children : empty}
             </div>
-            {editable ? (
+            {canStartEdit ? (
               <span
                 className={cn(
-                  "pointer-events-none absolute right-1 top-1 opacity-0 transition",
+                  "pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 opacity-0 transition",
                   "text-slate-500 group-hover/field:opacity-100 group-focus-within/field:opacity-100 dark:text-slate-400",
                 )}
                 aria-hidden
@@ -410,7 +511,7 @@ export function DetailEditableField({
                 <Pencil className="size-3.5" strokeWidth={1.75} />
               </span>
             ) : null}
-            {editable ? <span className="sr-only">{editAriaLabel}</span> : null}
+            {canStartEdit ? <span className="sr-only">{editAriaLabel}</span> : null}
           </div>
         )}
       </div>

@@ -5,6 +5,7 @@ export type EntityTableCellVariant =
   | "primary"
   | "text"
   | "truncate"
+  | "link"
   | "phone"
   | "mono"
   | "tabular"
@@ -36,6 +37,14 @@ export type EntityTableColumn<T> = EntityTableColumnBase<T> &
     | {
         variant: "truncate";
         value: (row: T) => ReactNode;
+        maxWidth?: "sm" | "md" | "lg";
+        title?: (row: T) => string | undefined;
+      }
+    | {
+        /** Related entity name styled as a blue link (optional href for navigation). */
+        variant: "link";
+        label: (row: T) => string;
+        href?: (row: T) => string | null | undefined;
         maxWidth?: "sm" | "md" | "lg";
         title?: (row: T) => string | undefined;
       }
@@ -75,6 +84,16 @@ export function entityCol<T>() {
     ) => {
       const { maxWidth, title, ...opts } = config ?? {};
       return applyOpts({ id, header, variant: "truncate", value, maxWidth, title }, opts);
+    },
+    link: (
+      id: string,
+      header: ReactNode,
+      label: (row: T) => string,
+      href?: (row: T) => string | null | undefined,
+      config?: ColumnLayoutOpts & { maxWidth?: "sm" | "md" | "lg"; title?: (row: T) => string | undefined },
+    ) => {
+      const { maxWidth, title, ...opts } = config ?? {};
+      return applyOpts({ id, header, variant: "link", label, href, maxWidth, title }, opts);
     },
     phone: (id: string, header: ReactNode, value: (row: T) => string | null | undefined, opts?: ColumnLayoutOpts) =>
       applyOpts({ id, header, variant: "phone", value }, opts),

@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import type { CSSProperties } from "react";
 import { Check, ChevronDown, Plus, X } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
-import { fieldRequiredMarkClassName } from "./field-primitives";
+import { FieldGroup } from "./field-primitives";
 import { LockedSurfaceField } from "./locked-surface-field";
 
 /** Portaled lists are under `document.body` and skip inherited theme vars; copy from trigger. */
@@ -463,36 +463,8 @@ export function CheckmarkSelect({
         ),
   );
 
-  if (locked) {
-    return (
-      <div className={cn("relative", className)}>
-        {label ? (
-          <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.1em] text-[color:var(--dash-accent,#111111)]">
-            {label}
-            {required ? (
-              <span className={cn(fieldRequiredMarkClassName, "field-required-asterisk")} aria-hidden>
-                *
-              </span>
-            ) : null}
-          </span>
-        ) : null}
-        <LockedSurfaceField id={id} value={displayLabel} hint={lockedHint} />
-      </div>
-    );
-  }
-
-  return (
-    <div ref={rootRef} className={cn("relative", className)}>
-      {label ? (
-        <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.1em] text-[color:var(--dash-accent,#111111)]">
-          {label}
-          {required ? (
-            <span className={cn(fieldRequiredMarkClassName, "field-required-asterisk")} aria-hidden>
-              *
-            </span>
-          ) : null}
-        </span>
-      ) : null}
+  const controlBody = (
+    <>
       {useSplitTrigger ? (
         <div ref={anchorRef} className={splitFrameClass} data-invalid={invalid ? true : undefined}>
           <button
@@ -599,6 +571,34 @@ export function CheckmarkSelect({
             document.body,
           )
         : null}
+    </>
+  );
+
+  if (locked) {
+    const lockedControl = <LockedSurfaceField id={id} value={displayLabel} hint={lockedHint} />;
+    if (label) {
+      return (
+        <FieldGroup label={label} htmlFor={id} required={required} className={className}>
+          {lockedControl}
+        </FieldGroup>
+      );
+    }
+    return <div className={cn("relative", className)}>{lockedControl}</div>;
+  }
+
+  const root = (
+    <div ref={rootRef} className={cn("relative", label ? "w-full min-w-0" : className)}>
+      {controlBody}
     </div>
   );
+
+  if (label) {
+    return (
+      <FieldGroup label={label} htmlFor={id} required={required} className={className}>
+        {root}
+      </FieldGroup>
+    );
+  }
+
+  return root;
 }

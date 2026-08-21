@@ -31,6 +31,7 @@ type Props = {
   onCreate?: () => void;
   onScheduleClick: (schedule: Schedule) => void;
   onRemoveSchedule?: (schedule: Schedule) => void;
+  onCopySchedule?: (schedule: Schedule) => void;
   onRemoveTimeOff?: (timeOff: WorkerTimeOff) => void;
 };
 
@@ -63,6 +64,7 @@ export function SchedulingDayAgendaPanel({
   onCreate,
   onScheduleClick,
   onRemoveSchedule,
+  onCopySchedule,
   onRemoveTimeOff,
 }: Props) {
   const t = useTranslations("Dashboard.scheduling");
@@ -170,6 +172,7 @@ export function SchedulingDayAgendaPanel({
                   schedule={schedule}
                   detailed
                   onOpen={() => onScheduleClick(schedule)}
+                  onCopy={onCopySchedule ? () => onCopySchedule(schedule) : undefined}
                   onRemove={onRemoveSchedule ? () => onRemoveSchedule(schedule) : undefined}
                 />
               ))}

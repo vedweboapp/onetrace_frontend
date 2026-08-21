@@ -13,7 +13,7 @@ export const detailTabFilterBarClassName = cn(
 );
 
 export const detailTabToolbarClassName = cn(
-  "flex flex-wrap items-center justify-end gap-3 border-b border-slate-200/90 px-4 py-4 sm:px-6 dark:border-slate-800",
+  "flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/90 px-4 py-4 sm:px-6 dark:border-slate-800",
 );
 
 export const detailTabBodyClassName = "px-4 py-3 sm:px-6 sm:py-4";
@@ -24,20 +24,16 @@ export const detailTabEmptyClassName =
 export const detailTabErrorClassName =
   "px-4 py-8 text-center text-sm text-red-600 dark:text-red-400 sm:px-6";
 
-/** Entity detail page — at least one viewport under dashboard chrome (header + page padding). */
-export const entityDetailPageClassName = cn(
-  "flex min-h-[calc(100dvh-7.5rem)] w-full min-w-0 flex-col",
-);
+/** Entity detail page — natural height; outer dashboard container scrolls (avoids double scrollbars). */
+export const entityDetailPageClassName = cn("w-full min-w-0");
 
-/** White record shell grows with tab content; empty/loading tabs fill the pane. */
-export const entityDetailSurfaceClassName = cn(
-  "mt-3 flex min-h-0 flex-1 flex-col overflow-hidden",
-);
+/** White record shell — no nested scroll; page scroll handles overflow. */
+export const entityDetailSurfaceClassName = cn("mt-3 min-w-0");
 
-export const entityDetailSurfaceInnerClassName = "flex min-h-0 flex-1 flex-col";
+export const entityDetailSurfaceInnerClassName = "min-w-0 w-full";
 
 /** Tab panel wrapper inside the record shell. */
-export const entityDetailTabPanelClassName = "flex min-h-0 min-w-0 flex-1 flex-col";
+export const entityDetailTabPanelClassName = "min-w-0 w-full";
 
 /**
  * List-style detail tabs (contacts, projects, …) fill remaining height when
@@ -45,7 +41,7 @@ export const entityDetailTabPanelClassName = "flex min-h-0 min-w-0 flex-1 flex-c
  */
 export const detailTabFillViewportClassName = cn(
   "flex min-h-0 flex-1 flex-col",
-  "min-h-[calc(100dvh-13.5rem)]",
+  "min-h-[min(28rem,calc(100dvh-14rem))]",
 );
 
 /** Centered empty / loading / error content inside a fill tab. */

@@ -19,7 +19,8 @@ export type Vendor = {
   name: string;
   email: string;
   phone: string;
-  type: VendorTypeValue;
+  /** @deprecated Prefer `vendor_types` from API responses. */
+  type?: VendorTypeValue;
   types?: VendorTypeValue;
   vendor_types?: VendorTypeValue;
   addresses: VendorAddress[];
@@ -53,7 +54,7 @@ export type VendorCreatePayload = {
   name: string;
   email: string;
   phone: string;
-  type: number[];
+  vendor_types: number[];
   addresses: VendorAddressPayload[];
 };
 

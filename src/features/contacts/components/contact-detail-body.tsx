@@ -73,6 +73,8 @@ export function ContactDetailBody({
               value={contactType}
               kind="select"
               options={contactTypeOptions}
+              required
+              requiredMessage={t("validation.contactType")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => {
                 const type = next === "vendor" ? "vendor" : "client";
@@ -93,6 +95,8 @@ export function ContactDetailBody({
                 kind="select"
                 options={vendorOptions}
                 selectSearchable
+                required
+                requiredMessage={t("validation.vendor")}
                 editAriaLabel={tActions("edit")}
                 onSave={(next) => patchField({ vendor: Number(next), contact_type: "vendor" })}
               >
@@ -111,6 +115,8 @@ export function ContactDetailBody({
                 kind="select"
                 options={clientOptions}
                 selectSearchable
+                required
+                requiredMessage={t("validation.client")}
                 editAriaLabel={tActions("edit")}
                 onSave={(next) => patchField({ client: Number(next), contact_type: "client" })}
               >
@@ -128,6 +134,8 @@ export function ContactDetailBody({
               label={t("fields.name")}
               value={detail.name}
               kind="text"
+              required
+              requiredMessage={t("validation.name")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ name: next })}
             >
@@ -138,6 +146,8 @@ export function ContactDetailBody({
               label={t("fields.phone")}
               value={detail.phone ?? ""}
               kind="tel"
+              required
+              requiredMessage={t("validation.phoneInvalid")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ phone: next })}
             >
@@ -148,6 +158,8 @@ export function ContactDetailBody({
               label={t("fields.email")}
               value={detail.email}
               kind="email"
+              required
+              requiredMessage={t("validation.email")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ email: next })}
             >
@@ -171,6 +183,8 @@ export function ContactDetailBody({
               label={t("fields.addressLine1")}
               value={detail.address_line_1 ?? ""}
               kind="text"
+              required
+              requiredMessage={t("validation.addressLine1")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ address_line_1: next })}
             >
@@ -196,6 +210,11 @@ export function ContactDetailBody({
                 city: t("fields.city"),
               }}
               editAriaLabel={tActions("edit")}
+              requiredMessages={{
+                country: t("validation.country"),
+                state: t("validation.state"),
+                city: t("validation.city"),
+              }}
               onSaveCountry={async (countryIso) => {
                 await patchField({
                   country: detailLocationCountryPayload(countryIso),
@@ -216,6 +235,8 @@ export function ContactDetailBody({
               label={t("fields.pincode")}
               value={detail.pincode ?? ""}
               kind="text"
+              required
+              requiredMessage={t("validation.pincode")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ pincode: next })}
             >

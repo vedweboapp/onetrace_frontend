@@ -17,8 +17,10 @@ import {
 import type { QuotationListItem } from "@/features/quotations/types/quotation.types";
 import {
   getQuotationCustomerId,
+  getQuotationProjectId,
   getQuotationSiteId,
   quotationCustomerLabel,
+  quotationProjectLabel,
   quotationSiteLabel,
   quotationTagsLabels,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
@@ -34,7 +36,8 @@ import {
 } from "@/features/users/utils/load-users-by-role.util";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
-import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { DetailEntityLink, EntityDataTable, entityCol, entityNameLinkClassName } from "@/shared/components/entity";
+import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
@@ -121,7 +124,9 @@ export function QuotationsPanel() {
 
   const [fetchCustomerOptions, setFetchCustomerOptions] = React.useState(() => Boolean(customerParam));
   const [fetchSiteOptions, setFetchSiteOptions] = React.useState(() => Boolean(siteParam || customerParam));
-  const [fetchProjectOptions, setFetchProjectOptions] = React.useState(() => Boolean(projectParam));
+  const [fetchProjectOptions, setFetchProjectOptions] = React.useState(
+    () => Boolean(projectParam) || categoryFilter === QUOTE_CATEGORY.project,
+  );
   const [fetchMassOptions, setFetchMassOptions] = React.useState(false);
   const [siteRows, setSiteRows] = React.useState<Site[]>([]);
   const [projectRows, setProjectRows] = React.useState<Project[]>([]);
@@ -265,6 +270,10 @@ export function QuotationsPanel() {
   }, [projectParam]);
 
   React.useEffect(() => {
+    if (categoryFilter === QUOTE_CATEGORY.project) setFetchProjectOptions(true);
+  }, [categoryFilter]);
+
+  React.useEffect(() => {
     if (customerFilter) setFetchSiteOptions(true);
   }, [customerFilter]);
 
@@ -350,6 +359,12 @@ export function QuotationsPanel() {
       .filter((p) => getProjectClientId(p) === customerFilter)
       .map((p) => ({ value: String(p.id), label: p.name }));
   }, [projectRows, customerFilter]);
+
+  const projectLabelById = React.useMemo(() => {
+    const m: Record<number, string> = {};
+    for (const p of projectRows) m[p.id] = p.name;
+    return m;
+  }, [projectRows]);
 
   const siteOptionsForFilter = React.useMemo(
     () => siteRows.map((s) => ({ value: String(s.id), label: s.site_name })),
@@ -459,9 +474,9 @@ export function QuotationsPanel() {
       const customerId = getQuotationCustomerId(row.customer);
       return quotationCustomerLabel(row.customer, customerId != null ? clientLabelById[customerId] : undefined);
     };
-    const siteDisplay = (row: QuotationListItem) => {
-      const siteId = getQuotationSiteId(row.site);
-      return quotationSiteLabel(row.site, siteId != null ? siteLabelById[siteId] : undefined);
+    const projectDisplay = (row: QuotationListItem) => {
+      const projectId = getQuotationProjectId(row.project);
+      return quotationProjectLabel(row.project, projectId != null ? projectLabelById[projectId] : undefined);
     };
     const tagsDisplay = (row: QuotationListItem) => quotationTagsLabels(row.tags, tagLabelById);
 
@@ -491,9 +506,30 @@ export function QuotationsPanel() {
         { narrow: true },
       ),
       c.primary("quote", t("table.quote"), (r) => r.quotation_serial_number),
-      c.truncate("customer", t("table.customer"), (r) => customerDisplay(r), {
-        title: (r) => customerDisplay(r),
-      }),
+      c.link(
+        "customer",
+        t("table.customer"),
+        (r) => customerDisplay(r),
+        (r) => {
+          const customerId = getQuotationCustomerId(r.customer);
+          return customerId != null ? `${routes.dashboard.clients}/${customerId}` : null;
+        },
+        { title: (r) => customerDisplay(r) },
+      ),
+      ...(showProjectFilter
+        ? [
+            c.link(
+              "project",
+              t("table.project"),
+              (r) => projectDisplay(r),
+              (r) => {
+                const projectId = getQuotationProjectId(r.project);
+                return projectId != null ? `${routes.dashboard.projects}/${projectId}` : null;
+              },
+              { title: (r) => projectDisplay(r) },
+            ),
+          ]
+        : []),
       // c.truncate("site", t("table.site"), (r) => siteDisplay(r), {
       //   title: (r) => siteDisplay(r),
       // }),
@@ -503,21 +539,20 @@ export function QuotationsPanel() {
       c.text("status", t("table.status"), (r) => quoteStatusLabel(r.status)),
       c.tabular("due", t("table.due"), (r) => formatFlexibleApiDate(r.due_date, dueFmt)),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
-      // c.actions("actions", tList("openRowActions"), (row) => (
-      //   <DataTableRowActionsMenu
-      //     menuAriaLabel={tList("openRowActions")}
-      //     items={[
-      //       {
-      //         id: "edit",
-      //         label: t("edit"),
-      //         icon: Pencil,
-      //         onSelect: () => openEdit(row.id),
-      //       },
-      //     ]}
-      //   />
-      // )),
     ];
-  }, [t, tList, dateFmt, dueFmt, clientLabelById, siteLabelById, tagLabelById, quoteStatusLabel, mass, items.length]);
+  }, [
+    t,
+    tList,
+    dateFmt,
+    dueFmt,
+    clientLabelById,
+    projectLabelById,
+    tagLabelById,
+    quoteStatusLabel,
+    showProjectFilter,
+    mass,
+    items.length,
+  ]);
 
   return (
     <div className={listPageRootClassName()}>
@@ -670,9 +705,15 @@ export function QuotationsPanel() {
                   row.customer,
                   customerId != null ? clientLabelById[customerId] : undefined,
                 );
+                const projectId = getQuotationProjectId(row.project);
+                const projectDisplay = quotationProjectLabel(
+                  row.project,
+                  projectId != null ? projectLabelById[projectId] : undefined,
+                );
                 const siteId = getQuotationSiteId(row.site);
                 const siteDisplay = quotationSiteLabel(row.site, siteId != null ? siteLabelById[siteId] : undefined);
                 const tagsLine = quotationTagsLabels(row.tags, tagLabelById);
+                const relatedLabel = showProjectFilter ? projectDisplay : siteDisplay;
                 return (
                   <ListPageCard
                     key={row.id}
@@ -687,16 +728,44 @@ export function QuotationsPanel() {
                         onChange={() => mass.selection.toggleRowSelected(row.id)}
                       />
                     }
-                    title={row.quote_name}
+                    title={
+                      <span className={entityNameLinkClassName}>
+                        {row.quotation_serial_number || row.quote_name}
+                      </span>
+                    }
                     subtitle={tagsLine !== "—" ? tagsLine : undefined}
                     meta={
-                      <span className="block min-w-0 truncate" title={`${customerDisplay} · ${siteDisplay}`}>
-                        {customerDisplay}
-                        <span className="text-slate-400 dark:text-slate-500" aria-hidden>
-                          {" "}
-                          ·{" "}
+                      <span
+                        className="flex min-w-0 items-center gap-1 truncate"
+                        title={`${customerDisplay} · ${relatedLabel}`}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        {customerId != null ? (
+                          <DetailEntityLink
+                            href={`${routes.dashboard.clients}/${customerId}`}
+                            className="min-w-0 truncate font-medium"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {customerDisplay}
+                          </DetailEntityLink>
+                        ) : (
+                          <span className="min-w-0 truncate">{customerDisplay}</span>
+                        )}
+                        <span className="shrink-0 text-slate-400 dark:text-slate-500" aria-hidden>
+                          ·
                         </span>
-                        {siteDisplay}
+                        {showProjectFilter && projectId != null ? (
+                          <DetailEntityLink
+                            href={`${routes.dashboard.projects}/${projectId}`}
+                            className="min-w-0 truncate font-medium"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {projectDisplay}
+                          </DetailEntityLink>
+                        ) : (
+                          <span className="min-w-0 truncate">{relatedLabel}</span>
+                        )}
                       </span>
                     }
                     footer={

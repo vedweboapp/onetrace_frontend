@@ -41,11 +41,13 @@ type Props = {
 function SiteDetailBodyWithContacts({
   detail,
   clientName,
+  clientOptions,
   dateFmt,
   onSaved,
 }: {
   detail: Site;
   clientName: string;
+  clientOptions: { value: string; label: string }[];
   dateFmt: Intl.DateTimeFormat;
   onSaved?: () => void;
 }) {
@@ -122,6 +124,7 @@ function SiteDetailBodyWithContacts({
     <SiteDetailBody
       detail={detail}
       clientName={clientName}
+      clientOptions={clientOptions}
       dateFmt={dateFmt}
       contactNameById={contactNameById}
       titleNameById={titleNameById}
@@ -133,20 +136,29 @@ function SiteDetailBodyWithContacts({
 export function SiteDetailScreen({ siteId }: Props) {
   const t = useTranslations("Dashboard.sites");
   const [clientNameById, setClientNameById] = React.useState<Record<number, string>>({});
+  const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [togglingActive, setTogglingActive] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchClientsPage(1, 500);
+        const { items } = await fetchClientsPage(1, 500, { is_active: true });
         if (!cancelled) {
           const mapped: Record<number, string> = {};
-          for (const row of items) mapped[row.id] = row.name;
+          const options: { value: string; label: string }[] = [];
+          for (const row of items) {
+            mapped[row.id] = row.name;
+            options.push({ value: String(row.id), label: row.name });
+          }
           setClientNameById(mapped);
+          setClientOptions(options);
         }
       } catch {
-        if (!cancelled) setClientNameById({});
+        if (!cancelled) {
+          setClientNameById({});
+          setClientOptions([]);
+        }
       }
     })();
     return () => {
@@ -208,6 +220,7 @@ export function SiteDetailScreen({ siteId }: Props) {
           <SiteDetailBodyWithContacts
             detail={detail}
             clientName={siteClientName(detail, clientNameById)}
+            clientOptions={clientOptions}
             dateFmt={dateFmt}
             onSaved={retry}
           />

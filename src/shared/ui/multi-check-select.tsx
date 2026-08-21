@@ -204,7 +204,8 @@ export function MultiCheckSelect({
   }
 
   const triggerClass = cn(
-    "min-h-9 w-full min-w-0 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-left text-sm text-slate-900 outline-none transition",
+    "field-control flex min-h-11 w-full min-w-0 items-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-left text-slate-900 outline-none transition",
+    "text-[length:var(--dash-body-size,0.875rem)]",
     "hover:border-[color:var(--dash-accent,#111111)] hover:bg-slate-50",
     "focus-visible:border-[color:var(--dash-accent,#111111)] focus-visible:ring-2 focus-visible:ring-[color:var(--dash-accent,#111111)]/20",
     "dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-800/90",
@@ -316,11 +317,11 @@ export function MultiCheckSelect({
         onClick={() => !disabled && setOpen((v) => !v)}
         className={triggerClass}
       >
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex w-full items-center justify-between gap-2">
           {selectedOptions.length === 0 ? (
             <span className="truncate text-slate-400 dark:text-slate-500">{placeholder}</span>
           ) : (
-            <div className="flex min-h-6 flex-1 flex-wrap content-start gap-1">
+            <div className="flex min-h-6 flex-1 flex-wrap content-center gap-1">
               {selectedOptions.map((opt) => (
                 <span
                   key={opt.value}

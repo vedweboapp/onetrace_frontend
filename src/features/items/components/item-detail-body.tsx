@@ -21,6 +21,7 @@ import {
 } from "@/features/items/utils/item-attachment-display.util";
 import { routes } from "@/shared/config/routes";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
+import { DetailMultiValue, DetailMultiValueItem } from "@/shared/components/layout/detail-multi-value";
 import {
   DetailLinkedTable,
   DetailLinkedTableRow,
@@ -40,6 +41,8 @@ import { parseOrgMoneyInput } from "@/shared/money/format-money.util";
 import { getOrgCurrencySettings } from "@/shared/money/org-currency.store";
 import { useOrgCurrency } from "@/shared/money/use-org-currency";
 import { useOrgNumber } from "@/shared/number/use-org-number";
+import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
+import { getItemVendorIds, itemVendorRows, vendorIdsPayload } from "@/features/items/utils/item-vendors.util";
 
 function installationCostTypeLabel(
   value: InstallationCostType | string | null | undefined,
@@ -98,12 +101,16 @@ export function ItemDetailBody({
   const [unitTypesById, setUnitTypesById] = React.useState<Record<number, Pick<UnitType, "id" | "name" | "short_form">>>({});
   const [unitTypeOptions, setUnitTypeOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [installationTypeOptions, setInstallationTypeOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [vendorOptions, setVendorOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [vendorLabelById, setVendorLabelById] = React.useState<Record<number, string>>({});
 
   const groupId = typeof detail.group === "number" && Number.isFinite(detail.group) && detail.group > 0 ? detail.group : null;
   const installationTypeChip = resolveInstallationTypeChipData(detail.installation_type);
   const unitTypeId = getUnitTypeId(detail.unit_type);
   const installationTypeId = getInstallationTypeId(detail.installation_type);
   const unitTypeLabel = resolveUnitTypeShortLabel(detail.unit_type, unitTypesById);
+  const vendorRows = itemVendorRows(detail, vendorLabelById);
+  const vendorIds = getItemVendorIds(detail);
   const components = detail.components ?? [];
   const attachments = detail.is_composite
     ? (detail.attachments ?? []).filter(hasItemAttachment)
@@ -186,6 +193,32 @@ export function ItemDetailBody({
   }, [detail.id]);
 
   React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchVendorsPage(1, 500, { is_active: true });
+        if (cancelled) return;
+        const labels: Record<number, string> = {};
+        const options: { value: string; label: string }[] = [];
+        for (const row of items) {
+          labels[row.id] = row.name;
+          options.push({ value: String(row.id), label: row.name });
+        }
+        setVendorLabelById(labels);
+        setVendorOptions(options);
+      } catch {
+        if (!cancelled) {
+          setVendorLabelById({});
+          setVendorOptions([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [detail.id]);
+
+  React.useEffect(() => {
     if (!detail.is_composite) {
       setInstallationTypeOptions([]);
       return;
@@ -228,6 +261,8 @@ export function ItemDetailBody({
               label={t("detail.sku")}
               value={detail.sku ?? ""}
               kind="text"
+              required
+              requiredMessage={t("modal.skuError")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ sku: next.trim() })}
             >
@@ -275,6 +310,8 @@ export function ItemDetailBody({
               label={t("detail.cost")}
               value={detail.cost_price != null ? String(detail.cost_price) : ""}
               kind="money"
+              required
+              requiredMessage={t("modal.costPriceError")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ cost_price: parseRequiredMoney(next) })}
             >
@@ -284,10 +321,34 @@ export function ItemDetailBody({
               label={t("detail.sell")}
               value={detail.selling_price != null ? String(detail.selling_price) : ""}
               kind="money"
+              required
+              requiredMessage={t("modal.sellingPriceError")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ selling_price: parseRequiredMoney(next) })}
             >
               <span className="tabular-nums">{moneyDisplay(detail.selling_price)}</span>
+            </DetailEditableField>
+            <DetailEditableField
+              label={t("detail.vendors")}
+              kind="multiselect"
+              values={vendorIds.map(String)}
+              options={vendorOptions}
+              selectSearchable
+              editAriaLabel={tActions("edit")}
+              empty="—"
+              onSaveValues={(next) => patchField(vendorIdsPayload(next))}
+            >
+              <DetailMultiValue>
+                {vendorRows.map((row) => (
+                  <DetailMultiValueItem
+                    key={row.id}
+                    href={`${routes.dashboard.vendors}/${row.id}`}
+                    title={row.label}
+                  >
+                    {row.label}
+                  </DetailMultiValueItem>
+                ))}
+              </DetailMultiValue>
             </DetailEditableField>
             {installationTypeChip && installationTypeOptions.length > 0 ? (
               <DetailEditableField

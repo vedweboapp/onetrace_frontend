@@ -4,12 +4,8 @@ import * as React from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { patchSite, updateSite } from "@/features/sites/api/site.api";
-import type { Site, SiteUpdatePayload } from "@/features/sites/types/site.types";
-import {
-  formatSiteContactPersonContactLabel,
-  getSiteContactPersonContactId,
-  normalizeSiteContactPersonsFromApi,
-} from "@/features/sites/utils/site-contact-person.util";
+import { SiteDetailContactPersonsEditor } from "@/features/sites/components/site-detail-contact-persons-editor";
+import type { Site, SiteContactPersonPayload, SiteUpdatePayload } from "@/features/sites/types/site.types";
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import {
@@ -23,14 +19,13 @@ import {
   detailMapFillClassName,
 } from "@/shared/components/layout/detail-page-map-layout";
 import {
-  DetailMetricCard,
   DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
 } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
 import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
-import { ActiveStatusBadge } from "@/shared/ui";
+import { ActiveStatusBadge, type CheckmarkSelectOption } from "@/shared/ui";
 
 const AddressMiniMap = dynamic(
   () => import("@/shared/components/maps/address-mini-map").then((m) => m.AddressMiniMap),
@@ -44,6 +39,7 @@ export function SiteDetailBody({
   detail,
   dateFmt,
   clientName,
+  clientOptions = [],
   contactNameById = {},
   titleNameById = {},
   onSaved,
@@ -51,6 +47,7 @@ export function SiteDetailBody({
   detail: Site;
   dateFmt: Intl.DateTimeFormat;
   clientName: string | null;
+  clientOptions?: CheckmarkSelectOption[];
   contactNameById?: Record<number, string>;
   titleNameById?: Record<string, string>;
   /** Refresh detail after a successful quick-edit PATCH. */
@@ -65,7 +62,6 @@ export function SiteDetailBody({
       : typeof detail.client?.id === "number"
         ? detail.client.id
         : null;
-  const contactPersonRows = normalizeSiteContactPersonsFromApi(detail);
 
   const statusOptions = React.useMemo(
     () => [
@@ -74,6 +70,17 @@ export function SiteDetailBody({
     ],
     [t],
   );
+
+  const clientSelectOptions = React.useMemo(() => {
+    const list = [...clientOptions];
+    if (clientId != null && !list.some((o) => o.value === String(clientId))) {
+      list.unshift({
+        value: String(clientId),
+        label: clientName?.trim() || `#${clientId}`,
+      });
+    }
+    return list;
+  }, [clientOptions, clientId, clientName]);
 
   const patchActive = useDetailPatch(
     (is_active: boolean) => patchSite(detail.id, { is_active }),
@@ -121,6 +128,8 @@ export function SiteDetailBody({
               label={t("fields.siteName")}
               value={detail.site_name}
               kind="text"
+              required
+              requiredMessage={t("validation.siteName")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchSiteField({ site_name: next })}
             >
@@ -139,7 +148,25 @@ export function SiteDetailBody({
                 label={detail.is_active ? t("status.active") : t("status.inactive")}
               />
             </DetailEditableField>
-            <DetailMetricCard label={t("fields.client")}>
+            <DetailEditableField
+              label={t("fields.client")}
+              value={clientId != null ? String(clientId) : ""}
+              kind="select"
+              options={clientSelectOptions}
+              selectSearchable
+              required
+              requiredMessage={t("validation.client")}
+              editAriaLabel={tActions("edit")}
+              onSave={async (next) => {
+                const nextId = Number.parseInt(next, 10);
+                if (!Number.isFinite(nextId) || nextId <= 0) return;
+                // Changing client clears contact persons (same as create/edit form).
+                await patchSiteField({
+                  client: nextId,
+                  ...(clientId !== nextId ? { contacts: [] as SiteContactPersonPayload[] } : {}),
+                });
+              }}
+            >
               {clientId ? (
                 <DetailEntityLink
                   href={`${routes.dashboard.clients}/${clientId}`}
@@ -150,65 +177,17 @@ export function SiteDetailBody({
               ) : (
                 <span>{clientName ?? "—"}</span>
               )}
-            </DetailMetricCard>
+            </DetailEditableField>
           </DetailMetricsGrid>
         </DetailPanelCard>
 
         <DetailPanelCard title={t("contactPerson.sectionTitle")}>
-          {contactPersonRows.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t("contactPerson.empty")}</p>
-          ) : (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-xs font-bold uppercase tracking-[0.05em] text-slate-400 dark:text-slate-500">
-                  {t("contactPerson.titleLabel")}
-                </span>
-                <span className="text-xs font-bold uppercase tracking-[0.05em] text-slate-400 dark:text-slate-500">
-                  {t("contactPerson.contactLabel")}
-                </span>
-              </div>
-              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                {contactPersonRows.map((row, index) => {
-                  const contactId = getSiteContactPersonContactId(row.contact);
-                  const contactLabel = formatSiteContactPersonContactLabel(row.contact, contactNameById);
-                  return (
-                    <li
-                      key={row.id ?? `${row.title}-${contactId ?? index}`}
-                      className="flex flex-wrap items-center justify-between gap-3 py-3 last:pb-0"
-                    >
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                      {(() => {
-                        // API sometimes returns title as an object — coerce to string safely
-                        const rawTitle = row.title;
-                        const titleKey: string =
-                          rawTitle && typeof rawTitle === "object"
-                            ? String((rawTitle as Record<string, unknown>).title ?? (rawTitle as Record<string, unknown>).name ?? "")
-                            : String(rawTitle ?? "");
-                        
-                        const resolvedTitle = titleNameById[titleKey] || titleKey;
-                        const isLegacy = ["site_contact", "finance", "emergency"].includes(resolvedTitle);
-                        if (isLegacy) {
-                          return t(`contactPerson.titles.${resolvedTitle}`, { defaultValue: resolvedTitle });
-                        }
-                        return resolvedTitle || "—";
-                      })()}
-                    </span>
-                    {contactId ? (
-                      <DetailEntityLink
-                        href={`${routes.dashboard.contacts}/${contactId}`}
-                        className="text-sm font-semibold text-blue-600 underline-offset-2 hover:underline"
-                      >
-                        {contactLabel}
-                      </DetailEntityLink>
-                    ) : (
-                      <span className="text-sm text-slate-600 dark:text-slate-400">{contactLabel}</span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-            </div>
-          )}
+          <SiteDetailContactPersonsEditor
+            detail={detail}
+            contactNameById={contactNameById}
+            titleNameById={titleNameById}
+            onSaveContacts={(contacts) => patchSiteField({ contacts })}
+          />
         </DetailPanelCard>
 
         <DetailPanelCard title={t("detail.sectionAddress")}>
@@ -217,6 +196,8 @@ export function SiteDetailBody({
               label={t("fields.addressLine1")}
               value={addressParts.line1 ?? ""}
               kind="text"
+              required
+              requiredMessage={t("validation.addressLine1")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchSiteField({ address_line_1: next })}
             >
@@ -242,6 +223,11 @@ export function SiteDetailBody({
                 city: t("fields.city"),
               }}
               editAriaLabel={tActions("edit")}
+              requiredMessages={{
+                country: t("validation.country"),
+                state: t("validation.state"),
+                city: t("validation.city"),
+              }}
               onSaveCountry={async (countryIso) => {
                 await patchSiteField({
                   country: detailLocationCountryPayload(countryIso),
@@ -262,6 +248,8 @@ export function SiteDetailBody({
               label={t("fields.pincode")}
               value={addressParts.pincode ?? ""}
               kind="text"
+              required
+              requiredMessage={t("validation.pincode")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchSiteField({ pincode: next })}
             >

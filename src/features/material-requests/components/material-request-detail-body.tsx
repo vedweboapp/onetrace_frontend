@@ -128,6 +128,8 @@ export function MaterialRequestDetailBody({
             label={t("fields.requestedDate")}
             value={formatApiDateForHtmlDateInput(detail.requested_date)}
             kind="text"
+            required
+            requiredMessage={t("validation.requestedDate")}
             editAriaLabel={tActions("edit")}
             onSave={(next) => patchField({ requested_date: next })}
           >

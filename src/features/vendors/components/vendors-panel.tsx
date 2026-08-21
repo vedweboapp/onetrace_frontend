@@ -9,6 +9,7 @@ import { deleteVendor, fetchAllVendorIds, fetchVendorsPage, updateVendor } from 
 import type { Vendor } from "@/features/vendors/types/vendor.types";
 import { fetchVendorTypesPage } from "@/features/vendor-types/api/vendor-type.api";
 import { VendorTypeChip } from "@/features/vendor-types/components/vendor-type-chip";
+import { formatVendorTypeLabel } from "@/features/vendor-types/utils/vendor-type-display.util";
 import {
   getVendorTypeRows,
   vendorAddressSummary,
@@ -255,8 +256,9 @@ export function VendorsPanel() {
       c.custom("type", t("table.type"), (row) => {
         const typeRows = getVendorTypeRows(row);
         if (typeRows.length === 0) return "—";
+        const fullLabel = typeRows.map((typeRow) => formatVendorTypeLabel(typeRow)).join(", ");
         return (
-          <span className="flex max-w-xs flex-wrap gap-1">
+          <span className="flex max-w-xs flex-wrap gap-1" title={fullLabel}>
             {typeRows.map((typeRow) => (
               <VendorTypeChip key={typeRow.id} row={typeRow} />
             ))}
