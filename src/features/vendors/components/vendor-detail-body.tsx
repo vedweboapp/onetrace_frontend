@@ -225,16 +225,14 @@ export function VendorDetailBody({
           {addresses.length === 0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>
           ) : (
-            <ul className="space-y-4 overflow-visible">
+            <ul className="space-y-0 overflow-visible">
               {sortedAddresses.map(({ address: addr, originalIndex, displayIndex }) => (
-                <li
-                  key={addr.id ?? originalIndex}
-                  className="min-w-0 overflow-visible rounded-lg border border-slate-100 p-4 dark:border-slate-800"
-                >
+                <li key={addr.id ?? originalIndex} className="min-w-0 overflow-visible">
                   <DetailAddressBlock
                     heading={t("addresses.rowLabel", { index: displayIndex + 1 })}
                     primaryLabel={t("addresses.primary")}
                     isPrimary={Boolean(addr.is_primary)}
+                    separated={displayIndex > 0}
                   >
                     <DetailEntityAddressFields
                       address={addr}

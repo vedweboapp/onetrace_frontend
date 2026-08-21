@@ -444,7 +444,19 @@ export function JobsPanel() {
         ),
         { narrow: true },
       ),
-      c.primary("title", t("table.title"), (r) => r.title),
+      c.custom("title", t("table.title"), (row) => {
+        const serial = row.job_serial_number?.trim() || null;
+        return (
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className={`truncate font-semibold ${entityNameLinkClassName}`}>{row.title}</span>
+            {serial ? (
+              <span className="truncate text-xs font-medium tabular-nums text-slate-500 dark:text-slate-400">
+                {serial}
+              </span>
+            ) : null}
+          </span>
+        );
+      }),
       c.link(
         "worker",
         t("table.assignedWorker"),
@@ -625,7 +637,16 @@ export function JobsPanel() {
                       onChange={() => mass.selection.toggleRowSelected(row.id)}
                     />
                   }
-                  title={<span className={entityNameLinkClassName}>{row.title}</span>}
+                  title={
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <span className={entityNameLinkClassName}>{row.title}</span>
+                      {row.job_serial_number?.trim() ? (
+                        <span className="truncate text-xs font-medium tabular-nums text-slate-500 dark:text-slate-400">
+                          {row.job_serial_number.trim()}
+                        </span>
+                      ) : null}
+                    </span>
+                  }
                   subtitle={
                     workerId != null ? (
                       <DetailEntityLink

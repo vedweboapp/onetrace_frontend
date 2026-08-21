@@ -210,9 +210,10 @@ html[data-font-size] :is(.text-2xl) {
  */
 .dash-appearance-scope .detail-field.field-group {
   display: grid;
-  grid-template-columns: var(--detail-label-col, 9rem) minmax(0, 1fr);
+  /* Fixed label column so keys form a straight vertical line across every section. */
+  grid-template-columns: var(--detail-label-col, 10.5rem) minmax(0, 1fr);
   align-items: start;
-  column-gap: 1rem;
+  column-gap: 1.25rem;
   row-gap: 0;
   container-type: inline-size;
   container-name: detail-field;
@@ -238,9 +239,9 @@ html[data-font-size] :is(.text-2xl) {
 .dash-appearance-scope .detail-field .field-label {
   margin-bottom: 0;
   /* Optical match to value text-sm + light vertical padding */
-  padding-top: 0.35rem;
+  padding-top: 0.3rem;
   align-self: start;
-  line-height: 1.35;
+  line-height: 1.4;
   text-align: left;
   white-space: normal;
   overflow-wrap: anywhere;

@@ -26,18 +26,23 @@ export function DetailFieldsLayout({ children, className }: { children: ReactNod
 /** Span full row inside `DetailMetricsGrid` (same as form `FormFieldSpanFull`). */
 export { FormFieldSpanFull as DetailFieldSpanFull };
 
-/** Vertical stack for detail sections with light dividers (flat record surface). */
-export const detailPageStackClassName = "flex flex-col divide-y divide-slate-100 dark:divide-slate-800";
+/** Vertical stack for detail sections with clear CRM-style horizontal rules. */
+export const detailPageStackClassName =
+  "flex flex-col divide-y divide-slate-200/90 dark:divide-slate-800";
 
 /** Flat detail body: no extra padding inside the white record shell. */
 export const detailPageBodyPaddingClassName = "!px-0 !py-0 sm:!px-0 sm:!py-0";
 
 /** Shared flat section chrome (title row + body padding). */
 export const detailFlatSectionHeaderClassName =
-  "flex flex-col gap-1.5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-3.5";
-export const detailFlatSectionBodyClassName = "px-4 pt-3 pb-4 sm:px-6 sm:pt-4 sm:pb-5";
+  "flex flex-col gap-1.5 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4";
+export const detailFlatSectionBodyClassName = "px-4 pt-1 pb-5 sm:px-6 sm:pt-2 sm:pb-6";
 export const detailFlatSectionTitleClassName =
   "text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100";
+
+/** Inline sub-heading inside a section (e.g. Contact information). */
+export const detailSubsectionTitleClassName =
+  "mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400";
 
 export function activeStatusSelectOptions(
   activeLabel: string,
@@ -108,7 +113,7 @@ export function DetailMetricsGrid({
         className={cn(
           "detail-metrics-grid",
           !wide && detailFieldsLayoutClassName,
-          "gap-x-8 gap-y-3.5",
+          "gap-x-10 gap-y-4",
           className,
         )}
       >
@@ -184,6 +189,11 @@ export function DetailSectionTitle({ children }: { children: ReactNode }) {
   return (
     <h3 className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">{children}</h3>
   );
+}
+
+/** Quiet sub-heading inside a detail section body. */
+export function DetailSubsectionTitle({ children, className }: { children: ReactNode; className?: string }) {
+  return <h4 className={cn(detailSubsectionTitleClassName, className)}>{children}</h4>;
 }
 
 export function DetailPagePadding({ children, className }: { children: ReactNode; className?: string }) {

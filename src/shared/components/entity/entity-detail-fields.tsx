@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Calendar, RefreshCw, User } from "lucide-react";
 import {
   DetailMetricsGrid,
   DetailPanelCard,
@@ -15,12 +14,7 @@ import { entityNameLinkClassName } from "@/shared/components/entity/detail-entit
 const linkClassName = cn("break-all font-semibold", entityNameLinkClassName);
 
 const detailMetadataEmptyClassName =
-  "text-sm font-normal italic text-slate-400 dark:text-slate-500";
-
-const detailMetadataIconWrapClassName = cn(
-  "flex size-7 shrink-0 items-center justify-center rounded-full",
-  "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500",
-);
+  "text-sm font-normal text-slate-400 dark:text-slate-500";
 
 /** Metadata fields follow the same CRM label | value alignment as overview fields. */
 function DetailMetadataField({
@@ -44,14 +38,6 @@ function DetailMetadataField({
 
 function DetailMetadataEmpty({ children }: { children: ReactNode }) {
   return <span className={detailMetadataEmptyClassName}>{children}</span>;
-}
-
-function DetailMetadataIcon({ icon: Icon }: { icon: typeof Calendar }) {
-  return (
-    <span className={detailMetadataIconWrapClassName} aria-hidden>
-      <Icon className="size-3.5" strokeWidth={1.75} />
-    </span>
-  );
 }
 
 export function DetailEmailLink({ email }: { email: string }) {
@@ -114,7 +100,7 @@ function detailUserDisplayName(user: DetailAuditUser): string {
   return "—";
 }
 
-/** Avatar + name/email/phone block for system metadata rows. */
+/** Name (and optional secondary lines) for system metadata rows. */
 export function DetailUserAttribution({
   user,
   emptyLabel = "—",
@@ -123,12 +109,7 @@ export function DetailUserAttribution({
   emptyLabel?: ReactNode;
 }) {
   if (!user) {
-    return (
-      <div className="flex min-w-0 items-center gap-2.5">
-        <DetailMetadataIcon icon={User} />
-        <DetailMetadataEmpty>{emptyLabel}</DetailMetadataEmpty>
-      </div>
-    );
+    return <DetailMetadataEmpty>{emptyLabel}</DetailMetadataEmpty>;
   }
 
   const primary = detailUserDisplayName(user);
@@ -138,49 +119,40 @@ export function DetailUserAttribution({
   const showPhone = Boolean(phone && phone !== primary && phone !== email);
 
   return (
-    <div className="flex min-w-0 items-center gap-2.5">
-      <DetailMetadataIcon icon={User} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold leading-normal text-slate-900 dark:text-slate-100">
-          {primary}
+    <div className="min-w-0">
+      <p className="truncate text-sm font-semibold leading-normal text-slate-900 dark:text-slate-100">
+        {primary}
+      </p>
+      {showEmail ? (
+        <p className="mt-0.5 truncate text-xs leading-normal text-slate-500 dark:text-slate-400">
+          <DetailEmailLink email={email!} />
         </p>
-        {showEmail ? (
-          <p className="mt-0.5 truncate text-xs leading-normal text-slate-500 dark:text-slate-400">
-            <DetailEmailLink email={email!} />
-          </p>
-        ) : null}
-        {showPhone ? (
-          <p className="mt-0.5 truncate text-xs leading-normal text-slate-500 dark:text-slate-400">
-            <DetailPhoneLink phone={phone} />
-          </p>
-        ) : null}
-      </div>
+      ) : null}
+      {showPhone ? (
+        <p className="mt-0.5 truncate text-xs leading-normal text-slate-500 dark:text-slate-400">
+          <DetailPhoneLink phone={phone} />
+        </p>
+      ) : null}
     </div>
   );
 }
 
 function DetailTimestampValue({
-  icon: Icon,
   value,
   emptyLabel = "—",
   isEmpty = false,
 }: {
-  icon: typeof Calendar;
   value: ReactNode;
   emptyLabel?: ReactNode;
   isEmpty?: boolean;
 }) {
+  if (isEmpty) {
+    return <DetailMetadataEmpty>{emptyLabel}</DetailMetadataEmpty>;
+  }
   return (
-    <div className="flex min-w-0 items-center gap-2.5">
-      <DetailMetadataIcon icon={Icon} />
-      {isEmpty ? (
-        <DetailMetadataEmpty>{emptyLabel}</DetailMetadataEmpty>
-      ) : (
-        <span className="min-w-0 break-words text-sm font-semibold leading-normal tabular-nums text-slate-900 dark:text-slate-100">
-          {value}
-        </span>
-      )}
-    </div>
+    <span className="min-w-0 break-words text-sm font-semibold leading-normal tabular-nums text-slate-900 dark:text-slate-100">
+      {value}
+    </span>
   );
 }
 
@@ -243,14 +215,10 @@ export function DetailSystemMetadataSection({
           </DetailMetadataField>
         ) : null}
         <DetailMetadataField label={labels.createdAt}>
-          <DetailTimestampValue
-            icon={Calendar}
-            value={formatSettingsDetailDate(dateFmt, createdAt)}
-          />
+          <DetailTimestampValue value={formatSettingsDetailDate(dateFmt, createdAt)} />
         </DetailMetadataField>
         <DetailMetadataField label={labels.updatedAt}>
           <DetailTimestampValue
-            icon={RefreshCw}
             value={hasModifiedAt ? formattedModifiedAt : null}
             emptyLabel={labels.notModifiedYet}
             isEmpty={!hasModifiedAt}
@@ -325,10 +293,10 @@ export function DetailRecordMetaSection({
         <ActiveStatusBadge active={isActive} label={isActive ? activeLabel : inactiveLabel} />
       </DetailMetadataField>
       <DetailMetadataField label={createdAtLabel}>
-        <DetailTimestampValue icon={Calendar} value={formatSettingsDetailDate(dateFmt, createdAt)} />
+        <DetailTimestampValue value={formatSettingsDetailDate(dateFmt, createdAt)} />
       </DetailMetadataField>
       <DetailMetadataField label={updatedAtLabel}>
-        <DetailTimestampValue icon={RefreshCw} value={formatSettingsDetailDate(dateFmt, modifiedAt)} />
+        <DetailTimestampValue value={formatSettingsDetailDate(dateFmt, modifiedAt)} />
       </DetailMetadataField>
       {extra}
     </DetailMetricsGrid>

@@ -949,8 +949,8 @@ export function JobDetailBody({
                   ]}
                   tableClassName="min-w-0"
                 >
-                  {assignedWorkers.map((worker) => (
-                    <DetailLinkedTableRow key={worker.id}>
+                  {assignedWorkers.map((worker, index) => (
+                    <DetailLinkedTableRow key={worker.id} index={index}>
                       <DetailLinkedTableTd>
                         <DetailEntityLink
                           href={`${routes.dashboard.settingsUsers}/${worker.id}`}
