@@ -12,7 +12,6 @@ import { createContactFormSchema, type ContactFormValues } from "@/features/cont
 import { contactToFormDefaults, emptyContactFormDefaults, mapContactFormToPayload } from "@/features/contacts/utils/contact-form-map";
 import type { ContactType } from "@/features/contacts/types/contact.types";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
-import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -20,7 +19,7 @@ import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
-import { buildCurrentPageBackHref, buildEntityDetailHrefAfterSave, mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
+import { buildCurrentPageBackHref, mergeUrlQueryParam, pathWithoutQueryAndHash } from "@/shared/utils/detail-from-list.util";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { usePhoneCountryFromCountryIso } from "@/shared/hooks/use-phone-country-from-address";
 import {
@@ -29,7 +28,6 @@ import {
   QUICK_CREATE_SELECT_TARGET_PARAM,
   QUICK_CREATE_VENDOR_PARAM,
   hrefAfterEntityCreate,
-  resolveFormBackUrl,
 } from "@/shared/utils/quick-create-navigation.util";
 import {
   AppButton,
@@ -42,7 +40,6 @@ import {
   SurfacePhoneField,
   SurfaceTextField,
   SurfaceShell,
-  surfaceInputClassName,
 } from "@/shared/ui";
 
 type Props = {
@@ -264,20 +261,16 @@ export function ContactFormScreen({ mode, contactId }: Props) {
       const saved = isEdit && contactId ? await updateContact(contactId, payload) : await createContact(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
-      const selectTarget = searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM);
-      if (!isEdit && selectTarget) {
-        router.replace(
-          hrefAfterEntityCreate({
-            createdId: saved.id,
-            selectTarget,
-            backHref: safeBack,
-            listPath: routes.dashboard.contacts,
-          }),
-        );
-      } else {
-        const detailHref = buildEntityDetailHrefAfterSave(routes.dashboard.contacts, saved.id, safeBack);
-        router.replace(mergeUrlQueryParam(detailHref, "contact_type", values.contact_type));
+      let nextHref = hrefAfterEntityCreate({
+        createdId: saved.id,
+        selectTarget: isEdit ? null : searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
+        backHref: safeBack,
+        listPath: routes.dashboard.contacts,
+      });
+      if (pathWithoutQueryAndHash(nextHref).startsWith(`${routes.dashboard.contacts}/`)) {
+        nextHref = mergeUrlQueryParam(nextHref, "contact_type", values.contact_type);
       }
+      router.replace(nextHref);
     } catch (error) {
       reportFormSubmitApiError(error, setError);
     } finally {
@@ -291,14 +284,6 @@ export function ContactFormScreen({ mode, contactId }: Props) {
       : contactType === "vendor"
         ? vendorOptions.length === 0
         : clientOptions.length === 0;
-  const lockedClientLabel =
-    lockClient && urlClientId
-      ? clientOptions.find((o) => o.value === urlClientId)?.label
-      : undefined;
-  const lockedVendorLabel =
-    lockVendor && urlVendorId
-      ? vendorOptions.find((o) => o.value === urlVendorId)?.label
-      : undefined;
 
   return (
     <div className="pb-12">
@@ -350,7 +335,9 @@ export function ContactFormScreen({ mode, contactId }: Props) {
                       options={contactTypeOptions}
                       value={field.value}
                       emptyLabel={t("placeholders.contactType")}
-                      disabled={saving || !!lockedContactType}
+                      disabled={saving}
+                      locked={!!lockedContactType}
+                      lockedHint={t("locked.contactType")}
                       invalid={!!errors.contact_type}
                       onBlur={field.onBlur}
                       onChange={(v) => {
@@ -363,50 +350,32 @@ export function ContactFormScreen({ mode, contactId }: Props) {
                 <FieldErrorText>{errors.contact_type?.message}</FieldErrorText>
               </FieldGroup>
               {contactType === "vendor" ? (
-                lockVendor ? (
-                  <FieldGroup label={t("fields.vendor")} htmlFor="contact-vendor-locked">
-                    <input
-                      id="contact-vendor-locked"
-                      readOnly
-                      value={lockedVendorLabel ?? ""}
-                      className={cn(surfaceInputClassName, "cursor-default bg-slate-50 dark:bg-slate-900/60")}
-                    />
-                  </FieldGroup>
-                ) : (
-                  <FieldGroup label={t("fields.vendor")} htmlFor="contact-vendor" required>
-                    <Controller
-                      control={control}
-                      name="vendor"
-                      render={({ field }) => (
-                        <CheckmarkSelect
-                          id="contact-vendor"
-                          portaled
-                          searchable
-                          listLabel={t("fields.vendor")}
-                          options={vendorOptions}
-                          value={field.value}
-                          emptyLabel={t("placeholders.vendor")}
-                          disabled={saving || noParents}
-                          invalid={!!errors.vendor}
-                          onBlur={field.onBlur}
-                          onChange={field.onChange}
-                          onAdd={vendorQuickCreate.onAdd}
-                          addAriaLabel={vendorQuickCreate.addAriaLabel}
-                          addLabel={vendorQuickCreate.addLabel}
-                        />
-                      )}
-                    />
-                    <FieldErrorText>{errors.vendor?.message}</FieldErrorText>
-                  </FieldGroup>
-                )
-              ) : lockClient ? (
-                <FieldGroup label={t("fields.client")} htmlFor="contact-client-locked">
-                  <input
-                    id="contact-client-locked"
-                    readOnly
-                    value={lockedClientLabel ?? ""}
-                    className={cn(surfaceInputClassName, "cursor-default bg-slate-50 dark:bg-slate-900/60")}
+                <FieldGroup label={t("fields.vendor")} htmlFor="contact-vendor" required>
+                  <Controller
+                    control={control}
+                    name="vendor"
+                    render={({ field }) => (
+                      <CheckmarkSelect
+                        id="contact-vendor"
+                        portaled
+                        searchable
+                        listLabel={t("fields.vendor")}
+                        options={vendorOptions}
+                        value={field.value}
+                        emptyLabel={t("placeholders.vendor")}
+                        disabled={saving || noParents}
+                        locked={lockVendor}
+                        lockedHint={t("locked.vendor")}
+                        invalid={!!errors.vendor}
+                        onBlur={field.onBlur}
+                        onChange={field.onChange}
+                        onAdd={vendorQuickCreate.onAdd}
+                        addAriaLabel={vendorQuickCreate.addAriaLabel}
+                        addLabel={vendorQuickCreate.addLabel}
+                      />
+                    )}
                   />
+                  <FieldErrorText>{errors.vendor?.message}</FieldErrorText>
                 </FieldGroup>
               ) : (
                 <FieldGroup label={t("fields.client")} htmlFor="contact-client" required>
@@ -423,6 +392,8 @@ export function ContactFormScreen({ mode, contactId }: Props) {
                         value={field.value}
                         emptyLabel={t("placeholders.client")}
                         disabled={saving || noParents}
+                        locked={lockClient}
+                        lockedHint={t("locked.client")}
                         invalid={!!errors.client}
                         onBlur={field.onBlur}
                         onChange={field.onChange}

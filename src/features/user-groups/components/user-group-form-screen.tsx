@@ -153,11 +153,11 @@ export function UserGroupFormScreen({ mode, groupId }: { mode: "create" | "edit"
       if (isEdit && groupId != null) {
         const saved = await updateUserGroup(groupId, parsed.data);
         toastSuccess(t("updatedToast"));
-        router.push(buildEntityDetailHrefAfterSave(routes.dashboard.settingsUserGroups, saved.id, safeBack));
+        router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.settingsUserGroups, saved.id, safeBack));
       } else {
         const saved = await createUserGroup(parsed.data);
         toastSuccess(t("createdToast"));
-        router.push(buildEntityDetailHrefAfterSave(routes.dashboard.settingsUserGroups, saved.id, safeBack));
+        router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.settingsUserGroups, saved.id, safeBack));
       }
     } catch (error) {
       reportLocalFormSubmitApiError(error, (fieldErrors) => setErrors((prev) => ({ ...prev, ...fieldErrors })));

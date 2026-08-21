@@ -27,11 +27,16 @@ import {
   FieldLabel,
   fieldErrorTextClassName,
   MoneyInput,
+  NumericInput,
   surfaceInputClassName,
 } from "@/shared/ui";
 import { usePathname } from "@/i18n/navigation";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
+import {
+  formatCompositePriceInput,
+  sumCompositeComponentPrices,
+} from "@/features/composite-items/utils/composite-component-prices.util";
 
 type Props = {
   open: boolean;
@@ -77,6 +82,8 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
   const [qty, setQty] = React.useState(() => (mode === "edit" && item ? String(item.quantity ?? 0) : "0"));
   const [cost, setCost] = React.useState(() => (mode === "edit" && item ? String(item.cost_price ?? 0) : "0"));
   const [sell, setSell] = React.useState(() => (mode === "edit" && item ? String(item.selling_price ?? 0) : "0"));
+  const costManualRef = React.useRef(mode === "edit");
+  const sellManualRef = React.useRef(mode === "edit");
   const [rows, setRows] = React.useState<ComponentRow[]>(() => {
     const comps = mode === "edit" && item?.components ? item.components : [];
     if (!comps || comps.length === 0) return [{ id: nextRowId(), child_item: "", quantity: "1" }];
@@ -214,6 +221,8 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
       setQty(String(item.quantity ?? 0));
       setCost(String(item.cost_price ?? 0));
       setSell(String(item.selling_price ?? 0));
+      costManualRef.current = true;
+      sellManualRef.current = true;
       const installationTypeId = getInstallationTypeId(item.installation_type);
       setInstallationType(installationTypeId != null ? String(installationTypeId) : "");
       const comps = item.components ?? [];
@@ -247,6 +256,8 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
       setQty("0");
       setCost("0");
       setSell("0");
+      costManualRef.current = false;
+      sellManualRef.current = false;
       setInstallationType("");
       setRows([{ id: nextRowId(), child_item: "", quantity: "1" }]);
       setDeletedComponents([]);
@@ -287,6 +298,14 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
       cancelled = true;
     };
   }, [open, t]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    if (costManualRef.current && sellManualRef.current) return;
+    const totals = sumCompositeComponentPrices(rows, itemOptions);
+    if (!costManualRef.current) setCost(formatCompositePriceInput(totals.cost));
+    if (!sellManualRef.current) setSell(formatCompositePriceInput(totals.sell));
+  }, [open, rows, itemOptions]);
 
   function normalizeRows(next: ComponentRow[]): ComponentRow[] {
     if (next.length === 0) return [{ id: nextRowId(), child_item: "", quantity: "1" }];
@@ -484,15 +503,12 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
           <FieldLabel htmlFor={qtyId} required>
             {t("quantity")}
           </FieldLabel>
-          <input
+          <NumericInput
             id={qtyId}
-            type="number"
-            inputMode="numeric"
+            integer
             value={qty}
-            onChange={(e) => setQty(e.target.value)}
+            onChange={setQty}
             disabled={submitting}
-            className={surfaceInputClassName}
-            min={0}
           />
         </div>
 
@@ -528,7 +544,10 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
               type="number"
               inputMode="decimal"
               value={cost}
-              onChange={(e) => setCost(e.target.value)}
+              onChange={(e) => {
+                costManualRef.current = true;
+                setCost(e.target.value);
+              }}
               disabled={submitting}
               min={0}
               step="0.01"
@@ -543,7 +562,10 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
               type="number"
               inputMode="decimal"
               value={sell}
-              onChange={(e) => setSell(e.target.value)}
+              onChange={(e) => {
+                sellManualRef.current = true;
+                setSell(e.target.value);
+              }}
               disabled={submitting}
               min={0}
               step="0.01"
@@ -558,7 +580,7 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
           ) : null}
           <div className="mt-2 space-y-2">
             {rows.map((r, idx) => (
-              <div key={r.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_140px_auto] sm:items-end">
+              <div key={r.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(14rem,22rem)_8rem_auto] sm:items-end">
                 <div>
                   <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
                     {t("childItem")}
@@ -593,17 +615,13 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
                   <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
                     {t("componentQuantity")}
                   </span>
-                  <input
-                    type="number"
-                    min={1}
-                    inputMode="numeric"
+                  <NumericInput
+                    integer
                     value={r.quantity}
-                    onChange={(e) => {
-                      const v = e.target.value;
+                    onChange={(v) => {
                       setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, quantity: v } : x)));
                     }}
                     disabled={submitting}
-                    className={surfaceInputClassName}
                   />
                 </div>
                 <div className="flex gap-2 sm:justify-end">

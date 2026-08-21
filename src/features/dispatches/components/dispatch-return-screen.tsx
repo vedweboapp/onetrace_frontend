@@ -209,7 +209,7 @@ export function DispatchReturnScreen({ dispatchId }: Props) {
                     {returnData.material_request_id > 0 ? (
                       <DetailEntityLink
                         href={`${routes.dashboard.materialRequests}/${returnData.material_request_id}`}
-                        className="font-semibold text-slate-900 underline-offset-2 hover:underline dark:text-slate-100"
+                        className="font-semibold text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
                       >
                         {returnData.material_request_number?.trim() || `#${returnData.material_request_id}`}
                       </DetailEntityLink>

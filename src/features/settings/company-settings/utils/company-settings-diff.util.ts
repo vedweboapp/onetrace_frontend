@@ -22,6 +22,7 @@ export const CURRENCY_TAB_FIELDS = [
   "symbolPosition",
   "digitSeparator",
   "decimalPlaces",
+  "numberFormat",
 ] as const satisfies readonly (keyof OrganizationDetails)[];
 
 export const SCHEDULE_TAB_FIELDS = [

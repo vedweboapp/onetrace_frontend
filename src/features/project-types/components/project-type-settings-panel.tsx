@@ -28,8 +28,8 @@ import {
 } from "@/shared/components/settings/settings-detail-view";
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
-import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
+import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
@@ -46,7 +46,6 @@ import {
   listPageRootClassName,
   DetailPanel,
   FieldGroup,
-  ListPageActiveFilter,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
@@ -82,9 +81,8 @@ export function ProjectTypeSettingsPanel() {
   const tList = useTranslations("Dashboard.list");
   const tCustomization = useTranslations("Dashboard.settingsNav.customization");
   const dateFmt = useDashboardDateFormat();
-  const { page, pageSize, listViewMode, search, isActiveParam, setUrl, setPage, setPageSize, setListViewMode } =
+  const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } =
     useListUrlState();
-  const isActiveFilter = parseIsActiveParam(isActiveParam) ?? true;
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
   const commitSearch = React.useCallback(
@@ -130,7 +128,6 @@ export function ProjectTypeSettingsPanel() {
       try {
         const { items: nextItems, pagination: p } = await fetchProjectTypesPage(page, pageSize, {
           search: search || undefined,
-          is_active: isActiveFilter,
         });
         if (!cancelled) {
           setItems(nextItems);
@@ -148,27 +145,15 @@ export function ProjectTypeSettingsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, refreshNonce, search, isActiveFilter, t]);
+  }, [page, pageSize, refreshNonce, search, t]);
 
-  const hasActiveFilters = hasListActiveFilters({ search, isActiveParam });
-  const countInactive = React.useCallback(async () => {
-    const { pagination: p } = await fetchProjectTypesPage(1, 1, {
-      search: search || undefined,
-      is_active: false,
-    });
-    return p.total_records;
-  }, [search]);
-  const { hideListChrome, listLoading, emptyStateKind, filtersActive, switchToInactive } =
-    useListActiveInactiveEmptyState({
-      loading,
-      loadError,
-      itemsLength: items.length,
-      isActiveParam,
-      isActiveFilter,
-      hasActiveFilters,
-      setUrl,
-      countInactive,
-    });
+  const hasActiveFilters = hasListActiveFilters({ search });
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
 
   const openEdit = React.useCallback((row: ProjectType) => {
     setDetailRow(null);
@@ -322,16 +307,6 @@ export function ProjectTypeSettingsPanel() {
                 ariaLabel={tList("searchAria")}
                 className="sm:max-w-sm"
               />
-              <ListPageActiveFilter
-                activeLabel={t("status.active")}
-                inactiveLabel={t("status.inactive")}
-                filterLabel={t("filterState")}
-                filterAriaLabel={t("filterState")}
-                isActiveParam={isActiveParam}
-                onChange={(active) =>
-                  setUrl({ is_active: active ? null : "false", page: null }, { replace: true })
-                }
-              />
             </div>
           }
         />
@@ -368,7 +343,6 @@ export function ProjectTypeSettingsPanel() {
             onClearFilters={() =>
               setUrl({ search: null, is_active: null, page: null }, { replace: true })
             }
-            onSwitchToInactive={switchToInactive}
           />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">

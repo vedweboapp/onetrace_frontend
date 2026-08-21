@@ -23,6 +23,7 @@ import {
   DetailPagePadding,
   DetailPanelCard,
   detailPageStackClassName,
+  detailRecordInnerClassName,
   detailRecordSurfaceShellClassName,
 } from "@/shared/components/layout/detail-metric-card";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
@@ -106,6 +107,7 @@ export function UserGroupDetailScreen({ groupId }: { groupId: number }) {
       />
 
       <SurfaceShell className={`${detailRecordSurfaceShellClassName} mt-3`}>
+        <div className={detailRecordInnerClassName}>
         {loading ? (
           <EntityDetailLoadingSkeleton />
         ) : error ? (
@@ -172,6 +174,7 @@ export function UserGroupDetailScreen({ groupId }: { groupId: number }) {
             </div>
           </DetailPagePadding>
         ) : null}
+        </div>
       </SurfaceShell>
 
       <ConfirmDialog

@@ -21,10 +21,11 @@ export function createVendorFormSchema(messages: VendorFormMessages) {
       message: messages.phoneInvalid,
     }),
     type: z
-      .string()
-      .trim()
-      .regex(/^\d+$/, messages.type)
-      .refine((s) => Number.parseInt(s, 10) > 0, { message: messages.type }),
+      .array(z.string())
+      .min(1, { message: messages.type })
+      .refine((ids) => ids.every((id) => /^\d+$/.test(id) && Number.parseInt(id, 10) > 0), {
+        message: messages.type,
+      }),
     addresses: createEntityAddressesArraySchema(messages),
   });
 }

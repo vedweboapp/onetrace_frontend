@@ -22,10 +22,10 @@ import { SiteLocationFields } from "@/features/sites/components/site-location-fi
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
-import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import {
   QUICK_CREATE_CLIENT_PARAM,
-  resolveFormBackUrl,
+  QUICK_CREATE_SELECT_TARGET_PARAM,
+  hrefAfterEntityCreate,
 } from "@/shared/utils/quick-create-navigation.util";
 import {
   AppButton,
@@ -119,9 +119,13 @@ export function SiteFormScreen({ mode, siteId }: Props) {
     [reset],
   );
 
+  const urlClientId = searchParams.get(QUICK_CREATE_CLIENT_PARAM);
+  const lockClient = !isEdit && Boolean(urlClientId && /^\d+$/.test(urlClientId));
+
   const clientQuickCreate = useQuickCreate({
     kind: "client",
-    getFormDraft: !isEdit ? getFormDraft : undefined,
+    getFormDraft: !isEdit && !lockClient ? getFormDraft : undefined,
+    addDisabled: lockClient,
   });
 
   React.useEffect(() => {
@@ -136,6 +140,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
     onReloadOptions: reloadClients,
     onApplySelect: ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {
+        if (lockClient) return;
         setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
         setValue("contacts", [], { shouldDirty: true, shouldValidate: true });
         return;
@@ -192,14 +197,15 @@ export function SiteFormScreen({ mode, siteId }: Props) {
     try {
       const saved = isEdit && siteId ? await updateSite(siteId, payload) : await createSite(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      const id = saved?.id 
-      console.log("the id from the backend is",id,"also if is edit true", isEdit)
-      if(id){
-       router.push(`/sites/${id}`)
-       if(!isEdit){
-         clearQuickCreateFormDraft(draftReturnTo);
-       }
-      }
+      if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
+      router.replace(
+        hrefAfterEntityCreate({
+          createdId: saved.id,
+          selectTarget: isEdit ? null : searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
+          backHref: safeBack,
+          listPath: routes.dashboard.sites,
+        }),
+      );
     } catch (error) {
       reportFormSubmitApiError(error, setError);
     } finally {
@@ -207,7 +213,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
     }
   }
 
-  const noClients = clientOptions.length === 0;
+  const noClients = !lockClient && clientOptions.length === 0;
 
   return (
     <div className="space-y-4 pb-12">
@@ -282,6 +288,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
                           value={field.value}
                           emptyLabel={t("placeholders.client")}
                           disabled={saving || noClients}
+                        locked={lockClient}
                           invalid={!!errors.client}
                           onBlur={field.onBlur}
                           onChange={(v) => {

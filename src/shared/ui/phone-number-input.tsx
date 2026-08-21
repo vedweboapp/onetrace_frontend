@@ -4,11 +4,8 @@ import * as React from "react";
 import PhoneInput from "react-phone-number-input/max";
 import type { Country, Value } from "react-phone-number-input";
 import { cn } from "@/core/utils/http.util";
-import {
-  clampPhoneE164ToCountryMax,
-  DEFAULT_PHONE_COUNTRY_CODE,
-  getInternationalPhoneInputMaxLength,
-} from "@/shared/utils/phone-input.util";
+import { useSystemPhoneCountry } from "@/shared/hooks/use-system-phone-country";
+import { clampPhoneE164ToCountryMax, getInternationalPhoneInputMaxLength } from "@/shared/utils/phone-input.util";
 import { SurfacePhoneCountrySelect } from "./surface-phone-country-select";
 
 export type PhoneNumberInputProps = {
@@ -42,14 +39,16 @@ export function PhoneNumberInput({
   value,
   onChange,
   onBlur,
-  defaultCountry = DEFAULT_PHONE_COUNTRY_CODE,
+  defaultCountry,
   disabled,
   placeholder,
   className,
   inputRef,
   numberInputProps,
 }: PhoneNumberInputProps) {
-  const [country, setCountry] = React.useState<Country | undefined>(defaultCountry);
+  const systemCountry = useSystemPhoneCountry();
+  const resolvedDefaultCountry = defaultCountry ?? systemCountry;
+  const [country, setCountry] = React.useState<Country | undefined>(resolvedDefaultCountry);
   // react-phone-number-input ignores prop updates when the clamped value equals the
   // previous props value (already at max length). Remount after truncate so the UI
   // cannot keep overflowing national digits (e.g. India 13 vs mobile max 10).
@@ -70,12 +69,12 @@ export function PhoneNumberInput({
     }
   }, []);
 
-  // Only adopt a new default flag when the field is empty (address country changed).
+  // Only adopt a new default flag when the field is empty (address / system country changed).
   React.useEffect(() => {
     if (!valueRef.current.trim()) {
-      setCountry(defaultCountry);
+      setCountry(resolvedDefaultCountry);
     }
-  }, [defaultCountry]);
+  }, [resolvedDefaultCountry]);
 
   React.useLayoutEffect(() => {
     if (clampEpoch === 0) return;
@@ -83,7 +82,7 @@ export function PhoneNumberInput({
     requestAnimationFrame(restoreFocusAfterRemount);
   }, [clampEpoch, restoreFocusAfterRemount]);
 
-  const activeCountry = country ?? defaultCountry;
+  const activeCountry = country ?? resolvedDefaultCountry;
   const inputMaxLength = getInternationalPhoneInputMaxLength(activeCountry);
 
   const setInputRefs = React.useCallback(
@@ -113,12 +112,12 @@ export function PhoneNumberInput({
       setCountry(next);
       const current = valueRef.current;
       if (!current.trim()) return;
-      const clamped = clampPhoneE164ToCountryMax(current, next ?? defaultCountry);
+      const clamped = clampPhoneE164ToCountryMax(current, next ?? resolvedDefaultCountry);
       if (clamped === current) return;
       valueRef.current = clamped;
       onChange(clamped);
     },
-    [defaultCountry, onChange],
+    [resolvedDefaultCountry, onChange],
   );
 
   return (
@@ -130,7 +129,7 @@ export function PhoneNumberInput({
       onCountryChange={handleCountryChange}
       international
       limitMaxLength
-      defaultCountry={defaultCountry}
+      defaultCountry={resolvedDefaultCountry}
       disabled={disabled}
       placeholder={placeholder}
       countrySelectComponent={SurfacePhoneCountrySelect}

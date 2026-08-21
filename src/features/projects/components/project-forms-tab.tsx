@@ -30,7 +30,6 @@ import {
   DataTableRowActionsMenu,
   ListPageCard,
   ListPageCardGrid,
-  ListPageSearchField,
   MultiCheckSelect,
   SurfaceShell,
 } from "@/shared/ui";
@@ -78,7 +77,6 @@ export function ProjectFormsTab() {
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
 
-  const [search, setSearch] = React.useState("");
   const [activeFilter, setActiveFilter] = React.useState<ActiveFilter>("true");
 
   const [page, setPage] = React.useState(1);
@@ -107,11 +105,6 @@ export function ProjectFormsTab() {
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
   const pageRange = getListPageRange(pagination);
 
-  const commitSearch = React.useCallback((q: string) => {
-    setSearch(q.trim());
-    setPage(1);
-  }, []);
-
   React.useEffect(() => {
     if (!projectId) return;
     let cancelled = false;
@@ -124,7 +117,6 @@ export function ProjectFormsTab() {
           page,
           pageSize,
           {
-            search: search || undefined,
             is_active: activeFilter === "true",
           }
         );
@@ -145,7 +137,7 @@ export function ProjectFormsTab() {
     return () => {
       cancelled = true;
     };
-  }, [projectId, page, pageSize, search, activeFilter, refreshNonce, t]);
+  }, [projectId, page, pageSize, activeFilter, refreshNonce, t]);
 
   React.useEffect(() => {
     if (!assignOpen || !projectId) return;
@@ -312,13 +304,14 @@ export function ProjectFormsTab() {
   return (
     <div className={detailTabSectionClassName}>
       <div className={detailTabToolbarClassName}>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1 text-left">
           <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{t("title")}</h2>
           <p className="mt-0.5 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
         </div>
         <AppButton
           type="button"
           size="sm"
+          className="shrink-0"
           onClick={openCreate}
         >
           <Plus className="size-4" />
@@ -327,15 +320,7 @@ export function ProjectFormsTab() {
       </div>
 
       <div className={cn(detailTabFilterBarClassName, "sm:justify-between")}>
-        <div className="flex min-w-0 w-full flex-col gap-2 sm:flex-row sm:items-center">
-          <ListPageSearchField
-            value={search}
-            onCommit={commitSearch}
-            placeholder={t("searchPlaceholder")}
-            ariaLabel={t("searchAria")}
-            className="sm:max-w-md"
-          />
-          <CheckmarkSelect
+        <CheckmarkSelect
             listLabel={t("filterState")}
             buttonAriaLabel={t("filterState")}
             emptyLabel={t("status.active")}
@@ -351,7 +336,6 @@ export function ProjectFormsTab() {
             className="w-full sm:w-52"
             portaled
           />
-        </div>
         {viewToggle}
       </div>
 

@@ -6,16 +6,18 @@ import { updateClient } from "@/features/clients/api/client.api";
 import type { Client } from "@/features/clients/types/client.types";
 import { resolveClientAddresses } from "@/features/clients/utils/client-form-map";
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
+import { DetailAddressBlock } from "@/shared/components/layout/detail-address-block";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { DetailEntityAddressFields } from "@/shared/components/layout/detail-entity-address-fields";
 import {
   DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
+  detailPageBodyPaddingClassName,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
-import { ActiveStatusBadge } from "@/shared/ui";
+import { entityAddressTypeOptions, sortEntityAddressesForDisplay } from "@/shared/form/entity-address-form.util";
+import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 
 export function ClientDetailBody({
   detail,
@@ -31,56 +33,55 @@ export function ClientDetailBody({
   const tMeta = useTranslations("Dashboard.common.detail");
   const tActions = useTranslations("Dashboard.common.actions");
   const addresses = resolveClientAddresses(detail);
+  const sortedAddresses = React.useMemo(() => sortEntityAddressesForDisplay(addresses), [addresses]);
+  const addressTypeOptions = React.useMemo(() => entityAddressTypeOptions((key) => t(key)), [t]);
 
-  const statusOptions = React.useMemo(
-    () => [
-      { value: "true", label: t("status.active") },
-      { value: "false", label: t("status.inactive") },
-    ],
-    [t],
+  const patchField = useDetailPatch(
+    (body: Parameters<typeof updateClient>[1]) => updateClient(detail.id, body),
+    { success: t("updatedToast"), error: t("toggleActiveError") },
+    onSaved,
   );
 
-  async function patchField(body: Parameters<typeof updateClient>[1]) {
-    try {
-      await updateClient(detail.id, body);
-      toastSuccess(t("updatedToast"));
-      onSaved?.();
-    } catch (error) {
-      toastApiError(error, t("toggleActiveError"));
-      throw error;
-    }
-  }
-
-  async function patchAddresses(addressPayloads: Parameters<typeof updateClient>[1]["addresses"]) {
-    try {
-      await updateClient(detail.id, {
+  const patchAddresses = useDetailPatch(
+    (addressPayloads: Parameters<typeof updateClient>[1]["addresses"]) =>
+      updateClient(detail.id, {
         name: detail.name,
         email: detail.email,
         phone: detail.phone ?? "",
         addresses: addressPayloads,
-      });
-      toastSuccess(t("updatedToast"));
-      onSaved?.();
-    } catch (error) {
-      toastApiError(error, t("toggleActiveError"));
-      throw error;
-    }
-  }
+      }),
+    { success: t("updatedToast"), error: t("toggleActiveError") },
+    onSaved,
+  );
 
   const addressFieldLabels = React.useMemo(
     () => ({
+      addressType: t("fields.addressType"),
       addressLine1: t("fields.addressLine1"),
       addressLine2: t("fields.addressLine2"),
       pincode: t("fields.pincode"),
       country: t("fields.country"),
       state: t("fields.stateProvince"),
       city: t("fields.city"),
+      primary: t("addresses.primary"),
+    }),
+    [t],
+  );
+
+  const addressRequiredMessages = React.useMemo(
+    () => ({
+      addressType: t("validation.addressType"),
+      addressLine1: t("validation.addressLine1"),
+      pincode: t("validation.pincode"),
+      country: t("validation.country"),
+      state: t("validation.state"),
+      city: t("validation.city"),
     }),
     [t],
   );
 
   return (
-    <DetailPagePadding className="!px-0 !py-0 sm:!px-0 sm:!py-0">
+    <DetailPagePadding className={detailPageBodyPaddingClassName}>
       <div className={detailPageStackClassName}>
         <DetailPanelCard title={t("detail.panelOverview")} variant="flat">
           <DetailMetricsGrid>
@@ -88,28 +89,19 @@ export function ClientDetailBody({
               label={t("fields.name")}
               value={detail.name}
               kind="text"
+              required
+              requiredMessage={t("validation.name")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ name: next })}
             >
               {detail.name}
             </DetailEditableField>
             <DetailEditableField
-              label={t("detail.metaStatus")}
-              value={detail.is_active ? "true" : "false"}
-              kind="select"
-              options={statusOptions}
-              editAriaLabel={tActions("edit")}
-              onSave={(next) => patchField({ is_active: next === "true" })}
-            >
-              <ActiveStatusBadge
-                active={detail.is_active}
-                label={detail.is_active ? t("status.active") : t("status.inactive")}
-              />
-            </DetailEditableField>
-            <DetailEditableField
               label={t("fields.email")}
               value={detail.email}
               kind="email"
+              required
+              requiredMessage={t("validation.email")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ email: next })}
             >
@@ -119,6 +111,8 @@ export function ClientDetailBody({
               label={t("fields.phone")}
               value={detail.phone ?? ""}
               kind="tel"
+              required
+              requiredMessage={t("validation.phoneInvalid")}
               editAriaLabel={tActions("edit")}
               empty={t("detail.notProvided")}
               onSave={(next) => patchField({ phone: next })}
@@ -132,28 +126,28 @@ export function ClientDetailBody({
           {addresses.length === 0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>
           ) : (
-            <ul className="space-y-6">
-              {addresses.map((addr, index) => (
-                <li key={addr.id ?? `${addr.address_type}-${index}`} className="min-w-0">
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      {t(`addressType.${addr.address_type}`)}
-                    </span>
-                    {addr.is_primary ? (
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                        {t("addresses.primary")}
-                      </span>
-                    ) : null}
-                  </div>
-                  <DetailEntityAddressFields
-                    address={addr}
-                    addressIndex={index}
-                    allAddresses={addresses}
-                    labels={addressFieldLabels}
-                    editAriaLabel={tActions("edit")}
-                    line2Empty={t("detail.addressLine2Empty")}
-                    onSaveAddresses={patchAddresses}
-                  />
+            <ul className="space-y-0">
+              {sortedAddresses.map(({ address: addr, originalIndex, displayIndex }) => (
+                <li key={addr.id ?? `${addr.address_type}-${originalIndex}`}>
+                  <DetailAddressBlock
+                    heading={t("addresses.rowLabel", { index: displayIndex + 1 })}
+                    primaryLabel={t("addresses.primary")}
+                    isPrimary={Boolean(addr.is_primary)}
+                    separated={displayIndex > 0}
+                  >
+                    <DetailEntityAddressFields
+                      address={addr}
+                      addressIndex={originalIndex}
+                      allAddresses={addresses}
+                      labels={addressFieldLabels}
+                      requiredMessages={addressRequiredMessages}
+                      addressTypeOptions={addressTypeOptions}
+                      addressTypeValue={t(`addressType.${addr.address_type}`)}
+                      editAriaLabel={tActions("edit")}
+                      line2Empty={t("detail.addressLine2Empty")}
+                      onSaveAddresses={patchAddresses}
+                    />
+                  </DetailAddressBlock>
                 </li>
               ))}
             </ul>

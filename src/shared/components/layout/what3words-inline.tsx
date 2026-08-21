@@ -16,7 +16,7 @@ export function What3WordsInline({ value, label, className }: Props) {
         href={what3WordsHref(words)}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-1 inline-block text-sm font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+        className="mt-1 inline-block text-sm font-semibold text-blue-600 underline-offset-2 hover:underline"
       >
         {words}
       </a>

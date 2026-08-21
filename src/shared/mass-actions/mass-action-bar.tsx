@@ -7,6 +7,7 @@ import {
   AppButton,
   CheckmarkSelect,
   ConfirmDialog,
+  MoneyInput,
   SurfaceDateInput,
   nativeDatePickerHitAreaClassName,
 } from "@/shared/ui";
@@ -377,6 +378,14 @@ export function MassActionBar({
                   disabled={disabled || busy || !fieldName}
                   className={massBarFieldClass}
                   placeholder={t("valuePlaceholder")}
+                />
+              ) : selectedField?.valueType === "money" ? (
+                <MoneyInput
+                  size="sm"
+                  className="rounded-md shadow-sm"
+                  value={fieldValue}
+                  onChange={(e) => handleFieldValueChange(e.target.value)}
+                  disabled={disabled || busy || !fieldName}
                 />
               ) : selectedField?.valueType === "number" ? (
                 <input

@@ -18,12 +18,11 @@ import {
   quotationTagsLabels,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
 import type { Tag } from "@/features/tags/types/tag.types";
-import { entityCol } from "@/shared/components/entity";
+import { DetailEntityLink, entityCol, entityNameLinkClassName } from "@/shared/components/entity";
 import type { EntityTableColumn } from "@/shared/components/entity";
 import {
   detailTabBodyClassName,
   detailTabErrorClassName,
-  detailTabFilterBarClassName,
   detailTabSectionClassName,
   detailTabTitleClassName,
 } from "@/shared/components/layout/detail-tab-layout";
@@ -36,7 +35,6 @@ import {
   DataTable,
   DataTableBody,
   DataTableHead,
-  ListPageSearchField,
   ListPageEmptyStates,
   DataTablePaginationBar,
   DataTableRow,
@@ -59,7 +57,11 @@ const TRUNCATE_MAX = {
 function quotationTableCellClassName(column: EntityTableColumn<QuotationListItem>): string | undefined {
   switch (column.variant) {
     case "primary":
-      return "font-semibold text-slate-900 dark:text-slate-100";
+      return cn("font-semibold", entityNameLinkClassName);
+    case "link": {
+      const max = column.maxWidth ? TRUNCATE_MAX[column.maxWidth] : TRUNCATE_MAX.sm;
+      return cn(max, "truncate");
+    }
     case "truncate": {
       const max = column.maxWidth ? TRUNCATE_MAX[column.maxWidth] : TRUNCATE_MAX.sm;
       return cn(max, "truncate");
@@ -78,6 +80,27 @@ function renderQuotationTableCell(column: EntityTableColumn<QuotationListItem>, 
     case "text":
     case "tabular":
       return column.value(row);
+    case "link": {
+      const label = column.label(row)?.trim() || "—";
+      const href = column.href?.(row)?.trim() || null;
+      const title = column.title?.(row) ?? (label !== "—" ? label : undefined);
+      const empty = label === "—";
+      const content =
+        !empty && href ? (
+          <DetailEntityLink href={href} className="font-medium" onClick={(e) => e.stopPropagation()}>
+            {label}
+          </DetailEntityLink>
+        ) : empty ? (
+          <span className="text-slate-400 dark:text-slate-500">—</span>
+        ) : (
+          <span className={cn(entityNameLinkClassName, "font-medium")}>{label}</span>
+        );
+      return (
+        <span className="block truncate" title={title}>
+          {content}
+        </span>
+      );
+    }
     case "truncate": {
       const title = column.title?.(row);
       return (
@@ -120,7 +143,6 @@ export function ProjectQuotationsTab({ projectId }: Props) {
     [listBack, router],
   );
 
-  const [search, setSearch] = React.useState("");
   const [items, setItems] = React.useState<QuotationListItem[]>([]);
   const [pagination, setPagination] = React.useState({
     total_records: 0,
@@ -138,11 +160,6 @@ export function ProjectQuotationsTab({ projectId }: Props) {
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [siteOptions, setSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [tagLabelById, setTagLabelById] = React.useState<Record<number, string>>({});
-
-  const commitSearch = React.useCallback((q: string) => {
-    setSearch(q.trim());
-    setPage(1);
-  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -184,7 +201,6 @@ export function ProjectQuotationsTab({ projectId }: Props) {
       try {
         const { items: nextItems, pagination: p } = await fetchQuotationsPage(page, pageSize, {
           project: projectId,
-          search: search || undefined,
         });
         if (!cancelled) {
           setItems(nextItems);
@@ -202,7 +218,7 @@ export function ProjectQuotationsTab({ projectId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [projectId, page, pageSize, search, t]);
+  }, [projectId, page, pageSize, t]);
 
   const clientLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -249,10 +265,22 @@ export function ProjectQuotationsTab({ projectId }: Props) {
     const tagsDisplay = (row: QuotationListItem) => quotationTagsLabels(row.tags, tagLabelById);
 
     return [
-      c.primary("quote", tQuotations("table.quote"), (r) => r.quotation_serial_number),
-      c.truncate("customer", tQuotations("table.customer"), (r) => customerDisplay(r), {
-        title: (r) => customerDisplay(r),
-      }),
+      c.link(
+        "quote",
+        tQuotations("table.quote"),
+        (r) => r.quotation_serial_number?.trim() || "—",
+        (r) => `${routes.dashboard.quotations}/${r.id}`,
+      ),
+      c.link(
+        "customer",
+        tQuotations("table.customer"),
+        (r) => customerDisplay(r),
+        (r) => {
+          const customerId = getQuotationCustomerId(r.customer);
+          return customerId != null ? `${routes.dashboard.clients}/${customerId}` : null;
+        },
+        { title: (r) => customerDisplay(r) },
+      ),
       // c.truncate("site", tQuotations("table.site"), (r) => siteDisplay(r), {
       //   title: (r) => siteDisplay(r),
       // }),
@@ -265,12 +293,10 @@ export function ProjectQuotationsTab({ projectId }: Props) {
     ];
   }, [tQuotations, dateFmt, dueFmt, clientLabelById, siteLabelById, tagLabelById, quoteStatusLabel]);
 
-  const hasActiveFilters = search.trim() !== "";
   const emptyStateKind = React.useMemo(() => {
     if (loading || loadError || items.length > 0) return "none" as const;
-    if (hasActiveFilters) return "filtered" as const;
     return "onboarding" as const;
-  }, [loading, loadError, items.length, hasActiveFilters]);
+  }, [loading, loadError, items.length]);
 
   return (
     <div className={detailTabSectionClassName}>
@@ -281,16 +307,6 @@ export function ProjectQuotationsTab({ projectId }: Props) {
         <p className="mt-0.5 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
           {t("subtitle")}
         </p>
-      </div>
-
-      <div className={detailTabFilterBarClassName}>
-        <ListPageSearchField
-          value={search}
-          onCommit={commitSearch}
-          placeholder={t("searchPlaceholder")}
-          ariaLabel={t("searchAria")}
-          className="sm:max-w-sm"
-        />
       </div>
 
       <div className={detailTabBodyClassName}>
@@ -313,10 +329,7 @@ export function ProjectQuotationsTab({ projectId }: Props) {
               description: t("emptyDescription"),
               action: null,
             }}
-            onClearFilters={() => {
-              setSearch("");
-              setPage(1);
-            }}
+            onClearFilters={() => {}}
           />
         ) : (
           <DataTableScroll>

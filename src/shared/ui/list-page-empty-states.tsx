@@ -22,6 +22,8 @@ export type ListPageEmptyStatesProps = {
   onClearFilters: () => void;
   onSwitchToInactive?: () => void;
   compact?: boolean;
+  /** Fill tab/detail pane height (detail list tabs). */
+  fill?: boolean;
 };
 
 export function listPageSurfaceShellClassName(hideListChrome: boolean): string {
@@ -51,6 +53,7 @@ export function ListPageEmptyStates({
   onClearFilters,
   onSwitchToInactive,
   compact = false,
+  fill = false,
 }: ListPageEmptyStatesProps) {
   const tList = useTranslations("Dashboard.list");
 
@@ -64,7 +67,8 @@ export function ListPageEmptyStates({
         title={onboarding.title}
         description={onboarding.description}
         action={onboarding.action}
-        compact={onboarding.compact ?? compact}
+        compact={fill ? false : (onboarding.compact ?? compact)}
+        fill={fill}
       />
     );
   }
@@ -80,7 +84,8 @@ export function ListPageEmptyStates({
             {tList("viewInactive")}
           </AppButton>
         }
-        compact={compact}
+        compact={fill ? false : compact}
+        fill={fill}
       />
     );
   }
@@ -95,7 +100,8 @@ export function ListPageEmptyStates({
           {tList("clearFilters")}
         </AppButton>
       }
-      compact={compact}
+      compact={fill ? false : compact}
+      fill={fill}
     />
   );
 }

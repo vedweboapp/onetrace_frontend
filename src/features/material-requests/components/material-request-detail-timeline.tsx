@@ -86,7 +86,7 @@ export function MaterialRequestDetailTimeline({ materialRequestId, dateFmt }: Pr
                   {entry.dispatch_id != null && entry.dispatch_id > 0 ? (
                     <DetailEntityLink
                       href={`${routes.dashboard.dispatches}/${entry.dispatch_id}`}
-                      className="text-xs font-semibold text-slate-900 underline-offset-2 hover:underline dark:text-slate-100"
+                      className="text-xs font-semibold text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
                     >
                       {t("logs.viewDispatch")}
                     </DetailEntityLink>

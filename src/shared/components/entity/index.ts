@@ -1,11 +1,11 @@
-export { DetailEntityLink } from "./detail-entity-link";
+export { DetailEntityLink, entityNameLinkClassName } from "./detail-entity-link";
 export { EntityDetailScreen } from "./entity-detail-screen";
 export type {
   EntityDetailScreenLabels,
   EntityDetailScreenProps,
   EntityDetailScreenContext,
 } from "./entity-detail-screen";
-export { EntityDetailLoadingSkeleton } from "./entity-detail-loading";
+export { EntityDetailLoadingSkeleton, EntityDetailTabLoadingState } from "./entity-detail-loading";
 export { EntityDetailErrorState } from "./entity-detail-error";
 export {
   EntityDetailEditButton,

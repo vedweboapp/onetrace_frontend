@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 
 type UseEntityDetailScreenArgs<T> = {
   entityId: number;
@@ -43,4 +44,29 @@ export function useEntityDetailScreen<T>({ entityId, fetch, loadError }: UseEnti
   }, [entityId, refreshNonce]);
 
   return { detail, loading, error, retry, dateFmt };
+}
+
+/** PATCH + toast + refresh for Zoho-style detail inline edit (one hook, no duplicated try/catch). */
+export function useDetailPatch<TBody>(
+  save: (body: TBody) => Promise<unknown>,
+  messages: { success: string; error: string },
+  onSaved?: () => void,
+): (body: TBody) => Promise<void> {
+  const saveRef = React.useRef(save);
+  saveRef.current = save;
+  const messagesRef = React.useRef(messages);
+  messagesRef.current = messages;
+  const onSavedRef = React.useRef(onSaved);
+  onSavedRef.current = onSaved;
+
+  return React.useCallback(async (body: TBody) => {
+    try {
+      await saveRef.current(body);
+      toastSuccess(messagesRef.current.success);
+      onSavedRef.current?.();
+    } catch (error) {
+      toastApiError(error, messagesRef.current.error);
+      throw error;
+    }
+  }, []);
 }

@@ -6,12 +6,17 @@ import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { updateQuotation } from "@/features/quotations/api/quotation.api";
-import { QUOTE_CATEGORY } from "@/features/quotations/constants/quotation-category";
+import {
+  QUOTE_CATEGORY,
+  resolveQuotationQuoteCategory,
+} from "@/features/quotations/constants/quotation-category";
 import type {
   QuotationContactNested,
+  QuotationCreatePayload,
   QuotationDetail,
   QuotationUserRef,
 } from "@/features/quotations/types/quotation.types";
+import type { QuotationDraft } from "@/features/quotations/types/quotation-draft.types";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
 import {
   getQuotationAdditionalContactEntries,
@@ -25,12 +30,13 @@ import {
   quotationCustomerLabel,
   quotationProjectLabel,
   quotationSiteListRows,
-  quotationTagsLabels,
+  quotationTagLabel,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
 import {
   quotationSiteSnapshotToAddressMapPoint,
   siteToAddressMapPoint,
 } from "@/features/quotations/utils/quotation-site-map.util";
+import { mergeQuotationDraftIntoPayload } from "@/features/quotations/utils/quotation-draft-payload.util";
 import { seedDraftFromQuoteSections } from "@/features/quotations/utils/quotation-draft-seed.util";
 import {
   QUOTATION_STATUS_OPTIONS,
@@ -40,6 +46,7 @@ import {
 import type { Site } from "@/features/sites/types/site.types";
 import { DetailEntityLink, DetailSystemMetadataSection, DetailUserAttribution, normalizeDetailAuditUser } from "@/shared/components/entity";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
+import { DetailMultiValue, DetailMultiValueItem } from "@/shared/components/layout/detail-multi-value";
 import { DetailFormattedAddress, hasDetailAddress } from "@/shared/components/layout/detail-formatted-address";
 import { What3WordsInline } from "@/shared/components/layout/what3words-inline";
 import {
@@ -52,8 +59,8 @@ import {
   DetailPagePadding,
   DetailPanelCard,
 } from "@/shared/components/layout/detail-metric-card";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
-import { AppTabs } from "@/shared/ui";
+import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
+import { AppButton, AppTabs } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import { routes } from "@/shared/config/routes";
 import {
@@ -143,7 +150,7 @@ function QuotationDetailPeopleSection({
           <DetailUserAttribution user={quotationContactToAudit(detail.primary_customer_contact)} />
         </DetailEditableField>
         <DetailEditableField
-          className="sm:col-span-2"
+          span="full"
           label={t("fields.additionalContacts")}
           kind="multiselect"
           values={additionalIds.map(String)}
@@ -156,20 +163,34 @@ function QuotationDetailPeopleSection({
             })
           }
         >
-          {additionalContactEntries.length === 0 ? null : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {additionalContactEntries.map((entry, index) =>
-                entry.kind === "id" ? (
-                  <DetailUserAttribution key={`addl-id-${entry.id}-${index}`} user={{ id: entry.id }} />
-                ) : (
-                  <DetailUserAttribution
-                    key={`addl-${entry.contact.id}-${index}`}
-                    user={quotationContactToAudit(entry.contact)}
-                  />
-                ),
-              )}
-            </div>
-          )}
+          <DetailMultiValue>
+            {additionalContactEntries.map((entry, index) => {
+              if (entry.kind === "id") {
+                return (
+                  <DetailMultiValueItem
+                    key={`addl-id-${entry.id}-${index}`}
+                    href={`${routes.dashboard.contacts}/${entry.id}`}
+                    title={`#${entry.id}`}
+                  >
+                    {`#${entry.id}`}
+                  </DetailMultiValueItem>
+                );
+              }
+              const label =
+                entry.contact.name?.trim() ||
+                entry.contact.email?.trim() ||
+                `#${entry.contact.id}`;
+              return (
+                <DetailMultiValueItem
+                  key={`addl-${entry.contact.id}-${index}`}
+                  href={`${routes.dashboard.contacts}/${entry.contact.id}`}
+                  title={label}
+                >
+                  {label}
+                </DetailMultiValueItem>
+              );
+            })}
+          </DetailMultiValue>
         </DetailEditableField>
       </DetailMetricsGrid>
     </DetailPanelCard>
@@ -187,7 +208,7 @@ const AddressMultiMiniMap = dynamic(
 );
 
 const detailEntityLinkClassName =
-  "font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline";
+  "font-medium text-blue-600 underline-offset-2 hover:underline";
 
 type Props = {
   detail: QuotationDetail;
@@ -250,16 +271,11 @@ export function QuotationDetailBody({
     [t],
   );
 
-  async function patchField(body: Parameters<typeof updateQuotation>[1]) {
-    try {
-      await updateQuotation(detail.id, body);
-      toastSuccess(t("updatedToast"));
-      onSaved?.();
-    } catch (error) {
-      toastApiError(error, t("saveError"));
-      throw error;
-    }
-  }
+  const patchField = useDetailPatch(
+    (body: Parameters<typeof updateQuotation>[1]) => updateQuotation(detail.id, body),
+    { success: t("updatedToast"), error: t("saveError") },
+    onSaved,
+  );
 
   const goToTab = React.useCallback(
     (tab: "project" | "pricing") => {
@@ -293,18 +309,70 @@ export function QuotationDetailBody({
     return snapshots.map((snap) => quotationSiteSnapshotToAddressMapPoint(snap));
   }, [detail.site_snapshot, detail.site_snapshots, siteDetails]);
 
-  const tagsLabel = quotationTagsLabels(detail.tags, tagLookup);
-
   const quoteSectionsSorted = React.useMemo(() => {
     const rows = detail.quote_sections;
     if (!rows?.length) return [];
     return [...rows].sort((a, b) => a.section_order - b.section_order);
   }, [detail.quote_sections]);
 
-  const viewDraft = React.useMemo(
-    () => (quoteSectionsSorted.length > 0 ? seedDraftFromQuoteSections(quoteSectionsSorted) : null),
-    [quoteSectionsSorted],
+  const quoteCategory = resolveQuotationQuoteCategory(detail);
+  const isServiceQuotation = quoteCategory === QUOTE_CATEGORY.service;
+
+  const quoteSectionsSeedKey = React.useMemo(
+    () => `${detail.id}:${detail.modified_at ?? detail.created_at}:${quoteSectionsSorted.length}`,
+    [detail.id, detail.modified_at, detail.created_at, quoteSectionsSorted.length],
   );
+
+  const [scopeDraft, setScopeDraft] = React.useState<QuotationDraft | null>(null);
+  const [scopeDirty, setScopeDirty] = React.useState(false);
+  const [scopeSaving, setScopeSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    if (scopeDirty) return;
+    if (quoteSectionsSorted.length > 0) {
+      setScopeDraft(seedDraftFromQuoteSections(quoteSectionsSorted));
+    } else if (isServiceQuotation) {
+      setScopeDraft({ sections: [] });
+    } else {
+      setScopeDraft(null);
+    }
+  }, [quoteSectionsSeedKey, quoteSectionsSorted, isServiceQuotation, scopeDirty]);
+
+  const handleScopeDraftChange = React.useCallback<React.Dispatch<React.SetStateAction<QuotationDraft | null>>>(
+    (action) => {
+      setScopeDraft(action);
+      setScopeDirty(true);
+    },
+    [],
+  );
+
+  function resetScopeDraft() {
+    if (quoteSectionsSorted.length > 0) {
+      setScopeDraft(seedDraftFromQuoteSections(quoteSectionsSorted));
+    } else if (isServiceQuotation) {
+      setScopeDraft({ sections: [] });
+    } else {
+      setScopeDraft(null);
+    }
+    setScopeDirty(false);
+  }
+
+  async function saveScopeDraft() {
+    if (!scopeDraft) return;
+    setScopeSaving(true);
+    try {
+      const merged = mergeQuotationDraftIntoPayload({} as QuotationCreatePayload, scopeDraft);
+      await patchField({
+        quote_sections: merged.quote_sections,
+        grand_total: merged.grand_total,
+        levels: merged.levels,
+        select_all_levels: false,
+      });
+      setScopeDirty(false);
+    } finally {
+      setScopeSaving(false);
+    }
+  }
 
   const additionalContactEntries = React.useMemo(
     () => getQuotationAdditionalContactEntries(detail.additional_customer_contact),
@@ -321,7 +389,7 @@ export function QuotationDetailBody({
 
   const overviewCard = (
     <DetailPanelCard title={t("detail.sectionOverview")}>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <DetailMetricsGrid>
         <DetailEditableField
           label={t("table.status")}
           value={statusValue}
@@ -336,6 +404,8 @@ export function QuotationDetailBody({
           label={t("fields.quoteName")}
           value={detail.quote_name}
           kind="text"
+          required
+          requiredMessage={t("validation.quoteName")}
           editAriaLabel={tActions("edit")}
           onSave={(next) => patchField({ quote_name: next })}
         >
@@ -346,6 +416,8 @@ export function QuotationDetailBody({
           value={customerId != null ? String(customerId) : ""}
           kind="select"
           options={clientOptions}
+          required
+          requiredMessage={t("validation.customer")}
           editAriaLabel={tActions("edit")}
           onSave={(next) => patchField({ customer: Number(next) })}
         >
@@ -363,6 +435,8 @@ export function QuotationDetailBody({
             value={projectId != null ? String(projectId) : ""}
             kind="select"
             options={projectOptions}
+            required
+            requiredMessage={t("validation.project")}
             editAriaLabel={tActions("edit")}
             onSave={(next) => patchField({ project: Number(next) })}
           >
@@ -381,25 +455,25 @@ export function QuotationDetailBody({
           kind="multiselect"
           values={getQuotationSiteIds(detail).map(String)}
           options={siteOptions}
+          required
+          requiredMessage={t("validation.sites")}
           editAriaLabel={tActions("edit")}
           empty="—"
           onSaveValues={(next) =>
             patchField({ sites: next.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0) })
           }
         >
-          {siteRows.length === 0 ? null : (
-            <div className="flex flex-wrap gap-2">
-              {siteRows.map((row) => (
-                <DetailEntityLink
-                  key={row.id}
-                  href={`${routes.dashboard.sites}/${row.id}`}
-                  className={detailEntityLinkClassName}
-                >
-                  {row.label}
-                </DetailEntityLink>
-              ))}
-            </div>
-          )}
+          <DetailMultiValue>
+            {siteRows.map((row) => (
+              <DetailMultiValueItem
+                key={row.id}
+                href={`${routes.dashboard.sites}/${row.id}`}
+                title={row.label}
+              >
+                {row.label}
+              </DetailMultiValueItem>
+            ))}
+          </DetailMultiValue>
         </DetailEditableField>
 
         <DetailEditableField
@@ -413,7 +487,19 @@ export function QuotationDetailBody({
             patchField({ tags: next.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0) })
           }
         >
-          {tagsLabel !== "—" ? tagsLabel : null}
+          <DetailMultiValue>
+            {(Array.isArray(detail.tags) ? detail.tags : []).map((tag, index) => {
+              const id = typeof tag === "number" ? tag : tag && typeof tag === "object" && typeof tag.id === "number" ? tag.id : null;
+              if (id == null || id <= 0) return null;
+              const label = quotationTagLabel(tag, tagLookup?.[id] ?? null);
+              if (!label || label === "—") return null;
+              return (
+                <DetailMultiValueItem key={`${id}-${index}`} title={label}>
+                  {label}
+                </DetailMultiValueItem>
+              );
+            })}
+          </DetailMultiValue>
         </DetailEditableField>
         <DetailEditableField
           label={t("fields.orderNumber")}
@@ -446,10 +532,11 @@ export function QuotationDetailBody({
           ) : "-"}
         </DetailEditableField>
         <DetailEditableField
-          className="sm:col-span-2"
+          span="full"
           label={t("fields.description")}
           value={desc}
           kind="text"
+          multiline
           editAriaLabel={tActions("edit")}
           empty={t("detail.noDescription")}
           onSave={(next) => patchField({ description: next || null })}
@@ -460,7 +547,7 @@ export function QuotationDetailBody({
             </p>
           ) : null}
         </DetailEditableField>
-      </div>
+      </DetailMetricsGrid>
     </DetailPanelCard>
   );
 
@@ -586,14 +673,41 @@ export function QuotationDetailBody({
         aria-labelledby="quotation-detail-trigger-pricing"
         className={cn(detailTab !== "pricing" && "hidden")}
       >
-        <DetailPanelCard title={t("levels.sectionsTitle")}>
-          {viewDraft ? (
+        <DetailPanelCard
+          title={t("levels.sectionsTitle")}
+          headerRight={
+            scopeDraft ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <AppButton
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={!scopeDirty || scopeSaving}
+                  onClick={resetScopeDraft}
+                >
+                  {tActions("cancel")}
+                </AppButton>
+                <AppButton
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  loading={scopeSaving}
+                  disabled={!scopeDirty || scopeSaving}
+                  onClick={() => void saveScopeDraft()}
+                >
+                  {t("page.saveEdit")}
+                </AppButton>
+              </div>
+            ) : null
+          }
+        >
+          {scopeDraft ? (
             <QuotationDraftComposer
-              draft={viewDraft}
-              onDraftChange={() => { }}
-              saving={false}
+              draft={scopeDraft}
+              onDraftChange={handleScopeDraftChange}
+              saving={scopeSaving}
               canShow
-              readOnly
+              allowManualLines={isServiceQuotation}
             />
           ) : (
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("page.editQuoteScopeEmpty")}</p>

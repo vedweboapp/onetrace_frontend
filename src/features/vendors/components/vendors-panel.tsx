@@ -9,8 +9,9 @@ import { deleteVendor, fetchAllVendorIds, fetchVendorsPage, updateVendor } from 
 import type { Vendor } from "@/features/vendors/types/vendor.types";
 import { fetchVendorTypesPage } from "@/features/vendor-types/api/vendor-type.api";
 import { VendorTypeChip } from "@/features/vendor-types/components/vendor-type-chip";
+import { formatVendorTypeLabel } from "@/features/vendor-types/utils/vendor-type-display.util";
 import {
-  getVendorTypeRow,
+  getVendorTypeRows,
   vendorAddressSummary,
   vendorPrimaryAddress,
 } from "@/features/vendors/utils/vendor-nested-fields.util";
@@ -18,8 +19,8 @@ import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useDeferredListOptions } from "@/shared/hooks/use-deferred-list-options";
-import { useListActiveInactiveEmptyState } from "@/shared/hooks/use-list-active-inactive-empty";
-import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
   MassActionBar,
@@ -28,7 +29,6 @@ import {
   useEntityListMassActions,
 } from "@/shared/mass-actions";
 import {
-  ActiveStatusBadge,
   AddButton,
   ConfirmDialog,
   DataTablePaginationBar,
@@ -36,7 +36,6 @@ import {
   listPageSurfaceShellClassName,
   listPageRootClassName,
   DataTableRowActionsMenu,
-  ListPageActiveFilter,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
@@ -71,9 +70,8 @@ export function VendorsPanel() {
     [listHref, pathname, router],
   );
 
-  const { page, pageSize, listViewMode, search, isActiveParam, setUrl, setPage, setPageSize, setListViewMode } =
+  const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } =
     useListUrlState();
-  const isActiveFilter = parseIsActiveParam(isActiveParam) ?? true;
 
   const [items, setItems] = React.useState<Vendor[]>([]);
   const [pagination, setPagination] = React.useState({
@@ -104,9 +102,8 @@ export function VendorsPanel() {
   const listFilters = React.useMemo(
     () => ({
       search: search || undefined,
-      is_active: isActiveFilter,
     }),
-    [search, isActiveFilter],
+    [search],
   );
 
   const massUpdateFields = React.useMemo(
@@ -139,7 +136,7 @@ export function VendorsPanel() {
     totalRecords: pagination.total_records,
     pageItems: items,
     fetchAllIds,
-    resetDeps: [pageSize, search, isActiveFilter],
+    resetDeps: [pageSize, search],
     updateFields: massUpdateFields,
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
@@ -165,7 +162,6 @@ export function VendorsPanel() {
       try {
         const { items: nextItems, pagination: p } = await fetchVendorsPage(page, pageSize, {
           search: search || undefined,
-          is_active: isActiveFilter,
         });
         if (!cancelled) {
           setItems(nextItems);
@@ -183,7 +179,7 @@ export function VendorsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, search, isActiveFilter, refreshNonce, t]);
+  }, [page, pageSize, search, refreshNonce, t]);
 
   function openCreate() {
     router.push(buildPathWithStoredBack(`${pathname}/new`, listHref));
@@ -258,33 +254,31 @@ export function VendorsPanel() {
       massSel.tableColumn,
       c.primary("name", t("table.name"), (r) => r.name),
       c.custom("type", t("table.type"), (row) => {
-        const typeRow = getVendorTypeRow(row);
-        return typeRow ? <VendorTypeChip row={typeRow} /> : "—";
+        const typeRows = getVendorTypeRows(row);
+        if (typeRows.length === 0) return "—";
+        const fullLabel = typeRows.map((typeRow) => formatVendorTypeLabel(typeRow)).join(", ");
+        return (
+          <span className="flex max-w-xs flex-wrap gap-1" title={fullLabel}>
+            {typeRows.map((typeRow) => (
+              <VendorTypeChip key={typeRow.id} row={typeRow} />
+            ))}
+          </span>
+        );
       }),
       c.truncate("email", t("table.email"), (r) => r.email),
       c.phone("phone", t("table.phone"), (r) => r.phone),
       c.custom("location", t("table.location"), (row) => vendorAddressSummary(vendorPrimaryAddress(row))),
-      c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive")),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
     ];
   }, [t, dateFmt, massSel.tableColumn]);
 
-  const hasActiveFilters = hasListActiveFilters({ search, isActiveParam });
-  const countInactive = React.useCallback(async () => {
-    const { pagination: p } = await fetchVendorsPage(1, 1, { search: search || undefined, is_active: false });
-    return p.total_records;
-  }, [search]);
-  const { hideListChrome, listLoading, emptyStateKind, filtersActive, switchToInactive } =
-    useListActiveInactiveEmptyState({
-      loading,
-      loadError,
-      itemsLength: items.length,
-      isActiveParam,
-      isActiveFilter,
-      hasActiveFilters,
-      setUrl,
-      countInactive,
-    });
+  const hasActiveFilters = hasListActiveFilters({ search });
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
   const pageRange = getListPageRange(pagination);
 
   return (
@@ -305,16 +299,6 @@ export function VendorsPanel() {
                 placeholder={tList("searchPlaceholder")}
                 ariaLabel={tList("searchAria")}
                 className="sm:max-w-sm"
-              />
-              <ListPageActiveFilter
-                activeLabel={t("status.active")}
-                inactiveLabel={t("status.inactive")}
-                filterLabel={t("filterState")}
-                filterAriaLabel={t("filterState")}
-                isActiveParam={isActiveParam}
-                onChange={(active) =>
-                  setUrl({ is_active: active ? null : "false", page: null }, { replace: true })
-                }
               />
             </div>
           }
@@ -358,13 +342,12 @@ export function VendorsPanel() {
               action: <AddButton type="button" onClick={openCreate} />,
             }}
             onClearFilters={() => setUrl({ search: null, is_active: null, page: null }, { replace: true })}
-            onSwitchToInactive={switchToInactive}
           />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>
               {items.map((row) => {
-                const typeRow = getVendorTypeRow(row);
+                const typeRows = getVendorTypeRows(row);
                 return (
                   <ListPageCard
                     key={row.id}
@@ -377,7 +360,9 @@ export function VendorsPanel() {
                     footer={
                       <div className="flex w-full flex-wrap items-center justify-between gap-3">
                         <div className="flex min-w-0 flex-wrap items-center gap-2">
-                          {typeRow ? <VendorTypeChip row={typeRow} /> : null}
+                          {typeRows.length > 0
+                            ? typeRows.map((typeRow) => <VendorTypeChip key={typeRow.id} row={typeRow} />)
+                            : null}
                           {row.phone?.trim() ? (
                             <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
                               <Phone className="size-3.5" aria-hidden />
@@ -385,10 +370,6 @@ export function VendorsPanel() {
                             </span>
                           ) : null}
                         </div>
-                        <ActiveStatusBadge
-                          active={row.is_active}
-                          label={row.is_active ? t("status.active") : t("status.inactive")}
-                        />
                       </div>
                     }
                     onCardClick={() => openDetail(row.id)}

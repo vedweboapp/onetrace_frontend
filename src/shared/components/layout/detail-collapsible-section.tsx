@@ -55,7 +55,7 @@ export function DetailCollapsibleSection({
     >
       <div
         className={cn(
-          "flex flex-wrap items-center gap-2 px-4 py-2.5 sm:px-5",
+          "flex flex-wrap items-center gap-2 px-4 py-3 sm:px-6 sm:py-3.5",
           isOpen && "border-b border-slate-100 dark:border-slate-800",
         )}
       >
@@ -96,7 +96,7 @@ export function DetailCollapsibleSection({
       </div>
 
       {isOpen ? (
-        <div className={cn("px-4 py-2.5 sm:px-5 sm:py-3", bodyClassName)}>{children}</div>
+        <div className={cn("px-4 pb-5 sm:px-6 sm:pb-6", bodyClassName)}>{children}</div>
       ) : null}
     </section>
   );

@@ -22,7 +22,8 @@ import {
 } from "@/features/invoices/utils/invoice-nested-fields.util";
 import { formatMoneyDisplay } from "@/features/invoices/utils/invoice-money.util";
 import { useOrgCurrency } from "@/shared/money/use-org-currency";
-import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { DetailEntityLink, EntityDataTable, entityCol, entityNameLinkClassName } from "@/shared/components/entity";
+import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
@@ -311,10 +312,25 @@ export function InvoicesPanel() {
     return [
       massSel.tableColumn,
       c.primary("invoice", t("table.invoiceNumber"), (r) => r.invoice_number),
-      c.truncate("client", t("table.clientName"), (r) => clientDisplay(r), {
-        title: (r) => clientDisplay(r),
-      }),
-      c.truncate("project", t("table.projectName"), (r) => invoiceJobOrProjectLabel(r)),
+      c.link(
+        "client",
+        t("table.clientName"),
+        (r) => clientDisplay(r),
+        (r) => {
+          const clientId = nestedId(r.client);
+          return clientId != null ? `${routes.dashboard.clients}/${clientId}` : null;
+        },
+        { title: (r) => clientDisplay(r) },
+      ),
+      c.link(
+        "project",
+        t("table.projectName"),
+        (r) => invoiceJobOrProjectLabel(r),
+        (r) => {
+          const projectId = nestedId(r.project);
+          return projectId != null ? `${routes.dashboard.projects}/${projectId}` : null;
+        },
+      ),
       c.tabular("amount", t("table.amount"), (r) =>
         formatMoneyDisplay(invoiceListAmount(r), locale),
       ),
@@ -441,15 +457,41 @@ export function InvoicesPanel() {
                 );
                 const issueLabel = formatFlexibleApiDate(row.issue_date, dateFmt);
                 const amountLabel = formatMoneyDisplay(invoiceListAmount(row), locale);
+                const projectId = nestedId(row.project);
+                const projectDisplay = invoiceJobOrProjectLabel(row);
                 return (
                   <ListPageCard
                     key={row.id}
                     dataListRowId={row.id}
                     className={highlightClassName(row.id)}
                     leading={massSel.cardLeading(row)}
-                    title={row.invoice_number}
-                    subtitle={clientDisplay}
-                    meta={<span className="block min-w-0 truncate">{invoiceJobOrProjectLabel(row)}</span>}
+                    title={<span className={entityNameLinkClassName}>{row.invoice_number}</span>}
+                    subtitle={
+                      clientId != null ? (
+                        <DetailEntityLink
+                          href={`${routes.dashboard.clients}/${clientId}`}
+                          className="font-medium"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {clientDisplay}
+                        </DetailEntityLink>
+                      ) : (
+                        clientDisplay
+                      )
+                    }
+                    meta={
+                      projectId != null ? (
+                        <DetailEntityLink
+                          href={`${routes.dashboard.projects}/${projectId}`}
+                          className="block min-w-0 truncate font-medium"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {projectDisplay}
+                        </DetailEntityLink>
+                      ) : (
+                        <span className="block min-w-0 truncate">{projectDisplay}</span>
+                      )
+                    }
                     footer={
                       <div className="flex w-full flex-wrap items-center justify-between gap-3">
                         <div className="flex min-w-0 flex-wrap items-center gap-3">

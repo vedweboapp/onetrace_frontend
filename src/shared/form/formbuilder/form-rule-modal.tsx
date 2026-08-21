@@ -6,7 +6,7 @@ import { AppButton } from "@/shared/ui/app-button";
 import { FormRule, RuleCondition, FormRuleOutput, RuleAction } from "./form-rules.types";
 import { RuleFieldSelect, type RuleFieldOption } from "./rule-field-select";
 import MultiSelect from "../components/multi-select";
-import { PhoneNumberInput, DEFAULT_PHONE_COUNTRY, surfaceInputClassName } from "@/shared/ui";
+import { PhoneNumberInput, surfaceInputClassName } from "@/shared/ui";
 import { currencyList } from "../components/currency-list";
 
 /** Full-height drawer below the form builder sub-header (top-14 + h-14 = 7rem). */
@@ -269,7 +269,6 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
           <PhoneNumberInput
             value={ruleValue}
             onChange={setRuleValue}
-            defaultCountry={DEFAULT_PHONE_COUNTRY}
             placeholder="Enter phone number"
             className="w-full"
             numberInputProps={{

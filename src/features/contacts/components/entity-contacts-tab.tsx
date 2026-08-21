@@ -6,7 +6,10 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import type { Contact, ContactType } from "@/features/contacts/types/contact.types";
-import { EntityDataTable, EntityDetailLoadingSkeleton, entityCol } from "@/shared/components/entity";
+import { EntityDataTable, EntityDetailTabLoadingState, entityCol } from "@/shared/components/entity";
+import { DetailTabListShell } from "@/shared/components/layout/detail-tab-list-shell";
+import { detailTabToolbarClassName } from "@/shared/components/layout/detail-tab-layout";
+import { cn } from "@/core/utils/http.util";
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
@@ -14,7 +17,7 @@ import { buildDetailHrefWithListReturn, buildEntityDetailTabBackHref, mergeUrlQu
 import { buildQuickCreateNavigateHref } from "@/shared/utils/quick-create-navigation.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
-import { AddButton, DataTablePaginationBar, ListPageEmptyStates, ListPageSearchField } from "@/shared/ui";
+import { AddButton, DataTablePaginationBar, ListPageEmptyStates } from "@/shared/ui";
 
 type Props = {
   entityType: ContactType;
@@ -33,7 +36,6 @@ export function EntityContactsTab({ entityType, entityId }: Props) {
   const dateFmt = useDashboardDateFormat();
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
-  const [search, setSearch] = React.useState("");
   const [items, setItems] = React.useState<Contact[]>([]);
   const [pagination, setPagination] = React.useState({
     total_records: 0,
@@ -70,11 +72,6 @@ export function EntityContactsTab({ entityType, entityId }: Props) {
     ];
   }, [tContacts, dateFmt]);
 
-  const commitSearch = React.useCallback((q: string) => {
-    setSearch(q.trim());
-    setPage(1);
-  }, []);
-
   const reloadList = React.useCallback(() => {
     setRefreshNonce((n) => n + 1);
   }, []);
@@ -104,10 +101,7 @@ export function EntityContactsTab({ entityType, entityId }: Props) {
           entityType === "vendor"
             ? { vendor: entityId, contact_type: "vendor" as const }
             : { client: entityId, contact_type: "client" as const };
-        const { items: nextItems, pagination: p } = await fetchContactsPage(page, pageSize, {
-          ...filters,
-          search: search || undefined,
-        });
+        const { items: nextItems, pagination: p } = await fetchContactsPage(page, pageSize, filters);
         if (!cancelled) {
           setItems(nextItems);
           setPagination(p);
@@ -124,7 +118,7 @@ export function EntityContactsTab({ entityType, entityId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [entityType, entityId, page, pageSize, search, tContacts, refreshNonce]);
+  }, [entityType, entityId, page, pageSize, tContacts, refreshNonce]);
 
   const pageRange = getListPageRange(pagination);
 
@@ -143,79 +137,63 @@ export function EntityContactsTab({ entityType, entityId }: Props) {
     </AddButton>
   );
 
-  const hasActiveFilters = search.trim() !== "";
   const emptyStateKind = React.useMemo(() => {
     if (loading || loadError || items.length > 0) return "none" as const;
-    if (hasActiveFilters) return "filtered" as const;
     return "onboarding" as const;
-  }, [loading, loadError, items.length, hasActiveFilters]);
-
-  const hideListChrome = emptyStateKind === "onboarding";
+  }, [loading, loadError, items.length]);
 
   return (
-    <div>
-      {!hideListChrome ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/90 px-4 py-4 sm:px-6 dark:border-slate-800">
-          <ListPageSearchField
-            value={search}
-            onCommit={commitSearch}
-            placeholder={tList("searchPlaceholder")}
-            ariaLabel={tList("searchAria")}
-            className="max-w-md min-w-0 flex-1"
-          />
-          {items.length > 0 ? addContactButton : null}
-        </div>
-      ) : null}
-
-      {loadError ? (
-        <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
-      ) : loading ? (
-        <EntityDetailLoadingSkeleton />
-      ) : items.length === 0 ? (
+    <DetailTabListShell
+      loading={loading}
+      loadError={loadError}
+      isEmpty={items.length === 0}
+      toolbar={
+        !loading && !loadError && items.length > 0 ? (
+          <div className={cn(detailTabToolbarClassName, "justify-end")}>{addContactButton}</div>
+        ) : null
+      }
+      loadingFallback={<EntityDetailTabLoadingState />}
+      emptyFallback={
         <ListPageEmptyStates
+          fill
           emptyStateKind={emptyStateKind}
-          compact
           onboarding={{
             iconName: "clients",
             title: t("detail.contactsEmptyTitle"),
             description: t("detail.contactsEmptyDescription"),
             action: addContactButton,
-            compact: true,
           }}
-          onClearFilters={() => {
-            setSearch("");
-            setPage(1);
+          onClearFilters={() => {}}
+        />
+      }
+    >
+      <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
+        <EntityDataTable columns={columns} rows={items} onRowClick={(row) => openContactDetail(row.id)} />
+        <DataTablePaginationBar
+          pagination={pagination}
+          summary={tContacts("pageLabel", {
+            start: pageRange.start,
+            end: pageRange.end,
+            total: pagination.total_records,
+          })}
+          prevLabel={tContacts("prev")}
+          nextLabel={tContacts("next")}
+          onPrev={() => setPage(Math.max(1, pagination.current_page - 1))}
+          onNext={() => setPage(pagination.current_page + 1)}
+          onPageSelect={(p) => setPage(p)}
+          pageSizeControl={{
+            label: tList("rowsPerPage"),
+            listLabel: tList("rowsPerPage"),
+            value: pageSize,
+            options: pageSizeOptions,
+            onChange: (size) => {
+              setPageSize(size);
+              setPage(1);
+            },
+            disabled: loading,
           }}
         />
-      ) : (
-        <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
-          <EntityDataTable columns={columns} rows={items} onRowClick={(row) => openContactDetail(row.id)} />
-          <DataTablePaginationBar
-            pagination={pagination}
-            summary={tContacts("pageLabel", {
-              start: pageRange.start,
-              end: pageRange.end,
-              total: pagination.total_records,
-            })}
-            prevLabel={tContacts("prev")}
-            nextLabel={tContacts("next")}
-            onPrev={() => setPage(Math.max(1, pagination.current_page - 1))}
-            onNext={() => setPage(pagination.current_page + 1)}
-            onPageSelect={(p) => setPage(p)}
-            pageSizeControl={{
-              label: tList("rowsPerPage"),
-              listLabel: tList("rowsPerPage"),
-              value: pageSize,
-              options: pageSizeOptions,
-              onChange: (size) => {
-                setPageSize(size);
-                setPage(1);
-              },
-              disabled: loading,
-            }}
-          />
-        </div>
-      )}
-    </div>
+      </div>
+    </DetailTabListShell>
   );
 }

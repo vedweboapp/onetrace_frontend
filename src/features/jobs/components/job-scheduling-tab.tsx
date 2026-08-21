@@ -2,7 +2,11 @@
 
 import * as React from "react";
 import type { Job } from "@/features/jobs/types/job.types";
-import { getJobAssignedWorkerId, getJobClientId } from "@/features/jobs/utils/job-nested-fields.util";
+import {
+  getJobAssignedWorkerId,
+  getJobClientId,
+  getJobProjectId,
+} from "@/features/jobs/utils/job-nested-fields.util";
 import { SchedulingPanel } from "@/features/scheduling/components/scheduling-panel";
 import { cn } from "@/core/utils/http.util";
 
@@ -12,6 +16,7 @@ type Props = {
 
 export function JobSchedulingTab({ detail }: Props) {
   const clientId = getJobClientId(detail.client);
+  const projectId = getJobProjectId(detail.project);
   const assignedWorkerId = getJobAssignedWorkerId(detail);
   return (
     <div
@@ -24,6 +29,7 @@ export function JobSchedulingTab({ detail }: Props) {
         syncUrl={false}
         defaultJobId={detail.id}
         defaultClientId={clientId ?? undefined}
+        defaultProjectId={projectId ?? undefined}
         defaultAssignedWorkerId={assignedWorkerId ?? undefined}
         defaultJobSerial={detail.job_serial_number ?? undefined}
       />

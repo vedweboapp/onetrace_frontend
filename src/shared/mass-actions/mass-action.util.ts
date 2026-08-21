@@ -1,4 +1,6 @@
 import type { MassActionConfig, MassExportFormat, MassUpdateFieldDef, MassUpdatePayload } from "./types";
+import { parseOrgMoneyInput } from "@/shared/money/format-money.util";
+import { getOrgCurrencySettings } from "@/shared/money/org-currency.store";
 
 type PaginatedFetch<T extends { id: number }> = (
   page: number,
@@ -43,12 +45,11 @@ export function massExportFallbackFilename(stem: string | undefined, exportForma
 export function coerceMassFieldValue(field: MassUpdateFieldDef, raw: string): string | number | boolean {
   const trimmed = raw.trim();
   if (field.valueCoerce === "boolean") return trimmed === "true";
-  if (field.valueCoerce === "number") {
-    const n = Number(trimmed);
-    return Number.isFinite(n) ? n : trimmed;
-  }
-  if (field.valueType === "number") {
-    const n = Number(trimmed);
+  if (field.valueCoerce === "number" || field.valueType === "number" || field.valueType === "money") {
+    const n =
+      field.valueType === "money"
+        ? parseOrgMoneyInput(trimmed, getOrgCurrencySettings())
+        : Number(trimmed);
     return Number.isFinite(n) ? n : trimmed;
   }
   if (field.valueType === "select" && /^\d+$/.test(trimmed)) {

@@ -41,7 +41,7 @@ import {
   massSelectionColumn,
   useEntityListMassActions,
 } from "@/shared/mass-actions";
-import { CheckmarkSelect, ConfirmDialog, DataTableRowActionsMenu, ListPageEmptyStates, ListPageSearchField, SurfaceShell, DataTablePaginationBar, DataTable, DataTableHead, DataTableBody, DataTableRow, DataTableTd, DataTableTh, DataTableScroll } from "@/shared/ui";
+import { CheckmarkSelect, ConfirmDialog, DataTableRowActionsMenu, ListPageEmptyStates, SurfaceShell, DataTablePaginationBar, DataTable, DataTableHead, DataTableBody, DataTableRow, DataTableTd, DataTableTh, DataTableScroll } from "@/shared/ui";
 import {
   buildDetailHrefWithListReturn,
   buildPathWithStoredBack,
@@ -89,7 +89,6 @@ export function ProjectJobsTab({ projectId }: Props) {
     [listBack, router],
   );
 
-  const [search, setSearch] = React.useState("");
   const [jobStatusFilter, setJobStatusFilter] = React.useState<number | undefined>();
   // const [jobSourceFilter, setJobSourceFilter] = React.useState<ProjectJobsSourceFilter>(DEFAULT_PROJECT_JOBS_SOURCE);
   const [levelFilter, setLevelFilter] = React.useState<number | undefined>();
@@ -116,13 +115,12 @@ export function ProjectJobsTab({ projectId }: Props) {
 
   const listFilters = React.useMemo(
     () => ({
-      search: search || undefined,
       job_status: jobStatusFilter,
       // job_source: jobSourceFilter,
       level_id: levelFilter,
       plot_id: plotFilter,
     }),
-    [search, jobStatusFilter, levelFilter, plotFilter],
+    [jobStatusFilter, levelFilter, plotFilter],
   );
 
   const filteredHierarchy = React.useMemo(
@@ -209,16 +207,12 @@ export function ProjectJobsTab({ projectId }: Props) {
   const mass = useEntityListMassActions({
     resource: "jobs",
     pageItems: tableRows,
-    resetDeps: [search, jobStatusFilter,  levelFilter, plotFilter],
+    resetDeps: [jobStatusFilter, levelFilter, plotFilter],
     updateFields: massUpdateFields,
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
 
   const massSel = React.useMemo(() => massSelectionColumn(mass, tableRows.length), [mass, tableRows.length]);
-
-  const commitSearch = React.useCallback((q: string) => {
-    setSearch(q.trim());
-  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -387,7 +381,6 @@ export function ProjectJobsTab({ projectId }: Props) {
   }, [dateFmt, locationLabelForJob, massSel.tableColumn, openEdit, statusChipForJob, t, tJobs, tList, workerLabelById]);
 
   const hasActiveFilters =
-    search.trim() !== "" ||
     jobStatusFilter != null ||
     // jobSourceFilter !== DEFAULT_PROJECT_JOBS_SOURCE ||
     levelFilter != null ||
@@ -396,7 +389,7 @@ export function ProjectJobsTab({ projectId }: Props) {
   // Reset page when filters change
   React.useEffect(() => {
     setPage(0);
-  }, [search, jobStatusFilter, levelFilter, plotFilter]);
+  }, [jobStatusFilter, levelFilter, plotFilter]);
 
   // Ensure current page is within totalPages when rowsPerPage or total changes
   React.useEffect(() => {
@@ -410,7 +403,6 @@ export function ProjectJobsTab({ projectId }: Props) {
   }, [loading, loadError, tableRows.length, hasActiveFilters]);
 
   function clearFilters() {
-    setSearch("");
     setJobStatusFilter(undefined);
     // setJobSourceFilter(DEFAULT_PROJECT_JOBS_SOURCE);
     setLevelFilter(undefined);
@@ -441,13 +433,6 @@ export function ProjectJobsTab({ projectId }: Props) {
       </div>
 
       <div className={detailTabFilterBarClassName}>
-        <ListPageSearchField
-          value={search}
-          onCommit={commitSearch}
-          placeholder={t("searchPlaceholder")}
-          ariaLabel={t("searchAria")}
-          className="sm:max-w-sm"
-        />
         <CheckmarkSelect
           listLabel={tJobs("filterJobStatus")}
           buttonAriaLabel={tJobs("filterJobStatus")}

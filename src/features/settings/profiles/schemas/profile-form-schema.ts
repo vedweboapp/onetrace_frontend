@@ -42,3 +42,8 @@ export function mapProfileFormToPayload(values: ProfileFormValues): ProfilePaylo
     description: values.description.trim() || null,
   };
 }
+
+/** Merge a single-field change into a full PUT payload from the loaded record. */
+export function mergeProfileDetailPayload(profile: Profile, patch: Partial<ProfilePayload>): ProfilePayload {
+  return { ...mapProfileFormToPayload(profileToFormDefaults(profile)), ...patch };
+}
