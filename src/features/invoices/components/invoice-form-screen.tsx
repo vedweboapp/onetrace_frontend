@@ -109,6 +109,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
     reset,
     setValue,
     getValues,
+    clearErrors,
     setError,
     handleSubmit,
     formState: { errors },
@@ -546,6 +547,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
                 control={control}
                 register={register}
                 setValue={setValue}
+                clearErrors={clearErrors}
                 errors={errors}
                 disabled={saving}
                 idPrefix="invoice-address"

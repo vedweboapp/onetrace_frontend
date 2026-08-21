@@ -70,6 +70,7 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved, onCreate
     register,
     reset,
     setValue,
+    clearErrors,
     setError,
     handleSubmit,
     formState: { errors },
@@ -191,6 +192,7 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved, onCreate
             control={control}
             register={register}
             setValue={setValue}
+            clearErrors={clearErrors}
             errors={errors}
             disabled={saving}
             idPrefix="client-modal-address"

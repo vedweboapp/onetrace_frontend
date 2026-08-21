@@ -29,6 +29,7 @@ export function QrCodeGenerateResultModal({ open, result, onClose }: Props) {
 
   const batch = result?.batch ?? null;
   const codes = result?.qr_codes ?? [];
+  const quantity = batch?.quantity ?? codes.length;
 
   async function handleDownloadCsv() {
     if (!batch || batch.id <= 0) return;
@@ -73,7 +74,7 @@ export function QrCodeGenerateResultModal({ open, result, onClose }: Props) {
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <DetailCard label={t("generate.result.batchNumber")} value={batch.batch_number || "—"} />
-            <DetailCard label={t("generate.result.quantity")} value={String(batch.quantity ?? codes.length)} />
+            <DetailCard label={t("generate.result.quantity")} value={String(quantity)} />
             <DetailCard
               label={t("generate.result.createdAt")}
               value={
@@ -97,7 +98,7 @@ export function QrCodeGenerateResultModal({ open, result, onClose }: Props) {
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-            {t("generate.result.codesCount", { count: codes.length })}
+            {t("generate.result.codesCount", { count: quantity })}
           </div>
         </div>
       ) : null}

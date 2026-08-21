@@ -11,6 +11,7 @@ import {
   type FieldErrors,
   type FieldValues,
   type Path,
+  type UseFormClearErrors,
   type UseFormRegister,
   type UseFormSetValue,
 } from "react-hook-form";
@@ -60,6 +61,7 @@ type Props<T extends FieldValues> = {
   control: Control<T>;
   register: UseFormRegister<T>;
   setValue: UseFormSetValue<T>;
+  clearErrors?: UseFormClearErrors<T>;
   errors: FieldErrors<T>;
   labels: EntityAddressesFieldsLabels;
   disabled?: boolean;
@@ -85,6 +87,7 @@ export function EntityAddressesFields<T extends FieldValues>({
   control,
   register,
   setValue,
+  clearErrors,
   errors,
   labels,
   disabled,
@@ -112,6 +115,21 @@ export function EntityAddressesFields<T extends FieldValues>({
       setValue(`addresses.${i}.is_primary` as Path<T>, (i === index) as never);
     });
   };
+
+  /** Nested address fields need explicit validate/clear — zodResolver can leave sticky array errors. */
+  const setAddressTextField = React.useCallback(
+    (name: Path<T>, value: string) => {
+      setValue(name, value as never, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      });
+      if (value.trim()) {
+        clearErrors?.(name);
+      }
+    },
+    [clearErrors, setValue],
+  );
 
   const addressErrors = errors.addresses as FieldErrors<EntityAddressFormRow>[] | undefined;
   const addressesRootError = (errors.addresses as { message?: string } | undefined)?.message;
@@ -220,7 +238,10 @@ export function EntityAddressesFields<T extends FieldValues>({
                     <AddressPlaceAutocomplete
                       id={`${rowIdPrefix}-line1`}
                       value={String(f.value ?? "")}
-                      onChange={f.onChange}
+                      onChange={(next) => {
+                        f.onChange(next);
+                        setAddressTextField(`addresses.${index}.address_line_1` as Path<T>, next);
+                      }}
                       onBlur={f.onBlur}
                       countryIso={countryIso}
                       contextCity={searchContext.city}
@@ -233,7 +254,18 @@ export function EntityAddressesFields<T extends FieldValues>({
                           ? String(rowErrors.address_line_1.message ?? "")
                           : undefined
                       }
-                      onSelectPlace={(place) => applyPlaceToRow(setValue, index, place, includeGeo)}
+                      onSelectPlace={(place) => {
+                        applyPlaceToRow(setValue, index, place, includeGeo);
+                        clearErrors?.(
+                          [
+                            `addresses.${index}.address_line_1`,
+                            `addresses.${index}.pincode`,
+                            `addresses.${index}.city`,
+                            `addresses.${index}.state_iso`,
+                            `addresses.${index}.country_iso`,
+                          ] as Path<T>[],
+                        );
+                      }}
                       maxLength={FIELD_MAX_LENGTH.ADDRESS_LINE}
                     />
                   </FieldGroup>
@@ -292,11 +324,17 @@ export function EntityAddressesFields<T extends FieldValues>({
                     render={({ field: f }) => (
                       <input
                         id={`${rowIdPrefix}-pincode`}
+                        autoComplete="postal-code"
                         maxLength={FIELD_MAX_LENGTH.PINCODE}
                         value={String(f.value ?? "")}
-                        onChange={(e) => f.onChange(sanitizeDigitsInput(e.target.value))}
+                        onChange={(e) => {
+                          const next = sanitizeDigitsInput(e.target.value, FIELD_MAX_LENGTH.PINCODE);
+                          f.onChange(next);
+                          setAddressTextField(`addresses.${index}.pincode` as Path<T>, next);
+                        }}
                         onBlur={f.onBlur}
                         disabled={disabled}
+                        aria-invalid={rowErrors?.pincode ? true : undefined}
                         className={cn(
                           surfaceInputClassName,
                           rowErrors?.pincode && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
