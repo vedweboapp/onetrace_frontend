@@ -42,6 +42,7 @@ import { getOrgCurrencySettings } from "@/shared/money/org-currency.store";
 import { useOrgCurrency } from "@/shared/money/use-org-currency";
 import { useOrgNumber } from "@/shared/number/use-org-number";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
+import { getItemDimensionUnit } from "@/features/items/utils/item-dimensions-input.util";
 import { getItemVendorIds, itemVendorRows, vendorIdsPayload } from "@/features/items/utils/item-vendors.util";
 
 function installationCostTypeLabel(
@@ -396,8 +397,8 @@ export function ItemDetailBody({
                   ]
                     .filter(Boolean)
                     .join(" x ")}
-                  {detail.dimensions_unit != null && detail.dimensions_unit !== ""
-                    ? ` ${detail.dimensions_unit}`
+                  {detail.dimension_unit || detail.dimensions_unit
+                    ? ` ${getItemDimensionUnit(detail)}`
                     : ""}
                 </span>
               </DetailMetricCard>

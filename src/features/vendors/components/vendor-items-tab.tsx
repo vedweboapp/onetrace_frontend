@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import type { Item } from "@/features/items/types/item.types";
 import { EntityDataTable, EntityDetailTabLoadingState, entityCol } from "@/shared/components/entity";
-import { DetailTabListShell } from "@/shared/components/layout/detail-tab-list-shell";
+import { DetailTabListShell, DetailTabTableBody } from "@/shared/components/layout/detail-tab-list-shell";
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useOrgCurrency } from "@/shared/money/use-org-currency";
@@ -133,8 +133,13 @@ export function VendorItemsTab({ vendorId }: Props) {
         />
       }
     >
-      <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
-        <EntityDataTable columns={columns} rows={items} onRowClick={(row) => openItemDetail(row.id)} />
+      <DetailTabTableBody>
+        <EntityDataTable
+          columns={columns}
+          rows={items}
+          minBodyRows={pageSize}
+          onRowClick={(row) => openItemDetail(row.id)}
+        />
         <DataTablePaginationBar
           pagination={pagination}
           summary={tItems("pageLabel", {
@@ -159,7 +164,7 @@ export function VendorItemsTab({ vendorId }: Props) {
             disabled: loading,
           }}
         />
-      </div>
+      </DetailTabTableBody>
     </DetailTabListShell>
   );
 }

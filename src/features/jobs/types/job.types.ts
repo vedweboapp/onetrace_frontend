@@ -14,6 +14,7 @@ export type JobAssignedWorkerRef = {
   username?: string;
   first_name?: string | null;
   last_name?: string | null;
+  title?: string | null;
 };
 
 export type JobClientRef = {
@@ -220,7 +221,9 @@ export type Job = {
   title: string;
   job_serial_number: string | null;
   description: string | null;
-  assigned_worker: number | JobAssignedWorkerRef;
+  assigned_worker: number | JobAssignedWorkerRef | Array<number | JobAssignedWorkerRef>;
+  /** Expanded list when the API returns multiple assignees. */
+  assigned_workers?: Array<number | JobAssignedWorkerRef> | null;
   job_pin_status?: string | null;
   job_status: number | WorkflowColourStatus | null;
   start_date: string;

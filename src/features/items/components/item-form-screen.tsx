@@ -22,8 +22,8 @@ import { AppButton, CheckmarkSelect, DimensionsLwhInput, FieldErrorText, FieldGr
 import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
 import { formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
 import { getUnitTypeId, resolveDefaultUnitTypeSelectValue } from "@/features/items/utils/item-unit-type.util";
-import { parseDimensionsInput } from "@/features/items/utils/item-dimensions-input.util";
-import { getItemVendorIds, vendorIdsPayload } from "@/features/items/utils/item-vendors.util";
+import { getItemDimensionUnit, parseDimensionsInput } from "@/features/items/utils/item-dimensions-input.util";
+import { getItemVendorIds, itemVendorFallbackLabels, vendorIdsPayload } from "@/features/items/utils/item-vendors.util";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import type { DimensionUnit, WeightUnit } from "@/features/items/types/item.types";
 import { useSearchParams } from "next/navigation";
@@ -131,13 +131,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
           setLength(item.length != null && String(item.length).trim() !== "" ? String(item.length) : "");
           setWidth(item.width != null && String(item.width).trim() !== "" ? String(item.width) : "");
           setHeight(item.height != null && String(item.height).trim() !== "" ? String(item.height) : "");
-          const dimUnit =
-            item.dimensions_unit === "cm" || item.dimensions_unit === "mm" || item.dimensions_unit === "m"
-              ? item.dimensions_unit
-              : item.dimensions_unit === "in" || item.dimensions_unit === "ft"
-                ? item.dimensions_unit
-                : "cm";
-          setDimensionsUnit(dimUnit);
+          setDimensionsUnit(getItemDimensionUnit(item));
           if (
             (item.length == null || item.width == null || item.height == null) &&
             typeof item.dimensions === "string" &&
@@ -156,16 +150,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
           );
           const loadedVendorIds = getItemVendorIds(item);
           setVendorIds(loadedVendorIds.map(String));
-          const fallback: Record<string, string> = {};
-          if (Array.isArray(item.vendors)) {
-            for (const entry of item.vendors) {
-              if (entry && typeof entry === "object" && typeof entry.id === "number") {
-                const name = typeof entry.name === "string" ? entry.name.trim() : "";
-                if (name) fallback[String(entry.id)] = name;
-              }
-            }
-          }
-          setVendorFallbackLabels(fallback);
+          setVendorFallbackLabels(itemVendorFallbackLabels(item));
           setTouched({});
         }
       } catch {
@@ -457,8 +442,8 @@ export function ItemFormScreen({ mode, itemId }: Props) {
 
             <div className="space-y-4 pt-1">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tModal("fulfilmentDetails")}</h3>
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-start">
-                <div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
+                <div className="min-w-0">
                   <FieldLabel htmlFor="item-dimensions">{tModal("dimensions")}</FieldLabel>
                   <div className="mt-1.5">
                     <DimensionsLwhInput
@@ -480,9 +465,9 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                       disabled={submitting}
                     />
                   </div>
-                  <p className="mt-1.5 text-center text-xs text-slate-500 dark:text-slate-400">{tModal("dimensionsHint")}</p>
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{tModal("dimensionsHint")}</p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <FieldLabel htmlFor="item-weight">{tModal("weight")}</FieldLabel>
                   <InputWithEndSelect
                     inputId="item-weight"

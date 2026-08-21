@@ -8,7 +8,7 @@ import { createItem, updateItem } from "@/features/items/api/item.api";
 import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
 import { formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
 import { getUnitTypeId, resolveDefaultUnitTypeSelectValue } from "@/features/items/utils/item-unit-type.util";
-import { parseDimensionsInput } from "@/features/items/utils/item-dimensions-input.util";
+import { getItemDimensionUnit, parseDimensionsInput } from "@/features/items/utils/item-dimensions-input.util";
 import type { DimensionUnit, Item, WeightUnit } from "@/features/items/types/item.types";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { getApiFieldErrorMap } from "@/shared/form/report-form-api-error.util";
@@ -30,7 +30,7 @@ import {
   NumericInput,
   surfaceInputClassName,
 } from "@/shared/ui";
-import { getItemVendorIds, vendorIdsPayload } from "@/features/items/utils/item-vendors.util";
+import { getItemVendorIds, itemVendorFallbackLabels, vendorIdsPayload } from "@/features/items/utils/item-vendors.util";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 
 type Props = {
@@ -106,11 +106,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
     mode === "edit" && item ? (item.height != null ? String(item.height) : "") : "",
   );
   const [dimensionsUnit, setDimensionsUnit] = React.useState<DimensionUnit>(() =>
-    mode === "edit" && item
-      ? item.dimensions_unit === "cm" || item.dimensions_unit === "mm" || item.dimensions_unit === "m" || item.dimensions_unit === "in" || item.dimensions_unit === "ft"
-        ? (item.dimensions_unit as DimensionUnit)
-        : "cm"
-      : "cm",
+    mode === "edit" && item ? getItemDimensionUnit(item) : "cm",
   );
   const [weight, setWeight] = React.useState(() => (mode === "edit" && item ? (item.weight != null ? String(item.weight) : "") : ""));
   const [weightUnit, setWeightUnit] = React.useState<WeightUnit>(() =>
@@ -142,13 +138,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
       setLength(item.length != null && String(item.length).trim() !== "" ? String(item.length) : "");
       setWidth(item.width != null && String(item.width).trim() !== "" ? String(item.width) : "");
       setHeight(item.height != null && String(item.height).trim() !== "" ? String(item.height) : "");
-      const dimUnit =
-        item.dimensions_unit === "cm" || item.dimensions_unit === "mm" || item.dimensions_unit === "m"
-          ? item.dimensions_unit
-          : item.dimensions_unit === "in" || item.dimensions_unit === "ft"
-            ? item.dimensions_unit
-            : "cm";
-      setDimensionsUnit(dimUnit);
+      setDimensionsUnit(getItemDimensionUnit(item));
       if (
         (item.length == null || item.width == null || item.height == null) &&
         typeof item.dimensions === "string" &&
@@ -162,16 +152,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
       setWeight(item.weight != null && String(item.weight).trim() !== "" ? String(item.weight) : "");
       setWeightUnit(item.weight_unit === "g" || item.weight_unit === "lb" ? (item.weight_unit as WeightUnit) : "kg");
       setVendorIds(getItemVendorIds(item).map(String));
-      const fallback: Record<string, string> = {};
-      if (Array.isArray(item.vendors)) {
-        for (const entry of item.vendors) {
-          if (entry && typeof entry === "object" && typeof entry.id === "number") {
-            const name = typeof entry.name === "string" ? entry.name.trim() : "";
-            if (name) fallback[String(entry.id)] = name;
-          }
-        }
-      }
-      setVendorFallbackLabels(fallback);
+      setVendorFallbackLabels(itemVendorFallbackLabels(item));
     } else {
       setName("");
       setSku("");
@@ -448,8 +429,8 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
 
         <div className="space-y-4 pt-1">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("fulfilmentDetails")}</h3>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-start">
-            <div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
+            <div className="min-w-0">
               <FieldLabel htmlFor="modal-item-dimensions">{t("dimensions")}</FieldLabel>
               <div className="mt-1.5">
                 <DimensionsLwhInput
@@ -471,9 +452,9 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
                   disabled={submitting}
                 />
               </div>
-              <p className="mt-1.5 text-center text-xs text-slate-500 dark:text-slate-400">{t("dimensionsHint")}</p>
+              <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{t("dimensionsHint")}</p>
             </div>
-            <div>
+            <div className="min-w-0">
               <FieldLabel htmlFor="modal-item-weight">{t("weight")}</FieldLabel>
               <InputWithEndSelect
                 inputId="modal-item-weight"

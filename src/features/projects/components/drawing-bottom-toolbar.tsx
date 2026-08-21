@@ -48,7 +48,7 @@ const DrawingBottomToolbar = ({
     return (
         <div className={cn(
             "fixed bottom-8 right-0 z-50 flex items-center justify-center px-6 transition-all",
-            sidebarOpen ? "md:left-64" : "md:left-[52px]",
+            sidebarOpen ? "md:left-56" : "md:left-14",
             "left-0"
         )}>
             <div className="flex flex-wrap items-center justify-center gap-3 rounded-2xl bg-white px-3 py-2 shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">

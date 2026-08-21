@@ -3,6 +3,22 @@
  * Separators `*`, `x`, `×`, `/`, and spaces are normalized to `*`.
  */
 
+import type { DimensionUnit, Item } from "@/features/items/types/item.types";
+
+const DIMENSION_UNITS = new Set<string>(["cm", "mm", "m", "in", "ft"]);
+
+/** Resolve dimension unit from API (`dimension_unit` or legacy `dimensions_unit`). */
+export function getItemDimensionUnit(
+  item: Pick<Item, "dimension_unit" | "dimensions_unit"> | null | undefined,
+  fallback: DimensionUnit = "cm",
+): DimensionUnit {
+  const raw = item?.dimension_unit ?? item?.dimensions_unit;
+  if (typeof raw === "string" && DIMENSION_UNITS.has(raw)) {
+    return raw as DimensionUnit;
+  }
+  return fallback;
+}
+
 export function parseDimensionsInput(raw: string): { length: string; width: string; height: string } {
   const parts = raw
     .split(/[xX*×/]/g)

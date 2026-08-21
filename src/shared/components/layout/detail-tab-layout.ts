@@ -12,11 +12,20 @@ export const detailTabFilterBarClassName = cn(
   "sm:flex-row sm:flex-wrap sm:items-center sm:px-6",
 );
 
+/** Compact toolbar above detail list tables (Add contact, etc.). */
 export const detailTabToolbarClassName = cn(
-  "flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/90 px-4 py-4 sm:px-6 dark:border-slate-800",
+  "flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200/90 px-4 py-2.5 sm:px-5 dark:border-slate-800",
 );
 
 export const detailTabBodyClassName = "px-4 py-3 sm:px-6 sm:py-4";
+
+/**
+ * Table + pagination body for detail list tabs — edge-to-edge table,
+ * flex column so pagination sticks to the card footer.
+ */
+export const detailTabTableBodyClassName = cn(
+  "flex min-h-0 flex-1 flex-col overflow-hidden",
+);
 
 export const detailTabEmptyClassName =
   "px-4 py-8 text-center text-sm text-slate-600 dark:text-slate-400 sm:px-6";
@@ -27,21 +36,21 @@ export const detailTabErrorClassName =
 /** Entity detail page — natural height; outer dashboard container scrolls (avoids double scrollbars). */
 export const entityDetailPageClassName = cn("w-full min-w-0");
 
-/** White record shell — no nested scroll; page scroll handles overflow. */
-export const entityDetailSurfaceClassName = cn("mt-3 min-w-0");
+/** White record shell — slight gap under tabs; list tabs fill height inside. */
+export const entityDetailSurfaceClassName = cn("mt-2 min-w-0");
 
-export const entityDetailSurfaceInnerClassName = "min-w-0 w-full";
+export const entityDetailSurfaceInnerClassName = "flex min-h-0 min-w-0 w-full flex-col";
 
 /** Tab panel wrapper inside the record shell. */
-export const entityDetailTabPanelClassName = "min-w-0 w-full";
+export const entityDetailTabPanelClassName = "flex min-h-0 min-w-0 w-full flex-1 flex-col";
 
 /**
- * List-style detail tabs (contacts, projects, …) fill remaining height when
- * empty, loading, or errored so the panel is not a short island in gray space.
+ * List-style detail tabs fill remaining viewport so the table card is not a
+ * short island and pagination can pin to the card footer.
  */
 export const detailTabFillViewportClassName = cn(
   "flex min-h-0 flex-1 flex-col",
-  "min-h-[min(28rem,calc(100dvh-14rem))]",
+  "min-h-[min(32rem,calc(100dvh-13rem))]",
 );
 
 /** Centered empty / loading / error content inside a fill tab. */

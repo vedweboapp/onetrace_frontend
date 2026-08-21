@@ -48,14 +48,14 @@ export function DashboardSidebar() {
   const isHydrogen = sidebarLayout === "hydrogen";
 
   const shell = cn(
-    "hidden h-full min-h-0 shrink-0 flex-col overflow-hidden bg-white dark:bg-slate-900",
+    "hidden h-full min-h-0 shrink-0 flex-col overflow-hidden bg-slate-50/80 dark:bg-slate-950",
     isBoron
-      ? "border-l border-slate-200 dark:border-slate-800"
-      : "border-r border-slate-200 dark:border-slate-800",
+      ? "border-l border-slate-200/90 dark:border-slate-800"
+      : "border-r border-slate-200/90 dark:border-slate-800",
     // Hydrogen = top nav: keep sidebar for mobile only
     isHydrogen ? "md:hidden" : "md:flex",
-    "transition-[width] duration-10 ease-[cubic-bezier(0.4,0,0.2,1)]",
-    sidebarExpanded ? "md:w-50" : "md:w-[42px]",
+    "transition-[width] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]",
+    sidebarExpanded ? "md:w-56" : "md:w-14",
   );
 
   if (isSettingsArea(pathname)) {
@@ -75,8 +75,24 @@ export function DashboardSidebar() {
 
 function navInactive() {
   return cn(
-    "text-slate-800 hover:bg-slate-100 hover:text-slate-950",
-    "dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white",
+    "text-slate-700 hover:bg-slate-200/70 hover:text-slate-950",
+    "dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white",
+  );
+}
+
+/** Soft section/parent active — used when a nested child is selected (no solid filled block). */
+function navParentActive() {
+  return cn(
+    "bg-[color:var(--dash-accent,#0f766e)]/[0.08] font-semibold text-[color:var(--dash-accent,#0f766e)]",
+    "dark:bg-[color:var(--dash-accent,#2dd4bf)]/12 dark:text-[color:var(--dash-accent,#5eead4)]",
+  );
+}
+
+/** Leaf / submenu item active — quiet accent tint (not a solid color block). */
+function navLeafActive() {
+  return cn(
+    "bg-[color:var(--dash-accent,#0f766e)]/[0.14] font-semibold text-[color:var(--dash-accent,#0f766e)]",
+    "dark:bg-[color:var(--dash-accent,#2dd4bf)]/20 dark:text-[color:var(--dash-accent,#5eead4)]",
   );
 }
 
@@ -86,14 +102,14 @@ function SidebarNavLink({
   label,
   icon: Icon,
   expanded,
-  resolved,
 }: {
   href: string;
   active: boolean;
   label: string;
   icon: LucideIcon;
   expanded: boolean;
-  resolved: ReturnType<typeof resolveDashboardAccent>;
+  /** Kept for call-site consistency; leaf items use soft active styles. */
+  resolved?: ReturnType<typeof resolveDashboardAccent>;
 }) {
   return (
     <Link
@@ -101,20 +117,19 @@ function SidebarNavLink({
       title={expanded ? undefined : label}
       className={cn(
         "flex items-center rounded-lg text-sm font-medium transition",
-        expanded ? "gap-3 px-3 py-2.5" : "mx-auto size-9 justify-center p-0",
-        active ? resolved.navActiveClassName : navInactive(),
+        expanded ? "gap-3 px-3 py-2" : "mx-auto size-10 justify-center p-0",
+        active ? navLeafActive() : navInactive(),
       )}
-      style={active ? resolved.navActiveStyle : undefined}
     >
       <Icon
         className={cn(
           "size-[18px] shrink-0",
-          active ? "opacity-95" : "text-slate-600 dark:text-slate-300",
+          active ? "opacity-100" : "text-slate-500 dark:text-slate-400",
         )}
         strokeWidth={1.75}
         aria-hidden
       />
-      {expanded ? <span>{label}</span> : <span className="sr-only">{label}</span>}
+      {expanded ? <span className="truncate">{label}</span> : <span className="sr-only">{label}</span>}
     </Link>
   );
 }
@@ -167,15 +182,14 @@ function SidebarNestedNav({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition",
-          active ? resolved.navActiveClassName : navInactive(),
+          "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium transition",
+          active ? navParentActive() : navInactive(),
         )}
-        style={active ? resolved.navActiveStyle : undefined}
       >
         <Icon
           className={cn(
             "size-[18px] shrink-0",
-            active ? "opacity-95" : "text-slate-600 dark:text-slate-300",
+            active ? "opacity-100" : "text-slate-500 dark:text-slate-400",
           )}
           strokeWidth={1.75}
           aria-hidden
@@ -183,8 +197,9 @@ function SidebarNestedNav({
         <span className="min-w-0 flex-1 truncate">{label}</span>
         <ChevronRight
           className={cn(
-            "size-3.5 shrink-0 opacity-60 transition-transform duration-200",
+            "size-3.5 shrink-0 text-slate-400 transition-transform duration-200",
             open && "rotate-90",
+            active && "text-[color:var(--dash-accent,#0f766e)]/70",
           )}
           strokeWidth={2}
           aria-hidden
@@ -201,7 +216,7 @@ function SidebarNestedNav({
           <div
             role="group"
             aria-label={label}
-            className="mb-2 ml-4 mt-0.5 flex flex-col gap-1 border-l border-slate-200 pb-1.5 pl-2.5 dark:border-slate-700"
+            className="mb-1 ml-3 mt-0.5 flex flex-col gap-0.5 border-l border-slate-200/90 pl-2.5 dark:border-slate-700"
           >
             {items.map((item) => (
               <Link
@@ -210,10 +225,9 @@ function SidebarNestedNav({
                 className={cn(
                   "rounded-md px-2.5 py-1.5 text-[13px] font-medium tracking-tight transition",
                   item.active
-                    ? resolved.navActiveClassName
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white",
+                    ? navLeafActive()
+                    : "text-slate-600 hover:bg-slate-200/60 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white",
                 )}
-                style={item.active ? resolved.navActiveStyle : undefined}
               >
                 <span className="block truncate">{item.label}</span>
               </Link>
@@ -229,13 +243,12 @@ function SidebarCollapsedFlyout({
   label,
   icon: Icon,
   active,
-  resolved,
   items,
 }: {
   label: string;
   icon: LucideIcon;
   active: boolean;
-  resolved: ReturnType<typeof resolveDashboardAccent>;
+  resolved?: ReturnType<typeof resolveDashboardAccent>;
   items: SidebarNestedItem[];
 }) {
   const triggerRef = React.useRef<HTMLDivElement>(null);
@@ -256,10 +269,10 @@ function SidebarCollapsedFlyout({
     const el = triggerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const menuWidth = 152;
+    const menuWidth = 160;
     setPos({
       top: rect.top,
-      left: openToLeft ? Math.max(8, rect.left - menuWidth - 6) : rect.right + 6,
+      left: openToLeft ? Math.max(8, rect.left - menuWidth - 8) : rect.right + 8,
     });
   }, [openToLeft]);
 
@@ -300,15 +313,14 @@ function SidebarCollapsedFlyout({
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
-          "mx-auto flex size-9 items-center justify-center rounded-lg text-sm font-medium transition",
-          active ? resolved.navActiveClassName : navInactive(),
+          "mx-auto flex size-10 items-center justify-center rounded-lg text-sm font-medium transition",
+          active ? navParentActive() : navInactive(),
         )}
-        style={active ? resolved.navActiveStyle : undefined}
       >
         <Icon
           className={cn(
             "size-[18px] shrink-0",
-            active ? "opacity-95" : "text-slate-600 dark:text-slate-300",
+            active ? "opacity-100" : "text-slate-500 dark:text-slate-400",
           )}
           strokeWidth={1.75}
           aria-hidden
@@ -321,13 +333,16 @@ function SidebarCollapsedFlyout({
             role="menu"
             aria-label={label}
             className={cn(
-              "fixed z-[80] w-[9.5rem] rounded-lg border border-slate-200/90 bg-white p-1 shadow-md",
+              "fixed z-[80] w-[10rem] rounded-xl border border-slate-200/90 bg-white p-1.5 shadow-lg",
               "ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
             )}
             style={{ top: pos.top, left: pos.left }}
             onMouseEnter={openMenu}
             onMouseLeave={scheduleClose}
           >
+            <p className="truncate px-2.5 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              {label}
+            </p>
             <div className="flex flex-col gap-0.5">
               {items.map((item) => (
                 <Link
@@ -338,10 +353,9 @@ function SidebarCollapsedFlyout({
                   className={cn(
                     "rounded-md px-2.5 py-1.5 text-[13px] font-medium tracking-tight transition",
                     item.active
-                      ? resolved.navActiveClassName
+                      ? navLeafActive()
                       : "text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white",
                   )}
-                  style={item.active ? resolved.navActiveStyle : undefined}
                 >
                   <span className="block truncate">{item.label}</span>
                 </Link>
@@ -446,7 +460,7 @@ function DashboardMainSidebar({
     <>
       <div
         className={cn(
-          "sticky top-0 z-10 flex h-14 min-w-0 shrink-0 items-center overflow-hidden border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900",
+          "sticky top-0 z-10 flex h-14 min-w-0 shrink-0 items-center overflow-hidden border-b border-slate-200/90 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-950",
           expanded ? "px-4" : "justify-center px-0",
         )}
       >
@@ -454,8 +468,8 @@ function DashboardMainSidebar({
       </div>
       <nav
         className={cn(
-          "flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-x-hidden overflow-y-auto overscroll-y-contain",
-          expanded ? "p-3 pb-8" : "items-center px-0 py-3 pb-8",
+          "flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain",
+          expanded ? "gap-0.5 p-2.5 pb-8" : "items-center gap-1.5 px-1.5 py-3 pb-8",
         )}
       >
         <SidebarNavLink
@@ -687,7 +701,7 @@ function DashboardSettingsSidebar({
     <>
       <div
         className={cn(
-          "sticky top-0 z-10 flex h-14 min-w-0 shrink-0 items-center overflow-hidden border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900",
+          "sticky top-0 z-10 flex h-14 min-w-0 shrink-0 items-center overflow-hidden border-b border-slate-200/90 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-950",
           expanded ? "px-4" : "justify-center px-0",
         )}
       >
@@ -695,8 +709,8 @@ function DashboardSettingsSidebar({
       </div>
       <nav
         className={cn(
-          "flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-x-hidden overflow-y-auto overscroll-y-contain",
-          expanded ? "p-3 pb-8" : "items-center px-0 py-3 pb-8",
+          "flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain",
+          expanded ? "gap-0.5 p-2.5 pb-8" : "items-center gap-1.5 px-1.5 py-3 pb-8",
         )}
       >
         <SidebarNavLink
