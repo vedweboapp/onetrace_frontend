@@ -33,7 +33,7 @@ export const detailTabEmptyClassName =
 export const detailTabErrorClassName =
   "px-4 py-8 text-center text-sm text-red-600 dark:text-red-400 sm:px-6";
 
-/** Entity detail page — natural height; outer dashboard container scrolls (avoids double scrollbars). */
+/** Entity detail page — natural height; list tabs set their own viewport min-height. */
 export const entityDetailPageClassName = cn("w-full min-w-0");
 
 /** White record shell — slight gap under tabs; list tabs fill height inside. */
@@ -45,15 +45,16 @@ export const entityDetailSurfaceInnerClassName = "flex min-h-0 min-w-0 w-full fl
 export const entityDetailTabPanelClassName = "flex min-h-0 min-w-0 w-full flex-1 flex-col";
 
 /**
- * List-style detail tabs fill remaining viewport so the table card is not a
- * short island and pagination can pin to the card footer.
+ * List-style detail tabs fill remaining viewport so empty states and tables
+ * use balanced height (top/bottom) instead of a short island under the tabs.
  */
 export const detailTabFillViewportClassName = cn(
-  "flex min-h-0 flex-1 flex-col",
-  "min-h-[min(32rem,calc(100dvh-13rem))]",
+  "flex min-h-0 w-full flex-1 flex-col",
+  "min-h-[calc(100dvh-13.5rem)]",
 );
 
-/** Centered empty / loading / error content inside a fill tab. */
+/** Centered empty / loading / error content inside a fill tab or list shell. */
 export const detailTabFillStateClassName = cn(
-  "flex w-full flex-1 flex-col items-center justify-center px-6 py-10 text-center sm:py-14",
+  "flex h-full w-full min-h-0 flex-1 flex-col items-center justify-center",
+  "px-6 py-12 text-center sm:px-10 sm:py-16",
 );

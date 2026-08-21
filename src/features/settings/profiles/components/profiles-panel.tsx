@@ -201,17 +201,16 @@ export function ProfilesPanel() {
             </AppButton>
           </div>
         ) : filteredProfiles.length === 0 ? (
-          <div className="p-8">
-            <DashboardEmptyState
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
-              action={
-                <AddButton onClick={() => router.push("/settings/profiles/create")}>
-                  {t("add")}
-                </AddButton>
-              }
-            />
-          </div>
+          <DashboardEmptyState
+            iconName="default"
+            title={t("emptyTitle")}
+            description={t("emptyDescription")}
+            action={
+              <AddButton onClick={() => router.push("/settings/profiles/create")}>
+                {t("add")}
+              </AddButton>
+            }
+          />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>

@@ -7,6 +7,7 @@ import {
   MultiCheckSelect,
   surfaceInputClassName,
 } from "@/shared/ui";
+import { detailTabFillViewportClassName } from "@/shared/components/layout/detail-tab-layout";
 import { useLocale, useTranslations } from "next-intl";
 import {
   createJobFromLocation,
@@ -1728,17 +1729,19 @@ const ProjectPinsListTab = ({
         ) : loading ? (
           <ProjectPinsListLoadingSkeleton />
         ) : emptyStateKind !== "none" ? (
-          <ListPageEmptyStates
-            emptyStateKind={emptyStateKind}
-            onboarding={{
-              iconName: "pinStatus",
-              title: "No locations ayet",
-              description:
-                "No locations or blueprints have been added to this project yet.",
-              action: null,
-            }}
-            onClearFilters={clearFilters}
-          />
+          <div className={detailTabFillViewportClassName}>
+            <ListPageEmptyStates
+              emptyStateKind={emptyStateKind}
+              onboarding={{
+                iconName: "pinStatus",
+                title: "No locations yet",
+                description:
+                  "No locations or blueprints have been added to this project yet.",
+                action: null,
+              }}
+              onClearFilters={clearFilters}
+            />
+          </div>
         ) : (
           <div className="mt-2">
             <label className="inline-flex shrink-0 items-center gap-2 cursor-pointer px-4 lg:px-6 py-2">
