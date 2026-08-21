@@ -36,7 +36,7 @@ export const detailPageBodyPaddingClassName = "!px-0 !py-0 sm:!px-0 sm:!py-0";
 /** Shared flat section chrome (title row + body padding). */
 export const detailFlatSectionHeaderClassName =
   "flex flex-col gap-1.5 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4";
-export const detailFlatSectionBodyClassName = "px-4 pt-1 pb-5 sm:px-6 sm:pt-2 sm:pb-6";
+export const detailFlatSectionBodyClassName = "px-4 pt-3 pb-5 sm:px-6 sm:pt-4 sm:pb-6";
 export const detailFlatSectionTitleClassName =
   "text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100";
 
@@ -113,7 +113,7 @@ export function DetailMetricsGrid({
         className={cn(
           "detail-metrics-grid",
           !wide && detailFieldsLayoutClassName,
-          "gap-x-10 gap-y-4",
+          "gap-x-0 gap-y-0",
           className,
         )}
       >

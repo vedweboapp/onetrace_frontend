@@ -337,7 +337,6 @@ export function ContactFormScreen({ mode, contactId }: Props) {
                       emptyLabel={t("placeholders.contactType")}
                       disabled={saving}
                       locked={!!lockedContactType}
-                      lockedHint={t("locked.contactType")}
                       invalid={!!errors.contact_type}
                       onBlur={field.onBlur}
                       onChange={(v) => {
@@ -365,7 +364,6 @@ export function ContactFormScreen({ mode, contactId }: Props) {
                         emptyLabel={t("placeholders.vendor")}
                         disabled={saving || noParents}
                         locked={lockVendor}
-                        lockedHint={t("locked.vendor")}
                         invalid={!!errors.vendor}
                         onBlur={field.onBlur}
                         onChange={field.onChange}
@@ -393,7 +391,6 @@ export function ContactFormScreen({ mode, contactId }: Props) {
                         emptyLabel={t("placeholders.client")}
                         disabled={saving || noParents}
                         locked={lockClient}
-                        lockedHint={t("locked.client")}
                         invalid={!!errors.client}
                         onBlur={field.onBlur}
                         onChange={field.onChange}
