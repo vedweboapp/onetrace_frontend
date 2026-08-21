@@ -1,7 +1,9 @@
 import { parseFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import type {
   InvoiceAddress,
+  InvoiceCompositeGroupRef,
   InvoiceCompositeItem,
+  InvoiceCompositeItemPayload,
   InvoiceContactRef,
   InvoiceCreatePayload,
   InvoiceDetail,
@@ -10,6 +12,7 @@ import type {
 } from "@/features/invoices/types/invoice.types";
 import type { InvoiceFormValues } from "@/features/invoices/schemas/invoice-form-schema";
 import { buildJobMetaPayload, type JobMetaFormRow } from "@/features/jobs/utils/job-meta-payload.util";
+import type { JobMetaCompositeGroupRef } from "@/features/jobs/types/job.types";
 import { computeLineAmount, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
 import { nestedId } from "@/features/invoices/utils/invoice-nested-fields.util";
 import {
@@ -19,6 +22,19 @@ import {
   normalizePrimaryEntityAddresses,
 } from "@/shared/form/entity-address-form.util";
 import { normalizeEntityAddressType } from "@/shared/types/entity-address.types";
+
+function toInvoiceCompositeGroupRef(
+  group: JobMetaCompositeGroupRef | number | null | undefined,
+): InvoiceCompositeGroupRef | null | undefined {
+  if (group == null) return group;
+  if (typeof group === "number") {
+    return Number.isFinite(group) && group > 0 ? { id: group } : null;
+  }
+  if (typeof group === "object" && typeof group.id === "number" && group.id > 0) {
+    return { id: group.id, name: group.name };
+  }
+  return null;
+}
 
 export function formatApiDateForHtmlDateInput(raw: string | null | undefined): string {
   const d = parseFlexibleApiDate(raw);
@@ -185,7 +201,15 @@ export function mapInvoiceFormToPayload(values: InvoiceFormValues): InvoiceCreat
     addresses,
     composite_items: (meta?.composite_items ?? [])
       .filter((row): row is typeof row & { id: number } => typeof row.id === "number")
-      .map(({ id, name, group, quantity, amount }) => ({ id, name, group, quantity, amount })),
+      .map(
+        ({ id, name, group, quantity, amount }): InvoiceCompositeItemPayload => ({
+          id,
+          name,
+          group: toInvoiceCompositeGroupRef(group),
+          quantity,
+          amount,
+        }),
+      ),
   };
 
   if (contact != null) payload.contact = contact;

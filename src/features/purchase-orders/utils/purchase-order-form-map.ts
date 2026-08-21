@@ -1,6 +1,8 @@
 import { parseFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import type {
+  PurchaseOrderCompositeGroupRef,
   PurchaseOrderCompositeItem,
+  PurchaseOrderCompositeItemPayload,
   PurchaseOrderContactRef,
   PurchaseOrderCreatePayload,
   PurchaseOrderDetail,
@@ -8,6 +10,7 @@ import type {
 } from "@/features/purchase-orders/types/purchase-order.types";
 import type { PurchaseOrderFormValues } from "@/features/purchase-orders/schemas/purchase-order-form-schema";
 import { buildJobMetaPayload, type JobMetaFormRow } from "@/features/jobs/utils/job-meta-payload.util";
+import type { JobMetaCompositeGroupRef } from "@/features/jobs/types/job.types";
 import { computeLineAmount, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
 import { nestedId } from "@/features/purchase-orders/utils/purchase-order-nested-fields.util";
 import {
@@ -17,6 +20,19 @@ import {
   normalizePrimaryEntityAddresses,
 } from "@/shared/form/entity-address-form.util";
 import { normalizeEntityAddressType } from "@/shared/types/entity-address.types";
+
+function toPurchaseOrderCompositeGroupRef(
+  group: JobMetaCompositeGroupRef | number | null | undefined,
+): PurchaseOrderCompositeGroupRef | null | undefined {
+  if (group == null) return group;
+  if (typeof group === "number") {
+    return Number.isFinite(group) && group > 0 ? { id: group } : null;
+  }
+  if (typeof group === "object" && typeof group.id === "number" && group.id > 0) {
+    return { id: group.id, name: group.name };
+  }
+  return null;
+}
 
 export function formatApiDateForHtmlDateInput(raw: string | null | undefined): string {
   const d = parseFlexibleApiDate(raw);
@@ -159,7 +175,15 @@ export function mapPurchaseOrderFormToPayload(values: PurchaseOrderFormValues): 
     addresses,
     composite_items: (meta?.composite_items ?? [])
       .filter((row): row is typeof row & { id: number } => typeof row.id === "number")
-      .map(({ id, name, group, quantity, amount }) => ({ id, name, group, quantity, amount })),
+      .map(
+        ({ id, name, group, quantity, amount }): PurchaseOrderCompositeItemPayload => ({
+          id,
+          name,
+          group: toPurchaseOrderCompositeGroupRef(group),
+          quantity,
+          amount,
+        }),
+      ),
   };
 
   if (contact != null) payload.contact = contact;
