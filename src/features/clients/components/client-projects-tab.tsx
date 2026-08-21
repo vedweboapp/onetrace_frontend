@@ -13,7 +13,7 @@ import {
   EntityDetailTabLoadingState,
   entityCol,
 } from "@/shared/components/entity";
-import { DetailTabListShell } from "@/shared/components/layout/detail-tab-list-shell";
+import { DetailTabListShell, DetailTabTableBody } from "@/shared/components/layout/detail-tab-list-shell";
 import { detailTabToolbarClassName } from "@/shared/components/layout/detail-tab-layout";
 import { cn } from "@/core/utils/http.util";
 import { routes } from "@/shared/config/routes";
@@ -180,8 +180,13 @@ export function ClientProjectsTab({ clientId }: Props) {
         />
       }
     >
-      <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
-        <EntityDataTable columns={columns} rows={items} onRowClick={(row) => openProjectDetail(row.id)} />
+      <DetailTabTableBody>
+        <EntityDataTable
+          columns={columns}
+          rows={items}
+          minBodyRows={pageSize}
+          onRowClick={(row) => openProjectDetail(row.id)}
+        />
         <DataTablePaginationBar
           pagination={pagination}
           summary={tProjects("pageLabel", {
@@ -206,7 +211,7 @@ export function ClientProjectsTab({ clientId }: Props) {
             disabled: loading,
           }}
         />
-      </div>
+      </DetailTabTableBody>
     </DetailTabListShell>
   );
 }

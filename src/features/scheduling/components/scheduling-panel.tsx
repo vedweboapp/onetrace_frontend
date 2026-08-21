@@ -23,6 +23,7 @@ import {
   type TimeOffPrefill,
 } from "@/features/scheduling/components/mark-unavailable-modal";
 import { SchedulingDayAgendaPanel } from "@/features/scheduling/components/scheduling-day-agenda-panel";
+import { ScheduleDeleteSummary } from "@/features/scheduling/components/schedule-delete-summary";
 import { SchedulingDayTimeline, type TimelineRangeSelect } from "@/features/scheduling/components/scheduling-day-timeline";
 import { SchedulingLegend } from "@/features/scheduling/components/scheduling-legend";
 import { SchedulingMonthCalendar } from "@/features/scheduling/components/scheduling-month-calendar";
@@ -188,6 +189,10 @@ export function SchedulingPanel({
   const [techSearch, setTechSearch] = React.useState("");
   const [refreshKey, setRefreshKey] = React.useState(0);
   const [dragMode, setDragMode] = React.useState<DragMode>("book");
+  /** Scroll day timeline to this local-midnight minute after create/paste. */
+  const [timelineFocusMinutes, setTimelineFocusMinutes] = React.useState<number | null>(null);
+  const [timelineFocusWorkerId, setTimelineFocusWorkerId] = React.useState<number | null>(null);
+  const [schedulesReady, setSchedulesReady] = React.useState(false);
 
   const [createOpen, setCreateOpen] = React.useState(false);
   const [createTech, setCreateTech] = React.useState<CreateScheduleTechnician | null>(null);
@@ -284,6 +289,7 @@ export function SchedulingPanel({
       setTimeOffs([]);
     } finally {
       setLoadingSchedules(false);
+      setSchedulesReady(true);
     }
   }, [
     rangeFrom,
@@ -692,7 +698,7 @@ export function SchedulingPanel({
 
     setCreatingSchedule(true);
     try {
-      await createSchedule({
+      const created = await createSchedule({
         job_id: jobScopedId,
         worker_id: workerId,
         worker_ids: [workerId],
@@ -706,7 +712,7 @@ export function SchedulingPanel({
         all_day: false,
       });
       toastSuccess(t("modal.successToast"));
-      onScheduleCreated();
+      onScheduleCreated(created);
     } catch (error) {
       toastApiError(error, t("modal.errorToast"));
     } finally {
@@ -819,9 +825,25 @@ export function SchedulingPanel({
     router.push(buildPathWithStoredBack(detailPath, schedulingReturnHref()));
   }
 
-  function onScheduleCreated() {
+  function onScheduleCreated(schedule?: Pick<Schedule, "start_at" | "worker_id" | "worker_ids"> | number) {
+    if (schedule && typeof schedule === "object") {
+      const start = new Date(schedule.start_at);
+      if (!Number.isNaN(start.getTime())) {
+        setAnchorDate(startOfLocalDaySafe(start));
+        setTimelineFocusMinutes(start.getHours() * 60 + start.getMinutes());
+        const workerId =
+          scheduleWorkerIds(schedule as Schedule)[0] ??
+          (typeof schedule.worker_id === "number" ? schedule.worker_id : null);
+        setTimelineFocusWorkerId(workerId);
+      }
+    }
     setRefreshKey((k) => k + 1);
   }
+
+  const clearTimelineFocus = React.useCallback(() => {
+    setTimelineFocusMinutes(null);
+    setTimelineFocusWorkerId(null);
+  }, []);
 
   function copySchedule(schedule: Schedule) {
     setCopiedSchedule(schedule);
@@ -847,7 +869,7 @@ export function SchedulingPanel({
 
     setPastingSchedule(true);
     try {
-      await createSchedule({
+      const created = await createSchedule({
         job_id: copiedSchedule.job_id,
         worker_id: tech.id,
         worker_ids: [tech.id],
@@ -861,7 +883,8 @@ export function SchedulingPanel({
         all_day: copiedSchedule.all_day,
       });
       toastSuccess(t("copy.pastedToast"));
-      onScheduleCreated();
+      setCopiedSchedule(null);
+      onScheduleCreated(created);
     } catch (error) {
       toastApiError(error, t("copy.pasteError"));
     } finally {
@@ -924,6 +947,7 @@ export function SchedulingPanel({
   }
 
   const loading = catalogLoading || loadingSchedules;
+  const showScheduleSkeleton = !schedulesReady && loading;
   const colTemplate = `minmax(220px, 240px) repeat(${days.length}, minmax(140px, 1fr))`;
 
   function clearPeopleFilters() {
@@ -1123,18 +1147,6 @@ export function SchedulingPanel({
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       {syncUrl ? null : toolbarRow}
-      {copiedSchedule ? (
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-sky-200 bg-sky-50 px-3 py-1.5 text-[11px] font-medium text-sky-900 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-100">
-          <p className="min-w-0 truncate">{t("copy.banner", { job: scheduleJobLabel(copiedSchedule) })}</p>
-          <button
-            type="button"
-            className="shrink-0 rounded px-1.5 py-0.5 text-sky-800 underline-offset-2 hover:underline dark:text-sky-200"
-            onClick={() => setCopiedSchedule(null)}
-          >
-            {t("copy.clear")}
-          </button>
-        </div>
-      ) : null}
 
       {focusedWorker || (singleWorker && viewMode !== "month") ? (
         <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 px-1 py-1 dark:border-slate-800 sm:px-2">
@@ -1220,7 +1232,7 @@ export function SchedulingPanel({
       ) : null}
 
       {viewMode === "day" && days[0] ? (
-        loading ? (
+        showScheduleSkeleton ? (
           <div className="space-y-2 p-4">
             <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
             <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
@@ -1260,6 +1272,9 @@ export function SchedulingPanel({
                 allowCreate={allowCreate}
                 copiedSchedule={copiedSchedule}
                 pasteDisabled={pastingSchedule}
+                scrollToMinutes={timelineFocusMinutes}
+                scrollToWorkerId={timelineFocusWorkerId}
+                onScrollTargetApplied={clearTimelineFocus}
                 onClearPeopleFilters={hasPeopleFilters ? clearPeopleFilters : undefined}
                 onCreateSchedule={openCreateSchedule}
                 onRangeSelect={allowCreate ? onTimelineRangeSelect : undefined}
@@ -1274,7 +1289,7 @@ export function SchedulingPanel({
           </div>
         )
       ) : viewMode === "month" ? (
-        loading ? (
+        showScheduleSkeleton ? (
           <div className="space-y-2 p-4">
             <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
             <div className="h-64 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
@@ -1521,7 +1536,7 @@ export function SchedulingPanel({
         open={deleteTarget != null}
         title={t("detail.deleteConfirmTitle")}
         body={t("detail.deleteConfirmBody")}
-        highlight={deleteTarget ? `${deleteTarget.worker_name} · ${scheduleJobLabel(deleteTarget)}` : undefined}
+        highlight={deleteTarget ? <ScheduleDeleteSummary schedule={deleteTarget} /> : undefined}
         confirmLabel={t("detail.delete")}
         cancelLabel={t("modal.cancel")}
         isBusy={deleting}

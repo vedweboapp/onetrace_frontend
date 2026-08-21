@@ -6,9 +6,9 @@ import { useDrag } from "react-dnd";
 import { AppButton } from "@/shared/ui/app-button";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 
-// Must match dashboard-sidebar.tsx: md:w-50 = 200px, md:w-[42px] = 42px
-const SIDEBAR_EXPANDED_W = 200;
-const SIDEBAR_COLLAPSED_W = 42;
+// Must match dashboard-sidebar.tsx: md:w-56 = 224px, md:w-14 = 56px
+const SIDEBAR_EXPANDED_W = 224;
+const SIDEBAR_COLLAPSED_W = 56;
 
 const DraggableAddButton: React.FC<{
   type: string;

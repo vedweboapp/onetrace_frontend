@@ -27,15 +27,21 @@ type DetailEditableFieldEditorProps = {
   editorClassName: string;
 };
 
+/** CRM detail label — muted, sentence case, sits in the fixed label column. */
+export const detailFieldLabelClassName = cn(
+  fieldLabelClassName,
+  "text-sm font-normal normal-case tracking-normal text-slate-500 dark:text-slate-400",
+);
+
 /** Soft box shared by display + edit so height/width feel the same. */
 export const detailValueSurfaceClassName = cn(
-  "w-full min-w-0 rounded-md px-1.5 py-1 text-sm font-semibold leading-normal text-slate-900",
+  "w-full min-w-0 rounded-md px-0 py-0.5 text-sm font-semibold leading-normal text-slate-900",
   "dark:text-slate-100",
 );
 
 export const detailInlineEditorClassName = cn(
   detailValueSurfaceClassName,
-  "box-border w-full min-w-0 border border-slate-200/90 bg-white outline-none transition",
+  "box-border w-full min-w-0 border border-slate-200/90 bg-white px-1.5 py-1 outline-none transition",
   "focus-visible:border-slate-300 focus-visible:ring-2 focus-visible:ring-slate-900/10",
   "dark:border-slate-700 dark:bg-slate-900/80",
 );
@@ -46,7 +52,7 @@ const detailInlineActionBtnClassName = cn(
 );
 
 /**
- * Zoho-style detail field: uppercase label above value.
+ * Enterprise CRM detail field: fixed-width label column + value on one row.
  * Click opens an inline editor; tick saves that field only, cross cancels.
  * Only one field can be in edit mode at a time (global lock).
  */
@@ -254,12 +260,7 @@ export function DetailEditableField({
       )}
       data-required={required ? "true" : undefined}
     >
-      <p
-        className={cn(
-          fieldLabelClassName,
-          "text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400",
-        )}
-      >
+      <p className={detailFieldLabelClassName}>
         {label}
         {required ? <RequiredMark /> : null}
       </p>

@@ -47,21 +47,24 @@ export function DashboardShellLayout({ children }: Props) {
   );
 
   const main = (
-    <main
-      className={cn(
-        "flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-slate-950",
-        dashboardMainGutterClassName,
-      )}
-    >
-      <div
-        className={cn(
-          dashboardPageContainerClassName,
-          // Non-list pages (settings, forms, detail) scroll here.
-          // List pages use h-full + overflow-hidden so only the table body scrolls.
-          "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain py-4 sm:py-5",
-        )}
-      >
-        {children}
+    <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-slate-950">
+      {/*
+        Scroll on the full-bleed pane so the scrollbar sits at the viewport edge.
+        Horizontal gutters live on the scroll content (not on <main>), matching
+        enterprise CRM detail layouts.
+      */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
+        <div
+          className={cn(
+            dashboardPageContainerClassName,
+            dashboardMainGutterClassName,
+            // Non-list pages (settings, forms, detail) scroll above.
+            // List pages use h-full + overflow-hidden so only the table body scrolls.
+            "flex min-h-0 flex-1 flex-col py-4 sm:py-5",
+          )}
+        >
+          {children}
+        </div>
       </div>
     </main>
   );

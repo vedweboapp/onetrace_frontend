@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { deleteSchedule } from "@/features/scheduling/api/schedule.api";
 import type { Schedule } from "@/features/scheduling/types/schedule.types";
+import { ScheduleDeleteSummary } from "@/features/scheduling/components/schedule-delete-summary";
 import { scheduleJobLabel } from "@/features/scheduling/utils/schedule-map.util";
 import { formatDurationHours } from "@/features/scheduling/utils/scheduling-time.util";
 import {
@@ -209,6 +210,7 @@ export function ScheduleDetailModal({ schedule, open, onClose, onDeleted, onEdit
         open={deleteOpen}
         title={t("detail.deleteConfirmTitle")}
         body={t("detail.deleteConfirmBody")}
+        highlight={<ScheduleDeleteSummary schedule={schedule} />}
         confirmLabel={t("detail.delete")}
         cancelLabel={t("modal.cancel")}
         isBusy={deleting}

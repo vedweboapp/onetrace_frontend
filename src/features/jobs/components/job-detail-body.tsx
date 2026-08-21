@@ -11,16 +11,9 @@ import { updateJob, updateJobChecklists } from "@/features/jobs/api/job.api";
 import {
   jobChecklistUpdatePayload,
   requiredJobChecklistsComplete,
-} from "@/features/jobs/utils/job-nested-fields.util";
-import { toastApiError, toastError } from "@/shared/feedback/app-toast";
-import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
-import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
-import type { JobChecklistItem } from "@/features/jobs/types/job.types";
-import { JobChecklistsSection } from "@/features/jobs/components/job-checklists-section";
-import { JobDetailWorkScopeEditor } from "@/features/jobs/components/job-detail-work-scope-editor";
-import {
   getJobStatusId,
   getJobStatusRow,
+  getJobAssignedWorkerRows,
   jobAssignedWorkerLabel,
   jobChecklistEntries,
   jobChecklistIsMarked,
@@ -30,6 +23,12 @@ import {
   jobSiteLabel,
   formatJobTimeDisplay,
 } from "@/features/jobs/utils/job-nested-fields.util";
+import { toastApiError, toastError } from "@/shared/feedback/app-toast";
+import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
+import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
+import type { JobChecklistItem } from "@/features/jobs/types/job.types";
+import { JobChecklistsSection } from "@/features/jobs/components/job-checklists-section";
+import { JobDetailWorkScopeEditor } from "@/features/jobs/components/job-detail-work-scope-editor";
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
@@ -42,6 +41,11 @@ import {
   DetailPanelCard,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
+import {
+  DetailLinkedTable,
+  DetailLinkedTableRow,
+  DetailLinkedTableTd,
+} from "@/shared/components/layout/detail-linked-table";
 import { routes } from "@/shared/config/routes";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
@@ -879,6 +883,7 @@ export function JobDetailBody({
     [detail.id, formEntries],
   );
 
+  const assignedWorkers = React.useMemo(() => getJobAssignedWorkerRows(detail), [detail]);
   const clientId = detail.client && typeof detail.client === "object" ? detail.client.id : typeof detail.client === "number" ? detail.client : null;
   const projectId =
     detail.project && typeof detail.project === "object" ? detail.project.id : typeof detail.project === "number" ? detail.project : null;
@@ -916,25 +921,85 @@ export function JobDetailBody({
                 />
               </DetailMetricCard>
             )}
-            <DetailMetricCard label={t("fields.assignedWorker")}>
-              <div className="flex items-center gap-1.5">
-                <span className="min-w-0 truncate">{workerLabel ?? jobAssignedWorkerLabel(detail)}</span>
-                {onOpenScheduling ? (
-                  <button
-                    type="button"
-                    title={t("detail.openScheduling")}
-                    aria-label={t("detail.openScheduling")}
-                    onClick={onOpenScheduling}
-                    className={cn(
-                      "inline-flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition",
-                      "hover:bg-sky-50 hover:text-sky-700 dark:hover:bg-sky-950/40 dark:hover:text-sky-300",
-                    )}
-                  >
-                    <CalendarDays className="size-4" strokeWidth={1.75} aria-hidden />
-                  </button>
-                ) : null}
+            {assignedWorkers.length > 1 ? (
+              <div className="col-span-full min-w-0">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-sm font-normal text-slate-500 dark:text-slate-400">
+                    {t("fields.assignedWorkers")}
+                  </p>
+                  {onOpenScheduling ? (
+                    <button
+                      type="button"
+                      title={t("detail.openScheduling")}
+                      aria-label={t("detail.openScheduling")}
+                      onClick={onOpenScheduling}
+                      className={cn(
+                        "inline-flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition",
+                        "hover:bg-sky-50 hover:text-sky-700 dark:hover:bg-sky-950/40 dark:hover:text-sky-300",
+                      )}
+                    >
+                      <CalendarDays className="size-4" strokeWidth={1.75} aria-hidden />
+                    </button>
+                  ) : null}
+                </div>
+                <DetailLinkedTable
+                  columns={[
+                    { id: "name", header: t("fields.workerName") },
+                    { id: "role", header: t("fields.workerRole"), widthClass: "w-40" },
+                  ]}
+                  tableClassName="min-w-0"
+                >
+                  {assignedWorkers.map((worker) => (
+                    <DetailLinkedTableRow key={worker.id}>
+                      <DetailLinkedTableTd>
+                        <DetailEntityLink
+                          href={`${routes.dashboard.settingsUsers}/${worker.id}`}
+                          className="font-medium text-blue-600 underline-offset-2 hover:underline"
+                        >
+                          {worker.label}
+                        </DetailEntityLink>
+                      </DetailLinkedTableTd>
+                      <DetailLinkedTableTd>
+                        <span className="text-slate-600 dark:text-slate-300">
+                          {worker.title?.trim() || "—"}
+                        </span>
+                      </DetailLinkedTableTd>
+                    </DetailLinkedTableRow>
+                  ))}
+                </DetailLinkedTable>
               </div>
-            </DetailMetricCard>
+            ) : (
+              <DetailMetricCard label={t("fields.assignedWorker")}>
+                <div className="flex items-center gap-1.5">
+                  {assignedWorkers[0] ? (
+                    <DetailEntityLink
+                      href={`${routes.dashboard.settingsUsers}/${assignedWorkers[0].id}`}
+                      className="min-w-0 truncate font-medium text-blue-600 underline-offset-2 hover:underline"
+                    >
+                      {workerLabel ?? assignedWorkers[0].label}
+                    </DetailEntityLink>
+                  ) : (
+                    <span className="min-w-0 truncate">
+                      {workerLabel ?? jobAssignedWorkerLabel(detail)}
+                    </span>
+                  )}
+                  {onOpenScheduling ? (
+                    <button
+                      type="button"
+                      title={t("detail.openScheduling")}
+                      aria-label={t("detail.openScheduling")}
+                      onClick={onOpenScheduling}
+                      className={cn(
+                        "inline-flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition",
+                        "hover:bg-sky-50 hover:text-sky-700 dark:hover:bg-sky-950/40 dark:hover:text-sky-300",
+                      )}
+                    >
+                      <CalendarDays className="size-4" strokeWidth={1.75} aria-hidden />
+                    </button>
+                  ) : null}
+                </div>
+              </DetailMetricCard>
+            )}
           </DetailMetricsGrid>
         </DetailPanelCard>
 
