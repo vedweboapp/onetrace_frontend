@@ -46,14 +46,15 @@ export function dashboardScrollablePageClassName(): string {
   return "min-h-0 w-full pb-8";
 }
 
-/** Shared empty states for dashboard list panels (matches Clients behaviour). */
+/** Shared empty states for dashboard list panels and detail tabs. */
 export function ListPageEmptyStates({
   emptyStateKind,
   onboarding,
   onClearFilters,
   onSwitchToInactive,
   compact = false,
-  fill = false,
+  /** Prefer fill so empty states center in the remaining shell height. */
+  fill = true,
 }: ListPageEmptyStatesProps) {
   const tList = useTranslations("Dashboard.list");
 
@@ -67,8 +68,8 @@ export function ListPageEmptyStates({
         title={onboarding.title}
         description={onboarding.description}
         action={onboarding.action}
-        compact={fill ? false : (onboarding.compact ?? compact)}
-        fill={fill}
+        compact={compact || Boolean(onboarding.compact)}
+        fill={compact || onboarding.compact ? false : fill}
       />
     );
   }
@@ -84,8 +85,8 @@ export function ListPageEmptyStates({
             {tList("viewInactive")}
           </AppButton>
         }
-        compact={fill ? false : compact}
-        fill={fill}
+        compact={compact}
+        fill={compact ? false : fill}
       />
     );
   }
@@ -100,8 +101,8 @@ export function ListPageEmptyStates({
           {tList("clearFilters")}
         </AppButton>
       }
-      compact={fill ? false : compact}
-      fill={fill}
+      compact={compact}
+      fill={compact ? false : fill}
     />
   );
 }

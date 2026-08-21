@@ -23,6 +23,7 @@ import type { EntityTableColumn } from "@/shared/components/entity";
 import {
   detailTabBodyClassName,
   detailTabErrorClassName,
+  detailTabFillViewportClassName,
   detailTabSectionClassName,
   detailTabTitleClassName,
 } from "@/shared/components/layout/detail-tab-layout";
@@ -321,16 +322,18 @@ export function ProjectQuotationsTab({ projectId }: Props) {
             <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
           </div>
         ) : items.length === 0 ? (
-          <ListPageEmptyStates
-            emptyStateKind={emptyStateKind}
-            onboarding={{
-              iconName: "clients",
-              title: t("emptyTitle"),
-              description: t("emptyDescription"),
-              action: null,
-            }}
-            onClearFilters={() => {}}
-          />
+          <div className={detailTabFillViewportClassName}>
+            <ListPageEmptyStates
+              emptyStateKind={emptyStateKind}
+              onboarding={{
+                iconName: "clients",
+                title: t("emptyTitle"),
+                description: t("emptyDescription"),
+                action: null,
+              }}
+              onClearFilters={() => {}}
+            />
+          </div>
         ) : (
           <DataTableScroll>
             <DataTable>

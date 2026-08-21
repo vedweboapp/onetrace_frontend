@@ -159,7 +159,6 @@ export function ClientSitesTab({ clientId }: Props) {
         <EntityDataTable
           columns={columns}
           rows={items}
-          minBodyRows={pageSize}
           onRowClick={(row) => openSiteDetail(row.id)}
         />
         <DataTablePaginationBar

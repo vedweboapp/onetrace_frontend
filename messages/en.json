@@ -227,7 +227,7 @@
       },
       "lockedField": {
         "aria": "Locked, read only",
-        "hint": "This field is locked and cannot be changed."
+        "hint": "Read only field"
       }
     },
     "brand": {

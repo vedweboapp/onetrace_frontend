@@ -49,7 +49,8 @@ type DashboardEmptyStateProps = {
 
 /**
  * Full-panel empty / not-found state (WMS / Zoho style).
- * In list shells, use without `compact` so it fills the viewport under the header.
+ * Fills the parent shell and centers content with balanced top/bottom space
+ * (same look for list pages and detail tabs). Use `compact` only for tiny embeds.
  */
 export function DashboardEmptyState({
   title,
@@ -78,16 +79,14 @@ export function DashboardEmptyState({
     notFound: FileQuestion,
   };
   const Icon = icon ?? iconByName[iconName];
+  const fillPanel = fill || !compact;
 
   return (
     <div
       className={cn(
-        fill
+        fillPanel
           ? detailTabFillStateClassName
-          : cn(
-              "flex w-full flex-col items-center justify-center px-6 text-center",
-              compact ? "min-h-0 py-10 sm:py-14" : "min-h-0 flex-1 py-12 sm:py-16",
-            ),
+          : "flex w-full flex-col items-center justify-center px-6 py-10 text-center sm:py-12",
         className,
       )}
     >

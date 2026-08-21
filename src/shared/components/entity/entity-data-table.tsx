@@ -203,16 +203,11 @@ export type EntityDataTableProps<T extends { id: number | string }> = {
   scrollClassName?: string;
   /** Hide the clip/wrap control (e.g. embedded mini tables). */
   hideTextModeToggle?: boolean;
-  /**
-   * Pad the body with empty placeholder rows when there are fewer data rows
-   * (detail list tabs / spreadsheet-style full card). Ignored when `rows` is empty
-   * and `emptyMessage` is shown.
-   */
-  minBodyRows?: number;
 };
 
 /**
  * Entity list table: bordered Zoho/WMS chrome, sticky head, clip/wrap in header corner.
+ * Only real data rows; remaining height stays open so pagination can pin below.
  */
 export function EntityDataTable<T extends { id: number | string }>({
   columns,
@@ -224,17 +219,12 @@ export function EntityDataTable<T extends { id: number | string }>({
   className,
   scrollClassName,
   hideTextModeToggle = false,
-  minBodyRows,
 }: EntityDataTableProps<T>) {
   const clickable = !!onRowClick;
   const textMode = useDataTableTextModeStore((s) => s.textMode);
   const wrap = textMode === "wrap";
   const lastColIndex = columns.length - 1;
   const showEmptyMessage = rows.length === 0 && Boolean(emptyMessage);
-  const fillerCount =
-    !showEmptyMessage && minBodyRows != null && minBodyRows > rows.length
-      ? minBodyRows - rows.length
-      : 0;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -273,59 +263,36 @@ export function EntityDataTable<T extends { id: number | string }>({
             {showEmptyMessage ? (
               <DataTableEmptyRow colSpan={columns.length} message={emptyMessage} />
             ) : (
-              <>
-                {rows.map((row) => {
-                  const highlightId = rowHighlightId?.(row) ?? row.id;
-                  return (
-                    <DataTableRow
-                      key={row.id}
-                      data-list-row-id={highlightId}
-                      className={getRowClassName?.(row)}
-                      clickable={clickable}
-                      onClick={clickable ? () => onRowClick(row) : undefined}
-                    >
-                      {columns.map((col) => {
-                        const isolateClick = col.variant === "actions" || col.variant === "selection";
-                        return (
-                          <DataTableTd
-                            key={col.id}
-                            narrow={col.narrow && col.variant !== "selection"}
-                            compact={col.variant === "selection"}
-                            className={columnCellClassName(col, wrap)}
-                            onPointerDown={isolateClick ? (e) => e.stopPropagation() : undefined}
-                            onMouseDown={isolateClick ? (e) => e.stopPropagation() : undefined}
-                            onClick={isolateClick ? (e) => e.stopPropagation() : undefined}
-                            onKeyDown={isolateClick ? (e) => e.stopPropagation() : undefined}
-                          >
-                            {renderEntityTableCell(col, row, wrap)}
-                          </DataTableTd>
-                        );
-                      })}
-                    </DataTableRow>
-                  );
-                })}
-                {Array.from({ length: fillerCount }, (_, i) => (
-                  <tr
-                    key={`filler-${i}`}
-                    aria-hidden
-                    className="pointer-events-none select-none bg-white dark:bg-slate-950"
+              rows.map((row) => {
+                const highlightId = rowHighlightId?.(row) ?? row.id;
+                return (
+                  <DataTableRow
+                    key={row.id}
+                    data-list-row-id={highlightId}
+                    className={getRowClassName?.(row)}
+                    clickable={clickable}
+                    onClick={clickable ? () => onRowClick(row) : undefined}
                   >
-                    {columns.map((col) => (
-                      <DataTableTd
-                        key={col.id}
-                        narrow={col.narrow && col.variant !== "selection"}
-                        compact={col.variant === "selection"}
-                        className={cn(
-                          col.responsive && entityResponsiveClass(col.responsive),
-                          "h-[2.625rem]",
-                        )}
-                      >
-                        &nbsp;
-                      </DataTableTd>
-                    ))}
-                  </tr>
-                ))}
-              </>
+                    {columns.map((col) => {
+                      const isolateClick = col.variant === "actions" || col.variant === "selection";
+                      return (
+                        <DataTableTd
+                          key={col.id}
+                          narrow={col.narrow && col.variant !== "selection"}
+                          compact={col.variant === "selection"}
+                          className={columnCellClassName(col, wrap)}
+                          onPointerDown={isolateClick ? (e) => e.stopPropagation() : undefined}
+                          onMouseDown={isolateClick ? (e) => e.stopPropagation() : undefined}
+                          onClick={isolateClick ? (e) => e.stopPropagation() : undefined}
+                          onKeyDown={isolateClick ? (e) => e.stopPropagation() : undefined}
+                        >
+                          {renderEntityTableCell(col, row, wrap)}
+                        </DataTableTd>
+                      );
+                    })}
+                  </DataTableRow>
+                );
+              })
             )}
           </DataTableBody>
         </DataTable>

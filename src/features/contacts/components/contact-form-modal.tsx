@@ -189,7 +189,6 @@ export function ContactFormModal({
                 value={initialClientId ?? ""}
                 emptyLabel={t("placeholders.client")}
                 locked
-                lockedHint={t("locked.client")}
                 onChange={() => undefined}
               />
             </FieldGroup>

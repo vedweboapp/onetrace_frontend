@@ -171,7 +171,6 @@ export function EntityContactsTab({ entityType, entityId }: Props) {
         <EntityDataTable
           columns={columns}
           rows={items}
-          minBodyRows={pageSize}
           onRowClick={(row) => openContactDetail(row.id)}
         />
         <DataTablePaginationBar

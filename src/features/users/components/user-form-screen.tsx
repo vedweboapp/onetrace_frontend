@@ -73,6 +73,7 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
     register,
     reset,
     setValue,
+    clearErrors,
     setError,
     handleSubmit,
     formState: { errors },
@@ -340,6 +341,7 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
               control={control}
               register={register}
               setValue={setValue}
+              clearErrors={clearErrors}
               errors={errors}
               disabled={saving}
               idPrefix="user-address"

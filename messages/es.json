@@ -218,7 +218,7 @@
       },
       "lockedField": {
         "aria": "Bloqueado, solo lectura",
-        "hint": "Este campo está bloqueado y no se puede cambiar."
+        "hint": "Campo de solo lectura"
       }
     },
     "brand": {

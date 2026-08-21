@@ -189,7 +189,9 @@ export function AddressLocationFields<T extends FieldValues>({
                 value={typeof field.value === "string" ? field.value : ""}
                 onBlur={field.onBlur}
                 onChange={(e) => {
-                  setValue("pincode" as never, e.target.value as never, {
+                  const next = e.target.value;
+                  field.onChange(next);
+                  setValue("pincode" as never, next as never, {
                     shouldDirty: true,
                     shouldTouch: true,
                     shouldValidate: true,

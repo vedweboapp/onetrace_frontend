@@ -137,7 +137,6 @@ export function VendorItemsTab({ vendorId }: Props) {
         <EntityDataTable
           columns={columns}
           rows={items}
-          minBodyRows={pageSize}
           onRowClick={(row) => openItemDetail(row.id)}
         />
         <DataTablePaginationBar

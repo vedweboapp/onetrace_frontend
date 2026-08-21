@@ -222,17 +222,15 @@ export function RolesPanel() {
             </AppButton>
           </div>
         ) : filteredRoles.length === 0 ? (
-          <div className="p-8">
-            <DashboardEmptyState
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
-              action={
-                <AddButton onClick={() => router.push("/settings/roles/create")}>
-                  {t("add")}
-                </AddButton>
-              }
-            />
-          </div>
+          <DashboardEmptyState
+            title={t("emptyTitle")}
+            description={t("emptyDescription")}
+            action={
+              <AddButton onClick={() => router.push("/settings/roles/create")}>
+                {t("add")}
+              </AddButton>
+            }
+          />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>
