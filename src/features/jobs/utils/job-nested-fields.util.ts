@@ -1,5 +1,6 @@
 import type {
   Job,
+  JobAssignedWorkerRef,
   JobChecklistApiRow,
   JobChecklistItem,
   JobChecklistsBlock,
@@ -15,27 +16,78 @@ import type { UserProfile } from "@/features/users/types/user.types";
 import { jobFormsToFormIds } from "@/features/jobs/utils/job-form-map";
 
 export function getJobAssignedWorkerId(job: { assigned_worker?: Job["assigned_worker"] }): number | null {
-  const w = job.assigned_worker;
-  if (typeof w === "number" && Number.isFinite(w)) return w;
-  if (w && typeof w === "object" && typeof w.id === "number") return w.id;
-  return null;
+  const workers = getJobAssignedWorkerRows(job);
+  return workers[0]?.id ?? null;
+}
+
+function workerRefLabel(w: JobAssignedWorkerRef, userLabelById?: Record<number, string>): string {
+  if (typeof w.name === "string" && w.name.trim()) return w.name.trim();
+  const full = `${w.first_name ?? ""} ${w.last_name ?? ""}`.trim();
+  if (full) return full;
+  if (w.username?.trim()) return w.username.trim();
+  if (w.email?.trim()) return w.email.trim();
+  if (userLabelById?.[w.id]) return userLabelById[w.id]!;
+  return `#${w.id}`;
+}
+
+function pushWorkerRow(
+  out: { id: number; label: string; title?: string | null }[],
+  seen: Set<number>,
+  entry: number | JobAssignedWorkerRef,
+  userLabelById?: Record<number, string>,
+) {
+  if (typeof entry === "number") {
+    if (!Number.isFinite(entry) || entry <= 0 || seen.has(entry)) return;
+    seen.add(entry);
+    out.push({ id: entry, label: userLabelById?.[entry] ?? `#${entry}` });
+    return;
+  }
+  if (entry && typeof entry === "object" && typeof entry.id === "number" && entry.id > 0) {
+    if (seen.has(entry.id)) return;
+    seen.add(entry.id);
+    out.push({
+      id: entry.id,
+      label: workerRefLabel(entry, userLabelById),
+      title: typeof entry.title === "string" ? entry.title : null,
+    });
+  }
+}
+
+/** All assigned workers on a job (`assigned_workers` and/or `assigned_worker`). */
+export function getJobAssignedWorkerRows(
+  job: {
+    assigned_worker?: Job["assigned_worker"];
+    assigned_workers?: Job["assigned_workers"];
+  },
+  userLabelById?: Record<number, string>,
+): { id: number; label: string; title?: string | null }[] {
+  const out: { id: number; label: string; title?: string | null }[] = [];
+  const seen = new Set<number>();
+
+  if (Array.isArray(job.assigned_workers)) {
+    for (const entry of job.assigned_workers) pushWorkerRow(out, seen, entry, userLabelById);
+  }
+
+  const single = job.assigned_worker;
+  if (Array.isArray(single)) {
+    for (const entry of single) pushWorkerRow(out, seen, entry, userLabelById);
+  } else if (single != null) {
+    pushWorkerRow(out, seen, single, userLabelById);
+  }
+
+  return out;
 }
 
 export function jobAssignedWorkerLabel(
-  job: { assigned_worker?: Job["assigned_worker"] },
+  job: {
+    assigned_worker?: Job["assigned_worker"];
+    assigned_workers?: Job["assigned_workers"];
+  },
   userLabelById?: Record<number, string>,
 ): string {
-  const w = job.assigned_worker;
-  if (w && typeof w === "object") {
-    if (typeof w.name === "string" && w.name.trim()) return w.name.trim();
-    const full = `${w.first_name ?? ""} ${w.last_name ?? ""}`.trim();
-    if (full) return full;
-    if (w.username?.trim()) return w.username.trim();
-    if (w.email?.trim()) return w.email.trim();
-  }
-  const id = getJobAssignedWorkerId(job);
-  if (id != null && userLabelById?.[id]) return userLabelById[id];
-  return id != null ? `#${id}` : "—";
+  const rows = getJobAssignedWorkerRows(job, userLabelById);
+  if (rows.length === 0) return "—";
+  return rows.map((row) => row.label).join(", ");
 }
 
 export function getJobStatusId(job: Pick<Job, "job_status">): number | null {

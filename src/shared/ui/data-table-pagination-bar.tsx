@@ -91,7 +91,7 @@ export function DataTablePaginationBar({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center border-t border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400",
+        "flex shrink-0 items-center border-t border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-500 sm:px-3.5 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400",
         className,
       )}
     >

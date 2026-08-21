@@ -63,7 +63,7 @@ type Props = {
     endAt: string;
     ignoreScheduleId?: number;
   }) => string | null;
-  onCreated?: (scheduleId: number) => void;
+  onCreated?: (schedule: Schedule) => void;
 };
 
 function isUnassignedJob(job: Job): boolean {
@@ -312,7 +312,7 @@ export function CreateScheduleModal({
         ? await updateSchedule(existingSchedule.id, payload)
         : await createSchedule(payload);
       toastSuccess(isReschedule ? t("modal.successRescheduleToast") : t("modal.successToast"));
-      onCreated?.(row.id);
+      onCreated?.(row);
       onClose();
     } catch (error) {
       toastApiError(error, isReschedule ? t("modal.errorRescheduleToast") : t("modal.errorToast"));

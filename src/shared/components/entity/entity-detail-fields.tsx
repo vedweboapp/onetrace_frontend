@@ -6,7 +6,7 @@ import {
   DetailMetricsGrid,
   DetailPanelCard,
 } from "@/shared/components/layout/detail-metric-card";
-import { detailValueSurfaceClassName } from "@/shared/components/layout/detail-editable-field";
+import { detailFieldLabelClassName, detailValueSurfaceClassName } from "@/shared/components/layout/detail-editable-field";
 import { ActiveStatusBadge } from "@/shared/ui";
 import { formatSettingsDetailDate } from "@/shared/components/settings/settings-detail-view";
 import { cn } from "@/core/utils/http.util";
@@ -22,7 +22,7 @@ const detailMetadataIconWrapClassName = cn(
   "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500",
 );
 
-/** Metadata fields follow Appearance label placement (same as other detail fields). */
+/** Metadata fields follow the same CRM label | value alignment as overview fields. */
 function DetailMetadataField({
   label,
   children,
@@ -34,13 +34,7 @@ function DetailMetadataField({
 }) {
   return (
     <div className={cn("field-group detail-field min-w-0", className)}>
-      <p
-        className={cn(
-          "field-label text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400",
-        )}
-      >
-        {label}
-      </p>
+      <p className={detailFieldLabelClassName}>{label}</p>
       <div className={cn("field-control-wrap min-w-0 flex-1", detailValueSurfaceClassName, "min-h-[1.75rem]")}>
         {children}
       </div>

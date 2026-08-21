@@ -1646,7 +1646,7 @@ export default function FormBuilderLayout({
   };
 
   const sidebarOpen = useDashboardSidebarStore((s) => s.sidebarOpen);
-  const sidebarW = sidebarOpen ? 200 : 42;
+  const sidebarW = sidebarOpen ? 224 : 56;
   const canvasMarginLeft = 288;
 
   // Keep CSS variables in sync with sidebar width so fixed sub-header and
