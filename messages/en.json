@@ -222,11 +222,12 @@
         "updatedAt": "Updated at",
         "createdBy": "Created by",
         "modifiedBy": "Modified by",
-        "notModifiedYet": "Not modified yet"
+        "notModifiedYet": "Not modified yet",
+        "requiredField": "This field is required."
       },
       "lockedField": {
         "aria": "Locked, read only",
-        "hint": "This field is locked and cannot be changed."
+        "hint": "Read only field"
       }
     },
     "brand": {
@@ -2043,11 +2044,14 @@
         "tabsAria": "Vendor detail sections",
         "tabs": {
           "details": "Details",
-          "contacts": "Contacts"
+          "contacts": "Contacts",
+          "items": "Items"
         },
         "contactsEmptyTitle": "No contacts for this vendor",
         "contactsEmptyDescription": "Contacts linked to this vendor will appear here.",
-        "addContact": "Add contact"
+        "addContact": "Add contact",
+        "itemsEmptyTitle": "No items for this vendor",
+        "itemsEmptyDescription": "Items linked to this vendor will appear here."
       },
       "modal": {
         "cancel": "Cancel",
@@ -3451,6 +3455,17 @@
       },
       "loadError": "Could not load schedules. Try again.",
       "jobScheduledOnlyWorker": "This job is already scheduled. Only the assigned worker is shown.",
+      "copy": {
+        "action": "Copy schedule",
+        "paste": "Paste",
+        "pasteHere": "Paste schedule",
+        "banner": "Copied “{job}”. Paste onto another worker.",
+        "clear": "Clear",
+        "copiedToast": "Schedule copied",
+        "pastedToast": "Schedule pasted to worker",
+        "pasteError": "Could not paste the schedule. Try again.",
+        "sameWorker": "Choose a different worker to paste this schedule."
+      },
       "modal": {
         "title": "Create Schedule",
         "rescheduleTitle": "Reschedule",
@@ -3507,8 +3522,11 @@
       },
       "fields": {
         "worker": "Worker",
+        "assignedWorker": "Assigned worker",
         "client": "Client name",
         "job": "Job name",
+        "jobId": "Job ID",
+        "project": "Project name",
         "date": "Date",
         "time": "Time",
         "startDate": "Start date",
@@ -3779,7 +3797,8 @@
         "rate": "Unit price",
         "amount": "Amount",
         "addItem": "Add item",
-        "remove": "Remove line"
+        "remove": "Remove line",
+        "empty": "No task items yet. Add items to define this job's work scope."
       },
       "fields": {
         "title": "Title",
@@ -3790,6 +3809,9 @@
         "form": "Form",
         "forms": "Forms",
         "assignedWorker": "Assigned worker",
+        "assignedWorkers": "Assigned workers",
+        "workerName": "Worker",
+        "workerRole": "Role",
         "startDate": "Start date & time",
         "jobTime": "Job time",
         "endDate": "End date & time",
@@ -4547,6 +4569,7 @@
         "reorder": "Reorder quantity",
         "cost": "Cost price",
         "sell": "Selling price",
+        "vendors": "Vendors",
         "itemType": "Item type",
         "compositeYes": "Composite item",
         "compositeNo": "Standard item",
@@ -4578,6 +4601,9 @@
         "unitType": "Unit",
         "unitTypePlaceholder": "Select unit",
         "unitTypesLoadError": "Could not load unit types.",
+        "vendors": "Vendors",
+        "vendorsPlaceholder": "Select vendors...",
+        "vendorsLoadError": "Could not load vendors.",
         "costPrice": "Cost price",
         "costPriceError": "Enter a cost price.",
         "sellingPrice": "Selling price",

@@ -106,6 +106,18 @@ export function VendorDetailBody({
     [t],
   );
 
+  const addressRequiredMessages = React.useMemo(
+    () => ({
+      addressType: t("validation.addressType"),
+      addressLine1: t("validation.addressLine1"),
+      pincode: t("validation.pincode"),
+      country: t("validation.country"),
+      state: t("validation.state"),
+      city: t("validation.city"),
+    }),
+    [t],
+  );
+
   const mapPoints: AddressMapPoint[] = sortedAddresses.map(({ address: addr, displayIndex }) => {
     const lat = parseVendorCoord(addr.latitude);
     const lon = parseVendorCoord(addr.longitude);
@@ -139,6 +151,8 @@ export function VendorDetailBody({
               label={t("fields.name")}
               value={detail.name}
               kind="text"
+              required
+              requiredMessage={t("validation.name")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ name: next })}
             >
@@ -152,9 +166,11 @@ export function VendorDetailBody({
                 options={vendorTypeSelectOptions}
                 editAriaLabel={tActions("edit")}
                 span="full"
+                required
+                requiredMessage={t("validation.type")}
                 onSaveValues={(next) =>
                   patchField({
-                    type: next.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0),
+                    vendor_types: next.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0),
                   })
                 }
               >
@@ -183,6 +199,8 @@ export function VendorDetailBody({
               label={t("fields.email")}
               value={detail.email}
               kind="email"
+              required
+              requiredMessage={t("validation.email")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ email: next })}
             >
@@ -192,6 +210,8 @@ export function VendorDetailBody({
               label={t("fields.phone")}
               value={detail.phone ?? ""}
               kind="tel"
+              required
+              requiredMessage={t("validation.phoneInvalid")}
               editAriaLabel={tActions("edit")}
               empty={t("detail.notProvided")}
               onSave={(next) => patchField({ phone: next })}
@@ -205,22 +225,21 @@ export function VendorDetailBody({
           {addresses.length === 0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>
           ) : (
-            <ul className="space-y-4">
+            <ul className="space-y-0 overflow-visible">
               {sortedAddresses.map(({ address: addr, originalIndex, displayIndex }) => (
-                <li
-                  key={addr.id ?? originalIndex}
-                  className="rounded-lg border border-slate-100 p-4 dark:border-slate-800"
-                >
+                <li key={addr.id ?? originalIndex} className="min-w-0 overflow-visible">
                   <DetailAddressBlock
                     heading={t("addresses.rowLabel", { index: displayIndex + 1 })}
                     primaryLabel={t("addresses.primary")}
                     isPrimary={Boolean(addr.is_primary)}
+                    separated={displayIndex > 0}
                   >
                     <DetailEntityAddressFields
                       address={addr}
                       addressIndex={originalIndex}
                       allAddresses={addresses}
                       labels={addressFieldLabels}
+                      requiredMessages={addressRequiredMessages}
                       addressTypeOptions={addressTypeOptions}
                       addressTypeValue={t(`addressType.${addr.address_type ?? "other"}`)}
                       editAriaLabel={tActions("edit")}

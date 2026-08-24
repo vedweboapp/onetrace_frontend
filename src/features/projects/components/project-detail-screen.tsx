@@ -4,7 +4,7 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
-import { fetchClient } from "@/features/clients/api/client.api";
+import { fetchClient, fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import type { ProjectType } from "@/features/project-types/types/project-type.types";
 import { createQuotationFromProject } from "@/features/quotations/api/quotation.api";
@@ -58,6 +58,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
   const dateOnlyFmt = useDashboardDateFormat({ dateOnly: true });
 
   const [clientName, setClientName] = React.useState<string | null>(null);
+  const [clientOptions, setClientOptions] = React.useState<CheckmarkSelectOption[]>([]);
   const [projectTypeById, setProjectTypeById] = React.useState<Record<number, ProjectType>>({});
   const [detailForClient, setDetailForClient] = React.useState<Project | null>(null);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
@@ -85,6 +86,23 @@ export function ProjectDetailScreen({ projectId }: Props) {
       }
     })();
     return () => { cancelled = true; };
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchClientsPage(1, 500, { is_active: true });
+        if (!cancelled) {
+          setClientOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
+        }
+      } catch {
+        if (!cancelled) setClientOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   React.useEffect(() => {
@@ -403,6 +421,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
               dateFmt={dateFmt}
               dateOnlyFmt={dateOnlyFmt}
               clientName={clientName}
+              clientOptions={clientOptions}
               projectTypeById={projectTypeById}
               statusOptions={statusOptions}
               siteOptions={siteOptions}

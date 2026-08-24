@@ -37,7 +37,7 @@ export function mapVendorFormToPayload(values: VendorFormValues): VendorCreatePa
     name: values.name.trim(),
     email: values.email.trim(),
     phone: values.phone.trim(),
-    type: values.type
+    vendor_types: values.type
       .map((id) => Number.parseInt(id, 10))
       .filter((id) => Number.isFinite(id) && id > 0),
     addresses: normalizePrimaryEntityAddresses(values.addresses).map(mapEntityAddressFormRowToPayload),

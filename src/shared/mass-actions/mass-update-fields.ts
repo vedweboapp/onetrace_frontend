@@ -179,7 +179,7 @@ export function buildVendorMassUpdateFields(
     nameField("name", labels.name),
     emailField("email", labels.email),
     phoneField("phone", labels.phone),
-    selectField("type", labels.type, typeOptions, "number"),
+    selectField("vendor_types", labels.type, typeOptions, "number"),
     ...addressFields({
       addressLine1: labels.addressLine1,
       addressLine2: labels.addressLine2,

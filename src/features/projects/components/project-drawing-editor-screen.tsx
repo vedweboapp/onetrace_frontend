@@ -1770,7 +1770,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       <div
         className={cn(
           "fixed top-14 right-0 z-40 flex flex-col space-y-3 border-y border-slate-200 bg-white p-3  transition-all dark:border-slate-800 dark:bg-slate-950",
-          sidebarOpen ? "md:left-50" : "md:left-[45px]",
+          sidebarOpen ? "md:left-56" : "md:left-14",
           "left-0"
         )}
       >
@@ -2799,7 +2799,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       {selectedPlot && (activeTool === "pen" || activeTool === "plot-select") && (
         <div className={cn(
           "fixed bottom-24 left-0 right-0 z-50 flex justify-center px-6 transition-all",
-          sidebarOpen ? "md:left-64" : "md:left-[52px]"
+          sidebarOpen ? "md:left-56" : "md:left-14"
         )}>
           <PlotToolbar
             isEditing={editingPlotId === selectedPlot.id}

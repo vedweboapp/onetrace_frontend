@@ -130,7 +130,7 @@ export function SettingsDetailRow({
         className,
       )}
     >
-      <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
+      <dt className="text-sm font-normal text-slate-500 dark:text-slate-400">
         {label}
       </dt>
       <dd className="min-w-0 text-sm font-medium leading-snug text-slate-900 dark:text-slate-100">

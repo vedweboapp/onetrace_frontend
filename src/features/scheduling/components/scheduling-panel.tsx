@@ -11,6 +11,7 @@ import {
   fetchSchedules,
   fetchSchedule,
   fetchWorkerTimeOff,
+  createSchedule,
 } from "@/features/scheduling/api/schedule.api";
 import {
   CreateScheduleModal,
@@ -22,6 +23,7 @@ import {
   type TimeOffPrefill,
 } from "@/features/scheduling/components/mark-unavailable-modal";
 import { SchedulingDayAgendaPanel } from "@/features/scheduling/components/scheduling-day-agenda-panel";
+import { ScheduleDeleteSummary } from "@/features/scheduling/components/schedule-delete-summary";
 import { SchedulingDayTimeline, type TimelineRangeSelect } from "@/features/scheduling/components/scheduling-day-timeline";
 import { SchedulingLegend } from "@/features/scheduling/components/scheduling-legend";
 import { SchedulingMonthCalendar } from "@/features/scheduling/components/scheduling-month-calendar";
@@ -92,6 +94,8 @@ export type SchedulingPanelProps = {
   defaultJobId?: number;
   /** Client for the job when creating from the job scheduling tab. */
   defaultClientId?: number;
+  /** Project for the job when creating from the job scheduling tab. */
+  defaultProjectId?: number;
   /** Assigned worker on the job record (fallback when schedule worker ids are missing). */
   defaultAssignedWorkerId?: number;
   /** Job serial (e.g. JB390) used to match schedules when job_id is missing. */
@@ -116,6 +120,7 @@ export function SchedulingPanel({
   fixedWorkerId,
   defaultJobId,
   defaultClientId,
+  defaultProjectId,
   defaultAssignedWorkerId,
   defaultJobSerial,
   syncUrl = true,
@@ -143,6 +148,8 @@ export function SchedulingPanel({
     typeof defaultJobId === "number" && defaultJobId > 0 ? defaultJobId : null;
   const jobScopedClientId =
     typeof defaultClientId === "number" && defaultClientId > 0 ? defaultClientId : null;
+  const jobScopedProjectId =
+    typeof defaultProjectId === "number" && defaultProjectId > 0 ? defaultProjectId : null;
 
   const viewMode = (
     syncUrl ? parseViewMode(searchParams.get("view")) : localViewMode
@@ -182,11 +189,18 @@ export function SchedulingPanel({
   const [techSearch, setTechSearch] = React.useState("");
   const [refreshKey, setRefreshKey] = React.useState(0);
   const [dragMode, setDragMode] = React.useState<DragMode>("book");
+  /** Scroll day timeline to this local-midnight minute after create/paste. */
+  const [timelineFocusMinutes, setTimelineFocusMinutes] = React.useState<number | null>(null);
+  const [timelineFocusWorkerId, setTimelineFocusWorkerId] = React.useState<number | null>(null);
+  const [schedulesReady, setSchedulesReady] = React.useState(false);
 
   const [createOpen, setCreateOpen] = React.useState(false);
   const [createTech, setCreateTech] = React.useState<CreateScheduleTechnician | null>(null);
   const [createDateKey, setCreateDateKey] = React.useState(toDateKey(new Date()));
   const [createPrefill, setCreatePrefill] = React.useState<CreateSchedulePrefill | null>(null);
+  const [creatingSchedule, setCreatingSchedule] = React.useState(false);
+  const [copiedSchedule, setCopiedSchedule] = React.useState<Schedule | null>(null);
+  const [pastingSchedule, setPastingSchedule] = React.useState(false);
   const [timeOffOpen, setTimeOffOpen] = React.useState(false);
   const [timeOffPrefill, setTimeOffPrefill] = React.useState<TimeOffPrefill | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<Schedule | null>(null);
@@ -275,6 +289,7 @@ export function SchedulingPanel({
       setTimeOffs([]);
     } finally {
       setLoadingSchedules(false);
+      setSchedulesReady(true);
     }
   }, [
     rangeFrom,
@@ -452,32 +467,13 @@ export function SchedulingPanel({
     return [...all, ...(catalog.userGroups ?? []).map((g) => ({ value: String(g.id), label: g.name }))];
   }, [catalog, t]);
 
-  const jobAssignedWorkerIds = React.useMemo(() => {
-    const ids = new Set<number>();
-    if (!jobScopedId) return ids;
-    for (const row of jobScopedSchedules) {
-      for (const id of scheduleWorkerIds(row)) {
-        if (id > 0) ids.add(id);
-      }
-    }
-    if (ids.size === 0 && typeof defaultAssignedWorkerId === "number" && defaultAssignedWorkerId > 0) {
-      ids.add(defaultAssignedWorkerId);
-    }
-    return ids;
-  }, [jobScopedId, jobScopedSchedules, defaultAssignedWorkerId]);
-
-  const jobIsScheduled = Boolean(jobScopedId && jobScopedSchedules.length > 0);
-  const visibleSchedules = jobScopedId && jobIsScheduled ? jobScopedSchedules : schedules;
-  const allowCreate = !jobScopedId || !jobIsScheduled;
+  // Job tab may have many schedules (one per worker). Always show this job's rows when scoped.
+  const visibleSchedules = jobScopedId ? jobScopedSchedules : schedules;
+  const allowCreate = true;
 
   const filteredTechs = React.useMemo(() => {
     if (!catalog) return [];
     let rows = catalog.technicians;
-    if (jobScopedId && jobIsScheduled && jobAssignedWorkerIds.size > 0) {
-      rows = rows.filter((tech) =>
-        [...jobAssignedWorkerIds].some((id) => technicianMatchesWorkerId(tech, id)),
-      );
-    }
     if (workerFilter && Number.isFinite(Number(workerFilter))) {
       rows = rows.filter((r) => r.id === Number(workerFilter) || r.profileId === Number(workerFilter));
     }
@@ -489,7 +485,7 @@ export function SchedulingPanel({
     const q = techSearch.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter((row) => row.searchText.includes(q));
-  }, [catalog, workerFilter, groupFilter, techSearch, jobScopedId, jobIsScheduled, jobAssignedWorkerIds]);
+  }, [catalog, workerFilter, groupFilter, techSearch]);
 
   const schedulesByWorkerDay = React.useMemo(() => {
     const map = new Map<string, Schedule[]>();
@@ -581,19 +577,18 @@ export function SchedulingPanel({
     day: Date,
     times?: { startTime: string; endTime: string },
   ) {
-    if (jobScopedId && jobIsScheduled) {
-      toastError(t("conflict.jobAlreadyScheduled"));
+    // From job detail: job/client are known — create on drag without the modal.
+    if (jobScopedId) {
+      void createScheduleForScopedJob(tech, day, times);
       return;
     }
+
     setCreateTech(tech ? toCreateTech(tech) : null);
     setCreateDateKey(toDateKey(day));
     const jobPrefill: CreateSchedulePrefill = {
       dateKey: toDateKey(day),
       startTime: times?.startTime,
       endTime: times?.endTime,
-      jobId: jobScopedId ?? undefined,
-      clientId: jobScopedClientId ?? undefined,
-      lockJob: Boolean(jobScopedId),
       workerId: tech?.id,
     };
     if (!tech) {
@@ -624,6 +619,105 @@ export function SchedulingPanel({
       times?.endTime ?? minutesToTime(Math.min(window.startMinutes + 60, window.endMinutes));
     setCreatePrefill({ ...jobPrefill, startTime, endTime });
     setCreateOpen(true);
+  }
+
+  async function createScheduleForScopedJob(
+    tech: SchedulingTechnician | null,
+    day: Date,
+    times?: { startTime: string; endTime: string },
+  ) {
+    if (!jobScopedId || creatingSchedule) return;
+
+    if (!jobScopedClientId) {
+      toastError(t("validation.client"));
+      return;
+    }
+
+    const workerId =
+      tech?.id ??
+      (typeof defaultAssignedWorkerId === "number" && defaultAssignedWorkerId > 0
+        ? defaultAssignedWorkerId
+        : null);
+    if (workerId == null) {
+      toastError(t("validation.worker"));
+      return;
+    }
+
+    const catalogTech =
+      tech ??
+      catalog?.technicians.find(
+        (row) => row.id === workerId || row.profileId === workerId,
+      ) ??
+      null;
+
+    let startTime = times?.startTime;
+    let endTime = times?.endTime;
+
+    if (catalogTech) {
+      const window = getDayAvailabilityWindow(catalogTech.availableDays, day);
+      if (!window) {
+        toastError(t("conflict.noAvailability"));
+        return;
+      }
+      if (times) {
+        const startMin = timeToMinutes(times.startTime);
+        const endMin = timeToMinutes(times.endTime);
+        if (
+          startMin == null ||
+          endMin == null ||
+          startMin < window.startMinutes ||
+          endMin > window.endMinutes
+        ) {
+          toastError(t("conflict.unavailable"));
+          return;
+        }
+      }
+      startTime = times?.startTime ?? minutesToTime(window.startMinutes);
+      endTime =
+        times?.endTime ?? minutesToTime(Math.min(window.startMinutes + 60, window.endMinutes));
+    }
+
+    if (!startTime?.trim() || !endTime?.trim()) {
+      toastError(t("validation.startTime"));
+      return;
+    }
+
+    const dateKey = toDateKey(day);
+    const startIso = combineDateAndTimeToIso(dateKey, startTime, false);
+    const endIso = combineDateAndTimeEndToIso(dateKey, endTime, false);
+
+    const conflict = getBookingConflict({
+      workerId,
+      startAt: startIso,
+      endAt: endIso,
+    });
+    if (conflict) {
+      toastError(conflict);
+      return;
+    }
+
+    setCreatingSchedule(true);
+    try {
+      const created = await createSchedule({
+        job_id: jobScopedId,
+        worker_id: workerId,
+        worker_ids: [workerId],
+        client_id: jobScopedClientId,
+        project_id: jobScopedProjectId,
+        start_at: startIso,
+        end_at: endIso,
+        notes: null,
+        recurrence: "none",
+        recurrence_end_at: null,
+        all_day: false,
+      });
+      toastSuccess(t("modal.successToast"));
+      onScheduleCreated(created);
+    } catch (error) {
+      toastApiError(error, t("modal.errorToast"));
+    } finally {
+      setCreatingSchedule(false);
+    }
   }
 
   function getBookingConflict(input: {
@@ -731,8 +825,71 @@ export function SchedulingPanel({
     router.push(buildPathWithStoredBack(detailPath, schedulingReturnHref()));
   }
 
-  function onScheduleCreated() {
+  function onScheduleCreated(schedule?: Pick<Schedule, "start_at" | "worker_id" | "worker_ids"> | number) {
+    if (schedule && typeof schedule === "object") {
+      const start = new Date(schedule.start_at);
+      if (!Number.isNaN(start.getTime())) {
+        setAnchorDate(startOfLocalDaySafe(start));
+        setTimelineFocusMinutes(start.getHours() * 60 + start.getMinutes());
+        const workerId =
+          scheduleWorkerIds(schedule as Schedule)[0] ??
+          (typeof schedule.worker_id === "number" ? schedule.worker_id : null);
+        setTimelineFocusWorkerId(workerId);
+      }
+    }
     setRefreshKey((k) => k + 1);
+  }
+
+  const clearTimelineFocus = React.useCallback(() => {
+    setTimelineFocusMinutes(null);
+    setTimelineFocusWorkerId(null);
+  }, []);
+
+  function copySchedule(schedule: Schedule) {
+    setCopiedSchedule(schedule);
+    toastSuccess(t("copy.copiedToast"));
+  }
+
+  async function pasteScheduleToWorker(tech: SchedulingTechnician) {
+    if (!copiedSchedule || pastingSchedule) return;
+    if (scheduleWorkerIds(copiedSchedule).some((id) => technicianMatchesWorkerId(tech, id))) {
+      toastError(t("copy.sameWorker"));
+      return;
+    }
+
+    const conflict = getBookingConflict({
+      workerId: tech.id,
+      startAt: copiedSchedule.start_at,
+      endAt: copiedSchedule.end_at,
+    });
+    if (conflict) {
+      toastError(conflict);
+      return;
+    }
+
+    setPastingSchedule(true);
+    try {
+      const created = await createSchedule({
+        job_id: copiedSchedule.job_id,
+        worker_id: tech.id,
+        worker_ids: [tech.id],
+        client_id: copiedSchedule.client_id,
+        project_id: copiedSchedule.project_id,
+        start_at: copiedSchedule.start_at,
+        end_at: copiedSchedule.end_at,
+        notes: copiedSchedule.notes,
+        recurrence: copiedSchedule.recurrence ?? "none",
+        recurrence_end_at: copiedSchedule.recurrence_end_at,
+        all_day: copiedSchedule.all_day,
+      });
+      toastSuccess(t("copy.pastedToast"));
+      setCopiedSchedule(null);
+      onScheduleCreated(created);
+    } catch (error) {
+      toastApiError(error, t("copy.pasteError"));
+    } finally {
+      setPastingSchedule(false);
+    }
   }
 
   async function confirmRemoveSchedule() {
@@ -790,6 +947,7 @@ export function SchedulingPanel({
   }
 
   const loading = catalogLoading || loadingSchedules;
+  const showScheduleSkeleton = !schedulesReady && loading;
   const colTemplate = `minmax(220px, 240px) repeat(${days.length}, minmax(140px, 1fr))`;
 
   function clearPeopleFilters() {
@@ -989,11 +1147,6 @@ export function SchedulingPanel({
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       {syncUrl ? null : toolbarRow}
-      {jobIsScheduled ? (
-        <p className="shrink-0 border-b border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-medium text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
-          {t("jobScheduledOnlyWorker")}
-        </p>
-      ) : null}
 
       {focusedWorker || (singleWorker && viewMode !== "month") ? (
         <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 px-1 py-1 dark:border-slate-800 sm:px-2">
@@ -1079,7 +1232,7 @@ export function SchedulingPanel({
       ) : null}
 
       {viewMode === "day" && days[0] ? (
-        loading ? (
+        showScheduleSkeleton ? (
           <div className="space-y-2 p-4">
             <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
             <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
@@ -1117,11 +1270,18 @@ export function SchedulingPanel({
                 peopleHeader={peopleHeader}
                 dragMode={dragMode}
                 allowCreate={allowCreate}
+                copiedSchedule={copiedSchedule}
+                pasteDisabled={pastingSchedule}
+                scrollToMinutes={timelineFocusMinutes}
+                scrollToWorkerId={timelineFocusWorkerId}
+                onScrollTargetApplied={clearTimelineFocus}
                 onClearPeopleFilters={hasPeopleFilters ? clearPeopleFilters : undefined}
                 onCreateSchedule={openCreateSchedule}
                 onRangeSelect={allowCreate ? onTimelineRangeSelect : undefined}
                 onScheduleClick={openJobDetail}
                 onRemoveSchedule={setDeleteTarget}
+                onCopySchedule={copySchedule}
+                onPasteSchedule={(tech) => void pasteScheduleToWorker(tech)}
                 onRemoveTimeOff={setDeleteTimeOff}
                 onWorkerClick={openWorkerCalendar}
               />
@@ -1129,7 +1289,7 @@ export function SchedulingPanel({
           </div>
         )
       ) : viewMode === "month" ? (
-        loading ? (
+        showScheduleSkeleton ? (
           <div className="space-y-2 p-4">
             <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
             <div className="h-64 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
@@ -1359,6 +1519,7 @@ export function SchedulingPanel({
           openJobDetail(schedule);
         }}
         onRemoveSchedule={setDeleteTarget}
+        onCopySchedule={copySchedule}
         onRemoveTimeOff={setDeleteTimeOff}
       />
 
@@ -1375,7 +1536,7 @@ export function SchedulingPanel({
         open={deleteTarget != null}
         title={t("detail.deleteConfirmTitle")}
         body={t("detail.deleteConfirmBody")}
-        highlight={deleteTarget ? `${deleteTarget.worker_name} · ${scheduleJobLabel(deleteTarget)}` : undefined}
+        highlight={deleteTarget ? <ScheduleDeleteSummary schedule={deleteTarget} /> : undefined}
         confirmLabel={t("detail.delete")}
         cancelLabel={t("modal.cancel")}
         isBusy={deleting}

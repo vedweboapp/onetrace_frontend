@@ -89,6 +89,8 @@ export function GroupDetailBody({
               label={t("table.name")}
               value={detail.name}
               kind="text"
+              required
+              requiredMessage={t("modal.nameError")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ name: next.trim() })}
             >

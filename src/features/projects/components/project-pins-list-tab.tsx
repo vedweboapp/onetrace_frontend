@@ -7,6 +7,7 @@ import {
   MultiCheckSelect,
   surfaceInputClassName,
 } from "@/shared/ui";
+import { detailTabFillViewportClassName } from "@/shared/components/layout/detail-tab-layout";
 import { useLocale, useTranslations } from "next-intl";
 import {
   createJobFromLocation,
@@ -27,10 +28,12 @@ import type {
   ProjectSiteRef,
 } from "@/features/projects/types/project.types";
 import { getProjectTypeId } from "@/features/projects/utils/project-type-id.util";
+import { resolvePinProjectFormId } from "@/features/projects/utils/pin-form-meta.util";
 import { useParams } from "next/navigation";
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { ChevronRight, Layers, MapPinned } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
+import { DetailEntityLink } from "@/shared/components/entity";
 import type { ListEmptyStateKind } from "@/shared/hooks/use-list-active-inactive-empty";
 import { Controller, useForm } from "react-hook-form";
 import { DrawingPinPreviewModal } from "./drawing-pin-preview-modal";
@@ -392,6 +395,7 @@ function ProjectPinRow({
 }) {
   const locale = useLocale();
   const isEs = locale === "es";
+  const { id: projectId } = useParams<{ id: string }>();
   const productName = pin.item_detail?.name || pin.group_detail?.name || "Pin";
   const sku = pin.item_detail?.sku;
   const variationText = pin.variation
@@ -401,6 +405,12 @@ function ProjectPinRow({
     : isEs
       ? "No"
       : "No";
+  const formLabel = resolveFormName ? resolveFormName(pin) : "—";
+  const formId = resolvePinProjectFormId(pin);
+  const formHref =
+    formId != null && projectId
+      ? `/projects/${projectId}/job-forms?purpose=edit_project_job_form&layout_id=${formId}`
+      : null;
 
   return (
     <div
@@ -525,8 +535,18 @@ function ProjectPinRow({
         {pin.is_converted_job ? "Yes" : "No"}
       </span>
 
-      <span className="min-w-0 text-xs font-medium text-slate-600 dark:text-slate-400 truncate">
-        {resolveFormName ? resolveFormName(pin) : "—"}
+      <span className="min-w-0 truncate text-xs font-medium text-slate-600 dark:text-slate-400">
+        {formHref && formLabel !== "—" ? (
+          <DetailEntityLink
+            href={formHref}
+            className="truncate font-medium"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {formLabel}
+          </DetailEntityLink>
+        ) : (
+          formLabel
+        )}
       </span>
 
       <div>
@@ -1709,17 +1729,19 @@ const ProjectPinsListTab = ({
         ) : loading ? (
           <ProjectPinsListLoadingSkeleton />
         ) : emptyStateKind !== "none" ? (
-          <ListPageEmptyStates
-            emptyStateKind={emptyStateKind}
-            onboarding={{
-              iconName: "pinStatus",
-              title: "No locations ayet",
-              description:
-                "No locations or blueprints have been added to this project yet.",
-              action: null,
-            }}
-            onClearFilters={clearFilters}
-          />
+          <div className={detailTabFillViewportClassName}>
+            <ListPageEmptyStates
+              emptyStateKind={emptyStateKind}
+              onboarding={{
+                iconName: "pinStatus",
+                title: "No locations yet",
+                description:
+                  "No locations or blueprints have been added to this project yet.",
+                action: null,
+              }}
+              onClearFilters={clearFilters}
+            />
+          </div>
         ) : (
           <div className="mt-2">
             <label className="inline-flex shrink-0 items-center gap-2 cursor-pointer px-4 lg:px-6 py-2">

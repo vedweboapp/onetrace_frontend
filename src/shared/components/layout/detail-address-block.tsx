@@ -25,11 +25,11 @@ export function DetailAddressBlock({
     <div
       className={cn(
         "min-w-0",
-        separated && "border-t border-slate-100 pt-6 dark:border-slate-800",
+        separated && "mt-5 border-t border-slate-200/90 pt-5 dark:border-slate-800",
         className,
       )}
     >
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="mb-3.5 flex flex-wrap items-center gap-2 pt-0.5">
         <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{heading}</h4>
         {isPrimary && primaryLabel ? (
           <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">

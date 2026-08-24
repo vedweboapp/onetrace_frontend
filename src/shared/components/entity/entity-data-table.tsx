@@ -3,6 +3,10 @@
 import * as React from "react";
 import type { ReactNode } from "react";
 import { cn } from "@/core/utils/http.util";
+import {
+  DetailEntityLink,
+  entityNameLinkClassName,
+} from "@/shared/components/entity/detail-entity-link";
 import type { EntityTableColumn } from "@/shared/components/entity/entity-table-columns";
 import { entityResponsiveClass } from "@/shared/components/entity/entity-table-columns";
 import { ActiveStatusBadge } from "@/shared/ui";
@@ -106,6 +110,23 @@ function renderEntityTableCell<T>(column: EntityTableColumn<T>, row: T, wrap: bo
       const title = column.title?.(row);
       return wrapClippedCell(column.value(row), wrap, title);
     }
+    case "link": {
+      const label = column.label(row)?.trim() || "—";
+      const href = column.href?.(row)?.trim() || null;
+      const title = column.title?.(row) ?? (label !== "—" ? label : undefined);
+      const empty = label === "—";
+      const content =
+        !empty && href ? (
+          <DetailEntityLink href={href} className="font-medium" onClick={(e) => e.stopPropagation()}>
+            {label}
+          </DetailEntityLink>
+        ) : empty ? (
+          <span className="text-slate-400 dark:text-slate-500">—</span>
+        ) : (
+          <span className={cn(entityNameLinkClassName, "font-medium")}>{label}</span>
+        );
+      return wrapClippedCell(content, wrap, title);
+    }
     case "phone": {
       const raw = column.value(row);
       const trimmed = typeof raw === "string" ? raw.trim() : "";
@@ -140,10 +161,16 @@ function entityTableTdClassName<T>(column: EntityTableColumn<T>, wrap: boolean):
   switch (column.variant) {
     case "primary":
       return cn(
-        "font-semibold text-slate-900 dark:text-slate-100",
+        "font-semibold",
+        entityNameLinkClassName,
         wrap ? "whitespace-normal break-words" : "truncate",
       );
     case "truncate": {
+      if (wrap) return "whitespace-normal break-words";
+      const max = column.maxWidth ? TRUNCATE_MAX[column.maxWidth] : TRUNCATE_MAX.sm;
+      return cn(max, "truncate");
+    }
+    case "link": {
       if (wrap) return "whitespace-normal break-words";
       const max = column.maxWidth ? TRUNCATE_MAX[column.maxWidth] : TRUNCATE_MAX.sm;
       return cn(max, "truncate");
@@ -180,6 +207,7 @@ export type EntityDataTableProps<T extends { id: number | string }> = {
 
 /**
  * Entity list table: bordered Zoho/WMS chrome, sticky head, clip/wrap in header corner.
+ * Only real data rows; remaining height stays open so pagination can pin below.
  */
 export function EntityDataTable<T extends { id: number | string }>({
   columns,
@@ -196,6 +224,7 @@ export function EntityDataTable<T extends { id: number | string }>({
   const textMode = useDataTableTextModeStore((s) => s.textMode);
   const wrap = textMode === "wrap";
   const lastColIndex = columns.length - 1;
+  const showEmptyMessage = rows.length === 0 && Boolean(emptyMessage);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -231,7 +260,7 @@ export function EntityDataTable<T extends { id: number | string }>({
             </tr>
           </DataTableHead>
           <DataTableBody>
-            {rows.length === 0 && emptyMessage ? (
+            {showEmptyMessage ? (
               <DataTableEmptyRow colSpan={columns.length} message={emptyMessage} />
             ) : (
               rows.map((row) => {

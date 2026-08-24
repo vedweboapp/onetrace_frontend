@@ -68,7 +68,7 @@ export function LockedSurfaceField({ id, value, hint, className }: Props) {
               id={hintId}
               role="tooltip"
               style={{ top: pos.top, left: pos.left }}
-              className="pointer-events-none fixed z-[400] max-w-xs rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium leading-snug text-white shadow-lg dark:bg-slate-700"
+              className="pointer-events-none fixed z-[400] max-w-[14rem] rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-slate-700"
             >
               {tooltip}
             </p>,

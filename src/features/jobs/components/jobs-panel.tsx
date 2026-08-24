@@ -12,6 +12,7 @@ import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Job } from "@/features/jobs/types/job.types";
 import {
+  getJobAssignedWorkerId,
   getJobClientId,
   getJobProjectId,
   getJobStatusId,
@@ -21,8 +22,9 @@ import {
   jobProjectLabel,
 } from "@/features/jobs/utils/job-nested-fields.util";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
-import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { DetailEntityLink, EntityDataTable, entityCol, entityNameLinkClassName } from "@/shared/components/entity";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
+import { routes } from "@/shared/config/routes";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
@@ -442,40 +444,54 @@ export function JobsPanel() {
         ),
         { narrow: true },
       ),
-      c.custom("Serial No.", t("table.serialNo"), (r) => r.job_serial_number),
-      // c.primary("title", t("table.title"), (r) => r.title),
-      c.custom("jobStatus", t("table.jobStatus"), (r) => statusChipForRow(r)),
-      c.truncate("worker", t("table.assignedWorker"), (r) =>
-        jobAssignedWorkerLabel(r, workerLabelById),
-      ),
-      c.truncate("client", t("fields.client"), (r) => jobClientDisplay(r), {
-        title: (r) => jobClientDisplay(r),
+      c.custom("title", t("table.title"), (row) => {
+        const serial = row.job_serial_number?.trim() || null;
+        return (
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className={`truncate font-semibold ${entityNameLinkClassName}`}>{row.title}</span>
+            {serial ? (
+              <span className="truncate text-xs font-medium tabular-nums text-slate-500 dark:text-slate-400">
+                {serial}
+              </span>
+            ) : null}
+          </span>
+        );
       }),
+      c.link(
+        "worker",
+        t("table.assignedWorker"),
+        (r) => jobAssignedWorkerLabel(r, workerLabelById),
+        (r) => {
+          const id = getJobAssignedWorkerId(r);
+          return id != null ? `${routes.dashboard.settingsUsers}/${id}` : null;
+        },
+        { title: (r) => jobAssignedWorkerLabel(r, workerLabelById) },
+      ),
+      c.link(
+        "client",
+        t("fields.client"),
+        (r) => jobClientDisplay(r),
+        (r) => {
+          const id = getJobClientId(r.client);
+          return id != null ? `${routes.dashboard.clients}/${id}` : null;
+        },
+        { title: (r) => jobClientDisplay(r) },
+      ),
       ...(isProjectJob
         ? [
-            c.truncate("project", t("fields.project"), (r) => jobProjectDisplay(r), {
-              title: (r) => jobProjectDisplay(r),
-            }),
+            c.link(
+              "project",
+              t("fields.project"),
+              (r) => jobProjectDisplay(r),
+              (r) => {
+                const id = getJobProjectId(r.project);
+                return id != null ? `${routes.dashboard.projects}/${id}` : null;
+              },
+              { title: (r) => jobProjectDisplay(r) },
+            ),
           ]
         : []),
-      // c.actions("actions", t("table.actions"), (row) => (
-      //   <DataTableRowActionsMenu
-      //     menuAriaLabel={tList("openRowActions")}
-      //     items={[
-      //       { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) },
-      //       {
-      //         id: "delete",
-      //         label: t("delete"),
-      //         icon: Trash2,
-      //         tone: "danger",
-      //         onSelect: () => {
-      //           setDeletingJob(row);
-      //           setDeleteOpen(true);
-      //         },
-      //       },
-      //     ]}
-      //   />
-      // )),
+      c.custom("jobStatus", t("table.jobStatus"), (r) => statusChipForRow(r)),
     ];
   }, [
     t,
@@ -600,7 +616,14 @@ export function JobsPanel() {
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>
-              {items.map((row) => (
+              {items.map((row) => {
+                const clientId = getJobClientId(row.client);
+                const projectId = getJobProjectId(row.project);
+                const workerId = getJobAssignedWorkerId(row);
+                const clientLabel = jobClientDisplay(row);
+                const projectLabel = jobProjectDisplay(row);
+                const workerLabel = jobAssignedWorkerLabel(row, workerLabelById);
+                return (
                 <ListPageCard
                   key={row.id}
                   dataListRowId={row.id}
@@ -614,9 +637,62 @@ export function JobsPanel() {
                       onChange={() => mass.selection.toggleRowSelected(row.id)}
                     />
                   }
-                  title={row.title}
-                  subtitle={jobAssignedWorkerLabel(row, workerLabelById)}
-                  meta={`${jobClientDisplay(row)} · ${jobProjectDisplay(row)}`}
+                  title={
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <span className={entityNameLinkClassName}>{row.title}</span>
+                      {row.job_serial_number?.trim() ? (
+                        <span className="truncate text-xs font-medium tabular-nums text-slate-500 dark:text-slate-400">
+                          {row.job_serial_number.trim()}
+                        </span>
+                      ) : null}
+                    </span>
+                  }
+                  subtitle={
+                    workerId != null ? (
+                      <DetailEntityLink
+                        href={`${routes.dashboard.settingsUsers}/${workerId}`}
+                        className="min-w-0 truncate font-medium"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {workerLabel}
+                      </DetailEntityLink>
+                    ) : (
+                      workerLabel
+                    )
+                  }
+                  meta={
+                    <span
+                      className="flex min-w-0 items-center gap-1 truncate"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      {clientId != null ? (
+                        <DetailEntityLink
+                          href={`${routes.dashboard.clients}/${clientId}`}
+                          className="min-w-0 truncate font-medium"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {clientLabel}
+                        </DetailEntityLink>
+                      ) : (
+                        <span className="min-w-0 truncate">{clientLabel}</span>
+                      )}
+                      <span className="shrink-0 text-slate-400" aria-hidden>
+                        ·
+                      </span>
+                      {projectId != null ? (
+                        <DetailEntityLink
+                          href={`${routes.dashboard.projects}/${projectId}`}
+                          className="min-w-0 truncate font-medium"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {projectLabel}
+                        </DetailEntityLink>
+                      ) : (
+                        <span className="min-w-0 truncate">{projectLabel}</span>
+                      )}
+                    </span>
+                  }
                   footer={
                     <div className="flex w-full flex-wrap items-center gap-2">{statusChipForRow(row)}</div>
                   }
@@ -640,7 +716,8 @@ export function JobsPanel() {
                     />
                   }
                 />
-              ))}
+                );
+              })}
             </ListPageCardGrid>
           </div>
         ) : (

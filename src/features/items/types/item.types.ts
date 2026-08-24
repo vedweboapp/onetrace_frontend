@@ -83,10 +83,27 @@ export type Item = {
   height?: string | number | null;
   // Legacy (older frontend stored dimensions as a single string)
   dimensions?: string | null;
+  /** Write/legacy read key. */
   dimensions_unit?: DimensionUnit | string | null;
+  /** Current API read key (singular). */
+  dimension_unit?: DimensionUnit | string | null;
   weight?: string | number | null;
   weight_unit?: WeightUnit | string | null;
   attachments?: ItemAttachment[] | null;
+  /** Linked vendor ids (write/read). */
+  vendor_ids?: number[] | null;
+  /** Expanded vendor refs when the API returns nested objects. */
+  vendors?: Array<number | ItemVendorRef> | null;
+  /** Current API read key for expanded vendors. */
+  vendor_details?: ItemVendorRef[] | null;
+};
+
+export type ItemVendorRef = {
+  id: number;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  organization?: number | null;
 };
 
 export type ItemCreatePayload = {
@@ -114,6 +131,7 @@ export type ItemCreatePayload = {
   weight_unit?: WeightUnit;
   components?: ItemComponentRef[];
   attachments?: Array<{ id: number; is_deleted?: boolean }>;
+  vendor_ids?: number[];
 };
 
 export type ItemUpdatePayload = Partial<ItemCreatePayload>;

@@ -4,8 +4,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/core/utils/http.util";
 import { ActiveStatusBadge, FormFieldRow, FormFieldSpanFull } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
-import { fieldLabelClassName } from "@/shared/ui/field-primitives";
-import { DetailEditableField, detailValueSurfaceClassName } from "./detail-editable-field";
+import { DetailEditableField, detailFieldLabelClassName, detailValueSurfaceClassName } from "./detail-editable-field";
 import { DetailCollapsibleSection } from "./detail-collapsible-section";
 
 /** Soft canvas behind a single flat detail surface (avoid card-in-card). */
@@ -17,8 +16,8 @@ export const detailRecordSurfaceShellClassName = cn(
 /** Detail record shell — full width, left-aligned (matches create/edit forms). */
 export const detailRecordInnerClassName = "w-full min-w-0";
 
-/** Form-like max width for detail field blocks on wide screens (Zoho-style). */
-export const detailFieldsLayoutClassName = "w-full min-w-0 max-w-4xl";
+/** Form-like max width for detail field blocks on wide screens (CRM-style). */
+export const detailFieldsLayoutClassName = "w-full min-w-0 max-w-5xl";
 
 export function DetailFieldsLayout({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={cn(detailFieldsLayoutClassName, className)}>{children}</div>;
@@ -27,18 +26,23 @@ export function DetailFieldsLayout({ children, className }: { children: ReactNod
 /** Span full row inside `DetailMetricsGrid` (same as form `FormFieldSpanFull`). */
 export { FormFieldSpanFull as DetailFieldSpanFull };
 
-/** Vertical stack for detail sections with light dividers (flat record surface). */
-export const detailPageStackClassName = "flex flex-col divide-y divide-slate-100 dark:divide-slate-800";
+/** Vertical stack for detail sections with clear CRM-style horizontal rules. */
+export const detailPageStackClassName =
+  "flex flex-col divide-y divide-slate-200/90 dark:divide-slate-800";
 
 /** Flat detail body: no extra padding inside the white record shell. */
 export const detailPageBodyPaddingClassName = "!px-0 !py-0 sm:!px-0 sm:!py-0";
 
 /** Shared flat section chrome (title row + body padding). */
 export const detailFlatSectionHeaderClassName =
-  "flex flex-col gap-1.5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-3.5";
-export const detailFlatSectionBodyClassName = "px-4 pt-4 pb-5 sm:px-6 sm:pt-5 sm:pb-6";
+  "flex flex-col gap-1.5 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4";
+export const detailFlatSectionBodyClassName = "px-4 pt-3 pb-5 sm:px-6 sm:pt-4 sm:pb-6";
 export const detailFlatSectionTitleClassName =
   "text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100";
+
+/** Inline sub-heading inside a section (e.g. Contact information). */
+export const detailSubsectionTitleClassName =
+  "mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400";
 
 export function activeStatusSelectOptions(
   activeLabel: string,
@@ -109,7 +113,7 @@ export function DetailMetricsGrid({
         className={cn(
           "detail-metrics-grid",
           !wide && detailFieldsLayoutClassName,
-          "gap-y-5",
+          "gap-x-0 gap-y-0",
           className,
         )}
       >
@@ -130,14 +134,7 @@ export function DetailMetricCard({
 }) {
   return (
     <div className={cn("field-group detail-field min-w-0", className)}>
-      <p
-        className={cn(
-          fieldLabelClassName,
-          "text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400",
-        )}
-      >
-        {label}
-      </p>
+      <p className={detailFieldLabelClassName}>{label}</p>
       <div
         className={cn(
           "field-control-wrap min-w-0 flex-1",
@@ -180,14 +177,7 @@ export function DetailWideCard({
 }) {
   return (
     <div className={cn("field-group detail-field min-w-0", className)}>
-      <p
-        className={cn(
-          fieldLabelClassName,
-          "text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400",
-        )}
-      >
-        {label}
-      </p>
+      <p className={detailFieldLabelClassName}>{label}</p>
       <div className="field-control-wrap min-w-0 flex-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
         {children}
       </div>
@@ -199,6 +189,11 @@ export function DetailSectionTitle({ children }: { children: ReactNode }) {
   return (
     <h3 className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">{children}</h3>
   );
+}
+
+/** Quiet sub-heading inside a detail section body. */
+export function DetailSubsectionTitle({ children, className }: { children: ReactNode; className?: string }) {
+  return <h4 className={cn(detailSubsectionTitleClassName, className)}>{children}</h4>;
 }
 
 export function DetailPagePadding({ children, className }: { children: ReactNode; className?: string }) {

@@ -8,7 +8,7 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { deleteVendor, fetchAllVendorIds, fetchVendorsPage, updateVendor } from "@/features/vendors/api/vendor.api";
 import type { Vendor } from "@/features/vendors/types/vendor.types";
 import { fetchVendorTypesPage } from "@/features/vendor-types/api/vendor-type.api";
-import { VendorTypeChip } from "@/features/vendor-types/components/vendor-type-chip";
+import { VendorTypeChipGroup } from "@/features/vendor-types/components/vendor-type-chip";
 import {
   getVendorTypeRows,
   vendorAddressSummary,
@@ -255,13 +255,7 @@ export function VendorsPanel() {
       c.custom("type", t("table.type"), (row) => {
         const typeRows = getVendorTypeRows(row);
         if (typeRows.length === 0) return "—";
-        return (
-          <span className="flex max-w-xs flex-wrap gap-1">
-            {typeRows.map((typeRow) => (
-              <VendorTypeChip key={typeRow.id} row={typeRow} />
-            ))}
-          </span>
-        );
+        return <VendorTypeChipGroup rows={typeRows} />;
       }),
       c.truncate("email", t("table.email"), (r) => r.email),
       c.phone("phone", t("table.phone"), (r) => r.phone),
@@ -358,9 +352,7 @@ export function VendorsPanel() {
                     footer={
                       <div className="flex w-full flex-wrap items-center justify-between gap-3">
                         <div className="flex min-w-0 flex-wrap items-center gap-2">
-                          {typeRows.length > 0
-                            ? typeRows.map((typeRow) => <VendorTypeChip key={typeRow.id} row={typeRow} />)
-                            : null}
+                          {typeRows.length > 0 ? <VendorTypeChipGroup rows={typeRows} /> : null}
                           {row.phone?.trim() ? (
                             <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
                               <Phone className="size-3.5" aria-hidden />

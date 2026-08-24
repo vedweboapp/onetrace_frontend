@@ -10,12 +10,15 @@ export async function generateMetadata(): Promise<Metadata> {
 
 type PageProps = {
   params: Promise<{ locale: string; id: string; pinId: string }>;
+  searchParams: Promise<{ drawingId?: string }>;
 };
 
-export default async function DashboardJobPinDetailPage({ params }: PageProps) {
+export default async function DashboardJobPinDetailPage({ params, searchParams }: PageProps) {
   const { id, pinId } = await params;
+  const { drawingId: rawDrawingId } = await searchParams;
   const jobId = Number.parseInt(id, 10);
   const numericPinId = Number.parseInt(pinId, 10);
+  const drawingId = Number.parseInt(rawDrawingId ?? "", 10);
   if (
     !Number.isFinite(jobId) ||
     jobId <= 0 ||
@@ -25,5 +28,11 @@ export default async function DashboardJobPinDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  return <PinDetailScreen jobId={jobId} pinId={numericPinId} />;
+  return (
+    <PinDetailScreen
+      jobId={jobId}
+      pinId={numericPinId}
+      drawingIdHint={Number.isFinite(drawingId) && drawingId > 0 ? drawingId : null}
+    />
+  );
 }

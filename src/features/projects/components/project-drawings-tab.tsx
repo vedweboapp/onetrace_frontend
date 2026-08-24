@@ -415,7 +415,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   return (
     <div className={detailTabSectionClassName}>
       <div className={detailTabToolbarClassName}>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1 text-left">
           <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{t("title")}</h2>
           <p className="mt-0.5 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
         </div>

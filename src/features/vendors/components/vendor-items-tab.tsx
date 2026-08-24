@@ -4,41 +4,37 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchSitesPage } from "@/features/sites/api/site.api";
-import type { Site } from "@/features/sites/types/site.types";
+import { fetchItemsPage } from "@/features/items/api/item.api";
+import type { Item } from "@/features/items/types/item.types";
 import { EntityDataTable, EntityDetailTabLoadingState, entityCol } from "@/shared/components/entity";
 import { DetailTabListShell, DetailTabTableBody } from "@/shared/components/layout/detail-tab-list-shell";
-import { detailTabToolbarClassName } from "@/shared/components/layout/detail-tab-layout";
-import { cn } from "@/core/utils/http.util";
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
+import { useOrgCurrency } from "@/shared/money/use-org-currency";
+import { useOrgNumber } from "@/shared/number/use-org-number";
 import { buildDetailHrefWithListReturn, buildEntityDetailTabBackHref } from "@/shared/utils/detail-from-list.util";
-import { buildQuickCreateNavigateHref } from "@/shared/utils/quick-create-navigation.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
-import { AddButton, DataTablePaginationBar, ListPageEmptyStates } from "@/shared/ui";
-
-function siteAddressSummary(site: Site): string {
-  const parts = [site.address_line_1, site.city, site.state].map((s) => s?.trim()).filter(Boolean);
-  return parts.length > 0 ? parts.join(", ") : "—";
-}
+import { DataTablePaginationBar, ListPageEmptyStates } from "@/shared/ui";
 
 type Props = {
-  clientId: number;
+  vendorId: number;
 };
 
-export function ClientSitesTab({ clientId }: Props) {
-  const t = useTranslations("Dashboard.clients");
-  const tSites = useTranslations("Dashboard.sites");
+export function VendorItemsTab({ vendorId }: Props) {
+  const t = useTranslations("Dashboard.vendors");
+  const tItems = useTranslations("Dashboard.items");
   const tList = useTranslations("Dashboard.list");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const dateFmt = useDashboardDateFormat();
+  const { formatMoneyValue: moneyDisplay } = useOrgCurrency();
+  const { formatQuantity } = useOrgNumber();
+
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
-  const [items, setItems] = React.useState<Site[]>([]);
+  const [items, setItems] = React.useState<Item[]>([]);
   const [pagination, setPagination] = React.useState({
     total_records: 0,
     total_pages: 1,
@@ -49,42 +45,35 @@ export function ClientSitesTab({ clientId }: Props) {
   });
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
-  const [refreshNonce, setRefreshNonce] = React.useState(0);
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
   const returnTo = React.useMemo(
-    () => buildEntityDetailTabBackHref(pathname, "sites", searchParams),
+    () => buildEntityDetailTabBackHref(pathname, "items", searchParams),
     [pathname, searchParams],
   );
 
   const columns = React.useMemo(() => {
-    const c = entityCol<Site>();
+    const c = entityCol<Item>();
     return [
-      c.primary("name", tSites("table.name"), (r) => r.site_name),
-      c.truncate("address", tSites("table.address"), (r) => siteAddressSummary(r), { maxWidth: "lg" }),
-      c.truncate("what3words", tSites("table.what3words"), (r) => r.what3words?.trim() || "—", { maxWidth: "sm", responsive: "md" }),
-      c.status(
-        "status",
-        tSites("table.status"),
-        (r) => r.is_active,
-        tSites("status.active"),
-        tSites("status.inactive"),
-      ),
-      c.date("created", tSites("table.created"), (r) => r.created_at, dateFmt),
+      c.primary("name", tItems("table.name"), (r) => r.name),
+      c.mono("sku", tItems("table.sku"), (r) => r.sku || "—", {
+        cellClassName: "text-slate-600 dark:text-slate-400",
+      }),
+      c.tabular("qty", tItems("table.quantity"), (r) => formatQuantity(r.quantity), {
+        cellClassName: "text-slate-600 dark:text-slate-400",
+      }),
+      c.tabular("cost", tItems("modal.costPrice"), (r) => moneyDisplay(r.cost_price), {
+        cellClassName: "text-slate-600 dark:text-slate-400",
+      }),
+      c.tabular("sell", tItems("modal.sellingPrice"), (r) => moneyDisplay(r.selling_price), {
+        cellClassName: "text-slate-600 dark:text-slate-400",
+      }),
+      c.date("created", tItems("table.created"), (r) => r.created_at, dateFmt, {
+        responsive: "lg",
+        cellClassName: "text-slate-600 dark:text-slate-400",
+      }),
     ];
-  }, [tSites, dateFmt]);
-
-  const reloadList = React.useCallback(() => {
-    setRefreshNonce((n) => n + 1);
-  }, []);
-
-  useQuickCreateReturn({
-    onApplySelect: () => reloadList(),
-  });
-
-  const openCreateSite = React.useCallback(() => {
-    router.push(buildQuickCreateNavigateHref("site", { returnTo, clientId }));
-  }, [router, returnTo, clientId]);
+  }, [tItems, dateFmt, formatQuantity, moneyDisplay]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -92,8 +81,8 @@ export function ClientSitesTab({ clientId }: Props) {
       setLoading(true);
       setLoadError(null);
       try {
-        const { items: nextItems, pagination: p } = await fetchSitesPage(page, pageSize, {
-          client: clientId,
+        const { items: nextItems, pagination: p } = await fetchItemsPage(page, pageSize, {
+          vendorId,
         });
         if (!cancelled) {
           setItems(nextItems);
@@ -101,7 +90,7 @@ export function ClientSitesTab({ clientId }: Props) {
         }
       } catch {
         if (!cancelled) {
-          setLoadError(tSites("loadError"));
+          setLoadError(tItems("loadError"));
           setItems([]);
         }
       } finally {
@@ -111,19 +100,13 @@ export function ClientSitesTab({ clientId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [clientId, page, pageSize, tSites, refreshNonce]);
+  }, [vendorId, page, pageSize, tItems]);
 
   const pageRange = getListPageRange(pagination);
 
-  function openSiteDetail(siteId: number) {
-    router.push(buildDetailHrefWithListReturn(`${routes.dashboard.sites}/${siteId}`, returnTo, siteId));
+  function openItemDetail(itemId: number) {
+    router.push(buildDetailHrefWithListReturn(`${routes.dashboard.items}/${itemId}`, returnTo, itemId));
   }
-
-  const addSiteButton = (
-    <AddButton type="button" onClick={openCreateSite}>
-      {t("detail.addSite")}
-    </AddButton>
-  );
 
   const emptyStateKind = React.useMemo(() => {
     if (loading || loadError || items.length > 0) return "none" as const;
@@ -135,11 +118,6 @@ export function ClientSitesTab({ clientId }: Props) {
       loading={loading}
       loadError={loadError}
       isEmpty={items.length === 0}
-      toolbar={
-        !loading && !loadError && items.length > 0 ? (
-          <div className={cn(detailTabToolbarClassName, "justify-end")}>{addSiteButton}</div>
-        ) : null
-      }
       loadingFallback={<EntityDetailTabLoadingState />}
       emptyFallback={
         <ListPageEmptyStates
@@ -147,9 +125,9 @@ export function ClientSitesTab({ clientId }: Props) {
           emptyStateKind={emptyStateKind}
           onboarding={{
             iconName: "projects",
-            title: t("detail.sitesEmptyTitle"),
-            description: t("detail.sitesEmptyDescription"),
-            action: addSiteButton,
+            title: t("detail.itemsEmptyTitle"),
+            description: t("detail.itemsEmptyDescription"),
+            action: null,
           }}
           onClearFilters={() => {}}
         />
@@ -159,17 +137,17 @@ export function ClientSitesTab({ clientId }: Props) {
         <EntityDataTable
           columns={columns}
           rows={items}
-          onRowClick={(row) => openSiteDetail(row.id)}
+          onRowClick={(row) => openItemDetail(row.id)}
         />
         <DataTablePaginationBar
           pagination={pagination}
-          summary={tSites("pageLabel", {
+          summary={tItems("pageLabel", {
             start: pageRange.start,
             end: pageRange.end,
             total: pagination.total_records,
           })}
-          prevLabel={tSites("prev")}
-          nextLabel={tSites("next")}
+          prevLabel={tItems("prev")}
+          nextLabel={tItems("next")}
           onPrev={() => setPage(Math.max(1, pagination.current_page - 1))}
           onNext={() => setPage(pagination.current_page + 1)}
           onPageSelect={(p) => setPage(p)}

@@ -25,7 +25,8 @@ import {
 import { formatMoneyDisplay } from "@/features/invoices/utils/invoice-money.util";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import { useOrgCurrency } from "@/shared/money/use-org-currency";
-import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { DetailEntityLink, EntityDataTable, entityCol, entityNameLinkClassName } from "@/shared/components/entity";
+import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
@@ -313,10 +314,25 @@ export function PurchaseOrdersPanel() {
     return [
       massSel.tableColumn,
       c.primary("po", t("table.purchaseOrderNumber"), (r) => r.purchase_order_number),
-      c.truncate("vendor", t("table.vendorName"), (r) => vendorDisplay(r), {
-        title: (r) => vendorDisplay(r),
-      }),
-      c.truncate("project", t("table.projectName"), (r) => purchaseOrderProjectLabel(r)),
+      c.link(
+        "vendor",
+        t("table.vendorName"),
+        (r) => vendorDisplay(r),
+        (r) => {
+          const vendorId = nestedId(r.vendor);
+          return vendorId != null ? `${routes.dashboard.vendors}/${vendorId}` : null;
+        },
+        { title: (r) => vendorDisplay(r) },
+      ),
+      c.link(
+        "project",
+        t("table.projectName"),
+        (r) => purchaseOrderProjectLabel(r),
+        (r) => {
+          const projectId = nestedId(r.project);
+          return projectId != null ? `${routes.dashboard.projects}/${projectId}` : null;
+        },
+      ),
       c.tabular("amount", t("table.amount"), (r) => formatMoneyDisplay(purchaseOrderListAmount(r), locale)),
       c.tabular("issue", t("table.issueDate"), (r) => formatFlexibleApiDate(r.issue_date, dateFmt)),
       c.custom("status", t("table.status"), (r) => (
@@ -439,15 +455,41 @@ export function PurchaseOrdersPanel() {
                 );
                 const issueLabel = formatFlexibleApiDate(row.issue_date, dateFmt);
                 const amountLabel = formatMoneyDisplay(purchaseOrderListAmount(row), locale);
+                const projectId = nestedId(row.project);
+                const projectDisplay = purchaseOrderProjectLabel(row);
                 return (
                   <ListPageCard
                     key={row.id}
                     dataListRowId={row.id}
                     className={highlightClassName(row.id)}
                     leading={massSel.cardLeading(row)}
-                    title={row.purchase_order_number}
-                    subtitle={vendorDisplay}
-                    meta={<span className="block min-w-0 truncate">{purchaseOrderProjectLabel(row)}</span>}
+                    title={<span className={entityNameLinkClassName}>{row.purchase_order_number}</span>}
+                    subtitle={
+                      vendorId != null ? (
+                        <DetailEntityLink
+                          href={`${routes.dashboard.vendors}/${vendorId}`}
+                          className="font-medium"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {vendorDisplay}
+                        </DetailEntityLink>
+                      ) : (
+                        vendorDisplay
+                      )
+                    }
+                    meta={
+                      projectId != null ? (
+                        <DetailEntityLink
+                          href={`${routes.dashboard.projects}/${projectId}`}
+                          className="block min-w-0 truncate font-medium"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {projectDisplay}
+                        </DetailEntityLink>
+                      ) : (
+                        <span className="block min-w-0 truncate">{projectDisplay}</span>
+                      )
+                    }
                     footer={
                       <div className="flex w-full flex-wrap items-center justify-between gap-3">
                         <div className="flex min-w-0 flex-wrap items-center gap-3">

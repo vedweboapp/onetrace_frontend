@@ -55,30 +55,27 @@ export function DetailCollapsibleSection({
     >
       <div
         className={cn(
-          "flex flex-wrap items-center gap-2 px-4 py-3 sm:px-6 sm:py-3.5",
-          isOpen && "border-b border-slate-100 dark:border-slate-800",
+          "flex flex-wrap items-center gap-2 px-4 py-3.5 sm:px-6 sm:py-4",
+          isOpen && "border-b border-slate-200/80 dark:border-slate-800",
         )}
       >
         <button
           type="button"
-          className="-m-1 inline-flex shrink-0 rounded p-1 text-slate-400 transition hover:text-slate-700 dark:hover:text-slate-200"
+          className="-m-1 inline-flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-0.5 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
           aria-expanded={isOpen}
           aria-label={toggleAriaLabel}
           onClick={toggle}
         >
           <ChevronDown
-            className={cn("size-4 shrink-0 transition-transform duration-200", isOpen && "rotate-180")}
+            className={cn(
+              "size-4 shrink-0 text-slate-400 transition-transform duration-200",
+              isOpen && "rotate-180",
+            )}
             aria-hidden
           />
-        </button>
-
-        <button
-          type="button"
-          className="min-w-0 flex-1 text-left text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100"
-          aria-expanded={isOpen}
-          onClick={toggle}
-        >
-          {title}
+          <span className="min-w-0 truncate text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+            {title}
+          </span>
         </button>
 
         {badge ? <div className="shrink-0">{badge}</div> : null}

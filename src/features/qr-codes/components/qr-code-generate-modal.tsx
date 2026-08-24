@@ -41,6 +41,8 @@ export function QrCodeGenerateModal({ open, onClose, onGenerated }: Props) {
       toastSuccess(result.message ?? t("generate.successToast"));
       onGenerated(result);
       onClose();
+    } catch {
+      // API/toast layer already surfaces the error
     } finally {
       setSaving(false);
     }

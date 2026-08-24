@@ -218,7 +218,7 @@
       },
       "lockedField": {
         "aria": "Bloqueado, solo lectura",
-        "hint": "Este campo está bloqueado y no se puede cambiar."
+        "hint": "Campo de solo lectura"
       }
     },
     "brand": {
@@ -2035,11 +2035,14 @@
         "tabsAria": "Secciones del proveedor",
         "tabs": {
           "details": "Detalles",
-          "contacts": "Contactos"
+          "contacts": "Contactos",
+          "items": "Ítems"
         },
         "contactsEmptyTitle": "No hay contactos para este proveedor",
         "contactsEmptyDescription": "Los contactos vinculados a este proveedor aparecerán aquí.",
-        "addContact": "Añadir contacto"
+        "addContact": "Añadir contacto",
+        "itemsEmptyTitle": "No hay ítems para este proveedor",
+        "itemsEmptyDescription": "Los ítems vinculados a este proveedor aparecerán aquí."
       },
       "modal": {
         "cancel": "Cancelar",
@@ -3442,6 +3445,17 @@
       },
       "loadError": "No se pudieron cargar las programaciones. Inténtalo de nuevo.",
       "jobScheduledOnlyWorker": "Este trabajo ya está programado. Solo se muestra el trabajador asignado.",
+      "copy": {
+        "action": "Copiar programación",
+        "paste": "Pegar",
+        "pasteHere": "Pegar programación",
+        "banner": "Copiado “{job}”. Pégalo en otro trabajador.",
+        "clear": "Borrar",
+        "copiedToast": "Programación copiada",
+        "pastedToast": "Programación pegada al trabajador",
+        "pasteError": "No se pudo pegar la programación. Inténtalo de nuevo.",
+        "sameWorker": "Elige otro trabajador para pegar esta programación."
+      },
       "modal": {
         "title": "Crear programación",
         "rescheduleTitle": "Reprogramar",
@@ -3498,8 +3512,11 @@
       },
       "fields": {
         "worker": "Trabajador",
+        "assignedWorker": "Trabajador asignado",
         "client": "Nombre del cliente",
         "job": "Nombre del trabajo",
+        "jobId": "ID del trabajo",
+        "project": "Nombre del proyecto",
         "date": "Fecha",
         "time": "Hora",
         "startDate": "Fecha de inicio",
@@ -3779,6 +3796,9 @@
         "form": "Formulario",
         "forms": "Formularios",
         "assignedWorker": "Técnico asignado",
+        "assignedWorkers": "Técnicos asignados",
+        "workerName": "Trabajador",
+        "workerRole": "Rol",
         "startDate": "Fecha y hora de inicio",
         "jobTime": "Tiempo del trabajo",
         "endDate": "Fecha y hora de fin",
@@ -4530,6 +4550,7 @@
         "reorder": "Cantidad de reposición",
         "cost": "Precio de coste",
         "sell": "Precio de venta",
+        "vendors": "Proveedores",
         "itemType": "Tipo de ítem",
         "compositeYes": "Ítem compuesto",
         "compositeNo": "Ítem estándar",
@@ -4560,6 +4581,9 @@
         "unitType": "Unidad",
         "unitTypePlaceholder": "Seleccionar unidad",
         "unitTypesLoadError": "No se pudieron cargar los tipos de unidad.",
+        "vendors": "Proveedores",
+        "vendorsPlaceholder": "Seleccionar proveedores...",
+        "vendorsLoadError": "No se pudieron cargar los proveedores.",
         "costPrice": "Precio de coste",
         "costPriceError": "Introduce un precio de coste.",
         "sellingPrice": "Precio de venta",

@@ -59,18 +59,41 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Safely normalize value to array to handle null, undefined, or non-array inputs safely
+  const safeValue: (string | number)[] = React.useMemo(() => {
+    const rawVal = value as unknown;
+    if (Array.isArray(rawVal)) return rawVal as (string | number)[];
+    if (rawVal === null || rawVal === undefined) return [];
+    if (typeof rawVal === "string") {
+      const trimmed = rawVal.trim();
+      if (!trimmed) return [];
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed as (string | number)[];
+      } catch {
+        // Not JSON string
+      }
+      if (trimmed.includes(",")) {
+        return trimmed.split(",").map((v) => v.trim()).filter(Boolean);
+      }
+      return [trimmed];
+    }
+    if (typeof rawVal === "number") return [rawVal];
+    return [];
+  }, [value]);
+
   const isSelected = (optValue: string | number): boolean => {
     const optStr = String(optValue).trim().toLowerCase();
-    return value.some((v) => String(v).trim().toLowerCase() === optStr);
+    return safeValue.some((v) => String(v).trim().toLowerCase() === optStr);
   };
 
   const toggleOption = (optValue: string | number) => {
     if (readOnly) return;
     const optStr = String(optValue).trim().toLowerCase();
-    const alreadySelected = value.some((v) => String(v).trim().toLowerCase() === optStr);
+    const alreadySelected = safeValue.some((v) => String(v).trim().toLowerCase() === optStr);
     const newValue = alreadySelected
-      ? value.filter((v) => String(v).trim().toLowerCase() !== optStr)
-      : [...value, optValue];
+      ? safeValue.filter((v) => String(v).trim().toLowerCase() !== optStr)
+      : [...safeValue, optValue];
     onChange(newValue);
   };
 
@@ -78,7 +101,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
     e.stopPropagation();
     if (readOnly) return;
     const optStr = String(optValue).trim().toLowerCase();
-    onChange(value.filter((v) => String(v).trim().toLowerCase() !== optStr));
+    onChange(safeValue.filter((v) => String(v).trim().toLowerCase() !== optStr));
   };
 
   const selectedOptions = normalizedOptions.filter((opt) => isSelected(opt.value));

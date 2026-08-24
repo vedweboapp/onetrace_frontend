@@ -8,11 +8,12 @@ import { ScheduleEventChip } from "@/features/scheduling/components/schedule-eve
 import { TimeOffChip } from "@/features/scheduling/components/time-off-chip";
 import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
-import { technicianWorkerIds } from "@/features/scheduling/utils/scheduling-technician.util";
+import { technicianMatchesWorkerId, technicianWorkerIds } from "@/features/scheduling/utils/scheduling-technician.util";
 import { scheduleWorkerIds, timeOffWorkerIds } from "@/features/scheduling/utils/schedule-map.util";
 import {
   availabilityHeaderBarClass,
   availabilityToneClass,
+  blockRangeOnDay,
   buildDayTimeSegments,
   formatAvailabilityHours,
   getDayAvailabilityWindow,
@@ -28,6 +29,7 @@ import {
   pointerToMinutes,
   type OccupiedRange,
 } from "@/features/scheduling/utils/scheduling-availability.util";
+import { ClipboardPaste } from "lucide-react";
 import {
   buildDayHourLabels,
   formatHourParts,
@@ -82,10 +84,20 @@ type Props = {
   onClearPeopleFilters?: () => void;
   dragMode?: "book" | "timeoff";
   allowCreate?: boolean;
+  /** When set, show Paste on worker rows that are not already on this schedule. */
+  copiedSchedule?: Schedule | null;
+  pasteDisabled?: boolean;
+  /** Absolute minutes from local midnight — scroll timeline so this time is in view. */
+  scrollToMinutes?: number | null;
+  /** Prefer scrolling this worker row into view after create. */
+  scrollToWorkerId?: number | null;
+  onScrollTargetApplied?: () => void;
   onCreateSchedule: (tech: SchedulingTechnician, day: Date) => void;
   onRangeSelect?: (range: TimelineRangeSelect) => void;
   onScheduleClick: (schedule: Schedule) => void;
   onRemoveSchedule?: (schedule: Schedule) => void;
+  onCopySchedule?: (schedule: Schedule) => void;
+  onPasteSchedule?: (tech: SchedulingTechnician) => void;
   onRemoveTimeOff?: (timeOff: WorkerTimeOff) => void;
   onWorkerClick: (tech: SchedulingTechnician) => void;
 };
@@ -100,10 +112,17 @@ export function SchedulingDayTimeline({
   onClearPeopleFilters,
   dragMode = "book",
   allowCreate = true,
+  copiedSchedule = null,
+  pasteDisabled = false,
+  scrollToMinutes = null,
+  scrollToWorkerId = null,
+  onScrollTargetApplied,
   onCreateSchedule,
   onRangeSelect,
   onScheduleClick,
   onRemoveSchedule,
+  onCopySchedule,
+  onPasteSchedule,
   onRemoveTimeOff,
   onWorkerClick,
 }: Props) {
@@ -114,6 +133,8 @@ export function SchedulingDayTimeline({
   const timelineWidth = hours.length * HOUR_WIDTH_PX;
   const singleWorker = technicians.length === 1;
   const [drag, setDrag] = React.useState<DragState | null>(null);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const workerRowRefs = React.useRef(new Map<number, HTMLDivElement>());
 
   const schedulesByWorker = React.useMemo(() => {
     const map = new Map<number, Schedule[]>();
@@ -176,6 +197,21 @@ export function SchedulingDayTimeline({
     ];
   }
 
+  function canPasteOntoWorker(tech: SchedulingTechnician): boolean {
+    if (!copiedSchedule || !onPasteSchedule) return false;
+    if (scheduleWorkerIds(copiedSchedule).some((id) => technicianMatchesWorkerId(tech, id))) {
+      return false;
+    }
+    const range = blockRangeOnDay(copiedSchedule.start_at, copiedSchedule.end_at, dayKey);
+    if (!range) return false;
+    const window = getDayAvailabilityWindow(tech.availableDays, day);
+    const known = hasAvailabilityData(tech.availableDays);
+    if (!isRangeWithinAvailability(range.startMinutes, range.endMinutes, window, known)) {
+      return false;
+    }
+    return isRangeFree(range.startMinutes, range.endMinutes, occupiedFor(tech));
+  }
+
   function rangeIsValid(tech: SchedulingTechnician, startMin: number, endMin: number): boolean {
     const start = Math.min(startMin, endMin);
     const end = Math.max(startMin, endMin);
@@ -228,6 +264,38 @@ export function SchedulingDayTimeline({
     ),
   );
 
+  React.useLayoutEffect(() => {
+    if (scrollToMinutes == null) return;
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const minutesFromStart = scrollToMinutes - SCHEDULE_DAY_START_HOUR * 60;
+    const targetX = (minutesFromStart / 60) * HOUR_WIDTH_PX;
+    // Keep a little lead-in so the block isn't flush against the sticky worker column.
+    const leadIn = hideWorkerColumn ? 24 : Math.min(96, el.clientWidth * 0.15);
+    const nextLeft = Math.max(0, targetX - leadIn);
+    el.scrollTo({ left: nextLeft, top: el.scrollTop, behavior: "smooth" });
+
+    if (scrollToWorkerId != null) {
+      const match =
+        technicians.find((tech) => technicianMatchesWorkerId(tech, scrollToWorkerId)) ??
+        technicians.find((tech) => tech.id === scrollToWorkerId);
+      const row = match ? workerRowRefs.current.get(match.id) : undefined;
+      row?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+
+    // Defer clear so a concurrent schedules refresh can reuse the same focus once.
+    const timer = window.setTimeout(() => onScrollTargetApplied?.(), 120);
+    return () => window.clearTimeout(timer);
+  }, [
+    scrollToMinutes,
+    scrollToWorkerId,
+    hideWorkerColumn,
+    schedules,
+    technicians,
+    onScrollTargetApplied,
+  ]);
+
   if (technicians.length === 0) {
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-auto">
@@ -242,7 +310,7 @@ export function SchedulingDayTimeline({
   }
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto">
+    <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
       <div className="min-w-max">
         <div className="sticky top-0 z-20 flex border-b border-slate-200 bg-white pt-1 dark:border-slate-800 dark:bg-slate-950">
           {hideWorkerColumn ? null : (
@@ -316,6 +384,10 @@ export function SchedulingDayTimeline({
           return (
             <div
               key={tech.id}
+              ref={(node) => {
+                if (node) workerRowRefs.current.set(tech.id, node);
+                else workerRowRefs.current.delete(tech.id);
+              }}
               className="group/row flex border-b border-slate-100 dark:border-slate-800/80"
               style={{ minHeight: rowHeight }}
             >
@@ -330,7 +402,7 @@ export function SchedulingDayTimeline({
                   >
                     {tech.initials}
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <button
                       type="button"
                       className="block w-full truncate text-left text-sm font-semibold text-sky-700 hover:underline dark:text-sky-400"
@@ -345,6 +417,24 @@ export function SchedulingDayTimeline({
                       </p>
                     ) : knownAvailability ? (
                       <p className="mt-0.5 truncate text-[10px] font-medium text-slate-400">{t("offDuty")}</p>
+                    ) : null}
+                    {canPasteOntoWorker(tech) ? (
+                      <button
+                        type="button"
+                        disabled={pasteDisabled}
+                        title={t("copy.pasteHere")}
+                        aria-label={t("copy.pasteHere")}
+                        className={cn(
+                          "mt-1 inline-flex items-center gap-1 rounded border border-sky-300 bg-sky-50 px-1.5 py-0.5",
+                          "text-[10px] font-semibold text-sky-800",
+                          "hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50",
+                          "dark:border-sky-800 dark:bg-sky-950/50 dark:text-sky-100 dark:hover:bg-sky-900",
+                        )}
+                        onClick={() => onPasteSchedule?.(tech)}
+                      >
+                        <ClipboardPaste className="size-3 shrink-0" strokeWidth={2.25} aria-hidden />
+                        <span>{t("copy.paste")}</span>
+                      </button>
                     ) : null}
                   </div>
                 </div>
@@ -498,6 +588,7 @@ export function SchedulingDayTimeline({
                       className="absolute top-1.5 z-[1] h-[calc(100%-12px)] min-h-[44px]"
                       style={{ left: `${leftPct}%`, width: `max(${widthPct}%, 7rem)` }}
                       onOpen={() => onScheduleClick(schedule)}
+                      onCopy={onCopySchedule ? () => onCopySchedule(schedule) : undefined}
                       onRemove={onRemoveSchedule ? () => onRemoveSchedule(schedule) : undefined}
                     />
                   );

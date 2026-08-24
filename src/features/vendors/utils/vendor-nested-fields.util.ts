@@ -44,20 +44,36 @@ function mergeVendorTypeRow(base: VendorTypeRef, extra?: VendorTypeRef): VendorT
   };
 }
 
-type VendorTypeSource = Pick<Vendor, "type"> & {
+type VendorTypeSource = {
+  type?: VendorTypeValue;
   types?: VendorTypeValue;
   vendor_types?: VendorTypeValue;
 };
 
+/**
+ * Prefer `vendor_types` (API canonical), then legacy `types` / `type`.
+ * Merge richer name/color data from any source onto the same id.
+ */
 export function getVendorTypeRows(vendor: VendorTypeSource): VendorTypeRef[] {
-  const primary = flattenVendorTypes(vendor.type);
-  const extraById = new Map(
-    [...flattenVendorTypes(vendor.types), ...flattenVendorTypes(vendor.vendor_types)].map((row) => [row.id, row]),
-  );
-  if (primary.length > 0) {
-    return primary.map((row) => mergeVendorTypeRow(row, extraById.get(row.id)));
+  const vendorTypes = flattenVendorTypes(vendor.vendor_types);
+  const legacyTypes = flattenVendorTypes(vendor.types);
+  const legacyType = flattenVendorTypes(vendor.type);
+
+  const byId = new Map<number, VendorTypeRef>();
+  for (const row of [...legacyType, ...legacyTypes, ...vendorTypes]) {
+    const existing = byId.get(row.id);
+    byId.set(row.id, existing ? mergeVendorTypeRow(row, existing) : row);
   }
-  return Array.from(extraById.values());
+
+  // Preserve order: vendor_types first, then any leftovers from legacy keys.
+  const ordered: VendorTypeRef[] = [];
+  const seen = new Set<number>();
+  for (const row of [...vendorTypes, ...legacyTypes, ...legacyType]) {
+    if (seen.has(row.id)) continue;
+    seen.add(row.id);
+    ordered.push(byId.get(row.id) ?? row);
+  }
+  return ordered;
 }
 
 export function getVendorTypeIds(vendor: VendorTypeSource): number[] {

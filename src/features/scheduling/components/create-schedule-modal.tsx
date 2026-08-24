@@ -10,14 +10,13 @@ import {
   getJobProjectId,
   parseJobDurationMinutes,
 } from "@/features/jobs/utils/job-nested-fields.util";
-import { createSchedule, fetchSchedules, updateSchedule } from "@/features/scheduling/api/schedule.api";
+import { createSchedule, updateSchedule } from "@/features/scheduling/api/schedule.api";
 import {
   jobSelectLabel,
   loadUnassignedJobsForClient,
   useSchedulingCatalog,
 } from "@/features/scheduling/hooks/use-scheduling-catalog";
 import type { Schedule } from "@/features/scheduling/types/schedule.types";
-import { scheduleMatchesJob } from "@/features/scheduling/utils/schedule-map.util";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
 import {
   combineDateAndTimeEndToIso,
@@ -64,7 +63,7 @@ type Props = {
     endAt: string;
     ignoreScheduleId?: number;
   }) => string | null;
-  onCreated?: (scheduleId: number) => void;
+  onCreated?: (schedule: Schedule) => void;
 };
 
 function isUnassignedJob(job: Job): boolean {
@@ -292,16 +291,6 @@ export function CreateScheduleModal({
 
     setSaving(true);
     try {
-      const alreadyBooked = (await fetchSchedules({ job_id: jobNum })).some(
-        (row) =>
-          row.id !== existingSchedule?.id &&
-          scheduleMatchesJob(row, jobNum, job?.job_serial_number),
-      );
-      if (alreadyBooked) {
-        setErrors((prev) => ({ ...prev, job: t("conflict.jobAlreadyScheduled") }));
-        return;
-      }
-
       const startIso = combineDateAndTimeToIso(startDate, startTime, allDay);
       const endIso = combineDateAndTimeEndToIso(endDate, endTime, allDay);
 
@@ -323,7 +312,7 @@ export function CreateScheduleModal({
         ? await updateSchedule(existingSchedule.id, payload)
         : await createSchedule(payload);
       toastSuccess(isReschedule ? t("modal.successRescheduleToast") : t("modal.successToast"));
-      onCreated?.(row.id);
+      onCreated?.(row);
       onClose();
     } catch (error) {
       toastApiError(error, isReschedule ? t("modal.errorRescheduleToast") : t("modal.errorToast"));

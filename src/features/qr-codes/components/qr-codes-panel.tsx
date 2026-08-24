@@ -15,7 +15,8 @@ import type {
   QrCodeGenerateResult,
   QrCodeStatus,
 } from "@/features/qr-codes/types/qr-code.types";
-import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { DetailEntityLink, EntityDataTable, entityCol } from "@/shared/components/entity";
+import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
@@ -51,6 +52,23 @@ import {
 
 function isQrAssigned(row: QrCodeRecord): boolean {
   return row.status === "assigned" || row.is_assigned;
+}
+
+function getQrAssignedJobId(row: QrCodeRecord): number | null {
+  if (typeof row.assigned_to_id === "number" && row.assigned_to_id > 0) return row.assigned_to_id;
+  const detail = row.assigned_to_detail;
+  if (detail && typeof detail.id === "number" && detail.id > 0) return detail.id;
+  return null;
+}
+
+function qrAssignedJobLabel(row: QrCodeRecord): string {
+  const detail = row.assigned_to_detail;
+  if (detail) {
+    const title = detail.title?.trim() || detail.name?.trim() || detail.job_serial_number?.trim();
+    if (title) return title;
+  }
+  const id = getQrAssignedJobId(row);
+  return id != null ? `#${id}` : "—";
 }
 
 const QR_STATUS_VALUES: QrCodeStatus[] = ["assigned", "not_assigned"];
@@ -251,8 +269,15 @@ export function QrCodesPanel() {
       c.truncate("status", t("table.status"), (r) =>
         isQrAssigned(r) ? t("status.assigned") : t("status.notAssigned"),
       ),
-      c.truncate("assigned", t("table.assignedJob"), (r) =>
-        r.assigned_to_id != null && r.assigned_to_id > 0 ? `#${r.assigned_to_id}` : "—",
+      c.link(
+        "assigned",
+        t("table.assignedJob"),
+        (r) => qrAssignedJobLabel(r),
+        (r) => {
+          const id = getQrAssignedJobId(r);
+          return id != null ? `${routes.dashboard.jobs}/${id}` : null;
+        },
+        { title: (r) => qrAssignedJobLabel(r) },
       ),
       c.truncate("scan_count", t("table.scanCount"), (r) => String(r.scan_count)),
       c.truncate("last_scanned", t("table.lastScanned"), (r) => {
@@ -378,6 +403,8 @@ export function QrCodesPanel() {
             <ListPageCardGrid>
               {items.map((row) => {
                 const assigned = isQrAssigned(row);
+                const assignedJobId = getQrAssignedJobId(row);
+                const assignedLabel = qrAssignedJobLabel(row);
                 return (
                   <ListPageCard
                     key={row.id}
@@ -385,16 +412,33 @@ export function QrCodesPanel() {
                     className={highlightClassName(row.id)}
                     title={row.qr_code_id}
                     subtitle={
-                      [
-                        row.batch_detail?.batch_number?.trim()
-                          ? t("cardBatch", { batch: row.batch_detail.batch_number.trim() })
-                          : null,
-                        row.assigned_to_id != null && row.assigned_to_id > 0
-                          ? t("cardAssignedJob", { id: row.assigned_to_id })
-                          : t("cardNotAssigned"),
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")
+                      <span
+                        className="flex min-w-0 flex-wrap items-center gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        {row.batch_detail?.batch_number?.trim() ? (
+                          <span className="min-w-0 truncate">
+                            {t("cardBatch", { batch: row.batch_detail.batch_number.trim() })}
+                          </span>
+                        ) : null}
+                        {row.batch_detail?.batch_number?.trim() ? (
+                          <span className="shrink-0 text-slate-400" aria-hidden>
+                            ·
+                          </span>
+                        ) : null}
+                        {assignedJobId != null ? (
+                          <DetailEntityLink
+                            href={`${routes.dashboard.jobs}/${assignedJobId}`}
+                            className="min-w-0 truncate font-medium"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {assignedLabel}
+                          </DetailEntityLink>
+                        ) : (
+                          <span className="min-w-0 truncate">{t("cardNotAssigned")}</span>
+                        )}
+                      </span>
                     }
                     footer={
                       <div className="flex w-full flex-wrap items-center justify-between gap-3">
