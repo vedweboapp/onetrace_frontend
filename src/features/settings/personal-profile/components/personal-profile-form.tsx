@@ -93,8 +93,11 @@ const PersonalProfileForm = forwardRef<
         reset,
         setValue,
         setError,
+        clearErrors,
         formState: { errors },
     } = useForm<Inputs>({
+        mode: "onChange",
+        reValidateMode: "onChange",
         defaultValues: {
             firstName: "",
             lastName: "",
@@ -382,14 +385,14 @@ const PersonalProfileForm = forwardRef<
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
                     <Input
                         label={t("FirstName")}
-                        register={register("firstName")}
+                        register={register("firstName", { onChange: () => clearErrors("firstName") })}
                         errors={errors.firstName}
                         readOnly={!isEditing}
                         fieldRequired
                     />
                     <Input
                         label={t("LastName")}
-                        register={register("lastName")}
+                        register={register("lastName", { onChange: () => clearErrors("lastName") })}
                         errors={errors.lastName}
                         readOnly={!isEditing}
                         fieldRequired
@@ -469,7 +472,7 @@ const PersonalProfileForm = forwardRef<
                                                     checked={!!watchedEmails?.[index]?.is_primary}
                                                     onChange={() => {
                                                         emailFields.forEach((_, i) => {
-                                                            setValue(`emails.${i}.is_primary`, i === index);
+                                                            setValue(`emails.${i}.is_primary`, i === index, { shouldValidate: true });
                                                         });
                                                     }}
                                                     className="w-4 h-4 cursor-pointer"
@@ -535,7 +538,7 @@ const PersonalProfileForm = forwardRef<
                                                     checked={!!watchedPhones?.[index]?.is_primary}
                                                     onChange={() => {
                                                         phoneFields.forEach((_, i) => {
-                                                            setValue(`phones.${i}.is_primary`, i === index);
+                                                            setValue(`phones.${i}.is_primary`, i === index, { shouldValidate: true });
                                                         });
                                                     }}
                                                     className="w-4 h-4 cursor-pointer"
@@ -678,7 +681,7 @@ const PersonalProfileForm = forwardRef<
                                                 checked={!!watchedAddresses?.[index]?.is_primary}
                                                 onChange={() => {
                                                     addressFields.forEach((_, i) => {
-                                                        setValue(`addresses.${i}.is_primary`, i === index);
+                                                        setValue(`addresses.${i}.is_primary`, i === index, { shouldValidate: true });
                                                     });
                                                 }}
                                                 className="w-4 h-4 cursor-pointer"

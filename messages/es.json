@@ -91,7 +91,10 @@
       "resendIn": "Reenviar código en",
       "resend": "Reenviar",
       "newPassword": "Nueva Contraseña",
-      "otpInput": "Introduce el código de 6 dígitos que te enviamos por correo electrónico."
+      "otpInput": "Introduce el código de 6 dígitos que te enviamos por correo electrónico.",
+      "newPasswordPlaceholder": "Introduce la nueva contraseña",
+      "passwordResetSuccess": "¡Contraseña restablecida con éxito! Por favor, inicia sesión.",
+      "otpVerified": "¡Correo verificado con éxito!"
     },
     "resetPassword": {
       "title": "Restablecer contraseña",
