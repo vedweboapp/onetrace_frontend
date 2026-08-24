@@ -219,7 +219,7 @@ export function PurchaseOrderDetailBody({
 
             <DetailPanelCard title={t("fields.vendorNotes")}>
               <DetailEditableField
-                label={t("fields.vendorNotes")}
+                label={<span className="sr-only">{t("fields.vendorNotes")}</span>}
                 value={vendorNotes}
                 kind="text"
                 editAriaLabel={tActions("edit")}
@@ -236,7 +236,7 @@ export function PurchaseOrderDetailBody({
 
             <DetailPanelCard title={t("fields.internalNotes")}>
               <DetailEditableField
-                label={t("fields.internalNotes")}
+                label={<span className="sr-only">{t("fields.internalNotes")}</span>}
                 value={internalNotes}
                 kind="text"
                 editAriaLabel={tActions("edit")}

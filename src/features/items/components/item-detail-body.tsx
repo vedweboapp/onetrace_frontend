@@ -13,7 +13,6 @@ import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
 import { formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
 import { fetchInstallationTypesPage } from "@/features/installation-types/api/installation-type.api";
 import type { UnitType } from "@/features/unit-types/types/unit-type.types";
-import type { InstallationCostType } from "@/features/items/types/item.types";
 import {
   hasItemAttachment,
   resolveItemAttachmentLabel,
@@ -37,13 +36,15 @@ import {
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
-import { parseOrgMoneyInput } from "@/shared/money/format-money.util";
+import { parseOrgMoneyInput, parseOrgMoneyOrNull } from "@/shared/money/format-money.util";
 import { getOrgCurrencySettings } from "@/shared/money/org-currency.store";
 import { useOrgCurrency } from "@/shared/money/use-org-currency";
 import { useOrgNumber } from "@/shared/number/use-org-number";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import { getItemDimensionUnit } from "@/features/items/utils/item-dimensions-input.util";
 import { getItemVendorIds, itemVendorRows, vendorIdsPayload } from "@/features/items/utils/item-vendors.util";
+import { DimensionsLwhInput, InputWithEndSelect } from "@/shared/ui";
+import type { DimensionUnit, InstallationCostType, WeightUnit } from "@/features/items/types/item.types";
 
 function installationCostTypeLabel(
   value: InstallationCostType | string | null | undefined,
@@ -79,6 +80,23 @@ function parseRequiredMoney(next: string): number {
     throw new Error("Invalid number");
   }
   return n;
+}
+
+function packFieldParts(...parts: string[]): string {
+  return parts.join("\t");
+}
+
+function unpackFieldParts(raw: string, count: number): string[] {
+  const parts = raw.split("\t");
+  while (parts.length < count) parts.push("");
+  return parts.slice(0, count);
+}
+
+function parseOptionalNumber(raw: string): number | null {
+  const t = raw.trim();
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
 }
 
 export function ItemDetailBody({
@@ -367,14 +385,57 @@ export function ItemDetailBody({
                 <InstallationTypeChip row={installationTypeChip} />
               </DetailMetricCard>
             ) : null}
-            {hasInstallationCost ? (
-              <DetailMetricCard label={t("detail.installationCost")}>
-                <span className="tabular-nums">
-                  {installationCostValue !== "—"
-                    ? `${installationCostValue} (${installationCostTypeLabel(detail.installation_cost_type, (key) => t(`detail.${key}`))})`
-                    : installationCostTypeLabel(detail.installation_cost_type, (key) => t(`detail.${key}`))}
-                </span>
-              </DetailMetricCard>
+            {detail.is_composite ? (
+              <DetailEditableField
+                label={t("detail.installationCost")}
+                value={packFieldParts(
+                  detail.installation_cost != null ? String(detail.installation_cost) : "",
+                  detail.installation_cost_type === "rate_per_hr" ? "rate_per_hr" : "fixed_amount",
+                )}
+                kind="text"
+                empty="—"
+                editAriaLabel={tActions("edit")}
+                renderEditor={({ draft, setDraft, saving }) => {
+                  const [costRaw = "", typeRaw = "fixed_amount"] = unpackFieldParts(draft, 2);
+                  const costType: InstallationCostType =
+                    typeRaw === "rate_per_hr" ? "rate_per_hr" : "fixed_amount";
+                  return (
+                    <InputWithEndSelect
+                      inputId="item-detail-installation-cost"
+                      orgMoney
+                      showCurrencyAffix
+                      inputMode="decimal"
+                      inputValue={costRaw}
+                      onInputChange={(v) => setDraft(packFieldParts(v, costType))}
+                      disabled={saving}
+                      selectValue={costType}
+                      onSelectChange={(v) =>
+                        setDraft(packFieldParts(costRaw, v === "rate_per_hr" ? "rate_per_hr" : "fixed_amount"))
+                      }
+                      selectOptions={[
+                        { value: "fixed_amount", label: t("detail.installationCostFixed") },
+                        { value: "rate_per_hr", label: t("detail.installationCostRate") },
+                      ]}
+                      selectAriaLabel={t("detail.installationCost")}
+                    />
+                  );
+                }}
+                onSave={(next) => {
+                  const [costRaw = "", typeRaw = "fixed_amount"] = unpackFieldParts(next, 2);
+                  return patchField({
+                    installation_cost: parseOrgMoneyOrNull(costRaw) ?? undefined,
+                    installation_cost_type: typeRaw === "rate_per_hr" ? "rate_per_hr" : "fixed_amount",
+                  });
+                }}
+              >
+                {hasInstallationCost ? (
+                  <span className="tabular-nums">
+                    {installationCostValue !== "—"
+                      ? `${installationCostValue} (${installationCostTypeLabel(detail.installation_cost_type, (key) => t(`detail.${key}`))})`
+                      : installationCostTypeLabel(detail.installation_cost_type, (key) => t(`detail.${key}`))}
+                  </span>
+                ) : null}
+              </DetailEditableField>
             ) : null}
             {hasInstallationHours ? (
               <DetailEditableField
@@ -387,8 +448,51 @@ export function ItemDetailBody({
                 <span className="tabular-nums">{installationHoursRaw}</span>
               </DetailEditableField>
             ) : null}
-            {detail.length != null || detail.width != null || detail.height != null ? (
-              <DetailMetricCard label={t("detail.dimensions")}>
+            <DetailEditableField
+              label={t("detail.dimensions")}
+              value={packFieldParts(
+                detail.length != null ? String(detail.length) : "",
+                detail.width != null ? String(detail.width) : "",
+                detail.height != null ? String(detail.height) : "",
+                getItemDimensionUnit(detail),
+              )}
+              kind="text"
+              empty="—"
+              editAriaLabel={tActions("edit")}
+              renderEditor={({ draft, setDraft, saving }) => {
+                const [length = "", width = "", height = "", unit = "cm"] = unpackFieldParts(draft, 4);
+                return (
+                  <DimensionsLwhInput
+                    id="item-detail-dimensions"
+                    length={length}
+                    width={width}
+                    height={height}
+                    onChange={(next) => setDraft(packFieldParts(next.length, next.width, next.height, unit))}
+                    unit={unit}
+                    onUnitChange={(v) => setDraft(packFieldParts(length, width, height, v))}
+                    unitAriaLabel={t("detail.dimensions")}
+                    lengthAriaLabel={t("detail.dimensions")}
+                    widthAriaLabel={t("detail.dimensions")}
+                    heightAriaLabel={t("detail.dimensions")}
+                    disabled={saving}
+                  />
+                );
+              }}
+              onSave={(next) => {
+                const [lengthRaw = "", widthRaw = "", heightRaw = "", unitRaw = "cm"] = unpackFieldParts(next, 4);
+                const lengthN = parseOptionalNumber(lengthRaw);
+                const widthN = parseOptionalNumber(widthRaw);
+                const heightN = parseOptionalNumber(heightRaw);
+                const unit = (["cm", "mm", "m", "in", "ft"].includes(unitRaw) ? unitRaw : "cm") as DimensionUnit;
+                return patchField({
+                  length: lengthN,
+                  width: widthN,
+                  height: heightN,
+                  dimensions_unit: lengthN != null && widthN != null && heightN != null ? unit : null,
+                });
+              }}
+            >
+              {detail.length != null || detail.width != null || detail.height != null ? (
                 <span>
                   {[
                     detail.length != null && String(detail.length).trim() !== "" ? String(detail.length) : null,
@@ -401,13 +505,57 @@ export function ItemDetailBody({
                     ? ` ${getItemDimensionUnit(detail)}`
                     : ""}
                 </span>
-              </DetailMetricCard>
-            ) : null}
-            {detail.weight != null && String(detail.weight).trim() !== "" ? (
-              <DetailMetricCard label={t("detail.weight")}>
+              ) : null}
+            </DetailEditableField>
+            <DetailEditableField
+              label={t("detail.weight")}
+              value={packFieldParts(
+                detail.weight != null ? String(detail.weight) : "",
+                detail.weight_unit === "g" || detail.weight_unit === "lb" ? detail.weight_unit : "kg",
+              )}
+              kind="text"
+              empty="—"
+              editAriaLabel={tActions("edit")}
+              renderEditor={({ draft, setDraft, saving }) => {
+                const [weightRaw = "", unitRaw = "kg"] = unpackFieldParts(draft, 2);
+                const unit: WeightUnit = unitRaw === "g" || unitRaw === "lb" ? unitRaw : "kg";
+                return (
+                  <InputWithEndSelect
+                    inputId="item-detail-weight"
+                    inputType="number"
+                    inputMode="decimal"
+                    min={0}
+                    step="0.01"
+                    inputValue={weightRaw}
+                    onInputChange={(v) => setDraft(packFieldParts(v, unit))}
+                    disabled={saving}
+                    selectValue={unit}
+                    onSelectChange={(v) =>
+                      setDraft(packFieldParts(weightRaw, v === "g" || v === "lb" ? v : "kg"))
+                    }
+                    selectOptions={[
+                      { value: "kg", label: "kg" },
+                      { value: "g", label: "g" },
+                      { value: "lb", label: "lb" },
+                    ]}
+                    selectAriaLabel={t("detail.weight")}
+                  />
+                );
+              }}
+              onSave={(next) => {
+                const [weightRaw = "", unitRaw = "kg"] = unpackFieldParts(next, 2);
+                const weightN = parseOptionalNumber(weightRaw);
+                const unit: WeightUnit = unitRaw === "g" || unitRaw === "lb" ? unitRaw : "kg";
+                return patchField({
+                  weight: weightN ?? undefined,
+                  weight_unit: weightN != null ? unit : undefined,
+                });
+              }}
+            >
+              {detail.weight != null && String(detail.weight).trim() !== "" ? (
                 <span className="tabular-nums">{formatValueWithUnit(detail.weight, detail.weight_unit)}</span>
-              </DetailMetricCard>
-            ) : null}
+              ) : null}
+            </DetailEditableField>
             {groupId ? (
               <DetailMetricCard label={t("detail.group")}>
                 <DetailEntityLink

@@ -28,7 +28,7 @@ import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
+import { buildEntityDetailHrefAfterSave, buildProjectOverviewHref } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
   AppTabs,
@@ -230,7 +230,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
         buildEntityDetailHrefAfterSave(
           routes.dashboard.quotations,
           q.id,
-          `${routes.dashboard.projects}/${projectId}`,
+          buildProjectOverviewHref(projectId),
         ),
       );
     } catch (error) {

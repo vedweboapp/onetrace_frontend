@@ -172,14 +172,14 @@ export function AddressPlaceAutocomplete({
   ]);
 
   React.useEffect(() => {
-    function onDocClick(e: MouseEvent) {
+    function onDocPointerDown(e: PointerEvent) {
       const target = e.target as Node | null;
       if (wrapRef.current?.contains(target)) return;
       if (target instanceof Element && target.closest("[data-ot-place-suggest]")) return;
       setOpen(false);
     }
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
+    document.addEventListener("pointerdown", onDocPointerDown);
+    return () => document.removeEventListener("pointerdown", onDocPointerDown);
   }, []);
 
   async function pickNominatim(place: PlaceSuggestion) {
@@ -371,7 +371,7 @@ export function AddressPlaceAutocomplete({
   );
 
   const listClassName =
-    "z-[500] max-h-72 overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900";
+    "z-[1200] max-h-72 overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900";
 
   return (
     <div ref={wrapRef} className="relative w-full min-w-0 overflow-visible">
@@ -483,6 +483,7 @@ export function AddressPlaceAutocomplete({
               role="listbox"
               data-ot-place-suggest=""
               className={listClassName}
+              onMouseDown={(e) => e.stopPropagation()}
               style={{
                 position: "fixed",
                 top: menuPos.top,

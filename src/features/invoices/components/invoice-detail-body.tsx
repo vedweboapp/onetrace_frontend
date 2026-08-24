@@ -247,7 +247,7 @@ export function InvoiceDetailBody({
 
           <DetailPanelCard title={t("fields.notesAndTerms")}>
             <DetailEditableField
-              label={t("fields.notesAndTerms")}
+              label={<span className="sr-only">{t("fields.notesAndTerms")}</span>}
               value={notesAndTerms}
               kind="text"
               editAriaLabel={tActions("edit")}
@@ -264,7 +264,7 @@ export function InvoiceDetailBody({
 
           <DetailPanelCard title={t("fields.clientNotes")}>
             <DetailEditableField
-              label={t("fields.clientNotes")}
+              label={<span className="sr-only">{t("fields.clientNotes")}</span>}
               value={clientNotes}
               kind="text"
               editAriaLabel={tActions("edit")}
@@ -281,7 +281,7 @@ export function InvoiceDetailBody({
 
           <DetailPanelCard title={t("fields.internalNotes")}>
             <DetailEditableField
-              label={t("fields.internalNotes")}
+              label={<span className="sr-only">{t("fields.internalNotes")}</span>}
               value={internalNotes}
               kind="text"
               editAriaLabel={tActions("edit")}

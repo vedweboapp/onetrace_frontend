@@ -27,6 +27,7 @@ import { useQuotationDraftState } from "@/features/quotations/hooks/use-quotatio
 import type { ProjectLevelForQuotation, QuotationDetail } from "@/features/quotations/types/quotation.types";
 import type { QuotationDraft } from "@/features/quotations/types/quotation-draft.types";
 import { mergeQuotationDraftIntoPayload } from "@/features/quotations/utils/quotation-draft-payload.util";
+import { buildQuotationScopeReturnHref } from "@/features/quotations/utils/quotation-block-scope.util";
 import {
   createQuotationFormSchema,
   type QuotationFormValues,
@@ -235,6 +236,20 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     }),
     [getValues],
   );
+
+  const persistCreateDraft = React.useCallback(() => {
+    if (isEdit) return;
+    const bundle = { ...getFormDraft(), formTab: "pricing" as const };
+    saveQuickCreateFormDraft(draftReturnTo, bundle);
+    saveQuickCreateFormDraft(buildQuotationScopeReturnHref(pathname), bundle);
+  }, [isEdit, getFormDraft, draftReturnTo, pathname]);
+
+  React.useEffect(() => {
+    if (isEdit) return;
+    const persist = () => persistCreateDraft();
+    window.addEventListener("pagehide", persist);
+    return () => window.removeEventListener("pagehide", persist);
+  }, [isEdit, persistCreateDraft]);
   const restoreFormDraft = React.useCallback(
     (draft: unknown) => {
       skipPresetFromUrlRef.current = true;
@@ -977,6 +992,30 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                 />
                 <FieldErrorText>{errors.sites?.message}</FieldErrorText>
               </FieldGroup>
+              {isEdit ? (
+                <FieldGroup label={t("table.status")} htmlFor="quotation-status">
+                  <Controller
+                    control={control}
+                    name="status"
+                    render={({ field }) => (
+                      <CheckmarkSelect
+                        id="quotation-status"
+                        portaled
+                        listLabel={t("table.status")}
+                        options={QUOTATION_STATUS_OPTIONS.map((row) => ({
+                          value: row.value,
+                          label: t(row.labelKey),
+                        }))}
+                        value={field.value}
+                        emptyLabel={t("updateStatus.placeholder")}
+                        disabled={saving}
+                        onBlur={field.onBlur}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                </FieldGroup>
+              ) : null}
             </FormFieldRow>
             <FormFieldRow cols="2">
               <FieldGroup label={t("fields.primaryContact")} htmlFor="quotation-primary-contact">
@@ -1022,28 +1061,6 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
               <FormFieldRow cols="2">
                 <FieldGroup label={t("fields.orderNumber")} htmlFor="quotation-order">
                   <input id="quotation-order" className={surfaceInputClassName} {...register("order_number")} />
-                </FieldGroup>
-                <FieldGroup label={t("table.status")} htmlFor="quotation-status">
-                  <Controller
-                    control={control}
-                    name="status"
-                    render={({ field }) => (
-                      <CheckmarkSelect
-                        id="quotation-status"
-                        portaled
-                        listLabel={t("table.status")}
-                        options={QUOTATION_STATUS_OPTIONS.map((row) => ({
-                          value: row.value,
-                          label: t(row.labelKey),
-                        }))}
-                        value={field.value}
-                        emptyLabel={t("updateStatus.placeholder")}
-                        disabled={saving}
-                        onBlur={field.onBlur}
-                        onChange={field.onChange}
-                      />
-                    )}
-                  />
                 </FieldGroup>
               </FormFieldRow>
             ) : null}
@@ -1180,6 +1197,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                   saving={saving}
                   canShow={canShowLevels}
                   allowManualLines={isServiceQuotation}
+                  onBeforeLeavePage={persistCreateDraft}
                 />
               </div>
               <DetailTabStepNav onPrev={() => setFormTab("project")} prevLabel={t(isServiceQuotation ? "formTabs.prevToDetails" : "formTabs.prevToProject")} />

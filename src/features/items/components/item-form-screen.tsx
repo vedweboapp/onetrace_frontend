@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { cn } from "@/core/utils/http.util";
@@ -11,7 +12,8 @@ import { getApiFieldErrorMap } from "@/shared/form/report-form-api-error.util";
 import { markApiErrorToasted } from "@/core/errors/api-error-toast.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
+import { useQuickCreate, useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
+import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import {
   hrefAfterEntityCreate,
   QUICK_CREATE_SELECT_TARGET_PARAM,
@@ -26,7 +28,6 @@ import { getItemDimensionUnit, parseDimensionsInput } from "@/features/items/uti
 import { getItemVendorIds, itemVendorFallbackLabels, vendorIdsPayload } from "@/features/items/utils/item-vendors.util";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import type { DimensionUnit, WeightUnit } from "@/features/items/types/item.types";
-import { useSearchParams } from "next/navigation";
 
 type Props = {
   mode: "create" | "edit";
@@ -204,6 +205,84 @@ export function ItemFormScreen({ mode, itemId }: Props) {
       cancelled = true;
     };
   }, [tModal]);
+
+  const getFormDraft = React.useCallback(
+    () => ({
+      name,
+      sku,
+      qty,
+      cost,
+      sell,
+      unitType,
+      length,
+      width,
+      height,
+      dimensionsUnit,
+      weight,
+      weightUnit,
+      vendorIds,
+    }),
+    [name, sku, qty, cost, sell, unitType, length, width, height, dimensionsUnit, weight, weightUnit, vendorIds],
+  );
+
+  const restoreFormDraft = React.useCallback((draft: unknown) => {
+    const saved = draft as Partial<{
+      name: string;
+      sku: string;
+      qty: string;
+      cost: string;
+      sell: string;
+      unitType: string;
+      length: string;
+      width: string;
+      height: string;
+      dimensionsUnit: DimensionUnit;
+      weight: string;
+      weightUnit: WeightUnit;
+      vendorIds: string[];
+    }>;
+    if (typeof saved.name === "string") setName(saved.name);
+    if (typeof saved.sku === "string") setSku(saved.sku);
+    if (typeof saved.qty === "string") setQty(saved.qty);
+    if (typeof saved.cost === "string") setCost(saved.cost);
+    if (typeof saved.sell === "string") setSell(saved.sell);
+    if (typeof saved.unitType === "string") setUnitType(saved.unitType);
+    if (typeof saved.length === "string") setLength(saved.length);
+    if (typeof saved.width === "string") setWidth(saved.width);
+    if (typeof saved.height === "string") setHeight(saved.height);
+    if (saved.dimensionsUnit === "cm" || saved.dimensionsUnit === "mm" || saved.dimensionsUnit === "m" || saved.dimensionsUnit === "in" || saved.dimensionsUnit === "ft") {
+      setDimensionsUnit(saved.dimensionsUnit);
+    }
+    if (typeof saved.weight === "string") setWeight(saved.weight);
+    if (saved.weightUnit === "kg" || saved.weightUnit === "g" || saved.weightUnit === "lb") {
+      setWeightUnit(saved.weightUnit);
+    }
+    if (Array.isArray(saved.vendorIds)) setVendorIds(saved.vendorIds.map(String));
+  }, []);
+
+  const reloadVendors = React.useCallback(async () => {
+    setVendorsError(null);
+    try {
+      const { items } = await fetchVendorsPage(1, 500, { is_active: true });
+      setVendorOptions(items.map((v) => ({ value: String(v.id), label: v.name })));
+    } catch {
+      setVendorsError(tModal("vendorsLoadError"));
+    }
+  }, [tModal]);
+
+  const vendorQuickCreate = useQuickCreate({
+    kind: "vendor",
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+  });
+
+  useQuickCreateReturn({
+    restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
+    onReloadOptions: reloadVendors,
+    onApplySelect: ({ selectTarget, selectId }) => {
+      if (selectTarget !== "vendor") return;
+      setVendorIds((prev) => (prev.includes(selectId) ? prev : [...prev, selectId]));
+    },
+  });
 
   const nameInvalid = Boolean(touched.name) && name.trim().length === 0;
   const skuInvalid = Boolean(touched.sku) && sku.trim().length === 0;
@@ -434,6 +513,9 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                 listLabel={tModal("vendors")}
                 searchable
                 fallbackLabels={vendorFallbackLabels}
+                onAdd={vendorQuickCreate.onAdd}
+                addAriaLabel={vendorQuickCreate.addAriaLabel}
+                addLabel={vendorQuickCreate.addLabel}
               />
               {vendorsError ? (
                 <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{vendorsError}</p>

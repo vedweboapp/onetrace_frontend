@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { isApiNotFoundError } from "@/core/errors/api-not-found.util";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 
 type UseEntityDetailScreenArgs<T> = {
@@ -15,6 +16,7 @@ export function useEntityDetailScreen<T>({ entityId, fetch, loadError }: UseEnti
   const [detail, setDetail] = React.useState<T | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [notFound, setNotFound] = React.useState(false);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
 
   const retry = React.useCallback(() => setRefreshNonce((k) => k + 1), []);
@@ -28,12 +30,19 @@ export function useEntityDetailScreen<T>({ entityId, fetch, loadError }: UseEnti
     (async () => {
       setLoading(true);
       setError(null);
+      setNotFound(false);
       setDetail(null);
       try {
         const row = await fetchRef.current(entityId);
         if (!cancelled) setDetail(row);
-      } catch {
-        if (!cancelled) setError(loadErrorRef.current);
+      } catch (err) {
+        if (!cancelled) {
+          if (isApiNotFoundError(err)) {
+            setNotFound(true);
+          } else {
+            setError(loadErrorRef.current);
+          }
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -43,7 +52,7 @@ export function useEntityDetailScreen<T>({ entityId, fetch, loadError }: UseEnti
     };
   }, [entityId, refreshNonce]);
 
-  return { detail, loading, error, retry, dateFmt };
+  return { detail, loading, error, notFound, retry, dateFmt };
 }
 
 /** PATCH + toast + refresh for Zoho-style detail inline edit (one hook, no duplicated try/catch). */

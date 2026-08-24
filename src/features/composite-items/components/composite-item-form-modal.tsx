@@ -580,8 +580,8 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
           ) : null}
           <div className="mt-2 space-y-2">
             {rows.map((r, idx) => (
-              <div key={r.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(14rem,22rem)_8rem_auto] sm:items-end">
-                <div>
+              <div key={r.id} className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+                <div className="min-w-0 w-full sm:max-w-[22rem] sm:flex-1">
                   <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
                     {t("childItem")}
                     <span className="ml-1 text-red-500">*</span>
@@ -611,7 +611,7 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
                     addLabel={itemQuickCreate.addLabel}
                   />
                 </div>
-                <div>
+                <div className="w-[5.5rem] shrink-0">
                   <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
                     {t("componentQuantity")}
                   </span>
@@ -624,7 +624,7 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
                     disabled={submitting}
                   />
                 </div>
-                <div className="flex gap-2 sm:justify-end">
+                <div className="flex shrink-0 gap-2 pb-px">
                   <AppButton
                     type="button"
                     variant="secondary"

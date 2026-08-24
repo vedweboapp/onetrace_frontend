@@ -14,6 +14,7 @@ import {
   entityDetailTabPanelClassName,
 } from "@/shared/components/layout/detail-tab-layout";
 import { EntityDetailErrorState } from "@/shared/components/entity/entity-detail-error";
+import { EntityDetailNotFoundState } from "@/shared/components/entity/entity-detail-not-found";
 import { EntityDetailLoadingSkeleton } from "@/shared/components/entity/entity-detail-loading";
 import { useEntityDetailBack } from "@/shared/hooks/use-entity-detail-back";
 import { useEntityDetailScreen } from "@/shared/hooks/use-entity-detail-screen";
@@ -31,6 +32,7 @@ export type EntityDetailScreenContext<T> = {
   detail: T | null;
   loading: boolean;
   error: string | null;
+  notFound: boolean;
   retry: () => void;
   dateFmt: Intl.DateTimeFormat;
   listBack: string;
@@ -75,7 +77,7 @@ export function EntityDetailScreen<T>({
   wrapSurface = true,
 }: EntityDetailScreenProps<T>) {
   const listBack = useEntityDetailBack(listSection, listRoute);
-  const { detail, loading, error, retry, dateFmt } = useEntityDetailScreen({
+  const { detail, loading, error, notFound, retry, dateFmt } = useEntityDetailScreen({
     entityId,
     fetch,
     loadError,
@@ -91,13 +93,19 @@ export function EntityDetailScreen<T>({
     detail,
     loading,
     error,
+    notFound,
     retry,
     dateFmt,
     listBack,
   };
+  const notFoundSurface = (
+    <EntityDetailNotFoundState backHref={listBack} fill />
+  );
   const defaultSurface =
     loading ? (
       <EntityDetailLoadingSkeleton />
+    ) : notFound ? (
+      notFoundSurface
     ) : error ? (
       <EntityDetailErrorState message={error} retryLabel={labels.retry} onRetry={retry} />
     ) : detail && children ? (
@@ -113,13 +121,15 @@ export function EntityDetailScreen<T>({
         backAriaLabel={labels.backAria}
         subtitle={detail && subtitle ? subtitle(detail) : undefined}
         extension={headerExtension}
-        actions={!loading && !error && detail && actions ? actions({ detail, listBack, retry }) : null}
+        actions={!loading && !error && !notFound && detail && actions ? actions({ detail, listBack, retry }) : null}
       />
 
       {wrapSurface ? (
         <SurfaceShell className={cn(detailRecordSurfaceShellClassName, entityDetailSurfaceClassName)}>
           <div className={cn(detailRecordInnerClassName, entityDetailSurfaceInnerClassName)}>
-            {renderSurface ? (
+            {notFound ? (
+              notFoundSurface
+            ) : renderSurface ? (
               <div className={entityDetailTabPanelClassName}>{renderSurface(screenCtx)}</div>
             ) : (
               defaultSurface
@@ -127,7 +137,9 @@ export function EntityDetailScreen<T>({
           </div>
         </SurfaceShell>
       ) : renderSurface ? (
-        <div className={entityDetailTabPanelClassName}>{renderSurface(screenCtx)}</div>
+        <div className={entityDetailTabPanelClassName}>
+          {notFound ? notFoundSurface : renderSurface(screenCtx)}
+        </div>
       ) : (
         defaultSurface
       )}

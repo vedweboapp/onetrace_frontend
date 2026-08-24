@@ -1115,7 +1115,7 @@ export function JobDetailBody({
         <DetailPanelCard title={t("detail.sectionDescription")}>
           <DetailFieldsLayout>
             <DetailEditableField
-              label={t("fields.description")}
+              label={<span className="sr-only">{t("fields.description")}</span>}
               value={detail.description?.trim() ?? ""}
               kind="text"
               multiline

@@ -34,6 +34,7 @@ import {
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
   listPageRootClassName,
+  listPageCardScrollClassName,
   DataTableRowActionsMenu,
   ListPageCard,
   ListPageCardGrid,
@@ -256,7 +257,7 @@ export function VendorsPanel() {
         const typeRows = getVendorTypeRows(row);
         if (typeRows.length === 0) return "—";
         return <VendorTypeChipGroup rows={typeRows} />;
-      }),
+      }, { cellClassName: "min-w-0" }),
       c.truncate("email", t("table.email"), (r) => r.email),
       c.phone("phone", t("table.phone"), (r) => r.phone),
       c.custom("location", t("table.location"), (row) => vendorAddressSummary(vendorPrimaryAddress(row))),
@@ -311,7 +312,7 @@ export function VendorsPanel() {
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
         ) : listLoading ? (
           listViewMode === "list" ? (
-            <div className="p-4 sm:p-6">
+            <div className={listPageCardScrollClassName()}>
               <ListPageCardGrid>
                 {Array.from({ length: 6 }, (_, i) => (
                   <ListPageCardSkeleton key={i} />
@@ -336,7 +337,7 @@ export function VendorsPanel() {
             onClearFilters={() => setUrl({ search: null, is_active: null, page: null }, { replace: true })}
           />
         ) : listViewMode === "list" ? (
-          <div className="p-4 sm:p-6">
+          <div className={listPageCardScrollClassName()}>
             <ListPageCardGrid>
               {items.map((row) => {
                 const typeRows = getVendorTypeRows(row);

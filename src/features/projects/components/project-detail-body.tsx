@@ -5,10 +5,13 @@ import { useTranslations } from "next-intl";
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { ProjectTypeChip } from "@/features/project-types/components/project-type-chip";
 import type { ProjectType } from "@/features/project-types/types/project-type.types";
+import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
 import { updateProject } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
-import { resolveProjectTypeChipData } from "@/features/projects/utils/project-type-id.util";
+import { getProjectTypeId, resolveProjectTypeChipData } from "@/features/projects/utils/project-type-id.util";
+import { fetchUsersPage } from "@/features/users/api/user.api";
+import { userProfileLabel } from "@/features/jobs/utils/job-nested-fields.util";
 import { routes } from "@/shared/config/routes";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { DetailMultiValue, DetailMultiValueItem } from "@/shared/components/layout/detail-multi-value";
@@ -118,7 +121,9 @@ export function ProjectDetailBody({
   const tMeta = useTranslations("Dashboard.common.detail");
   const tActions = useTranslations("Dashboard.common.actions");
   const clientId = getProjectClientId(detail);
+  const projectTypeId = getProjectTypeId(detail);
   const projectTypeChip = resolveProjectTypeChipData(detail, projectTypeById);
+  const [managerOptions, setManagerOptions] = React.useState<CheckmarkSelectOption[]>([]);
 
   const clientSelectOptions = React.useMemo(() => {
     const options = [...clientOptions];
@@ -128,10 +133,51 @@ export function ProjectDetailBody({
     return options;
   }, [clientOptions, clientId, clientName]);
 
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchUsersPage(1, 100);
+        if (!cancelled) {
+          setManagerOptions(items.map((u) => ({ value: String(u.id), label: userProfileLabel(u) })));
+        }
+      } catch {
+        if (!cancelled) setManagerOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const projectTypeSelectOptions = React.useMemo(() => {
+    const options = Object.values(projectTypeById).map((row) => ({
+      value: String(row.id),
+      label: formatProjectTypeLabel(row),
+    }));
+    if (projectTypeId != null && !options.some((o) => o.value === String(projectTypeId))) {
+      options.unshift({
+        value: String(projectTypeId),
+        label: projectTypeChip ? formatProjectTypeLabel(projectTypeChip) : `Type #${projectTypeId}`,
+      });
+    }
+    return options;
+  }, [projectTypeById, projectTypeId, projectTypeChip]);
+
   const start = detail.start_date?.slice(0, 10) ?? "";
   const end = detail.end_date?.slice(0, 10) ?? "";
   const siteRows = projectSiteListRows(detail, t("fields.site"));
   const managerRows = projectManagerRows(detail);
+
+  const managerSelectOptions = React.useMemo(() => {
+    const options = [...managerOptions];
+    for (const row of managerRows) {
+      if (!options.some((o) => o.value === String(row.id))) {
+        options.unshift({ value: String(row.id), label: row.label });
+      }
+    }
+    return options;
+  }, [managerOptions, managerRows]);
 
   const projectStatus =
     typeof detail.project_status === "object" && detail.project_status !== null
@@ -219,9 +265,25 @@ export function ProjectDetailBody({
                 <span className="break-words text-slate-700 dark:text-slate-200">{clientName ?? "—"}</span>
               )}
             </DetailEditableField>
-            <DetailMetricCard label={t("fields.projectType")}>
-              {projectTypeChip ? <ProjectTypeChip row={projectTypeChip} /> : <span>—</span>}
-            </DetailMetricCard>
+            {projectTypeSelectOptions.length > 0 ? (
+              <DetailEditableField
+                label={t("fields.projectType")}
+                value={projectTypeId != null ? String(projectTypeId) : ""}
+                kind="select"
+                options={projectTypeSelectOptions}
+                selectSearchable
+                required
+                requiredMessage={t("validation.projectType")}
+                editAriaLabel={tActions("edit")}
+                onSave={(next) => patchField({ project_type: Number(next) })}
+              >
+                {projectTypeChip ? <ProjectTypeChip row={projectTypeChip} /> : <span>—</span>}
+              </DetailEditableField>
+            ) : (
+              <DetailMetricCard label={t("fields.projectType")}>
+                {projectTypeChip ? <ProjectTypeChip row={projectTypeChip} /> : <span>—</span>}
+              </DetailMetricCard>
+            )}
             <DetailEditableField
               label={t("fields.startDate")}
               value={start}
@@ -242,7 +304,21 @@ export function ProjectDetailBody({
             >
               {end ? dateOnlyFmt.format(new Date(`${end}T12:00:00`)) : null}
             </DetailEditableField>
-            <DetailMetricCard label={t("fields.manager")} className="col-span-full sm:col-span-1">
+            <DetailEditableField
+              label={t("fields.manager")}
+              className="col-span-full sm:col-span-1"
+              kind="multiselect"
+              values={managerRows.map((row) => String(row.id))}
+              options={managerSelectOptions}
+              selectSearchable
+              editAriaLabel={tActions("edit")}
+              empty="—"
+              onSaveValues={(next) =>
+                patchField({
+                  manager_ids: next.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0),
+                })
+              }
+            >
               <DetailMultiValue>
                 {managerRows.map((row) => (
                   <DetailMultiValueItem
@@ -254,7 +330,7 @@ export function ProjectDetailBody({
                   </DetailMultiValueItem>
                 ))}
               </DetailMultiValue>
-            </DetailMetricCard>
+            </DetailEditableField>
           </DetailMetricsGrid>
         </DetailPanelCard>
 

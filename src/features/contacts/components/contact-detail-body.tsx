@@ -12,6 +12,10 @@ import {
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import {
+  DetailAddressLine1EditableField,
+  flatAddressPatchFromPlace,
+} from "@/shared/components/layout/detail-address-line1-field";
+import {
   DetailAddressLocationFields,
   detailLocationCountryPayload,
   detailLocationStatePayload,
@@ -74,16 +78,9 @@ export function ContactDetailBody({
               kind="select"
               options={contactTypeOptions}
               required
+              locked
               requiredMessage={t("validation.contactType")}
               editAriaLabel={tActions("edit")}
-              onSave={(next) => {
-                const type = next === "vendor" ? "vendor" : "client";
-                return patchField(
-                  type === "client"
-                    ? { contact_type: type, client: clientId ?? undefined, vendor: undefined }
-                    : { contact_type: type, vendor: vendorId ?? undefined, client: undefined },
-                );
-              }}
             >
               {contactType === "vendor" ? t("tabs.vendor") : t("tabs.client")}
             </DetailEditableField>
@@ -179,17 +176,22 @@ export function ContactDetailBody({
 
         <DetailPanelCard title={t("detail.sectionAddress")} variant="flat">
           <DetailMetricsGrid>
-            <DetailEditableField
+            <DetailAddressLine1EditableField
+              fieldId={String(detail.id)}
               label={t("fields.addressLine1")}
-              value={detail.address_line_1 ?? ""}
-              kind="text"
+              addressLine1={detail.address_line_1}
+              country={detail.country}
+              state={detail.state}
+              city={detail.city}
+              pincode={detail.pincode}
               required
               requiredMessage={t("validation.addressLine1")}
               editAriaLabel={tActions("edit")}
-              onSave={(next) => patchField({ address_line_1: next })}
+              onSaveLine={(next) => patchField({ address_line_1: next })}
+              onSavePlace={(place) => patchField(flatAddressPatchFromPlace(place))}
             >
               {detail.address_line_1?.trim() ? detail.address_line_1 : null}
-            </DetailEditableField>
+            </DetailAddressLine1EditableField>
             <DetailEditableField
               label={t("fields.addressLine2")}
               value={detail.address_line_2 ?? ""}

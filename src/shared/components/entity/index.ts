@@ -7,6 +7,7 @@ export type {
 } from "./entity-detail-screen";
 export { EntityDetailLoadingSkeleton, EntityDetailTabLoadingState } from "./entity-detail-loading";
 export { EntityDetailErrorState } from "./entity-detail-error";
+export { EntityDetailNotFoundState } from "./entity-detail-not-found";
 export {
   EntityDetailEditButton,
   EntityDetailDeleteEditActions,

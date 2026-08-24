@@ -29,7 +29,7 @@ function DetailMetadataField({
   return (
     <div className={cn("field-group detail-field min-w-0", className)}>
       <p className={detailFieldLabelClassName}>{label}</p>
-      <div className={cn("field-control-wrap min-w-0 flex-1", detailValueSurfaceClassName, "min-h-[1.75rem]")}>
+      <div className={cn("field-control-wrap min-w-0 flex-1", detailValueSurfaceClassName)}>
         {children}
       </div>
     </div>

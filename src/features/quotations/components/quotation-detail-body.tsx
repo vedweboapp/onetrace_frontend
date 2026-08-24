@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import dynamic from "next/dynamic";
+import { Pencil } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -326,6 +327,12 @@ export function QuotationDetailBody({
   const [scopeDraft, setScopeDraft] = React.useState<QuotationDraft | null>(null);
   const [scopeDirty, setScopeDirty] = React.useState(false);
   const [scopeSaving, setScopeSaving] = React.useState(false);
+  const [scopeEditing, setScopeEditing] = React.useState(false);
+
+  React.useEffect(() => {
+    setScopeEditing(false);
+    setScopeDirty(false);
+  }, [detail.id]);
 
   React.useEffect(() => {
     if (scopeDirty) return;
@@ -357,6 +364,11 @@ export function QuotationDetailBody({
     setScopeDirty(false);
   }
 
+  function cancelScopeEdit() {
+    resetScopeDraft();
+    setScopeEditing(false);
+  }
+
   async function saveScopeDraft() {
     if (!scopeDraft) return;
     setScopeSaving(true);
@@ -369,6 +381,7 @@ export function QuotationDetailBody({
         select_all_levels: false,
       });
       setScopeDirty(false);
+      setScopeEditing(false);
     } finally {
       setScopeSaving(false);
     }
@@ -676,14 +689,14 @@ export function QuotationDetailBody({
         <DetailPanelCard
           title={t("levels.sectionsTitle")}
           headerRight={
-            scopeDraft ? (
+            scopeEditing ? (
               <div className="flex flex-wrap items-center gap-2">
                 <AppButton
                   type="button"
                   variant="secondary"
                   size="sm"
-                  disabled={!scopeDirty || scopeSaving}
-                  onClick={resetScopeDraft}
+                  disabled={scopeSaving}
+                  onClick={cancelScopeEdit}
                 >
                   {tActions("cancel")}
                 </AppButton>
@@ -698,7 +711,19 @@ export function QuotationDetailBody({
                   {t("page.saveEdit")}
                 </AppButton>
               </div>
-            ) : null
+            ) : (
+              <AppButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={tActions("edit")}
+                title={tActions("edit")}
+                className="h-8 w-8 px-0"
+                onClick={() => setScopeEditing(true)}
+              >
+                <Pencil className="size-4" strokeWidth={1.75} />
+              </AppButton>
+            )
           }
         >
           {scopeDraft ? (
@@ -707,7 +732,8 @@ export function QuotationDetailBody({
               onDraftChange={handleScopeDraftChange}
               saving={scopeSaving}
               canShow
-              allowManualLines={isServiceQuotation}
+              readOnly={!scopeEditing}
+              allowManualLines
             />
           ) : (
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("page.editQuoteScopeEmpty")}</p>

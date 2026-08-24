@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import type { ReactNode } from "react";
-import { Check, Loader2, Pencil, X } from "lucide-react";
+import { Check, Loader2, Lock, Pencil, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/core/utils/http.util";
 import { CheckmarkSelect, type CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import { MultiCheckSelect } from "@/shared/ui/multi-check-select";
@@ -35,13 +36,13 @@ export const detailFieldLabelClassName = cn(
 
 /** Soft box shared by display + edit so height/width feel the same. */
 export const detailValueSurfaceClassName = cn(
-  "w-full min-w-0 rounded-md px-0 py-0.5 text-sm font-semibold leading-normal text-slate-900",
+  "w-full min-w-0 min-h-9 rounded-md px-2 py-1.5 text-sm font-semibold leading-normal text-slate-900",
   "dark:text-slate-100",
 );
 
 export const detailInlineEditorClassName = cn(
   detailValueSurfaceClassName,
-  "box-border w-full min-w-0 border border-slate-200/90 bg-white px-1.5 py-1 outline-none transition",
+  "box-border w-full min-w-0 border border-slate-200/90 bg-white outline-none transition",
   "focus-visible:border-slate-300 focus-visible:ring-2 focus-visible:ring-slate-900/10",
   "dark:border-slate-700 dark:bg-slate-900/80",
 );
@@ -71,6 +72,9 @@ export function DetailEditableField({
   className,
   empty = "—",
   disabled = false,
+  /** Read-only with lock icon and tooltip (e.g. contact type on client/vendor contacts). */
+  locked = false,
+  lockedHint,
   /** Marks field required (asterisk / red line from Appearance). */
   required = false,
   /** Message when required and user tries to save empty. */
@@ -103,6 +107,8 @@ export function DetailEditableField({
   className?: string;
   empty?: ReactNode;
   disabled?: boolean;
+  locked?: boolean;
+  lockedHint?: string;
   required?: boolean;
   requiredMessage?: string;
   multiline?: boolean;
@@ -111,14 +117,16 @@ export function DetailEditableField({
   onEditStart?: () => void;
   onEditCancel?: () => void;
 }) {
+  const tLocked = useTranslations("Dashboard.common.lockedField");
   const fieldId = React.useId();
   const hasValue = children != null && children !== "";
+  const readOnly = disabled || locked;
   const canInline =
-    !disabled &&
+    !readOnly &&
     (kind === "multiselect"
       ? typeof onSaveValues === "function"
       : typeof onSave === "function");
-  const canNavigate = typeof onEdit === "function" && !disabled && !canInline;
+  const canNavigate = typeof onEdit === "function" && !readOnly && !canInline;
   const editable = canInline || canNavigate;
 
   const [editing, setEditing] = React.useState(false);
@@ -141,6 +149,7 @@ export function DetailEditableField({
 
   const editBlocked = isDetailInlineEditBlocked(fieldId);
   const canStartEdit = editable && !editBlocked;
+  const lockedTooltip = lockedHint?.trim() || tLocked("hint");
 
   const useGrowingEditor =
     multiline ||
@@ -268,8 +277,8 @@ export function DetailEditableField({
       <div className="field-control-wrap min-w-0 w-full flex-1 overflow-visible">
         {editing && canInline ? (
           <div className="flex w-full min-w-0 flex-col gap-1">
-            <div className="flex w-full min-w-0 items-center gap-1.5">
-            <div className="min-w-0 flex-1 overflow-visible">
+            <div className={cn("flex w-full min-w-0 gap-1.5", useGrowingEditor ? "items-start" : "items-center")}>
+            <div className="min-w-0 flex-1 overflow-visible" onMouseDown={(e) => e.stopPropagation()}>
               {renderEditor ? (
                 renderEditor({
                   draft,
@@ -400,7 +409,7 @@ export function DetailEditableField({
                   aria-invalid={Boolean(error)}
                   className={cn(
                     detailInlineEditorClassName,
-                    "h-auto min-h-[1.75rem]",
+                    "h-auto",
                     error && "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/20",
                   )}
                   onChange={(e) => {
@@ -427,7 +436,7 @@ export function DetailEditableField({
                 />
               )}
             </div>
-            <div className="flex shrink-0 items-center gap-1 self-center">
+            <div className={cn("flex shrink-0 items-center gap-1", useGrowingEditor ? "self-start pt-1" : "self-center")}>
               <button
                 type="button"
                 disabled={saving}
@@ -471,11 +480,13 @@ export function DetailEditableField({
         ) : (
           <div
             className={cn(
-              "relative w-full",
+              "relative flex w-full items-start",
               detailValueSurfaceClassName,
               "break-words [overflow-wrap:anywhere]",
               canStartEdit &&
                 "cursor-pointer group-hover/field:bg-slate-100/90 dark:group-hover/field:bg-slate-800/80",
+              locked &&
+                "cursor-not-allowed bg-slate-50/90 dark:bg-slate-900/60",
               editBlocked && editable && "cursor-not-allowed opacity-70",
             )}
             onClick={canStartEdit ? startEdit : undefined}
@@ -489,9 +500,10 @@ export function DetailEditableField({
                   }
                 : undefined
             }
-            role={canStartEdit ? "button" : undefined}
-            tabIndex={canStartEdit ? 0 : undefined}
-            title={editBlocked ? "Finish editing the current field first" : undefined}
+            role={canStartEdit ? "button" : locked ? "textbox" : undefined}
+            tabIndex={canStartEdit ? 0 : locked ? 0 : undefined}
+            aria-readonly={locked ? true : undefined}
+            title={locked ? lockedTooltip : editBlocked ? "Finish editing the current field first" : undefined}
           >
             <div
               className={cn(
@@ -501,10 +513,17 @@ export function DetailEditableField({
             >
               {hasValue ? children : empty}
             </div>
-            {canStartEdit ? (
+            {locked ? (
+              <span
+                className="pointer-events-none absolute right-1.5 top-1.5 text-slate-400 dark:text-slate-500"
+                aria-hidden
+              >
+                <Lock className="size-3.5" strokeWidth={1.75} />
+              </span>
+            ) : canStartEdit ? (
               <span
                 className={cn(
-                  "pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 opacity-0 transition",
+                  "pointer-events-none absolute right-1.5 top-1.5 opacity-0 transition",
                   "text-slate-500 group-hover/field:opacity-100 group-focus-within/field:opacity-100 dark:text-slate-400",
                 )}
                 aria-hidden

@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Send } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -342,7 +341,6 @@ function QuotationDetailActions({
         disabled={sending}
         onClick={() => void handleSendQuotation()}
       >
-        <Send className="mr-1.5 size-4" />
         Send Quotation
       </AppButton>
       <QuotationExportDropdown quotationId={quotationId} quoteName={detail.quote_name} />

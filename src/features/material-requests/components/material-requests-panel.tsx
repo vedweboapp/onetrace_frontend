@@ -17,11 +17,12 @@ import type { MaterialRequestListItem } from "@/features/material-requests/types
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import {
   materialRequestItemsCount,
-  materialRequestJobLabel,
+  materialRequestJobSerial,
   materialRequestWorkerLabel,
   nestedId,
 } from "@/features/material-requests/utils/material-request-nested-fields.util";
-import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { DetailEntityLink, EntityDataTable, entityCol } from "@/shared/components/entity";
+import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
@@ -238,12 +239,36 @@ export function MaterialRequestsPanel() {
     return [
       massSel.tableColumn,
       c.primary("request", t("table.requestNumber"), (r) => r.request_number),
-      c.truncate("job", t("table.jobName"), (r) => materialRequestJobLabel(r), {
-        title: (r) => materialRequestJobLabel(r),
+      c.custom("job", t("table.jobName"), (r) => {
+        const jobs = r.jobs ?? [];
+        if (jobs.length === 0) return "—";
+        return (
+          <span className="flex min-w-0 flex-wrap items-center gap-x-1">
+            {jobs.map((job, index) => (
+              <React.Fragment key={job.id}>
+                {index > 0 ? <span className="text-slate-400">,</span> : null}
+                <DetailEntityLink
+                  href={`${routes.dashboard.jobs}/${job.id}`}
+                  className="font-medium"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {materialRequestJobSerial(job)}
+                </DetailEntityLink>
+              </React.Fragment>
+            ))}
+          </span>
+        );
       }),
-      c.truncate("worker", t("table.workerName"), (r) => workerDisplay(r), {
-        title: (r) => workerDisplay(r),
-      }),
+      c.link(
+        "worker",
+        t("table.workerName"),
+        (r) => workerDisplay(r),
+        (r) => {
+          const workerId = nestedId(r.worker_name);
+          return workerId != null ? `${routes.dashboard.settingsUsers}/${workerId}` : null;
+        },
+        { title: (r) => workerDisplay(r) },
+      ),
       c.tabular("requested", t("table.requestDate"), (r) =>
         formatFlexibleApiDate(r.requested_date, dateFmt),
       ),
@@ -387,8 +412,39 @@ export function MaterialRequestsPanel() {
                     className={highlightClassName(row.id)}
                     leading={massSel.cardLeading(row)}
                     title={row.request_number}
-                    subtitle={materialRequestJobLabel(row)}
-                    meta={<span className="block min-w-0 truncate">{workerDisplay}</span>}
+                    subtitle={
+                      (row.jobs ?? []).length > 0 ? (
+                        <span className="flex min-w-0 flex-wrap items-center gap-x-1" onClick={(e) => e.stopPropagation()}>
+                          {(row.jobs ?? []).map((job, index) => (
+                            <React.Fragment key={job.id}>
+                              {index > 0 ? <span className="text-slate-400">,</span> : null}
+                              <DetailEntityLink
+                                href={`${routes.dashboard.jobs}/${job.id}`}
+                                className="font-medium"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {materialRequestJobSerial(job)}
+                              </DetailEntityLink>
+                            </React.Fragment>
+                          ))}
+                        </span>
+                      ) : (
+                        "—"
+                      )
+                    }
+                    meta={
+                      workerId != null ? (
+                        <DetailEntityLink
+                          href={`${routes.dashboard.settingsUsers}/${workerId}`}
+                          className="block min-w-0 truncate font-medium"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {workerDisplay}
+                        </DetailEntityLink>
+                      ) : (
+                        <span className="block min-w-0 truncate">{workerDisplay}</span>
+                      )
+                    }
                     footer={
                       <div className="flex w-full flex-wrap items-center justify-between gap-3">
                         <div className="flex min-w-0 flex-wrap items-center gap-3">

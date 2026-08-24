@@ -883,7 +883,10 @@ export function SchedulingPanel({
         all_day: copiedSchedule.all_day,
       });
       toastSuccess(t("copy.pastedToast"));
-      setCopiedSchedule(null);
+      setCopiedSchedule({
+        ...copiedSchedule,
+        worker_ids: [...new Set([...scheduleWorkerIds(copiedSchedule), tech.id])],
+      });
       onScheduleCreated(created);
     } catch (error) {
       toastApiError(error, t("copy.pasteError"));

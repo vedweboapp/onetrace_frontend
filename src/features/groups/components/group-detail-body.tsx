@@ -22,7 +22,6 @@ import {
   DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
-  DetailStatusMetric,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 
@@ -96,12 +95,6 @@ export function GroupDetailBody({
             >
               <span className="break-words">{detail.name}</span>
             </DetailEditableField>
-            <DetailStatusMetric
-              label={t("table.status")}
-              isActive={detail.is_active}
-              activeLabel={t("statusActive")}
-              inactiveLabel={t("statusInactive")}
-            />
             <DetailMetricCard label={t("table.itemCount")}>
               <span className="tabular-nums">{linkedItems.length}</span>
             </DetailMetricCard>

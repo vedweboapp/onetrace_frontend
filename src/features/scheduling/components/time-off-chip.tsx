@@ -25,13 +25,14 @@ export function TimeOffChip({ timeOff, onRemove, compact, detailed, className, s
     <div
       data-timeoff-chip
       className={cn(
-        "group/chip relative overflow-hidden rounded-md border border-amber-300 bg-amber-50 text-left shadow-sm",
+        "group/chip relative overflow-hidden border border-amber-300 bg-amber-50 text-left shadow-sm",
         "dark:border-amber-800 dark:bg-amber-950/40",
+        compact ? "rounded-none" : "rounded-md",
         className,
       )}
       style={style}
     >
-      <div className="block w-full px-2 py-1.5 text-left">
+      <div className={cn("block h-full w-full px-2 text-left", compact ? "py-1" : "py-1.5")}>
         <p className="truncate pr-5 text-[11px] font-semibold text-amber-950 dark:text-amber-100">{label}</p>
         <p className="truncate text-[10px] text-amber-900/80 dark:text-amber-200/80">
           {formatTimeRange(timeOff.start_at, timeOff.end_at, locale)}

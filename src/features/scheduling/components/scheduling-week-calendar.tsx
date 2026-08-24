@@ -3,6 +3,7 @@
 import * as React from "react";
 import { X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { ScheduleCreateCellButton } from "@/features/scheduling/components/schedule-create-cell-button";
 import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
 import {
   rowsForTechnician,
@@ -303,18 +304,43 @@ export function SchedulingWeekCalendar({
 
                 {model.segments.map((segment) => {
                   const style = bandStyle(segment.startMinutes, segment.endMinutes);
+                  const canAdd =
+                    allowCreate &&
+                    dragMode === "book" &&
+                    segment.kind === "available" &&
+                    !activeDrag;
                   if (segment.kind === "available" || segment.kind === "unavailable") {
+                    const startTime = minutesToTime(segment.startMinutes);
+                    const endTime = minutesToTime(
+                      Math.min(segment.startMinutes + 60, segment.endMinutes),
+                    );
                     return (
                       <div
                         key={`${segment.kind}-${segment.startMinutes}`}
                         className={cn(
-                          "pointer-events-none absolute inset-x-1 rounded-sm",
+                          "absolute inset-x-1 rounded-sm",
+                          canAdd ? "group/avail" : "pointer-events-none",
                           segment.kind === "available"
                             ? "bg-emerald-100/80 dark:bg-emerald-950/35"
                             : "bg-slate-200/70 dark:bg-slate-800/55",
                         )}
                         style={style}
-                      />
+                      >
+                        {canAdd ? (
+                          <div
+                            className={cn(
+                              "pointer-events-none absolute inset-0 z-[1] flex items-center justify-center",
+                              "opacity-0 transition group-hover/avail:opacity-100 max-sm:opacity-100",
+                            )}
+                          >
+                            <ScheduleCreateCellButton
+                              iconOnly
+                              className="pointer-events-auto size-6"
+                              onClick={() => onCreate(model.day, startTime, endTime)}
+                            />
+                          </div>
+                        ) : null}
+                      </div>
                     );
                   }
                   if (segment.kind === "timeoff" && segment.timeOff) {

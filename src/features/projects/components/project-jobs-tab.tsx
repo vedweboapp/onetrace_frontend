@@ -167,19 +167,6 @@ export function ProjectJobsTab({ projectId }: Props) {
     return map;
   }, [workerOptions]);
 
-  const jobDirectUpdateActions = React.useMemo(
-    () => [
-      {
-        id: "assign-worker",
-        label: tJobs("massAssignWorker"),
-        fieldName: "assigned_worker",
-        options: workerOptions,
-        valueCoerce: "number" as const,
-      },
-    ],
-    [tJobs, workerOptions],
-  );
-
   const massUpdateFields = React.useMemo(
     () =>
       buildJobMassUpdateFields(
@@ -501,7 +488,6 @@ export function ProjectJobsTab({ projectId }: Props) {
             selectedIds={mass.selectedIds}
             config={mass.config}
             updateFields={massUpdateFields}
-            directUpdateActions={jobDirectUpdateActions}
             onSuccess={mass.handleMassSuccess}
           />
         </div>

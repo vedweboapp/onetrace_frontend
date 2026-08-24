@@ -81,14 +81,30 @@ function formatEntityTableDate(
   return formatSettingsDetailDate(dateFmt, value);
 }
 
-function columnHeaderClassName<T>(column: EntityTableColumn<T>) {
-  return cn(column.responsive && entityResponsiveClass(column.responsive), column.headerClassName);
+/** Room for “Aug 24, 2026, 12:36 PM” inside table-fixed columns. */
+const DATE_COL_WIDTH = "min-w-[13.25rem] w-[13.25rem]";
+const DATE_COL_WIDTH_WITH_TOGGLE = "min-w-[15.25rem] w-[15.25rem]";
+
+function columnHeaderClassName<T>(
+  column: EntityTableColumn<T>,
+  opts?: { withTextModeToggle?: boolean },
+) {
+  return cn(
+    column.responsive && entityResponsiveClass(column.responsive),
+    column.variant === "date" && (opts?.withTextModeToggle ? DATE_COL_WIDTH_WITH_TOGGLE : DATE_COL_WIDTH),
+    column.headerClassName,
+  );
 }
 
-function columnCellClassName<T>(column: EntityTableColumn<T>, wrap: boolean): string | undefined {
+function columnCellClassName<T>(
+  column: EntityTableColumn<T>,
+  wrap: boolean,
+  opts?: { withTextModeToggle?: boolean },
+): string | undefined {
   return cn(
     column.responsive && entityResponsiveClass(column.responsive),
     entityTableTdClassName(column, wrap),
+    column.variant === "date" && (opts?.withTextModeToggle ? DATE_COL_WIDTH_WITH_TOGGLE : DATE_COL_WIDTH),
     column.cellClassName,
   );
 }
@@ -184,7 +200,7 @@ function entityTableTdClassName<T>(column: EntityTableColumn<T>, wrap: boolean):
     case "tabular":
       return "tabular-nums";
     case "date":
-      return "tabular-nums whitespace-nowrap";
+      return "overflow-hidden tabular-nums whitespace-nowrap";
     default:
       return undefined;
   }
@@ -240,7 +256,7 @@ export function EntityDataTable<T extends { id: number | string }>({
                     key={col.id}
                     narrow={col.narrow && col.variant !== "selection"}
                     compact={col.variant === "selection"}
-                    className={columnHeaderClassName(col)}
+                    className={columnHeaderClassName(col, { withTextModeToggle: showMode })}
                   >
                     {showMode ? (
                       <div className="flex items-center justify-between gap-2">
@@ -273,14 +289,16 @@ export function EntityDataTable<T extends { id: number | string }>({
                     clickable={clickable}
                     onClick={clickable ? () => onRowClick(row) : undefined}
                   >
-                    {columns.map((col) => {
+                    {columns.map((col, index) => {
                       const isolateClick = col.variant === "actions" || col.variant === "selection";
                       return (
                         <DataTableTd
                           key={col.id}
                           narrow={col.narrow && col.variant !== "selection"}
                           compact={col.variant === "selection"}
-                          className={columnCellClassName(col, wrap)}
+                          className={columnCellClassName(col, wrap, {
+                            withTextModeToggle: index === lastColIndex && !hideTextModeToggle,
+                          })}
                           onPointerDown={isolateClick ? (e) => e.stopPropagation() : undefined}
                           onMouseDown={isolateClick ? (e) => e.stopPropagation() : undefined}
                           onClick={isolateClick ? (e) => e.stopPropagation() : undefined}

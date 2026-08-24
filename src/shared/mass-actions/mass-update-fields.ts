@@ -1,4 +1,4 @@
-﻿import { Country } from "country-state-city";
+import { Country } from "country-state-city";
 import type { CheckmarkSelectOption } from "@/shared/ui";
 import type { MassUpdateFieldDef } from "./types";
 import { FIELD_MAX_LENGTH } from "@/shared/form/field-max-length.util";
@@ -125,8 +125,6 @@ export function buildJobMassUpdateFields(
 
 export type ClientMassUpdateLabels = {
   name: string;
-  email: string;
-  phone: string;
   addressLine1: string;
   addressLine2: string;
   country: string;
@@ -141,8 +139,6 @@ export type ClientMassUpdateLabels = {
 export function buildClientMassUpdateFields(labels: ClientMassUpdateLabels): MassUpdateFieldDef[] {
   return [
     nameField("name", labels.name),
-    emailField("email", labels.email),
-    phoneField("phone", labels.phone),
     ...addressFields({
       addressLine1: labels.addressLine1,
       addressLine2: labels.addressLine2,

@@ -124,6 +124,7 @@
     "INVALID_CREDENTIALS": "Invalid email or password.",
     "NETWORK": "Network error. Check your connection and try again.",
     "fallback": "Something went wrong. Please try again.",
+    "HTTP_404": "Record not found",
     "HTTP_500": "The server had a problem. Please try again later."
   },
   "NotFound": {
@@ -223,7 +224,10 @@
         "createdBy": "Created by",
         "modifiedBy": "Modified by",
         "notModifiedYet": "Not modified yet",
-        "requiredField": "This field is required."
+        "requiredField": "This field is required.",
+        "recordNotFoundTitle": "Record not found",
+        "recordNotFoundDescription": "This record may have been deleted or the link is incorrect.",
+        "backToList": "Back to list"
       },
       "lockedField": {
         "aria": "Locked, read only",
