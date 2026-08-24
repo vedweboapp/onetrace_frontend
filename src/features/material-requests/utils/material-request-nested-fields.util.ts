@@ -46,12 +46,18 @@ export function materialRequestWorkerLabel(
   return id != null ? `#${id}` : "—";
 }
 
+export function materialRequestJobSerial(job: MaterialRequestJobRef): string {
+  const serial = job.serial_number?.trim();
+  if (serial) return serial;
+  return job.id > 0 ? `#${job.id}` : "—";
+}
+
 export function materialRequestJobLabel(row: MaterialRequestListItem | MaterialRequestDetail): string {
   const jobs = row.jobs ?? [];
   if (jobs.length === 0) return "—";
   const labels = jobs
-    .map((job) => job.title?.trim() || (job.id > 0 ? `#${job.id}` : ""))
-    .filter((label) => label.length > 0);
+    .map((job) => materialRequestJobSerial(job))
+    .filter((label) => label.length > 0 && label !== "—");
   if (labels.length === 0) return "—";
   if (labels.length === 1) return labels[0];
   return `${labels[0]} +${labels.length - 1}`;
@@ -65,11 +71,15 @@ export function materialRequestItemsCount(row: MaterialRequestListItem | Materia
 }
 
 export function materialRequestJobTitle(job: MaterialRequestJobRef): string {
-  return job.title?.trim() || (job.id > 0 ? `#${job.id}` : "—");
+  return job.title?.trim() || materialRequestJobSerial(job);
 }
 
 export function materialRequestJobProjectName(job: MaterialRequestJobRef): string {
-  return job.project?.name?.trim() || "—";
+  return job.project_name?.trim() || job.project?.name?.trim() || "—";
+}
+
+export function materialRequestJobClientName(job: MaterialRequestJobRef): string {
+  return job.client_name?.trim() || "—";
 }
 
 export function materialRequestItemProductName(row: MaterialRequestItemRef): string {
@@ -89,7 +99,12 @@ export function materialRequestItemGroupName(row: MaterialRequestItemRef): strin
 export function materialRequestItemJobTitle(row: MaterialRequestItemRef): string {
   const job = row.job;
   if (job && typeof job === "object") {
-    return job.title?.trim() || job.job_details?.trim() || (job.id > 0 ? `#${job.id}` : "—");
+    return (
+      job.serial_number?.trim() ||
+      job.title?.trim() ||
+      job.job_details?.trim() ||
+      (job.id > 0 ? `#${job.id}` : "—")
+    );
   }
   if (typeof job === "number") return `#${job}`;
   return "—";

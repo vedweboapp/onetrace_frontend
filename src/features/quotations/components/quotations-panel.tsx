@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/core/utils/http.util";
 import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 
 import * as React from "react";
@@ -56,6 +57,7 @@ import {
   ListPageCardSkeleton,
   ListPageHeader,
   ListPageSearchField,
+  listPageCardScrollClassName,
   SurfaceShell,
 } from "@/shared/ui";
 import {
@@ -103,7 +105,6 @@ export function QuotationsPanel() {
 
   const customerFilter =
     customerParam && /^\d+$/.test(customerParam) ? Number.parseInt(customerParam, 10) : undefined;
-  const siteFilter = siteParam && /^\d+$/.test(siteParam) ? Number.parseInt(siteParam, 10) : undefined;
   const projectFilter =
     projectParam && /^\d+$/.test(projectParam) ? Number.parseInt(projectParam, 10) : undefined;
   const statusFilter = statusParam?.trim() || undefined;
@@ -287,7 +288,6 @@ export function QuotationsPanel() {
         const { items: nextItems, pagination: p } = await fetchQuotationsPage(page, pageSize, {
           search: search || undefined,
           customer: customerFilter,
-          site: siteFilter,
           project: categoryFilter === QUOTE_CATEGORY.project ? projectFilter : undefined,
           status: statusFilter,
           quote_category: categoryFilter,
@@ -313,7 +313,6 @@ export function QuotationsPanel() {
     pageSize,
     search,
     customerFilter,
-    siteFilter,
     projectFilter,
     statusFilter,
     categoryFilter,
@@ -366,21 +365,15 @@ export function QuotationsPanel() {
     return m;
   }, [projectRows]);
 
-  const siteOptionsForFilter = React.useMemo(
-    () => siteRows.map((s) => ({ value: String(s.id), label: s.site_name })),
-    [siteRows],
-  );
-
   const listFilters = React.useMemo(
     () => ({
       search: search || undefined,
       customer: customerFilter,
-      site: siteFilter,
       project: categoryFilter === QUOTE_CATEGORY.project ? projectFilter : undefined,
       status: statusFilter,
       quote_category: categoryFilter,
     }),
-    [search, customerFilter, siteFilter, projectFilter, statusFilter, categoryFilter],
+    [search, customerFilter, projectFilter, statusFilter, categoryFilter],
   );
 
   const massUpdateFields = React.useMemo(
@@ -432,7 +425,7 @@ export function QuotationsPanel() {
     totalRecords: pagination.total_records,
     pageItems: items,
     fetchAllIds,
-    resetDeps: [pageSize, search, customerFilter, siteFilter, projectFilter, statusFilter, categoryFilter],
+    resetDeps: [pageSize, search, customerFilter, projectFilter, statusFilter, categoryFilter],
     updateFields: massUpdateFields,
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
@@ -444,7 +437,6 @@ export function QuotationsPanel() {
   const hasActiveFilters = hasListActiveFilters({
     search,
     customerParam,
-    siteParam,
     projectParam,
     statusParam,
   });
@@ -590,24 +582,8 @@ export function QuotationsPanel() {
                   if (open) setFetchCustomerOptions(true);
                 }}
                 onChange={(v) =>
-                  setUrl({ customer: v || null, site: null, project: null, page: null }, { replace: true })
+                  setUrl({ customer: v || null, project: null, page: null }, { replace: true })
                 }
-              />
-              <CheckmarkSelect
-                listLabel={t("filterSite")}
-                buttonAriaLabel={t("filterSite")}
-                options={siteOptionsForFilter}
-                value={siteParam ?? ""}
-                emptyLabel={t("filterAllSites")}
-                portaled
-                searchable
-                clearable
-                clearAriaLabel={tList("clearFilter")}
-                className="w-full min-w-0 sm:w-56"
-                onOpenChange={(open) => {
-                  if (open) setFetchSiteOptions(true);
-                }}
-                onChange={(v) => setUrl({ site: v || null, page: null }, { replace: true })}
               />
               {showProjectFilter ? (
                 <CheckmarkSelect
@@ -658,7 +634,7 @@ export function QuotationsPanel() {
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
         ) : listLoading ? (
           listViewMode === "list" ? (
-            <div className="p-4 sm:p-6">
+            <div className={listPageCardScrollClassName()}>
               <ListPageCardGrid>
                 {Array.from({ length: 6 }, (_, i) => (
                   <ListPageCardSkeleton key={i} />
@@ -686,7 +662,6 @@ export function QuotationsPanel() {
                 {
                   search: null,
                   customer: null,
-                  site: null,
                   project: null,
                   status: null,
                   page: null,
@@ -696,7 +671,7 @@ export function QuotationsPanel() {
             }
           />
         ) : listViewMode === "list" ? (
-          <div className="p-4 sm:p-6">
+          <div className={listPageCardScrollClassName()}>
             <ListPageCardGrid>
               {items.map((row) => {
                 const dueLabel = formatFlexibleApiDate(row.due_date, dueFmt);
@@ -714,6 +689,8 @@ export function QuotationsPanel() {
                 const siteDisplay = quotationSiteLabel(row.site, siteId != null ? siteLabelById[siteId] : undefined);
                 const tagsLine = quotationTagsLabels(row.tags, tagLabelById);
                 const relatedLabel = showProjectFilter ? projectDisplay : siteDisplay;
+                const serial = row.quotation_serial_number?.trim();
+                const quoteName = row.quote_name?.trim() || "—";
                 return (
                   <ListPageCard
                     key={row.id}
@@ -729,14 +706,14 @@ export function QuotationsPanel() {
                       />
                     }
                     title={
-                      <span className={entityNameLinkClassName}>
-                        {row.quotation_serial_number || row.quote_name}
+                      <span className={cn(entityNameLinkClassName, "block truncate")}>
+                        {serial || quoteName}
                       </span>
                     }
-                    subtitle={tagsLine !== "—" ? tagsLine : undefined}
+                    subtitle={serial && quoteName !== serial ? quoteName : tagsLine !== "—" ? tagsLine : undefined}
                     meta={
                       <span
-                        className="flex min-w-0 items-center gap-1 truncate"
+                        className="flex min-w-0 items-center gap-1.5"
                         title={`${customerDisplay} · ${relatedLabel}`}
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}
@@ -752,7 +729,7 @@ export function QuotationsPanel() {
                         ) : (
                           <span className="min-w-0 truncate">{customerDisplay}</span>
                         )}
-                        <span className="shrink-0 text-slate-400 dark:text-slate-500" aria-hidden>
+                        <span className="shrink-0 text-slate-300 dark:text-slate-600" aria-hidden>
                           ·
                         </span>
                         {showProjectFilter && projectId != null ? (
@@ -769,25 +746,19 @@ export function QuotationsPanel() {
                       </span>
                     }
                     footer={
-                      <div className="flex w-full flex-col gap-2">
-                        <div className="flex w-full flex-wrap items-center justify-between gap-3">
-                          <div className="flex min-w-0 flex-wrap items-center gap-3">
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
-                              <Calendar className="size-3.5 shrink-0 text-slate-500 dark:text-slate-500" aria-hidden />
-                              <span className="tabular-nums">{dueLabel}</span>
-                            </span>
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                              {quoteStatusLabel(row.status)}
-                            </span>
-                            <ActiveStatusBadge
-                              active={row.is_active}
-                              label={row.is_active ? t("status.active") : t("status.inactive")}
-                            />
-                          </div>
-                          <span className="text-xs text-slate-500 dark:text-slate-400">
-                            {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}
+                      <div className="flex min-w-0 w-full flex-wrap items-center justify-between gap-2">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <span className="inline-flex max-w-full truncate rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-800 dark:bg-teal-950/50 dark:text-teal-200">
+                            {quoteStatusLabel(row.status)}
+                          </span>
+                          <span className="inline-flex min-w-0 items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                            <Calendar className="size-3.5 shrink-0" aria-hidden />
+                            <span className="truncate tabular-nums">{dueLabel}</span>
                           </span>
                         </div>
+                        <span className="shrink-0 text-[11px] text-slate-400 dark:text-slate-500">
+                          {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}
+                        </span>
                       </div>
                     }
                     onCardClick={() => openDetail(row.id)}

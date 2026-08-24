@@ -116,6 +116,7 @@
     "INVALID_CREDENTIALS": "Correo o contraseña no válidos.",
     "NETWORK": "Error de red. Comprueba tu conexión e inténtalo de nuevo.",
     "fallback": "Algo salió mal. Inténtalo de nuevo.",
+    "HTTP_404": "Registro no encontrado",
     "HTTP_500": "El servidor tuvo un problema. Inténtalo más tarde."
   },
   "NotFound": {
@@ -214,7 +215,10 @@
         "updatedAt": "Actualizado el",
         "createdBy": "Creado por",
         "modifiedBy": "Modificado por",
-        "notModifiedYet": "Sin modificar"
+        "notModifiedYet": "Sin modificar",
+        "recordNotFoundTitle": "Registro no encontrado",
+        "recordNotFoundDescription": "Este registro puede haberse eliminado o el enlace no es correcto.",
+        "backToList": "Volver al listado"
       },
       "lockedField": {
         "aria": "Bloqueado, solo lectura",

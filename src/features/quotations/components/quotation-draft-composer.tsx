@@ -238,7 +238,7 @@ function DraftCompositeAddRow({
           <NumericInput
             id={qtyId}
             size="sm"
-            maxDecimals={4}
+            integer
             value={quantity}
             onChange={onQuantityChange}
             disabled={saving}
@@ -277,6 +277,8 @@ type Props = {
    * Service/manual quotations keep these enabled (default).
    */
   allowManualLines?: boolean;
+  /** Persist create-form values before leaving Scope & Pricing (pin / composite detail). */
+  onBeforeLeavePage?: () => void;
 };
 
 export function QuotationDraftComposer({
@@ -286,6 +288,7 @@ export function QuotationDraftComposer({
   canShow,
   readOnly = false,
   allowManualLines = true,
+  onBeforeLeavePage,
 }: Props) {
   const t = useTranslations("Dashboard.quotations.draft");
   const tDraw = useTranslations("Dashboard.projects.drawings.editor");
@@ -961,9 +964,10 @@ export function QuotationDraftComposer({
         const sep = href.includes("?") ? "&" : "?";
         href = `${href}${sep}pinDetailsKey=${encodeURIComponent(detailsKey)}`;
       }
+      onBeforeLeavePage?.();
       router.push(href);
     },
-    [router, pathname],
+    [router, pathname, onBeforeLeavePage],
   );
 
   if (!canShow) {
