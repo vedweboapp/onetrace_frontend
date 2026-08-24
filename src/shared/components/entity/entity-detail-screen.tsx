@@ -58,6 +58,12 @@ export type EntityDetailScreenProps<T> = {
   wrapSurface?: boolean;
 };
 
+/**
+ * Shared entity detail chrome.
+ * Scroll model: natural content height → only the dashboard main pane scrolls.
+ * List tabs that need a tall empty state use `DetailTabListShell` / `detailTabFillViewportClassName`.
+ * Full-bleed tabs (scheduling) pass `wrapSurface={false}` + a fill `className`.
+ */
 export function EntityDetailScreen<T>({
   entityId,
   listSection,
@@ -98,9 +104,7 @@ export function EntityDetailScreen<T>({
     dateFmt,
     listBack,
   };
-  const notFoundSurface = (
-    <EntityDetailNotFoundState backHref={listBack} fill />
-  );
+  const notFoundSurface = <EntityDetailNotFoundState backHref={listBack} fill />;
   const defaultSurface =
     loading ? (
       <EntityDetailLoadingSkeleton />
@@ -111,6 +115,14 @@ export function EntityDetailScreen<T>({
     ) : detail && children ? (
       children({ detail, dateFmt, retry })
     ) : null;
+
+  const surfaceBody = notFound
+    ? notFoundSurface
+    : renderSurface
+      ? (
+          <div className={entityDetailTabPanelClassName}>{renderSurface(screenCtx)}</div>
+        )
+      : defaultSurface;
 
   return (
     <div className={cn(entityDetailPageClassName, "pb-8 sm:pb-10", className)}>
@@ -127,21 +139,11 @@ export function EntityDetailScreen<T>({
       {wrapSurface ? (
         <SurfaceShell className={cn(detailRecordSurfaceShellClassName, entityDetailSurfaceClassName)}>
           <div className={cn(detailRecordInnerClassName, entityDetailSurfaceInnerClassName)}>
-            {notFound ? (
-              notFoundSurface
-            ) : renderSurface ? (
-              <div className={entityDetailTabPanelClassName}>{renderSurface(screenCtx)}</div>
-            ) : (
-              defaultSurface
-            )}
+            {surfaceBody}
           </div>
         </SurfaceShell>
-      ) : renderSurface ? (
-        <div className={entityDetailTabPanelClassName}>
-          {notFound ? notFoundSurface : renderSurface(screenCtx)}
-        </div>
       ) : (
-        defaultSurface
+        surfaceBody
       )}
 
       {footer}

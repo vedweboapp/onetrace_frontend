@@ -103,6 +103,7 @@ function coerceJob(raw: unknown): ProjectJobHierarchyJob | null {
     job_source: inferJobSource(raw),
     client: raw.client as ProjectJobHierarchyJob["client"],
     assigned_worker: raw.assigned_worker as ProjectJobHierarchyJob["assigned_worker"],
+    assigned_workers: raw.assigned_workers as ProjectJobHierarchyJob["assigned_workers"],
     status: coerceJobStatus(raw.status ?? raw.job_status),
     start_date: typeof raw.start_date === "string" ? raw.start_date : null,
     completed_at: typeof raw.completed_at === "string" ? raw.completed_at : null,

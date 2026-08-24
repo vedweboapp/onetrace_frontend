@@ -15,6 +15,8 @@ export type JobAssignedWorkerRef = {
   first_name?: string | null;
   last_name?: string | null;
   title?: string | null;
+  phone?: string | null;
+  phone_number?: string | null;
 };
 
 export type JobClientRef = {

@@ -14,7 +14,6 @@ import {
   getJobStatusId,
   getJobStatusRow,
   getJobAssignedWorkerRows,
-  jobAssignedWorkerLabel,
   jobChecklistEntries,
   jobChecklistIsMarked,
   jobClientLabel,
@@ -29,23 +28,17 @@ import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status
 import type { JobChecklistItem } from "@/features/jobs/types/job.types";
 import { JobChecklistsSection } from "@/features/jobs/components/job-checklists-section";
 import { JobDetailWorkScopeEditor } from "@/features/jobs/components/job-detail-work-scope-editor";
-import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
+import { DetailEntityLink, DetailSystemMetadataSection, EntityLabelOverflowGroup } from "@/shared/components/entity";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
 import {
-  DetailFieldsLayout,
   DetailMetricCard,
   DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
-import {
-  DetailLinkedTable,
-  DetailLinkedTableRow,
-  DetailLinkedTableTd,
-} from "@/shared/components/layout/detail-linked-table";
 import { routes } from "@/shared/config/routes";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
@@ -651,14 +644,12 @@ function PlotPinsBlock({
 export function JobDetailBody({
   detail,
   dateFmt,
-  workerLabel,
   onChecklistsUpdated,
   onSaved,
   onOpenScheduling,
 }: {
   detail: Job;
   dateFmt: Intl.DateTimeFormat;
-  workerLabel?: string;
   onChecklistsUpdated?: () => void;
   /** Refresh detail after a successful quick-edit PATCH. */
   onSaved?: () => void;
@@ -921,85 +912,43 @@ export function JobDetailBody({
                 />
               </DetailMetricCard>
             )}
-            {assignedWorkers.length > 1 ? (
-              <div className="col-span-full min-w-0">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="text-sm font-normal text-slate-500 dark:text-slate-400">
-                    {t("fields.assignedWorkers")}
-                  </p>
-                  {onOpenScheduling ? (
-                    <button
-                      type="button"
-                      title={t("detail.openScheduling")}
-                      aria-label={t("detail.openScheduling")}
-                      onClick={onOpenScheduling}
-                      className={cn(
-                        "inline-flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition",
-                        "hover:bg-sky-50 hover:text-sky-700 dark:hover:bg-sky-950/40 dark:hover:text-sky-300",
-                      )}
-                    >
-                      <CalendarDays className="size-4" strokeWidth={1.75} aria-hidden />
-                    </button>
-                  ) : null}
+            <DetailMetricCard label={t("fields.assignedWorkers")}>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <div className="min-w-0 flex-1">
+                  <EntityLabelOverflowGroup
+                    items={assignedWorkers.map((worker) => ({
+                      id: worker.id,
+                      label: worker.label,
+                      href: `${routes.dashboard.settingsUsers}/${worker.id}`,
+                    }))}
+                  />
                 </div>
-                <DetailLinkedTable
-                  columns={[
-                    { id: "name", header: t("fields.workerName") },
-                    { id: "role", header: t("fields.workerRole"), widthClass: "w-40" },
-                  ]}
-                  tableClassName="min-w-0"
-                >
-                  {assignedWorkers.map((worker, index) => (
-                    <DetailLinkedTableRow key={worker.id} index={index}>
-                      <DetailLinkedTableTd>
-                        <DetailEntityLink
-                          href={`${routes.dashboard.settingsUsers}/${worker.id}`}
-                          className="font-medium text-blue-600 underline-offset-2 hover:underline"
-                        >
-                          {worker.label}
-                        </DetailEntityLink>
-                      </DetailLinkedTableTd>
-                      <DetailLinkedTableTd>
-                        <span className="text-slate-600 dark:text-slate-300">
-                          {worker.title?.trim() || "—"}
-                        </span>
-                      </DetailLinkedTableTd>
-                    </DetailLinkedTableRow>
-                  ))}
-                </DetailLinkedTable>
+                {onOpenScheduling ? (
+                  <button
+                    type="button"
+                    title={t("detail.openScheduling")}
+                    aria-label={t("detail.openScheduling")}
+                    onClick={onOpenScheduling}
+                    className={cn(
+                      "inline-flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition",
+                      "hover:bg-sky-50 hover:text-sky-700 dark:hover:bg-sky-950/40 dark:hover:text-sky-300",
+                    )}
+                  >
+                    <CalendarDays className="size-4" strokeWidth={1.75} aria-hidden />
+                  </button>
+                ) : null}
               </div>
-            ) : (
-              <DetailMetricCard label={t("fields.assignedWorker")}>
-                <div className="flex items-center gap-1.5">
-                  {assignedWorkers[0] ? (
-                    <DetailEntityLink
-                      href={`${routes.dashboard.settingsUsers}/${assignedWorkers[0].id}`}
-                      className="min-w-0 truncate font-medium text-blue-600 underline-offset-2 hover:underline"
-                    >
-                      {workerLabel ?? assignedWorkers[0].label}
-                    </DetailEntityLink>
-                  ) : (
-                    <span className="min-w-0 truncate">
-                      {workerLabel ?? jobAssignedWorkerLabel(detail)}
-                    </span>
-                  )}
-                  {onOpenScheduling ? (
-                    <button
-                      type="button"
-                      title={t("detail.openScheduling")}
-                      aria-label={t("detail.openScheduling")}
-                      onClick={onOpenScheduling}
-                      className={cn(
-                        "inline-flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition",
-                        "hover:bg-sky-50 hover:text-sky-700 dark:hover:bg-sky-950/40 dark:hover:text-sky-300",
-                      )}
-                    >
-                      <CalendarDays className="size-4" strokeWidth={1.75} aria-hidden />
-                    </button>
-                  ) : null}
-                </div>
-              </DetailMetricCard>
-            )}
+            </DetailMetricCard>
+            <DetailEditableField
+              label={t("fields.description")}
+              value={detail.description ?? ""}
+              kind="text"
+              multiline
+              textareaBox
+              editAriaLabel={tActions("edit")}
+              empty="—"
+              onSave={(next) => patchField({ description: next })}
+            />
           </DetailMetricsGrid>
         </DetailPanelCard>
 
@@ -1110,26 +1059,6 @@ export function JobDetailBody({
               </DetailMetricCard>
             ) : null}
           </DetailMetricsGrid>
-        </DetailPanelCard>
-
-        <DetailPanelCard title={t("detail.sectionDescription")}>
-          <DetailFieldsLayout>
-            <DetailEditableField
-              label={<span className="sr-only">{t("fields.description")}</span>}
-              value={detail.description?.trim() ?? ""}
-              kind="text"
-              multiline
-              editAriaLabel={tActions("edit")}
-              empty="—"
-              onSave={(next) => patchField({ description: next })}
-            >
-              {detail.description?.trim() ? (
-                <p className="whitespace-pre-wrap text-sm font-normal text-slate-700 dark:text-slate-300">
-                  {detail.description}
-                </p>
-              ) : null}
-            </DetailEditableField>
-          </DetailFieldsLayout>
         </DetailPanelCard>
 
         {levels.length > 0 && (

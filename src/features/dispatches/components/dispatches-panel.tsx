@@ -10,6 +10,7 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchDispatchesPage } from "@/features/dispatches/api/dispatch.api";
 import type { DispatchListItem } from "@/features/dispatches/types/dispatch.types";
 import { dispatchWorkerLabel } from "@/features/dispatches/utils/dispatch-display.util";
+import { dispatchTotalQty } from "@/features/dispatches/utils/dispatch-normalize.util";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
@@ -128,12 +129,7 @@ export function DispatchesPanel() {
       c.tabular(
         "total_qty",
         t("table.qty"),
-        (r) => {
-          // prefer server-provided total_qty, but fall back to lines.length when present
-          const lines = (r as any).lines;
-          const qty = Number.isFinite(Number(r.total_qty)) ? Number(r.total_qty) : lines ? (Array.isArray(lines) ? lines.length : 0) : 0;
-          return `${qty} ${t("units")}`;
-        },
+        (r) => `${dispatchTotalQty(r as any)} ${t("units")}`,
         { headerClassName: quantityTableHeaderClass, cellClassName: quantityTableCellClass },
       ),
     ];
@@ -223,7 +219,7 @@ export function DispatchesPanel() {
                         </span>
                         <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
                           <Package className="size-3.5" aria-hidden />
-                          {((row as any).lines && Array.isArray((row as any).lines) ? (row as any).lines.length : row.total_qty) ?? 0} {t("units")}
+                          {dispatchTotalQty(row as any)} {t("units")}
                         </span>
                       </div>
                     }

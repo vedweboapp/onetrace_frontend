@@ -338,3 +338,61 @@ test('buildFieldRuleState correctly targets sections via s_id and __section__: a
   assert.equal(visibleState.get('__section__:172')?.visible, true);
 });
 
+test('normalizeConditionValue supports exact option strings containing commas', () => {
+  const rules = [
+    {
+      _uid: 'rule-comma-opt',
+      name: 'Show photos when long picklist option with comma is selected',
+      sequence: 1,
+      rule_type: 'advanced',
+      blocks: [
+        {
+          _uid: 'block-comma',
+          field_api_name: '__field__:564',
+          f_id: '1787218181727',
+          api_name: 'does_the_hold_open_device_release_the_door_when_required?',
+          condition: 'is',
+          value: 'It is not possible to confirm, as the hold open device is activated by the fire alarm system',
+          output_fields: [
+            {
+              field_api_name: '__field__:568',
+              f_id: '1787218364814',
+              action: 'show',
+            },
+          ],
+        },
+      ],
+    },
+  ] as any;
+
+  const targetGroups = {
+    '__field__:564': ['1787218181727'],
+    '1787218181727': ['1787218181727'],
+    'does_the_hold_open_device_release_the_door_when_required?': ['1787218181727'],
+    '__field__:568': ['1787218364814'],
+    '1787218364814': ['1787218364814'],
+  };
+
+  // Trigger matches exact string with comma
+  const stateMatched = buildFieldRuleState(
+    rules,
+    {
+      'does_the_hold_open_device_release_the_door_when_required?':
+        'It is not possible to confirm, as the hold open device is activated by the fire alarm system',
+    },
+    targetGroups
+  );
+  assert.equal(stateMatched.get('1787218364814')?.visible, true);
+
+  // When not matched -> hidden
+  const stateUnmatched = buildFieldRuleState(
+    rules,
+    {
+      'does_the_hold_open_device_release_the_door_when_required?': 'No',
+    },
+    targetGroups
+  );
+  assert.equal(stateUnmatched.get('1787218364814')?.visible, false);
+});
+
+

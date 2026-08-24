@@ -1,4 +1,6 @@
 export { DetailEntityLink, entityNameLinkClassName } from "./detail-entity-link";
+export { EntityLabelOverflowGroup } from "./entity-label-overflow-group";
+export type { EntityLabelOverflowItem } from "./entity-label-overflow-group";
 export { EntityDetailScreen } from "./entity-detail-screen";
 export type {
   EntityDetailScreenLabels,

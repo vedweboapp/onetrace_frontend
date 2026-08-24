@@ -16,7 +16,6 @@ import { routes } from "@/shared/config/routes";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { DetailMultiValue, DetailMultiValueItem } from "@/shared/components/layout/detail-multi-value";
 import {
-  DetailFieldsLayout,
   DetailMetricCard,
   DetailMetricsGrid,
   DetailPagePadding,
@@ -331,26 +330,18 @@ export function ProjectDetailBody({
                 ))}
               </DetailMultiValue>
             </DetailEditableField>
-          </DetailMetricsGrid>
-        </DetailPanelCard>
-
-        <DetailPanelCard title={t("detail.panelDescription")}>
-          <DetailFieldsLayout>
             <DetailEditableField
-              label={<span className="sr-only">{t("fields.description")}</span>}
+              label={t("fields.description")}
               value={detail.description ?? ""}
               kind="text"
               multiline
+              textareaBox
               required
               requiredMessage={t("validation.description")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ description: next })}
-            >
-              {detail.description?.trim() ? (
-                <span className="whitespace-pre-wrap font-normal leading-relaxed">{detail.description}</span>
-              ) : null}
-            </DetailEditableField>
-          </DetailFieldsLayout>
+            />
+          </DetailMetricsGrid>
         </DetailPanelCard>
 
         <DetailPanelCard title={t("detail.panelSites")}>

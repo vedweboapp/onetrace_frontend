@@ -12,17 +12,22 @@ import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Job } from "@/features/jobs/types/job.types";
 import {
-  getJobAssignedWorkerId,
+  getJobAssignedWorkerRows,
   getJobClientId,
   getJobProjectId,
   getJobStatusId,
   getJobStatusRow,
-  jobAssignedWorkerLabel,
   jobClientLabel,
   jobProjectLabel,
 } from "@/features/jobs/utils/job-nested-fields.util";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
-import { DetailEntityLink, EntityDataTable, entityCol, entityNameLinkClassName } from "@/shared/components/entity";
+import {
+  DetailEntityLink,
+  EntityDataTable,
+  EntityLabelOverflowGroup,
+  entityCol,
+  entityNameLinkClassName,
+} from "@/shared/components/entity";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
 import { routes } from "@/shared/config/routes";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
@@ -444,16 +449,18 @@ export function JobsPanel() {
           </span>
         );
       }),
-      c.link(
-        "worker",
-        t("table.assignedWorker"),
-        (r) => jobAssignedWorkerLabel(r, workerLabelById),
-        (r) => {
-          const id = getJobAssignedWorkerId(r);
-          return id != null ? `${routes.dashboard.settingsUsers}/${id}` : null;
-        },
-        { title: (r) => jobAssignedWorkerLabel(r, workerLabelById) },
-      ),
+      c.custom("worker", t("table.assignedWorker"), (r) => {
+        const workers = getJobAssignedWorkerRows(r, workerLabelById);
+        return (
+          <EntityLabelOverflowGroup
+            items={workers.map((worker) => ({
+              id: worker.id,
+              label: worker.label,
+              href: `${routes.dashboard.settingsUsers}/${worker.id}`,
+            }))}
+          />
+        );
+      }),
       c.link(
         "client",
         t("fields.client"),
@@ -605,10 +612,13 @@ export function JobsPanel() {
               {items.map((row) => {
                 const clientId = getJobClientId(row.client);
                 const projectId = getJobProjectId(row.project);
-                const workerId = getJobAssignedWorkerId(row);
                 const clientLabel = jobClientDisplay(row);
                 const projectLabel = jobProjectDisplay(row);
-                const workerLabel = jobAssignedWorkerLabel(row, workerLabelById);
+                const workerItems = getJobAssignedWorkerRows(row, workerLabelById).map((worker) => ({
+                  id: worker.id,
+                  label: worker.label,
+                  href: `${routes.dashboard.settingsUsers}/${worker.id}`,
+                }));
                 return (
                 <ListPageCard
                   key={row.id}
@@ -633,19 +643,7 @@ export function JobsPanel() {
                       ) : null}
                     </span>
                   }
-                  subtitle={
-                    workerId != null ? (
-                      <DetailEntityLink
-                        href={`${routes.dashboard.settingsUsers}/${workerId}`}
-                        className="min-w-0 truncate font-medium"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {workerLabel}
-                      </DetailEntityLink>
-                    ) : (
-                      workerLabel
-                    )
-                  }
+                  subtitle={<EntityLabelOverflowGroup items={workerItems} />}
                   meta={
                     <span
                       className="flex min-w-0 items-center gap-1 truncate"

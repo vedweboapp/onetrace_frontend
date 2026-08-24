@@ -461,7 +461,9 @@ function mapDispatches(raw: RawDispatch[]): MappedDispatch[] {
     organization: d.organization ?? null,
     worker: d.worker ?? null,
     workerLabel: workerLabelFrom(d.worker ?? d.worker_name ?? d.worker_name),
-    total_qty: Array.isArray(d.lines) ? d.lines.length : 0,
+    total_qty: Array.isArray(d.lines)
+      ? d.lines.reduce((sum: number, l: any) => sum + (Number(l.quantity) || 0), 0)
+      : 0,
     lines: (d.lines ?? [])
       .filter((l: any) => l.is_extra)
       .map((l: any) => ({

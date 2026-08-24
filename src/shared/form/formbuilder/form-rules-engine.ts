@@ -5,7 +5,13 @@ const normalizeConditionValue = (value: any): string[] => {
     return value.map((v) => String(v).trim().toLowerCase()).filter(Boolean);
   }
   if (typeof value === 'string') {
-    return value.split(',').map((v) => v.trim().toLowerCase()).filter(Boolean);
+    const trimmed = value.trim().toLowerCase();
+    if (!trimmed) return [];
+    const splits = trimmed.split(',').map((v) => v.trim()).filter(Boolean);
+    if (splits.length > 1) {
+      return Array.from(new Set([trimmed, ...splits]));
+    }
+    return [trimmed];
   }
   return [String(value ?? '').trim().toLowerCase()].filter(Boolean);
 };
@@ -80,14 +86,22 @@ const getRuleTargetAliases = (
 
   // field_api_name (which may be __field__:<id>) — stored value from dropdown
   if (fieldApiName) {
-    aliases.add(fieldApiName);
-    aliases.add(`__field__:${fieldApiName}`);
+    const rawName = String(fieldApiName);
+    aliases.add(rawName);
+    aliases.add(`__field__:${rawName}`);
+    if (rawName.startsWith('__field__:')) {
+      aliases.add(rawName.replace(/^__field__:/, ''));
+    }
   }
 
   // api_name fallback — actual field api_name for post-save resolution
   if (apiName && apiName !== fieldApiName) {
-    aliases.add(apiName);
-    aliases.add(`__field__:${apiName}`);
+    const rawApi = String(apiName);
+    aliases.add(rawApi);
+    aliases.add(`__field__:${rawApi}`);
+    if (rawApi.startsWith('__field__:')) {
+      aliases.add(rawApi.replace(/^__field__:/, ''));
+    }
   }
 
   return [...aliases];

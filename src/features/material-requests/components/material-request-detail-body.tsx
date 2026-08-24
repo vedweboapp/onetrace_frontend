@@ -10,7 +10,9 @@ import {
   materialRequestExtraItemName,
   materialRequestItemGroupName,
   materialRequestItemProductName,
+  materialRequestJobClientId,
   materialRequestJobClientName,
+  materialRequestJobProjectId,
   materialRequestJobProjectName,
   materialRequestJobSerial,
   materialRequestWorkerLabel,
@@ -26,7 +28,6 @@ import {
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import {
-  DetailCollapsibleSection,
   DetailMetricCard,
   DetailMetricsGrid,
   DetailPagePadding,
@@ -112,7 +113,7 @@ export function MaterialRequestDetailBody({
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
       <DetailPanelCard title={t("detail.sectionOverview")}>
-        <DetailMetricsGrid className="mb-4">
+        <DetailMetricsGrid>
           <DetailMetricCard label={t("fields.workerName")}>
             {nestedId(detail.worker_name) != null ? (
               <DetailEntityLink
@@ -152,6 +153,16 @@ export function MaterialRequestDetailBody({
           >
             {formatFlexibleApiDate(detail.requested_date, dueFmt)}
           </DetailEditableField>
+          <DetailEditableField
+            label={t("fields.notes")}
+            value={notes}
+            kind="text"
+            multiline
+            textareaBox
+            editAriaLabel={tActions("edit")}
+            empty="—"
+            onSave={(next) => patchField({ notes: next })}
+          />
         </DetailMetricsGrid>
       </DetailPanelCard>
 
@@ -172,7 +183,7 @@ export function MaterialRequestDetailBody({
         </DetailPanelCard>
       ) : null}
 
-      <DetailCollapsibleSection
+      <DetailPanelCard
         title={t("detail.sectionJobs")}
         badge={
           (detail.jobs ?? []).length > 0 ? (
@@ -192,34 +203,59 @@ export function MaterialRequestDetailBody({
               { id: "project", header: t("fields.projectName"), widthClass: "w-[36%]" },
             ]}
           >
-            {(detail.jobs ?? []).map((job, index) => (
-              <DetailLinkedTableRow key={job.id} index={index}>
-                <DetailLinkedTableTd
-                  className={detailLinkedTableCellClassName({
-                    align: "left",
-                    cellClassName: "font-medium text-slate-900 dark:text-slate-100",
-                  })}
-                >
-                  <DetailEntityLink
-                    href={`${routes.dashboard.jobs}/${job.id}`}
-                    className="text-blue-600 underline-offset-2 hover:underline"
+            {(detail.jobs ?? []).map((job, index) => {
+              const clientId = materialRequestJobClientId(job);
+              const clientName = materialRequestJobClientName(job);
+              const projectId = materialRequestJobProjectId(job);
+              const projectName = materialRequestJobProjectName(job);
+              const entityLinkClass = "text-blue-600 underline-offset-2 hover:underline";
+              return (
+                <DetailLinkedTableRow key={job.id} index={index}>
+                  <DetailLinkedTableTd
+                    className={detailLinkedTableCellClassName({
+                      align: "left",
+                      cellClassName: "font-medium text-slate-900 dark:text-slate-100",
+                    })}
                   >
-                    {materialRequestJobSerial(job)}
-                  </DetailEntityLink>
-                </DetailLinkedTableTd>
-                <DetailLinkedTableTd className={detailLinkedTableCellClassName({})}>
-                  {materialRequestJobClientName(job)}
-                </DetailLinkedTableTd>
-                <DetailLinkedTableTd className={detailLinkedTableCellClassName({})}>
-                  {materialRequestJobProjectName(job)}
-                </DetailLinkedTableTd>
-              </DetailLinkedTableRow>
-            ))}
+                    <DetailEntityLink
+                      href={`${routes.dashboard.jobs}/${job.id}`}
+                      className={entityLinkClass}
+                    >
+                      {materialRequestJobSerial(job)}
+                    </DetailEntityLink>
+                  </DetailLinkedTableTd>
+                  <DetailLinkedTableTd className={detailLinkedTableCellClassName({})}>
+                    {clientId != null ? (
+                      <DetailEntityLink
+                        href={`${routes.dashboard.clients}/${clientId}`}
+                        className={entityLinkClass}
+                      >
+                        {clientName}
+                      </DetailEntityLink>
+                    ) : (
+                      clientName
+                    )}
+                  </DetailLinkedTableTd>
+                  <DetailLinkedTableTd className={detailLinkedTableCellClassName({})}>
+                    {projectId != null ? (
+                      <DetailEntityLink
+                        href={`${routes.dashboard.projects}/${projectId}`}
+                        className={entityLinkClass}
+                      >
+                        {projectName}
+                      </DetailEntityLink>
+                    ) : (
+                      projectName
+                    )}
+                  </DetailLinkedTableTd>
+                </DetailLinkedTableRow>
+              );
+            })}
           </DetailLinkedTable>
         )}
-      </DetailCollapsibleSection>
+      </DetailPanelCard>
 
-      <DetailCollapsibleSection
+      <DetailPanelCard
         title={t("detail.sectionItems")}
         badge={
           itemRows.length > 0 ? <DetailSectionCountBadge count={itemRows.length} /> : null
@@ -287,7 +323,7 @@ export function MaterialRequestDetailBody({
             </tbody>
           </table>
         </div>
-      </DetailCollapsibleSection>
+      </DetailPanelCard>
 
       {extraItems.length > 0 ? (
         <DetailPanelCard title={t("dispatch.sectionExtraSent")}>
@@ -321,21 +357,6 @@ export function MaterialRequestDetailBody({
           </div>
         </DetailPanelCard>
       ) : null}
-
-      <DetailPanelCard title={t("fields.notes")}>
-        <DetailEditableField
-          label={<span className="sr-only">{t("fields.notes")}</span>}
-          value={notes}
-          kind="text"
-          editAriaLabel={tActions("edit")}
-          empty="—"
-          onSave={(next) => patchField({ notes: next })}
-        >
-          {notes ? (
-            <p className="whitespace-pre-wrap text-sm font-normal text-slate-700 dark:text-slate-300">{notes}</p>
-          ) : null}
-        </DetailEditableField>
-      </DetailPanelCard>
 
       <DetailSystemMetadataSection
         createdAt={detail.created_at ?? new Date().toISOString()}

@@ -550,16 +550,11 @@ export function QuotationDetailBody({
           value={desc}
           kind="text"
           multiline
+          textareaBox
           editAriaLabel={tActions("edit")}
           empty={t("detail.noDescription")}
           onSave={(next) => patchField({ description: next || null })}
-        >
-          {desc ? (
-            <p className="min-w-0 whitespace-pre-wrap break-words text-sm font-normal leading-relaxed [overflow-wrap:anywhere] text-slate-700 dark:text-slate-300">
-              {desc}
-            </p>
-          ) : null}
-        </DetailEditableField>
+        />
       </DetailMetricsGrid>
     </DetailPanelCard>
   );
@@ -689,41 +684,43 @@ export function QuotationDetailBody({
         <DetailPanelCard
           title={t("levels.sectionsTitle")}
           headerRight={
-            scopeEditing ? (
-              <div className="flex flex-wrap items-center gap-2">
+            isServiceQuotation ? (
+              scopeEditing ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <AppButton
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={scopeSaving}
+                    onClick={cancelScopeEdit}
+                  >
+                    {tActions("cancel")}
+                  </AppButton>
+                  <AppButton
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    loading={scopeSaving}
+                    disabled={!scopeDirty || scopeSaving}
+                    onClick={() => void saveScopeDraft()}
+                  >
+                    {t("page.saveEdit")}
+                  </AppButton>
+                </div>
+              ) : (
                 <AppButton
                   type="button"
-                  variant="secondary"
+                  variant="ghost"
                   size="sm"
-                  disabled={scopeSaving}
-                  onClick={cancelScopeEdit}
+                  aria-label={tActions("edit")}
+                  title={tActions("edit")}
+                  className="h-8 w-8 px-0"
+                  onClick={() => setScopeEditing(true)}
                 >
-                  {tActions("cancel")}
+                  <Pencil className="size-4" strokeWidth={1.75} />
                 </AppButton>
-                <AppButton
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  loading={scopeSaving}
-                  disabled={!scopeDirty || scopeSaving}
-                  onClick={() => void saveScopeDraft()}
-                >
-                  {t("page.saveEdit")}
-                </AppButton>
-              </div>
-            ) : (
-              <AppButton
-                type="button"
-                variant="ghost"
-                size="sm"
-                aria-label={tActions("edit")}
-                title={tActions("edit")}
-                className="h-8 w-8 px-0"
-                onClick={() => setScopeEditing(true)}
-              >
-                <Pencil className="size-4" strokeWidth={1.75} />
-              </AppButton>
-            )
+              )
+            ) : undefined
           }
         >
           {scopeDraft ? (
@@ -732,7 +729,7 @@ export function QuotationDetailBody({
               onDraftChange={handleScopeDraftChange}
               saving={scopeSaving}
               canShow
-              readOnly={!scopeEditing}
+              readOnly={!isServiceQuotation || !scopeEditing}
               allowManualLines
             />
           ) : (

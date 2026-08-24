@@ -212,7 +212,7 @@ html[data-font-size] :is(.text-2xl) {
   display: grid;
   /* Fixed label column so keys form a straight vertical line across every section. */
   grid-template-columns: var(--detail-label-col, 10.5rem) minmax(0, 1fr);
-  align-items: start;
+  align-items: center;
   column-gap: 1.25rem;
   row-gap: 0;
   container-type: inline-size;
@@ -238,9 +238,8 @@ html[data-font-size] :is(.text-2xl) {
 
 .dash-appearance-scope .detail-field .field-label {
   margin-bottom: 0;
-  /* Optical match to value text-sm + light vertical padding */
-  padding-top: 0.3rem;
-  align-self: start;
+  padding-top: 0;
+  align-self: center;
   line-height: 1.4;
   text-align: left;
   white-space: normal;
@@ -251,8 +250,25 @@ html[data-font-size] :is(.text-2xl) {
   min-height: 0;
   min-width: 0;
   display: flex;
-  align-items: stretch;
+  align-items: center;
   overflow: visible;
+}
+
+/* Description / notes: keep the label at the top of a tall value. */
+.dash-appearance-scope .detail-field.field-group:has(textarea),
+.dash-appearance-scope .detail-field--block {
+  align-items: start;
+}
+
+.dash-appearance-scope .detail-field.field-group:has(textarea) .field-label,
+.dash-appearance-scope .detail-field--block .field-label {
+  padding-top: 0.45rem;
+  align-self: start;
+}
+
+.dash-appearance-scope .detail-field.field-group:has(textarea) .field-control-wrap,
+.dash-appearance-scope .detail-field--block .field-control-wrap {
+  align-items: stretch;
 }
 
 /* When a detail field is extremely narrow, stack label above value. */

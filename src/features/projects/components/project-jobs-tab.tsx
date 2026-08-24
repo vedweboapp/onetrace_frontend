@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
 import { deleteJob } from "@/features/jobs/api/job.api";
-import { jobAssignedWorkerLabel, jobClientLabel } from "@/features/jobs/utils/job-nested-fields.util";
+import { getJobAssignedWorkerRows, jobClientLabel } from "@/features/jobs/utils/job-nested-fields.util";
 import { fetchProjectJobsHierarchy, fetchProjectsPage } from "@/features/projects/api/project.api";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { ProjectJobListItem } from "@/features/projects/types/project-jobs.types";
@@ -20,7 +20,7 @@ import {
   type ProjectJobsSourceFilter,
 } from "@/features/projects/utils/project-jobs-list.util";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
-import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { EntityDataTable, EntityLabelOverflowGroup, entityCol } from "@/shared/components/entity";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
 import { JOB_CATEGORY } from "@/features/jobs/constants/job-category";
 import { routes } from "@/shared/config/routes";
@@ -327,8 +327,17 @@ export function ProjectJobsTab({ projectId }: Props) {
         title: (row) => locationLabelForJob(row),
         responsive: "md",
       }),
-      c.truncate("worker", tJobs("table.assignedWorker"), (row) => jobAssignedWorkerLabel(row, workerLabelById), {
-        title: (row) => jobAssignedWorkerLabel(row, workerLabelById),
+      c.custom("worker", tJobs("table.assignedWorker"), (row) => {
+        const workers = getJobAssignedWorkerRows(row, workerLabelById);
+        return (
+          <EntityLabelOverflowGroup
+            items={workers.map((worker) => ({
+              id: worker.id,
+              label: worker.label,
+              href: `${routes.dashboard.settingsUsers}/${worker.id}`,
+            }))}
+          />
+        );
       }),
       
       c.custom("jobStatus", tJobs("table.jobStatus"), (row) => statusChipForJob(row)),

@@ -126,6 +126,7 @@ const PersonalProfileForm = forwardRef<
                 rawPhone && !rawPhone.startsWith("+") ? `+${rawPhone}` : rawPhone;
             setImage(initialData.user_detail?.user_image);
             reset({
+                role:initialData?.role_detail?.role_name,
                 firstName:
                     initialData.user_detail?.user?.first_name ||
                     initialData.user_detail?.first_name ||
@@ -414,7 +415,7 @@ const PersonalProfileForm = forwardRef<
                         label={t("Role")}
                         register={register("role")}
                         errors={errors.role}
-                        readOnly={!isEditing}
+                        readOnly={true}
                     />
                     <Input
                         label={t("JoiningDate")}

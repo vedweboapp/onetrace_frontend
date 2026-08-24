@@ -75,11 +75,21 @@ export function materialRequestJobTitle(job: MaterialRequestJobRef): string {
 }
 
 export function materialRequestJobProjectName(job: MaterialRequestJobRef): string {
-  return job.project_name?.trim() || job.project?.name?.trim() || "—";
+  const nestedName = job.project && typeof job.project === "object" ? job.project.name?.trim() : "";
+  return job.project_name?.trim() || nestedName || "—";
+}
+
+export function materialRequestJobProjectId(job: MaterialRequestJobRef): number | null {
+  return nestedId(job.project) ?? nestedId(job.project_id) ?? null;
 }
 
 export function materialRequestJobClientName(job: MaterialRequestJobRef): string {
-  return job.client_name?.trim() || "—";
+  const nestedName = job.client && typeof job.client === "object" ? job.client.name?.trim() : "";
+  return job.client_name?.trim() || nestedName || "—";
+}
+
+export function materialRequestJobClientId(job: MaterialRequestJobRef): number | null {
+  return nestedId(job.client) ?? nestedId(job.client_id) ?? null;
 }
 
 export function materialRequestItemProductName(row: MaterialRequestItemRef): string {

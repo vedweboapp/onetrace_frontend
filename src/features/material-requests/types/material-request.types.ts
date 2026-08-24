@@ -18,11 +18,13 @@ export type MaterialRequestWorkerRef = {
 export type MaterialRequestJobRef = {
   id: number;
   title?: string | null;
-  project?: { id: number; name?: string | null } | null;
   serial_number?: string | null;
+  project?: number | { id: number; name?: string | null } | null;
+  project_id?: number | null;
   project_name?: string | null;
+  client?: number | { id: number; name?: string | null } | null;
+  client_id?: number | null;
   client_name?: string | null;
-  client?: { id: number; name?: string | null } | null;
 };
 
 export type MaterialRequestItemProductRef = {
