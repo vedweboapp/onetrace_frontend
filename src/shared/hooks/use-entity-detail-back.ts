@@ -9,6 +9,7 @@ import {
   readBackHrefForPath,
   sanitizeInternalListBack,
   sanitizeJobsBackHref,
+  sanitizeQuotationsBackHref,
   storeBackHrefForPath,
   type DashboardListSection,
 } from "@/shared/utils/detail-from-list.util";
@@ -39,7 +40,9 @@ function resolveStoredOrQueryBack(
   const resolved =
     listSection === "jobs"
       ? sanitizeJobsBackHref(raw, fallback)
-      : sanitizeInternalDashboardBack(raw) ?? sanitizeInternalListBack(raw, listSection) ?? fallback;
+      : listSection === "quotations"
+        ? sanitizeQuotationsBackHref(raw, fallback)
+        : sanitizeInternalDashboardBack(raw) ?? sanitizeInternalListBack(raw, listSection) ?? fallback;
 
   if (pathWithoutQueryAndHash(resolved) === pathWithoutQueryAndHash(pathname)) {
     return fallback;
@@ -103,12 +106,7 @@ export function useQuotationFormBackUrl(): string {
 
   const resolve = React.useCallback(() => {
     const raw = readBackHrefForPath(pathname) ?? searchParams.get("back");
-    return (
-      sanitizeInternalDashboardBack(raw) ??
-      sanitizeInternalListBack(raw, "quotations") ??
-      sanitizeInternalListBack(raw, "projects") ??
-      routes.dashboard.quotations
-    );
+    return sanitizeQuotationsBackHref(raw, routes.dashboard.quotations);
   }, [pathname, searchParams]);
 
   const [backHref, setBackHref] = React.useState(resolve);

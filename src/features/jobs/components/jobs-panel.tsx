@@ -150,19 +150,6 @@ export function JobsPanel() {
     [listFilters],
   );
 
-  const jobDirectUpdateActions = React.useMemo(
-    () => [
-      {
-        id: "assign-worker",
-        label: t("massAssignWorker"),
-        fieldName: "assigned_worker",
-        options: workerOptions,
-        valueCoerce: "number" as const,
-      },
-    ],
-    [t, workerOptions],
-  );
-
   const mass = useEntityListMassActions({
     resource: "jobs",
     totalRecords: pagination.total_records,
@@ -579,7 +566,6 @@ export function JobsPanel() {
           selectedIds={mass.selectedIds}
           config={mass.config}
           updateFields={massUpdateFields}
-          directUpdateActions={jobDirectUpdateActions}
           onSuccess={mass.handleMassSuccess}
         />
       ) : null}

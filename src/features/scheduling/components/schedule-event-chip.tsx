@@ -37,15 +37,20 @@ export function ScheduleEventChip({
     <div
       data-schedule-chip
       className={cn(
-        "group/chip relative overflow-hidden rounded-md border border-sky-300 bg-sky-50 text-left shadow-sm",
+        "group/chip relative overflow-hidden border border-sky-300 bg-sky-50 text-left shadow-sm",
         "hover:border-sky-400 dark:border-sky-800 dark:bg-sky-950/40",
+        compact ? "rounded-none" : "rounded-md",
         className,
       )}
       style={style}
     >
       <button
         type="button"
-        className={cn("block w-full px-2 py-1.5 text-left", actionCount > 0 && "pr-10")}
+        className={cn(
+          "block h-full w-full px-2 text-left",
+          compact ? "py-1" : "py-1.5",
+          actionCount > 0 && "pr-10",
+        )}
         onClick={onOpen}
       >
         <p className="truncate text-[11px] font-semibold text-sky-950 dark:text-sky-100">

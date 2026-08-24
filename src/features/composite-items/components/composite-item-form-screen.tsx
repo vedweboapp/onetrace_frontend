@@ -957,7 +957,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
   }
 
   return (
-    <div className="pb-12">
+    <div className="w-full min-w-0 shrink-0">
       <DetailPageHeader
         title={isEdit ? t("page.editTitle") : t("page.createTitle")}
         backHref={safeBack}
@@ -974,7 +974,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
           </div>
         }
       />
-      <SurfaceShell className="rounded-none border-0 shadow-none ring-0">
+      <SurfaceShell className="overflow-visible rounded-none border-0 shadow-none ring-0">
         {loadingExisting ? (
           <div className="space-y-3 p-4 sm:p-6">
             <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
@@ -1174,8 +1174,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
               {itemsError ? <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">{itemsError}</p> : null}
               <div className="mt-2 space-y-2">
                 {rows.map((r, idx) => (
-                  <div key={r.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(14rem,22rem)_8rem_auto] sm:items-end">
-                    <div>
+                  <div key={r.id} className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+                    <div className="min-w-0 w-full sm:max-w-[22rem] sm:flex-1">
                       <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">{tModal("childItem")}<span className="ml-1 text-red-500">*</span></span>
                       <CheckmarkSelect
                         listLabel={tModal("childItem")}
@@ -1200,7 +1200,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                         addLabel={itemQuickCreate.addLabel}
                       />
                     </div>
-                    <div>
+                    <div className="w-[5.5rem] shrink-0">
                       <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">{tModal("componentQuantity")}</span>
                       <NumericInput
                         integer
@@ -1209,7 +1209,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                         disabled={submitting}
                       />
                     </div>
-                    <div className="flex gap-2 sm:justify-end">
+                    <div className="flex shrink-0 gap-2 pb-px">
                       <AppButton type="button" variant="secondary" size="sm" onClick={() => removeRow(r.id)} disabled={submitting || rows.length <= 1}>{tModal("removeComponent")}</AppButton>
                       {idx === rows.length - 1 ? <AppButton type="button" variant="secondary" size="sm" onClick={() => setRows((prev) => [...prev, { id: nextRowId(), child_item: "", quantity: "1" }])} disabled={submitting}>{tModal("addComponent")}</AppButton> : null}
                     </div>

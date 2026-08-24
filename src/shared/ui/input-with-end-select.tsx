@@ -39,7 +39,7 @@ type Props = {
 };
 
 const frameClassName = cn(
-  "flex h-11 w-full min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white text-sm shadow-sm transition",
+  "flex h-11 w-full min-w-0 items-center overflow-hidden rounded-xl border border-slate-200 bg-white text-sm shadow-sm transition",
   "focus-within:border-[color:var(--dash-accent,#111111)] focus-within:ring-2 focus-within:ring-[color:var(--dash-accent,#111111)]/20",
   "dark:border-slate-700 dark:bg-slate-950",
 );
@@ -161,7 +161,7 @@ export function InputWithEndSelect({
       {startSlot ?? (
         <>
           {orgMoney && showCurrencyAffix && currencyBefore ? (
-            <span className="shrink-0 pl-3.5 text-sm font-medium text-slate-500 dark:text-slate-400" aria-hidden>
+            <span className="flex h-full shrink-0 items-center pl-3.5 text-sm font-medium leading-none text-slate-500 dark:text-slate-400" aria-hidden>
               {affix}
             </span>
           ) : null}
@@ -173,7 +173,7 @@ export function InputWithEndSelect({
               placeholder={placeholder}
               disabled={disabled}
               invalid={invalid}
-              className={cn(inputClassName, showCurrencyAffix && currencyBefore && "pl-1.5")}
+              className={cn(inputClassName, "h-full", showCurrencyAffix && currencyBefore && "pl-1.5")}
             />
           ) : inputType === "number" ? (
             <NumericInput
@@ -201,7 +201,7 @@ export function InputWithEndSelect({
             />
           )}
           {orgMoney && showCurrencyAffix && !currencyBefore ? (
-            <span className="shrink-0 pr-2 text-sm font-medium text-slate-500 dark:text-slate-400" aria-hidden>
+            <span className="flex h-full shrink-0 items-center pr-2 text-sm font-medium leading-none text-slate-500 dark:text-slate-400" aria-hidden>
               {affix}
             </span>
           ) : null}

@@ -539,7 +539,7 @@ const SECTIONS: DocSection[] = [
       ul([
         "Search — search across the job list.",
         "Filters — filter the job list by the available criteria.",
-        "Mass actions — select multiple jobs (or all) to mass update, mass delete, mass export, or mass assign worker.",
+        "Mass actions — select multiple jobs (or all) to mass update, mass delete, or mass export.",
       ]),
       label("Locations tab"),
       p("Purpose — holds the full list of pins inside the project, organized by hierarchy: Project (root) → Drawing → Plot → Pin. It is not independent per drawing — it shows every pin across the whole project in one tabular view."),
@@ -733,7 +733,7 @@ const SECTIONS: DocSection[] = [
       ul([
         "Search; Job status; Assigned worker; Category; Active",
         "Card / Table, Add",
-        "Mass update / delete / export and Assign worker",
+        "Mass update / delete / export",
         "Mass-update fields include title, description, client, project, site, job status, start date (Form is not available in job mass update)",
       ]),
       label("Create / Edit — important fields"),

@@ -8,7 +8,7 @@ import { storeBackHrefForPath } from "@/shared/utils/detail-from-list.util";
 
 /** Clickable entity names — always blue so they read as links, not primary/accent. */
 export const entityNameLinkClassName =
-  "text-blue-600 underline-offset-2 hover:underline hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300";
+  "text-[#2563EB] underline-offset-2 hover:underline hover:text-[#1D4ED8] dark:text-[#60A5FA] dark:hover:text-[#93C5FD]";
 
 function currentDashboardLocation(pathname: string, searchParams: URLSearchParams): string {
   const qs = searchParams.toString();
