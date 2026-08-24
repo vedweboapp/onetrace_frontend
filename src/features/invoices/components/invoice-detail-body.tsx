@@ -207,6 +207,36 @@ export function InvoiceDetailBody({
               <DetailMetricCard label={t("fields.status")}>
                 <InvoiceStatusBadge status={detail.status} label={statusLabel} />
               </DetailMetricCard>
+              <DetailEditableField
+                label={t("fields.notesAndTerms")}
+                value={notesAndTerms}
+                kind="text"
+                multiline
+                textareaBox
+                editAriaLabel={tActions("edit")}
+                empty="—"
+                onSave={(next) => patchField({ notes_and_terms: next })}
+              />
+              <DetailEditableField
+                label={t("fields.clientNotes")}
+                value={clientNotes}
+                kind="text"
+                multiline
+                textareaBox
+                editAriaLabel={tActions("edit")}
+                empty="—"
+                onSave={(next) => patchField({ client_notes: next })}
+              />
+              <DetailEditableField
+                label={t("fields.internalNotes")}
+                value={internalNotes}
+                kind="text"
+                multiline
+                textareaBox
+                editAriaLabel={tActions("edit")}
+                empty="—"
+                onSave={(next) => patchField({ internal_notes: next })}
+              />
             </DetailMetricsGrid>
           </DetailPanelCard>
 
@@ -243,57 +273,6 @@ export function InvoiceDetailBody({
                 ))}
               </div>
             )}
-          </DetailPanelCard>
-
-          <DetailPanelCard title={t("fields.notesAndTerms")}>
-            <DetailEditableField
-              label={<span className="sr-only">{t("fields.notesAndTerms")}</span>}
-              value={notesAndTerms}
-              kind="text"
-              editAriaLabel={tActions("edit")}
-              empty="—"
-              onSave={(next) => patchField({ notes_and_terms: next })}
-            >
-              {notesAndTerms ? (
-                <p className="whitespace-pre-wrap text-sm font-normal text-slate-700 dark:text-slate-300">
-                  {notesAndTerms}
-                </p>
-              ) : null}
-            </DetailEditableField>
-          </DetailPanelCard>
-
-          <DetailPanelCard title={t("fields.clientNotes")}>
-            <DetailEditableField
-              label={<span className="sr-only">{t("fields.clientNotes")}</span>}
-              value={clientNotes}
-              kind="text"
-              editAriaLabel={tActions("edit")}
-              empty="—"
-              onSave={(next) => patchField({ client_notes: next })}
-            >
-              {clientNotes ? (
-                <p className="whitespace-pre-wrap text-sm font-normal text-slate-700 dark:text-slate-300">
-                  {clientNotes}
-                </p>
-              ) : null}
-            </DetailEditableField>
-          </DetailPanelCard>
-
-          <DetailPanelCard title={t("fields.internalNotes")}>
-            <DetailEditableField
-              label={<span className="sr-only">{t("fields.internalNotes")}</span>}
-              value={internalNotes}
-              kind="text"
-              editAriaLabel={tActions("edit")}
-              empty="—"
-              onSave={(next) => patchField({ internal_notes: next })}
-            >
-              {internalNotes ? (
-                <p className="whitespace-pre-wrap text-sm font-normal text-slate-700 dark:text-slate-300">
-                  {internalNotes}
-                </p>
-              ) : null}
-            </DetailEditableField>
           </DetailPanelCard>
 
           <DetailSystemMetadataSection

@@ -2,8 +2,7 @@
 
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ScheduleCreateCellButton } from "@/features/scheduling/components/schedule-create-cell-button";
-import { SchedulingEmptyUsers } from "@/features/scheduling/components/scheduling-empty-users";
+import { ClipboardPaste, GripVertical, Plus } from "lucide-react";
 import { ScheduleEventChip } from "@/features/scheduling/components/schedule-event-chip";
 import { TimeOffChip } from "@/features/scheduling/components/time-off-chip";
 import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
@@ -29,7 +28,7 @@ import {
   pointerToMinutes,
   type OccupiedRange,
 } from "@/features/scheduling/utils/scheduling-availability.util";
-import { ClipboardPaste } from "lucide-react";
+import { SchedulingEmptyUsers } from "@/features/scheduling/components/scheduling-empty-users";
 import {
   buildDayHourLabels,
   formatHourParts,
@@ -117,7 +116,7 @@ export function SchedulingDayTimeline({
   scrollToMinutes = null,
   scrollToWorkerId = null,
   onScrollTargetApplied,
-  onCreateSchedule,
+  onCreateSchedule: _onCreateSchedule,
   onRangeSelect,
   onScheduleClick,
   onRemoveSchedule,
@@ -490,8 +489,7 @@ export function SchedulingDayTimeline({
                   {availabilityBands.map((segment) => {
                     const { leftPct, widthPct } = minutesBandPct(segment.startMinutes, segment.endMinutes);
                     const isAvailable = segment.kind === "available";
-                    const startTime = minutesToTime(segment.startMinutes);
-                    const endTime = minutesToTime(Math.min(segment.startMinutes + 60, segment.endMinutes));
+                    const showPaste = isAvailable && canPasteOntoWorker(tech);
                     return (
                       <div
                         key={`${segment.kind}-${segment.startMinutes}`}
@@ -509,25 +507,40 @@ export function SchedulingDayTimeline({
                         {canBook && isAvailable && !activeDrag ? (
                           <div
                             className={cn(
-                              "pointer-events-none absolute inset-0 z-[1] flex items-center justify-center",
-                              "opacity-0 transition group-hover/avail:opacity-100 max-sm:opacity-100",
+                              "pointer-events-none absolute inset-0 z-[1] flex items-center justify-center gap-1",
+                              "opacity-0 transition group-hover/avail:opacity-100",
                             )}
                           >
-                            <ScheduleCreateCellButton
-                              iconOnly
-                              className="pointer-events-auto"
-                              onPaste={
-                                canPasteOntoWorker(tech)
-                                  ? () => onPasteSchedule?.(tech)
-                                  : undefined
-                              }
-                              pasteDisabled={pasteDisabled}
-                              onClick={() =>
-                                onRangeSelect
-                                  ? onRangeSelect({ tech, day, startTime, endTime })
-                                  : onCreateSchedule(tech, day)
-                              }
-                            />
+                            <span
+                              title={t("dragToSchedule")}
+                              className={cn(
+                                "inline-flex cursor-grab items-center gap-0.5 rounded-md border border-sky-300 bg-white px-1 py-0.5 text-sky-700 shadow-sm",
+                                "dark:border-sky-700 dark:bg-slate-950 dark:text-sky-200",
+                              )}
+                            >
+                              <GripVertical className="size-3" strokeWidth={2.25} aria-hidden />
+                              <Plus className="size-3" strokeWidth={2.5} aria-hidden />
+                            </span>
+                            {showPaste ? (
+                              <button
+                                type="button"
+                                disabled={pasteDisabled}
+                                title={t("copy.pasteHere")}
+                                aria-label={t("copy.pasteHere")}
+                                className={cn(
+                                  "pointer-events-auto inline-flex size-7 items-center justify-center rounded-md border border-sky-400 bg-white text-sky-700 shadow-sm",
+                                  "hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50",
+                                  "dark:border-sky-600 dark:bg-slate-950 dark:text-sky-200 dark:hover:bg-sky-950",
+                                )}
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onPasteSchedule?.(tech);
+                                }}
+                              >
+                                <ClipboardPaste className="size-3.5" strokeWidth={2.25} aria-hidden />
+                              </button>
+                            ) : null}
                           </div>
                         ) : null}
                       </div>

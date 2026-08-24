@@ -368,17 +368,23 @@ interface FormBuilderLayoutProps {
  * Generate a unique api_name by appending numbers if duplicate found.
  * First occurrence keeps original name, subsequent ones get _1, _2, etc.
  */
-const getUniqueApiName = (desiredApiName: string, sections: Section[]): string => {
+const getUniqueApiName = (
+  desiredApiName: string,
+  sections: Section[],
+  excludeFieldUid?: string,
+): string => {
+  if (!desiredApiName) return desiredApiName;
   let nameExists = false;
   let maxNumber = 0;
 
   sections.forEach((section) => {
     section.fields?.forEach((field) => {
+      if (excludeFieldUid && field._uid === excludeFieldUid) return;
       if (field.api_name === desiredApiName) {
         nameExists = true;
       }
       // Check for numbered versions: name_1, name_2, etc.
-      const numberMatch = field.api_name.match(
+      const numberMatch = field.api_name?.match(
         new RegExp(`^${desiredApiName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}_(\\d+)$`)
       );
       if (numberMatch) {
@@ -1061,9 +1067,12 @@ export default function FormBuilderLayout({
         sec._uid === sectionUid
           ? {
             ...sec,
-            fields: sec.fields.map((f) =>
-              f._uid === fieldUid ? { ...f, ...newConfig } : f,
-            ),
+            fields: sec.fields.map((f) => {
+              if (f._uid !== fieldUid) return f;
+              const desiredApi = newConfig.api_name || f.api_name;
+              const uniqueApi = getUniqueApiName(desiredApi, prev, fieldUid);
+              return { ...f, ...newConfig, api_name: uniqueApi };
+            }),
           }
           : sec,
       ),

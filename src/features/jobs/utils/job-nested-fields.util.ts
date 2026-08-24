@@ -15,7 +15,10 @@ import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status
 import type { UserProfile } from "@/features/users/types/user.types";
 import { jobFormsToFormIds } from "@/features/jobs/utils/job-form-map";
 
-export function getJobAssignedWorkerId(job: { assigned_worker?: Job["assigned_worker"] }): number | null {
+export function getJobAssignedWorkerId(job: {
+  assigned_worker?: Job["assigned_worker"];
+  assigned_workers?: Job["assigned_workers"];
+}): number | null {
   const workers = getJobAssignedWorkerRows(job);
   return workers[0]?.id ?? null;
 }
@@ -30,8 +33,26 @@ function workerRefLabel(w: JobAssignedWorkerRef, userLabelById?: Record<number, 
   return `#${w.id}`;
 }
 
+function workerRefEmail(w: JobAssignedWorkerRef): string | null {
+  const email = w.email?.trim();
+  return email || null;
+}
+
+function workerRefPhone(w: JobAssignedWorkerRef): string | null {
+  const phone = w.phone?.trim() || w.phone_number?.trim();
+  return phone || null;
+}
+
+export type JobAssignedWorkerRow = {
+  id: number;
+  label: string;
+  email: string | null;
+  phone: string | null;
+  title?: string | null;
+};
+
 function pushWorkerRow(
-  out: { id: number; label: string; title?: string | null }[],
+  out: JobAssignedWorkerRow[],
   seen: Set<number>,
   entry: number | JobAssignedWorkerRef,
   userLabelById?: Record<number, string>,
@@ -39,7 +60,12 @@ function pushWorkerRow(
   if (typeof entry === "number") {
     if (!Number.isFinite(entry) || entry <= 0 || seen.has(entry)) return;
     seen.add(entry);
-    out.push({ id: entry, label: userLabelById?.[entry] ?? `#${entry}` });
+    out.push({
+      id: entry,
+      label: userLabelById?.[entry] ?? `#${entry}`,
+      email: null,
+      phone: null,
+    });
     return;
   }
   if (entry && typeof entry === "object" && typeof entry.id === "number" && entry.id > 0) {
@@ -48,6 +74,8 @@ function pushWorkerRow(
     out.push({
       id: entry.id,
       label: workerRefLabel(entry, userLabelById),
+      email: workerRefEmail(entry),
+      phone: workerRefPhone(entry),
       title: typeof entry.title === "string" ? entry.title : null,
     });
   }
@@ -60,8 +88,8 @@ export function getJobAssignedWorkerRows(
     assigned_workers?: Job["assigned_workers"];
   },
   userLabelById?: Record<number, string>,
-): { id: number; label: string; title?: string | null }[] {
-  const out: { id: number; label: string; title?: string | null }[] = [];
+): JobAssignedWorkerRow[] {
+  const out: JobAssignedWorkerRow[] = [];
   const seen = new Set<number>();
 
   if (Array.isArray(job.assigned_workers)) {

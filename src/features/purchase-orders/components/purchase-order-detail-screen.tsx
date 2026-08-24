@@ -9,6 +9,7 @@ import type { PurchaseOrderContactRef, PurchaseOrderDetail } from "@/features/pu
 import { nestedId, normalizePurchaseOrderStatus } from "@/features/purchase-orders/utils/purchase-order-nested-fields.util";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
+import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { AppTabs } from "@/shared/ui";
 
@@ -121,23 +122,30 @@ export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
           label={t("edit")}
         />
       )}
-    >
-      {({ detail, dateFmt, retry }) => {
+      renderSurface={({ detail, dateFmt, retry }) => {
+        if (!detail) return null;
         const vendorId = nestedId(detail.vendor);
         const contactId = nestedId(detail.contact as number | PurchaseOrderContactRef | null | undefined);
         return (
-          <PurchaseOrderDetailBody
-            detail={detail}
-            vendorName={vendorId != null ? vendorNames[vendorId] : undefined}
-            contactName={contactId != null ? contactNames[contactId] : undefined}
-            dateFmt={dateFmt}
-            dueFmt={dueFmt}
-            statusLabel={statusLabel(detail.status)}
-            activeTab={activeTab}
-            onSaved={retry}
-          />
+          <div
+            role="tabpanel"
+            id={`purchase-order-detail-tab-${activeTab}`}
+            aria-labelledby={`purchase-order-detail-tab-trigger-${activeTab}`}
+            className={entityDetailTabPanelClassName}
+          >
+            <PurchaseOrderDetailBody
+              detail={detail}
+              vendorName={vendorId != null ? vendorNames[vendorId] : undefined}
+              contactName={contactId != null ? contactNames[contactId] : undefined}
+              dateFmt={dateFmt}
+              dueFmt={dueFmt}
+              statusLabel={statusLabel(detail.status)}
+              activeTab={activeTab}
+              onSaved={retry}
+            />
+          </div>
         );
       }}
-    </EntityDetailScreen>
+    />
   );
 }

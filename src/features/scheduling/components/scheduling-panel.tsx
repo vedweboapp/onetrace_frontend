@@ -1446,6 +1446,7 @@ export function SchedulingPanel({
                               ? (startTime, endTime) => openCreateSchedule(tech, day, { startTime, endTime })
                               : undefined
                         }
+                        onOpenDayView={() => openDayView(day)}
                         onScheduleClick={openJobDetail}
                         onRemoveSchedule={setDeleteTarget}
                         onRemoveTimeOff={setDeleteTimeOff}
@@ -1522,7 +1523,6 @@ export function SchedulingPanel({
           openJobDetail(schedule);
         }}
         onRemoveSchedule={setDeleteTarget}
-        onCopySchedule={copySchedule}
         onRemoveTimeOff={setDeleteTimeOff}
       />
 

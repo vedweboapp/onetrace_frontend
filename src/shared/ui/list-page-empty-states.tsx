@@ -43,7 +43,7 @@ export function listPageRootClassName(): string {
 
 /** Scrollable card grid area inside list shells (pagination stays pinned below). */
 export function listPageCardScrollClassName(): string {
-  return "min-h-0 flex-1 overflow-y-auto p-4 sm:p-6";
+  return "min-h-0 flex-1 overflow-y-auto p-5 sm:p-6 lg:p-8";
 }
 
 /** Scrollable pages (forms) — parent shell already scrolls; keep bottom padding. */

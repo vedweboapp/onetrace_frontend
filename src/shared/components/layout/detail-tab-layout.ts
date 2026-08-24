@@ -33,24 +33,28 @@ export const detailTabEmptyClassName =
 export const detailTabErrorClassName =
   "px-4 py-8 text-center text-sm text-red-600 dark:text-red-400 sm:px-6";
 
-/** Entity detail page — natural height; list tabs set their own viewport min-height. */
+/**
+ * Entity detail page — natural height only.
+ * Outer dashboard `overflow-y-auto` is the single scrollbar (same as client/site detail).
+ * Do not add min-h / flex-1 / overflow here or the white card nests a second scroll.
+ */
 export const entityDetailPageClassName = cn("w-full min-w-0");
 
-/** White record shell — slight gap under tabs; list tabs fill height inside. */
-export const entityDetailSurfaceClassName = cn("mt-2 min-w-0");
+/** White record shell — grows with content; no nested overflow scroll. */
+export const entityDetailSurfaceClassName = cn("mt-2 min-w-0 overflow-visible");
 
-export const entityDetailSurfaceInnerClassName = "flex min-h-0 min-w-0 w-full flex-col";
+export const entityDetailSurfaceInnerClassName = "min-w-0 w-full";
 
-/** Tab panel wrapper inside the record shell. */
-export const entityDetailTabPanelClassName = "flex min-h-0 min-w-0 w-full flex-1 flex-col";
+/** Tab panel wrapper inside the record shell (overview / form-style content). */
+export const entityDetailTabPanelClassName = "min-w-0 w-full";
 
 /**
- * List-style detail tabs fill remaining viewport so empty states and tables
- * use balanced height (top/bottom) instead of a short island under the tabs.
+ * List-style detail tabs (contacts, jobs table, …) — own min-height so empty/loading
+ * states are not a short island. Only these tabs should fill; overview must not.
  */
 export const detailTabFillViewportClassName = cn(
   "flex min-h-0 w-full flex-1 flex-col",
-  "min-h-[calc(100dvh-13.5rem)]",
+  "min-h-[min(28rem,calc(100dvh-14rem))]",
 );
 
 /** Centered empty / loading / error content inside a fill tab or list shell. */
