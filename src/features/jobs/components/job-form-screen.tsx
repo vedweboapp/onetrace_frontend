@@ -743,7 +743,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                 <textarea
                   id="job-description"
                   rows={4}
-                  className={cn(surfaceTextareaClassName, "min-h-[100px]")}
+                  className={cn(surfaceTextareaClassName, "min-h-[100px] overflow-y-auto [field-sizing:fixed]")}
                   disabled={saving}
                   maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
                   {...register("description", rhfRegisterOptions("description"))}

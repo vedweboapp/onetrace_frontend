@@ -28,7 +28,35 @@ export type ProjectJobHierarchyJob = {
         last_name?: string;
         username?: string;
         email?: string;
-      };
+        phone?: string | null;
+        phone_number?: string | null;
+      }
+    | Array<
+        | number
+        | {
+            id: number;
+            name?: string;
+            first_name?: string;
+            last_name?: string;
+            username?: string;
+            email?: string;
+            phone?: string | null;
+            phone_number?: string | null;
+          }
+      >;
+  assigned_workers?: Array<
+    | number
+    | {
+        id: number;
+        name?: string;
+        first_name?: string;
+        last_name?: string;
+        username?: string;
+        email?: string;
+        phone?: string | null;
+        phone_number?: string | null;
+      }
+  > | null;
   status: ProjectJobHierarchyStatus | null;
   start_date: string | null;
   completed_at: string | null;
