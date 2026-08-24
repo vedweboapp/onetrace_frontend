@@ -251,6 +251,15 @@ const getSectionRuleTarget = (section: Section, index: number) => {
   return `${SECTION_RULE_TARGET_PREFIX}${persistedSectionId}`;
 };
 
+export const getFieldRuntimeId = (field: any): string => {
+  if (!field) return "";
+  if (field.f_id != null && field.f_id !== "") return String(field.f_id);
+  if (field.id != null && field.id !== "") return String(field.id);
+  if (field._uid != null && field._uid !== "") return String(field._uid);
+  if (field.u_id != null && field.u_id !== "") return String(field.u_id);
+  return String(field.api_name || "");
+};
+
 const buildRuleTargetGroups = (
   schema: Section[],
 ): { targetGroups: RuleTargetGroups; fieldToSectionMap: Record<string, string> } => {
@@ -283,20 +292,16 @@ const buildRuleTargetGroups = (
       groups[alias] = canonicalSectionList;
     });
 
-    // Field-level aliases → resolve to individual api_name
+    // Field-level aliases → resolve to unique field runtime ID
     activeFields.forEach((field) => {
-      const fieldSelf = [field.api_name];
-      
-      // Register api_name as primary
-      groups[field.api_name] = fieldSelf;
-      fieldToSectionMap[field.api_name] = canonicalTarget;
-      
-      // Register __field__: prefix variant
-      if (field.api_name) {
-        const prefixed = `${FIELD_RULE_TARGET_PREFIX}${field.api_name}`;
-        groups[prefixed] = fieldSelf;
-        fieldToSectionMap[prefixed] = canonicalTarget;
-      }
+      const fieldKey = getFieldRuntimeId(field);
+      const fieldSelf = [fieldKey];
+
+      // Register runtime ID directly
+      groups[fieldKey] = fieldSelf;
+      groups[`${FIELD_RULE_TARGET_PREFIX}${fieldKey}`] = fieldSelf;
+      fieldToSectionMap[fieldKey] = canonicalTarget;
+      fieldToSectionMap[`${FIELD_RULE_TARGET_PREFIX}${fieldKey}`] = canonicalTarget;
       
       // Register ID-based variants
       if (field.id != null && field.id !== "") {
@@ -326,6 +331,23 @@ const buildRuleTargetGroups = (
         groups[uIdStr] = fieldSelf;
         fieldToSectionMap[`${FIELD_RULE_TARGET_PREFIX}${uIdStr}`] = canonicalTarget;
         fieldToSectionMap[uIdStr] = canonicalTarget;
+      }
+
+      // Register api_name aliases (append fieldKey to array so api_name targets resolve fieldKeys)
+      if (field.api_name) {
+        const prefixed = `${FIELD_RULE_TARGET_PREFIX}${field.api_name}`;
+        if (!groups[field.api_name]) {
+          groups[field.api_name] = [fieldKey];
+        } else if (!groups[field.api_name].includes(fieldKey)) {
+          groups[field.api_name].push(fieldKey);
+        }
+        if (!groups[prefixed]) {
+          groups[prefixed] = [fieldKey];
+        } else if (!groups[prefixed].includes(fieldKey)) {
+          groups[prefixed].push(fieldKey);
+        }
+        fieldToSectionMap[field.api_name] = canonicalTarget;
+        fieldToSectionMap[prefixed] = canonicalTarget;
       }
     });
   });
@@ -849,7 +871,7 @@ const sanitizeOutput = (
       section?.fields?.forEach((field) => {
         if (!field.api_name) return;
 
-        const merged = mergeRuleStates(fieldRuleState?.get(field.api_name), sectionRuleState);
+        const merged = mergeRuleStates(fieldRuleState?.get(getFieldRuntimeId(field)), sectionRuleState);
         if (merged?.visible === false) {
           delete sanitized[field.api_name];
           return;
@@ -1084,9 +1106,30 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
       return buildFieldRuleState(rules, formValues, ruleTargetGroups, fieldToSectionMap);
     }, [rules, formValues, ruleTargetGroups, fieldToSectionMap]);
 
-    // Automatically clear data for any fields or subforms that become hidden by rules
+    // Automatically clear data for any fields or subforms that become hidden by rules.
+    // IMPORTANT: when two fields share the same api_name (duplicate fields via f_id), clearing
+    // the hidden field must NOT wipe the visible sibling's value.  We therefore build a
+    // "has-visible-sibling" index keyed by api_name before doing any clearing.
     useEffect(() => {
       if (!fieldRuleState || fieldRuleState.size === 0 || !Array.isArray(schema)) return;
+
+      // Build a map: api_name → true if at least one field with that api_name is currently visible.
+      const apiNameHasVisibleField = new Map<string, boolean>();
+      schema.forEach((section, sIdx) => {
+        if (section.is_subform) return;
+        const sectionRuleTarget = getSectionRuleTarget(section, sIdx);
+        const sectionRuleState = fieldRuleState.get(sectionRuleTarget);
+        section.fields?.forEach((f) => {
+          if (!f.api_name) return;
+          const merged = mergeRuleStates(fieldRuleState.get(getFieldRuntimeId(f)), sectionRuleState);
+          const isVisible = merged == null || merged.visible !== false;
+          if (isVisible) {
+            apiNameHasVisibleField.set(f.api_name, true);
+          } else if (!apiNameHasVisibleField.has(f.api_name)) {
+            apiNameHasVisibleField.set(f.api_name, false);
+          }
+        });
+      });
 
       schema.forEach((section, sIdx) => {
         const sectionRuleTarget = getSectionRuleTarget(section, sIdx);
@@ -1107,8 +1150,12 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
 
         section.fields?.forEach((f) => {
           if (!f.api_name) return;
-          const merged = mergeRuleStates(fieldRuleState.get(f.api_name), sectionRuleState);
+          const merged = mergeRuleStates(fieldRuleState.get(getFieldRuntimeId(f)), sectionRuleState);
           if (merged?.visible === false) {
+            // Skip clearing if a sibling with the same api_name is still visible —
+            // they share the same RHF form key, so clearing here would wipe the sibling's value.
+            if (apiNameHasVisibleField.get(f.api_name) === true) return;
+
             const currentVal = getValues(f.api_name);
             const normType = getNormalizedType(f.field_type);
             if (isFieldValueNotEmpty(currentVal, normType)) {
@@ -1244,7 +1291,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
                       isSubmitted={isSubmitted}
                       dirtyFields={dirtyFields}
                       sectionFields={section.fields}
-                      ruleState={mergeRuleStates(fieldRuleState.get(f.api_name), sectionRuleState)}
+                      ruleState={mergeRuleStates(fieldRuleState.get(getFieldRuntimeId(f)), sectionRuleState)}
                       forceSingleColumn={forceSingleColumn}
                     />
                   ))}
