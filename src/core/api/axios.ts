@@ -15,10 +15,8 @@ import {
   resolveApiErrorUserText,
 } from "@/core/errors/api-error-text";
 import { markApiErrorToasted } from "@/core/errors/api-error-toast.util";
-import {
-  getRawApiErrors,
-  isFieldKeyedApiErrors,
-} from "@/core/errors/api-field-errors.util";
+import { isFieldKeyedApiErrors, getRawApiErrors } from "@/core/errors/api-field-errors.util";
+import { isApiNotFoundError } from "@/core/errors/api-not-found.util";
 import { AuthRefreshEnvelope } from "@/features/auth/types/auth.types";
 import { navigateToLoginIfBrowser } from "@/features/auth/utils/auth-redirect.util";
 import { resolvePublicApiBaseUrl } from "@/core/config/api-url.util";
@@ -215,6 +213,8 @@ function shouldSuppressApiErrorToast(
   if (config?.skipErrorToast) return true;
   // Field-level validation errors are shown under form fields — skip global toast.
   if (isFieldKeyedApiErrors(getRawApiErrors(error))) return true;
+  // Detail/list screens render their own not-found UI for missing records.
+  if (isApiNotFoundError(error)) return true;
   if (!axios.isAxiosError(error)) return false;
   if (error.response?.status !== 401) return false;
   const original = error.config as InternalAxiosRequestConfig & {

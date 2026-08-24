@@ -311,7 +311,6 @@ export function InvoicesPanel() {
 
     return [
       massSel.tableColumn,
-      c.primary("invoice", t("table.invoiceNumber"), (r) => r.invoice_number),
       c.link(
         "client",
         t("table.clientName"),

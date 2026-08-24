@@ -115,6 +115,7 @@ export {
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
   listPageRootClassName,
+  listPageCardScrollClassName,
   dashboardScrollablePageClassName,
   type ListPageEmptyStatesProps,
   type ListPageOnboardingEmptyProps,

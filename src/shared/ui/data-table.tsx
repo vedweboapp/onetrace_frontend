@@ -26,7 +26,7 @@ export function DataTable({ className, textWrap, ...props }: DataTableProps) {
     <table
       data-text-mode={textWrap ? "wrap" : "clip"}
       className={cn(
-        "w-full min-w-[min(100%,640px)] border-collapse text-left text-sm",
+        "w-full min-w-max border-collapse text-left text-sm",
         textWrap ? "table-auto" : "table-fixed",
         className,
       )}

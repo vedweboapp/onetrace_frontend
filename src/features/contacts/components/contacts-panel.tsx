@@ -24,6 +24,7 @@ import {
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
   listPageRootClassName,
+  listPageCardScrollClassName,
   DataTableRowActionsMenu,
   ListPageCard,
   ListPageCardGrid,
@@ -415,7 +416,7 @@ export function ContactsPanel() {
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
         ) : listLoading ? (
           listViewMode === "list" ? (
-            <div className="p-4 sm:p-6">
+            <div className={listPageCardScrollClassName()}>
               <ListPageCardGrid>
                 {Array.from({ length: 6 }, (_, i) => (
                   <ListPageCardSkeleton key={i} />
@@ -446,7 +447,7 @@ export function ContactsPanel() {
             }
           />
         ) : listViewMode === "list" ? (
-          <div className="p-4 sm:p-6">
+          <div className={listPageCardScrollClassName()}>
             <ListPageCardGrid>
               {items.map((row) => {
                 const parentHref =

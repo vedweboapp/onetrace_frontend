@@ -9,6 +9,10 @@ import type { Site, SiteContactPersonPayload, SiteUpdatePayload } from "@/featur
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import {
+  DetailAddressLine1EditableField,
+  flatAddressPatchFromPlace,
+} from "@/shared/components/layout/detail-address-line1-field";
+import {
   DetailAddressLocationFields,
   detailLocationCountryPayload,
   detailLocationStatePayload,
@@ -192,17 +196,22 @@ export function SiteDetailBody({
 
         <DetailPanelCard title={t("detail.sectionAddress")}>
           <DetailMetricsGrid>
-            <DetailEditableField
+            <DetailAddressLine1EditableField
+              fieldId={String(detail.id)}
               label={t("fields.addressLine1")}
-              value={addressParts.line1 ?? ""}
-              kind="text"
+              addressLine1={addressParts.line1}
+              country={addressParts.country}
+              state={addressParts.state}
+              city={addressParts.city}
+              pincode={addressParts.pincode}
               required
               requiredMessage={t("validation.addressLine1")}
               editAriaLabel={tActions("edit")}
-              onSave={(next) => patchSiteField({ address_line_1: next })}
+              onSaveLine={(next) => patchSiteField({ address_line_1: next })}
+              onSavePlace={(place) => patchSiteField(flatAddressPatchFromPlace(place))}
             >
               {addressParts.line1?.trim() ? addressParts.line1 : null}
-            </DetailEditableField>
+            </DetailAddressLine1EditableField>
             <DetailEditableField
               label={t("fields.addressLine2")}
               value={addressParts.line2 ?? ""}

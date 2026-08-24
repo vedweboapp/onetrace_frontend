@@ -14,8 +14,8 @@ export const detailMultiValueItemClassName = cn(
 
 export const detailMultiValueLinkClassName = cn(
   detailMultiValueItemClassName,
-  "text-blue-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800",
-  "dark:text-blue-300 dark:hover:border-blue-800 dark:hover:bg-blue-950/40 dark:hover:text-blue-200",
+  "text-[#2563EB] hover:border-blue-200 hover:bg-blue-50 hover:text-[#1D4ED8]",
+  "dark:text-[#60A5FA] dark:hover:border-blue-800 dark:hover:bg-blue-950/40 dark:hover:text-[#93C5FD]",
 );
 
 /**

@@ -147,6 +147,24 @@ export function sanitizeJobsBackHref(raw: string | null | undefined, fallback: s
   return decoded;
 }
 
+/** Quotes list or the originating project overview — used when leaving quotation detail. */
+export function sanitizeQuotationsBackHref(raw: string | null | undefined, fallback: string): string {
+  const fromQuotesList = sanitizeInternalListBack(raw, "quotations");
+  if (fromQuotesList) return fromQuotesList;
+
+  const decoded = decodeInternalDashboardPath(raw);
+  if (!decoded) return fallback;
+
+  const pathAndQuery = decoded.split("#")[0] ?? decoded;
+  if (PROJECT_DETAIL_BACK.test(pathAndQuery)) return decoded;
+
+  return decoded;
+}
+
+export function buildProjectOverviewHref(projectId: number): string {
+  return `${routes.dashboard.projects}/${projectId}?tab=details`;
+}
+
 export function buildProjectJobsTabHref(projectPathname: string): string {
   const qIdx = projectPathname.indexOf("?");
   const pathOnly = qIdx >= 0 ? projectPathname.slice(0, qIdx) : projectPathname;

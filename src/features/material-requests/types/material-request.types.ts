@@ -20,6 +20,9 @@ export type MaterialRequestJobRef = {
   title?: string | null;
   project?: { id: number; name?: string | null } | null;
   serial_number?: string | null;
+  project_name?: string | null;
+  client_name?: string | null;
+  client?: { id: number; name?: string | null } | null;
 };
 
 export type MaterialRequestItemProductRef = {
@@ -48,7 +51,7 @@ export type MaterialRequestItemSummary = {
 
 export type MaterialRequestItemRef = {
   id?: number;
-  job?: { id: number; title?: string | null; job_details?: string | null } | number | null;
+  job?: { id: number; title?: string | null; job_details?: string | null; serial_number?: string | null } | number | null;
   group?: { id: number; name?: string | null } | null;
   item?: MaterialRequestItemProductRef | number | null;
   /** Flat name from `material_request_line.item_name`. */

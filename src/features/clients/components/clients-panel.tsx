@@ -19,6 +19,7 @@ import {
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
   listPageRootClassName,
+  listPageCardScrollClassName,
   DataTableRowActionsMenu,
   ListPageCard,
   ListPageCardGrid,
@@ -30,6 +31,7 @@ import {
 import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import {
   MassActionBar,
   buildClientMassUpdateFields,
@@ -102,8 +104,6 @@ export function ClientsPanel() {
     () =>
       buildClientMassUpdateFields({
         name: t("fields.name"),
-        email: t("fields.email"),
-        phone: t("fields.phone"),
         addressLine1: t("fields.addressLine1"),
         addressLine2: t("fields.addressLine2"),
         country: t("fields.country"),
@@ -316,7 +316,7 @@ export function ClientsPanel() {
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
         ) : listLoading ? (
           listViewMode === "list" ? (
-            <div className="p-4 sm:p-6">
+            <div className={listPageCardScrollClassName()}>
               <ListPageCardGrid>
                 {Array.from({ length: 6 }, (_, i) => (
                   <ListPageCardSkeleton key={i} />
@@ -344,7 +344,7 @@ export function ClientsPanel() {
             }
           />
         ) : listViewMode === "list" ? (
-          <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-6">
+          <div className={listPageCardScrollClassName()}>
             <ListPageCardGrid>
               {items.map((row) => (
                 <ListPageCard
@@ -373,7 +373,9 @@ export function ClientsPanel() {
                         ) : null}
                       </div>
                       <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}
+                        {tList("cardCreated", {
+                          date: formatFlexibleApiDate(row.created_at, dateFmt),
+                        })}
                       </span>
                     </div>
                   }
@@ -421,12 +423,14 @@ export function ClientsPanel() {
             </ListPageCardGrid>
           </div>
         ) : (
-          <EntityDataTable
-            columns={tableColumns}
-            rows={items}
-            onRowClick={(row) => openClientDetail(row.id)}
-            getRowClassName={(row) => highlightClassName(row.id)}
-          />
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <EntityDataTable
+              columns={tableColumns}
+              rows={items}
+              onRowClick={(row) => openClientDetail(row.id)}
+              getRowClassName={(row) => highlightClassName(row.id)}
+            />
+          </div>
         )}
 
         {!listLoading && !loadError && items.length > 0 ? (

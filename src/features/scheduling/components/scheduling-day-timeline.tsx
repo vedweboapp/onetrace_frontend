@@ -514,7 +514,14 @@ export function SchedulingDayTimeline({
                             )}
                           >
                             <ScheduleCreateCellButton
+                              iconOnly
                               className="pointer-events-auto"
+                              onPaste={
+                                canPasteOntoWorker(tech)
+                                  ? () => onPasteSchedule?.(tech)
+                                  : undefined
+                              }
+                              pasteDisabled={pasteDisabled}
                               onClick={() =>
                                 onRangeSelect
                                   ? onRangeSelect({ tech, day, startTime, endTime })
@@ -540,7 +547,7 @@ export function SchedulingDayTimeline({
                 {activeDrag ? (
                   <div
                     className={cn(
-                      "pointer-events-none absolute inset-y-1 z-[2] rounded-md border border-dashed",
+                      "pointer-events-none absolute inset-y-0 z-[2] border border-dashed",
                       activeDrag.valid
                         ? dragMode === "timeoff"
                           ? "border-amber-400 bg-amber-200/60 dark:bg-amber-900/50"
@@ -566,7 +573,7 @@ export function SchedulingDayTimeline({
                       key={row.id}
                       timeOff={row}
                       compact
-                      className="absolute top-1.5 z-[1] h-[calc(100%-12px)] min-h-[44px]"
+                      className="absolute inset-y-0 z-[1] h-full min-h-0 rounded-none"
                       style={{ left: `${leftPct}%`, width: `max(${widthPct}%, 6rem)` }}
                       onRemove={onRemoveTimeOff ? () => onRemoveTimeOff(row) : undefined}
                     />
@@ -585,7 +592,7 @@ export function SchedulingDayTimeline({
                       key={schedule.id}
                       schedule={schedule}
                       compact
-                      className="absolute top-1.5 z-[1] h-[calc(100%-12px)] min-h-[44px]"
+                      className="absolute inset-y-0 z-[1] h-full min-h-0 rounded-none"
                       style={{ left: `${leftPct}%`, width: `max(${widthPct}%, 7rem)` }}
                       onOpen={() => onScheduleClick(schedule)}
                       onCopy={onCopySchedule ? () => onCopySchedule(schedule) : undefined}
