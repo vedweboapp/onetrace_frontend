@@ -30,6 +30,7 @@ export function EntityDetailErrorState({
       title={title ?? t("loadErrorTitle")}
       description={message}
       fill={fill}
+      viewportFill={fill}
       compact={!fill}
       className={className}
       action={

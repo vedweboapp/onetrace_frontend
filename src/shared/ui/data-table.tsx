@@ -40,8 +40,10 @@ export function DataTableHead({ className, ...props }: ComponentPropsWithoutRef<
   return (
     <thead
       className={cn(
-        "sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500",
-        "dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-400",
+        "sticky top-0 z-10 border-b border-slate-200 bg-slate-100 text-[11px] font-semibold uppercase tracking-wide text-slate-600",
+        "dark:border-slate-700 dark:bg-slate-800/95 dark:text-slate-300",
+        "[&>tr>th]:border-r [&>tr>th]:border-slate-200/90 [&>tr>th]:last:border-r-0",
+        "dark:[&>tr>th]:border-slate-700/80",
         className,
       )}
       {...props}
@@ -53,7 +55,9 @@ export function DataTableBody({ className, ...props }: ComponentPropsWithoutRef<
   return (
     <tbody
       className={cn(
-        "divide-y divide-slate-100 bg-white dark:divide-slate-800/80 dark:bg-slate-950",
+        "divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-950",
+        "[&>tr>td]:border-r [&>tr>td]:border-slate-100 [&>tr>td]:last:border-r-0",
+        "dark:[&>tr>td]:border-slate-800/90",
         className,
       )}
       {...props}
@@ -76,7 +80,7 @@ export function DataTableRow({
     <tr
       className={cn(
         "bg-white dark:bg-slate-950",
-        clickable && "cursor-pointer transition-colors duration-150 hover:bg-slate-50/90 dark:hover:bg-slate-900/70",
+        clickable && "cursor-pointer transition hover:bg-slate-50 dark:hover:bg-slate-900/80",
         className,
       )}
       role={clickable ? "button" : undefined}
@@ -94,7 +98,7 @@ export function DataTableRow({
   );
 }
 
-const selectionColumnClassName = "w-10 min-w-10 max-w-10 pl-2.5 pr-1.5 py-2 align-middle";
+const selectionColumnClassName = "w-11 min-w-11 max-w-11 pl-3 pr-2 py-2.5 align-middle";
 
 function SelectionColumnContent({ children }: { children: ReactNode }) {
   return <div className="flex items-center justify-start">{children}</div>;
@@ -115,8 +119,8 @@ export function DataTableTh({
         compact
           ? selectionColumnClassName
           : narrow
-            ? "w-10 px-2 py-2 align-middle"
-            : "px-3 py-2 align-middle sm:px-4",
+            ? "w-11 px-2 py-2.5 align-middle"
+            : "px-3 py-2.5 align-middle sm:px-3.5",
         className,
       )}
       {...props}
@@ -141,8 +145,8 @@ export function DataTableTd({
         compact
           ? selectionColumnClassName
           : narrow
-            ? "w-10 px-2 py-2 align-middle"
-            : "px-3 py-2 align-middle text-slate-700 dark:text-slate-300 sm:px-4",
+            ? "w-11 px-2 py-2.5 align-middle"
+            : "px-3 py-2.5 align-middle text-slate-700 dark:text-slate-300 sm:px-3.5",
         className,
       )}
       {...props}

@@ -30,6 +30,7 @@ export function EntityDetailNotFoundState({
       title={title ?? t("recordNotFoundTitle")}
       description={description ?? t("recordNotFoundDescription")}
       fill={fill}
+      viewportFill={fill}
       action={
         <AppButton type="button" variant="secondary" size="sm" onClick={() => router.push(backHref)}>
           {backLabel ?? t("backToList")}

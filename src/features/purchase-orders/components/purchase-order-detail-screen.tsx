@@ -9,7 +9,7 @@ import type { PurchaseOrderContactRef, PurchaseOrderDetail } from "@/features/pu
 import { nestedId, normalizePurchaseOrderStatus } from "@/features/purchase-orders/utils/purchase-order-nested-fields.util";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
-import { entityDetailScrollTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
+import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { AppTabs } from "@/shared/ui";
 
@@ -131,7 +131,7 @@ export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
             role="tabpanel"
             id={`purchase-order-detail-tab-${activeTab}`}
             aria-labelledby={`purchase-order-detail-tab-trigger-${activeTab}`}
-            className={entityDetailScrollTabPanelClassName}
+            className={entityDetailTabPanelClassName}
           >
             <PurchaseOrderDetailBody
               detail={detail}

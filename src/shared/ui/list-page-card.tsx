@@ -32,7 +32,7 @@ export function ListPageCardMetaLine({
   return (
     <div
       className={cn(
-        "flex min-w-0 items-center gap-1.5 text-sm leading-5 text-slate-500 dark:text-slate-400",
+        "flex min-w-0 items-center gap-1.5 text-[13px] leading-5 text-slate-500 dark:text-slate-400",
         className,
       )}
     >
@@ -137,7 +137,7 @@ export function ListPageCard({
               {title}
             </div>
             {subtitle ? (
-              <div className="min-w-0 truncate text-sm font-medium leading-5 text-slate-600 dark:text-slate-300">
+              <div className="min-w-0 truncate text-[13px] font-medium leading-5 text-slate-600 dark:text-slate-300">
                 {subtitle}
               </div>
             ) : null}
@@ -161,7 +161,7 @@ export function ListPageCard({
         </div>
 
         {description ? (
-          <p className="line-clamp-2 min-w-0 text-sm leading-5 text-slate-500 dark:text-slate-400">
+          <p className="line-clamp-2 min-w-0 text-[13px] leading-5 text-slate-500 dark:text-slate-400">
             {description}
           </p>
         ) : null}

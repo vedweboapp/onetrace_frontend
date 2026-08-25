@@ -24,7 +24,7 @@ import {
   EntityDetailScreen,
   EntityDetailTabLoadingState,
 } from "@/shared/components/entity";
-import { entityDetailScrollTabPanelClassName, entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
+import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -243,6 +243,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
   return (
     <EntityDetailScreen
       entityId={projectId}
+      className="pb-8 sm:pb-10"
       listSection="projects"
       listRoute={routes.dashboard.projects}
       loadError={t("detailLoadError")}
@@ -404,10 +405,11 @@ export function ProjectDetailScreen({ projectId }: Props) {
           id={`project-detail-tab-${activeTab}`}
           aria-labelledby={`project-detail-tab-trigger-${activeTab}`}
           className={
-            activeTab === "details" || activeTab === "location"
-              ? entityDetailScrollTabPanelClassName
+            activeTab === "location"
+              ? cn(entityDetailTabPanelClassName, "w-full overflow-y-auto")
               : entityDetailTabPanelClassName
           }
+          style={activeTab === "location" ? { maxHeight: "calc(100dvh - 200px)" } : undefined}
         >
           {loading && activeTab === "details" ? (
             <EntityDetailLoadingSkeleton fill />

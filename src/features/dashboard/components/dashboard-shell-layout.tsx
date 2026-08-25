@@ -5,9 +5,13 @@ import { Suspense } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { DashboardChromeSlot } from "@/features/dashboard/components/dashboard-chrome-slot";
 import { DashboardHeader } from "@/features/dashboard/components/dashboard-header";
-import { DashboardPageScrollHost } from "@/features/dashboard/components/dashboard-page-scroll-host";
 import { DashboardSidebar } from "@/features/dashboard/components/dashboard-sidebar";
 import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
+import {
+  dashboardMainGutterClassName,
+  dashboardPageContainerClassName,
+} from "@/shared/config/dashboard-shell";
+import { cn } from "@/core/utils/http.util";
 
 type Props = {
   children: ReactNode;
@@ -44,7 +48,24 @@ export function DashboardShellLayout({ children }: Props) {
 
   const main = (
     <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-slate-950">
-      <DashboardPageScrollHost>{children}</DashboardPageScrollHost>
+      {/*
+        Scroll on the full-bleed pane so the scrollbar sits at the viewport edge.
+        Horizontal gutters live on the scroll content (not on <main>), matching
+        enterprise CRM detail layouts.
+      */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
+        <div
+          className={cn(
+            dashboardPageContainerClassName,
+            dashboardMainGutterClassName,
+            // Non-list pages (settings, forms, detail) scroll above.
+            // List pages use h-full + overflow-hidden so only the table body scrolls.
+            "flex min-h-0 flex-1 flex-col py-4 sm:py-5",
+          )}
+        >
+          {children}
+        </div>
+      </div>
     </main>
   );
 
@@ -55,22 +76,29 @@ export function DashboardShellLayout({ children }: Props) {
     </div>
   );
 
-  const shellRow = (
-    <div className="flex h-0 min-h-0 flex-1 overflow-hidden">
-      {!isBoron && !isHydrogen ? sidebar : null}
-      {contentColumn}
-      {isBoron ? sidebar : null}
-    </div>
-  );
-
   if (isHydrogen) {
     return (
-      <div className="flex h-0 min-h-0 flex-1 overflow-hidden">
+      <>
+        {/* Keep sidebar for mobile / accessibility; hide on md+ when Hydrogen is active */}
         <div className="contents md:hidden">{sidebar}</div>
         {contentColumn}
-      </div>
+      </>
     );
   }
 
-  return shellRow;
+  if (isBoron) {
+    return (
+      <>
+        {contentColumn}
+        {sidebar}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {sidebar}
+      {contentColumn}
+    </>
+  );
 }

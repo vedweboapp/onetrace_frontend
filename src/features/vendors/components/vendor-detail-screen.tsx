@@ -16,7 +16,7 @@ import {
   EntityDetailScreen,
   EntityDetailTabLoadingState,
 } from "@/shared/components/entity";
-import { entityDetailScrollTabPanelClassName, entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
+import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppTabs, ConfirmDialog, type AppTabItem } from "@/shared/ui";
@@ -135,11 +135,7 @@ export function VendorDetailScreen({ vendorId }: Props) {
           role="tabpanel"
           id={`vendor-detail-tab-${activeTab}`}
           aria-labelledby={`vendor-detail-tab-trigger-${activeTab}`}
-          className={
-            activeTab === "details"
-              ? entityDetailScrollTabPanelClassName
-              : entityDetailTabPanelClassName
-          }
+          className={entityDetailTabPanelClassName}
         >
           {loading && activeTab === "details" ? (
             <EntityDetailLoadingSkeleton fill />
