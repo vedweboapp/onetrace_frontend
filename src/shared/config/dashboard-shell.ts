@@ -18,3 +18,8 @@ export const dashboardPageContainerClassName = cn("w-full min-w-0");
 export const dashboardListTableShellClassName = cn(
   "-mx-4 rounded-none border-x-0 border-t-0 shadow-none ring-0 lg:-mx-6",
 );
+
+/** Wrapper for list / fill-height dashboard pages (prefer over `h-full`). */
+export const dashboardFillPageFrameClassName = cn(
+  "flex min-h-0 flex-1 flex-col overflow-hidden",
+);

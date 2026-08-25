@@ -6,7 +6,11 @@ import type { LucideIcon } from "lucide-react";
 import { ChevronDown } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import type { resolveDashboardAccent } from "@/features/dashboard/utils/accent-resolve.util";
+import { popoverPanelClassName } from "@/shared/config/design-tokens";
 import { cn } from "@/core/utils/http.util";
+
+const MENU_GAP = 6;
+const VIEWPORT_PAD = 8;
 
 export type TopNavGroupItem = {
   href: string;
@@ -53,8 +57,7 @@ export function TopNavLink({
 
 /**
  * Parent item with hover/click dropdown (Quotes, Jobs, Contacts, Products).
- * Menu is portaled and opens upward so it is never clipped by the nav’s
- * horizontal scroll container.
+ * Menu is portaled with fixed positioning so it is not clipped by the nav scroll strip.
  */
 export function TopNavGroup({
   label,
@@ -73,9 +76,12 @@ export function TopNavGroup({
   const menuRef = React.useRef<HTMLDivElement>(null);
   const closeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [open, setOpen] = React.useState(false);
-  const [coords, setCoords] = React.useState<{ top: number; left: number; width: number } | null>(
-    null,
-  );
+  const [coords, setCoords] = React.useState<{
+    top: number;
+    left: number;
+    width: number;
+    openAbove: boolean;
+  } | null>(null);
 
   const clearCloseTimer = React.useCallback(() => {
     if (closeTimerRef.current) {
@@ -88,19 +94,27 @@ export function TopNavGroup({
     const el = rootRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
+    const menuEl = menuRef.current;
+    const menuHeight = menuEl?.offsetHeight ?? Math.min(items.length * 40 + 12, 320);
     const menuWidth = Math.max(rect.width, 176);
-    const pad = 8;
+
     let left = rect.left;
-    if (left + menuWidth > window.innerWidth - pad) {
-      left = Math.max(pad, window.innerWidth - menuWidth - pad);
+    if (left + menuWidth > window.innerWidth - VIEWPORT_PAD) {
+      left = Math.max(VIEWPORT_PAD, window.innerWidth - menuWidth - VIEWPORT_PAD);
     }
-    // Prefer above the trigger so the menu stays clear of the scroll strip.
+
+    const spaceBelow = window.innerHeight - rect.bottom - MENU_GAP;
+    const spaceAbove = rect.top - MENU_GAP;
+    const openAbove = spaceBelow < menuHeight && spaceAbove > spaceBelow;
+    const top = openAbove ? rect.top - MENU_GAP : rect.bottom + MENU_GAP;
+
     setCoords({
-      top: Math.max(pad, rect.top - 6),
+      top,
       left,
       width: menuWidth,
+      openAbove,
     });
-  }, []);
+  }, [items.length]);
 
   const openMenu = React.useCallback(() => {
     clearCloseTimer();
@@ -112,6 +126,13 @@ export function TopNavGroup({
     clearCloseTimer();
     closeTimerRef.current = setTimeout(() => setOpen(false), 140);
   }, [clearCloseTimer]);
+
+  React.useLayoutEffect(() => {
+    if (!open) return;
+    updateCoords();
+    const id = requestAnimationFrame(() => updateCoords());
+    return () => cancelAnimationFrame(id);
+  }, [open, updateCoords]);
 
   React.useEffect(() => () => clearCloseTimer(), [clearCloseTimer]);
 
@@ -146,8 +167,9 @@ export function TopNavGroup({
             role="menu"
             aria-label={label}
             className={cn(
-              "fixed z-[120] min-w-[11rem] -translate-y-full rounded-lg border border-slate-200/90 bg-white p-1 shadow-lg",
-              "ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
+              "fixed z-[120] min-w-[11rem] p-1",
+              popoverPanelClassName,
+              coords.openAbove && "-translate-y-full",
             )}
             style={{ top: coords.top, left: coords.left, width: coords.width }}
             onMouseEnter={openMenu}

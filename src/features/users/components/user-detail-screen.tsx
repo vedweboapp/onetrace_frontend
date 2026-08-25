@@ -17,6 +17,12 @@ import { DetailEditableField } from "@/shared/components/layout/detail-editable-
 import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
+  entityDetailPageClassName,
+  entityDetailScrollTabPanelClassName,
+  entityDetailSurfaceClassName,
+  entityDetailSurfaceInnerClassName,
+} from "@/shared/components/layout/detail-tab-layout";
+import {
   detailRecordInnerClassName,
   detailRecordSurfaceShellClassName,
   DetailMetricCard,
@@ -195,7 +201,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
   const availableDays = detail ? resolveUserAvailability(detail) : [];
 
   return (
-    <div className="min-h-0 w-full pb-8 sm:pb-10">
+    <div className={entityDetailPageClassName}>
       <DetailPageHeader
         title={
           detail
@@ -247,12 +253,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
       />
 
       {activeTab === "scheduling" ? (
-        <div
-          className={cn(
-            "mt-3 flex min-h-[24rem] flex-col overflow-hidden",
-            "h-[calc(100dvh-13rem)] sm:h-[calc(100dvh-12rem)]",
-          )}
-        >
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <Suspense
             fallback={
               <div className="space-y-2 p-4">
@@ -265,8 +266,9 @@ export function UserDetailScreen({ userId }: { userId: number }) {
           </Suspense>
         </div>
       ) : (
-        <SurfaceShell className={cn(detailRecordSurfaceShellClassName, "mt-3")}>
-          <div className={detailRecordInnerClassName}>
+        <SurfaceShell className={cn(detailRecordSurfaceShellClassName, entityDetailSurfaceClassName)}>
+          <div className={cn(detailRecordInnerClassName, entityDetailSurfaceInnerClassName)}>
+            <div className={entityDetailScrollTabPanelClassName}>
           {loading ? (
             <EntityDetailLoadingSkeleton />
           ) : error ? (
@@ -487,6 +489,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
               </div>
             </DetailPagePadding>
           ) : null}
+            </div>
           </div>
         </SurfaceShell>
       )}

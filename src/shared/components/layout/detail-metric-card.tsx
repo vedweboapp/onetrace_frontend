@@ -9,7 +9,7 @@ import { DetailCollapsibleSection } from "./detail-collapsible-section";
 
 /** Soft canvas behind a single flat detail surface (avoid card-in-card). */
 export const detailRecordSurfaceShellClassName = cn(
-  "overflow-visible rounded-none border border-slate-200/90 bg-white shadow-none ring-0",
+  "overflow-hidden rounded-none border border-slate-200/90 bg-white shadow-none ring-0",
   "dark:border-slate-800 dark:bg-slate-950",
 );
 
