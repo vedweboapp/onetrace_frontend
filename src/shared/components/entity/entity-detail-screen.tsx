@@ -9,6 +9,7 @@ import {
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import {
   entityDetailPageClassName,
+  entityDetailScrollTabPanelClassName,
   entityDetailSurfaceClassName,
   entityDetailSurfaceInnerClassName,
   entityDetailTabPanelClassName,
@@ -60,9 +61,8 @@ export type EntityDetailScreenProps<T> = {
 
 /**
  * Shared entity detail chrome.
- * Scroll model: natural content height → only the dashboard main pane scrolls.
- * List tabs that need a tall empty state use `DetailTabListShell` / `detailTabFillViewportClassName`.
- * Full-bleed tabs (scheduling) pass `wrapSurface={false}` + a fill `className`.
+ * - Tabbed records: surface constrains height; each tab panel scrolls or hosts a table.
+ * - Single-panel records (contacts, sites, roles): surface body scrolls internally.
  */
 export function EntityDetailScreen<T>({
   entityId,
@@ -104,6 +104,14 @@ export function EntityDetailScreen<T>({
     dateFmt,
     listBack,
   };
+  const usesTabbedSurface = Boolean(headerExtension);
+  const surfacePanelClassName = usesTabbedSurface
+    ? entityDetailTabPanelClassName
+    : entityDetailScrollTabPanelClassName;
+
+  const wrapSurfacePanel = (node: ReactNode) =>
+    node ? <div className={surfacePanelClassName}>{node}</div> : null;
+
   const notFoundSurface = <EntityDetailNotFoundState backHref={listBack} fill />;
   const defaultSurface =
     loading ? (
@@ -119,10 +127,8 @@ export function EntityDetailScreen<T>({
   const surfaceBody = notFound
     ? notFoundSurface
     : renderSurface
-      ? (
-          <div className={entityDetailTabPanelClassName}>{renderSurface(screenCtx)}</div>
-        )
-      : defaultSurface;
+      ? wrapSurfacePanel(renderSurface(screenCtx))
+      : wrapSurfacePanel(defaultSurface);
 
   return (
     <div className={cn(entityDetailPageClassName, className)}>

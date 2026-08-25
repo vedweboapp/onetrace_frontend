@@ -5,35 +5,13 @@ import { Suspense } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { DashboardChromeSlot } from "@/features/dashboard/components/dashboard-chrome-slot";
 import { DashboardHeader } from "@/features/dashboard/components/dashboard-header";
+import { DashboardPageScrollHost } from "@/features/dashboard/components/dashboard-page-scroll-host";
 import { DashboardSidebar } from "@/features/dashboard/components/dashboard-sidebar";
 import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
-import {
-  dashboardMainGutterClassName,
-  dashboardPageContainerClassName,
-} from "@/shared/config/dashboard-shell";
-import { cn } from "@/core/utils/http.util";
 
 type Props = {
   children: ReactNode;
 };
-
-/**
- * Pages that fill the main pane (`data-list-page`, `data-dashboard-fill-page`) use
- * internal scroll only. Everything else scrolls in the main content column.
- */
-const dashboardMainScrollClassName = cn(
-  "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain",
-  "has-[[data-list-page]]:min-h-0 has-[[data-list-page]]:flex-1 has-[[data-list-page]]:overflow-hidden",
-  "has-[[data-dashboard-fill-page]]:min-h-0 has-[[data-dashboard-fill-page]]:flex-1 has-[[data-dashboard-fill-page]]:overflow-hidden",
-);
-
-const dashboardPageInnerClassName = cn(
-  dashboardPageContainerClassName,
-  dashboardMainGutterClassName,
-  "flex min-h-0 flex-1 flex-col py-4 sm:py-5",
-  "has-[[data-list-page]]:min-h-0 has-[[data-list-page]]:flex-1 has-[[data-list-page]]:overflow-hidden has-[[data-list-page]]:pb-0",
-  "has-[[data-dashboard-fill-page]]:min-h-0 has-[[data-dashboard-fill-page]]:flex-1 has-[[data-dashboard-fill-page]]:overflow-hidden",
-);
 
 /**
  * Arranges sidebar + header + main based on Appearance → Dashboard layout:
@@ -66,9 +44,7 @@ export function DashboardShellLayout({ children }: Props) {
 
   const main = (
     <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-slate-950">
-      <div className={dashboardMainScrollClassName}>
-        <div className={dashboardPageInnerClassName}>{children}</div>
-      </div>
+      <DashboardPageScrollHost>{children}</DashboardPageScrollHost>
     </main>
   );
 
@@ -80,7 +56,7 @@ export function DashboardShellLayout({ children }: Props) {
   );
 
   const shellRow = (
-    <div className="flex min-h-0 flex-1 overflow-hidden">
+    <div className="flex h-0 min-h-0 flex-1 overflow-hidden">
       {!isBoron && !isHydrogen ? sidebar : null}
       {contentColumn}
       {isBoron ? sidebar : null}
@@ -89,7 +65,7 @@ export function DashboardShellLayout({ children }: Props) {
 
   if (isHydrogen) {
     return (
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="flex h-0 min-h-0 flex-1 overflow-hidden">
         <div className="contents md:hidden">{sidebar}</div>
         {contentColumn}
       </div>

@@ -52,7 +52,7 @@ export function DashboardSidebar() {
   const isHydrogen = sidebarLayout === "hydrogen";
 
   const shell = cn(
-    "hidden h-full min-h-0 shrink-0 flex-col overflow-hidden bg-slate-50/80 dark:bg-slate-950",
+    "hidden min-h-0 shrink-0 flex-col self-stretch overflow-hidden bg-slate-50/80 dark:bg-slate-950",
     isBoron
       ? "border-l border-slate-200/90 dark:border-slate-800"
       : "border-r border-slate-200/90 dark:border-slate-800",

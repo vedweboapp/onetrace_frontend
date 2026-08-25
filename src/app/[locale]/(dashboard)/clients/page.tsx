@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 import { ClientsPanel } from "@/features/clients/components/clients-panel";
+import { dashboardFillPageFrameClassName } from "@/shared/config/dashboard-shell";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Dashboard.clients");
@@ -10,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function DashboardClientsPage() {
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+    <div className={dashboardFillPageFrameClassName}>
       <Suspense
         fallback={
           <div className="space-y-2 p-6">

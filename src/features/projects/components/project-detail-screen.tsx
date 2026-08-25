@@ -243,7 +243,6 @@ export function ProjectDetailScreen({ projectId }: Props) {
   return (
     <EntityDetailScreen
       entityId={projectId}
-      className="pb-8 sm:pb-10"
       listSection="projects"
       listRoute={routes.dashboard.projects}
       loadError={t("detailLoadError")}
