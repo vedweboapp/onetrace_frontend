@@ -452,11 +452,12 @@ const PersonalProfileForm = forwardRef<
             {/* Contact Details */}
             <FormSectionCard title={t("ContactDetails")} icon={<Mail size={20} />}>
                 <div className="flex flex-col gap-8">
-                    <div className=" grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                                    <Mail size={14} /> {t("Emails")}
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                        <div className="min-w-0 space-y-3">
+                            <div className="flex items-center justify-between gap-2">
+                                <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                                    <Mail size={14} aria-hidden className="shrink-0" />
+                                    {t("Emails")}
                                 </h3>
                                 {isEditing && (
                                     <AppButton
@@ -470,18 +471,21 @@ const PersonalProfileForm = forwardRef<
                                     </AppButton>
                                 )}
                             </div>
-                            <div className="space-y-3 flex flex-col">
+                            <div className="flex flex-col space-y-3">
                                 {emailFields.map((field, index) => (
-                                    <div key={field.id} className="flex gap-3 items-end group">
-                                        <div className="relative w-full">
+                                    <div key={field.id} className="group flex items-end gap-3">
+                                        <div className="relative min-w-0 w-full">
                                             <Input
                                                 register={register(`emails.${index}.email` as const)}
                                                 placeholder="Enter email address"
                                                 className="flex-1"
                                                 readOnly={!isEditing}
                                             />
-                                            {field?.is_primary && <p className="absolute top-2 right-2  px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold uppercase tracking-tight dark:bg-blue-900/40 dark:text-blue-300">{t("Primary")}</p>}
-
+                                            {field?.is_primary ? (
+                                              <p className="absolute right-2 top-2 rounded bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-tight text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                                                {t("Primary")}
+                                              </p>
+                                            ) : null}
                                         </div>
                                         {isEditing && (
                                             <label className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-50 dark:bg-slate-700 text-sm whitespace-nowrap">
@@ -515,10 +519,11 @@ const PersonalProfileForm = forwardRef<
                                 ))}
                             </div>
                         </div>
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                                    <Phone size={14} /> {t("Phones")}
+                        <div className="min-w-0 space-y-3">
+                            <div className="flex items-center justify-between gap-2">
+                                <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                                    <Phone size={14} aria-hidden className="shrink-0" />
+                                    {t("Phones")}
                                 </h3>
                                 {isEditing && (
                                     <AppButton
@@ -534,8 +539,8 @@ const PersonalProfileForm = forwardRef<
                             </div>
                             <div className="space-y-3">
                                 {phoneFields.map((field, index) => (
-                                    <div key={field.id} className="flex gap-3 items-start group">
-                                        <div className="relative w-full">
+                                    <div key={field.id} className="group flex items-start gap-3">
+                                        <div className="relative min-w-0 w-full">
                                             <SurfacePhoneField
                                                 control={control}
                                                 name={`phones.${index}.phone` as const}
@@ -545,8 +550,11 @@ const PersonalProfileForm = forwardRef<
                                                 disabled={!isEditing}
                                                 countryIso={phoneCountry}
                                             />
-                                            {field?.is_primary && <p className="absolute top-2 right-2  px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold uppercase tracking-tight dark:bg-blue-900/40 dark:text-blue-300">{t("Primary")}</p>}
-
+                                            {field?.is_primary ? (
+                                              <p className="absolute right-2 top-2 z-[1] rounded bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-tight text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                                                {t("Primary")}
+                                              </p>
+                                            ) : null}
                                         </div>
 
                                         {isEditing && (

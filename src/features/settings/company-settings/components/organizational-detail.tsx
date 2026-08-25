@@ -18,8 +18,9 @@ import {
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { useTranslations } from "next-intl";
 import { timeZones } from "@/shared/constants/timezones";
-import { FieldGroup } from "@/shared/ui";
+import { FormFieldRow, FormFieldSpanFull } from "@/shared/ui";
 import FormSectionCard from "@/shared/ui/form-section-card";
+import { cn } from "@/core/utils/http.util";
 
 interface OrganizationalDetailProps {
   isEditing: boolean;
@@ -59,8 +60,6 @@ const OrganizationalDetail = React.forwardRef<
     },
   });
 
-  const [isLoading, setIsLoading] = React.useState(false);
-
   React.useEffect(() => {
     if (initialData) {
       reset(initialData);
@@ -96,14 +95,6 @@ const OrganizationalDetail = React.forwardRef<
     },
   }));
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
-      </div>
-    );
-  }
-
   const companySizeOptions = [
     "1-10 employees",
     "11-50 employees",
@@ -113,95 +104,106 @@ const OrganizationalDetail = React.forwardRef<
   ];
 
   return (
-    <div className="animate-in fade-in flex flex-col rounded-xl border border-slate-200/90 bg-white px-5 py-2 dark:border-slate-700 dark:bg-slate-950 sm:px-8">
+    <div
+      className={cn(
+        "settings-aligned-fields w-full min-w-0 rounded-xl border border-slate-200/90 bg-white",
+        "px-4 py-5 sm:px-6 sm:py-6 dark:border-slate-800 dark:bg-slate-950",
+      )}
+    >
       <FormSectionCard
-        title="Organization Information"
+        title={t("orgSectionTitle")}
         icon={<Building2 size={18} strokeWidth={1.75} />}
       >
-        <p className="-mt-2 mb-1 text-[length:var(--dash-label-size,0.875rem)] text-slate-500 dark:text-slate-400">
-          Update your company details and contact information.
+        <p className="-mt-3 mb-1 text-sm text-slate-500 dark:text-slate-400">
+          {t("orgSectionSubtitle")}
         </p>
 
-        <FieldGroup label="Company Logo" htmlFor="org-logo">
-          <div className="flex items-center gap-6">
-            <Controller
-              name="logo"
-              control={control}
-              render={({ field: { value, onChange } }) => (
-                <ProfilePictureUploader
-                  image={value}
-                  setImage={(val: any) => onChange(val)}
-                  originalImage={initialData?.logo}
-                  readOnly={!isEditing}
-                  size={100}
-                />
-              )}
-            />
-            <p className="text-[length:var(--dash-label-size,0.875rem)] text-slate-500">
-              Upload company logo (512×512px recommended)
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+          <Controller
+            name="logo"
+            control={control}
+            render={({ field: { value, onChange } }) => (
+              <ProfilePictureUploader
+                image={value}
+                setImage={(val: any) => onChange(val)}
+                originalImage={initialData?.logo}
+                readOnly={!isEditing}
+                size={88}
+              />
+            )}
+          />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+              {t("logoLabel")}
+            </p>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              {t("logoHint")}
             </p>
           </div>
-        </FieldGroup>
+        </div>
 
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
+        <FormFieldRow cols="2" from="md" className="gap-y-5">
+          <div className="min-w-0 space-y-1.5">
             <Input
-              label="Organization Name"
+              label={t("fields.name")}
               register={register("name")}
               errors={errors.name as any}
               readOnly={!isEditing}
-              placeholder="TechCorp Solutions"
+              placeholder={t("placeholders.name")}
               fieldRequired
             />
-            <span className="text-[11px] text-slate-400">
-              This cannot be changed for root organizations
-            </span>
+            <p className="text-[11px] leading-4 text-slate-400 dark:text-slate-500">
+              {t("nameLockedHint")}
+            </p>
           </div>
           <Select
-            label="Company Size"
+            label={t("fields.size")}
             register={register("size")}
             options={companySizeOptions}
             errors={errors.size as any}
             readOnly={!isEditing}
           />
           <Input
-            label="Website URL"
+            label={t("fields.website")}
             register={register("website")}
             errors={errors.website as any}
             readOnly={!isEditing}
-            placeholder="https://techcorp.com"
+            placeholder={t("placeholders.website")}
           />
           <Select
-            label="Timezone"
+            label={t("fields.timezone")}
             register={register("timezone")}
             options={timeZones}
             errors={errors.timezone as any}
             readOnly={!isEditing}
             fieldRequired
           />
-          <div className="md:col-span-2">
+          <FormFieldSpanFull>
             <TextBox
-              label="Company Description"
+              label={t("fields.description")}
               register={register("description")}
               errors={errors.description as any}
               readOnly={!isEditing}
               rows={3}
             />
-          </div>
-        </div>
+          </FormFieldSpanFull>
+        </FormFieldRow>
       </FormSectionCard>
 
-      <FormSectionCard title="Address Information" icon={<MapPin size={18} strokeWidth={1.75} />}>
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <div className="md:col-span-2">
+      <FormSectionCard
+        title={t("addressSectionTitle")}
+        icon={<MapPin size={18} strokeWidth={1.75} />}
+      >
+        <FormFieldRow cols="2" from="md" className="gap-y-5">
+          <FormFieldSpanFull>
             <Input
-              label="Street Address"
+              label={t("fields.street")}
               register={register("street")}
               errors={errors.street as any}
               readOnly={!isEditing}
-              placeholder="123 Business Park Drive"
+              placeholder={t("placeholders.street")}
             />
-          </div>
+          </FormFieldSpanFull>
           <LocationSelectorGroup
             register={register}
             watch={watch}
@@ -209,13 +211,13 @@ const OrganizationalDetail = React.forwardRef<
             readOnly={!isEditing}
           />
           <Input
-            label="Pincode / Zip Code"
+            label={t("fields.zip")}
             register={register("zip")}
             errors={errors.zip as any}
             readOnly={!isEditing}
-            placeholder="94102"
+            placeholder={t("placeholders.zip")}
           />
-        </div>
+        </FormFieldRow>
       </FormSectionCard>
     </div>
   );

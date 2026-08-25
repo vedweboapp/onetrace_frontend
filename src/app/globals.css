@@ -160,7 +160,19 @@ html[data-font-size] :is(.text-2xl) {
   font-size: var(--dash-font-size);
 }
 
-/* —— Form layout (Appearance → Form layout) —— */
+/* —— Settings forms: fixed label column so inputs line up (org / company settings) —— */
+.dash-appearance-scope:not([data-form-label]) .settings-aligned-fields .field-group,
+.dash-appearance-scope[data-form-label="left"] .settings-aligned-fields .field-group {
+  grid-template-columns: minmax(7.5rem, 9.75rem) minmax(0, 1fr);
+}
+
+.dash-appearance-scope[data-form-label="right"] .settings-aligned-fields .field-group {
+  grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 9.75rem);
+}
+
+.dash-appearance-scope[data-form-label="top"] .settings-aligned-fields .field-group {
+  display: block;
+}
 .dash-appearance-scope .field-group {
   width: 100%;
   min-width: 0;
@@ -325,6 +337,19 @@ html[data-font-size] :is(.text-2xl) {
   container-name: detail-metrics;
   width: 100%;
   min-width: 0;
+}
+
+.dash-appearance-scope .detail-metrics-grid > .detail-field.field-group {
+  align-items: start;
+}
+
+.dash-appearance-scope .detail-metrics-grid > .detail-field.field-group .field-label {
+  padding-top: 0.45rem;
+  align-self: start;
+}
+
+.dash-appearance-scope .detail-metrics-grid > .detail-field.field-group .field-control-wrap {
+  align-self: start;
 }
 
 /*

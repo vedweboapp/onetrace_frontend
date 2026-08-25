@@ -568,6 +568,7 @@
     },
     "settingsPersonalProfile": {
       "updatedToast": "Profile updated successfully",
+      "appearanceSavedToast": "Appearance settings saved",
       "loadError": "Failed to load profile. Please try again.",
       "mustSignIn": "You must be signed in to view your profile.",
       "BasicInfo": "Basic Info",
@@ -646,7 +647,49 @@
       "organizationUpdatedToast": "Organization details updated successfully",
       "currencyUpdatedToast": "Currency settings saved successfully",
       "scheduleUpdatedToast": "Schedule settings saved successfully",
-      "noChangesToast": "No changes to save"
+      "noChangesToast": "No changes to save",
+      "orgSectionTitle": "Organization information",
+      "orgSectionSubtitle": "Update your company details and contact information.",
+      "addressSectionTitle": "Address information",
+      "logoLabel": "Company logo",
+      "logoHint": "512×512px recommended",
+      "nameLockedHint": "This cannot be changed for root organizations",
+      "currencySectionTitle": "Currency",
+      "currencySectionSubtitle": "Set the home currency and how money amounts are displayed.",
+      "homeCurrency": "Home currency",
+      "homeCurrencyHint": "Your primary currency",
+      "format": "Format",
+      "formatHint": "Current money format",
+      "customize": "Customize",
+      "numberFormatSectionTitle": "Number format",
+      "numberFormatSectionSubtitle": "Used for quantity and other number-only fields.",
+      "numberPreview": "Preview",
+      "changeHomeCurrency": "Change home currency",
+      "symbol": "Symbol",
+      "symbolPosition": "Symbol position",
+      "symbolBefore": "Before value",
+      "symbolAfter": "After value",
+      "decimalPlaces": "Decimal places",
+      "preview": "Preview",
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "saving": "Saving…",
+      "fields": {
+        "name": "Organization name",
+        "size": "Company size",
+        "website": "Website URL",
+        "timezone": "Timezone",
+        "description": "Company description",
+        "street": "Street address",
+        "zip": "Pincode / ZIP code",
+        "numberFormat": "Number format"
+      },
+      "placeholders": {
+        "name": "Company name",
+        "website": "https://example.com",
+        "street": "123 Business Park Drive",
+        "zip": "94102"
+      }
     },
     "settingsFormBuilder": {
       "layoutSavedToast": "Layout saved successfully",
@@ -4228,6 +4271,7 @@
         "table": {
           "name": "Form name",
           "projectType": "Project type",
+          "installationType": "Installation type",
           "status": "Status",
           "created": "Created",
           "actions": "Actions"

@@ -84,8 +84,8 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
     phoneMountKeyRef.current = resolvedCountry;
   }, [displayValue, resolvedCountry]);
 
-  return (
-    <FieldGroup label={label} htmlFor={id} required={required} className={className}>
+  const phoneField = (
+    <>
       <div className="surface-phone-root">
         <PhoneNumberInput
           key={`${id}-${phoneMountKey}`}
@@ -106,6 +106,17 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
         />
       </div>
       <FieldErrorText id={errId}>{error}</FieldErrorText>
+    </>
+  );
+
+  // Empty label: skip FieldGroup so left/right form layout does not indent the control.
+  if (label == null || label === "") {
+    return <div className={cn("w-full min-w-0", className)}>{phoneField}</div>;
+  }
+
+  return (
+    <FieldGroup label={label} htmlFor={id} required={required} className={className}>
+      {phoneField}
     </FieldGroup>
   );
 }

@@ -120,7 +120,17 @@ export function ListPageCard({
         className,
       )}
     >
-      <div className="flex min-w-0 flex-1 flex-col gap-3 px-4 py-3.5 sm:px-4 sm:py-4">
+      {menu ? (
+        <div
+          className="absolute right-2 top-2 z-10 sm:right-2.5 sm:top-2.5"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          {menu}
+        </div>
+      ) : null}
+
+      <div className={cn("flex min-w-0 flex-1 flex-col gap-3 px-4 py-3.5 sm:px-4 sm:py-4", menu && "pr-10")}>
         <div className="flex min-w-0 items-start gap-2.5">
           {leading ? (
             <div
@@ -133,31 +143,19 @@ export function ListPageCard({
           ) : null}
 
           <div className="min-w-0 flex-1 space-y-1">
-            <div className="min-w-0 truncate text-sm font-semibold leading-5 tracking-tight text-slate-900 dark:text-slate-50">
-              {title}
+            <div className="flex min-w-0 items-start justify-between gap-2">
+              <div className="min-w-0 flex-1 text-sm font-semibold leading-5 tracking-tight text-slate-900 dark:text-slate-50">
+                <div className="line-clamp-2 break-words">{title}</div>
+              </div>
+              {topBadge ? <div className="max-w-[42%] shrink-0">{topBadge}</div> : null}
             </div>
             {subtitle ? (
-              <div className="min-w-0 truncate text-[13px] font-medium leading-5 text-slate-600 dark:text-slate-300">
+              <div className="line-clamp-2 min-w-0 text-[13px] font-medium leading-5 text-slate-600 dark:text-slate-300">
                 {subtitle}
               </div>
             ) : null}
             {meta ? <div className="min-w-0 pt-0.5">{meta}</div> : null}
           </div>
-
-          {topBadge || menu ? (
-            <div className="flex shrink-0 items-start gap-1.5 pl-1">
-              {topBadge ? <div className="max-w-[9.5rem] shrink-0">{topBadge}</div> : null}
-              {menu ? (
-                <div
-                  className="-mr-1"
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => e.stopPropagation()}
-                >
-                  {menu}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
         </div>
 
         {description ? (
