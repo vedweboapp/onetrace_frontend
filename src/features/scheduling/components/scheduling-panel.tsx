@@ -705,7 +705,7 @@ export function SchedulingPanel({
     setCreatingSchedule(true);
     setPendingCreate({
       techId: workerId,
-      dayKey,
+      dayKey: dateKey,
       startTime,
       endTime,
     });
