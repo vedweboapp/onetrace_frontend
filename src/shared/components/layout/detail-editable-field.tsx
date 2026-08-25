@@ -29,7 +29,7 @@ type DetailEditableFieldEditorProps = {
   editorClassName: string;
 };
 
-/** CRM detail label — muted, sentence case, sits in the fixed label column. */
+/** Detail label — muted, sentence case; placement follows Appearance (left/right/top). */
 export const detailFieldLabelClassName = cn(
   fieldLabelClassName,
   "text-sm font-normal normal-case tracking-normal text-slate-500 dark:text-slate-400",
@@ -61,9 +61,9 @@ const detailInlineActionBtnClassName = cn(
 );
 
 /**
- * Enterprise CRM detail field: fixed-width label column + value on one row.
- * Click opens an inline editor; tick saves that field only, cross cancels.
- * Only one field can be in edit mode at a time (global lock).
+ * Enterprise CRM detail field: label + value; placement follows Appearance
+ * (left / right / top). Click opens an inline editor; tick saves that field
+ * only, cross cancels. Only one field can be in edit mode at a time (global lock).
  */
 export function DetailEditableField({
   label,
