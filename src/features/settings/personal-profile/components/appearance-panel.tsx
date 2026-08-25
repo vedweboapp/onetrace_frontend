@@ -9,6 +9,8 @@ import { stripLocaleSegmentsFromPathname } from "@/i18n/locale-path";
 import { routing } from "@/i18n/routing";
 import {
   ACCENT_ORDER,
+  DETAIL_ROW_LINE_STYLE_ORDER,
+  DETAIL_ROW_LINE_WIDTH_ORDER,
   FONT_FAMILY_ORDER,
   FONT_SIZE_ORDER,
   FORM_LABEL_PLACEMENT_ORDER,
@@ -19,6 +21,8 @@ import {
   type DashboardFontFamily,
   type DashboardFontSize,
   type DashboardSidebarLayout,
+  type DetailRowLineStyle,
+  type DetailRowLineWidth,
   type FormLabelPlacement,
   type RequiredFieldIndicator,
 } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
@@ -207,6 +211,8 @@ export function AppearancePanel() {
     sidebarLayout,
     formLabelPlacement,
     requiredIndicator,
+    detailRowLineWidth,
+    detailRowLineStyle,
     setAccentPreset,
     setAccentCustom,
     setFontFamily,
@@ -214,6 +220,8 @@ export function AppearancePanel() {
     setSidebarLayout,
     setFormLabelPlacement,
     setRequiredIndicator,
+    setDetailRowLineWidth,
+    setDetailRowLineStyle,
   } = useDashboardAppearanceStore(
     useShallow((s) => ({
       accentKind: s.accentKind,
@@ -224,6 +232,8 @@ export function AppearancePanel() {
       sidebarLayout: s.sidebarLayout,
       formLabelPlacement: s.formLabelPlacement,
       requiredIndicator: s.requiredIndicator,
+      detailRowLineWidth: s.detailRowLineWidth,
+      detailRowLineStyle: s.detailRowLineStyle,
       setAccentPreset: s.setAccentPreset,
       setAccentCustom: s.setAccentCustom,
       setFontFamily: s.setFontFamily,
@@ -231,6 +241,8 @@ export function AppearancePanel() {
       setSidebarLayout: s.setSidebarLayout,
       setFormLabelPlacement: s.setFormLabelPlacement,
       setRequiredIndicator: s.setRequiredIndicator,
+      setDetailRowLineWidth: s.setDetailRowLineWidth,
+      setDetailRowLineStyle: s.setDetailRowLineStyle,
     })),
   );
 
@@ -280,6 +292,10 @@ export function AppearancePanel() {
         isMounted ? "opacity-100" : "opacity-0",
       )}
     >
+      <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
+        {t("storageHint")}
+      </p>
+
       <SectionShell title={t("themeHeading")}>
         <SettingRow label={t("themeSelectLabel")} hint={t("themeHint")}>
           <div className="flex w-full max-w-sm items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-900">
@@ -466,6 +482,55 @@ export function AppearancePanel() {
                 onClick={() => setRequiredIndicator(indicator)}
               >
                 {t(`requiredIndicators.${indicator}`)}
+              </ChoiceChip>
+            ))}
+          </div>
+        </SettingRow>
+
+        <SettingRow label={t("detailRowLineWidthLabel")} hint={t("detailRowLineWidthHint")}>
+          <div className="flex flex-wrap gap-2">
+            {DETAIL_ROW_LINE_WIDTH_ORDER.map((width: DetailRowLineWidth) => (
+              <ChoiceChip
+                key={width}
+                active={detailRowLineWidth === width}
+                onClick={() => setDetailRowLineWidth(width)}
+                className="min-w-[4.5rem] flex-col gap-1.5 py-2.5"
+              >
+                <span
+                  className="block h-0 w-10 border-slate-800 dark:border-slate-200"
+                  style={{
+                    borderBottomWidth: width === "0" ? 0 : `${width}px`,
+                    borderBottomStyle: detailRowLineStyle,
+                    opacity: width === "0" ? 0.35 : 1,
+                  }}
+                  aria-hidden
+                />
+                <span className="text-[11px] font-semibold tabular-nums">
+                  {width === "0" ? t("detailRowLineWidths.none") : `${width}px`}
+                </span>
+              </ChoiceChip>
+            ))}
+          </div>
+        </SettingRow>
+
+        <SettingRow label={t("detailRowLineStyleLabel")} hint={t("detailRowLineStyleHint")}>
+          <div className="flex flex-wrap gap-2">
+            {DETAIL_ROW_LINE_STYLE_ORDER.map((style: DetailRowLineStyle) => (
+              <ChoiceChip
+                key={style}
+                active={detailRowLineStyle === style}
+                onClick={() => setDetailRowLineStyle(style)}
+                className="min-w-[5.5rem] flex-col gap-1.5 py-2.5"
+              >
+                <span
+                  className="block w-12 border-slate-800 dark:border-slate-200"
+                  style={{
+                    borderBottomWidth: Math.max(Number(detailRowLineWidth) || 1, 1),
+                    borderBottomStyle: style,
+                  }}
+                  aria-hidden
+                />
+                <span className="text-[11px] font-semibold">{t(`detailRowLineStyles.${style}`)}</span>
               </ChoiceChip>
             ))}
           </div>

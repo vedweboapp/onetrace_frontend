@@ -14,7 +14,7 @@ const PersonalProfileDetails = () => {
   const t = useTranslations("Dashboard.settingsPersonalProfile");
   const userId = useAuthStore((s) => s.user?.id);
   const [params] = useUrlParams({ tab: "profile" });
-  const activeTab = (params.tab as string) || "profile";
+  const activeTab = String(params.tab || "profile");
 
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState<PersonalProfileResponse | null>(null);

@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
 import {
   rowsForTechnician,
+  technicianMatchesWorkerId,
   type SchedulingTechnician,
 } from "@/features/scheduling/utils/scheduling-technician.util";
 import { scheduleJobLabel } from "@/features/scheduling/utils/schedule-map.util";
@@ -21,6 +22,7 @@ import {
   minuteIsBookable,
   minutesToTime,
   occupiedRangesForDay,
+  timeToMinutes,
 } from "@/features/scheduling/utils/scheduling-availability.util";
 import {
   formatHourLabel,
@@ -48,6 +50,13 @@ type Props = {
   fillHeight?: boolean;
   onDayHeaderClick?: (day: Date) => void;
   onCreate: (day: Date, startTime: string, endTime: string) => void;
+  pendingCreate?: {
+    techId: number;
+    dayKey: string;
+    startTime: string;
+    endTime: string;
+  } | null;
+  createBusy?: boolean;
   onScheduleClick: (schedule: Schedule) => void;
   onRemoveSchedule?: (schedule: Schedule) => void;
   onRemoveTimeOff?: (timeOff: WorkerTimeOff) => void;
@@ -79,6 +88,8 @@ export function SchedulingWeekCalendar({
   fillHeight = false,
   onDayHeaderClick,
   onCreate,
+  pendingCreate = null,
+  createBusy = false,
   onScheduleClick,
   onRemoveSchedule,
   onRemoveTimeOff,
@@ -128,6 +139,7 @@ export function SchedulingWeekCalendar({
   }
 
   function canStartAt(model: (typeof dayModels)[number], minute: number) {
+    if (createBusy) return false;
     if (dragMode === "timeoff") {
       return minuteIsBookable(minute, model.window, model.known, model.occupied);
     }
@@ -255,7 +267,7 @@ export function SchedulingWeekCalendar({
                     : { height: gridHeight, marginTop: TOP_PAD }
                 }
                 onPointerDown={(e) => {
-                  if (e.button !== 0) return;
+                  if (createBusy || e.button !== 0) return;
                   if ((e.target as HTMLElement).closest("button")) return;
                   const startMin = timeFromClientY(e.clientY, e.currentTarget);
                   if (!canStartAt(model, startMin)) return;
@@ -398,6 +410,31 @@ export function SchedulingWeekCalendar({
                     {formatMinutesLabel(dragStart, locale)} – {formatMinutesLabel(dragEnd, locale)}
                   </div>
                 ) : null}
+
+                {pendingCreate &&
+                pendingCreate.dayKey === model.dayKey &&
+                technicianMatchesWorkerId(technician, pendingCreate.techId)
+                  ? (() => {
+                      const startMin = timeToMinutes(pendingCreate.startTime);
+                      const endMin = timeToMinutes(pendingCreate.endTime);
+                      if (startMin == null || endMin == null) return null;
+                      return (
+                        <div
+                          className={cn(
+                            "pointer-events-none absolute inset-x-1 z-[3] flex items-center gap-1.5 overflow-hidden",
+                            "rounded-md border border-sky-400 bg-sky-100/95 px-1.5 py-1 text-sky-900",
+                            "dark:border-sky-500 dark:bg-sky-950/85 dark:text-sky-100",
+                          )}
+                          style={bandStyle(startMin, endMin)}
+                          aria-busy
+                          aria-label={t("creatingSchedule")}
+                        >
+                          <Loader2 className="size-3.5 shrink-0 animate-spin" strokeWidth={2.5} aria-hidden />
+                          <span className="truncate text-[10px] font-semibold">{t("creatingSchedule")}</span>
+                        </div>
+                      );
+                    })()
+                  : null}
               </div>
             );
           })}

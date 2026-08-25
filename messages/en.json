@@ -582,15 +582,17 @@
       "AddPhone": "Add Phone",
       "AddEmail": "Add Email",
       "AddAddress": "Add Address",
+      "RemoveAddress": "Remove",
+      "AddressN": "Address {n}",
       "Addresses": "Addresses",
       "Primary": "Primary",
       "fields": {
-        "address1": "Address 1",
-        "address2": "Address 2",
+        "address1": "Address line 1",
+        "address2": "Address line 2",
         "country": "Country",
         "state": "State",
         "city": "City",
-        "pincode": "Pin Code"
+        "pincode": "Pin code"
       },
       "placeholders": {
         "country": "Select country",
@@ -799,7 +801,20 @@
       },
       "formPreviewHeading": "Live preview",
       "formPreviewLabel": "Sample required field",
-      "formPreviewValue": "Sample value"
+      "formPreviewValue": "Sample value",
+      "storageHint": "Appearance is saved on this device for your signed-in account (not sent to the server yet). After you log in again on this browser, your last choices are restored.",
+      "detailRowLineWidthLabel": "Detail row line width",
+      "detailRowLineWidthHint": "Thickness of the divider under each field row on detail pages.",
+      "detailRowLineWidths": {
+        "none": "None"
+      },
+      "detailRowLineStyleLabel": "Detail row line type",
+      "detailRowLineStyleHint": "Solid, dashed, or dotted dividers between detail fields.",
+      "detailRowLineStyles": {
+        "solid": "Solid",
+        "dashed": "Dashed",
+        "dotted": "Dotted"
+      }
     },
     "pinStatus": {
       "metaTitle": "Pin Statuses",
@@ -3419,6 +3434,7 @@
       "allUserGroups": "All groups",
       "createSchedule": "Create Schedule",
       "dragToSchedule": "Drag to schedule",
+      "creatingSchedule": "Creating schedule…",
       "removeSchedule": "Remove schedule",
       "emptyTechnicians": "No technicians found.",
       "emptyUsers": "No users found.",
