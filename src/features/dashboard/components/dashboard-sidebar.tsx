@@ -22,6 +22,10 @@ import {
 } from "@/features/quotations/constants/quotation-category";
 import { routes } from "@/shared/config/routes";
 import { cn } from "@/core/utils/http.util";
+import {
+  navLeafActiveClassName,
+  navParentActiveClassName,
+} from "@/shared/config/design-tokens";
 import { useShallow } from "zustand/react/shallow";
 import { DashboardAppBrand } from "./dashboard-app-brand";
 
@@ -82,18 +86,12 @@ function navInactive() {
 
 /** Soft section/parent active — used when a nested child is selected (no solid filled block). */
 function navParentActive() {
-  return cn(
-    "bg-[color:var(--dash-accent,#0f766e)]/[0.08] font-semibold text-[color:var(--dash-accent,#0f766e)]",
-    "dark:bg-[color:var(--dash-accent,#2dd4bf)]/12 dark:text-[color:var(--dash-accent,#5eead4)]",
-  );
+  return navParentActiveClassName;
 }
 
 /** Leaf / submenu item active — quiet accent tint (not a solid color block). */
 function navLeafActive() {
-  return cn(
-    "bg-[color:var(--dash-accent,#0f766e)]/[0.14] font-semibold text-[color:var(--dash-accent,#0f766e)]",
-    "dark:bg-[color:var(--dash-accent,#2dd4bf)]/20 dark:text-[color:var(--dash-accent,#5eead4)]",
-  );
+  return navLeafActiveClassName;
 }
 
 function SidebarNavLink({
@@ -221,7 +219,7 @@ function SidebarNestedNav({
           className={cn(
             "size-3.5 shrink-0 text-slate-400 transition-transform duration-200",
             open && "rotate-90",
-            active && "text-[color:var(--dash-accent,#0f766e)]/70",
+            active && "text-[color:var(--dash-accent,#111111)]/70 dark:text-[color:var(--dash-accent,#ffffff)]/70",
           )}
           strokeWidth={2}
           aria-hidden

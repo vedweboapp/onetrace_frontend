@@ -30,6 +30,18 @@ export type CascadingLocationFieldsProps<TFieldValues extends FieldValues> = {
   };
   /** When false, hides the country required asterisk (rare). */
   countryRequired?: boolean;
+  /** Pin code field — always rendered beside city in the second row when provided. */
+  pincodeName?: FieldPath<TFieldValues>;
+  pincodeLabel?: React.ReactNode;
+  pincodeRequired?: boolean;
+  pincodeDisabled?: boolean;
+  pincodeRender?: (props: {
+    id: string;
+    value: string;
+    onChange: (value: string) => void;
+    onBlur: () => void;
+    disabled?: boolean;
+  }) => React.ReactNode;
   disabled?: boolean;
   errors?: {
     country?: string;
@@ -53,6 +65,11 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
     city: "—",
   },
   countryRequired = true,
+  pincodeName,
+  pincodeLabel,
+  pincodeRequired = false,
+  pincodeDisabled,
+  pincodeRender,
   disabled,
   errors,
   rowClassName,
@@ -100,12 +117,13 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
   const selectedCity = typeof cityRaw === "string" ? cityRaw : "";
 
   const showStateSelect = subdivisions.length > 0;
-  /** City is only collected when this state lists cities in the dataset. */
+  /** City is a select when the dataset lists cities; otherwise a plain text field. */
   const showCitySelect = Boolean(stateIso) && cities.length > 0;
+  const showCityText = Boolean(stateIso) && cities.length === 0;
 
-  /** Country chooser always required; state * after a country exists; city * only when dataset has cities. */
+  /** Country chooser always required; state * after a country exists; city * when state is set. */
   const stateRequired = showStateSelect && Boolean(countryIso);
-  const cityRequired = showCitySelect;
+  const cityRequired = showCitySelect || showCityText;
 
   const readOnlyFieldClassName = cn(
     surfaceInputClassName,
@@ -143,12 +161,125 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
     }
   }, [countryIso, cityName, stateIsoName, setLocationField]);
 
-  React.useEffect(() => {
-    if (!(countryIso && stateIso)) return;
-    if (City.getCitiesOfState(countryIso, stateIso).length === 0) {
-      setLocationField(cityName, "" as PathValue<TFieldValues, typeof cityName>);
+  const renderPincodeField = () => {
+    if (!pincodeName) return null;
+    const id = `${String(pincodeName)}-input`;
+    return (
+      <FieldGroup label={pincodeLabel ?? "Pin code"} htmlFor={id} required={pincodeRequired}>
+        {pincodeRender ? (
+          <Controller
+            control={control}
+            name={pincodeName}
+            render={({ field }) => (
+              <>
+                {pincodeRender({
+                  id,
+                  value: typeof field.value === "string" ? field.value : "",
+                  onChange: field.onChange,
+                  onBlur: field.onBlur,
+                  disabled: pincodeDisabled ?? disabled,
+                })}
+              </>
+            )}
+          />
+        ) : (
+          <Controller
+            control={control}
+            name={pincodeName}
+            render={({ field }) => (
+              <input
+                id={id}
+                autoComplete="postal-code"
+                disabled={pincodeDisabled ?? disabled}
+                value={typeof field.value === "string" ? field.value : ""}
+                onChange={(e) => field.onChange(e.target.value)}
+                onBlur={field.onBlur}
+                className={cn(
+                  surfaceInputClassName,
+                  (pincodeDisabled ?? disabled) && "bg-slate-50 dark:bg-slate-900/60",
+                )}
+              />
+            )}
+          />
+        )}
+      </FieldGroup>
+    );
+  };
+
+  const renderCityField = () => {
+    if (!showCitySelect && !showCityText) return null;
+
+    if (showCitySelect) {
+      return (
+        <FieldGroup
+          label={labels.city}
+          htmlFor={`${String(cityName)}-select`}
+          required={cityRequired}
+        >
+          <Controller
+            control={control}
+            name={cityName}
+            render={({ field }) =>
+              disabled ? (
+                renderReadOnlyValue(selectedCity, placeholders.city)
+              ) : (
+                <CheckmarkSelect
+                  id={`${String(cityName)}-select`}
+                  portaled
+                  searchable
+                  searchPlaceholder={tList("searchPlaceholder")}
+                  listLabel={String(labels.city)}
+                  options={cityOpts}
+                  emptyLabel={placeholders.city}
+                  value={typeof field.value === "string" ? field.value : ""}
+                  disabled={disabled || !stateIso}
+                  invalid={!!errors?.city}
+                  onBlur={field.onBlur}
+                  onChange={(v) => {
+                    setLocationField(cityName, v as PathValue<TFieldValues, typeof cityName>);
+                  }}
+                />
+              )
+            }
+          />
+          <FieldErrorText>{errors?.city}</FieldErrorText>
+        </FieldGroup>
+      );
     }
-  }, [countryIso, stateIso, cityName, setLocationField]);
+
+    return (
+      <FieldGroup
+        label={labels.city}
+        htmlFor={`${String(cityName)}-text`}
+        required={cityRequired}
+      >
+        <Controller
+          control={control}
+          name={cityName}
+          render={({ field }) =>
+            disabled ? (
+              renderReadOnlyValue(selectedCity, placeholders.city)
+            ) : (
+              <input
+                id={`${String(cityName)}-text`}
+                autoComplete="address-level2"
+                disabled={disabled || !stateIso}
+                value={typeof field.value === "string" ? field.value : ""}
+                onChange={(e) => field.onChange(e.target.value)}
+                onBlur={field.onBlur}
+                className={surfaceInputClassName}
+              />
+            )
+          }
+        />
+        <FieldErrorText>{errors?.city}</FieldErrorText>
+      </FieldGroup>
+    );
+  };
+
+  const cityField = renderCityField();
+  const showSecondRow =
+    Boolean(cityField) || Boolean(pincodeName) || Boolean(trailingSlot && !showStateSelect);
 
   return (
     <div className={cn("space-y-4", rowClassName)}>
@@ -241,46 +372,15 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
         )}
       </FormFieldRow>
 
-      {showStateSelect && (showCitySelect || trailingSlot) ? (
-        <FormFieldRow cols="2" className="mt-4">
-          {showCitySelect ? (
-            <FieldGroup
-              label={labels.city}
-              htmlFor={`${String(cityName)}-select`}
-              required={cityRequired}
-            >
-              <Controller
-                control={control}
-                name={cityName}
-                render={({ field }) =>
-                  disabled ? (
-                    renderReadOnlyValue(selectedCity, placeholders.city)
-                  ) : (
-                    <CheckmarkSelect
-                      id={`${String(cityName)}-select`}
-                      portaled
-                      searchable
-                      searchPlaceholder={tList("searchPlaceholder")}
-                      listLabel={String(labels.city)}
-                      options={cityOpts}
-                      emptyLabel={placeholders.city}
-                      value={typeof field.value === "string" ? field.value : ""}
-                      disabled={disabled || !stateIso}
-                      invalid={!!errors?.city}
-                      onBlur={field.onBlur}
-                      onChange={(v) => {
-                        setLocationField(cityName, v as PathValue<TFieldValues, typeof cityName>);
-                      }}
-                    />
-                  )
-                }
-              />
-              <FieldErrorText>{errors?.city}</FieldErrorText>
-            </FieldGroup>
-          ) : (
-            <div className="hidden min-h-[1px] sm:block" aria-hidden />
-          )}
-          {showCitySelect ? trailingSlot ?? null : <div className="sm:col-span-2">{trailingSlot}</div>}
+      {showSecondRow ? (
+        <FormFieldRow cols="2">
+          {cityField ?? <div className="hidden min-h-[1px] sm:block" aria-hidden />}
+          {pincodeName ? renderPincodeField() : trailingSlot ?? null}
+        </FormFieldRow>
+      ) : trailingSlot ? (
+        <FormFieldRow cols="2">
+          <div className="hidden min-h-[1px] sm:block" aria-hidden />
+          {trailingSlot}
         </FormFieldRow>
       ) : null}
     </div>

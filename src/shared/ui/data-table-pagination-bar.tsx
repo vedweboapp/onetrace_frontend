@@ -2,6 +2,10 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@/core/utils/http.util";
+import {
+  accentFilledControlClassName,
+  compactControlBtnClassName,
+} from "@/shared/config/design-tokens";
 import { normalizeListPageSize } from "@/shared/utils/list-page-size.util";
 import { CheckmarkSelect } from "./checkmark-select";
 import type { CheckmarkSelectOption } from "./checkmark-select";
@@ -76,30 +80,23 @@ export function DataTablePaginationBar({
   const showNumberButtons = total_pages > 1;
   const pages = showNumberButtons ? buildPageList(current_page, total_pages) : [];
 
-  const btnBase = cn(
-    "inline-flex h-7 min-h-7 min-w-7 items-center justify-center rounded border px-1.5 text-[11px] font-medium transition outline-none",
-    "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
-    "disabled:pointer-events-none disabled:opacity-45",
-    "dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800",
-    "focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:focus-visible:ring-slate-600 dark:focus-visible:ring-offset-slate-950",
-  );
+  const btnBase = compactControlBtnClassName;
 
-  const activeBtn = cn(
-    "border-slate-900 bg-slate-900 text-white hover:bg-slate-900 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100",
-  );
+  const activeBtn = accentFilledControlClassName;
 
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center border-t border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-500 sm:px-3.5 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400",
+        "flex min-h-11 shrink-0 items-center border-t border-slate-200/90 bg-slate-50/80 px-3 py-2.5 sm:px-4 sm:py-3",
+        "dark:border-slate-800 dark:bg-slate-900/50",
         className,
       )}
     >
-      <div className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-        <p className="min-w-0 truncate text-[11px] leading-none text-slate-600 dark:text-slate-400">
+      <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <p className="min-w-0 truncate text-xs leading-5 text-slate-600 dark:text-slate-400">
           {summary}
         </p>
-        <div className="flex flex-wrap items-center justify-end gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
           {pageSizeControl ? (
             <CheckmarkSelect
               listLabel={pageSizeControl.listLabel}
@@ -144,7 +141,7 @@ export function DataTablePaginationBar({
                     <button
                       key={p}
                       type="button"
-                      className={cn(btnBase, "size-7 min-h-7 min-w-7 px-0", p === current_page && activeBtn)}
+                      className={cn(btnBase, "size-8 min-h-8 min-w-8 px-0", p === current_page && activeBtn)}
                       aria-current={p === current_page ? "page" : undefined}
                       onClick={() => onPageSelect(p)}
                     >

@@ -218,6 +218,7 @@
         "notModifiedYet": "Sin modificar",
         "recordNotFoundTitle": "Registro no encontrado",
         "recordNotFoundDescription": "Este registro puede haberse eliminado o el enlace no es correcto.",
+        "loadErrorTitle": "Algo salió mal",
         "backToList": "Volver al listado"
       },
       "lockedField": {
@@ -794,6 +795,7 @@
       "formPreviewLabel": "Campo obligatorio de ejemplo",
       "formPreviewValue": "Valor de ejemplo",
       "storageHint": "La apariencia se guarda en este dispositivo para tu cuenta (aún no se envía al servidor). Al volver a iniciar sesión en este navegador, se restauran tus últimas opciones.",
+      "saveHint": "Los cambios se previsualizan al instante. Use Guardar para guardar la apariencia en su perfil, o Cancelar para revertir.",
       "detailRowLineWidthLabel": "Grosor de línea en detalle",
       "detailRowLineWidthHint": "Grosor del separador bajo cada fila de campo en las páginas de detalle.",
       "detailRowLineWidths": {
