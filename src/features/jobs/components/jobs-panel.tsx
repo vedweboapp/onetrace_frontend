@@ -30,6 +30,7 @@ import {
 } from "@/shared/components/entity";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
 import { routes } from "@/shared/config/routes";
+import { cn } from "@/core/utils/http.util";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
@@ -49,6 +50,7 @@ import {
   DataTableRowActionsMenu,
   ListPageCard,
   ListPageCardGrid,
+  ListPageCardMetaLine,
   ListPageCardSkeleton,
   ListPageHeader,
   ListPageSearchField,
@@ -634,10 +636,10 @@ export function JobsPanel() {
                     />
                   }
                   title={
-                    <span className="flex min-w-0 flex-col gap-0.5">
-                      <span className={entityNameLinkClassName}>{row.title}</span>
+                    <span className="flex min-w-0 items-baseline gap-2">
+                      <span className={cn(entityNameLinkClassName, "min-w-0 truncate")}>{row.title}</span>
                       {row.job_serial_number?.trim() ? (
-                        <span className="truncate text-xs font-medium tabular-nums text-slate-500 dark:text-slate-400">
+                        <span className="shrink-0 text-[11px] font-medium tabular-nums text-slate-400">
                           {row.job_serial_number.trim()}
                         </span>
                       ) : null}
@@ -645,41 +647,41 @@ export function JobsPanel() {
                   }
                   subtitle={<EntityLabelOverflowGroup items={workerItems} />}
                   meta={
-                    <span
-                      className="flex min-w-0 items-center gap-1 truncate"
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                    >
-                      {clientId != null ? (
-                        <DetailEntityLink
-                          href={`${routes.dashboard.clients}/${clientId}`}
-                          className="min-w-0 truncate font-medium"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {clientLabel}
-                        </DetailEntityLink>
-                      ) : (
-                        <span className="min-w-0 truncate">{clientLabel}</span>
-                      )}
-                      <span className="shrink-0 text-slate-400" aria-hidden>
-                        ·
+                    <ListPageCardMetaLine>
+                      <span
+                        className="flex min-w-0 items-center gap-1 truncate"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        {clientId != null ? (
+                          <DetailEntityLink
+                            href={`${routes.dashboard.clients}/${clientId}`}
+                            className="min-w-0 truncate font-medium"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {clientLabel}
+                          </DetailEntityLink>
+                        ) : (
+                          <span className="min-w-0 truncate">{clientLabel}</span>
+                        )}
+                        <span className="shrink-0 text-slate-300 dark:text-slate-600" aria-hidden>
+                          ·
+                        </span>
+                        {projectId != null ? (
+                          <DetailEntityLink
+                            href={`${routes.dashboard.projects}/${projectId}`}
+                            className="min-w-0 truncate font-medium"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {projectLabel}
+                          </DetailEntityLink>
+                        ) : (
+                          <span className="min-w-0 truncate">{projectLabel}</span>
+                        )}
                       </span>
-                      {projectId != null ? (
-                        <DetailEntityLink
-                          href={`${routes.dashboard.projects}/${projectId}`}
-                          className="min-w-0 truncate font-medium"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {projectLabel}
-                        </DetailEntityLink>
-                      ) : (
-                        <span className="min-w-0 truncate">{projectLabel}</span>
-                      )}
-                    </span>
+                    </ListPageCardMetaLine>
                   }
-                  footer={
-                    <div className="flex w-full flex-wrap items-center gap-2">{statusChipForRow(row)}</div>
-                  }
+                  badge={statusChipForRow(row)}
                   onCardClick={() => openJobDetail(row.id)}
                   menu={
                     <DataTableRowActionsMenu

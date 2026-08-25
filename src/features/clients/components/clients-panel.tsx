@@ -22,6 +22,7 @@ import {
   listPageCardScrollClassName,
   DataTableRowActionsMenu,
   ListPageCard,
+  ListPageCardFooter,
   ListPageCardGrid,
   ListPageCardSkeleton,
   ListPageHeader,
@@ -361,23 +362,19 @@ export function ClientsPanel() {
                     />
                   }
                   title={row.name}
-                  subtitle={row.email}
+                  subtitle={row.email?.trim() || undefined}
                   footer={
-                    <div className="flex w-full flex-wrap items-center justify-between gap-3">
-                      <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        {row.phone?.trim() ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
-                            <Phone className="size-3.5 shrink-0 text-slate-500 dark:text-slate-500" aria-hidden />
-                            <span className="tabular-nums">{row.phone.trim()}</span>
+                    <ListPageCardFooter
+                      start={
+                        row.phone?.trim() ? (
+                          <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-xs text-slate-600 dark:text-slate-400">
+                            <Phone className="size-3.5 shrink-0 text-slate-400" aria-hidden />
+                            <span className="truncate tabular-nums">{row.phone.trim()}</span>
                           </span>
-                        ) : null}
-                      </div>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {tList("cardCreated", {
-                          date: formatFlexibleApiDate(row.created_at, dateFmt),
-                        })}
-                      </span>
-                    </div>
+                        ) : undefined
+                      }
+                      end={formatFlexibleApiDate(row.created_at, dateFmt)}
+                    />
                   }
                   onCardClick={() => openClientDetail(row.id)}
                   menu={

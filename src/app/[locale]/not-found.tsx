@@ -7,11 +7,13 @@ export default async function NotFound() {
   const t = await getTranslations("NotFound");
 
   return (
-    <div className="flex min-h-[70vh] w-full flex-col">
+    <div className="flex min-h-[calc(100dvh-4rem)] w-full flex-1 flex-col">
       <DashboardEmptyState
         iconName="notFound"
         title={t("title")}
         description={t("description")}
+        fill
+        viewportFill
         action={
           <Link
             href={routes.home}

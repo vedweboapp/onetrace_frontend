@@ -34,27 +34,41 @@ export const detailTabErrorClassName =
   "px-4 py-8 text-center text-sm text-red-600 dark:text-red-400 sm:px-6";
 
 /**
- * Entity detail page — natural height only.
- * Outer dashboard `overflow-y-auto` is the single scrollbar (same as client/site detail).
- * Do not add min-h / flex-1 / overflow here or the white card nests a second scroll.
+ * Entity detail page — fills the dashboard main pane; tab panels manage their own scroll.
  */
-export const entityDetailPageClassName = cn("w-full min-w-0");
+export const entityDetailPageClassName = cn(
+  "flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden",
+  "data-dashboard-fill-page",
+);
 
-/** White record shell — grows with content; no nested overflow scroll. */
-export const entityDetailSurfaceClassName = cn("mt-2 min-w-0 overflow-visible");
+/** White record shell — flex child inside entity detail. */
+export const entityDetailSurfaceClassName = cn("mt-2 min-w-0 flex min-h-0 flex-1 flex-col overflow-hidden");
 
-export const entityDetailSurfaceInnerClassName = "min-w-0 w-full";
+export const entityDetailSurfaceInnerClassName = "flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden";
 
-/** Tab panel wrapper inside the record shell (overview / form-style content). */
-export const entityDetailTabPanelClassName = "min-w-0 w-full";
+/** Tab panel wrapper inside the record shell (overview or list tab). */
+export const entityDetailTabPanelClassName = cn(
+  "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
+);
+
+/** Overview / long-form detail tab — scroll inside the tab panel. */
+export const entityDetailScrollTabPanelClassName = cn(
+  entityDetailTabPanelClassName,
+  "overflow-y-auto overscroll-y-contain",
+);
 
 /**
- * List-style detail tabs (contacts, jobs table, …) — own min-height so empty/loading
- * states are not a short island. Only these tabs should fill; overview must not.
+ * List-style detail tabs / empty shells — fill remaining height in the record shell.
+ * Do not use viewport min-height here (causes double scroll + blank space below).
  */
 export const detailTabFillViewportClassName = cn(
   "flex min-h-0 w-full flex-1 flex-col",
-  "min-h-[min(28rem,calc(100dvh-14rem))]",
+);
+
+/** Standalone full-pane states (Home, 404) outside nested record shells. */
+export const dashboardStandaloneViewportFillClassName = cn(
+  "flex min-h-0 w-full flex-1 flex-col",
+  "min-h-[calc(100dvh-11.5rem)] sm:min-h-[calc(100dvh-13rem)] lg:min-h-[calc(100dvh-14rem)]",
 );
 
 /** Centered empty / loading / error content inside a fill tab or list shell. */

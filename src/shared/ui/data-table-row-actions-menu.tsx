@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
 import { MoreVertical } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
+import { popoverPanelClassName } from "@/shared/config/design-tokens";
 
 export type DataTableRowMenuItem = {
   id: string;
@@ -115,9 +116,8 @@ export function DataTableRowActionsMenu({
           : { position: "fixed", left: -9999, top: -9999, zIndex: MENU_Z, minWidth: MIN_MENU_W, visibility: "hidden" as const }
       }
       className={cn(
-        "rounded-lg border border-slate-200 bg-white py-1 shadow-lg",
-        "dark:border-slate-700 dark:bg-slate-900",
-        coords ? "opacity-100" : "opacity-0 pointer-events-none",
+        popoverPanelClassName,
+        coords ? "opacity-100" : "pointer-events-none opacity-0",
       )}
     >
       {items.map((item) => {

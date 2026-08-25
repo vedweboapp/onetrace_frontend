@@ -29,7 +29,9 @@ import {
   listPageRootClassName,
   DataTableRowActionsMenu,
   ListPageCard,
+  ListPageCardFooter,
   ListPageCardGrid,
+  ListPageCardMetaLine,
   ListPageCardSkeleton,
   ListPageHeader,
   ListPageSearchField,
@@ -477,34 +479,36 @@ export function ProjectsPanel() {
                       clientLabel
                     )
                   }
-                  meta={`${formatDay(row.start_date)} – ${formatDay(row.end_date)}`}
-                  description={row.description?.trim() || undefined}
-                  footer={
-                    <div className="flex w-full flex-wrap items-center justify-between gap-3">
-                      <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        {typeChip ? <ProjectTypeChip row={typeChip} /> : null}
-                        {(() => {
-                          const ps = row.project_status;
-                          if (ps && typeof ps === "object" && ps.name?.trim()) {
-                            return (
-                              <span
-                                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                                style={{
-                                  backgroundColor: ps.bg_color || "#e2e8f0",
-                                  color: ps.text_color || "#475569",
-                                }}
-                              >
-                                {ps.name.trim()}
-                              </span>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </div>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}
+                  meta={
+                    <ListPageCardMetaLine>
+                      <span className="truncate tabular-nums">
+                        {formatDay(row.start_date)} – {formatDay(row.end_date)}
                       </span>
-                    </div>
+                    </ListPageCardMetaLine>
+                  }
+                  badge={
+                    (() => {
+                      const ps = row.project_status;
+                      if (ps && typeof ps === "object" && ps.name?.trim()) {
+                        return (
+                          <span
+                            className="inline-flex max-w-full truncate rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                            style={{
+                              backgroundColor: ps.bg_color || "#e2e8f0",
+                              color: ps.text_color || "#475569",
+                            }}
+                          >
+                            {ps.name.trim()}
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()
+                  }
+                  footer={
+                    typeChip ? (
+                      <ListPageCardFooter start={<ProjectTypeChip row={typeChip} />} />
+                    ) : undefined
                   }
                   onCardClick={() => openProjectDetail(row.id)}
                   menu={

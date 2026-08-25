@@ -79,6 +79,7 @@ function applyPlaceToProfileAddress(
 
 export interface PersonalProfileFormHandle {
     submit: () => void;
+    reset: () => void;
     isSaving: boolean;
 }
 
@@ -180,8 +181,8 @@ const PersonalProfileForm = forwardRef<
 
                           return {
                               id: address?.id,
-                              address1: address?.address1 ?? address?.address_1 ?? "",
-                              address2: address?.address2 ?? address?.address_2 ?? "",
+                              address1: address?.address1 ?? address?.address_1 ?? address?.address_line_1 ?? "",
+                              address2: address?.address2 ?? address?.address_2 ?? address?.address_line_2 ?? "",
                               country_iso: countryIso || rawCountry,
                               state_iso: stateIso || rawState,
                               city: address?.city ?? "",
@@ -352,8 +353,64 @@ const PersonalProfileForm = forwardRef<
 
     useImperativeHandle(ref, () => ({
         submit: () => handleSubmit(handleActualSubmit)(),
+        reset: () => {
+            if (!initialData) return;
+            setImage(initialData.user_detail?.user_image);
+            reset({
+                    role: initialData?.role_detail?.role_name,
+                    firstName:
+                        initialData.user_detail?.user?.first_name ||
+                        initialData.user_detail?.first_name ||
+                        "",
+                    lastName:
+                        initialData.user_detail?.user?.last_name ||
+                        initialData.user_detail?.last_name ||
+                        "",
+                    gender: initialData.user_detail?.gender?.toLowerCase() || "male",
+                    emails: initialData?.emails?.map((email: any) => ({
+                        id: email?.id,
+                        email: email.email,
+                        is_primary: email?.is_primary,
+                    })),
+                    phones: initialData?.phones?.map((phone: any) => ({
+                        id: phone?.id,
+                        phone: phone?.phone,
+                        is_primary: phone?.is_primary,
+                    })),
+                    joiningDate: initialData.created_at?.split("T")[0] || "",
+                    date_of_birth: initialData?.user_detail?.date_of_birth,
+                    addresses: initialData?.addresses?.length
+                        ? initialData.addresses.map((address: any) => {
+                              const rawCountry = (address?.country_iso ?? address?.country ?? "").trim();
+                              const countryIso = normalizeCountryIso(rawCountry);
+                              const rawState = (address?.state_iso ?? address?.state ?? "").trim();
+                              const stateIso = normalizeStateIso(countryIso || rawCountry, rawState);
+                              return {
+                                  id: address?.id,
+                                  address1: address?.address1 ?? address?.address_1 ?? address?.address_line_1 ?? "",
+                                  address2: address?.address2 ?? address?.address_2 ?? address?.address_line_2 ?? "",
+                                  country_iso: countryIso || rawCountry,
+                                  state_iso: stateIso || rawState,
+                                  city: address?.city ?? "",
+                                  pincode: address?.pincode ?? "",
+                                  is_primary: address?.is_primary || false,
+                              };
+                          })
+                        : [
+                              {
+                                  address1: "",
+                                  address2: "",
+                                  country_iso: "",
+                                  state_iso: "",
+                                  city: "",
+                                  pincode: "",
+                                  is_primary: true,
+                              },
+                          ],
+            });
+        },
         isSaving,
-    }), [isSaving, handleSubmit, handleActualSubmit]);
+    }), [isSaving, handleSubmit, handleActualSubmit, initialData, reset]);
     if (isLoading) {
         return (
             <div className="w-full space-y-6 animate-pulse">
@@ -452,13 +509,13 @@ const PersonalProfileForm = forwardRef<
             {/* Contact Details */}
             <FormSectionCard title={t("ContactDetails")} icon={<Mail size={20} />}>
                 <div className="flex flex-col gap-8">
-                    <div className=" grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                    <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-2 lg:gap-6">
+                        <div className="flex min-w-0 flex-col gap-4">
+                            <div className="flex min-h-8 items-center justify-between gap-2">
+                                <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
                                     <Mail size={14} /> {t("Emails")}
                                 </h3>
-                                {isEditing && (
+                                {isEditing ? (
                                     <AppButton
                                         type="button"
                                         variant="ghost"
@@ -468,23 +525,25 @@ const PersonalProfileForm = forwardRef<
                                     >
                                         <Plus size={14} /> {t("AddEmail")}
                                     </AppButton>
-                                )}
+                                ) : null}
                             </div>
-                            <div className="space-y-3 flex flex-col">
+                            <div className="flex flex-col gap-3">
                                 {emailFields.map((field, index) => (
-                                    <div key={field.id} className="flex gap-3 items-end group">
-                                        <div className="relative w-full">
+                                    <div key={field.id} className="group flex items-start gap-2">
+                                        <div className="relative min-w-0 flex-1">
                                             <Input
                                                 register={register(`emails.${index}.email` as const)}
                                                 placeholder="Enter email address"
-                                                className="flex-1"
                                                 readOnly={!isEditing}
                                             />
-                                            {field?.is_primary && <p className="absolute top-2 right-2  px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold uppercase tracking-tight dark:bg-blue-900/40 dark:text-blue-300">{t("Primary")}</p>}
-
+                                            {field?.is_primary ? (
+                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 rounded bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-tight text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                                                    {t("Primary")}
+                                                </span>
+                                            ) : null}
                                         </div>
-                                        {isEditing && (
-                                            <label className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-50 dark:bg-slate-700 text-sm whitespace-nowrap">
+                                        {isEditing ? (
+                                            <label className="mt-0.5 inline-flex h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-md bg-slate-50 px-3 text-sm dark:bg-slate-800">
                                                 <input
                                                     type="radio"
                                                     name="email_primary"
@@ -494,33 +553,33 @@ const PersonalProfileForm = forwardRef<
                                                             setValue(`emails.${i}.is_primary`, i === index);
                                                         });
                                                     }}
-                                                    className="w-4 h-4 cursor-pointer"
+                                                    className="size-4 cursor-pointer"
                                                 />
-                                                <span className="text-slate-600 dark:text-slate-300">
-                                                    {t("Primary")}
-                                                </span>
+                                                <span className="text-slate-600 dark:text-slate-300">{t("Primary")}</span>
                                             </label>
-                                        )}
-                                        {isEditing && emailFields.length > 1 && (
+                                        ) : null}
+                                        {isEditing && emailFields.length > 1 ? (
                                             <AppButton
+                                                type="button"
                                                 variant="ghost"
                                                 size="sm"
-                                                className="size-11 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                                className="mt-0.5 size-11 shrink-0 p-0 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30"
                                                 onClick={() => removeEmail(index)}
                                             >
                                                 <Trash2 size={18} />
                                             </AppButton>
-                                        )}
+                                        ) : null}
                                     </div>
                                 ))}
                             </div>
                         </div>
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+
+                        <div className="flex min-w-0 flex-col gap-4">
+                            <div className="flex min-h-8 items-center justify-between gap-2">
+                                <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
                                     <Phone size={14} /> {t("Phones")}
                                 </h3>
-                                {isEditing && (
+                                {isEditing ? (
                                     <AppButton
                                         type="button"
                                         variant="ghost"
@@ -530,27 +589,28 @@ const PersonalProfileForm = forwardRef<
                                     >
                                         <Plus size={14} /> {t("AddPhone")}
                                     </AppButton>
-                                )}
+                                ) : null}
                             </div>
-                            <div className="space-y-3">
+                            <div className="flex flex-col gap-3">
                                 {phoneFields.map((field, index) => (
-                                    <div key={field.id} className="flex gap-3 items-start group">
-                                        <div className="relative w-full">
+                                    <div key={field.id} className="group flex items-start gap-2">
+                                        <div className="relative min-w-0 flex-1">
                                             <SurfacePhoneField
                                                 control={control}
                                                 name={`phones.${index}.phone` as const}
                                                 id={`phone-${index}`}
                                                 label=""
-                                                className="flex-1"
                                                 disabled={!isEditing}
                                                 countryIso={phoneCountry}
                                             />
-                                            {field?.is_primary && <p className="absolute top-2 right-2  px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold uppercase tracking-tight dark:bg-blue-900/40 dark:text-blue-300">{t("Primary")}</p>}
-
+                                            {field?.is_primary ? (
+                                                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-tight text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                                                    {t("Primary")}
+                                                </span>
+                                            ) : null}
                                         </div>
-
-                                        {isEditing && (
-                                            <label className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-50 dark:bg-slate-700 text-sm whitespace-nowrap mt-1.5">
+                                        {isEditing ? (
+                                            <label className="mt-0.5 inline-flex h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-md bg-slate-50 px-3 text-sm dark:bg-slate-800">
                                                 <input
                                                     type="radio"
                                                     name="phone_primary"
@@ -560,29 +620,27 @@ const PersonalProfileForm = forwardRef<
                                                             setValue(`phones.${i}.is_primary`, i === index);
                                                         });
                                                     }}
-                                                    className="w-4 h-4 cursor-pointer"
+                                                    className="size-4 cursor-pointer"
                                                 />
-                                                <span className="text-slate-600 dark:text-slate-300">
-                                                    {t("Primary")}
-                                                </span>
+                                                <span className="text-slate-600 dark:text-slate-300">{t("Primary")}</span>
                                             </label>
-                                        )}
-                                        {isEditing && phoneFields.length > 1 && (
+                                        ) : null}
+                                        {isEditing && phoneFields.length > 1 ? (
                                             <AppButton
+                                                type="button"
                                                 variant="ghost"
                                                 size="sm"
-                                                className="mt-1.5 size-11 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                                className="mt-0.5 size-11 shrink-0 p-0 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30"
                                                 onClick={() => removePhone(index)}
                                             >
                                                 <Trash2 size={18} />
                                             </AppButton>
-                                        )}
+                                        ) : null}
                                     </div>
                                 ))}
                             </div>
                         </div>
                     </div>
-                    {/* Emails Section */}
 
                     <div className="h-px bg-slate-100 dark:bg-slate-700/50" />
 
@@ -740,6 +798,9 @@ const PersonalProfileForm = forwardRef<
                                             countryIsoName={`addresses.${index}.country_iso`}
                                             stateIsoName={`addresses.${index}.state_iso`}
                                             cityName={`addresses.${index}.city`}
+                                            pincodeName={`addresses.${index}.pincode`}
+                                            pincodeLabel={t("fields.pincode")}
+                                            pincodeRequired
                                             labels={{
                                                 country: t("fields.country"),
                                                 state: t("fields.state"),
@@ -751,45 +812,34 @@ const PersonalProfileForm = forwardRef<
                                                 city: t("placeholders.city"),
                                             }}
                                             disabled={!isEditing}
+                                            pincodeDisabled={!isEditing}
+                                            pincodeRender={({ id, value, onChange, onBlur, disabled: pinDisabled }) => (
+                                                <input
+                                                    id={id}
+                                                    autoComplete="postal-code"
+                                                    maxLength={FIELD_MAX_LENGTH.PINCODE}
+                                                    value={value}
+                                                    onChange={(e) =>
+                                                        onChange(
+                                                            sanitizeDigitsInput(
+                                                                e.target.value,
+                                                                FIELD_MAX_LENGTH.PINCODE,
+                                                            ),
+                                                        )
+                                                    }
+                                                    onBlur={onBlur}
+                                                    disabled={pinDisabled}
+                                                    className={cn(
+                                                        surfaceInputClassName,
+                                                        pinDisabled && "bg-slate-50 dark:bg-slate-900/60",
+                                                    )}
+                                                />
+                                            )}
                                             errors={{
                                                 country: undefined,
                                                 state: undefined,
                                                 city: undefined,
                                             }}
-                                            trailingSlot={
-                                                <FieldGroup
-                                                    label={t("fields.pincode")}
-                                                    htmlFor={`${rowIdPrefix}-pincode`}
-                                                    required
-                                                >
-                                                    <Controller
-                                                        control={control}
-                                                        name={`addresses.${index}.pincode`}
-                                                        render={({ field: f }) => (
-                                                            <input
-                                                                id={`${rowIdPrefix}-pincode`}
-                                                                autoComplete="postal-code"
-                                                                maxLength={FIELD_MAX_LENGTH.PINCODE}
-                                                                value={f.value ?? ""}
-                                                                onChange={(e) =>
-                                                                    f.onChange(
-                                                                        sanitizeDigitsInput(
-                                                                            e.target.value,
-                                                                            FIELD_MAX_LENGTH.PINCODE,
-                                                                        ),
-                                                                    )
-                                                                }
-                                                                onBlur={f.onBlur}
-                                                                disabled={!isEditing}
-                                                                className={cn(
-                                                                    surfaceInputClassName,
-                                                                    !isEditing && "bg-slate-50 dark:bg-slate-900/60",
-                                                                )}
-                                                            />
-                                                        )}
-                                                    />
-                                                </FieldGroup>
-                                            }
                                         />
                                     </div>
                                 );

@@ -38,7 +38,9 @@ import {
   listPageRootClassName,
   DataTableRowActionsMenu,
   ListPageCard,
+  ListPageCardFooter,
   ListPageCardGrid,
+  ListPageCardMetaLine,
   ListPageCardSkeleton,
   ListPageHeader,
   ListPageSearchField,
@@ -479,39 +481,37 @@ export function InvoicesPanel() {
                       )
                     }
                     meta={
-                      projectId != null ? (
-                        <DetailEntityLink
-                          href={`${routes.dashboard.projects}/${projectId}`}
-                          className="block min-w-0 truncate font-medium"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {projectDisplay}
-                        </DetailEntityLink>
-                      ) : (
-                        <span className="block min-w-0 truncate">{projectDisplay}</span>
-                      )
+                      projectDisplay && projectDisplay !== "—" ? (
+                        <ListPageCardMetaLine>
+                          {projectId != null ? (
+                            <DetailEntityLink
+                              href={`${routes.dashboard.projects}/${projectId}`}
+                              className="min-w-0 truncate font-medium"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {projectDisplay}
+                            </DetailEntityLink>
+                          ) : (
+                            <span className="min-w-0 truncate">{projectDisplay}</span>
+                          )}
+                        </ListPageCardMetaLine>
+                      ) : undefined
                     }
+                    badge={<InvoiceStatusBadge status={row.status} label={statusLabel(row.status)} />}
                     footer={
-                      <div className="flex w-full flex-wrap items-center justify-between gap-3">
-                        <div className="flex min-w-0 flex-wrap items-center gap-3">
-                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
+                      <ListPageCardFooter
+                        start={
+                          <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
                             <Calendar className="size-3.5 shrink-0" aria-hidden />
-                            <span className="uppercase tracking-wide text-[10px] text-slate-500">
-                              {t("card.issueDate")}
-                            </span>
                             <span className="tabular-nums">{issueLabel}</span>
                           </span>
-                          <InvoiceStatusBadge status={row.status} label={statusLabel(row.status)} />
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                            {t("card.amount")}
-                          </p>
-                          <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100">
+                        }
+                        end={
+                          <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100">
                             {amountLabel}
-                          </p>
-                        </div>
-                      </div>
+                          </span>
+                        }
+                      />
                     }
                     onCardClick={() => openDetail(row.id)}
                     menu={

@@ -27,7 +27,7 @@ import {
   EntityDetailLoadingSkeleton,
   EntityDetailScreen,
 } from "@/shared/components/entity";
-import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
+import { entityDetailScrollTabPanelClassName, entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
@@ -144,7 +144,13 @@ export function JobDetailScreen({ jobId }: Props) {
           role="tabpanel"
           id={`job-detail-tab-${activeTab}`}
           aria-labelledby={`job-detail-tab-trigger-${activeTab}`}
-          className={cn(activeTab === "scheduling" ? "flex min-h-0 flex-1 flex-col" : entityDetailTabPanelClassName)}
+          className={
+            activeTab === "scheduling"
+              ? entityDetailTabPanelClassName
+              : activeTab === "overview"
+                ? entityDetailScrollTabPanelClassName
+                : entityDetailTabPanelClassName
+          }
         >
           {loading ? (
             <EntityDetailLoadingSkeleton />

@@ -84,6 +84,33 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
     phoneMountKeyRef.current = resolvedCountry;
   }, [displayValue, resolvedCountry]);
 
+  if (!label) {
+    return (
+      <div className={cn("w-full min-w-0", className)}>
+        <div className="surface-phone-root">
+          <PhoneNumberInput
+            key={`${id}-${phoneMountKey}`}
+            value={displayValue}
+            onChange={onChange}
+            onBlur={onBlur}
+            defaultCountry={resolvedCountry}
+            disabled={disabled}
+            placeholder={placeholder}
+            inputRef={ref}
+            className={cn(error && "ring-2 ring-red-500/30 dark:ring-red-500/25")}
+            numberInputProps={{
+              id,
+              name: fieldName,
+              "aria-invalid": error ? true : undefined,
+              "aria-describedby": described,
+            }}
+          />
+        </div>
+        <FieldErrorText id={errId}>{error}</FieldErrorText>
+      </div>
+    );
+  }
+
   return (
     <FieldGroup label={label} htmlFor={id} required={required} className={className}>
       <div className="surface-phone-root">

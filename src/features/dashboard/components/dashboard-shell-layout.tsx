@@ -18,6 +18,24 @@ type Props = {
 };
 
 /**
+ * Pages that fill the main pane (`data-list-page`, `data-dashboard-fill-page`) use
+ * internal scroll only. Everything else scrolls in the main content column.
+ */
+const dashboardMainScrollClassName = cn(
+  "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain",
+  "has-[[data-list-page]]:min-h-0 has-[[data-list-page]]:flex-1 has-[[data-list-page]]:overflow-hidden",
+  "has-[[data-dashboard-fill-page]]:min-h-0 has-[[data-dashboard-fill-page]]:flex-1 has-[[data-dashboard-fill-page]]:overflow-hidden",
+);
+
+const dashboardPageInnerClassName = cn(
+  dashboardPageContainerClassName,
+  dashboardMainGutterClassName,
+  "flex min-h-0 flex-1 flex-col py-4 sm:py-5",
+  "has-[[data-list-page]]:min-h-0 has-[[data-list-page]]:flex-1 has-[[data-list-page]]:overflow-hidden has-[[data-list-page]]:pb-0",
+  "has-[[data-dashboard-fill-page]]:min-h-0 has-[[data-dashboard-fill-page]]:flex-1 has-[[data-dashboard-fill-page]]:overflow-hidden",
+);
+
+/**
  * Arranges sidebar + header + main based on Appearance → Dashboard layout:
  * - lithium: left sidebar (default)
  * - hydrogen: top navigation (sidebar hidden on md+)
@@ -48,23 +66,8 @@ export function DashboardShellLayout({ children }: Props) {
 
   const main = (
     <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-slate-950">
-      {/*
-        Scroll on the full-bleed pane so the scrollbar sits at the viewport edge.
-        Horizontal gutters live on the scroll content (not on <main>), matching
-        enterprise CRM detail layouts.
-      */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
-        <div
-          className={cn(
-            dashboardPageContainerClassName,
-            dashboardMainGutterClassName,
-            // Non-list pages (settings, forms, detail) scroll above.
-            // List pages use h-full + overflow-hidden so only the table body scrolls.
-            "flex min-h-0 flex-1 flex-col py-4 sm:py-5",
-          )}
-        >
-          {children}
-        </div>
+      <div className={dashboardMainScrollClassName}>
+        <div className={dashboardPageInnerClassName}>{children}</div>
       </div>
     </main>
   );
@@ -76,29 +79,22 @@ export function DashboardShellLayout({ children }: Props) {
     </div>
   );
 
+  const shellRow = (
+    <div className="flex min-h-0 flex-1 overflow-hidden">
+      {!isBoron && !isHydrogen ? sidebar : null}
+      {contentColumn}
+      {isBoron ? sidebar : null}
+    </div>
+  );
+
   if (isHydrogen) {
     return (
-      <>
-        {/* Keep sidebar for mobile / accessibility; hide on md+ when Hydrogen is active */}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="contents md:hidden">{sidebar}</div>
         {contentColumn}
-      </>
+      </div>
     );
   }
 
-  if (isBoron) {
-    return (
-      <>
-        {contentColumn}
-        {sidebar}
-      </>
-    );
-  }
-
-  return (
-    <>
-      {sidebar}
-      {contentColumn}
-    </>
-  );
+  return shellRow;
 }
