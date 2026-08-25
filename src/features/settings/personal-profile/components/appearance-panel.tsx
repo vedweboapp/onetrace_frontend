@@ -31,6 +31,15 @@ import { useShallow } from "zustand/react/shallow";
 import { AppButton, CheckmarkSelect, FieldGroup, surfaceInputClassName } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import { LayoutPanelLeft, LayoutPanelTop, Moon, PanelRight, Sun } from "lucide-react";
+import { useAuthStore } from "@/features/auth/store/auth.store";
+import { updatePersonalProfile } from "../api/personal-profile.api";
+import {
+  buildApiAppearancePreferences,
+  captureAppearanceStoreSnapshot,
+  type AppearanceStoreSlice,
+  type ApiAppearancePreferences,
+} from "../utils/appearance-preferences.util";
+import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 
 function useIsClient() {
   return useSyncExternalStore(
@@ -92,21 +101,25 @@ function ChoiceChip({
   onClick,
   children,
   className,
+  disabled = false,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
   className?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={onClick}
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-semibold transition",
         active
           ? "border-[color:var(--dash-accent)] bg-[color:var(--dash-accent)]/10 text-slate-900 dark:text-white"
           : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800",
+        disabled && "pointer-events-none cursor-default opacity-80",
         className,
       )}
     >
@@ -121,22 +134,26 @@ function LayoutCard({
   title,
   subtitle,
   icon,
+  disabled = false,
 }: {
   active: boolean;
   onClick: () => void;
   title: string;
   subtitle: string;
   icon: React.ReactNode;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={onClick}
       className={cn(
         "flex w-full flex-col items-start gap-3 rounded-xl border p-4 text-left transition",
         active
           ? "border-[color:var(--dash-accent)] bg-[color:var(--dash-accent)]/5 ring-1 ring-[color:var(--dash-accent)]"
           : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600",
+        disabled && "pointer-events-none cursor-default opacity-80",
       )}
     >
       <div
@@ -189,358 +206,515 @@ function FormLayoutPreview({
   );
 }
 
-export function AppearancePanel() {
-  const [isMounted, setIsMounted] = React.useState(false);
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
+export type AppearancePanelHandle = {
+  submit: () => Promise<void>;
+  cancel: () => void;
+};
 
-  const t = useTranslations("Dashboard.appearance");
-  const { theme, setTheme } = useTheme();
-  const mounted = useIsClient();
-  const locale = useLocale();
-  const nextPathname = useNextPathname();
-  const colorInputRef = React.useRef<HTMLInputElement>(null);
+type AppearancePanelProps = {
+  isEditing: boolean;
+  isSaving: boolean;
+  setIsSaving: (v: boolean) => void;
+  onSaved?: () => void;
+  /** Preserve server error_message when patching preferences. */
+  initialErrorMessage?: ApiAppearancePreferences["error_message"];
+};
 
-  const {
-    accentKind,
-    accent,
-    customAccentHex,
-    fontFamily,
-    fontSize,
-    sidebarLayout,
-    formLabelPlacement,
-    requiredIndicator,
-    detailRowLineWidth,
-    detailRowLineStyle,
-    setAccentPreset,
-    setAccentCustom,
-    setFontFamily,
-    setFontSize,
-    setSidebarLayout,
-    setFormLabelPlacement,
-    setRequiredIndicator,
-    setDetailRowLineWidth,
-    setDetailRowLineStyle,
-  } = useDashboardAppearanceStore(
-    useShallow((s) => ({
-      accentKind: s.accentKind,
-      accent: s.accent,
-      customAccentHex: s.customAccentHex,
-      fontFamily: s.fontFamily,
-      fontSize: s.fontSize,
-      sidebarLayout: s.sidebarLayout,
-      formLabelPlacement: s.formLabelPlacement,
-      requiredIndicator: s.requiredIndicator,
-      detailRowLineWidth: s.detailRowLineWidth,
-      detailRowLineStyle: s.detailRowLineStyle,
-      setAccentPreset: s.setAccentPreset,
-      setAccentCustom: s.setAccentCustom,
-      setFontFamily: s.setFontFamily,
-      setFontSize: s.setFontSize,
-      setSidebarLayout: s.setSidebarLayout,
-      setFormLabelPlacement: s.setFormLabelPlacement,
-      setRequiredIndicator: s.setRequiredIndicator,
-      setDetailRowLineWidth: s.setDetailRowLineWidth,
-      setDetailRowLineStyle: s.setDetailRowLineStyle,
-    })),
-  );
+type AppearanceEditSnapshot = {
+  store: AppearanceStoreSlice;
+  themeMode: "light" | "dark";
+  language: string;
+  hexDraft: string;
+};
 
-  const [hexDraft, setHexDraft] = React.useState(customAccentHex);
+export const AppearancePanel = React.forwardRef<AppearancePanelHandle, AppearancePanelProps>(
+  function AppearancePanel(
+    { isEditing, isSaving, setIsSaving, onSaved, initialErrorMessage },
+    ref,
+  ) {
+    const [isMounted, setIsMounted] = React.useState(false);
+    React.useEffect(() => {
+      setIsMounted(true);
+    }, []);
 
-  React.useEffect(() => {
-    setHexDraft(customAccentHex);
-  }, [customAccentHex]);
+    const t = useTranslations("Dashboard.appearance");
+    const tProfile = useTranslations("Dashboard.settingsPersonalProfile");
+    const { theme, setTheme } = useTheme();
+    const mounted = useIsClient();
+    const locale = useLocale();
+    const nextPathname = useNextPathname();
+    const colorInputRef = React.useRef<HTMLInputElement>(null);
+    const userId = useAuthStore((s) => s.user?.id);
+    const snapshotRef = React.useRef<AppearanceEditSnapshot | null>(null);
+    const [draftLanguage, setDraftLanguage] = React.useState(locale);
 
-  const languageOptions = React.useMemo(
-    () => routing.locales.map((loc) => ({ value: loc, label: t(`languages.${loc}`) })),
-    [t],
-  );
+    const {
+      accentKind,
+      accent,
+      customAccentHex,
+      fontFamily,
+      fontSize,
+      sidebarLayout,
+      formLabelPlacement,
+      requiredIndicator,
+      detailRowLineWidth,
+      detailRowLineStyle,
+      setAccentPreset,
+      setAccentCustom,
+      setFontFamily,
+      setFontSize,
+      setSidebarLayout,
+      setFormLabelPlacement,
+      setRequiredIndicator,
+      setDetailRowLineWidth,
+      setDetailRowLineStyle,
+    } = useDashboardAppearanceStore(
+      useShallow((s) => ({
+        accentKind: s.accentKind,
+        accent: s.accent,
+        customAccentHex: s.customAccentHex,
+        fontFamily: s.fontFamily,
+        fontSize: s.fontSize,
+        sidebarLayout: s.sidebarLayout,
+        formLabelPlacement: s.formLabelPlacement,
+        requiredIndicator: s.requiredIndicator,
+        detailRowLineWidth: s.detailRowLineWidth,
+        detailRowLineStyle: s.detailRowLineStyle,
+        setAccentPreset: s.setAccentPreset,
+        setAccentCustom: s.setAccentCustom,
+        setFontFamily: s.setFontFamily,
+        setFontSize: s.setFontSize,
+        setSidebarLayout: s.setSidebarLayout,
+        setFormLabelPlacement: s.setFormLabelPlacement,
+        setRequiredIndicator: s.setRequiredIndicator,
+        setDetailRowLineWidth: s.setDetailRowLineWidth,
+        setDetailRowLineStyle: s.setDetailRowLineStyle,
+      })),
+    );
 
-  const fontOptions = React.useMemo(
-    () => FONT_FAMILY_ORDER.map((id) => ({ value: id, label: t(`fonts.${id}`) })),
-    [t],
-  );
+    const [hexDraft, setHexDraft] = React.useState(customAccentHex);
 
-  function handleApplyCustom() {
-    const n = normalizeHex(hexDraft);
-    if (isValidHex(n)) setAccentCustom(n);
-    else setHexDraft(customAccentHex);
-  }
+    React.useEffect(() => {
+      setHexDraft(customAccentHex);
+    }, [customAccentHex]);
 
-  function switchLocale(nextLocale: string) {
-    if (nextLocale === locale) return;
-    const bare = stripLocaleSegmentsFromPathname(nextPathname);
-    const path = bare === "/" ? "" : bare;
-    const suffix =
-      typeof window !== "undefined"
-        ? `${window.location.search}${window.location.hash}`
-        : "";
-    window.location.assign(`/${nextLocale}${path}${suffix}`);
-  }
+    React.useEffect(() => {
+      if (!isEditing) setDraftLanguage(locale);
+    }, [isEditing, locale]);
 
-  const layoutIcons: Record<DashboardSidebarLayout, React.ReactNode> = {
-    lithium: <LayoutPanelLeft className="size-6" strokeWidth={1.5} />,
-    hydrogen: <LayoutPanelTop className="size-6" strokeWidth={1.5} />,
-    boron: <PanelRight className="size-6" strokeWidth={1.5} />,
-  };
+    const captureSnapshot = React.useCallback((): AppearanceEditSnapshot => {
+      const store = useDashboardAppearanceStore.getState();
+      return {
+        store: captureAppearanceStoreSnapshot({
+          accentKind: store.accentKind,
+          accent: store.accent,
+          customAccentHex: store.customAccentHex,
+          fontFamily: store.fontFamily,
+          fontSize: store.fontSize,
+          sidebarLayout: store.sidebarLayout,
+          formLabelPlacement: store.formLabelPlacement,
+          requiredIndicator: store.requiredIndicator,
+          detailRowLineWidth: store.detailRowLineWidth,
+          detailRowLineStyle: store.detailRowLineStyle,
+        }),
+        themeMode: (theme === "dark" ? "dark" : "light") as "light" | "dark",
+        language: locale,
+        hexDraft: customAccentHex,
+      };
+    }, [theme, locale, customAccentHex]);
 
-  return (
-    <div
-      className={cn(
-        "w-full space-y-6 pb-10 transition-opacity duration-500",
-        isMounted ? "opacity-100" : "opacity-0",
-      )}
-    >
-      <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
-        {t("storageHint")}
-      </p>
+    React.useEffect(() => {
+      if (isEditing) {
+        snapshotRef.current = captureSnapshot();
+        setDraftLanguage(locale);
+      }
+      // Capture once when entering edit mode.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isEditing]);
 
-      <SectionShell title={t("themeHeading")}>
-        <SettingRow label={t("themeSelectLabel")} hint={t("themeHint")}>
-          <div className="flex w-full max-w-sm items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-900">
-            {(["light", "dark"] as const).map((mode) => {
-              const active = (mounted ? theme : "light") === mode;
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => setTheme(mode)}
-                  className={cn(
-                    "flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all",
-                    active
-                      ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
-                      : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
-                  )}
-                >
-                  {mode === "light" ? <Sun size={16} /> : <Moon size={16} />}
-                  <span>{t(`theme.${mode}`)}</span>
-                </button>
-              );
-            })}
-          </div>
-        </SettingRow>
+    const restoreSnapshot = React.useCallback(() => {
+      const snap = snapshotRef.current;
+      if (!snap) return;
+      useDashboardAppearanceStore.setState((state) => ({
+        ...state,
+        ...snap.store,
+      }));
+      setTheme(snap.themeMode);
+      setHexDraft(snap.hexDraft);
+      setDraftLanguage(snap.language);
+    }, [setTheme]);
 
-        <SettingRow label={t("languageSelectLabel")} hint={t("languageHint")}>
-          <CheckmarkSelect
-            id="appearance-locale"
-            listLabel={t("languageSelectLabel")}
-            options={languageOptions}
-            value={locale}
-            onChange={switchLocale}
-            className="w-full max-w-md"
-          />
-        </SettingRow>
+    const navigateToLocale = React.useCallback(
+      (nextLocale: string) => {
+        if (nextLocale === locale) return;
+        const bare = stripLocaleSegmentsFromPathname(nextPathname);
+        const path = bare === "/" ? "" : bare;
+        const suffix =
+          typeof window !== "undefined"
+            ? `${window.location.search}${window.location.hash}`
+            : "";
+        window.location.assign(`/${nextLocale}${path}${suffix}`);
+      },
+      [locale, nextPathname],
+    );
 
-        <SettingRow label={t("accentPresetsLabel")} hint={t("customHint")}>
-          <div className="space-y-6">
-            <div className="flex flex-wrap gap-5">
-              {ACCENT_ORDER.map((id: DashboardAccentId) => {
-                const hex = ACCENT_HEX[id];
-                const selected = accentKind === "preset" && accent === id;
+    const submit = React.useCallback(async () => {
+      if (!userId || isSaving) return;
+      setIsSaving(true);
+      try {
+        const store = useDashboardAppearanceStore.getState();
+        const themeMode = (theme === "dark" ? "dark" : "light") as "light" | "dark";
+        const preferences = buildApiAppearancePreferences({
+          store: {
+            accentKind: store.accentKind,
+            accent: store.accent,
+            customAccentHex: store.customAccentHex,
+            fontFamily: store.fontFamily,
+            fontSize: store.fontSize,
+            sidebarLayout: store.sidebarLayout,
+            formLabelPlacement: store.formLabelPlacement,
+            requiredIndicator: store.requiredIndicator,
+            detailRowLineWidth: store.detailRowLineWidth,
+            detailRowLineStyle: store.detailRowLineStyle,
+          },
+          themeMode,
+          language: draftLanguage,
+          errorMessage: initialErrorMessage,
+        });
+
+        await updatePersonalProfile(String(userId), {
+          appearance_settings: {
+            preferences,
+          },
+        });
+
+        toastSuccess(tProfile("appearanceSavedToast"));
+        snapshotRef.current = null;
+        onSaved?.();
+        if (draftLanguage !== locale) {
+          navigateToLocale(draftLanguage);
+        }
+      } catch (err) {
+        toastApiError(err, tProfile("loadError"));
+      } finally {
+        setIsSaving(false);
+      }
+    }, [
+      userId,
+      isSaving,
+      setIsSaving,
+      theme,
+      draftLanguage,
+      initialErrorMessage,
+      onSaved,
+      locale,
+      navigateToLocale,
+      tProfile,
+    ]);
+
+    React.useImperativeHandle(
+      ref,
+      () => ({
+        submit,
+        cancel: () => {
+          restoreSnapshot();
+        },
+      }),
+      [submit, restoreSnapshot],
+    );
+
+    const languageOptions = React.useMemo(
+      () => routing.locales.map((loc) => ({ value: loc, label: t(`languages.${loc}`) })),
+      [t],
+    );
+
+    const fontOptions = React.useMemo(
+      () => FONT_FAMILY_ORDER.map((id) => ({ value: id, label: t(`fonts.${id}`) })),
+      [t],
+    );
+
+    function handleApplyCustom() {
+      if (!isEditing) return;
+      const n = normalizeHex(hexDraft);
+      if (isValidHex(n)) setAccentCustom(n);
+      else setHexDraft(customAccentHex);
+    }
+
+    const layoutIcons: Record<DashboardSidebarLayout, React.ReactNode> = {
+      lithium: <LayoutPanelLeft className="size-6" strokeWidth={1.5} />,
+      hydrogen: <LayoutPanelTop className="size-6" strokeWidth={1.5} />,
+      boron: <PanelRight className="size-6" strokeWidth={1.5} />,
+    };
+
+    const canEdit = isEditing && !isSaving;
+
+    return (
+      <div
+        className={cn(
+          "w-full space-y-6 pb-10 transition-opacity duration-500",
+          isMounted ? "opacity-100" : "opacity-0",
+        )}
+      >
+        <SectionShell title={t("themeHeading")}>
+          <SettingRow label={t("themeSelectLabel")} hint={t("themeHint")}>
+            <div className="flex w-full max-w-sm items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-900">
+              {(["light", "dark"] as const).map((mode) => {
+                const active = (mounted ? theme : "light") === mode;
                 return (
-                  <div key={id} className="flex flex-col items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAccentPreset(id);
-                        setHexDraft(hex);
-                      }}
-                      className={cn(
-                        "size-10 rounded-full transition hover:scale-105",
-                        selected
-                          ? "ring-2 ring-[color:var(--dash-accent)] ring-offset-2 dark:ring-offset-slate-950"
-                          : "ring-1 ring-slate-200 dark:ring-slate-700",
-                      )}
-                      style={{ background: hex }}
-                      title={t(`accents.${id}`)}
-                      aria-label={t(`accents.${id}`)}
-                    />
-                    <span className="text-[10px] font-semibold uppercase tracking-tight text-slate-500">
-                      {t(`accents.${id}`)}
-                    </span>
-                  </div>
+                  <button
+                    key={mode}
+                    type="button"
+                    disabled={!canEdit}
+                    onClick={() => setTheme(mode)}
+                    className={cn(
+                      "flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all",
+                      active
+                        ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
+                        : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
+                      !canEdit && "pointer-events-none opacity-80",
+                    )}
+                  >
+                    {mode === "light" ? <Sun size={16} /> : <Moon size={16} />}
+                    <span>{t(`theme.${mode}`)}</span>
+                  </button>
                 );
               })}
             </div>
+          </SettingRow>
 
-            <div className="max-w-md">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                {t("customHexLabel")}
-              </p>
-              <div className="flex overflow-hidden items-center rounded-xl border border-slate-200 bg-white focus-within:ring-2 focus-within:ring-slate-900/10 dark:border-slate-800 dark:bg-slate-900">
-                <div className="flex flex-1 items-center gap-3 px-3 py-2">
-                  <button
-                    type="button"
-                    className="size-6 rounded-md border border-slate-200 dark:border-slate-700"
-                    style={{ background: normalizeHex(hexDraft) }}
-                    onClick={() => colorInputRef.current?.click()}
-                    aria-label={t("customColorPicker")}
-                  />
-                  <input
-                    ref={colorInputRef}
-                    type="color"
-                    className="sr-only"
-                    value={normalizeHex(hexDraft).slice(0, 7)}
-                    onChange={(e) => {
-                      setHexDraft(e.target.value);
-                      setAccentCustom(e.target.value);
-                    }}
-                  />
-                  <input
-                    type="text"
-                    value={hexDraft}
-                    onChange={(e) => setHexDraft(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleApplyCustom()}
-                    className="w-full bg-transparent font-mono text-sm font-semibold outline-none text-slate-900 dark:text-white"
-                    placeholder="#111111"
-                    spellCheck={false}
-                  />
+          <SettingRow label={t("languageSelectLabel")} hint={t("languageHint")}>
+            <CheckmarkSelect
+              id="appearance-locale"
+              listLabel={t("languageSelectLabel")}
+              options={languageOptions}
+              value={draftLanguage}
+              onChange={setDraftLanguage}
+              disabled={!canEdit}
+              className="w-full max-w-md"
+            />
+          </SettingRow>
+
+          <SettingRow label={t("accentPresetsLabel")} hint={t("customHint")}>
+            <div className="space-y-6">
+              <div className="flex flex-wrap gap-5">
+                {ACCENT_ORDER.map((id: DashboardAccentId) => {
+                  const hex = ACCENT_HEX[id];
+                  const selected = accentKind === "preset" && accent === id;
+                  return (
+                    <div key={id} className="flex flex-col items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={!canEdit}
+                        onClick={() => {
+                          setAccentPreset(id);
+                          setHexDraft(hex);
+                        }}
+                        className={cn(
+                          "size-10 rounded-full transition hover:scale-105",
+                          selected
+                            ? "ring-2 ring-[color:var(--dash-accent)] ring-offset-2 dark:ring-offset-slate-950"
+                            : "ring-1 ring-slate-200 dark:ring-slate-700",
+                          !canEdit && "pointer-events-none",
+                        )}
+                        style={{ background: hex }}
+                        title={t(`accents.${id}`)}
+                        aria-label={t(`accents.${id}`)}
+                      />
+                      <span className="text-[10px] font-semibold uppercase tracking-tight text-slate-500">
+                        {t(`accents.${id}`)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="max-w-md">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  {t("customHexLabel")}
+                </p>
+                <div className="flex overflow-hidden items-center rounded-xl border border-slate-200 bg-white focus-within:ring-2 focus-within:ring-slate-900/10 dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex flex-1 items-center gap-3 px-3 py-2">
+                    <button
+                      type="button"
+                      disabled={!canEdit}
+                      className="size-6 rounded-md border border-slate-200 dark:border-slate-700 disabled:opacity-70"
+                      style={{ background: normalizeHex(hexDraft) }}
+                      onClick={() => colorInputRef.current?.click()}
+                      aria-label={t("customColorPicker")}
+                    />
+                    <input
+                      ref={colorInputRef}
+                      type="color"
+                      className="sr-only"
+                      disabled={!canEdit}
+                      value={normalizeHex(hexDraft).slice(0, 7)}
+                      onChange={(e) => {
+                        setHexDraft(e.target.value);
+                        setAccentCustom(e.target.value);
+                      }}
+                    />
+                    <input
+                      type="text"
+                      value={hexDraft}
+                      disabled={!canEdit}
+                      onChange={(e) => setHexDraft(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleApplyCustom()}
+                      className="w-full bg-transparent font-mono text-sm font-semibold outline-none text-slate-900 disabled:opacity-70 dark:text-white"
+                      placeholder="#111111"
+                      spellCheck={false}
+                    />
+                  </div>
+                  {canEdit ? (
+                    <AppButton
+                      variant="primary"
+                      type="button"
+                      onClick={handleApplyCustom}
+                      className="mx-2 px-5 py-2 text-xs font-bold uppercase tracking-wider"
+                    >
+                      {t("applyCustom")}
+                    </AppButton>
+                  ) : null}
                 </div>
-                <AppButton
-                  variant="primary"
-                  type="button"
-                  onClick={handleApplyCustom}
-                  className="mx-2 px-5 py-2 text-xs font-bold uppercase tracking-wider"
-                >
-                  {t("applyCustom")}
-                </AppButton>
               </div>
             </div>
-          </div>
-        </SettingRow>
-      </SectionShell>
+          </SettingRow>
+        </SectionShell>
 
-      <SectionShell title={t("typographyHeading")}>
-        <SettingRow label={t("fontFamilyLabel")} hint={t("fontFamilyHint")}>
-          <CheckmarkSelect
-            id="appearance-font-family"
-            listLabel={t("fontFamilyLabel")}
-            options={fontOptions}
-            value={fontFamily}
-            onChange={(v) => setFontFamily(v as DashboardFontFamily)}
-            className="w-full max-w-md"
-          />
-        </SettingRow>
+        <SectionShell title={t("typographyHeading")}>
+          <SettingRow label={t("fontFamilyLabel")} hint={t("fontFamilyHint")}>
+            <CheckmarkSelect
+              id="appearance-font-family"
+              listLabel={t("fontFamilyLabel")}
+              options={fontOptions}
+              value={fontFamily}
+              onChange={(v) => setFontFamily(v as DashboardFontFamily)}
+              disabled={!canEdit}
+              className="w-full max-w-md"
+            />
+          </SettingRow>
 
-        <SettingRow label={t("fontSizeLabel")} hint={t("fontSizeHint")}>
-          <div className="flex flex-wrap gap-2">
-            {FONT_SIZE_ORDER.map((size: DashboardFontSize) => (
-              <ChoiceChip
-                key={size}
-                active={fontSize === size}
-                onClick={() => setFontSize(size)}
-              >
-                {t(`fontSizes.${size}`)}
-              </ChoiceChip>
-            ))}
-          </div>
-          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-            {t("fontSizePreview")}
-          </p>
-        </SettingRow>
-      </SectionShell>
+          <SettingRow label={t("fontSizeLabel")} hint={t("fontSizeHint")}>
+            <div className="flex flex-wrap gap-2">
+              {FONT_SIZE_ORDER.map((size: DashboardFontSize) => (
+                <ChoiceChip
+                  key={size}
+                  active={fontSize === size}
+                  disabled={!canEdit}
+                  onClick={() => setFontSize(size)}
+                >
+                  {t(`fontSizes.${size}`)}
+                </ChoiceChip>
+              ))}
+            </div>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{t("fontSizePreview")}</p>
+          </SettingRow>
+        </SectionShell>
 
-      <SectionShell title={t("layoutHeading")}>
-        <SettingRow label={t("sidebarLayoutLabel")} hint={t("sidebarLayoutHint")}>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {SIDEBAR_LAYOUT_ORDER.map((layout: DashboardSidebarLayout) => (
-              <LayoutCard
-                key={layout}
-                active={sidebarLayout === layout}
-                onClick={() => setSidebarLayout(layout)}
-                title={t(`layouts.${layout}.title`)}
-                subtitle={t(`layouts.${layout}.subtitle`)}
-                icon={layoutIcons[layout]}
-              />
-            ))}
-          </div>
-        </SettingRow>
-      </SectionShell>
-
-      <SectionShell title={t("formLayoutHeading")}>
-        <SettingRow label={t("labelPlacementLabel")} hint={t("labelPlacementHint")}>
-          <div className="flex flex-wrap gap-2">
-            {FORM_LABEL_PLACEMENT_ORDER.map((placement: FormLabelPlacement) => (
-              <ChoiceChip
-                key={placement}
-                active={formLabelPlacement === placement}
-                onClick={() => setFormLabelPlacement(placement)}
-              >
-                {t(`labelPlacements.${placement}`)}
-              </ChoiceChip>
-            ))}
-          </div>
-        </SettingRow>
-
-        <SettingRow label={t("requiredIndicatorLabel")} hint={t("requiredIndicatorHint")}>
-          <div className="flex flex-wrap gap-2">
-            {REQUIRED_INDICATOR_ORDER.map((indicator: RequiredFieldIndicator) => (
-              <ChoiceChip
-                key={indicator}
-                active={requiredIndicator === indicator}
-                onClick={() => setRequiredIndicator(indicator)}
-              >
-                {t(`requiredIndicators.${indicator}`)}
-              </ChoiceChip>
-            ))}
-          </div>
-        </SettingRow>
-
-        <SettingRow label={t("detailRowLineWidthLabel")} hint={t("detailRowLineWidthHint")}>
-          <div className="flex flex-wrap gap-2">
-            {DETAIL_ROW_LINE_WIDTH_ORDER.map((width: DetailRowLineWidth) => (
-              <ChoiceChip
-                key={width}
-                active={detailRowLineWidth === width}
-                onClick={() => setDetailRowLineWidth(width)}
-                className="min-w-[4.5rem] flex-col gap-1.5 py-2.5"
-              >
-                <span
-                  className="block h-0 w-10 border-slate-800 dark:border-slate-200"
-                  style={{
-                    borderBottomWidth: width === "0" ? 0 : `${width}px`,
-                    borderBottomStyle: detailRowLineStyle,
-                    opacity: width === "0" ? 0.35 : 1,
-                  }}
-                  aria-hidden
+        <SectionShell title={t("layoutHeading")}>
+          <SettingRow label={t("sidebarLayoutLabel")} hint={t("sidebarLayoutHint")}>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {SIDEBAR_LAYOUT_ORDER.map((layout: DashboardSidebarLayout) => (
+                <LayoutCard
+                  key={layout}
+                  active={sidebarLayout === layout}
+                  disabled={!canEdit}
+                  onClick={() => setSidebarLayout(layout)}
+                  title={t(`layouts.${layout}.title`)}
+                  subtitle={t(`layouts.${layout}.subtitle`)}
+                  icon={layoutIcons[layout]}
                 />
-                <span className="text-[11px] font-semibold tabular-nums">
-                  {width === "0" ? t("detailRowLineWidths.none") : `${width}px`}
-                </span>
-              </ChoiceChip>
-            ))}
-          </div>
-        </SettingRow>
+              ))}
+            </div>
+          </SettingRow>
+        </SectionShell>
 
-        <SettingRow label={t("detailRowLineStyleLabel")} hint={t("detailRowLineStyleHint")}>
-          <div className="flex flex-wrap gap-2">
-            {DETAIL_ROW_LINE_STYLE_ORDER.map((style: DetailRowLineStyle) => (
-              <ChoiceChip
-                key={style}
-                active={detailRowLineStyle === style}
-                onClick={() => setDetailRowLineStyle(style)}
-                className="min-w-[5.5rem] flex-col gap-1.5 py-2.5"
-              >
-                <span
-                  className="block w-12 border-slate-800 dark:border-slate-200"
-                  style={{
-                    borderBottomWidth: Math.max(Number(detailRowLineWidth) || 1, 1),
-                    borderBottomStyle: style,
-                  }}
-                  aria-hidden
-                />
-                <span className="text-[11px] font-semibold">{t(`detailRowLineStyles.${style}`)}</span>
-              </ChoiceChip>
-            ))}
-          </div>
-        </SettingRow>
+        <SectionShell title={t("formLayoutHeading")}>
+          <SettingRow label={t("labelPlacementLabel")} hint={t("labelPlacementHint")}>
+            <div className="flex flex-wrap gap-2">
+              {FORM_LABEL_PLACEMENT_ORDER.map((placement: FormLabelPlacement) => (
+                <ChoiceChip
+                  key={placement}
+                  active={formLabelPlacement === placement}
+                  disabled={!canEdit}
+                  onClick={() => setFormLabelPlacement(placement)}
+                >
+                  {t(`labelPlacements.${placement}`)}
+                </ChoiceChip>
+              ))}
+            </div>
+          </SettingRow>
 
-        <FormLayoutPreview
-          placement={formLabelPlacement}
-          requiredIndicator={requiredIndicator}
-        />
-      </SectionShell>
-    </div>
-  );
-}
+          <SettingRow label={t("requiredIndicatorLabel")} hint={t("requiredIndicatorHint")}>
+            <div className="flex flex-wrap gap-2">
+              {REQUIRED_INDICATOR_ORDER.map((indicator: RequiredFieldIndicator) => (
+                <ChoiceChip
+                  key={indicator}
+                  active={requiredIndicator === indicator}
+                  disabled={!canEdit}
+                  onClick={() => setRequiredIndicator(indicator)}
+                >
+                  {t(`requiredIndicators.${indicator}`)}
+                </ChoiceChip>
+              ))}
+            </div>
+          </SettingRow>
+
+          <SettingRow label={t("detailRowLineWidthLabel")} hint={t("detailRowLineWidthHint")}>
+            <div className="flex flex-wrap gap-2">
+              {DETAIL_ROW_LINE_WIDTH_ORDER.map((width: DetailRowLineWidth) => (
+                <ChoiceChip
+                  key={width}
+                  active={detailRowLineWidth === width}
+                  disabled={!canEdit}
+                  onClick={() => setDetailRowLineWidth(width)}
+                  className="min-w-[4.5rem] flex-col gap-1.5 py-2.5"
+                >
+                  <span
+                    className="block h-0 w-10 border-slate-800 dark:border-slate-200"
+                    style={{
+                      borderBottomWidth: width === "0" ? 0 : `${width}px`,
+                      borderBottomStyle: detailRowLineStyle,
+                      opacity: width === "0" ? 0.35 : 1,
+                    }}
+                    aria-hidden
+                  />
+                  <span className="text-[11px] font-semibold tabular-nums">
+                    {width === "0" ? t("detailRowLineWidths.none") : `${width}px`}
+                  </span>
+                </ChoiceChip>
+              ))}
+            </div>
+          </SettingRow>
+
+          <SettingRow label={t("detailRowLineStyleLabel")} hint={t("detailRowLineStyleHint")}>
+            <div className="flex flex-wrap gap-2">
+              {DETAIL_ROW_LINE_STYLE_ORDER.map((style: DetailRowLineStyle) => (
+                <ChoiceChip
+                  key={style}
+                  active={detailRowLineStyle === style}
+                  disabled={!canEdit}
+                  onClick={() => setDetailRowLineStyle(style)}
+                  className="min-w-[5.5rem] flex-col gap-1.5 py-2.5"
+                >
+                  <span
+                    className="block w-12 border-slate-800 dark:border-slate-200"
+                    style={{
+                      borderBottomWidth: Math.max(Number(detailRowLineWidth) || 1, 1),
+                      borderBottomStyle: style,
+                    }}
+                    aria-hidden
+                  />
+                  <span className="text-[11px] font-semibold">{t(`detailRowLineStyles.${style}`)}</span>
+                </ChoiceChip>
+              ))}
+            </div>
+          </SettingRow>
+
+          <FormLayoutPreview placement={formLabelPlacement} requiredIndicator={requiredIndicator} />
+        </SectionShell>
+      </div>
+    );
+  },
+);
+
+AppearancePanel.displayName = "AppearancePanel";

@@ -1,18 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTheme } from "@teispace/next-themes";
+import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { useUrlParams } from "@/shared/hooks/use-url-params";
 import { fetchPersonalProfile } from "../api/personal-profile.api";
 import type { PersonalProfileResponse } from "../types/types";
 import PersonalProfileHeader from "./personal-profile-header";
 import PersonalProfileForm, { PersonalProfileFormHandle } from "./personal-profile-form";
-import { AppearancePanel } from "./appearance-panel";
-import { useTranslations } from "next-intl";
+import { AppearancePanel, type AppearancePanelHandle } from "./appearance-panel";
+import { hydrateAppearanceFromProfile } from "../utils/hydrate-appearance-from-profile";
 
 const PersonalProfileDetails = () => {
   const t = useTranslations("Dashboard.settingsPersonalProfile");
   const userId = useAuthStore((s) => s.user?.id);
+  const { setTheme } = useTheme();
   const [params] = useUrlParams({ tab: "profile" });
   const activeTab = String(params.tab || "profile");
 
@@ -22,6 +25,7 @@ const PersonalProfileDetails = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const formRef = useRef<PersonalProfileFormHandle>(null);
+  const appearanceRef = useRef<AppearancePanelHandle>(null);
 
   const loadProfile = useCallback(async () => {
     if (!userId) {
@@ -39,6 +43,11 @@ const PersonalProfileDetails = () => {
           ? (data as { data: PersonalProfileResponse }).data
           : (data as PersonalProfileResponse);
       setProfile(resolved);
+
+      const hydrated = hydrateAppearanceFromProfile(resolved?.appearance_settings?.preferences);
+      if (hydrated.themeMode) {
+        setTheme(hydrated.themeMode);
+      }
 
       const detail = resolved?.user_detail;
       const nested = detail?.user;
@@ -62,32 +71,65 @@ const PersonalProfileDetails = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [userId, t]);
+  }, [userId, t, setTheme]);
 
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
 
+  useEffect(() => {
+    setIsEditing(false);
+    setIsSaving(false);
+  }, [activeTab]);
+
   const handleSuccess = () => {
     loadProfile();
     setIsEditing(false);
   };
-  
+
+  const handleCancel = () => {
+    if (activeTab === "appearance") {
+      appearanceRef.current?.cancel();
+    }
+  };
+
+  const handleSubmit = () => {
+    if (activeTab === "appearance") {
+      void appearanceRef.current?.submit();
+      return;
+    }
+    formRef.current?.submit();
+  };
+
   return (
-    <div className="flex flex-col gap-4 w-full">
+    <div className="flex w-full flex-col gap-4">
       <PersonalProfileHeader
         isEditing={isEditing}
         setIsEditing={setIsEditing}
-        showEdit={activeTab === "profile"}
-        submitHandler={() => formRef.current?.submit()}
+        showEdit={activeTab === "profile" || activeTab === "appearance"}
+        submitHandler={handleSubmit}
+        cancelHandler={handleCancel}
         isSaving={isSaving}
       />
 
       {activeTab === "appearance" ? (
-        <AppearancePanel />
+        isLoading ? (
+          <div className="flex w-full items-center justify-center p-20">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+          </div>
+        ) : (
+          <AppearancePanel
+            ref={appearanceRef}
+            isEditing={isEditing}
+            isSaving={isSaving}
+            setIsSaving={setIsSaving}
+            onSaved={() => setIsEditing(false)}
+            initialErrorMessage={profile?.appearance_settings?.preferences?.error_message}
+          />
+        )
       ) : isLoading ? (
-        <div className="flex items-center justify-center p-20 w-full">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="flex w-full items-center justify-center p-20">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
         </div>
       ) : error ? (
         <p className="text-sm font-medium text-red-500">{error}</p>

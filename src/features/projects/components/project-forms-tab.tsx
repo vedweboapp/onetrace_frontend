@@ -29,7 +29,9 @@ import {
   DataTablePaginationBar,
   DataTableRowActionsMenu,
   ListPageCard,
+  ListPageCardFooter,
   ListPageCardGrid,
+  ListPageCardMetaLine,
   MultiCheckSelect,
   SurfaceShell,
 } from "@/shared/ui";
@@ -49,6 +51,14 @@ function projectTypeLabel(value: FormListItem["project_type"]): string {
   if (typeof value === "number") return `#${value}`;
   const label = value.project_type?.trim();
   return label || `#${value.id}`;
+}
+
+function installationTypeLabel(value: FormListItem["installation_type"]): string {
+  if (!value) return "—";
+  if (typeof value === "string") return value.trim() || "—";
+  if (typeof value === "number") return `#${value}`;
+  const label = value.installation_type?.trim();
+  return label || (value.id != null ? `#${value.id}` : "—");
 }
 
 function userLabel(user: FormListItem["created_by"]): string {
@@ -365,36 +375,38 @@ export function ProjectFormsTab() {
                 <ListPageCard
                   key={row.id}
                   title={row.name}
-                  subtitle={
-                    <span>
-                      Project Type:{" "}
-                      <span className="text-slate-500 dark:text-slate-400">
-                        {projectTypeLabel(row.project_type)}
-                      </span>
-                    </span>
-                  }
-                  installationType={
-                    <span>
-                      Installation Type:{" "}
-                      <span className="text-slate-500 dark:text-slate-400">
-                        {row.installation_type?.installation_type || "—"}
-                      </span>
-                    </span>
-                  }
-                  footer={
-                    <div className="flex w-full flex-wrap items-center justify-between gap-3">
-                      <ActiveStatusBadge
-                        active={!!row.is_active}
-                        label={row.is_active ? t("status.active") : t("status.inactive")}
-                      />
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {row.created_at ? tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) }) : "—"}
-                      </span>
-
+                  meta={
+                    <div className="space-y-1">
+                      <ListPageCardMetaLine>
+                        <span className="shrink-0 text-slate-400 dark:text-slate-500">{t("table.projectType")}</span>
+                        <span className="min-w-0 truncate font-medium text-slate-700 dark:text-slate-200">
+                          {projectTypeLabel(row.project_type)}
+                        </span>
+                      </ListPageCardMetaLine>
+                      <ListPageCardMetaLine>
+                        <span className="shrink-0 text-slate-400 dark:text-slate-500">{t("table.installationType")}</span>
+                        <span className="min-w-0 truncate font-medium text-slate-700 dark:text-slate-200">
+                          {installationTypeLabel(row.installation_type)}
+                        </span>
+                      </ListPageCardMetaLine>
                     </div>
                   }
+                  footer={
+                    <ListPageCardFooter
+                      start={
+                        <ActiveStatusBadge
+                          active={!!row.is_active}
+                          label={row.is_active ? t("status.active") : t("status.inactive")}
+                        />
+                      }
+                      end={
+                        row.created_at
+                          ? tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })
+                          : "—"
+                      }
+                    />
+                  }
                   onCardClick={() => openEdit(row)}
-
                   menu={
                     <DataTableRowActionsMenu
                       menuAriaLabel={tList("openRowActions")}

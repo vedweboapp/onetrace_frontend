@@ -144,7 +144,14 @@ export function JobDetailScreen({ jobId }: Props) {
           role="tabpanel"
           id={`job-detail-tab-${activeTab}`}
           aria-labelledby={`job-detail-tab-trigger-${activeTab}`}
-          className={cn(activeTab === "scheduling" ? "flex min-h-0 flex-1 flex-col" : entityDetailTabPanelClassName)}
+          className={cn(
+            activeTab === "scheduling" ||
+              activeTab === "materials" ||
+              activeTab === "dispatch" ||
+              activeTab === "returns"
+              ? "flex min-h-0 flex-1 flex-col"
+              : entityDetailTabPanelClassName,
+          )}
         >
           {loading ? (
             <EntityDetailLoadingSkeleton />

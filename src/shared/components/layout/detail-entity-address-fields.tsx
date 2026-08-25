@@ -13,7 +13,7 @@ import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { DetailAddressLine1EditableField } from "@/shared/components/layout/detail-address-line1-field";
 import { DetailAddressLocationFields } from "@/shared/components/layout/detail-address-location-fields";
-import { DetailMetricsGrid } from "@/shared/components/layout/detail-metric-card";
+import { DetailFieldSpanFull, DetailMetricsGrid } from "@/shared/components/layout/detail-metric-card";
 
 export type DetailEntityAddressFieldLabels = {
   addressType: React.ReactNode;
@@ -46,6 +46,9 @@ type Props = {
   onSaveAddresses: (addresses: EntityAddressPayload[]) => Promise<void>;
   allAddresses: EntityAddress[];
   addressIndex: number;
+  blockHeading?: React.ReactNode;
+  blockPrimaryLabel?: React.ReactNode;
+  blockIsPrimary?: boolean;
 };
 
 function DetailEntityAddressLine1Field({
@@ -106,6 +109,9 @@ export function DetailEntityAddressFields({
   onSaveAddresses,
   allAddresses,
   addressIndex,
+  blockHeading,
+  blockPrimaryLabel,
+  blockIsPrimary = false,
 }: Props) {
   async function patchRow(updater: (row: EntityAddressFormRow) => EntityAddressFormRow) {
     const rows = allAddresses.map(mapEntityAddressApiToFormRow);
@@ -118,6 +124,18 @@ export function DetailEntityAddressFields({
 
   return (
     <DetailMetricsGrid from="xl" wide>
+      {blockHeading ? (
+        <DetailFieldSpanFull className="!border-b-0 pb-1 pt-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{blockHeading}</h4>
+            {blockIsPrimary && blockPrimaryLabel ? (
+              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                {blockPrimaryLabel}
+              </span>
+            ) : null}
+          </div>
+        </DetailFieldSpanFull>
+      ) : null}
       <DetailEditableField
         label={labels.addressType}
         value={address.address_type ?? "other"}

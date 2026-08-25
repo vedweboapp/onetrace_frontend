@@ -129,13 +129,11 @@ export function ClientDetailBody({
             <ul className="space-y-0">
               {sortedAddresses.map(({ address: addr, originalIndex, displayIndex }) => (
                 <li key={addr.id ?? `${addr.address_type}-${originalIndex}`}>
-                  <DetailAddressBlock
-                    heading={t("addresses.rowLabel", { index: displayIndex + 1 })}
-                    primaryLabel={t("addresses.primary")}
-                    isPrimary={Boolean(addr.is_primary)}
-                    separated={displayIndex > 0}
-                  >
+                  <DetailAddressBlock separated={displayIndex > 0}>
                     <DetailEntityAddressFields
+                      blockHeading={t("addresses.rowLabel", { index: displayIndex + 1 })}
+                      blockPrimaryLabel={t("addresses.primary")}
+                      blockIsPrimary={Boolean(addr.is_primary)}
                       address={addr}
                       addressIndex={originalIndex}
                       allAddresses={addresses}

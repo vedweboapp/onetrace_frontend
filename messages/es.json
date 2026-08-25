@@ -559,6 +559,7 @@
     },
     "settingsPersonalProfile": {
       "updatedToast": "Perfil actualizado correctamente",
+      "appearanceSavedToast": "Ajustes de apariencia guardados",
       "loadError": "No se pudo cargar el perfil. Inténtalo de nuevo.",
       "mustSignIn": "Debes iniciar sesión para ver tu perfil.",
       "BasicInfo": "Información básica",
@@ -637,7 +638,49 @@
       "organizationUpdatedToast": "Datos de la organización actualizados correctamente",
       "currencyUpdatedToast": "Ajustes de moneda guardados correctamente",
       "scheduleUpdatedToast": "Horario guardado correctamente",
-      "noChangesToast": "No hay cambios que guardar"
+      "noChangesToast": "No hay cambios que guardar",
+      "orgSectionTitle": "Información de la organización",
+      "orgSectionSubtitle": "Actualiza los datos de la empresa y la información de contacto.",
+      "addressSectionTitle": "Información de dirección",
+      "logoLabel": "Logo de la empresa",
+      "logoHint": "Se recomienda 512×512 px",
+      "nameLockedHint": "No se puede cambiar para organizaciones raíz",
+      "currencySectionTitle": "Moneda",
+      "currencySectionSubtitle": "Define la moneda principal y cómo se muestran los importes.",
+      "homeCurrency": "Moneda principal",
+      "homeCurrencyHint": "Tu moneda principal",
+      "format": "Formato",
+      "formatHint": "Formato de moneda actual",
+      "customize": "Personalizar",
+      "numberFormatSectionTitle": "Formato numérico",
+      "numberFormatSectionSubtitle": "Se usa para cantidades y otros campos solo numéricos.",
+      "numberPreview": "Vista previa",
+      "changeHomeCurrency": "Cambiar moneda principal",
+      "symbol": "Símbolo",
+      "symbolPosition": "Posición del símbolo",
+      "symbolBefore": "Antes del valor",
+      "symbolAfter": "Después del valor",
+      "decimalPlaces": "Decimales",
+      "preview": "Vista previa",
+      "cancel": "Cancelar",
+      "confirm": "Confirmar",
+      "saving": "Guardando…",
+      "fields": {
+        "name": "Nombre de la organización",
+        "size": "Tamaño de la empresa",
+        "website": "URL del sitio web",
+        "timezone": "Zona horaria",
+        "description": "Descripción de la empresa",
+        "street": "Dirección",
+        "zip": "Código postal",
+        "numberFormat": "Formato numérico"
+      },
+      "placeholders": {
+        "name": "Nombre de la empresa",
+        "website": "https://ejemplo.com",
+        "street": "Calle Principal 123",
+        "zip": "94102"
+      }
     },
     "settingsFormBuilder": {
       "layoutSavedToast": "Diseño guardado correctamente",
@@ -4211,6 +4254,7 @@
         "table": {
           "name": "Nombre del formulario",
           "projectType": "Tipo de proyecto",
+          "installationType": "Tipo de instalación",
           "status": "Estado",
           "created": "Creado",
           "actions": "Acciones"

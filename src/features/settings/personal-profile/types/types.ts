@@ -52,5 +52,25 @@ export type PersonalProfileResponse = {
     };
     created_at?: string;
     last_login?: string | null;
+    appearance_settings?: {
+        preferences?: {
+            font?: { size?: string; family?: string };
+            accent?: {
+                type?: "preset" | "custom";
+                preset_id?: string;
+                custom_hex?: string;
+            };
+            language?: string;
+            theme_mode?: "light" | "dark";
+            error_message?: {
+                color_mode?: "default" | "custom";
+                custom_hex?: string;
+            };
+            dashboard_layout?: string;
+            page_label_position?: string;
+            mandatory_field_display?: string;
+        };
+        available_options?: Record<string, unknown>;
+    };
     // ... other top-level fields
 };

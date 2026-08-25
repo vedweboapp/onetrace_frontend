@@ -49,12 +49,13 @@ export const entityDetailSurfaceInnerClassName = "min-w-0 w-full";
 export const entityDetailTabPanelClassName = "min-w-0 w-full";
 
 /**
- * List-style detail tabs / empty shells — fill remaining viewport so empty,
- * WIP, and error states center on every screen size (not a short island).
+ * List-style detail tabs / empty shells — grow with the parent flex column.
+ * Avoid large `100dvh` mins (they stack under header/sidebar and create a
+ * spurious page scrollbar + empty strip when the sidebar collapses).
  */
 export const detailTabFillViewportClassName = cn(
   "flex min-h-0 w-full flex-1 flex-col",
-  "min-h-[calc(100dvh-11.5rem)] sm:min-h-[calc(100dvh-13rem)] lg:min-h-[calc(100dvh-14rem)]",
+  "min-h-[12rem] sm:min-h-[16rem]",
 );
 
 /** Centered empty / loading / error content inside a fill tab or list shell. */
