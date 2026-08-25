@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ClipboardPaste, Loader2, Plus } from "lucide-react";
+import { ClipboardPaste, Loader2 } from "lucide-react";
 import { ScheduleEventChip } from "@/features/scheduling/components/schedule-event-chip";
 import { TimeOffChip } from "@/features/scheduling/components/time-off-chip";
 import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
@@ -74,11 +74,6 @@ type DragState = {
   valid: boolean;
 };
 
-type HoverHint = {
-  techId: number;
-  xPct: number;
-};
-
 type Props = {
   day: Date;
   technicians: SchedulingTechnician[];
@@ -104,7 +99,7 @@ type Props = {
     startTime: string;
     endTime: string;
   } | null;
-  /** Disable drag / hover create while create or paste is running. */
+  /** Disable drag create while create or paste is running. */
   createBusy?: boolean;
   onCreateSchedule: (tech: SchedulingTechnician, day: Date) => void;
   onRangeSelect?: (range: TimelineRangeSelect) => void;
@@ -149,7 +144,6 @@ export function SchedulingDayTimeline({
   const timelineWidth = hours.length * HOUR_WIDTH_PX;
   const singleWorker = technicians.length === 1;
   const [drag, setDrag] = React.useState<DragState | null>(null);
-  const [hoverHint, setHoverHint] = React.useState<HoverHint | null>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const workerRowRefs = React.useRef(new Map<number, HTMLDivElement>());
 
@@ -443,6 +437,24 @@ export function SchedulingDayTimeline({
                     ) : knownAvailability ? (
                       <p className="mt-0.5 truncate text-[10px] font-medium text-slate-400">{t("offDuty")}</p>
                     ) : null}
+                    {canPasteOntoWorker(tech) ? (
+                      <button
+                        type="button"
+                        disabled={pasteDisabled}
+                        title={t("copy.pasteHere")}
+                        aria-label={t("copy.pasteHere")}
+                        className={cn(
+                          "mt-1.5 inline-flex items-center gap-1 rounded-md border border-sky-400 bg-white px-2 py-1 text-[11px] font-semibold text-sky-700 shadow-sm",
+                          "hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-1",
+                          "disabled:cursor-not-allowed disabled:opacity-50",
+                          "dark:border-sky-600 dark:bg-slate-950 dark:text-sky-200 dark:hover:bg-sky-950",
+                        )}
+                        onClick={() => onPasteSchedule?.(tech)}
+                      >
+                        <ClipboardPaste className="size-3.5" strokeWidth={2.25} aria-hidden />
+                        {t("copy.pasteHere")}
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               )}
@@ -461,7 +473,6 @@ export function SchedulingDayTimeline({
                   if (dragMode === "book" && !minuteIsBookable(startMin, window, knownAvailability, occupied)) return;
                   if (dragMode === "timeoff" && !minuteIsBookable(startMin, window, knownAvailability, occupied)) return;
                   const endMin = startMin + 15;
-                  setHoverHint(null);
                   setDrag({
                     techId: tech.id,
                     startMin,
@@ -471,33 +482,16 @@ export function SchedulingDayTimeline({
                   e.currentTarget.setPointerCapture(e.pointerId);
                 }}
                 onPointerMove={(e) => {
-                  if (drag && drag.techId === tech.id) {
-                    let endMin = pointerToMinutes(e.clientX, e.currentTarget);
-                    if ((dragMode === "book" || dragMode === "timeoff") && window) {
-                      endMin = Math.min(window.endMinutes, Math.max(window.startMinutes, endMin));
-                    }
-                    setDrag({
-                      ...drag,
-                      endMin,
-                      valid: rangeIsValid(tech, drag.startMin, endMin),
-                    });
-                    return;
+                  if (!drag || drag.techId !== tech.id) return;
+                  let endMin = pointerToMinutes(e.clientX, e.currentTarget);
+                  if ((dragMode === "book" || dragMode === "timeoff") && window) {
+                    endMin = Math.min(window.endMinutes, Math.max(window.startMinutes, endMin));
                   }
-                  if (!canBook || Boolean(drag)) {
-                    setHoverHint((prev) => (prev?.techId === tech.id ? null : prev));
-                    return;
-                  }
-                  const atMin = pointerToMinutes(e.clientX, e.currentTarget);
-                  if (!minuteIsBookable(atMin, window, knownAvailability, occupied)) {
-                    setHoverHint((prev) => (prev?.techId === tech.id ? null : prev));
-                    return;
-                  }
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const xPct = rect.width > 0 ? ((e.clientX - rect.left) / rect.width) * 100 : 0;
-                  setHoverHint({ techId: tech.id, xPct });
-                }}
-                onPointerLeave={() => {
-                  setHoverHint((prev) => (prev?.techId === tech.id ? null : prev));
+                  setDrag({
+                    ...drag,
+                    endMin,
+                    valid: rangeIsValid(tech, drag.startMin, endMin),
+                  });
                 }}
                 onPointerUp={(e) => {
                   if (!drag || drag.techId !== tech.id) return;
@@ -529,39 +523,6 @@ export function SchedulingDayTimeline({
                       />
                     );
                   })}
-                  {canBook && hoverHint?.techId === tech.id && !activeDrag ? (
-                    <div
-                      className="pointer-events-none absolute top-1/2 z-[3] flex -translate-y-1/2 items-center gap-1"
-                      style={{ left: `${hoverHint.xPct}%` }}
-                      title={t("dragToSchedule")}
-                    >
-                      <Plus
-                        className="size-8 shrink-0 text-slate-900 dark:text-white"
-                        strokeWidth={3}
-                        aria-hidden
-                      />
-                      {canPasteOntoWorker(tech) ? (
-                        <button
-                          type="button"
-                          disabled={pasteDisabled}
-                          title={t("copy.pasteHere")}
-                          aria-label={t("copy.pasteHere")}
-                          className={cn(
-                            "pointer-events-auto inline-flex size-8 items-center justify-center rounded-md text-slate-800",
-                            "hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-50",
-                            "dark:text-slate-100 dark:hover:bg-slate-900/70",
-                          )}
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onPasteSchedule?.(tech);
-                          }}
-                        >
-                          <ClipboardPaste className="size-5" strokeWidth={2.25} aria-hidden />
-                        </button>
-                      ) : null}
-                    </div>
-                  ) : null}
                   <div className="pointer-events-none absolute inset-0 flex">
                     {hours.map((hour) => (
                       <div

@@ -4,7 +4,7 @@ import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { ChevronLeft, ChevronRight, Funnel, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Funnel } from "lucide-react";
 import {
   deleteSchedule,
   deleteWorkerTimeOff,
@@ -1255,18 +1255,6 @@ export function SchedulingPanel({
           </div>
         ) : (
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-            {creatingSchedule ? (
-              <div
-                className={cn(
-                  "pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center px-3 pt-2",
-                )}
-              >
-                <div className="inline-flex items-center gap-2 rounded-full border border-sky-300 bg-white/95 px-3 py-1.5 text-xs font-semibold text-sky-900 shadow-sm dark:border-sky-700 dark:bg-slate-950/95 dark:text-sky-100">
-                  <Loader2 className="size-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
-                  {t("creatingSchedule")}
-                </div>
-              </div>
-            ) : null}
             {focusedWorker ? (
               <SchedulingWeekCalendar
                 days={[days[0]]}
@@ -1341,7 +1329,7 @@ export function SchedulingPanel({
             onCreateSchedule={allowCreate ? openCreateSchedule : undefined}
           />
         )
-      ) : loading ? (
+      ) : showScheduleSkeleton ? (
         <div className="space-y-2 p-4">
           <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
           <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
@@ -1351,14 +1339,6 @@ export function SchedulingPanel({
         <SchedulingEmptyUsers onClear={hasPeopleFilters ? clearPeopleFilters : undefined} />
       ) : focusedWorker ? (
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-          {creatingSchedule ? (
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center px-3 pt-2">
-              <div className="inline-flex items-center gap-2 rounded-full border border-sky-300 bg-white/95 px-3 py-1.5 text-xs font-semibold text-sky-900 shadow-sm dark:border-sky-700 dark:bg-slate-950/95 dark:text-sky-100">
-                <Loader2 className="size-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
-                {t("creatingSchedule")}
-              </div>
-            </div>
-          ) : null}
           <SchedulingWeekCalendar
             days={days}
             technician={focusedWorker}
@@ -1384,14 +1364,6 @@ export function SchedulingPanel({
         </div>
       ) : (
         <div className="relative min-h-0 flex-1 overflow-auto">
-          {creatingSchedule ? (
-            <div className="pointer-events-none sticky top-0 z-30 flex justify-center px-3 pt-2">
-              <div className="inline-flex items-center gap-2 rounded-full border border-sky-300 bg-white/95 px-3 py-1.5 text-xs font-semibold text-sky-900 shadow-sm dark:border-sky-700 dark:bg-slate-950/95 dark:text-sky-100">
-                <Loader2 className="size-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
-                {t("creatingSchedule")}
-              </div>
-            </div>
-          ) : null}
           <div className="min-w-[760px]">
             <div
               className="sticky top-0 z-20 grid border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
@@ -1497,7 +1469,6 @@ export function SchedulingPanel({
                                 ? (startTime, endTime) => openCreateSchedule(tech, day, { startTime, endTime })
                                 : undefined
                         }
-                        onOpenDayView={() => openDayView(day)}
                         onScheduleClick={openJobDetail}
                         onRemoveSchedule={setDeleteTarget}
                         onRemoveTimeOff={setDeleteTimeOff}
