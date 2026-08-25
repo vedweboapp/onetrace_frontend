@@ -7,13 +7,14 @@ import type { DispatchReturnRequest } from "@/features/dispatches/types/dispatch
 import { dispatchReturnWorkerLabel } from "@/features/dispatches/utils/dispatch-return.util";
 import { ReturnRequestStatusBadge } from "@/features/dispatches/components/return-request-status-badge";
 import type { Job } from "@/features/jobs/types/job.types";
-import { DetailEntityLink } from "@/shared/components/entity";
+import { DetailEntityLink, EntityDetailErrorState, EntityDetailTabLoadingState } from "@/shared/components/entity";
 import {
   DetailLinkedTable,
   DetailLinkedTableRow,
   DetailLinkedTableTd,
   detailLinkedTableCellClassName,
 } from "@/shared/components/layout/detail-linked-table";
+import { DetailTabListShell } from "@/shared/components/layout/detail-tab-list-shell";
 import {
   DetailPagePadding,
   DetailPanelCard,
@@ -21,6 +22,7 @@ import {
 } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { DashboardEmptyState } from "@/shared/ui";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 
 type Props = {
@@ -34,6 +36,11 @@ export function JobReturnsTab({ detail }: Props) {
   const [returnRequests, setReturnRequests] = React.useState<DispatchReturnRequest[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [refreshNonce, setRefreshNonce] = React.useState(0);
+
+  const reload = React.useCallback(() => {
+    setRefreshNonce((n) => n + 1);
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -57,19 +64,34 @@ export function JobReturnsTab({ detail }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [detail.id, t]);
+  }, [detail.id, t, refreshNonce]);
 
   return (
-    <DetailPagePadding>
-      <div className={detailPageStackClassName}>
-        <DetailPanelCard title={t("detail.returnsTitle")}>
-          {loading ? (
-            <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-              {tDispatches("loadingTitle")}
-            </p>
-          ) : loadError ? (
-            <p className="mt-3 text-sm text-red-600 dark:text-red-400">{loadError}</p>
-          ) : returnRequests.length > 0 ? (
+    <DetailTabListShell
+      loading={loading}
+      loadError={loadError}
+      isEmpty={returnRequests.length === 0}
+      loadingFallback={<EntityDetailTabLoadingState />}
+      emptyFallback={
+        <DashboardEmptyState
+          fill
+          iconName="items"
+          title={tDispatches("return.emptyListTitle")}
+          description={t("detail.returnsEmpty")}
+        />
+      }
+      errorFallback={
+        <EntityDetailErrorState
+          fill
+          message={loadError ?? t("detail.returnsLoadError")}
+          retryLabel={t("detail.retry")}
+          onRetry={reload}
+        />
+      }
+    >
+      <DetailPagePadding>
+        <div className={detailPageStackClassName}>
+          <DetailPanelCard title={t("detail.returnsTitle")}>
             <div className="mt-3">
               <DetailLinkedTable
                 columns={[
@@ -115,13 +137,9 @@ export function JobReturnsTab({ detail }: Props) {
                 ))}
               </DetailLinkedTable>
             </div>
-          ) : (
-            <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-              {t("detail.returnsEmpty")}
-            </p>
-          )}
-        </DetailPanelCard>
-      </div>
-    </DetailPagePadding>
+          </DetailPanelCard>
+        </div>
+      </DetailPagePadding>
+    </DetailTabListShell>
   );
 }

@@ -5,13 +5,14 @@ import { useTranslations } from "next-intl";
 import { fetchMaterialRequestsPage } from "@/features/material-requests/api/material-request.api";
 import type { MaterialRequestListItem } from "@/features/material-requests/types/material-request.types";
 import type { Job } from "@/features/jobs/types/job.types";
-import { DetailEntityLink } from "@/shared/components/entity";
+import { DetailEntityLink, EntityDetailErrorState, EntityDetailTabLoadingState } from "@/shared/components/entity";
 import {
   DetailLinkedTable,
   DetailLinkedTableRow,
   DetailLinkedTableTd,
   detailLinkedTableCellClassName,
 } from "@/shared/components/layout/detail-linked-table";
+import { DetailTabListShell } from "@/shared/components/layout/detail-tab-list-shell";
 import {
   DetailPagePadding,
   DetailPanelCard,
@@ -19,11 +20,36 @@ import {
 } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { DashboardEmptyState } from "@/shared/ui";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 
 type Props = {
   detail: Job;
 };
+
+function materialRequestStatusBadge(status: MaterialRequestListItem["status"]): React.ReactNode {
+  if (!status) return "—";
+  if (typeof status === "string") return <span>{status}</span>;
+  if (typeof status === "object") {
+    const name =
+      (status as Record<string, unknown>)?.name || (status as Record<string, unknown>)?.status_name;
+    const bgColor = (status as Record<string, unknown>)?.bg_colour;
+    const textColor = (status as Record<string, unknown>)?.text_colour;
+    if (!name) return "—";
+    return (
+      <span
+        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap"
+        style={{
+          backgroundColor: (bgColor as string) || "#E5E7EB",
+          color: (textColor as string) || "#374151",
+        }}
+      >
+        {String(name)}
+      </span>
+    );
+  }
+  return "—";
+}
 
 export function JobMaterialsTab({ detail }: Props) {
   const t = useTranslations("Dashboard.jobs");
@@ -32,6 +58,11 @@ export function JobMaterialsTab({ detail }: Props) {
   const [materialRequests, setMaterialRequests] = React.useState<MaterialRequestListItem[]>([]);
   const [loadingMaterialRequests, setLoadingMaterialRequests] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [refreshNonce, setRefreshNonce] = React.useState(0);
+
+  const reload = React.useCallback(() => {
+    setRefreshNonce((n) => n + 1);
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -55,17 +86,34 @@ export function JobMaterialsTab({ detail }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [detail.id, tMaterialRequests]);
+  }, [detail.id, tMaterialRequests, refreshNonce]);
 
   return (
-    <DetailPagePadding>
-      <div className={detailPageStackClassName}>
-        <DetailPanelCard title={t("detail.materialsTitle")}>
-          {loadingMaterialRequests ? (
-            <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{tMaterialRequests("detail.loadingTitle")}</p>
-          ) : loadError ? (
-            <p className="mt-3 text-sm text-red-600 dark:text-red-400">{loadError}</p>
-          ) : materialRequests.length > 0 ? (
+    <DetailTabListShell
+      loading={loadingMaterialRequests}
+      loadError={loadError}
+      isEmpty={materialRequests.length === 0}
+      loadingFallback={<EntityDetailTabLoadingState />}
+      emptyFallback={
+        <DashboardEmptyState
+          fill
+          iconName="materialStatus"
+          title={tMaterialRequests("emptyTitle")}
+          description={t("detail.materialsEmpty")}
+        />
+      }
+      errorFallback={
+        <EntityDetailErrorState
+          fill
+          message={loadError ?? tMaterialRequests("loadError")}
+          retryLabel={t("detail.retry")}
+          onRetry={reload}
+        />
+      }
+    >
+      <DetailPagePadding>
+        <div className={detailPageStackClassName}>
+          <DetailPanelCard title={t("detail.materialsTitle")}>
             <div className="mt-3">
               <DetailLinkedTable
                 columns={[
@@ -87,16 +135,46 @@ export function JobMaterialsTab({ detail }: Props) {
                 ]}
                 showRowNumbers={false}
               >
-                {materialRequests.map((row) => (<DetailLinkedTableRow key={row.id} index={row.id} showRowNumber={false}><DetailLinkedTableTd className={detailLinkedTableCellClassName({cellClassName: "font-medium text-slate-900 dark:text-slate-100",})}><DetailEntityLink href={`${routes.dashboard.materialRequests}/${row.id}`} className="text-blue-600 underline-offset-2 hover:underline">{row.request_number || `#${row.id}`}</DetailEntityLink></DetailLinkedTableTd><DetailLinkedTableTd className={detailLinkedTableCellClassName({})}>{((): React.ReactNode => {const status = row.status;if (!status) return "—";if (typeof status === "string") return <span>{status}</span>;if (typeof status === "object") {const name = (status as Record<string, unknown>)?.name || (status as Record<string, unknown>)?.status_name;const bgColor = (status as Record<string, unknown>)?.bg_colour;const textColor = (status as Record<string, unknown>)?.text_colour;if (!name) return "—";return (<span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap" style={{backgroundColor: (bgColor as string) || "#E5E7EB",color: (textColor as string) || "#374151"}}>{String(name)}</span>);}return "—";})()}</DetailLinkedTableTd><DetailLinkedTableTd narrow className={detailLinkedTableCellClassName({ narrow: true, cellClassName: "tabular-nums" })}>{formatFlexibleApiDate(row.requested_date, dateFmt)}</DetailLinkedTableTd><DetailLinkedTableTd narrow className={detailLinkedTableCellClassName({align: "right",narrow: true,cellClassName: "tabular-nums",})}>{row.items_count ?? row.items?.length ?? 0}</DetailLinkedTableTd></DetailLinkedTableRow>))}
+                {materialRequests.map((row) => (
+                  <DetailLinkedTableRow key={row.id} index={row.id} showRowNumber={false}>
+                    <DetailLinkedTableTd
+                      className={detailLinkedTableCellClassName({
+                        cellClassName: "font-medium text-slate-900 dark:text-slate-100",
+                      })}
+                    >
+                      <DetailEntityLink
+                        href={`${routes.dashboard.materialRequests}/${row.id}`}
+                        className="text-blue-600 underline-offset-2 hover:underline"
+                      >
+                        {row.request_number || `#${row.id}`}
+                      </DetailEntityLink>
+                    </DetailLinkedTableTd>
+                    <DetailLinkedTableTd className={detailLinkedTableCellClassName({})}>
+                      {materialRequestStatusBadge(row.status)}
+                    </DetailLinkedTableTd>
+                    <DetailLinkedTableTd
+                      narrow
+                      className={detailLinkedTableCellClassName({ narrow: true, cellClassName: "tabular-nums" })}
+                    >
+                      {formatFlexibleApiDate(row.requested_date, dateFmt)}
+                    </DetailLinkedTableTd>
+                    <DetailLinkedTableTd
+                      narrow
+                      className={detailLinkedTableCellClassName({
+                        align: "right",
+                        narrow: true,
+                        cellClassName: "tabular-nums",
+                      })}
+                    >
+                      {row.items_count ?? row.items?.length ?? 0}
+                    </DetailLinkedTableTd>
+                  </DetailLinkedTableRow>
+                ))}
               </DetailLinkedTable>
             </div>
-          ) : (
-            <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-              {t("detail.materialsEmpty")}
-            </p>
-          )}
-        </DetailPanelCard>
-      </div>
-    </DetailPagePadding>
+          </DetailPanelCard>
+        </div>
+      </DetailPagePadding>
+    </DetailTabListShell>
   );
 }

@@ -11,7 +11,11 @@ import { cn } from "@/core/utils/http.util";
 
 function detectFillPage(root: HTMLElement | null): boolean {
   if (!root) return false;
-  return Boolean(root.querySelector("[data-list-page], [data-dashboard-fill-page]"));
+  return Boolean(
+    root.querySelector(
+      ".dashboard-list-page, [data-list-page], [data-dashboard-fill-page]",
+    ),
+  );
 }
 
 /**
@@ -38,11 +42,18 @@ export function DashboardPageScrollHost({ children }: { children: ReactNode }) {
     return () => observer.disconnect();
   }, [syncFillMode, children]);
 
-  // Sidebar width transition reflows the flex column — re-sync after toggle.
+  // Sidebar width transition reflows the flex column — re-sync during/after toggle.
   React.useLayoutEffect(() => {
     syncFillMode();
-    const id = requestAnimationFrame(syncFillMode);
-    return () => cancelAnimationFrame(id);
+    const frames: number[] = [];
+    frames.push(requestAnimationFrame(() => syncFillMode()));
+    const t1 = window.setTimeout(syncFillMode, 200);
+    const t2 = window.setTimeout(syncFillMode, 360);
+    return () => {
+      frames.forEach((id) => cancelAnimationFrame(id));
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
   }, [sidebarOpen, syncFillMode]);
 
   return (

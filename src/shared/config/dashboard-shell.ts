@@ -21,5 +21,5 @@ export const dashboardListTableShellClassName = cn(
 
 /** Wrapper for list / fill-height dashboard pages (prefer over `h-full`). */
 export const dashboardFillPageFrameClassName = cn(
-  "flex min-h-0 flex-1 flex-col overflow-hidden",
+  "dashboard-list-page flex min-h-0 flex-1 flex-col overflow-hidden",
 );

@@ -37,7 +37,9 @@ export function listPageSurfaceShellClassName(hideListChrome: boolean): string {
 /** Root wrapper for list panels — fills the shell; only the table body scrolls. */
 export function listPageRootClassName(): string {
   return cn(
-    "flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden sm:gap-3",
+    // `dashboard-list-page` marks fill height for DashboardPageScrollHost
+    // (no outer page scroll / no empty strip when the sidebar collapses).
+    "dashboard-list-page flex min-h-0 flex-1 flex-col gap-2 overflow-hidden sm:gap-3",
   );
 }
 

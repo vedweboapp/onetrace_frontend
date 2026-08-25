@@ -107,10 +107,13 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
   const stateRequired = showStateSelect && Boolean(countryIso);
   const cityRequired = showCitySelect;
 
+  /** Match disabled/readonly inputs (e.g. pin code) — keep the surface box. */
   const readOnlyFieldClassName = cn(
     surfaceInputClassName,
-    "pointer-events-none border-0 bg-white text-slate-900 dark:border-0 dark:bg-slate-950 dark:text-slate-100",
-    "flex items-center",
+    "pointer-events-none flex items-center cursor-default select-none",
+    "border-slate-200 bg-slate-50 text-slate-900",
+    "focus-visible:border-slate-200 focus-visible:ring-0",
+    "dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-100",
   );
 
   const renderReadOnlyValue = (value: string, placeholder: string) => (
