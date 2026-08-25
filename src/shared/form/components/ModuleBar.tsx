@@ -5,6 +5,7 @@ import FormFieldsSchema from "../formbuilder/FormFieldsSchema";
 import { useDrag } from "react-dnd";
 import { AppButton } from "@/shared/ui/app-button";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
+import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 
 // Must match dashboard-sidebar.tsx: md:w-56 = 224px, md:w-14 = 56px
 const SIDEBAR_EXPANDED_W = 224;
@@ -37,8 +38,10 @@ const DraggableAddButton: React.FC<{
 };
 
 const ModuleBar: React.FC = () => {
+  const sidebarLayout = useDashboardAppearanceStore((s) => s.sidebarLayout);
   const sidebarOpen = useDashboardSidebarStore((s) => s.sidebarOpen);
-  const sidebarW = sidebarOpen ? SIDEBAR_EXPANDED_W : SIDEBAR_COLLAPSED_W;
+  const isLeftSidebar = sidebarLayout === "lithium";
+  const sidebarW = isLeftSidebar ? (sidebarOpen ? SIDEBAR_EXPANDED_W : SIDEBAR_COLLAPSED_W) : 0;
 
   const [isLargeScreen, setIsLargeScreen] = React.useState(false);
 

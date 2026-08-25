@@ -11,6 +11,7 @@ import { fieldRequiredMarkClassName } from "@/shared/ui/field-primitives";
 import { cn } from "@/core/utils/http.util";
 import { useFormStore } from "@/features/form-builder/store/form-builder.store";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
+import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 import { routes } from "@/shared/config/routes";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { AppTabs } from "@/shared/ui/app-tabs";
@@ -1654,8 +1655,10 @@ export default function FormBuilderLayout({
     setDirty(true);
   };
 
+  const sidebarLayout = useDashboardAppearanceStore((s) => s.sidebarLayout);
   const sidebarOpen = useDashboardSidebarStore((s) => s.sidebarOpen);
-  const sidebarW = sidebarOpen ? 224 : 56;
+  const isLeftSidebar = sidebarLayout === "lithium";
+  const sidebarW = isLeftSidebar ? (sidebarOpen ? 224 : 56) : 0;
   const canvasMarginLeft = 288;
 
   // Keep CSS variables in sync with sidebar width so fixed sub-header and
