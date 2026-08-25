@@ -28,8 +28,6 @@ type Props = {
   schedules: Schedule[];
   timeOffs: WorkerTimeOff[];
   onCreate?: (startTime: string, endTime: string) => void;
-  /** Click (no drag) on an available block — open the full day timeline. */
-  onOpenDayView?: () => void;
   pendingCreate?: {
     techId: number;
     dayKey: string;
@@ -67,7 +65,6 @@ export function SchedulingWeekDayStrip({
   schedules,
   timeOffs,
   onCreate,
-  onOpenDayView,
   pendingCreate = null,
   createBusy = false,
   onScheduleClick,
@@ -236,14 +233,9 @@ export function SchedulingWeekDayStrip({
               "relative flex min-h-0 flex-col justify-center overflow-hidden px-1 py-0.5",
               KIND_CLASS[segment.kind],
               canDragBook && "cursor-crosshair touch-none select-none",
-              !canDragBook && segment.kind === "available" && onOpenDayView && "cursor-pointer",
             )}
             style={{ flexGrow, flexBasis: 0, minHeight }}
             title={title}
-            onClick={() => {
-              if (canDragBook || segment.kind !== "available") return;
-              onOpenDayView?.();
-            }}
             onPointerDown={
               canDragBook
                 ? (e) => {
@@ -291,13 +283,17 @@ export function SchedulingWeekDayStrip({
                     const drag = slotDragRef.current;
                     setSlotDrag(null);
                     if (!drag) return;
-                    if (!drag.moved) {
-                      onOpenDayView?.();
-                      return;
-                    }
-                    const startMin = Math.min(drag.startMinutes, drag.endMinutes);
-                    const endMin = Math.max(drag.startMinutes, drag.endMinutes, startMin + 15);
-                    onCreate?.(minutesToTime(startMin), minutesToTime(Math.min(endMin, drag.segEnd)));
+                    // Click (no drag): book a 1h slot from the press point. Stay on week view.
+                    const startMin = drag.moved
+                      ? Math.min(drag.startMinutes, drag.endMinutes)
+                      : drag.startMinutes;
+                    const endMin = drag.moved
+                      ? Math.max(drag.startMinutes, drag.endMinutes, startMin + 15)
+                      : Math.min(drag.segEnd, startMin + 60);
+                    onCreate?.(
+                      minutesToTime(startMin),
+                      minutesToTime(Math.min(Math.max(endMin, startMin + 15), drag.segEnd)),
+                    );
                   }
                 : undefined
             }
