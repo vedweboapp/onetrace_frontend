@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import type { CSSProperties } from "react";
 import { Check, ChevronDown, Plus, X } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
+import { popoverPanelClassName } from "@/shared/config/design-tokens";
 import { FieldGroup } from "./field-primitives";
 import { LockedSurfaceField } from "./locked-surface-field";
 
@@ -271,9 +272,7 @@ export function CheckmarkSelect({
 
   const displayLabel = selected ? selected.label : emptyLabel;
 
-  const listClasses = cn(
-    "flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
-  );
+  const listClasses = cn("flex flex-col", popoverPanelClassName);
 
   const optionTextSize = size === "sm" ? "text-xs" : "text-sm";
   const optionY = size === "sm" ? "py-2" : "py-2.5";

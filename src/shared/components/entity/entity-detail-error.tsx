@@ -1,8 +1,7 @@
 "use client";
 
-import { AppButton } from "@/shared/ui";
-import { cn } from "@/core/utils/http.util";
-import { detailTabFillStateClassName } from "@/shared/components/layout/detail-tab-layout";
+import { useTranslations } from "next-intl";
+import { AppButton, DashboardEmptyState } from "@/shared/ui";
 
 type Props = {
   message: string;
@@ -11,33 +10,33 @@ type Props = {
   /** Center in the tab pane and fill available height. */
   fill?: boolean;
   className?: string;
+  title?: string;
 };
 
-/** Error state inside entity detail `SurfaceShell`. */
+/** Error state inside entity detail `SurfaceShell` — matches empty / not-found UI. */
 export function EntityDetailErrorState({
   message,
   retryLabel,
   onRetry,
   fill = false,
   className,
+  title,
 }: Props) {
-  if (fill) {
-    return (
-      <div className={cn(detailTabFillStateClassName, "gap-4", className)}>
-        <p className="max-w-md text-sm text-red-600 dark:text-red-400">{message}</p>
+  const t = useTranslations("Dashboard.common.detail");
+
+  return (
+    <DashboardEmptyState
+      iconName="error"
+      title={title ?? t("loadErrorTitle")}
+      description={message}
+      fill={fill}
+      compact={!fill}
+      className={className}
+      action={
         <AppButton type="button" variant="secondary" size="sm" onClick={onRetry}>
           {retryLabel}
         </AppButton>
-      </div>
-    );
-  }
-
-  return (
-    <div className={cn("space-y-4 p-4 sm:p-6", className)}>
-      <p className="text-sm text-red-600 dark:text-red-400">{message}</p>
-      <AppButton type="button" variant="secondary" size="sm" onClick={onRetry}>
-        {retryLabel}
-      </AppButton>
-    </div>
+      }
+    />
   );
 }

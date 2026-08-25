@@ -259,11 +259,17 @@ export function EntityDataTable<T extends { id: number | string }>({
                     className={columnHeaderClassName(col, { withTextModeToggle: showMode })}
                   >
                     {showMode ? (
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="min-w-0 truncate">
+                      <div className="relative min-w-0">
+                        {/*
+                          Inherit th text-align so centered/right qty headers line up with values.
+                          Toggle is absolutely positioned so it does not push the label aside.
+                        */}
+                        <span className="inline-block max-w-[calc(100%-1.75rem)] truncate align-middle">
                           {col.headerSrOnly ? <span className="sr-only">{col.header}</span> : col.header}
                         </span>
-                        <DataTableTextModeToggle variant="header" className="shrink-0" />
+                        <div className="absolute right-0 top-1/2 -translate-y-1/2">
+                          <DataTableTextModeToggle variant="header" className="shrink-0" />
+                        </div>
                       </div>
                     ) : col.headerSrOnly ? (
                       <span className="sr-only">{col.header}</span>

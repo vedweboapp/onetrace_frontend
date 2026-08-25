@@ -125,7 +125,7 @@ export function EntityDetailScreen<T>({
       : defaultSurface;
 
   return (
-    <div className={cn(entityDetailPageClassName, "pb-8 sm:pb-10", className)}>
+    <div className={cn(entityDetailPageClassName, className)}>
       <DetailPageHeader
         title={title}
         titleLoading={titleLoading}
