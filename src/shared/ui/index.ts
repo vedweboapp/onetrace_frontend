@@ -70,7 +70,6 @@ export type { PhoneNumberInputProps } from "./phone-number-input";
 export { SurfacePhoneCountrySelect } from "./surface-phone-country-select";
 export type { SurfacePhoneCountrySelectProps } from "./surface-phone-country-select";
 export { SurfaceShell } from "./surface-shell";
-export type { SurfaceShellVariant } from "./surface-shell";
 export { InputWithEndSelect } from "./input-with-end-select";
 export type { InputWithEndSelectOption } from "./input-with-end-select";
 export { DimensionsLwhInput, DIMENSION_UNIT_OPTIONS } from "./dimensions-lwh-input";

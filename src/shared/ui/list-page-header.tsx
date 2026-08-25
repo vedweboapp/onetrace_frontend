@@ -7,11 +7,6 @@ import { Link } from "@/i18n/navigation";
 import { useDashboardChromeStore } from "@/features/dashboard/store/dashboard-chrome.store";
 import type { ListPageViewMode } from "@/shared/hooks/use-list-url-state";
 import { dashboardContentHorizontalGutterClassName } from "@/shared/config/dashboard-shell";
-import {
-  chromeIconButtonClassName,
-  segmentedSelectedClassName,
-  segmentedUnselectedClassName,
-} from "@/shared/config/design-tokens";
 import { cn } from "@/core/utils/http.util";
 
 type ListPageHeaderProps = {
@@ -112,7 +107,11 @@ export function ListPageHeader({
           {backHref ? (
             <Link
               href={backHref}
-              className={cn(chromeIconButtonClassName, "border-transparent shadow-none hover:border-slate-200 dark:hover:border-slate-700")}
+              className={cn(
+                "inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-transparent text-slate-500 transition",
+                "hover:border-slate-200 hover:bg-slate-50 hover:text-slate-800",
+                "dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+              )}
               aria-label={backAriaLabel ?? tList("back")}
             >
               <ArrowLeft className="size-4" strokeWidth={2} aria-hidden />
@@ -130,7 +129,7 @@ export function ListPageHeader({
       ) : null;
 
     const viewToggle = showViewToggle ? (
-      <div className="inline-flex h-8 shrink-0 items-center rounded-lg border border-slate-200 bg-slate-50/80 p-0.5 dark:border-slate-700 dark:bg-slate-900/80">
+      <div className="inline-flex h-8 shrink-0 items-center rounded-md border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-900">
         <button
           type="button"
           onClick={() => setMode("list")}
@@ -138,8 +137,10 @@ export function ListPageHeader({
           aria-label={tableViewLabel}
           aria-pressed={viewMode === "list"}
           className={cn(
-            "inline-flex size-7 items-center justify-center rounded-md transition",
-            viewMode === "list" ? segmentedSelectedClassName : segmentedUnselectedClassName,
+            "inline-flex size-7 items-center justify-center rounded transition",
+            viewMode === "list"
+              ? "bg-slate-100 text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100"
+              : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
           )}
         >
           <LayoutGrid className="size-3.5" strokeWidth={2} />
@@ -151,8 +152,10 @@ export function ListPageHeader({
           aria-label={listViewLabel}
           aria-pressed={viewMode === "table"}
           className={cn(
-            "inline-flex size-7 items-center justify-center rounded-md transition",
-            viewMode === "table" ? segmentedSelectedClassName : segmentedUnselectedClassName,
+            "inline-flex size-7 items-center justify-center rounded transition",
+            viewMode === "table"
+              ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-600"
+              : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
           )}
         >
           <List className="size-3.5" strokeWidth={2} />
@@ -168,7 +171,11 @@ export function ListPageHeader({
               {backHref ? (
                 <Link
                   href={backHref}
-                  className={cn(chromeIconButtonClassName, "border-transparent shadow-none hover:border-slate-200 dark:hover:border-slate-700")}
+                  className={cn(
+                    "inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-transparent text-slate-500 transition",
+                    "hover:border-slate-200 hover:bg-slate-50 hover:text-slate-800",
+                    "dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+                  )}
                   aria-label={backAriaLabel ?? tList("back")}
                 >
                   <ArrowLeft className="size-4" strokeWidth={2} aria-hidden />
@@ -205,7 +212,11 @@ export function ListPageHeader({
     const backButton = backHref && !title ? (
       <Link
         href={backHref}
-        className={cn(chromeIconButtonClassName, "border-transparent shadow-none hover:border-slate-200 dark:hover:border-slate-700")}
+        className={cn(
+          "inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-transparent text-slate-500 transition",
+          "hover:border-slate-200 hover:bg-slate-50 hover:text-slate-800",
+          "dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+        )}
         aria-label={backAriaLabel ?? tList("back")}
       >
         <ArrowLeft className="size-4" strokeWidth={2} aria-hidden />
@@ -222,8 +233,9 @@ export function ListPageHeader({
         aria-label={filterAria}
         title={filterAria}
         className={cn(
-          chromeIconButtonClassName,
-          "relative",
+          "relative inline-flex size-8 shrink-0 items-center justify-center rounded-md border transition outline-none",
+          "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+          "focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100 dark:focus-visible:ring-offset-slate-950",
           filtersOpen && "border-slate-300 bg-slate-50 dark:border-slate-600 dark:bg-slate-800",
         )}
       >

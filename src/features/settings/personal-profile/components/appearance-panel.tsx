@@ -293,7 +293,7 @@ export function AppearancePanel() {
       )}
     >
       <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
-        {t("saveHint")}
+        {t("storageHint")}
       </p>
 
       <SectionShell title={t("themeHeading")}>

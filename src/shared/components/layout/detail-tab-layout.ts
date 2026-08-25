@@ -34,39 +34,25 @@ export const detailTabErrorClassName =
   "px-4 py-8 text-center text-sm text-red-600 dark:text-red-400 sm:px-6";
 
 /**
- * Entity detail page — fills the dashboard main pane; tab panels manage their own scroll.
+ * Entity detail page — natural height only.
+ * Outer dashboard `overflow-y-auto` is the single scrollbar (same as client/site detail).
+ * Do not add min-h / flex-1 / overflow here or the white card nests a second scroll.
  */
-export const entityDetailPageClassName = cn(
-  "flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden",
-  "data-dashboard-fill-page",
-);
+export const entityDetailPageClassName = cn("w-full min-w-0");
 
-/** White record shell — flex child inside entity detail. */
-export const entityDetailSurfaceClassName = cn("mt-2 min-w-0 flex min-h-0 flex-1 flex-col overflow-hidden");
+/** White record shell — grows with content; no nested overflow scroll. */
+export const entityDetailSurfaceClassName = cn("mt-2 min-w-0 overflow-visible");
 
-export const entityDetailSurfaceInnerClassName = "flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden";
+export const entityDetailSurfaceInnerClassName = "min-w-0 w-full";
 
-/** Tab panel wrapper inside the record shell (overview or list tab). */
-export const entityDetailTabPanelClassName = cn(
-  "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
-);
-
-/** Overview / long-form detail tab — scroll inside the tab panel. */
-export const entityDetailScrollTabPanelClassName = cn(
-  entityDetailTabPanelClassName,
-  "overflow-y-auto overscroll-y-contain",
-);
+/** Tab panel wrapper inside the record shell (overview / form-style content). */
+export const entityDetailTabPanelClassName = "min-w-0 w-full";
 
 /**
- * List-style detail tabs / empty shells — fill remaining height in the record shell.
- * Do not use viewport min-height here (causes double scroll + blank space below).
+ * List-style detail tabs / empty shells — fill remaining viewport so empty,
+ * WIP, and error states center on every screen size (not a short island).
  */
 export const detailTabFillViewportClassName = cn(
-  "flex min-h-0 w-full flex-1 flex-col",
-);
-
-/** Standalone full-pane states (Home, 404) outside nested record shells. */
-export const dashboardStandaloneViewportFillClassName = cn(
   "flex min-h-0 w-full flex-1 flex-col",
   "min-h-[calc(100dvh-11.5rem)] sm:min-h-[calc(100dvh-13rem)] lg:min-h-[calc(100dvh-14rem)]",
 );

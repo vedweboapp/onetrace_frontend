@@ -18,11 +18,9 @@ import {
   Users,
 } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
-import { emptyStateIconWellClassName } from "@/shared/config/design-tokens";
 import {
   detailTabFillStateClassName,
   detailTabFillViewportClassName,
-  dashboardStandaloneViewportFillClassName,
 } from "@/shared/components/layout/detail-tab-layout";
 
 export type DashboardEmptyStateIconName =
@@ -105,15 +103,22 @@ export function DashboardEmptyState({
       className={cn(
         fillPanel
           ? cn(
-              viewportFill ? dashboardStandaloneViewportFillClassName : detailTabFillViewportClassName,
+              viewportFill ? detailTabFillViewportClassName : null,
               detailTabFillStateClassName,
             )
           : "flex w-full flex-col items-center justify-center px-6 py-10 text-center sm:py-12",
         className,
       )}
     >
-      <div className={cn("mb-5 sm:mb-6", emptyStateIconWellClassName)}>
-        <Icon className="size-7 sm:size-8" strokeWidth={1.6} aria-hidden />
+      <div
+        className={cn(
+          "mb-5 inline-flex size-14 items-center justify-center rounded-2xl sm:mb-6",
+          "bg-gradient-to-br from-sky-50 to-indigo-50 text-orange-500",
+          "ring-1 ring-slate-200/80",
+          "dark:from-slate-800 dark:to-slate-900 dark:text-orange-400 dark:ring-slate-700",
+        )}
+      >
+        <Icon className="size-7" strokeWidth={1.6} aria-hidden />
       </div>
       <h3 className="max-w-lg text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
         {title}

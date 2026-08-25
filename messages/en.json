@@ -804,7 +804,6 @@
       "formPreviewLabel": "Sample required field",
       "formPreviewValue": "Sample value",
       "storageHint": "Appearance is saved on this device for your signed-in account (not sent to the server yet). After you log in again on this browser, your last choices are restored.",
-      "saveHint": "Changes preview instantly. Use Save to persist appearance settings to your profile, or Cancel to revert.",
       "detailRowLineWidthLabel": "Detail row line width",
       "detailRowLineWidthHint": "Thickness of the divider under each field row on detail pages.",
       "detailRowLineWidths": {

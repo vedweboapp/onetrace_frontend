@@ -10,7 +10,7 @@ import { InvoiceExportDropdown } from "@/features/invoices/components/invoice-ex
 import type { InvoiceContactRef, InvoiceDetail } from "@/features/invoices/types/invoice.types";
 import { nestedId, normalizeInvoiceStatus } from "@/features/invoices/utils/invoice-nested-fields.util";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
-import { entityDetailScrollTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
+import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton, AppTabs } from "@/shared/ui";
@@ -176,7 +176,7 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
             role="tabpanel"
             id={`invoice-detail-tab-${activeTab}`}
             aria-labelledby={`invoice-detail-tab-trigger-${activeTab}`}
-            className={entityDetailScrollTabPanelClassName}
+            className={entityDetailTabPanelClassName}
           >
             <InvoiceDetailBody
               detail={detail}

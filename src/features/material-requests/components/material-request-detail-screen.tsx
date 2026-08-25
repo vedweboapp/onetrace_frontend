@@ -14,7 +14,7 @@ import {
   EntityDetailLoadingSkeleton,
   EntityDetailScreen,
 } from "@/shared/components/entity";
-import { entityDetailScrollTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
+import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { AppButton, AppTabs } from "@/shared/ui";
@@ -114,7 +114,7 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
           role="tabpanel"
           id={`material-request-detail-tab-${activeTab}`}
           aria-labelledby={`material-request-detail-tab-trigger-${activeTab}`}
-          className={entityDetailScrollTabPanelClassName}
+          className={entityDetailTabPanelClassName}
         >
           {loading ? (
             <EntityDetailLoadingSkeleton />

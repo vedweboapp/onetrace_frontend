@@ -40,25 +40,17 @@ export type PersonalProfileResponse = {
         secondary_phone?: string | null;
         tertiary_phone?: string | null;
         first_name?: string;
-        last_name?: string;
-        date_of_birth?: string | null;
-        user?: {
+    last_name?: string;
+    user?: {
             email?: string;
             first_name?: string;
             last_name?: string;
             date_of_birth?: string | null;
-            phone_number?: string | null;
+            phone_number?: string | null; // This might be different from user_detail.phone_number, handle carefully
             is_verified?: boolean;
         };
     };
-    role_detail?: { role_name?: string };
-    emails?: ContactEmail[];
-    phones?: ContactPhone[];
-    addresses?: ContactAddress[];
     created_at?: string;
     last_login?: string | null;
-    appearance_settings?: {
-        preferences?: Record<string, unknown>;
-        available_options?: Record<string, unknown>;
-    };
+    // ... other top-level fields
 };

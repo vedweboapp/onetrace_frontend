@@ -12,12 +12,6 @@ import {
 import { DetailSystemMetadataSection, EntityDetailLoadingSkeleton } from "@/shared/components/entity";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import {
-  entityDetailPageClassName,
-  entityDetailScrollTabPanelClassName,
-  entityDetailSurfaceClassName,
-  entityDetailSurfaceInnerClassName,
-} from "@/shared/components/layout/detail-tab-layout";
-import {
   DetailLinkedTable,
   DetailLinkedTableRow,
   DetailLinkedTableTd,
@@ -37,7 +31,6 @@ import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format
 import { useEntityDetailBack } from "@/shared/hooks/use-entity-detail-back";
 import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { routes } from "@/shared/config/routes";
-import { cn } from "@/core/utils/http.util";
 import { AppButton, ConfirmDialog, EditButton, SurfaceShell } from "@/shared/ui";
 
 export function UserGroupDetailScreen({ groupId }: { groupId: number }) {
@@ -89,7 +82,7 @@ export function UserGroupDetailScreen({ groupId }: { groupId: number }) {
   const members = detail?.users ?? [];
 
   return (
-    <div className={entityDetailPageClassName}>
+    <div className="min-h-0 w-full pb-8 sm:pb-10">
       <DetailPageHeader
         title={title}
         titleLoading={loading && !detail}
@@ -113,9 +106,8 @@ export function UserGroupDetailScreen({ groupId }: { groupId: number }) {
         }
       />
 
-      <SurfaceShell className={cn(detailRecordSurfaceShellClassName, entityDetailSurfaceClassName)}>
-        <div className={cn(detailRecordInnerClassName, entityDetailSurfaceInnerClassName)}>
-          <div className={entityDetailScrollTabPanelClassName}>
+      <SurfaceShell className={`${detailRecordSurfaceShellClassName} mt-3`}>
+        <div className={detailRecordInnerClassName}>
         {loading ? (
           <EntityDetailLoadingSkeleton />
         ) : error ? (
@@ -182,7 +174,6 @@ export function UserGroupDetailScreen({ groupId }: { groupId: number }) {
             </div>
           </DetailPagePadding>
         ) : null}
-          </div>
         </div>
       </SurfaceShell>
 
