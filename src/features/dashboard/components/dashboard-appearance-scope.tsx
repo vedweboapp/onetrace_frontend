@@ -6,7 +6,11 @@ import { useSyncExternalStore } from "react";
 import { useTheme } from "@teispace/next-themes";
 import { useShallow } from "zustand/react/shallow";
 import type { DashboardAccentId } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
-import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
+import {
+  setDashboardAppearanceUserKey,
+  useDashboardAppearanceStore,
+} from "@/features/settings/personal-profile/store/dashboard-appearance.store";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 import {
   ACCENT_HEX,
   accentOnAccentHex,
@@ -50,6 +54,11 @@ function useIsClient() {
 export function DashboardAppearanceScope({ children, className }: Props) {
   const { resolvedTheme } = useTheme();
   const mounted = useIsClient();
+  const userId = useAuthStore((s) => s.user?.id);
+
+  React.useEffect(() => {
+    setDashboardAppearanceUserKey(userId);
+  }, [userId]);
 
   const {
     accentKind,
@@ -60,6 +69,8 @@ export function DashboardAppearanceScope({ children, className }: Props) {
     sidebarLayout,
     formLabelPlacement,
     requiredIndicator,
+    detailRowLineWidth,
+    detailRowLineStyle,
   } = useDashboardAppearanceStore(
     useShallow((s) => ({
       accentKind: s.accentKind,
@@ -70,6 +81,8 @@ export function DashboardAppearanceScope({ children, className }: Props) {
       sidebarLayout: s.sidebarLayout,
       formLabelPlacement: s.formLabelPlacement,
       requiredIndicator: s.requiredIndicator,
+      detailRowLineWidth: s.detailRowLineWidth,
+      detailRowLineStyle: s.detailRowLineStyle,
     })),
   );
 
@@ -92,6 +105,8 @@ export function DashboardAppearanceScope({ children, className }: Props) {
     "--dash-label-size": typeScale.label,
     "--dash-body-size": typeScale.body,
     "--dash-type-scale": typeScale.scale,
+    "--dash-detail-row-line-width": `${detailRowLineWidth}px`,
+    "--dash-detail-row-line-style": detailRowLineStyle,
     fontFamily: "var(--dash-font-family)",
     fontSize: "var(--dash-font-size)",
   } as CSSProperties;
@@ -117,13 +132,23 @@ export function DashboardAppearanceScope({ children, className }: Props) {
     root.style.setProperty("--dash-label-size", typeScale.label);
     root.style.setProperty("--dash-body-size", typeScale.body);
     root.style.setProperty("--dash-type-scale", typeScale.scale);
+    root.style.setProperty("--dash-detail-row-line-width", `${detailRowLineWidth}px`);
+    root.style.setProperty("--dash-detail-row-line-style", detailRowLineStyle);
     root.setAttribute("data-font-size", fontSize);
     root.setAttribute("data-font-family", fontFamily);
+    root.setAttribute("data-form-label", formLabelPlacement);
+    root.setAttribute("data-required-indicator", requiredIndicator);
+    root.setAttribute("data-detail-row-line-width", detailRowLineWidth);
+    root.setAttribute("data-detail-row-line-style", detailRowLineStyle);
   }, [
     hex,
     onHex,
     fontFamily,
     fontSize,
+    formLabelPlacement,
+    requiredIndicator,
+    detailRowLineWidth,
+    detailRowLineStyle,
     typeScale.root,
     typeScale.label,
     typeScale.body,
@@ -137,6 +162,8 @@ export function DashboardAppearanceScope({ children, className }: Props) {
       data-sidebar-layout={sidebarLayout}
       data-form-label={formLabelPlacement}
       data-required-indicator={requiredIndicator}
+      data-detail-row-line-width={detailRowLineWidth}
+      data-detail-row-line-style={detailRowLineStyle}
       data-font-family={fontFamily}
       data-font-size={fontSize}
     >

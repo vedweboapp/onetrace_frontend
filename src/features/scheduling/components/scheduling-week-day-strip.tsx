@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { GripVertical, Plus, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
+import { technicianMatchesWorkerId } from "@/features/scheduling/utils/scheduling-technician.util";
 import { scheduleJobLabel } from "@/features/scheduling/utils/schedule-map.util";
 import {
   buildDayTimeSegments,
@@ -12,6 +13,7 @@ import {
   getDayAvailabilityWindow,
   hasAvailabilityData,
   minutesToTime,
+  timeToMinutes,
 } from "@/features/scheduling/utils/scheduling-availability.util";
 import {
   SCHEDULE_DAY_END_HOUR,
@@ -28,6 +30,13 @@ type Props = {
   onCreate?: (startTime: string, endTime: string) => void;
   /** Click (no drag) on an available block — open the full day timeline. */
   onOpenDayView?: () => void;
+  pendingCreate?: {
+    techId: number;
+    dayKey: string;
+    startTime: string;
+    endTime: string;
+  } | null;
+  createBusy?: boolean;
   onScheduleClick: (schedule: Schedule) => void;
   onRemoveSchedule?: (schedule: Schedule) => void;
   onRemoveTimeOff?: (timeOff: WorkerTimeOff) => void;
@@ -59,6 +68,8 @@ export function SchedulingWeekDayStrip({
   timeOffs,
   onCreate,
   onOpenDayView,
+  pendingCreate = null,
+  createBusy = false,
   onScheduleClick,
   onRemoveSchedule,
   onRemoveTimeOff,
@@ -173,11 +184,36 @@ export function SchedulingWeekDayStrip({
           );
         }
 
-        const canDragBook = segment.kind === "available" && Boolean(onCreate);
+        const canDragBook = segment.kind === "available" && Boolean(onCreate) && !createBusy;
         const draggingThis =
           slotDrag != null &&
           slotDrag.segStart === segment.startMinutes &&
           slotDrag.segEnd === segment.endMinutes;
+        const pendingHere =
+          pendingCreate &&
+          pendingCreate.dayKey === dayKey &&
+          technicianMatchesWorkerId(tech, pendingCreate.techId)
+            ? pendingCreate
+            : null;
+        const pendingStart = pendingHere ? timeToMinutes(pendingHere.startTime) : null;
+        const pendingEnd = pendingHere ? timeToMinutes(pendingHere.endTime) : null;
+        const pendingOverlapsSegment =
+          pendingStart != null &&
+          pendingEnd != null &&
+          pendingStart < segment.endMinutes &&
+          pendingEnd > segment.startMinutes;
+        const pendingTopPct =
+          pendingOverlapsSegment && pendingStart != null && pendingEnd != null
+            ? ((Math.max(pendingStart, segment.startMinutes) - segment.startMinutes) /
+                Math.max(segment.endMinutes - segment.startMinutes, 1)) *
+              100
+            : 0;
+        const pendingHeightPct =
+          pendingOverlapsSegment && pendingStart != null && pendingEnd != null
+            ? ((Math.min(pendingEnd, segment.endMinutes) - Math.max(pendingStart, segment.startMinutes)) /
+                Math.max(segment.endMinutes - segment.startMinutes, 1)) *
+              100
+            : 0;
         const title =
           segment.kind === "available"
             ? `${t("legendAvailable")} · ${label}`
@@ -197,48 +233,24 @@ export function SchedulingWeekDayStrip({
           <div
             key={`${segment.kind}-${segment.startMinutes}-${segment.endMinutes}`}
             className={cn(
-              "group/slot relative flex min-h-0 flex-col justify-center overflow-hidden px-1 py-0.5",
+              "relative flex min-h-0 flex-col justify-center overflow-hidden px-1 py-0.5",
               KIND_CLASS[segment.kind],
-              segment.kind === "available" && onOpenDayView && "cursor-pointer",
+              canDragBook && "cursor-crosshair touch-none select-none",
+              !canDragBook && segment.kind === "available" && onOpenDayView && "cursor-pointer",
             )}
             style={{ flexGrow, flexBasis: 0, minHeight }}
             title={title}
             onClick={() => {
-              if (segment.kind !== "available" || slotDrag) return;
+              if (canDragBook || segment.kind !== "available") return;
               onOpenDayView?.();
             }}
-          >
-            {draggingThis ? (
-              <div
-                className="pointer-events-none absolute inset-x-0 z-[1] bg-sky-400/45 ring-1 ring-inset ring-sky-500/40"
-                style={{ top: `${dragTopPct}%`, height: `${Math.max(dragHeightPct, 8)}%` }}
-              />
-            ) : null}
-            {canDragBook ? (
-              <div
-                className={cn(
-                  "absolute inset-0 z-[2] flex items-center justify-center",
-                  "opacity-0 transition group-hover/slot:opacity-100 max-sm:opacity-100",
-                  draggingThis && "opacity-100",
-                )}
-              >
-                <div
-                  role="presentation"
-                  title={t("dragToSchedule")}
-                  aria-label={t("dragToSchedule")}
-                  className={cn(
-                    "inline-flex cursor-grab touch-none select-none items-center gap-0.5 rounded-md border border-sky-300 bg-white px-1 py-0.5 text-sky-700 shadow-sm",
-                    "active:cursor-grabbing dark:border-sky-700 dark:bg-slate-950 dark:text-sky-200",
-                  )}
-                  onClick={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => {
+            onPointerDown={
+              canDragBook
+                ? (e) => {
                     if (e.button !== 0) return;
                     e.preventDefault();
-                    e.stopPropagation();
-                    const handle = e.currentTarget;
-                    const slot = handle.parentElement?.parentElement;
-                    if (!(slot instanceof HTMLElement)) return;
-                    handle.setPointerCapture(e.pointerId);
+                    const slot = e.currentTarget;
+                    slot.setPointerCapture(e.pointerId);
                     const at = minutesFromClientY(slot, e.clientY, segment.startMinutes, segment.endMinutes);
                     setSlotDrag({
                       segStart: segment.startMinutes,
@@ -248,12 +260,19 @@ export function SchedulingWeekDayStrip({
                       originY: e.clientY,
                       moved: false,
                     });
-                  }}
-                  onPointerMove={(e) => {
+                  }
+                : undefined
+            }
+            onPointerMove={
+              canDragBook
+                ? (e) => {
                     if (!slotDragRef.current) return;
-                    const slot = e.currentTarget.parentElement?.parentElement;
-                    if (!(slot instanceof HTMLElement)) return;
-                    const at = minutesFromClientY(slot, e.clientY, segment.startMinutes, segment.endMinutes);
+                    const at = minutesFromClientY(
+                      e.currentTarget,
+                      e.clientY,
+                      segment.startMinutes,
+                      segment.endMinutes,
+                    );
                     setSlotDrag((prev) =>
                       prev
                         ? {
@@ -263,9 +282,12 @@ export function SchedulingWeekDayStrip({
                           }
                         : prev,
                     );
-                  }}
-                  onPointerUp={(e) => {
-                    e.stopPropagation();
+                  }
+                : undefined
+            }
+            onPointerUp={
+              canDragBook
+                ? () => {
                     const drag = slotDragRef.current;
                     setSlotDrag(null);
                     if (!drag) return;
@@ -276,12 +298,29 @@ export function SchedulingWeekDayStrip({
                     const startMin = Math.min(drag.startMinutes, drag.endMinutes);
                     const endMin = Math.max(drag.startMinutes, drag.endMinutes, startMin + 15);
                     onCreate?.(minutesToTime(startMin), minutesToTime(Math.min(endMin, drag.segEnd)));
-                  }}
-                  onPointerCancel={() => setSlotDrag(null)}
-                >
-                  <GripVertical className="size-3" strokeWidth={2.25} aria-hidden />
-                  <Plus className="size-3" strokeWidth={2.5} aria-hidden />
-                </div>
+                  }
+                : undefined
+            }
+            onPointerCancel={canDragBook ? () => setSlotDrag(null) : undefined}
+          >
+            {draggingThis ? (
+              <div
+                className="pointer-events-none absolute inset-x-0 z-[1] bg-sky-400/45 ring-1 ring-inset ring-sky-500/40"
+                style={{ top: `${dragTopPct}%`, height: `${Math.max(dragHeightPct, 8)}%` }}
+              />
+            ) : null}
+            {pendingOverlapsSegment ? (
+              <div
+                className={cn(
+                  "pointer-events-none absolute inset-x-0.5 z-[2] flex items-center justify-center gap-1",
+                  "rounded-sm border border-sky-400 bg-sky-100/95 text-sky-900",
+                  "dark:border-sky-500 dark:bg-sky-950/85 dark:text-sky-100",
+                )}
+                style={{ top: `${pendingTopPct}%`, height: `${Math.max(pendingHeightPct, 12)}%` }}
+                aria-busy
+                aria-label={t("creatingSchedule")}
+              >
+                <Loader2 className="size-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
               </div>
             ) : null}
           </div>

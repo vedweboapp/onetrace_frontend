@@ -2,31 +2,38 @@
 import ProfilePictureUploader from "@/shared/components/profile-picture-uploader";
 import Input from "@/shared/form/components/input";
 import Select from "@/shared/form/components/select";
-import TextBox from "@/shared/form/components/text-box";
-import { AppButton, CascadingLocationFields, FieldGroup, SurfacePhoneField } from "@/shared/ui";
+import { AddressPlaceAutocomplete } from "@/shared/components/maps/address-place-autocomplete";
+import {
+    AppButton,
+    CascadingLocationFields,
+    FieldGroup,
+    FormFieldRow,
+    SurfacePhoneField,
+    surfaceInputClassName,
+} from "@/shared/ui";
 import FormSectionCard from "@/shared/ui/form-section-card";
 import { usePhoneCountryFromAddresses } from "@/shared/hooks/use-phone-country-from-address";
+import { FIELD_MAX_LENGTH } from "@/shared/form/field-max-length.util";
+import { sanitizeAddressInput, sanitizeDigitsInput } from "@/shared/form/field-input.util";
+import type { PlaceSuggestion } from "@/shared/types/place-suggestion.types";
+import { buildAddressSearchContext } from "@/shared/utils/address-place-form.util";
+import { cn } from "@/core/utils/http.util";
 import {
-    BookUser,
     Calendar,
-    Home,
     Mail,
-    MapPin,
     Phone,
     Plus,
     Trash2,
 } from "lucide-react";
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
-import { useFieldArray, useForm, useWatch } from "react-hook-form";
-import { City, Country, State } from "country-state-city"; 
+import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
+import { City, Country, State } from "country-state-city";
 import { Inputs } from "../types/types";
 import { updatePersonalProfile } from "../api/personal-profile.api";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { useTranslations } from "next-intl";
-import { id } from "zod/v4/locales";
-import { set } from "zod";
 
 const normalizeCountryIso = (rawCountry: string) => {
     const normalized = (rawCountry ?? "").trim();
@@ -54,6 +61,21 @@ const normalizeStateIso = (countryIso: string, rawState: string) => {
     );
     return byName?.isoCode ?? "";
 };
+
+function applyPlaceToProfileAddress(
+    setValue: ReturnType<typeof useForm<Inputs>>["setValue"],
+    index: number,
+    place: PlaceSuggestion,
+) {
+    const opts = { shouldDirty: true, shouldTouch: true, shouldValidate: true } as const;
+    const text = (value: string | null | undefined) => (value ?? "").trim();
+    setValue(`addresses.${index}.address1`, text(place.line1), opts);
+    setValue(`addresses.${index}.address2`, text(place.line2), opts);
+    setValue(`addresses.${index}.country_iso`, text(place.countryIso), opts);
+    setValue(`addresses.${index}.state_iso`, text(place.stateIso), opts);
+    setValue(`addresses.${index}.city`, text(place.city), opts);
+    setValue(`addresses.${index}.pincode`, text(place.pincode), opts);
+}
 
 export interface PersonalProfileFormHandle {
     submit: () => void;
@@ -565,15 +587,15 @@ const PersonalProfileForm = forwardRef<
                     <div className="h-px bg-slate-100 dark:bg-slate-700/50" />
 
                     {/* Addresses Section */}
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                                <Home size={14} /> {t("Addresses")}
+                    <div className="space-y-5">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <h3 className="text-[length:var(--dash-body-size,0.875rem)] font-semibold text-slate-900 dark:text-slate-100">
+                                {t("Addresses")}
                             </h3>
-                            {isEditing && (
+                            {isEditing ? (
                                 <AppButton
                                     type="button"
-                                    variant="ghost"
+                                    variant="secondary"
                                     size="sm"
                                     onClick={() =>
                                         appendAddress({
@@ -583,61 +605,141 @@ const PersonalProfileForm = forwardRef<
                                             state_iso: "",
                                             city: "",
                                             pincode: "",
-                                            is_primary: false,
+                                            is_primary: addressFields.length === 0,
                                         })
                                     }
-                                    className="gap-2"
                                 >
-                                    <Plus size={14} /> {t("AddAddress")}
+                                    <Plus className="size-4" aria-hidden />
+                                    {t("AddAddress")}
                                 </AppButton>
-                            )}
-
+                            ) : null}
                         </div>
-                        <div className="space-y-6">
-                            {addressFields.map((field, index) => (
-                                <div
-                                    key={field.id}
-                                    className="relative flex gap-4 items-start p-5 rounded-xl border border-slate-200 bg-slate-50/50 group dark:border-slate-700 dark:bg-slate-900/30"
-                                >
-                                    {field.is_primary && (
-                                        <span className="absolute top-4 right-4 px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold uppercase tracking-tight dark:bg-blue-900/40 dark:text-blue-300">
-                                            Primary
-                                        </span>
-                                    )}
-                                    <div className="p-2.5 rounded-lg bg-white shadow-sm border border-slate-100 dark:bg-slate-800 dark:border-slate-700 shrink-0">
-                                        <Home size={22} className="text-slate-400" />
-                                    </div>
-                                    <div className="flex-1 space-y-3">
-                                        <div className="grid gap-4 sm:grid-cols-2">
-                                            <FieldGroup
-                                                label={t("fields.address1")}
-                                                htmlFor={`address1-${field.id}`}
-                                            >
-                                                <Input
-                                                    id={`address1-${field.id}`}
-                                                    className="bg-white/80"
-                                                    readOnly={!isEditing}
-                                                    {...register(`addresses.${index}.address1` as const)}
-                                                />
-                                            </FieldGroup>
-                                            <FieldGroup
-                                                label={t("fields.address2")}
-                                                htmlFor={`address2-${field.id}`}
-                                            >
-                                                <Input
-                                                    id={`address2-${field.id}`}
-                                                    className="bg-white/80"
-                                                    readOnly={!isEditing}
-                                                    {...register(`addresses.${index}.address2` as const)}
-                                                />
-                                            </FieldGroup>
+
+                        <div className="space-y-0">
+                            {addressFields.map((field, index) => {
+                                const row = watchedAddresses?.[index];
+                                const countryIso = row?.country_iso ?? "";
+                                const searchContext = buildAddressSearchContext({
+                                    countryIso,
+                                    stateIso: row?.state_iso ?? "",
+                                    city: row?.city ?? "",
+                                    pincode: row?.pincode ?? "",
+                                });
+                                const rowIdPrefix = `profile-address-${index}`;
+
+                                return (
+                                    <div
+                                        key={field.id}
+                                        className="w-full space-y-4 border-b border-slate-100 py-5 first:pt-0 last:border-b-0 last:pb-0 dark:border-slate-800"
+                                    >
+                                        <div className="flex flex-wrap items-center justify-between gap-3">
+                                            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                                                {t("AddressN", { n: index + 1 })}
+                                            </span>
+                                            <div className="flex items-center gap-3">
+                                                {isEditing ? (
+                                                    <label className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                                        <input
+                                                            type="radio"
+                                                            name="address_primary"
+                                                            checked={Boolean(row?.is_primary)}
+                                                            onChange={() => {
+                                                                addressFields.forEach((_, i) => {
+                                                                    setValue(`addresses.${i}.is_primary`, i === index);
+                                                                });
+                                                            }}
+                                                        />
+                                                        {t("Primary")}
+                                                    </label>
+                                                ) : row?.is_primary ? (
+                                                    <span className="rounded bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-tight text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                                                        {t("Primary")}
+                                                    </span>
+                                                ) : null}
+                                                {isEditing && addressFields.length > 1 ? (
+                                                    <AppButton
+                                                        type="button"
+                                                        variant="secondary"
+                                                        size="sm"
+                                                        onClick={() => removeAddress(index)}
+                                                    >
+                                                        <Trash2 className="size-4" aria-hidden />
+                                                        {t("RemoveAddress")}
+                                                    </AppButton>
+                                                ) : null}
+                                            </div>
                                         </div>
+
+                                        <FormFieldRow cols="1">
+                                            <Controller
+                                                control={control}
+                                                name={`addresses.${index}.address1`}
+                                                render={({ field: f }) => (
+                                                    <FieldGroup
+                                                        label={t("fields.address1")}
+                                                        htmlFor={`${rowIdPrefix}-line1`}
+                                                        required
+                                                    >
+                                                        <AddressPlaceAutocomplete
+                                                            id={`${rowIdPrefix}-line1`}
+                                                            value={f.value ?? ""}
+                                                            onChange={(next) => {
+                                                                f.onChange(sanitizeAddressInput(next));
+                                                                setValue(`addresses.${index}.address1`, sanitizeAddressInput(next), {
+                                                                    shouldDirty: true,
+                                                                    shouldTouch: true,
+                                                                    shouldValidate: true,
+                                                                });
+                                                            }}
+                                                            onBlur={f.onBlur}
+                                                            countryIso={countryIso}
+                                                            contextCity={searchContext.city}
+                                                            contextState={searchContext.state}
+                                                            contextCountry={searchContext.country}
+                                                            contextPincode={searchContext.pincode}
+                                                            disabled={!isEditing}
+                                                            onSelectPlace={(place) =>
+                                                                applyPlaceToProfileAddress(setValue, index, place)
+                                                            }
+                                                            maxLength={FIELD_MAX_LENGTH.ADDRESS_LINE}
+                                                        />
+                                                    </FieldGroup>
+                                                )}
+                                            />
+                                        </FormFieldRow>
+
+                                        <FormFieldRow cols="1">
+                                            <Controller
+                                                control={control}
+                                                name={`addresses.${index}.address2`}
+                                                render={({ field: f }) => (
+                                                    <FieldGroup
+                                                        label={t("fields.address2")}
+                                                        htmlFor={`${rowIdPrefix}-line2`}
+                                                    >
+                                                        <input
+                                                            id={`${rowIdPrefix}-line2`}
+                                                            autoComplete="address-line2"
+                                                            className={cn(surfaceInputClassName, !isEditing && "bg-slate-50 dark:bg-slate-900/60")}
+                                                            disabled={!isEditing}
+                                                            maxLength={FIELD_MAX_LENGTH.ADDRESS_LINE}
+                                                            value={f.value ?? ""}
+                                                            onChange={(e) =>
+                                                                f.onChange(sanitizeAddressInput(e.target.value))
+                                                            }
+                                                            onBlur={f.onBlur}
+                                                        />
+                                                    </FieldGroup>
+                                                )}
+                                            />
+                                        </FormFieldRow>
+
                                         <CascadingLocationFields
                                             control={control}
                                             setValue={setValue}
-                                            countryIsoName={`addresses.${index}.country_iso` as const}
-                                            stateIsoName={`addresses.${index}.state_iso` as const}
-                                            cityName={`addresses.${index}.city` as const}
+                                            countryIsoName={`addresses.${index}.country_iso`}
+                                            stateIsoName={`addresses.${index}.state_iso`}
+                                            cityName={`addresses.${index}.city`}
                                             labels={{
                                                 country: t("fields.country"),
                                                 state: t("fields.state"),
@@ -657,49 +759,41 @@ const PersonalProfileForm = forwardRef<
                                             trailingSlot={
                                                 <FieldGroup
                                                     label={t("fields.pincode")}
-                                                    htmlFor={`address-pincode-${field.id}`}
+                                                    htmlFor={`${rowIdPrefix}-pincode`}
                                                     required
                                                 >
-                                                    <Input
-                                                        id={`address-pincode-${field.id}`}
-                                                        className="bg-white/80"
-                                                        readOnly={!isEditing}
-                                                        {...register(`addresses.${index}.pincode` as const)}
+                                                    <Controller
+                                                        control={control}
+                                                        name={`addresses.${index}.pincode`}
+                                                        render={({ field: f }) => (
+                                                            <input
+                                                                id={`${rowIdPrefix}-pincode`}
+                                                                autoComplete="postal-code"
+                                                                maxLength={FIELD_MAX_LENGTH.PINCODE}
+                                                                value={f.value ?? ""}
+                                                                onChange={(e) =>
+                                                                    f.onChange(
+                                                                        sanitizeDigitsInput(
+                                                                            e.target.value,
+                                                                            FIELD_MAX_LENGTH.PINCODE,
+                                                                        ),
+                                                                    )
+                                                                }
+                                                                onBlur={f.onBlur}
+                                                                disabled={!isEditing}
+                                                                className={cn(
+                                                                    surfaceInputClassName,
+                                                                    !isEditing && "bg-slate-50 dark:bg-slate-900/60",
+                                                                )}
+                                                            />
+                                                        )}
                                                     />
                                                 </FieldGroup>
                                             }
                                         />
                                     </div>
-                                    {isEditing && (
-                                        <label className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-50 dark:bg-slate-700 text-sm whitespace-nowrap mt-1.5">
-                                            <input
-                                                type="radio"
-                                                name="address_primary"
-                                                checked={!!watchedAddresses?.[index]?.is_primary}
-                                                onChange={() => {
-                                                    addressFields.forEach((_, i) => {
-                                                        setValue(`addresses.${i}.is_primary`, i === index);
-                                                    });
-                                                }}
-                                                className="w-4 h-4 cursor-pointer"
-                                            />
-                                            <span className="text-slate-600 dark:text-slate-300">
-                                                {t("Primary")}
-                                            </span>
-                                        </label>
-                                    )}
-                                    {isEditing && addressFields.length > 1 && (
-                                        <AppButton
-                                            variant="ghost"
-                                            size="sm"
-                                            className="mt-1 size-10 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-                                            onClick={() => removeAddress(index)}
-                                        >
-                                            <Trash2 size={18} />
-                                        </AppButton>
-                                    )}
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 </div>

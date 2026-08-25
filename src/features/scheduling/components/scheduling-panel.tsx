@@ -4,7 +4,7 @@ import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { ChevronLeft, ChevronRight, Funnel } from "lucide-react";
+import { ChevronLeft, ChevronRight, Funnel, Loader2 } from "lucide-react";
 import {
   deleteSchedule,
   deleteWorkerTimeOff,
@@ -199,6 +199,12 @@ export function SchedulingPanel({
   const [createDateKey, setCreateDateKey] = React.useState(toDateKey(new Date()));
   const [createPrefill, setCreatePrefill] = React.useState<CreateSchedulePrefill | null>(null);
   const [creatingSchedule, setCreatingSchedule] = React.useState(false);
+  const [pendingCreate, setPendingCreate] = React.useState<{
+    techId: number;
+    dayKey: string;
+    startTime: string;
+    endTime: string;
+  } | null>(null);
   const [copiedSchedule, setCopiedSchedule] = React.useState<Schedule | null>(null);
   const [pastingSchedule, setPastingSchedule] = React.useState(false);
   const [timeOffOpen, setTimeOffOpen] = React.useState(false);
@@ -697,6 +703,12 @@ export function SchedulingPanel({
     }
 
     setCreatingSchedule(true);
+    setPendingCreate({
+      techId: workerId,
+      dayKey,
+      startTime,
+      endTime,
+    });
     try {
       const created = await createSchedule({
         job_id: jobScopedId,
@@ -717,6 +729,7 @@ export function SchedulingPanel({
       toastApiError(error, t("modal.errorToast"));
     } finally {
       setCreatingSchedule(false);
+      setPendingCreate(null);
     }
   }
 
@@ -1241,7 +1254,19 @@ export function SchedulingPanel({
             <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
           </div>
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+            {creatingSchedule ? (
+              <div
+                className={cn(
+                  "pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center px-3 pt-2",
+                )}
+              >
+                <div className="inline-flex items-center gap-2 rounded-full border border-sky-300 bg-white/95 px-3 py-1.5 text-xs font-semibold text-sky-900 shadow-sm dark:border-sky-700 dark:bg-slate-950/95 dark:text-sky-100">
+                  <Loader2 className="size-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
+                  {t("creatingSchedule")}
+                </div>
+              </div>
+            ) : null}
             {focusedWorker ? (
               <SchedulingWeekCalendar
                 days={[days[0]]}
@@ -1249,15 +1274,17 @@ export function SchedulingPanel({
                 schedules={visibleSchedules}
                 timeOffs={timeOffs}
                 dragMode={dragMode}
-                allowCreate={allowCreate}
+                allowCreate={allowCreate && !creatingSchedule}
                 hideDayHeaders
                 fillHeight
+                pendingCreate={pendingCreate}
+                createBusy={creatingSchedule}
                 onCreate={(day, startTime, endTime) => {
                   if (dragMode === "timeoff") {
                     openTimeOffForDay(focusedWorker, day, { startTime, endTime });
                     return;
                   }
-                  if (!allowCreate) return;
+                  if (!allowCreate || creatingSchedule) return;
                   openCreateSchedule(focusedWorker, day, { startTime, endTime });
                 }}
                 onScheduleClick={openJobDetail}
@@ -1272,15 +1299,17 @@ export function SchedulingPanel({
                 timeOffs={timeOffs}
                 peopleHeader={peopleHeader}
                 dragMode={dragMode}
-                allowCreate={allowCreate}
+                allowCreate={allowCreate && !creatingSchedule}
                 copiedSchedule={copiedSchedule}
-                pasteDisabled={pastingSchedule}
+                pasteDisabled={pastingSchedule || creatingSchedule}
+                pendingCreate={pendingCreate}
+                createBusy={creatingSchedule}
                 scrollToMinutes={timelineFocusMinutes}
                 scrollToWorkerId={timelineFocusWorkerId}
                 onScrollTargetApplied={clearTimelineFocus}
                 onClearPeopleFilters={hasPeopleFilters ? clearPeopleFilters : undefined}
                 onCreateSchedule={openCreateSchedule}
-                onRangeSelect={allowCreate ? onTimelineRangeSelect : undefined}
+                onRangeSelect={allowCreate && !creatingSchedule ? onTimelineRangeSelect : undefined}
                 onScheduleClick={openJobDetail}
                 onRemoveSchedule={setDeleteTarget}
                 onCopySchedule={copySchedule}
@@ -1321,21 +1350,31 @@ export function SchedulingPanel({
       ) : filteredTechs.length === 0 ? (
         <SchedulingEmptyUsers onClear={hasPeopleFilters ? clearPeopleFilters : undefined} />
       ) : focusedWorker ? (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          {creatingSchedule ? (
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center px-3 pt-2">
+              <div className="inline-flex items-center gap-2 rounded-full border border-sky-300 bg-white/95 px-3 py-1.5 text-xs font-semibold text-sky-900 shadow-sm dark:border-sky-700 dark:bg-slate-950/95 dark:text-sky-100">
+                <Loader2 className="size-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
+                {t("creatingSchedule")}
+              </div>
+            </div>
+          ) : null}
           <SchedulingWeekCalendar
             days={days}
             technician={focusedWorker}
             schedules={visibleSchedules}
             timeOffs={timeOffs}
             dragMode={dragMode}
-            allowCreate={allowCreate}
+            allowCreate={allowCreate && !creatingSchedule}
+            pendingCreate={pendingCreate}
+            createBusy={creatingSchedule}
             onDayHeaderClick={setAgendaDay}
             onCreate={(day, startTime, endTime) => {
               if (dragMode === "timeoff") {
                 openTimeOffForDay(focusedWorker, day, { startTime, endTime });
                 return;
               }
-              if (!allowCreate) return;
+              if (!allowCreate || creatingSchedule) return;
               openCreateSchedule(focusedWorker, day, { startTime, endTime });
             }}
             onScheduleClick={openJobDetail}
@@ -1344,7 +1383,15 @@ export function SchedulingPanel({
           />
         </div>
       ) : (
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div className="relative min-h-0 flex-1 overflow-auto">
+          {creatingSchedule ? (
+            <div className="pointer-events-none sticky top-0 z-30 flex justify-center px-3 pt-2">
+              <div className="inline-flex items-center gap-2 rounded-full border border-sky-300 bg-white/95 px-3 py-1.5 text-xs font-semibold text-sky-900 shadow-sm dark:border-sky-700 dark:bg-slate-950/95 dark:text-sky-100">
+                <Loader2 className="size-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
+                {t("creatingSchedule")}
+              </div>
+            </div>
+          ) : null}
           <div className="min-w-[760px]">
             <div
               className="sticky top-0 z-20 grid border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
@@ -1439,12 +1486,16 @@ export function SchedulingPanel({
                         day={day}
                         schedules={cellSchedules}
                         timeOffs={cellTimeOffs}
+                        pendingCreate={pendingCreate}
+                        createBusy={creatingSchedule}
                         onCreate={
-                          dragMode === "timeoff"
-                            ? (startTime, endTime) => openTimeOffForDay(tech, day, { startTime, endTime })
-                            : allowCreate
-                              ? (startTime, endTime) => openCreateSchedule(tech, day, { startTime, endTime })
-                              : undefined
+                          creatingSchedule
+                            ? undefined
+                            : dragMode === "timeoff"
+                              ? (startTime, endTime) => openTimeOffForDay(tech, day, { startTime, endTime })
+                              : allowCreate
+                                ? (startTime, endTime) => openCreateSchedule(tech, day, { startTime, endTime })
+                                : undefined
                         }
                         onOpenDayView={() => openDayView(day)}
                         onScheduleClick={openJobDetail}

@@ -573,11 +573,13 @@
       "AddPhone": "Añadir teléfono",
       "AddEmail": "Añadir correo electrónico",
       "AddAddress": "Añadir dirección",
+      "RemoveAddress": "Quitar",
+      "AddressN": "Dirección {n}",
       "Addresses": "Direcciones",
       "Primary": "Principal",
       "fields": {
-        "address1": "Dirección 1",
-        "address2": "Dirección 2",
+        "address1": "Línea de dirección 1",
+        "address2": "Línea de dirección 2",
         "country": "País",
         "state": "Estado",
         "city": "Ciudad",
@@ -790,7 +792,20 @@
       },
       "formPreviewHeading": "Vista previa",
       "formPreviewLabel": "Campo obligatorio de ejemplo",
-      "formPreviewValue": "Valor de ejemplo"
+      "formPreviewValue": "Valor de ejemplo",
+      "storageHint": "La apariencia se guarda en este dispositivo para tu cuenta (aún no se envía al servidor). Al volver a iniciar sesión en este navegador, se restauran tus últimas opciones.",
+      "detailRowLineWidthLabel": "Grosor de línea en detalle",
+      "detailRowLineWidthHint": "Grosor del separador bajo cada fila de campo en las páginas de detalle.",
+      "detailRowLineWidths": {
+        "none": "Ninguna"
+      },
+      "detailRowLineStyleLabel": "Tipo de línea en detalle",
+      "detailRowLineStyleHint": "Separadores sólidos, discontinuos o punteados entre campos de detalle.",
+      "detailRowLineStyles": {
+        "solid": "Continua",
+        "dashed": "Discontinua",
+        "dotted": "Punteada"
+      }
     },
     "pinStatus": {
       "metaTitle": "Estados de Pin",
@@ -3409,6 +3424,7 @@
       "allUserGroups": "Todos los grupos",
       "createSchedule": "Crear programación",
       "dragToSchedule": "Arrastra para programar",
+      "creatingSchedule": "Creando programación…",
       "removeSchedule": "Quitar programación",
       "emptyTechnicians": "No se encontraron técnicos.",
       "emptyUsers": "No se encontraron usuarios.",
