@@ -74,8 +74,7 @@ function RoleDetailFields({
               label={t("fields.roleName")}
               value={detail.role_name ?? detail.name ?? ""}
               kind="text"
-              editAriaLabel={tActions("edit")}
-              onSave={(next) => patchField({ role_name: next.trim() })}
+              disabled
             >
               {detail.role_name || detail.name || "—"}
             </DetailEditableField>
@@ -93,9 +92,10 @@ function RoleDetailFields({
                 })
               }
             >
-              {detail.parent_role_detail
-                ? detail.parent_role_detail.role_name || detail.parent_role_detail.name || "—"
-                : "—"}
+              {(() => {
+                const parentObj = detail.parent_role_details || detail.parent_role_detail;
+                return parentObj ? parentObj.role_name || parentObj.name || "—" : "—";
+              })()}
             </DetailEditableField>
 
             <DetailEditableField
@@ -147,14 +147,15 @@ export function RoleDetailScreen({ roleId }: { roleId: number }) {
       loadError={t("detailLoadError")}
       fetch={fetchRoleDetail}
       getTitle={(detail) => detail.role_name || detail.name || t("detailMetaTitle")}
-      subtitle={(detail) =>
-        detail.parent_role_detail ? (
+      subtitle={(detail) => {
+        const parentObj = detail.parent_role_details || detail.parent_role_detail;
+        return parentObj ? (
           <span className="text-xs text-slate-500 dark:text-slate-400">
             {t("fields.parentRole")}:{" "}
-            {detail.parent_role_detail.role_name || detail.parent_role_detail.name}
+            {parentObj.role_name || parentObj.name}
           </span>
-        ) : undefined
-      }
+        ) : undefined;
+      }}
       labels={{
         metaTitle: t("detailMetaTitle"),
         backAria: t("detail.backAria"),

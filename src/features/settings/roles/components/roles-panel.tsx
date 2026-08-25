@@ -107,13 +107,12 @@ export function RolesPanel() {
     return [
       col.primary("role_name", t("fields.roleName"), (row) => row.role_name || row.name || `Role #${row.id}`),
       col.text("parent_role", t("fields.parentRole"), (row) => {
+        const parentObj = row.parent_role_details || row.parent_role_detail;
+        if (parentObj?.role_name || parentObj?.name) {
+          return parentObj.role_name || parentObj.name || "—";
+        }
         if (!row.parent_role) return "—";
-        return (
-          row.parent_role_detail?.role_name ||
-          row.parent_role_detail?.name ||
-          parentMap.get(row.parent_role) ||
-          `Role #${row.parent_role}`
-        );
+        return parentMap.get(row.parent_role) || `Role #${row.parent_role}`;
       }),
       col.custom("shared_data_with_peers", t("fields.sharedDataWithPeers"), (row) =>
         row.shared_data_with_peers ? (
@@ -239,16 +238,11 @@ export function RolesPanel() {
                   key={row.id}
                   dataListRowId={row.id}
                   title={row.role_name || row.name || `Role #${row.id}`}
-                  subtitle={
-                    row.parent_role
-                      ? `${t("fields.parentRole")}: ${
-                          row.parent_role_detail?.role_name ||
-                          row.parent_role_detail?.name ||
-                          parentMap.get(row.parent_role) ||
-                          `Role #${row.parent_role}`
-                        }`
-                      : undefined
-                  }
+                  subtitle={(() => {
+                    const parentObj = row.parent_role_details || row.parent_role_detail;
+                    const parentName = parentObj?.role_name || parentObj?.name || (row.parent_role ? parentMap.get(row.parent_role) || `Role #${row.parent_role}` : undefined);
+                    return parentName ? `${t("fields.parentRole")}: ${parentName}` : undefined;
+                  })()}
                   description={row.description || "—"}
                   meta={
                     row.shared_data_with_peers ? (

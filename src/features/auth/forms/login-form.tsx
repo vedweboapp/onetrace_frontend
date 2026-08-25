@@ -14,7 +14,8 @@ import {
 } from "@/features/auth/schemas/login-schema";
 import { useLogin } from "@/features/auth/hooks/use-login";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { getApiFieldErrorMap, reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 
 export function LoginForm() {
   const t = useTranslations("Auth");
@@ -92,7 +93,12 @@ export function LoginForm() {
       setResendIn(59);
       toastSuccess(t("otpSent", { email: maskEmail(email) }));
       window.setTimeout(() => otpRefs.current[0]?.focus(), 50);
-    } catch (error) { toastApiError(error, t("otpSendError")); }
+    } catch (error) {
+      const fieldErrors = getApiFieldErrorMap(error);
+      const msg = fieldErrors.email || getApiErrorDisplayMessage(error, t("otpSendError"));
+      setOtpEmailError(msg);
+      toastApiError(error, msg);
+    }
   }
 
   async function handleVerifyOtp() {
@@ -103,13 +109,31 @@ export function LoginForm() {
     }
     setOtpCodeError(null);
     try { await submitOtp(otpEmail.trim(), otp); }
-    catch (error) { toastApiError(error, t("otpVerifyError")); }
+    catch (error) {
+      const fieldErrors = getApiFieldErrorMap(error);
+      const msg = fieldErrors.otp || fieldErrors.code || getApiErrorDisplayMessage(error, t("otpVerifyError"));
+      setOtpCodeError(msg);
+      toastApiError(error, msg);
+    }
   }
 
   async function handleResendOtp() {
     if (resendIn > 0) return;
     try { await sendOtp(otpEmail.trim()); setResendIn(59); toastSuccess(t("otpResent")); }
-    catch (error) { toastApiError(error, t("otpSendError")); }
+    catch (error) {
+      const fieldErrors = getApiFieldErrorMap(error);
+      const msg = fieldErrors.email || getApiErrorDisplayMessage(error, t("otpSendError"));
+      setOtpEmailError(msg);
+      toastApiError(error, msg);
+    }
+  }
+
+  async function handlePasswordSubmit(values: LoginFormValues) {
+    try {
+      await submit(values);
+    } catch (error) {
+      reportFormSubmitApiError(error, form.setError, "Failed to sign in");
+    }
   }
 
   function setOtpDigit(index: number, raw: string) {
@@ -126,7 +150,7 @@ export function LoginForm() {
     <form
       className="w-full"
       style={{ fontFamily: "'Inter', sans-serif" }}
-      onSubmit={form.handleSubmit(submit)}
+      onSubmit={form.handleSubmit(handlePasswordSubmit)}
       noValidate
     >
       {/* ── Title (outside card) ── */}
