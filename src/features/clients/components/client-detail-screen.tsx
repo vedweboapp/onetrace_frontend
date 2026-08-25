@@ -16,7 +16,7 @@ import {
   EntityDetailScreen,
   EntityDetailTabLoadingState,
 } from "@/shared/components/entity";
-import { entityDetailScrollTabPanelClassName, entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
+import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { AppTabs, type AppTabItem } from "@/shared/ui";
 
@@ -104,11 +104,7 @@ export function ClientDetailScreen({ clientId, className }: Props) {
           role="tabpanel"
           id={`client-detail-tab-${activeTab}`}
           aria-labelledby={`client-detail-tab-trigger-${activeTab}`}
-          className={
-            activeTab === "details"
-              ? entityDetailScrollTabPanelClassName
-              : entityDetailTabPanelClassName
-          }
+          className={entityDetailTabPanelClassName}
         >
           {loading && activeTab === "details" ? (
             <EntityDetailLoadingSkeleton fill />

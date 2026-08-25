@@ -4,7 +4,6 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown, Plus, X } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
-import { popoverPanelClassName } from "@/shared/config/design-tokens";
 import type { CheckmarkSelectOption } from "./checkmark-select";
 
 const DROPDOWN_GAP = 4;
@@ -221,8 +220,7 @@ export function MultiCheckSelect({
       ref={panelRef}
       data-ot-checkmark-portal=""
       className={cn(
-        "z-[200] flex flex-col",
-        popoverPanelClassName,
+        "z-[200] flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
         !portaled && "absolute left-0 top-full z-10 mt-1 w-full",
       )}
       style={
