@@ -53,6 +53,7 @@ const OrganizationalDetail = React.forwardRef<
       website: "",
       timezone: "",
       street: "",
+      street2: "",
       city: "",
       state: "",
       zip: "",
@@ -106,7 +107,7 @@ const OrganizationalDetail = React.forwardRef<
   return (
     <div
       className={cn(
-        "settings-aligned-fields w-full min-w-0 rounded-xl border border-slate-200/90 bg-white",
+        "settings-aligned-fields w-full min-w-0 overflow-x-hidden rounded-xl border border-slate-200/90 bg-white",
         "px-4 py-5 sm:px-6 sm:py-6 dark:border-slate-800 dark:bg-slate-950",
       )}
     >
@@ -142,20 +143,15 @@ const OrganizationalDetail = React.forwardRef<
           </div>
         </div>
 
-        <FormFieldRow cols="2" from="md" className="gap-y-5">
-          <div className="min-w-0 space-y-1.5">
-            <Input
-              label={t("fields.name")}
-              register={register("name")}
-              errors={errors.name as any}
-              readOnly={!isEditing}
-              placeholder={t("placeholders.name")}
-              fieldRequired
-            />
-            <p className="text-[11px] leading-4 text-slate-400 dark:text-slate-500">
-              {t("nameLockedHint")}
-            </p>
-          </div>
+        <FormFieldRow cols="2" from="lg" className="gap-x-6 gap-y-4">
+          <Input
+            label={t("fields.name")}
+            register={register("name")}
+            errors={errors.name as any}
+            readOnly={!isEditing}
+            placeholder={t("placeholders.name")}
+            fieldRequired
+          />
           <Select
             label={t("fields.size")}
             register={register("size")}
@@ -178,7 +174,7 @@ const OrganizationalDetail = React.forwardRef<
             readOnly={!isEditing}
             fieldRequired
           />
-          <FormFieldSpanFull>
+          <FormFieldSpanFull className="lg:col-span-2">
             <TextBox
               label={t("fields.description")}
               register={register("description")}
@@ -194,16 +190,21 @@ const OrganizationalDetail = React.forwardRef<
         title={t("addressSectionTitle")}
         icon={<MapPin size={18} strokeWidth={1.75} />}
       >
-        <FormFieldRow cols="2" from="md" className="gap-y-5">
-          <FormFieldSpanFull>
-            <Input
-              label={t("fields.street")}
-              register={register("street")}
-              errors={errors.street as any}
-              readOnly={!isEditing}
-              placeholder={t("placeholders.street")}
-            />
-          </FormFieldSpanFull>
+        <FormFieldRow cols="2" from="lg" className="gap-x-6 gap-y-4">
+          <Input
+            label={t("fields.address1")}
+            register={register("street")}
+            errors={errors.street as any}
+            readOnly={!isEditing}
+            placeholder={t("placeholders.address1")}
+          />
+          <Input
+            label={t("fields.address2")}
+            register={register("street2")}
+            errors={errors.street2 as any}
+            readOnly={!isEditing}
+            placeholder={t("placeholders.address2")}
+          />
           <LocationSelectorGroup
             register={register}
             watch={watch}

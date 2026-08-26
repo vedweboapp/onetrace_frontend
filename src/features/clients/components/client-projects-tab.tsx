@@ -185,6 +185,7 @@ export function ClientProjectsTab({ clientId }: Props) {
           columns={columns}
           rows={items}
           onRowClick={(row) => openProjectDetail(row.id)}
+          fillHeight={false}
         />
         <DataTablePaginationBar
           pagination={pagination}

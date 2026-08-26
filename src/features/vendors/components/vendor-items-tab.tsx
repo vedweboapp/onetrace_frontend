@@ -138,6 +138,7 @@ export function VendorItemsTab({ vendorId }: Props) {
           columns={columns}
           rows={items}
           onRowClick={(row) => openItemDetail(row.id)}
+          fillHeight={false}
         />
         <DataTablePaginationBar
           pagination={pagination}

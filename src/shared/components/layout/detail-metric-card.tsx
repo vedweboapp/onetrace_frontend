@@ -35,8 +35,8 @@ export const detailPageBodyPaddingClassName = "!px-0 !py-0 sm:!px-0 sm:!py-0";
 
 /** Shared flat section chrome (title row + body padding). */
 export const detailFlatSectionHeaderClassName =
-  "flex flex-col gap-1.5 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4";
-export const detailFlatSectionBodyClassName = "px-4 pt-3 pb-5 sm:px-6 sm:pt-4 sm:pb-6";
+  "flex flex-col gap-1 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-3";
+export const detailFlatSectionBodyClassName = "px-4 pt-2.5 pb-4 sm:px-5 sm:pt-3 sm:pb-4";
 export const detailFlatSectionTitleClassName =
   "text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100";
 
@@ -298,7 +298,7 @@ export function DetailPanelCard({
           ) : null}
         </div>
       ) : null}
-      <div className={cn("px-4 py-2.5 sm:px-5 sm:py-3", bodyClassName)}>{children}</div>
+      <div className={cn("px-4 py-2 sm:px-5 sm:py-2.5", bodyClassName)}>{children}</div>
     </section>
   );
 }
