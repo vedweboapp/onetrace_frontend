@@ -14,9 +14,11 @@ import {
   normalizeSiteContactPersonsFromApi,
 } from "@/features/sites/utils/site-contact-person.util";
 import { DetailEntityLink } from "@/shared/components/entity";
+import { DetailPanelCard } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
 import { AppButton, CheckmarkSelect } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
+import type { ReactNode } from "react";
 
 type DraftRow = {
   key: string;
@@ -25,6 +27,7 @@ type DraftRow = {
 };
 
 type Props = {
+  title: ReactNode;
   detail: Site;
   contactNameById?: Record<number, string>;
   titleNameById?: Record<string, string>;
@@ -54,6 +57,7 @@ function rowsFromDetail(
 }
 
 export function SiteDetailContactPersonsEditor({
+  title,
   detail,
   contactNameById = {},
   titleNameById = {},
@@ -196,12 +200,14 @@ export function SiteDetailContactPersonsEditor({
 
   if (!editing) {
     return (
-      <div className="space-y-3">
-        <div className="flex justify-end">
+      <DetailPanelCard
+        title={title}
+        headerRight={
           <AppButton type="button" variant="secondary" size="sm" onClick={startEdit}>
             {displayRows.length === 0 ? t("contactPerson.add") : tActions("edit")}
           </AppButton>
-        </div>
+        }
+      >
         {displayRows.length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">{t("contactPerson.empty")}</p>
         ) : (
@@ -242,12 +248,31 @@ export function SiteDetailContactPersonsEditor({
             </ul>
           </div>
         )}
-      </div>
+      </DetailPanelCard>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <DetailPanelCard
+      title={title}
+      headerRight={
+        <div className="flex flex-wrap items-center gap-2">
+          <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={cancelEdit}>
+            {tActions("cancel")}
+          </AppButton>
+          <AppButton
+            type="button"
+            size="sm"
+            loading={saving}
+            disabled={saving || !clientId}
+            onClick={() => void save()}
+          >
+            {tActions("save")}
+          </AppButton>
+        </div>
+      }
+    >
+      <div className="space-y-3">
       {!clientId ? (
         <p className="text-sm text-amber-700 dark:text-amber-400">{t("validation.client")}</p>
       ) : null}
@@ -318,15 +343,8 @@ export function SiteDetailContactPersonsEditor({
           <Plus className="mr-1 size-3.5" aria-hidden />
           {t("contactPerson.add")}
         </AppButton>
-        <div className="ml-auto flex flex-wrap gap-2">
-          <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={cancelEdit}>
-            {tActions("cancel")}
-          </AppButton>
-          <AppButton type="button" size="sm" loading={saving} disabled={saving || !clientId} onClick={() => void save()}>
-            {tActions("save")}
-          </AppButton>
-        </div>
       </div>
-    </div>
+      </div>
+    </DetailPanelCard>
   );
 }

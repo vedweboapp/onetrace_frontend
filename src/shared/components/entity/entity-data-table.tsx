@@ -246,9 +246,9 @@ export function EntityDataTable<T extends { id: number | string }>({
         fillHeight ? "min-h-0 flex-1" : "w-full shrink-0",
       )}
     >
-      {/* Pinned to the table viewport — stays put while the grid scrolls X/Y. */}
+      {/* Pinned to the table viewport — left of the vertical scrollbar so it never overlaps. */}
       {!hideTextModeToggle ? (
-        <div className="pointer-events-none absolute right-1.5 top-1.5 z-30 sm:right-2 sm:top-2">
+        <div className="pointer-events-none absolute right-4 top-1.5 z-30 sm:right-5 sm:top-2">
           <div className="pointer-events-auto rounded-md bg-slate-100/95 shadow-sm ring-1 ring-slate-200/80 backdrop-blur-sm dark:bg-slate-800/95 dark:ring-slate-700">
             <DataTableTextModeToggle variant="header" className="shrink-0" />
           </div>
@@ -258,7 +258,7 @@ export function EntityDataTable<T extends { id: number | string }>({
       <DataTableScroll
         className={cn(!fillHeight && "flex-none overflow-x-auto overflow-y-visible", scrollClassName)}
       >
-        <DataTable className={cn("[&_thead_th:last-child]:pr-9", className)} textWrap={wrap}>
+        <DataTable className={cn("[&_thead_th:last-child]:pr-12", className)} textWrap={wrap}>
           <DataTableHead>
             <tr>
               {columns.map((col) => (

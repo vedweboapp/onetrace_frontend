@@ -198,7 +198,7 @@ function DraftCompositeAddRow({
   const qtyId = `${idPrefix}-qty`;
   return (
     <div className="w-full min-w-0 space-y-1.5" data-draft-composite-add>
-      <div className="flex max-w-4xl min-w-0 flex-row flex-wrap items-end gap-1.5">
+      <div className="flex max-w-4xl min-w-0 flex-row flex-wrap items-center gap-2">
         <div className="min-w-0 flex-1 sm:min-w-[11rem]">
           <CheckmarkSelect
             id={`${idPrefix}-group`}
@@ -216,7 +216,7 @@ function DraftCompositeAddRow({
             className="w-full"
           />
         </div>
-        <div className="min-w-0 flex-1 sm:min-w-[11rem]">
+        <div className="min-w-0 flex-[1.25] sm:min-w-[12rem]">
           <CheckmarkSelect
             id={`${idPrefix}-composite`}
             portaled
@@ -233,16 +233,15 @@ function DraftCompositeAddRow({
             className="w-full"
           />
         </div>
-        <div className="w-[5.5rem] shrink-0">
-          <FieldLabel htmlFor={qtyId}>{t("qty")}</FieldLabel>
+        <div className="w-[6.5rem] shrink-0 sm:w-28">
           <NumericInput
             id={qtyId}
-            size="sm"
             integer
             value={quantity}
             onChange={onQuantityChange}
             disabled={saving}
             aria-label={t("qty")}
+            placeholder={t("qty")}
             className="w-full"
           />
         </div>

@@ -823,7 +823,7 @@
       },
       "formLayoutHeading": "Diseño de formularios",
       "labelPlacementLabel": "Posición de etiquetas",
-      "labelPlacementHint": "Posición de las etiquetas respecto a los campos en formularios.",
+      "labelPlacementHint": "Izquierda/derecha usan etiquetas laterales estilo Zoho (finales alineados, campos en columna). Arriba apila la etiqueta sobre el campo. En modales estrechos se apilan solos para no solaparse.",
       "labelPlacements": {
         "top": "Arriba",
         "left": "Izquierda",
@@ -4120,6 +4120,8 @@
         "upload": "Subir",
         "open": "Abrir",
         "empty": "Aún no hay planos. Sube un PDF o una imagen para empezar.",
+        "emptyTitle": "Aún no hay planos",
+        "emptyDescription": "Sube un PDF o una imagen del plano para empezar a colocar pins y parcelas en este proyecto.",
         "loadError": "No se pudieron cargar los planos. Inténtalo de nuevo.",
         "pageLabel": "Mostrando {start}-{end} de {total} planos",
         "prev": "Anterior",

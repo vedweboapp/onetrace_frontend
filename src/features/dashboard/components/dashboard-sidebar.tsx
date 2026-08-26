@@ -48,14 +48,16 @@ export function DashboardSidebar() {
   const isHydrogen = sidebarLayout === "hydrogen";
 
   const shell = cn(
-    "hidden h-full min-h-0 shrink-0 flex-col overflow-hidden bg-slate-50/80 dark:bg-slate-950",
+    // self-stretch + max-h-full: do not use h-full % height — it can inflate the
+    // flex row past the viewport when width animates (extra page scroll + gap).
+    "hidden max-h-full min-h-0 shrink-0 flex-col self-stretch overflow-hidden bg-slate-50/80 dark:bg-slate-950",
     isBoron
       ? "border-l border-slate-200/90 dark:border-slate-800"
       : "border-r border-slate-200/90 dark:border-slate-800",
     // Hydrogen = top nav: keep sidebar for mobile only
     isHydrogen ? "md:hidden" : "md:flex",
     "transition-[width] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]",
-    sidebarExpanded ? "md:w-56" : "md:w-14",
+    sidebarExpanded ? "md:w-56 md:min-w-56" : "md:w-14 md:min-w-14",
   );
 
   if (isSettingsArea(pathname)) {

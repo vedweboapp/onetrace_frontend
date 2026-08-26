@@ -16,8 +16,6 @@ import { DetailAddressLocationFields } from "@/shared/components/layout/detail-a
 import { DetailMetricsGrid } from "@/shared/components/layout/detail-metric-card";
 import { cn } from "@/core/utils/http.util";
 
-const detailAddressFullRowClassName = "col-span-full sm:col-span-2";
-
 export type DetailEntityAddressFieldLabels = {
   addressType: React.ReactNode;
   addressLine1: React.ReactNode;
@@ -107,10 +105,8 @@ function DetailEntityAddressLine1Field({
 }
 
 /**
- * One address in a detail section — mailing-style rows:
- * type, line 1, line 2 (full width), then country|state and city|pincode.
- * Full-width fields use `col-span-full` on the field itself (no wrapper) so
- * row borders and 2-col alignment stay correct.
+ * One address in a detail section — 2-column Zoho-style rows:
+ * type | line 1, line 2 (single column), country | state, city | pincode.
  */
 export function DetailEntityAddressFields({
   address,
@@ -157,7 +153,6 @@ export function DetailEntityAddressFields({
 
       <DetailMetricsGrid from="xl" className="!gap-y-0">
         <DetailEditableField
-          className={detailAddressFullRowClassName}
           label={labels.addressType}
           value={address.address_type ?? "other"}
           kind="select"
@@ -176,7 +171,6 @@ export function DetailEntityAddressFields({
         </DetailEditableField>
 
         <DetailEntityAddressLine1Field
-          className={detailAddressFullRowClassName}
           address={address}
           label={labels.addressLine1}
           editAriaLabel={editAriaLabel}
@@ -186,7 +180,6 @@ export function DetailEntityAddressFields({
         />
 
         <DetailEditableField
-          className={detailAddressFullRowClassName}
           label={labels.addressLine2}
           value={address.address_line_2 ?? ""}
           kind="text"

@@ -17,17 +17,17 @@ import type { ListPageViewMode } from "@/shared/hooks/use-list-url-state";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   detailTabBodyClassName,
-  detailTabEmptyClassName,
   detailTabErrorClassName,
   detailTabFilterBarClassName,
   detailTabSectionClassName,
+  detailTabStandaloneFillClassName,
   detailTabToolbarClassName,
 } from "@/shared/components/layout/detail-tab-layout";
 import { cn } from "@/core/utils/http.util";
 import {
   AddButton,
-  AppButton,
   DataTablePaginationBar,
+  ListPageEmptyStates,
 } from "@/shared/ui";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions, normalizeListPageSize } from "@/shared/utils/list-page-size.util";
@@ -339,6 +339,30 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   }
 
   const pageRange = getListPageRange(pagination);
+  const isEmpty = !loading && !loadError && items.length === 0;
+
+  const emptyState = (
+    <div className={detailTabStandaloneFillClassName}>
+      <ListPageEmptyStates
+        emptyStateKind="onboarding"
+        onboarding={{
+          iconName: "projects",
+          title: t("emptyTitle"),
+          description: t("emptyDescription"),
+          action: (
+            <AddButton
+              type="button"
+              onClick={() => {
+                setUploadSession((s) => s + 1);
+                setUploadOpen(true);
+              }}
+            />
+          ),
+        }}
+        onClearFilters={() => {}}
+      />
+    </div>
+  );
 
   const tableColumns = React.useMemo(() => {
     const c = entityCol<Drawing>();
@@ -462,18 +486,14 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
             <div className="h-10 animate-pulse bg-slate-100 dark:bg-slate-800" />
           </div>
         )
+      ) : isEmpty ? (
+        emptyState
       ) : listViewMode === "list" ? (
-        <>
-          {items.length === 0 ? (
-            <p className={detailTabEmptyClassName}>{t("empty")}</p>
-          ) : (
-            <div className="grid grid-cols-1 gap-5 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3 lg:gap-6">
-              {items.map((row) => (
-                <DrawingGridCard key={row.id} row={row} locale={locale} onOpen={() => openDrawing(row)} />
-              ))}
-            </div>
-          )}
-        </>
+        <div className="grid grid-cols-1 gap-5 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3 lg:gap-6">
+          {items.map((row) => (
+            <DrawingGridCard key={row.id} row={row} locale={locale} onOpen={() => openDrawing(row)} />
+          ))}
+        </div>
       ) : (
         <EntityDataTable
           columns={tableColumns}

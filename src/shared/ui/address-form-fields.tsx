@@ -217,7 +217,7 @@ export type AddressFormFieldsProps<T extends FieldValues> = {
   errors?: AddressErrors;
   disabled?: boolean;
   withCoordinates?: boolean;
-  /** Address line layout: "stacked" (full width) or "row" (two columns). Default "stacked". */
+  /** Address line layout: "row" (two columns) or "stacked" (one column). Default "row". */
   addressLineLayout?: "stacked" | "row";
   className?: string;
   locationClassName?: string;
@@ -233,7 +233,7 @@ export function AddressFormFields<T extends FieldValues>({
   errors,
   disabled,
   withCoordinates,
-  addressLineLayout = "stacked",
+  addressLineLayout = "row",
   className,
   locationClassName,
 }: AddressFormFieldsProps<T>) {
