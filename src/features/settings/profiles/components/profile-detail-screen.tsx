@@ -63,12 +63,10 @@ function ProfileDetailFields({
               value={detail.description ?? ""}
               kind="text"
               multiline
-              span="full"
+              textareaBox
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ description: next.trim() || null })}
-            >
-              {detail.description || "—"}
-            </DetailEditableField>
+            />
           </DetailMetricsGrid>
         </DetailPanelCard>
       </div>

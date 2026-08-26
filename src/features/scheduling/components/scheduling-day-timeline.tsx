@@ -2,8 +2,7 @@
 
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ScheduleCreateCellButton } from "@/features/scheduling/components/schedule-create-cell-button";
-import { SchedulingEmptyUsers } from "@/features/scheduling/components/scheduling-empty-users";
+import { ClipboardPaste, Loader2 } from "lucide-react";
 import { ScheduleEventChip } from "@/features/scheduling/components/schedule-event-chip";
 import { TimeOffChip } from "@/features/scheduling/components/time-off-chip";
 import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
@@ -27,9 +26,10 @@ import {
   minutesToTime,
   occupiedRangesForDay,
   pointerToMinutes,
+  timeToMinutes,
   type OccupiedRange,
 } from "@/features/scheduling/utils/scheduling-availability.util";
-import { ClipboardPaste } from "lucide-react";
+import { SchedulingEmptyUsers } from "@/features/scheduling/components/scheduling-empty-users";
 import {
   buildDayHourLabels,
   formatHourParts,
@@ -92,6 +92,15 @@ type Props = {
   /** Prefer scrolling this worker row into view after create. */
   scrollToWorkerId?: number | null;
   onScrollTargetApplied?: () => void;
+  /** Ghost range shown while create API is in flight. */
+  pendingCreate?: {
+    techId: number;
+    dayKey: string;
+    startTime: string;
+    endTime: string;
+  } | null;
+  /** Disable drag create while create or paste is running. */
+  createBusy?: boolean;
   onCreateSchedule: (tech: SchedulingTechnician, day: Date) => void;
   onRangeSelect?: (range: TimelineRangeSelect) => void;
   onScheduleClick: (schedule: Schedule) => void;
@@ -117,7 +126,9 @@ export function SchedulingDayTimeline({
   scrollToMinutes = null,
   scrollToWorkerId = null,
   onScrollTargetApplied,
-  onCreateSchedule,
+  pendingCreate = null,
+  createBusy = false,
+  onCreateSchedule: _onCreateSchedule,
   onRangeSelect,
   onScheduleClick,
   onRemoveSchedule,
@@ -369,8 +380,16 @@ export function SchedulingDayTimeline({
               ? SCHEDULED_ROW_HEIGHT_PX
               : EMPTY_ROW_HEIGHT_PX;
           const activeDrag = drag?.techId === tech.id ? drag : null;
-          const canBook = allowCreate && dragMode === "book" && window != null && knownAvailability;
-          const canMarkTimeOff = dragMode === "timeoff" && window != null && knownAvailability;
+          const canBook = allowCreate && !createBusy && dragMode === "book" && window != null && knownAvailability;
+          const canMarkTimeOff = !createBusy && dragMode === "timeoff" && window != null && knownAvailability;
+          const pendingForRow =
+            pendingCreate &&
+            pendingCreate.dayKey === dayKey &&
+            technicianMatchesWorkerId(tech, pendingCreate.techId)
+              ? pendingCreate
+              : null;
+          const pendingStartMin = pendingForRow ? timeToMinutes(pendingForRow.startTime) : null;
+          const pendingEndMin = pendingForRow ? timeToMinutes(pendingForRow.endTime) : null;
           const availabilityBands = buildDayTimeSegments({
             dayKey,
             window,
@@ -425,15 +444,15 @@ export function SchedulingDayTimeline({
                         title={t("copy.pasteHere")}
                         aria-label={t("copy.pasteHere")}
                         className={cn(
-                          "mt-1 inline-flex items-center gap-1 rounded border border-sky-300 bg-sky-50 px-1.5 py-0.5",
-                          "text-[10px] font-semibold text-sky-800",
-                          "hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50",
-                          "dark:border-sky-800 dark:bg-sky-950/50 dark:text-sky-100 dark:hover:bg-sky-900",
+                          "mt-1.5 inline-flex items-center gap-1 rounded-md border border-sky-400 bg-white px-2 py-1 text-[11px] font-semibold text-sky-700 shadow-sm",
+                          "hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-1",
+                          "disabled:cursor-not-allowed disabled:opacity-50",
+                          "dark:border-sky-600 dark:bg-slate-950 dark:text-sky-200 dark:hover:bg-sky-950",
                         )}
                         onClick={() => onPasteSchedule?.(tech)}
                       >
-                        <ClipboardPaste className="size-3 shrink-0" strokeWidth={2.25} aria-hidden />
-                        <span>{t("copy.paste")}</span>
+                        <ClipboardPaste className="size-3.5" strokeWidth={2.25} aria-hidden />
+                        {t("copy.pasteHere")}
                       </button>
                     ) : null}
                   </div>
@@ -447,7 +466,7 @@ export function SchedulingDayTimeline({
                 )}
                 style={{ width: timelineWidth, minHeight: rowHeight, touchAction: "none" }}
                 onPointerDown={(e) => {
-                  if (!onRangeSelect || e.button !== 0) return;
+                  if (createBusy || !onRangeSelect || e.button !== 0) return;
                   const target = e.target as HTMLElement;
                   if (target.closest("[data-schedule-chip],[data-timeoff-chip],button")) return;
                   const startMin = pointerToMinutes(e.clientX, e.currentTarget);
@@ -489,15 +508,11 @@ export function SchedulingDayTimeline({
                 <div className="absolute inset-0">
                   {availabilityBands.map((segment) => {
                     const { leftPct, widthPct } = minutesBandPct(segment.startMinutes, segment.endMinutes);
-                    const isAvailable = segment.kind === "available";
-                    const startTime = minutesToTime(segment.startMinutes);
-                    const endTime = minutesToTime(Math.min(segment.startMinutes + 60, segment.endMinutes));
                     return (
                       <div
                         key={`${segment.kind}-${segment.startMinutes}`}
                         className={cn(
-                          "absolute inset-y-0",
-                          isAvailable ? "group/avail" : "pointer-events-none",
+                          "pointer-events-none absolute inset-y-0",
                           segment.kind === "available"
                             ? "bg-emerald-100/90 dark:bg-emerald-950/45"
                             : segment.kind === "unavailable"
@@ -505,32 +520,7 @@ export function SchedulingDayTimeline({
                               : "bg-white dark:bg-slate-950",
                         )}
                         style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
-                      >
-                        {canBook && isAvailable && !activeDrag ? (
-                          <div
-                            className={cn(
-                              "pointer-events-none absolute inset-0 z-[1] flex items-center justify-center",
-                              "opacity-0 transition group-hover/avail:opacity-100 max-sm:opacity-100",
-                            )}
-                          >
-                            <ScheduleCreateCellButton
-                              iconOnly
-                              className="pointer-events-auto"
-                              onPaste={
-                                canPasteOntoWorker(tech)
-                                  ? () => onPasteSchedule?.(tech)
-                                  : undefined
-                              }
-                              pasteDisabled={pasteDisabled}
-                              onClick={() =>
-                                onRangeSelect
-                                  ? onRangeSelect({ tech, day, startTime, endTime })
-                                  : onCreateSchedule(tech, day)
-                              }
-                            />
-                          </div>
-                        ) : null}
-                      </div>
+                      />
                     );
                   })}
                   <div className="pointer-events-none absolute inset-0 flex">
@@ -559,6 +549,25 @@ export function SchedulingDayTimeline({
                       width: `${minutesBandPct(activeDrag.startMin, activeDrag.endMin).widthPct}%`,
                     }}
                   />
+                ) : null}
+
+                {pendingStartMin != null && pendingEndMin != null ? (
+                  <div
+                    className={cn(
+                      "pointer-events-none absolute inset-y-1 z-[3] flex items-center gap-1.5 overflow-hidden",
+                      "rounded-md border border-sky-400 bg-sky-100/90 px-2 text-sky-900 shadow-sm",
+                      "dark:border-sky-500 dark:bg-sky-950/80 dark:text-sky-100",
+                    )}
+                    style={{
+                      left: `${minutesBandPct(pendingStartMin, pendingEndMin).leftPct}%`,
+                      width: `${Math.max(minutesBandPct(pendingStartMin, pendingEndMin).widthPct, 8)}%`,
+                    }}
+                    aria-busy
+                    aria-label={t("creatingSchedule")}
+                  >
+                    <Loader2 className="size-3.5 shrink-0 animate-spin" strokeWidth={2.5} aria-hidden />
+                    <span className="truncate text-[10px] font-semibold">{t("creatingSchedule")}</span>
+                  </div>
                 ) : null}
 
                 {cellTimeOffs.map((row) => {

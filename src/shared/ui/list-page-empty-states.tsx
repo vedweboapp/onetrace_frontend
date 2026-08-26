@@ -37,13 +37,15 @@ export function listPageSurfaceShellClassName(hideListChrome: boolean): string {
 /** Root wrapper for list panels — fills the shell; only the table body scrolls. */
 export function listPageRootClassName(): string {
   return cn(
-    "flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden sm:gap-3",
+    // `dashboard-list-page` marks fill height for DashboardPageScrollHost
+    // (no outer page scroll / no empty strip when the sidebar collapses).
+    "dashboard-list-page flex min-h-0 flex-1 flex-col gap-2 overflow-hidden sm:gap-3",
   );
 }
 
 /** Scrollable card grid area inside list shells (pagination stays pinned below). */
 export function listPageCardScrollClassName(): string {
-  return "min-h-0 flex-1 overflow-y-auto p-4 sm:p-6";
+  return "min-h-0 flex-1 overflow-y-auto p-5 sm:p-6 lg:p-8";
 }
 
 /** Scrollable pages (forms) — parent shell already scrolls; keep bottom padding. */

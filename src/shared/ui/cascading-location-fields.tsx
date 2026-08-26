@@ -107,10 +107,13 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
   const stateRequired = showStateSelect && Boolean(countryIso);
   const cityRequired = showCitySelect;
 
+  /** Match disabled/readonly inputs (e.g. pin code) — keep the surface box. */
   const readOnlyFieldClassName = cn(
     surfaceInputClassName,
-    "pointer-events-none border-0 bg-white text-slate-900 dark:border-0 dark:bg-slate-950 dark:text-slate-100",
-    "flex items-center",
+    "pointer-events-none flex items-center cursor-default select-none",
+    "border-slate-200 bg-slate-50 text-slate-900",
+    "focus-visible:border-slate-200 focus-visible:ring-0",
+    "dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-100",
   );
 
   const renderReadOnlyValue = (value: string, placeholder: string) => (
@@ -152,7 +155,7 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
 
   return (
     <div className={cn("space-y-4", rowClassName)}>
-      <FormFieldRow cols="2">
+      <FormFieldRow cols="2" from="lg">
         <FieldGroup
           label={labels.country}
           htmlFor={`${String(countryIsoName)}-select`}
@@ -242,7 +245,7 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
       </FormFieldRow>
 
       {showStateSelect && (showCitySelect || trailingSlot) ? (
-        <FormFieldRow cols="2" className="mt-4">
+        <FormFieldRow cols="2" from="lg" className="mt-4">
           {showCitySelect ? (
             <FieldGroup
               label={labels.city}
@@ -278,9 +281,9 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
               <FieldErrorText>{errors?.city}</FieldErrorText>
             </FieldGroup>
           ) : (
-            <div className="hidden min-h-[1px] sm:block" aria-hidden />
+            <div className="hidden min-h-[1px] lg:block" aria-hidden />
           )}
-          {showCitySelect ? trailingSlot ?? null : <div className="sm:col-span-2">{trailingSlot}</div>}
+          {showCitySelect ? trailingSlot ?? null : <div className="lg:col-span-2">{trailingSlot}</div>}
         </FormFieldRow>
       ) : null}
     </div>

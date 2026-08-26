@@ -221,6 +221,7 @@
         "notModifiedYet": "Sin modificar",
         "recordNotFoundTitle": "Registro no encontrado",
         "recordNotFoundDescription": "Este registro puede haberse eliminado o el enlace no es correcto.",
+        "loadErrorTitle": "Algo salió mal",
         "backToList": "Volver al listado"
       },
       "lockedField": {
@@ -561,6 +562,7 @@
     },
     "settingsPersonalProfile": {
       "updatedToast": "Perfil actualizado correctamente",
+      "appearanceSavedToast": "Ajustes de apariencia guardados",
       "loadError": "No se pudo cargar el perfil. Inténtalo de nuevo.",
       "mustSignIn": "Debes iniciar sesión para ver tu perfil.",
       "BasicInfo": "Información básica",
@@ -576,11 +578,13 @@
       "AddPhone": "Añadir teléfono",
       "AddEmail": "Añadir correo electrónico",
       "AddAddress": "Añadir dirección",
+      "RemoveAddress": "Quitar",
+      "AddressN": "Dirección {n}",
       "Addresses": "Direcciones",
       "Primary": "Principal",
       "fields": {
-        "address1": "Dirección 1",
-        "address2": "Dirección 2",
+        "address1": "Línea de dirección 1",
+        "address2": "Línea de dirección 2",
         "country": "País",
         "state": "Estado",
         "city": "Ciudad",
@@ -637,7 +641,50 @@
       "organizationUpdatedToast": "Datos de la organización actualizados correctamente",
       "currencyUpdatedToast": "Ajustes de moneda guardados correctamente",
       "scheduleUpdatedToast": "Horario guardado correctamente",
-      "noChangesToast": "No hay cambios que guardar"
+      "noChangesToast": "No hay cambios que guardar",
+      "orgSectionTitle": "Información de la organización",
+      "orgSectionSubtitle": "Actualiza los datos de la empresa y la información de contacto.",
+      "addressSectionTitle": "Información de dirección",
+      "logoLabel": "Logo de la empresa",
+      "logoHint": "Se recomienda 512×512 px",
+      "currencySectionTitle": "Moneda",
+      "currencySectionSubtitle": "Define la moneda principal, el formato de importes y el formato numérico.",
+      "homeCurrency": "Moneda principal",
+      "homeCurrencyHint": "Tu moneda principal",
+      "currencyFormat": "Formato de moneda",
+      "currencyFormatHint": "Formato de moneda actual",
+      "currencyDigitFormat": "Formato de dígitos monetarios",
+      "numberFormatHint": "Se usa para cantidades y campos solo numéricos",
+      "customize": "Personalizar",
+      "customizeCurrencySettings": "Personalizar ajustes de moneda",
+      "symbol": "Símbolo",
+      "formatTypeCode": "Código",
+      "symbolPosition": "Posición del símbolo",
+      "symbolBefore": "Antes del valor",
+      "symbolAfter": "Después del valor",
+      "decimalPlaces": "Decimales",
+      "preview": "Vista previa",
+      "cancel": "Cancelar",
+      "confirm": "Confirmar",
+      "saving": "Guardando…",
+      "fields": {
+        "name": "Nombre de la organización",
+        "size": "Tamaño de la empresa",
+        "website": "URL del sitio web",
+        "timezone": "Zona horaria",
+        "description": "Descripción de la empresa",
+        "address1": "Dirección 1",
+        "address2": "Dirección 2",
+        "zip": "Código postal",
+        "numberFormat": "Formato numérico"
+      },
+      "placeholders": {
+        "name": "Nombre de la empresa",
+        "website": "https://ejemplo.com",
+        "address1": "Calle Principal 123",
+        "address2": "Oficina 100",
+        "zip": "94102"
+      }
     },
     "settingsFormBuilder": {
       "layoutSavedToast": "Diseño guardado correctamente",
@@ -793,7 +840,20 @@
       },
       "formPreviewHeading": "Vista previa",
       "formPreviewLabel": "Campo obligatorio de ejemplo",
-      "formPreviewValue": "Valor de ejemplo"
+      "formPreviewValue": "Valor de ejemplo",
+      "storageHint": "La apariencia se guarda en este dispositivo para tu cuenta (aún no se envía al servidor). Al volver a iniciar sesión en este navegador, se restauran tus últimas opciones.",
+      "detailRowLineWidthLabel": "Grosor de línea en detalle",
+      "detailRowLineWidthHint": "Grosor del separador bajo cada fila de campo en las páginas de detalle.",
+      "detailRowLineWidths": {
+        "none": "Ninguna"
+      },
+      "detailRowLineStyleLabel": "Tipo de línea en detalle",
+      "detailRowLineStyleHint": "Separadores sólidos, discontinuos o punteados entre campos de detalle.",
+      "detailRowLineStyles": {
+        "solid": "Continua",
+        "dashed": "Discontinua",
+        "dotted": "Punteada"
+      }
     },
     "pinStatus": {
       "metaTitle": "Estados de Pin",
@@ -3411,6 +3471,8 @@
       "allUsers": "Todos los usuarios",
       "allUserGroups": "Todos los grupos",
       "createSchedule": "Crear programación",
+      "dragToSchedule": "Arrastra para programar",
+      "creatingSchedule": "Creando programación…",
       "removeSchedule": "Quitar programación",
       "emptyTechnicians": "No se encontraron técnicos.",
       "emptyUsers": "No se encontraron usuarios.",
@@ -3615,7 +3677,7 @@
       "table": {
         "title": "Trabajo",
         "jobStatus": "Estado",
-        "assignedWorker": "Técnico asignado",
+        "assignedWorker": "Técnicos asignados",
         "start": "Inicio",
         "end": "Fin",
         "serialNo": "Serie",
@@ -3804,7 +3866,9 @@
         "forms": "Formularios",
         "assignedWorker": "Técnico asignado",
         "assignedWorkers": "Técnicos asignados",
-        "workerName": "Trabajador",
+        "workerName": "Nombre",
+        "workerEmail": "Correo",
+        "workerPhone": "Teléfono",
         "workerRole": "Rol",
         "startDate": "Fecha y hora de inicio",
         "jobTime": "Tiempo del trabajo",
@@ -4194,6 +4258,7 @@
         "table": {
           "name": "Nombre del formulario",
           "projectType": "Tipo de proyecto",
+          "installationType": "Tipo de instalación",
           "status": "Estado",
           "created": "Creado",
           "actions": "Acciones"

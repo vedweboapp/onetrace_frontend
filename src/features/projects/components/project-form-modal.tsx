@@ -514,7 +514,7 @@ export function ProjectFormModal({
             aria-describedby={errors.description ? "project-desc-err" : undefined}
             className={cn(
               surfaceInputClassName,
-              "h-auto min-h-[100px] resize-y py-3 leading-5",
+              "h-auto min-h-[100px] resize-y overflow-y-auto py-3 leading-5 [field-sizing:fixed]",
               errors.description && "border-red-500 dark:border-red-500",
             )}
             maxLength={FIELD_MAX_LENGTH.DESCRIPTION}

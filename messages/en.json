@@ -229,6 +229,7 @@
         "requiredField": "This field is required.",
         "recordNotFoundTitle": "Record not found",
         "recordNotFoundDescription": "This record may have been deleted or the link is incorrect.",
+        "loadErrorTitle": "Something went wrong",
         "backToList": "Back to list"
       },
       "lockedField": {
@@ -569,6 +570,7 @@
     },
     "settingsPersonalProfile": {
       "updatedToast": "Profile updated successfully",
+      "appearanceSavedToast": "Appearance settings saved",
       "loadError": "Failed to load profile. Please try again.",
       "mustSignIn": "You must be signed in to view your profile.",
       "BasicInfo": "Basic Info",
@@ -584,15 +586,17 @@
       "AddPhone": "Add Phone",
       "AddEmail": "Add Email",
       "AddAddress": "Add Address",
+      "RemoveAddress": "Remove",
+      "AddressN": "Address {n}",
       "Addresses": "Addresses",
       "Primary": "Primary",
       "fields": {
-        "address1": "Address 1",
-        "address2": "Address 2",
+        "address1": "Address line 1",
+        "address2": "Address line 2",
         "country": "Country",
         "state": "State",
         "city": "City",
-        "pincode": "Pin Code"
+        "pincode": "Pin code"
       },
       "placeholders": {
         "country": "Select country",
@@ -645,7 +649,50 @@
       "organizationUpdatedToast": "Organization details updated successfully",
       "currencyUpdatedToast": "Currency settings saved successfully",
       "scheduleUpdatedToast": "Schedule settings saved successfully",
-      "noChangesToast": "No changes to save"
+      "noChangesToast": "No changes to save",
+      "orgSectionTitle": "Organization information",
+      "orgSectionSubtitle": "Update your company details and contact information.",
+      "addressSectionTitle": "Address information",
+      "logoLabel": "Company logo",
+      "logoHint": "512×512px recommended",
+      "currencySectionTitle": "Currency",
+      "currencySectionSubtitle": "Set the home currency, money format, and number format.",
+      "homeCurrency": "Home currency",
+      "homeCurrencyHint": "Your primary currency",
+      "currencyFormat": "Currency format",
+      "currencyFormatHint": "Current money format",
+      "currencyDigitFormat": "Money digit format",
+      "numberFormatHint": "Used for quantities and number-only fields",
+      "customize": "Customize",
+      "customizeCurrencySettings": "Customize currency settings",
+      "symbol": "Symbol",
+      "formatTypeCode": "Code",
+      "symbolPosition": "Symbol position",
+      "symbolBefore": "Before value",
+      "symbolAfter": "After value",
+      "decimalPlaces": "Decimal places",
+      "preview": "Preview",
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "saving": "Saving…",
+      "fields": {
+        "name": "Organization name",
+        "size": "Company size",
+        "website": "Website URL",
+        "timezone": "Timezone",
+        "description": "Company description",
+        "address1": "Address 1",
+        "address2": "Address 2",
+        "zip": "Pincode / ZIP code",
+        "numberFormat": "Number format"
+      },
+      "placeholders": {
+        "name": "Company name",
+        "website": "https://example.com",
+        "address1": "123 Business Park Drive",
+        "address2": "Suite 100",
+        "zip": "94102"
+      }
     },
     "settingsFormBuilder": {
       "layoutSavedToast": "Layout saved successfully",
@@ -801,7 +848,20 @@
       },
       "formPreviewHeading": "Live preview",
       "formPreviewLabel": "Sample required field",
-      "formPreviewValue": "Sample value"
+      "formPreviewValue": "Sample value",
+      "storageHint": "Appearance is saved on this device for your signed-in account (not sent to the server yet). After you log in again on this browser, your last choices are restored.",
+      "detailRowLineWidthLabel": "Detail row line width",
+      "detailRowLineWidthHint": "Thickness of the divider under each field row on detail pages.",
+      "detailRowLineWidths": {
+        "none": "None"
+      },
+      "detailRowLineStyleLabel": "Detail row line type",
+      "detailRowLineStyleHint": "Solid, dashed, or dotted dividers between detail fields.",
+      "detailRowLineStyles": {
+        "solid": "Solid",
+        "dashed": "Dashed",
+        "dotted": "Dotted"
+      }
     },
     "pinStatus": {
       "metaTitle": "Pin Statuses",
@@ -3420,6 +3480,8 @@
       "allUsers": "All users",
       "allUserGroups": "All groups",
       "createSchedule": "Create Schedule",
+      "dragToSchedule": "Drag to schedule",
+      "creatingSchedule": "Creating schedule…",
       "removeSchedule": "Remove schedule",
       "emptyTechnicians": "No technicians found.",
       "emptyUsers": "No users found.",
@@ -3624,7 +3686,7 @@
       "table": {
         "title": "Job",
         "jobStatus": "Job status",
-        "assignedWorker": "Assigned worker",
+        "assignedWorker": "Assigned workers",
         "projectCategory": "Category",
         "start": "Start",
         "serialNo": "Job",
@@ -3816,7 +3878,9 @@
         "forms": "Forms",
         "assignedWorker": "Assigned worker",
         "assignedWorkers": "Assigned workers",
-        "workerName": "Worker",
+        "workerName": "Name",
+        "workerEmail": "Email",
+        "workerPhone": "Phone",
         "workerRole": "Role",
         "startDate": "Start date & time",
         "jobTime": "Job time",
@@ -4210,6 +4274,7 @@
         "table": {
           "name": "Form name",
           "projectType": "Project type",
+          "installationType": "Installation type",
           "status": "Status",
           "created": "Created",
           "actions": "Actions"

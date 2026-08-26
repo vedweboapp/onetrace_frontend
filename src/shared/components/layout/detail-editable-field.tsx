@@ -17,6 +17,7 @@ import {
   releaseDetailInlineEdit,
   subscribeDetailInlineEditLock,
 } from "@/shared/components/layout/detail-inline-edit-lock";
+import { FIELD_MAX_LENGTH, clampFieldLength } from "@/shared/form/field-max-length.util";
 
 export type DetailEditableFieldKind = "text" | "email" | "tel" | "select" | "multiselect" | "money";
 
@@ -28,16 +29,16 @@ type DetailEditableFieldEditorProps = {
   editorClassName: string;
 };
 
-/** CRM detail label — muted, sentence case, sits in the fixed label column. */
+/** Detail label — muted, sentence case; placement follows Appearance (left/right/top). */
 export const detailFieldLabelClassName = cn(
   fieldLabelClassName,
   "text-sm font-normal normal-case tracking-normal text-slate-500 dark:text-slate-400",
 );
 
-/** Soft box shared by display + edit so height/width feel the same. */
+/** Soft box shared by display + edit — weight/color match list table cells. */
 export const detailValueSurfaceClassName = cn(
-  "w-full min-w-0 min-h-9 rounded-md px-2 py-1.5 text-sm font-semibold leading-normal text-slate-900",
-  "dark:text-slate-100",
+  "w-full min-w-0 min-h-8 rounded-md px-1.5 py-1 text-sm font-normal leading-snug text-slate-700",
+  "dark:text-slate-300",
 );
 
 export const detailInlineEditorClassName = cn(
@@ -47,15 +48,22 @@ export const detailInlineEditorClassName = cn(
   "dark:border-slate-700 dark:bg-slate-900/80",
 );
 
+/** Zoho-style description box: min height, inner scroll, user can drag to grow. */
+export const detailTextareaBoxClassName = cn(
+  "field-control",
+  detailInlineEditorClassName,
+  "min-h-[100px] resize-y overflow-y-auto py-2.5 leading-5 font-normal [field-sizing:fixed]",
+);
+
 const detailInlineActionBtnClassName = cn(
   "inline-flex size-7 shrink-0 items-center justify-center rounded-full border transition",
   "disabled:pointer-50 disabled:pointer-events-none",
 );
 
 /**
- * Enterprise CRM detail field: fixed-width label column + value on one row.
- * Click opens an inline editor; tick saves that field only, cross cancels.
- * Only one field can be in edit mode at a time (global lock).
+ * Enterprise CRM detail field: label + value; placement follows Appearance
+ * (left / right / top). Click opens an inline editor; tick saves that field
+ * only, cross cancels. Only one field can be in edit mode at a time (global lock).
  */
 export function DetailEditableField({
   label,
@@ -81,6 +89,8 @@ export function DetailEditableField({
   requiredMessage = "This field is required.",
   /** Use textarea editor and preserve line breaks (descriptions, notes). */
   multiline = false,
+  /** Resizable description box with inner scroll (same as add/edit project). */
+  textareaBox = false,
   /** Span both columns inside `DetailMetricsGrid`. */
   span,
   renderEditor,
@@ -112,6 +122,7 @@ export function DetailEditableField({
   required?: boolean;
   requiredMessage?: string;
   multiline?: boolean;
+  textareaBox?: boolean;
   span?: "full";
   renderEditor?: (props: DetailEditableFieldEditorProps) => ReactNode;
   onEditStart?: () => void;
@@ -138,6 +149,8 @@ export function DetailEditableField({
   const inputRef = React.useRef<HTMLInputElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const skipBlurCommit = React.useRef(false);
+  const textareaBoxHeightRef = React.useRef<number | null>(null);
+  const textareaResizeStartHeight = React.useRef(0);
 
   React.useEffect(() => subscribeDetailInlineEditLock(() => setLockTick((n) => n + 1)), []);
 
@@ -151,20 +164,22 @@ export function DetailEditableField({
   const canStartEdit = editable && !editBlocked;
   const lockedTooltip = lockedHint?.trim() || tLocked("hint");
 
+  const useTextareaBox = textareaBox;
   const useGrowingEditor =
-    multiline ||
-    (kind === "text" &&
-      (Boolean(value?.includes("\n")) || (value?.trim().length ?? 0) > 36));
+    !useTextareaBox &&
+    (multiline ||
+      (kind === "text" &&
+        (Boolean(value?.includes("\n")) || (value?.trim().length ?? 0) > 36)));
 
   React.useEffect(() => {
     if (!editing) return;
     if (kind === "tel" || kind === "select" || kind === "multiselect" || kind === "money") return;
     const id = window.requestAnimationFrame(() => {
-      if (useGrowingEditor) textareaRef.current?.focus();
+      if (useTextareaBox || useGrowingEditor) textareaRef.current?.focus();
       else inputRef.current?.focus();
     });
     return () => window.cancelAnimationFrame(id);
-  }, [editing, kind, useGrowingEditor]);
+  }, [editing, kind, useGrowingEditor, useTextareaBox]);
 
   function startEdit(e?: React.SyntheticEvent) {
     e?.stopPropagation();
@@ -258,13 +273,24 @@ export function DetailEditableField({
     8,
     Math.max(2, draft.split("\n").length, Math.ceil(Math.max(draft.length, 1) / 42)),
   );
+  const textareaBoxStyle =
+    useTextareaBox && textareaBoxHeightRef.current != null
+      ? { height: textareaBoxHeightRef.current }
+      : undefined;
+  const emptyPlaceholder = typeof empty === "string" ? empty : "—";
+
+  function persistTextareaBoxHeight(el: HTMLTextAreaElement | null) {
+    if (!el) return;
+    textareaBoxHeightRef.current = el.offsetHeight;
+  }
 
   return (
     <div
       className={cn(
         "field-group detail-field group/field min-w-0",
         required && "field-group--required",
-        span === "full" && "col-span-full",
+        (span === "full" || useTextareaBox) && "col-span-full",
+        (useTextareaBox || multiline) && "detail-field--block",
         className,
       )}
       data-required={required ? "true" : undefined}
@@ -277,7 +303,7 @@ export function DetailEditableField({
       <div className="field-control-wrap min-w-0 w-full flex-1 overflow-visible">
         {editing && canInline ? (
           <div className="flex w-full min-w-0 flex-col gap-1">
-            <div className={cn("flex w-full min-w-0 gap-1.5", useGrowingEditor ? "items-start" : "items-center")}>
+            <div className={cn("flex w-full min-w-0 gap-1.5", useTextareaBox || useGrowingEditor ? "items-start" : "items-center")}>
             <div className="min-w-0 flex-1 overflow-visible" onMouseDown={(e) => e.stopPropagation()}>
               {renderEditor ? (
                 renderEditor({
@@ -375,6 +401,32 @@ export function DetailEditableField({
                     void commit();
                   }}
                 />
+              ) : useTextareaBox ? (
+                <textarea
+                  ref={textareaRef}
+                  value={draft}
+                  disabled={saving}
+                  rows={4}
+                  maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
+                  aria-label={editAriaLabel}
+                  aria-invalid={Boolean(error)}
+                  style={textareaBoxStyle}
+                  className={cn(
+                    detailTextareaBoxClassName,
+                    error && "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/20",
+                  )}
+                  onChange={(e) => {
+                    setError(null);
+                    setDraft(clampFieldLength(e.target.value, FIELD_MAX_LENGTH.DESCRIPTION));
+                  }}
+                  onMouseUp={(e) => persistTextareaBoxHeight(e.currentTarget)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      cancelEdit();
+                    }
+                  }}
+                />
               ) : useGrowingEditor ? (
                 <textarea
                   ref={textareaRef}
@@ -436,7 +488,7 @@ export function DetailEditableField({
                 />
               )}
             </div>
-            <div className={cn("flex shrink-0 items-center gap-1", useGrowingEditor ? "self-start pt-1" : "self-center")}>
+            <div className={cn("flex shrink-0 items-center gap-1", useTextareaBox || useGrowingEditor ? "self-start pt-1" : "self-center")}>
               <button
                 type="button"
                 disabled={saving}
@@ -477,10 +529,71 @@ export function DetailEditableField({
             </div>
             {error ? <FieldErrorText>{error}</FieldErrorText> : null}
           </div>
+        ) : useTextareaBox ? (
+          <div className="relative w-full min-w-0">
+            <textarea
+              readOnly
+              rows={4}
+              value={value ?? ""}
+              placeholder={emptyPlaceholder}
+              tabIndex={canStartEdit || locked ? 0 : -1}
+              aria-label={typeof label === "string" ? label : editAriaLabel}
+              aria-readonly={locked || !canStartEdit ? true : undefined}
+              title={locked ? lockedTooltip : editBlocked ? "Finish editing the current field first" : undefined}
+              style={textareaBoxStyle}
+              className={cn(
+                detailTextareaBoxClassName,
+                "pr-8",
+                canStartEdit && "cursor-pointer",
+                locked && "cursor-not-allowed bg-slate-50/90 dark:bg-slate-900/60",
+                editBlocked && editable && "cursor-not-allowed opacity-70",
+              )}
+              onMouseDown={(e) => {
+                textareaResizeStartHeight.current = e.currentTarget.offsetHeight;
+              }}
+              onMouseUp={(e) => persistTextareaBoxHeight(e.currentTarget)}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!canStartEdit) return;
+                if (Math.abs(e.currentTarget.offsetHeight - textareaResizeStartHeight.current) > 2) return;
+                startEdit();
+              }}
+              onKeyDown={
+                canStartEdit
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        startEdit();
+                      }
+                    }
+                  : undefined
+              }
+            />
+            {locked ? (
+              <span
+                className="pointer-events-none absolute right-2 top-2 text-slate-400 dark:text-slate-500"
+                aria-hidden
+              >
+                <Lock className="size-3.5" strokeWidth={1.75} />
+              </span>
+            ) : canStartEdit ? (
+              <span
+                className={cn(
+                  "pointer-events-none absolute right-2 top-2 opacity-0 transition",
+                  "text-slate-500 group-hover/field:opacity-100 group-focus-within/field:opacity-100 dark:text-slate-400",
+                )}
+                aria-hidden
+              >
+                <Pencil className="size-3.5" strokeWidth={1.75} />
+              </span>
+            ) : null}
+            {canStartEdit ? <span className="sr-only">{editAriaLabel}</span> : null}
+          </div>
         ) : (
           <div
             className={cn(
-              "relative flex w-full items-start",
+              "relative flex w-full",
+              multiline ? "items-start" : "items-center",
               detailValueSurfaceClassName,
               "break-words [overflow-wrap:anywhere]",
               canStartEdit &&
@@ -515,7 +628,10 @@ export function DetailEditableField({
             </div>
             {locked ? (
               <span
-                className="pointer-events-none absolute right-1.5 top-1.5 text-slate-400 dark:text-slate-500"
+                className={cn(
+                  "pointer-events-none absolute right-1.5 text-slate-400 dark:text-slate-500",
+                  multiline ? "top-1.5" : "top-1/2 -translate-y-1/2",
+                )}
                 aria-hidden
               >
                 <Lock className="size-3.5" strokeWidth={1.75} />
@@ -523,7 +639,8 @@ export function DetailEditableField({
             ) : canStartEdit ? (
               <span
                 className={cn(
-                  "pointer-events-none absolute right-1.5 top-1.5 opacity-0 transition",
+                  "pointer-events-none absolute right-1.5 opacity-0 transition",
+                  multiline ? "top-1.5" : "top-1/2 -translate-y-1/2",
                   "text-slate-500 group-hover/field:opacity-100 group-focus-within/field:opacity-100 dark:text-slate-400",
                 )}
                 aria-hidden

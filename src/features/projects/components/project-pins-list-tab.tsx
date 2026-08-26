@@ -7,7 +7,7 @@ import {
   MultiCheckSelect,
   surfaceInputClassName,
 } from "@/shared/ui";
-import { detailTabFillViewportClassName } from "@/shared/components/layout/detail-tab-layout";
+import { detailTabStandaloneFillClassName } from "@/shared/components/layout/detail-tab-layout";
 import { useLocale, useTranslations } from "next-intl";
 import {
   createJobFromLocation,
@@ -1729,7 +1729,7 @@ const ProjectPinsListTab = ({
         ) : loading ? (
           <ProjectPinsListLoadingSkeleton />
         ) : emptyStateKind !== "none" ? (
-          <div className={detailTabFillViewportClassName}>
+          <div className={detailTabStandaloneFillClassName}>
             <ListPageEmptyStates
               emptyStateKind={emptyStateKind}
               onboarding={{

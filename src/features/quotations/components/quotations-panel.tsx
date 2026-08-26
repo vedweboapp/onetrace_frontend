@@ -53,7 +53,9 @@ import {
   DataTablePaginationBar,
   DataTableRowActionsMenu,
   ListPageCard,
+  ListPageCardFooter,
   ListPageCardGrid,
+  ListPageCardMetaLine,
   ListPageCardSkeleton,
   ListPageHeader,
   ListPageSearchField,
@@ -687,7 +689,6 @@ export function QuotationsPanel() {
                 );
                 const siteId = getQuotationSiteId(row.site);
                 const siteDisplay = quotationSiteLabel(row.site, siteId != null ? siteLabelById[siteId] : undefined);
-                const tagsLine = quotationTagsLabels(row.tags, tagLabelById);
                 const relatedLabel = showProjectFilter ? projectDisplay : siteDisplay;
                 const serial = row.quotation_serial_number?.trim();
                 const quoteName = row.quote_name?.trim() || "—";
@@ -710,56 +711,57 @@ export function QuotationsPanel() {
                         {serial || quoteName}
                       </span>
                     }
-                    subtitle={serial && quoteName !== serial ? quoteName : tagsLine !== "—" ? tagsLine : undefined}
+                    subtitle={serial && quoteName !== serial ? quoteName : undefined}
                     meta={
-                      <span
-                        className="flex min-w-0 items-center gap-1.5"
-                        title={`${customerDisplay} · ${relatedLabel}`}
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => e.stopPropagation()}
-                      >
-                        {customerId != null ? (
-                          <DetailEntityLink
-                            href={`${routes.dashboard.clients}/${customerId}`}
-                            className="min-w-0 truncate font-medium"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {customerDisplay}
-                          </DetailEntityLink>
-                        ) : (
-                          <span className="min-w-0 truncate">{customerDisplay}</span>
-                        )}
-                        <span className="shrink-0 text-slate-300 dark:text-slate-600" aria-hidden>
-                          ·
+                      <ListPageCardMetaLine>
+                        <span
+                          className="flex min-w-0 items-center gap-1.5 truncate"
+                          title={`${customerDisplay} · ${relatedLabel}`}
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        >
+                          {customerId != null ? (
+                            <DetailEntityLink
+                              href={`${routes.dashboard.clients}/${customerId}`}
+                              className="min-w-0 truncate font-medium"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {customerDisplay}
+                            </DetailEntityLink>
+                          ) : (
+                            <span className="min-w-0 truncate">{customerDisplay}</span>
+                          )}
+                          <span className="shrink-0 text-slate-300 dark:text-slate-600" aria-hidden>
+                            ·
+                          </span>
+                          {showProjectFilter && projectId != null ? (
+                            <DetailEntityLink
+                              href={`${routes.dashboard.projects}/${projectId}`}
+                              className="min-w-0 truncate font-medium"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {projectDisplay}
+                            </DetailEntityLink>
+                          ) : (
+                            <span className="min-w-0 truncate">{relatedLabel}</span>
+                          )}
                         </span>
-                        {showProjectFilter && projectId != null ? (
-                          <DetailEntityLink
-                            href={`${routes.dashboard.projects}/${projectId}`}
-                            className="min-w-0 truncate font-medium"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {projectDisplay}
-                          </DetailEntityLink>
-                        ) : (
-                          <span className="min-w-0 truncate">{relatedLabel}</span>
-                        )}
+                      </ListPageCardMetaLine>
+                    }
+                    badge={
+                      <span className="inline-flex max-w-full truncate rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-800 dark:bg-teal-950/50 dark:text-teal-200">
+                        {quoteStatusLabel(row.status)}
                       </span>
                     }
                     footer={
-                      <div className="flex min-w-0 w-full flex-wrap items-center justify-between gap-2">
-                        <div className="flex min-w-0 flex-wrap items-center gap-2">
-                          <span className="inline-flex max-w-full truncate rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-800 dark:bg-teal-950/50 dark:text-teal-200">
-                            {quoteStatusLabel(row.status)}
-                          </span>
-                          <span className="inline-flex min-w-0 items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                      <ListPageCardFooter
+                        start={
+                          <span className="inline-flex items-center gap-1 text-xs text-slate-500">
                             <Calendar className="size-3.5 shrink-0" aria-hidden />
-                            <span className="truncate tabular-nums">{dueLabel}</span>
+                            <span className="tabular-nums">{dueLabel}</span>
                           </span>
-                        </div>
-                        <span className="shrink-0 text-[11px] text-slate-400 dark:text-slate-500">
-                          {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}
-                        </span>
-                      </div>
+                        }
+                      />
                     }
                     onCardClick={() => openDetail(row.id)}
                     menu={

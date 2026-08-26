@@ -77,7 +77,7 @@ export function DataTablePaginationBar({
   const pages = showNumberButtons ? buildPageList(current_page, total_pages) : [];
 
   const btnBase = cn(
-    "inline-flex h-7 min-h-7 min-w-7 items-center justify-center rounded border px-1.5 text-[11px] font-medium transition outline-none",
+    "inline-flex h-8 min-h-8 min-w-8 items-center justify-center rounded-md border px-2 text-xs font-medium transition outline-none",
     "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
     "disabled:pointer-events-none disabled:opacity-45",
     "dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800",
@@ -91,15 +91,16 @@ export function DataTablePaginationBar({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center border-t border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-500 sm:px-3.5 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400",
+        "flex shrink-0 items-center border-t border-slate-200 bg-slate-50/80 px-3 py-2.5 sm:px-4 sm:py-3",
+        "dark:border-slate-800 dark:bg-slate-900/40",
         className,
       )}
     >
-      <div className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-        <p className="min-w-0 truncate text-[11px] leading-none text-slate-600 dark:text-slate-400">
+      <div className="flex w-full min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <p className="min-w-0 text-xs leading-normal text-slate-600 dark:text-slate-400">
           {summary}
         </p>
-        <div className="flex flex-wrap items-center justify-end gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
           {pageSizeControl ? (
             <CheckmarkSelect
               listLabel={pageSizeControl.listLabel}
@@ -128,7 +129,7 @@ export function DataTablePaginationBar({
             <>
               <button
                 type="button"
-                className={cn(btnBase, "px-2")}
+                className={cn(btnBase, "px-2.5")}
                 disabled={current_page <= 1}
                 onClick={onPrev}
               >
@@ -137,14 +138,22 @@ export function DataTablePaginationBar({
               <div className="flex items-center gap-0.5">
                 {pages.map((p, i) =>
                   p === "ellipsis" ? (
-                    <span key={`e-${i}`} className="px-0.5 text-slate-400" aria-hidden>
+                    <span
+                      key={`e-${i}`}
+                      className="inline-flex h-8 min-w-6 items-center justify-center px-0.5 text-xs text-slate-400"
+                      aria-hidden
+                    >
                       …
                     </span>
                   ) : (
                     <button
                       key={p}
                       type="button"
-                      className={cn(btnBase, "size-7 min-h-7 min-w-7 px-0", p === current_page && activeBtn)}
+                      className={cn(
+                        btnBase,
+                        "size-8 min-h-8 min-w-8 px-0 tabular-nums",
+                        p === current_page && activeBtn,
+                      )}
                       aria-current={p === current_page ? "page" : undefined}
                       onClick={() => onPageSelect(p)}
                     >
@@ -155,7 +164,7 @@ export function DataTablePaginationBar({
               </div>
               <button
                 type="button"
-                className={cn(btnBase, "px-2")}
+                className={cn(btnBase, "px-2.5")}
                 disabled={current_page >= total_pages}
                 onClick={onNext}
               >

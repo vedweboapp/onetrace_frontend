@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Eye, X } from "lucide-react";
+import { Banknote, Eye } from "lucide-react";
 import { currencyList } from "@/shared/form/components/currency-list";
 import { updateOrganizationDetails } from "../api/company-settings.api";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
@@ -12,7 +12,13 @@ import {
   CURRENCY_TAB_FIELDS,
   hasDirtyFields,
 } from "../utils/company-settings-diff.util";
-import { AppButton, FieldGroup, surfaceInputClassName, surfaceSelectClassName } from "@/shared/ui";
+import {
+  AppButton,
+  AppModal,
+  CheckmarkSelect,
+  FieldGroup,
+  surfaceInputClassName,
+} from "@/shared/ui";
 import { useOrgCurrencyStore } from "@/shared/money/org-currency.store";
 import { formatOrgMoney } from "@/shared/money/format-money.util";
 import { normalizeOrgCurrencySettings } from "@/shared/money/org-currency.types";
@@ -20,6 +26,7 @@ import { ORG_NUMBER_FORMATS, normalizeOrgNumberFormat } from "@/shared/number/di
 import { formatOrgNumber } from "@/shared/number/format-number.util";
 import { useOrgNumberStore } from "@/shared/number/org-number.store";
 import { NumericInput } from "@/shared/ui/numeric-input";
+import FormSectionCard from "@/shared/ui/form-section-card";
 import { cn } from "@/core/utils/http.util";
 
 interface CurrencySettings {
@@ -38,6 +45,35 @@ interface CompanySettingsCurrencyProps {
   onSaveSuccess?: (data: OrganizationDetails) => void;
 }
 
+function SummaryCard({
+  title,
+  value,
+  hint,
+  leading,
+}: {
+  title: string;
+  value: React.ReactNode;
+  hint: string;
+  leading?: React.ReactNode;
+}) {
+  return (
+    <div className="flex h-full min-w-0 flex-col gap-3 rounded-xl border border-slate-200/90 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40 sm:p-5">
+      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        {title}
+      </p>
+      <div className="flex min-w-0 flex-1 items-start gap-3">
+        {leading}
+        <div className="min-w-0">
+          <div className="truncate text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-lg">
+            {value}
+          </div>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{hint}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const CompanySettingsCurrency = ({
   initialData,
   onSaveSuccess,
@@ -52,7 +88,7 @@ const CompanySettingsCurrency = ({
     formatType: (initialData.formatType as "symbol" | "code") || "symbol",
     symbol: initialData.symbol || "₹",
     symbolPosition: (initialData.symbolPosition as "before" | "after") || "before",
-    digitSeparator: initialData.digitSeparator || "1,234,567.89",
+    digitSeparator: normalizeOrgNumberFormat(initialData.digitSeparator),
     decimalPlaces:
       initialData.decimalPlaces !== undefined ? initialData.decimalPlaces : 2,
     numberFormat: normalizeOrgNumberFormat(initialData.numberFormat || initialData.digitSeparator),
@@ -96,15 +132,14 @@ const CompanySettingsCurrency = ({
     setIsModalOpen(true);
   };
 
-  const handleTempChange = (key: keyof CurrencySettings, value: any) => {
+  const handleTempChange = (key: keyof CurrencySettings, value: unknown) => {
     setTempSettings((prev) => ({
       ...prev,
       [key]: value,
     }));
   };
 
-  const handleCurrencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const code = e.target.value;
+  const handleCurrencyChange = (code: string) => {
     const selected = currencyList.find((c) => c.value === code);
     if (selected) {
       setTempSettings((prev) => ({
@@ -168,251 +203,241 @@ const CompanySettingsCurrency = ({
     tempSettings.decimalPlaces,
   );
 
+  const currencyOptions = React.useMemo(
+    () =>
+      currencyList.map((currency) => ({
+        value: currency.value,
+        label: `${currency.label} — ${currency.value}`,
+      })),
+    [],
+  );
+
+  const numberFormatOptions = React.useMemo(
+    () => ORG_NUMBER_FORMATS.map((fmt) => ({ value: fmt, label: fmt })),
+    [],
+  );
+
   return (
     <div
       className={cn(
-        "mt-2 flex w-full flex-col gap-8 rounded-xl border border-slate-200/90 bg-white p-6 dark:border-slate-700 dark:bg-slate-950 sm:p-8",
+        "settings-aligned-fields w-full min-w-0 rounded-xl border border-slate-200/90 bg-white",
+        "px-4 py-5 sm:px-6 sm:py-6 dark:border-slate-800 dark:bg-slate-950",
         "transition-opacity duration-500",
         isMounted ? "animate-in fade-in opacity-100" : "opacity-0",
       )}
     >
-      <div className="grid w-full gap-8 sm:grid-cols-2">
-      <div className="w-full space-y-3">
-        <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          Home Currency
-        </h3>
-        <div className="flex items-center gap-4 border-t border-slate-100 pt-4 dark:border-slate-800">
-          <div className="flex size-12 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
-            <span className="text-xl font-bold text-slate-700 dark:text-slate-200">
-              {settings.symbol}
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[length:var(--dash-body-size,0.875rem)] font-semibold text-slate-800 dark:text-slate-100">
-              {settings.currencyName} — {settings.currencyCode}
-            </h4>
-            <p className="text-[length:var(--dash-label-size,0.875rem)] text-slate-500">
-              Your primary currency
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="w-full space-y-3">
-        <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          Format
-        </h3>
-        <div className="flex items-center justify-between gap-4 border-t border-slate-100 pt-4 dark:border-slate-800">
-          <div>
-            <h4 className="text-lg font-semibold tracking-tight text-slate-800 dark:text-slate-100">
-              {formattedCurrentValue}
-            </h4>
-            <p className="text-[length:var(--dash-label-size,0.875rem)] text-slate-500">
-              Current format
-            </p>
-          </div>
-          <AppButton variant="primary" onClick={handleOpenCustomize}>
-            Customize
+      <FormSectionCard
+        title={t("currencySectionTitle")}
+        icon={<Banknote size={18} strokeWidth={1.75} />}
+        action={
+          <AppButton variant="primary" size="sm" type="button" onClick={handleOpenCustomize}>
+            {t("customize")}
           </AppButton>
-        </div>
-      </div>
-      </div>
+        }
+      >
+        <p className="-mt-3 mb-1 text-sm text-slate-500 dark:text-slate-400">
+          {t("currencySectionSubtitle")}
+        </p>
 
-      <div className="w-full space-y-3">
-        <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          Number format
-        </h3>
-        <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h4 className="text-lg font-semibold tracking-tight text-slate-800 dark:text-slate-100">
-              {formatOrgNumber(1234567.89, 2, settings.numberFormat)}
-            </h4>
-            <p className="text-[length:var(--dash-label-size,0.875rem)] text-slate-500">
-              Used for quantity and other number-only fields
-            </p>
-          </div>
-          <select
-            aria-label="Number format"
-            value={settings.numberFormat}
-            onChange={(e) => {
-              const next = normalizeOrgNumberFormat(e.target.value);
-              setSettings((prev) => ({ ...prev, numberFormat: next }));
-              void (async () => {
-                try {
-                  const current: OrganizationDetails = {
-                    ...initialData,
-                    ...settings,
-                    numberFormat: next,
-                  };
-                  const patch = buildDirtyOrganizationPatch(initialData, current, ["numberFormat"]);
-                  if (!hasDirtyFields(patch)) return;
-                  const updated = await updateOrganizationDetails(1, patch);
-                  toastSuccess(t("currencyUpdatedToast"));
-                  onSaveSuccess?.(updated);
-                } catch (error) {
-                  toastApiError(error);
-                }
-              })();
-            }}
-            className={cn(surfaceSelectClassName, "field-control max-w-xs")}
-          >
-            {ORG_NUMBER_FORMATS.map((fmt) => (
-              <option key={fmt} value={fmt}>
-                {fmt}
-              </option>
-            ))}
-          </select>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <SummaryCard
+            title={t("homeCurrency")}
+            value={`${settings.currencyName} — ${settings.currencyCode}`}
+            hint={t("homeCurrencyHint")}
+            leading={
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-lg font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+                {settings.symbol}
+              </div>
+            }
+          />
+          <SummaryCard
+            title={t("currencyFormat")}
+            value={formattedCurrentValue}
+            hint={t("currencyFormatHint")}
+          />
+          <SummaryCard
+            title={t("fields.numberFormat")}
+            value={formatOrgNumber(1234567.89, 2, settings.numberFormat)}
+            hint={t("numberFormatHint")}
+          />
         </div>
-      </div>
+      </FormSectionCard>
 
-      {isModalOpen ? (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[2px]">
-          <div className="relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-600 dark:bg-slate-900">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-700">
-              <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-white">
-                Change Home Currency
-              </h2>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700 dark:hover:bg-slate-800"
-                aria-label="Close"
+      <AppModal
+        open={isModalOpen}
+        onClose={() => (!isSaving ? setIsModalOpen(false) : undefined)}
+        title={t("customizeCurrencySettings")}
+        size="lg"
+        isBusy={isSaving}
+        footer={
+          <>
+            <AppButton
+              variant="secondary"
+              type="button"
+              disabled={isSaving}
+              onClick={() => setIsModalOpen(false)}
+            >
+              {t("cancel")}
+            </AppButton>
+            <AppButton
+              variant="primary"
+              type="button"
+              disabled={isSaving}
+              onClick={() => void handleConfirm()}
+            >
+              {isSaving ? t("saving") : t("confirm")}
+            </AppButton>
+          </>
+        }
+      >
+        {/* Top labels in modal — left-aligned labels collide in this narrow dialog. */}
+        <div className="dash-appearance-scope space-y-5" data-form-label="top">
+          <FieldGroup label={t("homeCurrency")} htmlFor="currency-code" required>
+            <CheckmarkSelect
+              id="currency-code"
+              listLabel={t("homeCurrency")}
+              options={currencyOptions}
+              value={tempSettings.currencyCode}
+              onChange={handleCurrencyChange}
+              searchable
+              portaled
+              className="w-full"
+            />
+          </FieldGroup>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_7.5rem]">
+            <FieldGroup label={t("currencyFormat")} htmlFor="currency-format">
+              <div
+                id="currency-format"
+                role="group"
+                aria-label={t("currencyFormat")}
+                className="flex h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800"
               >
-                <X className="size-4.5 shrink-0" strokeWidth={2.5} />
-              </button>
-            </div>
-
-            <div className="space-y-4 p-6">
-              <FieldGroup label="Home Currency" htmlFor="currency-code" required>
-                <select
-                  id="currency-code"
-                  value={tempSettings.currencyCode}
-                  onChange={handleCurrencyChange}
-                  className={cn(surfaceSelectClassName, "field-control")}
-                >
-                  {currencyList.map((currency) => (
-                    <option
-                      key={`${currency.countryCode}-${currency.value}`}
-                      value={currency.value}
-                    >
-                      {currency.label} — {currency.value}
-                    </option>
-                  ))}
-                </select>
-              </FieldGroup>
-
-              <div className="grid grid-cols-2 gap-4">
-                <FieldGroup label="Format" htmlFor="currency-format">
-                  <div
-                    id="currency-format"
-                    className="flex w-full rounded-xl border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-800"
-                  >
-                    {(["symbol", "code"] as const).map((kind) => (
-                      <button
-                        key={kind}
-                        type="button"
-                        onClick={() => handleTempChange("formatType", kind)}
-                        className={cn(
-                          "flex-1 rounded-lg py-2 text-xs font-semibold capitalize transition",
-                          tempSettings.formatType === kind
-                            ? "bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white"
-                            : "text-slate-500 hover:text-slate-700",
-                        )}
-                      >
-                        {kind}
-                      </button>
-                    ))}
-                  </div>
-                </FieldGroup>
-
-                <FieldGroup label="Symbol" htmlFor="currency-symbol">
-                  <input
-                    id="currency-symbol"
-                    type="text"
-                    value={
-                      tempSettings.formatType === "symbol"
-                        ? tempSettings.symbol
-                        : tempSettings.currencyCode
-                    }
-                    readOnly
+                {(
+                  [
+                    { kind: "symbol" as const, label: t("symbol") },
+                    { kind: "code" as const, label: t("formatTypeCode") },
+                  ] as const
+                ).map(({ kind, label }) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    onClick={() => handleTempChange("formatType", kind)}
                     className={cn(
-                      surfaceInputClassName,
-                      "field-control cursor-not-allowed bg-slate-50 dark:bg-slate-800/50",
+                      "min-w-0 flex-1 truncate rounded-lg px-2 text-sm font-semibold transition",
+                      tempSettings.formatType === kind
+                        ? "bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white"
+                        : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
                     )}
-                  />
-                </FieldGroup>
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
+            </FieldGroup>
 
-              <FieldGroup label="Symbol Position" htmlFor="currency-position" required>
-                <select
-                  id="currency-position"
-                  value={tempSettings.symbolPosition}
-                  onChange={(e) => handleTempChange("symbolPosition", e.target.value)}
-                  className={cn(surfaceSelectClassName, "field-control")}
-                >
-                  <option value="before">Before Value</option>
-                  <option value="after">After Value</option>
-                </select>
-              </FieldGroup>
+            <FieldGroup label={t("symbol")} htmlFor="currency-symbol">
+              <input
+                id="currency-symbol"
+                type="text"
+                value={
+                  tempSettings.formatType === "symbol"
+                    ? tempSettings.symbol
+                    : tempSettings.currencyCode
+                }
+                readOnly
+                className={cn(
+                  surfaceInputClassName,
+                  "field-control cursor-not-allowed bg-slate-50 text-center dark:bg-slate-800/50",
+                )}
+              />
+            </FieldGroup>
+          </div>
 
-              <FieldGroup label="Decimal Places" htmlFor="currency-decimals" required>
-                <NumericInput
-                  id="currency-decimals"
-                  integer
-                  value={tempSettings.decimalPlaces}
-                  onChange={(next) => {
-                    const n = Number.parseInt(next, 10);
-                    handleTempChange("decimalPlaces", Number.isFinite(n) ? Math.max(0, Math.min(6, n)) : 0);
-                  }}
-                />
-              </FieldGroup>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FieldGroup label={t("symbolPosition")} htmlFor="currency-position" required>
+              <CheckmarkSelect
+                id="currency-position"
+                listLabel={t("symbolPosition")}
+                options={[
+                  { value: "before", label: t("symbolBefore") },
+                  { value: "after", label: t("symbolAfter") },
+                ]}
+                value={tempSettings.symbolPosition}
+                onChange={(v) => handleTempChange("symbolPosition", v)}
+                portaled
+                className="w-full"
+              />
+            </FieldGroup>
 
-              <FieldGroup label="Number format" htmlFor="org-number-format">
-                <select
-                  id="org-number-format"
-                  value={tempSettings.numberFormat}
-                  onChange={(e) => handleTempChange("numberFormat", normalizeOrgNumberFormat(e.target.value))}
-                  className={cn(surfaceSelectClassName, "field-control")}
-                >
-                  {ORG_NUMBER_FORMATS.map((fmt) => (
-                    <option key={fmt} value={fmt}>
-                      {fmt}
-                    </option>
-                  ))}
-                </select>
-              </FieldGroup>
+            <FieldGroup label={t("decimalPlaces")} htmlFor="currency-decimals" required>
+              <NumericInput
+                id="currency-decimals"
+                integer
+                value={tempSettings.decimalPlaces}
+                onChange={(next) => {
+                  const n = Number.parseInt(next, 10);
+                  handleTempChange(
+                    "decimalPlaces",
+                    Number.isFinite(n) ? Math.max(0, Math.min(6, n)) : 0,
+                  );
+                }}
+              />
+            </FieldGroup>
+          </div>
 
-              <div className="mt-2 flex items-center gap-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-600">
-                  <Eye className="size-5 text-slate-400" />
-                </div>
-                <div>
-                  <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                    Preview
-                  </span>
-                  <span className="mt-0.5 block text-lg font-bold tracking-tight text-slate-800 dark:text-slate-100">
-                    {formattedPreviewValue}
-                  </span>
-                </div>
-              </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FieldGroup label={t("currencyDigitFormat")} htmlFor="modal-currency-digit-format">
+              <CheckmarkSelect
+                id="modal-currency-digit-format"
+                listLabel={t("currencyDigitFormat")}
+                options={numberFormatOptions}
+                value={tempSettings.digitSeparator}
+                onChange={(v) => handleTempChange("digitSeparator", normalizeOrgNumberFormat(v))}
+                portaled
+                className="w-full"
+              />
+            </FieldGroup>
+
+            <FieldGroup label={t("fields.numberFormat")} htmlFor="modal-org-number-format">
+              <CheckmarkSelect
+                id="modal-org-number-format"
+                listLabel={t("fields.numberFormat")}
+                options={numberFormatOptions}
+                value={tempSettings.numberFormat}
+                onChange={(v) => handleTempChange("numberFormat", normalizeOrgNumberFormat(v))}
+                portaled
+                className="w-full"
+              />
+            </FieldGroup>
+          </div>
+
+          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60">
+            <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              <Eye className="size-3.5 shrink-0" aria-hidden />
+              {t("preview")}
             </div>
-
-            <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4 dark:border-slate-700 dark:bg-slate-900/80">
-              <AppButton variant="secondary" type="button" onClick={() => setIsModalOpen(false)}>
-                Cancel
-              </AppButton>
-              <AppButton
-                variant="primary"
-                type="button"
-                onClick={handleConfirm}
-                disabled={isSaving}
-              >
-                {isSaving ? "Saving..." : "Confirm"}
-              </AppButton>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="min-w-0">
+                <span className="block text-xs text-slate-500 dark:text-slate-400">
+                  {t("currencyFormat")}
+                </span>
+                <span className="mt-0.5 block truncate text-base font-semibold tracking-tight text-slate-800 dark:text-slate-100 sm:text-lg">
+                  {formattedPreviewValue}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <span className="block text-xs text-slate-500 dark:text-slate-400">
+                  {t("fields.numberFormat")}
+                </span>
+                <span className="mt-0.5 block truncate text-base font-semibold tracking-tight text-slate-800 dark:text-slate-100 sm:text-lg">
+                  {formatOrgNumber(1234567.89, 2, tempSettings.numberFormat)}
+                </span>
+              </div>
             </div>
           </div>
         </div>
-      ) : null}
+      </AppModal>
     </div>
   );
 };

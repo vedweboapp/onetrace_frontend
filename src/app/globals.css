@@ -160,10 +160,113 @@ html[data-font-size] :is(.text-2xl) {
   font-size: var(--dash-font-size);
 }
 
-/* —— Form layout (Appearance → Form layout) —— */
+/*
+ * Forms: compact side label column — labels right-aligned so short names
+ * sit next to the control; inputs share one start edge per field.
+ */
+.dash-appearance-scope {
+  --form-label-col: 8.5rem;
+}
+
+/* Optional host: narrow panes stack; opt into top labels with data-labels="top". */
+.settings-aligned-fields {
+  container-type: inline-size;
+  container-name: settings-fields;
+  width: 100%;
+  min-width: 0;
+}
+
+/*
+ * Settings (company / personal profile): top labels — wide 2-col panes look
+ * sparse with side labels of uneven length; stack label above control instead.
+ */
+.settings-aligned-fields[data-labels="top"] .field-group,
+.dash-appearance-scope[data-form-label="top"] .settings-aligned-fields .field-group {
+  display: flex !important;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.375rem;
+  grid-template-columns: none !important;
+}
+
+.settings-aligned-fields[data-labels="top"] .field-label,
+.dash-appearance-scope[data-form-label="top"] .settings-aligned-fields .field-label {
+  order: 0 !important;
+  width: 100%;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-right: 0;
+  padding-left: 0;
+  text-align: left !important;
+  white-space: normal;
+  justify-self: stretch;
+}
+
+.settings-aligned-fields[data-labels="top"] .field-control-wrap,
+.dash-appearance-scope[data-form-label="top"] .settings-aligned-fields .field-control-wrap {
+  order: 0 !important;
+  width: 100%;
+}
+
+@container settings-fields (max-width: 42rem) {
+  .settings-aligned-fields .form-field-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .dash-appearance-scope:not([data-form-label]) .settings-aligned-fields:not([data-labels="top"]) .field-group,
+  .dash-appearance-scope[data-form-label="left"] .settings-aligned-fields:not([data-labels="top"]) .field-group,
+  .dash-appearance-scope[data-form-label="right"] .settings-aligned-fields:not([data-labels="top"]) .field-group {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.375rem;
+    grid-template-columns: none;
+  }
+
+  .dash-appearance-scope .settings-aligned-fields:not([data-labels="top"]) .field-label {
+    order: 0;
+    width: 100%;
+    margin-bottom: 0;
+    padding-top: 0;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .dash-appearance-scope[data-form-label="right"] .settings-aligned-fields:not([data-labels="top"]) .field-control-wrap {
+    order: 0;
+    width: 100%;
+  }
+
+  .settings-aligned-fields .form-field-row > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
 .dash-appearance-scope .field-group {
   width: 100%;
   min-width: 0;
+  container-type: inline-size;
+  container-name: form-field;
+}
+
+/* Default + left: fixed label column, control fills the rest. */
+.dash-appearance-scope:not([data-form-label]) .field-group,
+.dash-appearance-scope[data-form-label="left"] .field-group {
+  display: grid;
+  grid-template-columns: var(--form-label-col, 6.75rem) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.375rem;
+  row-gap: 0.25rem;
+}
+
+/* Right: mirror of left — wide control first, then fixed label column. */
+.dash-appearance-scope[data-form-label="right"] .field-group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--form-label-col, 6.75rem);
+  align-items: center;
+  column-gap: 0.375rem;
+  row-gap: 0.25rem;
 }
 
 .dash-appearance-scope[data-form-label="top"] .field-group {
@@ -173,86 +276,153 @@ html[data-font-size] :is(.text-2xl) {
   margin-bottom: 0.375rem;
 }
 
-.dash-appearance-scope[data-form-label="left"] .field-group,
-.dash-appearance-scope[data-form-label="right"] .field-group {
-  display: grid;
-  /* Label hugs text — no empty leading gap before the label. */
-  grid-template-columns: max-content minmax(0, 1fr);
-  /* Center label with control (multi-select / textarea / single-line). */
-  align-items: center;
-  column-gap: 0.75rem;
-  row-gap: 0.25rem;
-}
-
+.dash-appearance-scope:not([data-form-label]) .field-label,
 .dash-appearance-scope[data-form-label="left"] .field-label {
   margin-bottom: 0;
   padding-top: 0;
+  padding-right: 0.125rem;
   text-align: left;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  justify-self: start;
 }
 
 .dash-appearance-scope[data-form-label="right"] .field-label {
   margin-bottom: 0;
   padding-top: 0;
+  padding-left: 0.125rem;
   text-align: left;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
   order: 2;
+  justify-self: stretch;
+}
+
+/* Extremely narrow field (e.g. half of a tight 2-col row): stack label above input. */
+@container form-field (max-width: 18rem) {
+  .field-label {
+    grid-column: 1 / -1;
+    order: 0 !important;
+    margin-bottom: 0.25rem;
+    padding-top: 0 !important;
+    white-space: normal;
+  }
+
+  .field-control-wrap {
+    grid-column: 1 / -1;
+    order: 0 !important;
+  }
 }
 
 .dash-appearance-scope[data-form-label="right"] .field-control-wrap {
   order: 1;
+  min-width: 0;
+}
+
+/* Tall controls: keep label top-aligned with the first line of the field. */
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(textarea),
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.signature-pad-root),
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.video-recorder-root),
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.image-upload-root),
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.file-uploader-root) {
+  align-items: start;
+}
+
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(textarea) .field-label,
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.signature-pad-root) .field-label,
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.video-recorder-root) .field-label,
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.image-upload-root) .field-label,
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.file-uploader-root) .field-label {
+  padding-top: 0.625rem;
 }
 
 /*
- * Detail pages (CRM / enterprise): always label | value in one row with a
- * FIXED label column so keys and values form straight vertical lines across
- * the section — independent of Appearance → Form label placement.
+ * Detail pages: same Appearance label placement as forms (left / right / top).
+ * Left/right keep a fixed label column so values line up in a section.
  */
 .dash-appearance-scope .detail-field.field-group {
-  display: grid;
-  /* Fixed label column so keys form a straight vertical line across every section. */
-  grid-template-columns: var(--detail-label-col, 10.5rem) minmax(0, 1fr);
-  align-items: start;
-  column-gap: 1.25rem;
-  row-gap: 0;
   container-type: inline-size;
   container-name: detail-field;
+  row-gap: 0;
+}
+
+.dash-appearance-scope:not([data-form-label]) .detail-field.field-group,
+.dash-appearance-scope[data-form-label="left"] .detail-field.field-group {
+  display: grid;
+  grid-template-columns: var(--detail-label-col, 6.75rem) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.25rem;
+}
+
+.dash-appearance-scope[data-form-label="right"] .detail-field.field-group {
+  display: grid;
+  /* Mirror left: value flexes, fixed label column on the right. */
+  grid-template-columns: minmax(0, 1fr) var(--detail-label-col, 6.75rem);
+  align-items: center;
+  column-gap: 0.25rem;
 }
 
 .dash-appearance-scope[data-form-label="top"] .detail-field.field-group {
-  display: grid;
+  display: block;
 }
 
 .dash-appearance-scope[data-form-label="top"] .detail-field .field-label {
-  margin-bottom: 0;
+  margin-bottom: 0.125rem;
+  padding-top: 0;
+  white-space: normal;
 }
 
 .dash-appearance-scope[data-form-label="right"] .detail-field .field-label {
-  order: 0;
+  order: 2;
   text-align: left;
+  justify-self: start;
 }
 
 .dash-appearance-scope[data-form-label="right"] .detail-field .field-control-wrap {
-  order: 0;
+  order: 1;
+  min-width: 0;
 }
 
 .dash-appearance-scope .detail-field .field-label {
   margin-bottom: 0;
-  /* Optical match to value text-sm + light vertical padding */
-  padding-top: 0.3rem;
-  align-self: start;
+  padding-top: 0;
+  align-self: center;
   line-height: 1.4;
   text-align: left;
-  white-space: normal;
   overflow-wrap: anywhere;
+}
+
+.dash-appearance-scope:not([data-form-label]) .detail-field .field-label,
+.dash-appearance-scope[data-form-label="left"] .detail-field .field-label,
+.dash-appearance-scope[data-form-label="right"] .detail-field .field-label {
+  white-space: normal;
 }
 
 .dash-appearance-scope .detail-field .field-control-wrap {
   min-height: 0;
   min-width: 0;
   display: flex;
-  align-items: stretch;
+  align-items: center;
   overflow: visible;
+}
+
+/* Description / notes: keep the label at the top of a tall value. */
+.dash-appearance-scope .detail-field.field-group:has(textarea),
+.dash-appearance-scope .detail-field--block {
+  align-items: start;
+}
+
+.dash-appearance-scope .detail-field.field-group:has(textarea) .field-label,
+.dash-appearance-scope .detail-field--block .field-label {
+  padding-top: 0.2rem;
+  align-self: start;
+}
+
+.dash-appearance-scope .detail-field.field-group:has(textarea) .field-control-wrap,
+.dash-appearance-scope .detail-field--block .field-control-wrap {
+  align-items: stretch;
 }
 
 /* When a detail field is extremely narrow, stack label above value. */
@@ -278,14 +448,29 @@ html[data-font-size] :is(.text-2xl) {
   min-width: 0;
 }
 
+.dash-appearance-scope .detail-metrics-grid > .detail-field.field-group {
+  align-items: start;
+}
+
+.dash-appearance-scope .detail-metrics-grid > .detail-field.field-group .field-label {
+  padding-top: 0.15rem;
+  align-self: start;
+}
+
+.dash-appearance-scope .detail-metrics-grid > .detail-field.field-group .field-control-wrap {
+  align-self: start;
+}
+
 /*
  * Very light CRM-style row rules between detail fields.
  * Column gap is padding so borders read as one continuous line across both columns.
  */
 .dash-appearance-scope .detail-metrics-grid > .detail-field {
-  border-bottom: 1px solid rgb(241 245 249); /* slate-100 */
-  padding-top: 0.7rem;
-  padding-bottom: 0.7rem;
+  border-bottom-width: var(--dash-detail-row-line-width, 1px);
+  border-bottom-style: var(--dash-detail-row-line-style, solid);
+  border-bottom-color: rgb(241 245 249); /* slate-100 */
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
 }
 
 .dash-appearance-scope.dark .detail-metrics-grid > .detail-field,
@@ -295,37 +480,37 @@ html[data-font-size] :is(.text-2xl) {
 
 @media (min-width: 640px) {
   .dash-appearance-scope .detail-metrics-grid.sm\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(odd) {
-    padding-right: 1.25rem;
+    padding-right: 0.75rem;
   }
   .dash-appearance-scope .detail-metrics-grid.sm\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(even) {
-    padding-left: 1.25rem;
+    padding-left: 0.75rem;
   }
 }
 
 @media (min-width: 768px) {
   .dash-appearance-scope .detail-metrics-grid.md\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(odd) {
-    padding-right: 1.25rem;
+    padding-right: 0.75rem;
   }
   .dash-appearance-scope .detail-metrics-grid.md\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(even) {
-    padding-left: 1.25rem;
+    padding-left: 0.75rem;
   }
 }
 
 @media (min-width: 1024px) {
   .dash-appearance-scope .detail-metrics-grid.lg\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(odd) {
-    padding-right: 1.25rem;
+    padding-right: 0.75rem;
   }
   .dash-appearance-scope .detail-metrics-grid.lg\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(even) {
-    padding-left: 1.25rem;
+    padding-left: 0.75rem;
   }
 }
 
 @media (min-width: 1280px) {
   .dash-appearance-scope .detail-metrics-grid.xl\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(odd) {
-    padding-right: 1.25rem;
+    padding-right: 0.75rem;
   }
   .dash-appearance-scope .detail-metrics-grid.xl\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(even) {
-    padding-left: 1.25rem;
+    padding-left: 0.75rem;
   }
 }
 
@@ -341,28 +526,33 @@ html[data-font-size] :is(.text-2xl) {
 }
 
 @media (max-width: 639px) {
+  .dash-appearance-scope:not([data-form-label]) .field-group,
   .dash-appearance-scope[data-form-label="left"] .field-group,
   .dash-appearance-scope[data-form-label="right"] .field-group {
     grid-template-columns: 1fr;
   }
+  .dash-appearance-scope:not([data-form-label]) .field-label,
   .dash-appearance-scope[data-form-label="left"] .field-label,
   .dash-appearance-scope[data-form-label="right"] .field-label {
     padding-top: 0;
     margin-bottom: 0.375rem;
     text-align: left;
     order: 0;
+    white-space: normal;
   }
   .dash-appearance-scope[data-form-label="right"] .field-control-wrap {
     order: 0;
   }
 
   /* Phone: stack detail label above value for readability */
-  .dash-appearance-scope .detail-field.field-group {
+  .dash-appearance-scope:not([data-form-label]) .detail-field.field-group,
+  .dash-appearance-scope[data-form-label="left"] .detail-field.field-group,
+  .dash-appearance-scope[data-form-label="right"] .detail-field.field-group {
     grid-template-columns: minmax(0, 1fr);
   }
   .dash-appearance-scope .detail-field .field-label {
     padding-top: 0;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.125rem;
   }
 }
 

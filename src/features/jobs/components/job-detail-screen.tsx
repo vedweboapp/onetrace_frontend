@@ -20,19 +20,20 @@ import {
 } from "@/features/jobs/constants/job-category";
 import type { Job } from "@/features/jobs/types/job.types";
 import { isQualityAssuranceDecided } from "@/features/jobs/types/quality-assurance.types";
-import { getJobAssignedWorkerId, getJobStatusId } from "@/features/jobs/utils/job-nested-fields.util";
+import { getJobStatusId } from "@/features/jobs/utils/job-nested-fields.util";
 import { isJobStatusCompleted } from "@/features/jobs/utils/quality-assurance-eligibility.util";
-import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import {
   EntityDetailErrorState,
   EntityDetailLoadingSkeleton,
   EntityDetailScreen,
 } from "@/shared/components/entity";
+import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
 import { EditButton } from "@/shared/ui/dashboard-action-buttons";
 import { buildCurrentPageBackHref, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
+import { cn } from "@/core/utils/http.util";
 
 type Props = {
   jobId: number;
@@ -58,7 +59,6 @@ export function JobDetailScreen({ jobId }: Props) {
   const [statusOpen, setStatusOpen] = React.useState(false);
   const [statusSaving, setStatusSaving] = React.useState(false);
   const [detailForNav, setDetailForNav] = React.useState<Job | null>(null);
-  const [workerLabelById, setWorkerLabelById] = React.useState<Record<number, string>>({});
   const tabFromUrl = searchParams.get("tab");
   const activeTab: JobDetailTabId = isJobDetailTabId(tabFromUrl) ? tabFromUrl : "overview";
 
@@ -92,28 +92,6 @@ export function JobDetailScreen({ jobId }: Props) {
     params.set("job_category", resolved);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }, [detailForNav, pathname, router, searchParams]);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const opts = await loadTechnicianOptions();
-        if (!cancelled) {
-          const map: Record<number, string> = {};
-          for (const o of opts) {
-            const id = Number.parseInt(o.value, 10);
-            if (Number.isFinite(id)) map[id] = o.label;
-          }
-          setWorkerLabelById(map);
-        }
-      } catch {
-        if (!cancelled) setWorkerLabelById({});
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   return (
     <EntityDetailScreen
@@ -161,52 +139,52 @@ export function JobDetailScreen({ jobId }: Props) {
           t={t}
         />
       )}
-      renderSurface={({ detail, loading, error, retry, dateFmt }) =>
-        (
-          <div
-            role="tabpanel"
-            id={`job-detail-tab-${activeTab}`}
-            aria-labelledby={`job-detail-tab-trigger-${activeTab}`}
-          >
-            {loading ? (
-              <EntityDetailLoadingSkeleton />
-            ) : error ? (
-              <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
-            ) : detail && activeTab === "overview" ? (
-              <JobDetailBody
-                detail={detail}
-                dateFmt={dateFmt}
-                workerLabel={
-                  (() => {
-                    const id = getJobAssignedWorkerId(detail);
-                    return id != null ? workerLabelById[id] : undefined;
-                  })()
-                }
-                onChecklistsUpdated={retry}
-                onSaved={retry}
-                onOpenScheduling={() => handleTabChange("scheduling")}
-              />
-            ) : detail && activeTab === "scheduling" ? (
-              <Suspense
-                fallback={
-                  <div className="space-y-2 p-4">
-                    <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-                    <div className="h-40 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-                  </div>
-                }
-              >
-                <JobSchedulingTab detail={detail} />
-              </Suspense>
-            ) : detail && activeTab === "materials" ? (
-              <JobMaterialsTab detail={detail} />
-            ) : detail && activeTab === "dispatch" ? (
-              <JobDispatchTab detail={detail} />
-            ) : detail && activeTab === "returns" ? (
-              <JobReturnsTab detail={detail} />
-            ) : null}
-          </div>
-        )
-      }
+      renderSurface={({ detail, loading, error, retry, dateFmt }) => (
+        <div
+          role="tabpanel"
+          id={`job-detail-tab-${activeTab}`}
+          aria-labelledby={`job-detail-tab-trigger-${activeTab}`}
+          className={cn(
+            activeTab === "scheduling" ||
+              activeTab === "materials" ||
+              activeTab === "dispatch" ||
+              activeTab === "returns"
+              ? "flex min-h-0 flex-1 flex-col"
+              : entityDetailTabPanelClassName,
+          )}
+        >
+          {loading ? (
+            <EntityDetailLoadingSkeleton />
+          ) : error ? (
+            <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
+          ) : detail && activeTab === "overview" ? (
+            <JobDetailBody
+              detail={detail}
+              dateFmt={dateFmt}
+              onChecklistsUpdated={retry}
+              onSaved={retry}
+              onOpenScheduling={() => handleTabChange("scheduling")}
+            />
+          ) : detail && activeTab === "scheduling" ? (
+            <Suspense
+              fallback={
+                <div className="space-y-2 p-4">
+                  <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+                  <div className="h-40 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+                </div>
+              }
+            >
+              <JobSchedulingTab detail={detail} />
+            </Suspense>
+          ) : detail && activeTab === "materials" ? (
+            <JobMaterialsTab detail={detail} />
+          ) : detail && activeTab === "dispatch" ? (
+            <JobDispatchTab detail={detail} />
+          ) : detail && activeTab === "returns" ? (
+            <JobReturnsTab detail={detail} />
+          ) : null}
+        </div>
+      )}
     />
   );
 }

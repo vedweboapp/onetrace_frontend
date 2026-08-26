@@ -106,7 +106,7 @@ export { ListPageSearchField } from "./list-page-search-field";
 export { ListPageHeader } from "./list-page-header";
 export { ActiveStatusBadge } from "./active-status-badge";
 export type { ActiveStatusBadgeProps } from "./active-status-badge";
-export { ListPageCard, ListPageCardGrid, ListPageCardSkeleton } from "./list-page-card";
+export { ListPageCard, ListPageCardFooter, ListPageCardGrid, ListPageCardMetaLine, ListPageCardSkeleton } from "./list-page-card";
 export { DataTableRowActionsMenu } from "./data-table-row-actions-menu";
 export type { DataTableRowMenuItem } from "./data-table-row-actions-menu";
 export { TableIconActionButton, TableRowActions } from "./table-icon-actions";

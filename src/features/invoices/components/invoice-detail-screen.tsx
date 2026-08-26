@@ -10,8 +10,9 @@ import { InvoiceExportDropdown } from "@/features/invoices/components/invoice-ex
 import type { InvoiceContactRef, InvoiceDetail } from "@/features/invoices/types/invoice.types";
 import { nestedId, normalizeInvoiceStatus } from "@/features/invoices/utils/invoice-nested-fields.util";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
+import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton, AppTabs } from "@/shared/ui";
 
 type Props = {
@@ -161,8 +162,8 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
           <EntityDetailEditButton listBack={listBack} fallbackRoute={routes.dashboard.invoices} label={t("edit")} />
         </div>
       )}
-    >
-      {({ detail, dateFmt, retry }) => {
+      renderSurface={({ detail, dateFmt, retry }) => {
+        if (!detail) return null;
         const clientId = nestedId(detail.client);
         const contactRef = (detail.contact ?? detail.contact_person) as
           | number
@@ -171,18 +172,25 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
           | undefined;
         const contactId = nestedId(contactRef);
         return (
-          <InvoiceDetailBody
-            detail={detail}
-            clientName={clientId != null ? clientNames[clientId] : undefined}
-            contactName={contactId != null ? contactNames[contactId] : undefined}
-            dateFmt={dateFmt}
-            dueFmt={dueFmt}
-            statusLabel={statusLabel(detail.status)}
-            activeTab={activeTab}
-            onSaved={retry}
-          />
+          <div
+            role="tabpanel"
+            id={`invoice-detail-tab-${activeTab}`}
+            aria-labelledby={`invoice-detail-tab-trigger-${activeTab}`}
+            className={entityDetailTabPanelClassName}
+          >
+            <InvoiceDetailBody
+              detail={detail}
+              clientName={clientId != null ? clientNames[clientId] : undefined}
+              contactName={contactId != null ? contactNames[contactId] : undefined}
+              dateFmt={dateFmt}
+              dueFmt={dueFmt}
+              statusLabel={statusLabel(detail.status)}
+              activeTab={activeTab}
+              onSaved={retry}
+            />
+          </div>
         );
       }}
-    </EntityDetailScreen>
+    />
   );
 }

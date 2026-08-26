@@ -6,7 +6,6 @@ import { updateClient } from "@/features/clients/api/client.api";
 import type { Client } from "@/features/clients/types/client.types";
 import { resolveClientAddresses } from "@/features/clients/utils/client-form-map";
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
-import { DetailAddressBlock } from "@/shared/components/layout/detail-address-block";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { DetailEntityAddressFields } from "@/shared/components/layout/detail-entity-address-fields";
 import {
@@ -126,31 +125,27 @@ export function ClientDetailBody({
           {addresses.length === 0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>
           ) : (
-            <ul className="space-y-0">
+            <div className="space-y-4">
               {sortedAddresses.map(({ address: addr, originalIndex, displayIndex }) => (
-                <li key={addr.id ?? `${addr.address_type}-${originalIndex}`}>
-                  <DetailAddressBlock
-                    heading={t("addresses.rowLabel", { index: displayIndex + 1 })}
-                    primaryLabel={t("addresses.primary")}
-                    isPrimary={Boolean(addr.is_primary)}
-                    separated={displayIndex > 0}
-                  >
-                    <DetailEntityAddressFields
-                      address={addr}
-                      addressIndex={originalIndex}
-                      allAddresses={addresses}
-                      labels={addressFieldLabels}
-                      requiredMessages={addressRequiredMessages}
-                      addressTypeOptions={addressTypeOptions}
-                      addressTypeValue={t(`addressType.${addr.address_type}`)}
-                      editAriaLabel={tActions("edit")}
-                      line2Empty={t("detail.addressLine2Empty")}
-                      onSaveAddresses={patchAddresses}
-                    />
-                  </DetailAddressBlock>
-                </li>
+                <DetailEntityAddressFields
+                  key={addr.id ?? `${addr.address_type}-${originalIndex}`}
+                  separated={displayIndex > 0}
+                  blockHeading={t("addresses.rowLabel", { index: displayIndex + 1 })}
+                  blockPrimaryLabel={t("addresses.primary")}
+                  blockIsPrimary={Boolean(addr.is_primary)}
+                  address={addr}
+                  addressIndex={originalIndex}
+                  allAddresses={addresses}
+                  labels={addressFieldLabels}
+                  requiredMessages={addressRequiredMessages}
+                  addressTypeOptions={addressTypeOptions}
+                  addressTypeValue={t(`addressType.${addr.address_type}`)}
+                  editAriaLabel={tActions("edit")}
+                  line2Empty={t("detail.addressLine2Empty")}
+                  onSaveAddresses={patchAddresses}
+                />
               ))}
-            </ul>
+            </div>
           )}
         </DetailPanelCard>
 

@@ -122,12 +122,10 @@ function RoleDetailFields({
               value={detail.description ?? ""}
               kind="text"
               multiline
-              span="full"
+              textareaBox
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ description: next.trim() || null })}
-            >
-              {detail.description?.trim() || "—"}
-            </DetailEditableField>
+            />
           </DetailMetricsGrid>
         </DetailPanelCard>
       </div>

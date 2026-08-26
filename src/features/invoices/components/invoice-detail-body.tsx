@@ -15,8 +15,8 @@ import {
 import { resolveInvoiceAddresses } from "@/features/invoices/utils/invoice-form-map";
 import { formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
+import { DetailEntityAddressFields } from "@/shared/components/layout/detail-entity-address-fields";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
-import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
   DetailMetricCard,
   DetailMetricsGrid,
@@ -25,6 +25,8 @@ import {
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
+import { entityAddressTypeOptions, sortEntityAddressesForDisplay } from "@/shared/form/entity-address-form.util";
+import type { EntityAddressPayload } from "@/shared/types/entity-address.types";
 import {
   formatApiDateForHtmlDateInput,
   formatFlexibleApiDate,
@@ -144,6 +146,39 @@ export function InvoiceDetailBody({
     onSaved,
   );
 
+  const patchAddresses = useDetailPatch(
+    (addressPayloads: EntityAddressPayload[]) => updateInvoice(detail.id, { addresses: addressPayloads }),
+    { success: t("updatedToast"), error: t("updateError") },
+    onSaved,
+  );
+
+  const sortedAddresses = React.useMemo(() => sortEntityAddressesForDisplay(addresses), [addresses]);
+  const addressTypeOptions = React.useMemo(() => entityAddressTypeOptions((key) => t(key)), [t]);
+  const addressFieldLabels = React.useMemo(
+    () => ({
+      addressType: t("fields.addressType"),
+      addressLine1: t("fields.addressLine1"),
+      addressLine2: t("fields.addressLine2"),
+      pincode: t("fields.zipCode"),
+      country: t("fields.country"),
+      state: t("fields.state"),
+      city: t("fields.city"),
+      primary: t("addresses.primary"),
+    }),
+    [t],
+  );
+  const addressRequiredMessages = React.useMemo(
+    () => ({
+      addressType: t("validation.addressType"),
+      addressLine1: t("validation.addressLine1"),
+      pincode: t("validation.pincode"),
+      country: t("validation.country"),
+      state: t("validation.state"),
+      city: t("validation.city"),
+    }),
+    [t],
+  );
+
   return (
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
@@ -207,93 +242,64 @@ export function InvoiceDetailBody({
               <DetailMetricCard label={t("fields.status")}>
                 <InvoiceStatusBadge status={detail.status} label={statusLabel} />
               </DetailMetricCard>
+              <DetailEditableField
+                label={t("fields.notesAndTerms")}
+                value={notesAndTerms}
+                kind="text"
+                multiline
+                textareaBox
+                editAriaLabel={tActions("edit")}
+                empty="—"
+                onSave={(next) => patchField({ notes_and_terms: next })}
+              />
+              <DetailEditableField
+                label={t("fields.clientNotes")}
+                value={clientNotes}
+                kind="text"
+                multiline
+                textareaBox
+                editAriaLabel={tActions("edit")}
+                empty="—"
+                onSave={(next) => patchField({ client_notes: next })}
+              />
+              <DetailEditableField
+                label={t("fields.internalNotes")}
+                value={internalNotes}
+                kind="text"
+                multiline
+                textareaBox
+                editAriaLabel={tActions("edit")}
+                empty="—"
+                onSave={(next) => patchField({ internal_notes: next })}
+              />
             </DetailMetricsGrid>
           </DetailPanelCard>
 
-          <DetailPanelCard title={t("fields.addresses")}>
+          <DetailPanelCard title={t("fields.addresses")} variant="flat">
             {addresses.length === 0 ? (
               <p className="text-sm text-slate-500 dark:text-slate-400">—</p>
             ) : (
-              <div className="grid gap-4 lg:grid-cols-2">
-                {addresses.map((addr, index) => (
-                  <div
-                    key={addr.id ?? `${addr.address_type}-${index}`}
-                    className="space-y-2 rounded-lg border border-slate-200 p-4 dark:border-slate-700"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                        {t(`addressType.${addr.address_type}`)}
-                      </span>
-                      {addr.is_primary ? (
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                          {t("addresses.primary")}
-                        </span>
-                      ) : null}
-                    </div>
-                    <DetailFormattedAddress
-                      line1={addr.address_line_1}
-                      line2={addr.address_line_2}
-                      city={addr.city}
-                      state={addr.state}
-                      pincode={addr.pincode}
-                      country={addr.country}
-                      emptyMessage="—"
-                    />
-                  </div>
+              <div className="space-y-4">
+                {sortedAddresses.map(({ address: addr, originalIndex, displayIndex }) => (
+                  <DetailEntityAddressFields
+                    key={addr.id ?? `${addr.address_type}-${originalIndex}`}
+                    separated={displayIndex > 0}
+                    blockHeading={t("addresses.rowLabel", { index: displayIndex + 1 })}
+                    blockPrimaryLabel={t("addresses.primary")}
+                    blockIsPrimary={Boolean(addr.is_primary)}
+                    address={addr}
+                    addressIndex={originalIndex}
+                    allAddresses={addresses}
+                    labels={addressFieldLabels}
+                    requiredMessages={addressRequiredMessages}
+                    addressTypeOptions={addressTypeOptions}
+                    addressTypeValue={t(`addressType.${addr.address_type}`)}
+                    editAriaLabel={tActions("edit")}
+                    onSaveAddresses={patchAddresses}
+                  />
                 ))}
               </div>
             )}
-          </DetailPanelCard>
-
-          <DetailPanelCard title={t("fields.notesAndTerms")}>
-            <DetailEditableField
-              label={<span className="sr-only">{t("fields.notesAndTerms")}</span>}
-              value={notesAndTerms}
-              kind="text"
-              editAriaLabel={tActions("edit")}
-              empty="—"
-              onSave={(next) => patchField({ notes_and_terms: next })}
-            >
-              {notesAndTerms ? (
-                <p className="whitespace-pre-wrap text-sm font-normal text-slate-700 dark:text-slate-300">
-                  {notesAndTerms}
-                </p>
-              ) : null}
-            </DetailEditableField>
-          </DetailPanelCard>
-
-          <DetailPanelCard title={t("fields.clientNotes")}>
-            <DetailEditableField
-              label={<span className="sr-only">{t("fields.clientNotes")}</span>}
-              value={clientNotes}
-              kind="text"
-              editAriaLabel={tActions("edit")}
-              empty="—"
-              onSave={(next) => patchField({ client_notes: next })}
-            >
-              {clientNotes ? (
-                <p className="whitespace-pre-wrap text-sm font-normal text-slate-700 dark:text-slate-300">
-                  {clientNotes}
-                </p>
-              ) : null}
-            </DetailEditableField>
-          </DetailPanelCard>
-
-          <DetailPanelCard title={t("fields.internalNotes")}>
-            <DetailEditableField
-              label={<span className="sr-only">{t("fields.internalNotes")}</span>}
-              value={internalNotes}
-              kind="text"
-              editAriaLabel={tActions("edit")}
-              empty="—"
-              onSave={(next) => patchField({ internal_notes: next })}
-            >
-              {internalNotes ? (
-                <p className="whitespace-pre-wrap text-sm font-normal text-slate-700 dark:text-slate-300">
-                  {internalNotes}
-                </p>
-              ) : null}
-            </DetailEditableField>
           </DetailPanelCard>
 
           <DetailSystemMetadataSection

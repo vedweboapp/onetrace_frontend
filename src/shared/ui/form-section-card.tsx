@@ -8,11 +8,13 @@ import { cn } from "@/core/utils/http.util";
 const FormSectionCard = ({
   title,
   icon,
+  action,
   children,
   className,
 }: {
   title: string;
   icon?: ReactNode;
+  action?: ReactNode;
   children: ReactNode;
   className?: string;
 }) => {
@@ -29,9 +31,10 @@ const FormSectionCard = ({
             {icon}
           </div>
         ) : null}
-        <h2 className="text-[length:var(--dash-body-size,0.875rem)] font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-base">
+        <h2 className="min-w-0 flex-1 text-[length:var(--dash-body-size,0.875rem)] font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-base">
           {title}
         </h2>
+        {action ? <div className="shrink-0">{action}</div> : null}
       </div>
       {children}
     </section>

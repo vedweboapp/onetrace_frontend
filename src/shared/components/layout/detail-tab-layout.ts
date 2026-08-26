@@ -21,10 +21,13 @@ export const detailTabBodyClassName = "px-4 py-3 sm:px-6 sm:py-4";
 
 /**
  * Table + pagination body for detail list tabs — edge-to-edge table,
- * flex column so pagination sticks to the card footer.
+ * natural height so pagination sits directly under rows (no empty gap).
  */
 export const detailTabTableBodyClassName = cn(
-  "flex min-h-0 flex-1 flex-col overflow-hidden",
+  "flex w-full flex-col",
+  // Collapse nested EntityDataTable / DataTableScroll flex growth
+  "[&>*:first-child]:flex-none [&>*:first-child]:min-h-0",
+  "[&>*:first-child_.overflow-auto]:flex-none",
 );
 
 export const detailTabEmptyClassName =
@@ -33,24 +36,37 @@ export const detailTabEmptyClassName =
 export const detailTabErrorClassName =
   "px-4 py-8 text-center text-sm text-red-600 dark:text-red-400 sm:px-6";
 
-/** Entity detail page — natural height; list tabs set their own viewport min-height. */
+/**
+ * Entity detail page — natural height only.
+ * Outer dashboard `overflow-y-auto` is the single scrollbar (same as client/site detail).
+ * Do not add min-h / flex-1 / overflow here or the white card nests a second scroll.
+ */
 export const entityDetailPageClassName = cn("w-full min-w-0");
 
-/** White record shell — slight gap under tabs; list tabs fill height inside. */
-export const entityDetailSurfaceClassName = cn("mt-2 min-w-0");
+/** White record shell — grows with content; no nested overflow scroll. */
+export const entityDetailSurfaceClassName = cn("mt-2 min-w-0 overflow-visible");
 
-export const entityDetailSurfaceInnerClassName = "flex min-h-0 min-w-0 w-full flex-col";
+export const entityDetailSurfaceInnerClassName = "min-w-0 w-full";
 
-/** Tab panel wrapper inside the record shell. */
-export const entityDetailTabPanelClassName = "flex min-h-0 min-w-0 w-full flex-1 flex-col";
+/** Tab panel wrapper inside the record shell (overview / form-style content). */
+export const entityDetailTabPanelClassName = "min-w-0 w-full";
 
 /**
- * List-style detail tabs fill remaining viewport so empty states and tables
- * use balanced height (top/bottom) instead of a short island under the tabs.
+ * List-style detail tabs / empty shells — grow with the parent flex column
+ * when that parent already fills the viewport (list pages, Home WIP).
  */
 export const detailTabFillViewportClassName = cn(
   "flex min-h-0 w-full flex-1 flex-col",
-  "min-h-[calc(100dvh-13.5rem)]",
+  "min-h-[12rem] sm:min-h-[16rem]",
+);
+
+/**
+ * Detail-tab empty / loading / error when the entity detail page is
+ * content-height (not a flex fill page). Matches Home WIP panel height.
+ */
+export const detailTabStandaloneFillClassName = cn(
+  "flex w-full flex-col",
+  "min-h-[calc(100dvh-14rem)] sm:min-h-[calc(100dvh-13rem)]",
 );
 
 /** Centered empty / loading / error content inside a fill tab or list shell. */

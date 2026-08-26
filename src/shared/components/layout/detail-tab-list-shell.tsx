@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/core/utils/http.util";
 import {
   detailTabFillStateClassName,
-  detailTabFillViewportClassName,
+  detailTabStandaloneFillClassName,
   detailTabTableBodyClassName,
 } from "./detail-tab-layout";
 
@@ -21,8 +21,9 @@ type Props = {
 };
 
 /**
- * Full-height list tab shell — toolbar + table body, or centered empty/loading/error.
- * When data is present, fills viewport height so pagination can stick to the card footer.
+ * Detail list tab shell — toolbar + table body, or centered empty/loading/error.
+ * With rows: natural height so pagination sits under the table (no filler gap).
+ * Empty/loading/error: full remaining viewport height (same feel as Home WIP).
  */
 export function DetailTabListShell({
   loading,
@@ -36,17 +37,23 @@ export function DetailTabListShell({
   className,
 }: Props) {
   const showTable = !loadError && !loading && !isEmpty;
+  const fillViewport = !showTable;
 
   return (
     <div
       className={cn(
-        "flex min-w-0 flex-col",
-        detailTabFillViewportClassName,
+        "flex min-w-0 w-full flex-col",
+        fillViewport ? detailTabStandaloneFillClassName : null,
         className,
       )}
     >
       {toolbar}
-      <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col", showTable && "overflow-hidden")}>
+      <div
+        className={cn(
+          "flex min-w-0 flex-col",
+          fillViewport && "min-h-0 flex-1",
+        )}
+      >
         {loadError ? (
           errorFallback ?? (
             <div className={detailTabFillStateClassName}>
@@ -66,7 +73,7 @@ export function DetailTabListShell({
 }
 
 /**
- * Edge-to-edge table + sticky pagination footer for detail list tabs.
+ * Edge-to-edge table + pagination for detail list tabs.
  * Place `EntityDataTable` then `DataTablePaginationBar` as children.
  */
 export function DetailTabTableBody({
