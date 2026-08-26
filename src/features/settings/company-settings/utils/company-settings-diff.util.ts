@@ -8,6 +8,7 @@ export const ORGANIZATION_TAB_FIELDS = [
   "website",
   "timezone",
   "street",
+  "street2",
   "city",
   "state",
   "zip",

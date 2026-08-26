@@ -125,7 +125,12 @@ export function SiteDetailBody({
 
   return (
     <DetailPagePadding>
-      <DetailPageMapLayout map={mapNode} mapTitle={t("detail.sectionMap")} showMap>
+      <DetailPageMapLayout
+        map={mapNode}
+        mapTitle={t("detail.sectionMap")}
+        showMap
+        mapFillHeight
+      >
         <DetailPanelCard title={t("detail.sectionOverview")}>
           <DetailMetricsGrid>
             <DetailEditableField

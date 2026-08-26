@@ -6,7 +6,8 @@ import { DetailPanelCard, detailPageStackClassName } from "@/shared/components/l
 export const detailMapViewportClassName = "h-[280px] sm:h-[320px] lg:h-[360px]";
 
 /** Stretches with the adjacent form/content column on lg+ (quotation/site forms). */
-export const detailMapFormViewportClassName = "h-full min-h-[280px] sm:min-h-[320px]";
+export const detailMapFormViewportClassName =
+  "h-full min-h-[280px] w-full flex-1 sm:min-h-[320px] lg:min-h-[360px]";
 
 export const detailMapFillClassName = cn(
   "flex h-full w-full flex-col",
@@ -15,15 +16,15 @@ export const detailMapFillClassName = cn(
 
 export const detailMapSideGridClassName = cn(
   "grid grid-cols-1 gap-2",
-  "lg:grid-cols-[minmax(0,1fr)_minmax(300px,38%)] lg:items-start lg:gap-3",
-  "xl:grid-cols-[minmax(0,1fr)_minmax(360px,40%)]",
+  "lg:grid-cols-[minmax(0,1fr)_minmax(320px,40%)] lg:items-start lg:gap-4",
+  "xl:grid-cols-[minmax(0,1fr)_minmax(380px,42%)]",
 );
 
 /** Detail + form layouts where the map column should match the main column height. */
 export const detailMapStretchSideGridClassName = cn(
   "grid grid-cols-1 gap-2",
-  "lg:grid-cols-[minmax(0,1fr)_minmax(300px,38%)] lg:items-stretch lg:gap-3",
-  "xl:grid-cols-[minmax(0,1fr)_minmax(360px,40%)]",
+  "lg:grid-cols-[minmax(0,1fr)_minmax(320px,40%)] lg:items-stretch lg:gap-4",
+  "xl:grid-cols-[minmax(0,1fr)_minmax(380px,42%)]",
 );
 
 type DetailMapSideColumnProps = {
@@ -33,7 +34,7 @@ type DetailMapSideColumnProps = {
   fillHeight?: boolean;
 };
 
-/** Dedicated right column: white card with map at a fixed height. */
+/** Dedicated right column: white card with map filling column height when stretch. */
 export function DetailMapSideColumn({ title, map, className, fillHeight }: DetailMapSideColumnProps) {
   return (
     <aside
@@ -45,13 +46,19 @@ export function DetailMapSideColumn({ title, map, className, fillHeight }: Detai
     >
       <DetailPanelCard
         title={title}
+        collapsible={false}
         className={cn(fillHeight && "flex h-full min-h-0 flex-1 flex-col")}
-        bodyClassName={cn("p-0", fillHeight && "flex min-h-0 flex-1 flex-col")}
+        bodyClassName={cn(
+          "!px-0 !py-0",
+          fillHeight && "flex min-h-0 flex-1 flex-col",
+        )}
       >
         <div
           className={cn(
             "w-full overflow-hidden",
-            fillHeight ? detailMapFormViewportClassName : detailMapViewportClassName,
+            fillHeight
+              ? cn(detailMapFormViewportClassName, "flex min-h-0 flex-col")
+              : detailMapViewportClassName,
           )}
         >
           {map}

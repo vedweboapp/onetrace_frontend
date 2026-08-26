@@ -18,6 +18,7 @@ const defaultOrgDetails: OrganizationDetails = {
   website: "https://onetrace.com",
   timezone: "UTC",
   street: "",
+  street2: "",
   city: "",
   state: "",
   zip: "",

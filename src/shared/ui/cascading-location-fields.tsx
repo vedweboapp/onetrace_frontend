@@ -155,7 +155,7 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
 
   return (
     <div className={cn("space-y-4", rowClassName)}>
-      <FormFieldRow cols="2">
+      <FormFieldRow cols="2" from="lg">
         <FieldGroup
           label={labels.country}
           htmlFor={`${String(countryIsoName)}-select`}
@@ -245,7 +245,7 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
       </FormFieldRow>
 
       {showStateSelect && (showCitySelect || trailingSlot) ? (
-        <FormFieldRow cols="2" className="mt-4">
+        <FormFieldRow cols="2" from="lg" className="mt-4">
           {showCitySelect ? (
             <FieldGroup
               label={labels.city}
@@ -281,9 +281,9 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
               <FieldErrorText>{errors?.city}</FieldErrorText>
             </FieldGroup>
           ) : (
-            <div className="hidden min-h-[1px] sm:block" aria-hidden />
+            <div className="hidden min-h-[1px] lg:block" aria-hidden />
           )}
-          {showCitySelect ? trailingSlot ?? null : <div className="sm:col-span-2">{trailingSlot}</div>}
+          {showCitySelect ? trailingSlot ?? null : <div className="lg:col-span-2">{trailingSlot}</div>}
         </FormFieldRow>
       ) : null}
     </div>

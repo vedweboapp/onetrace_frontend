@@ -567,7 +567,6 @@ export function QuotationDetailBody({
         <ul className="space-y-4">
           {siteDetails.map((site) => (
             <li key={site.id} className="space-y-2 border-t border-slate-200/80 pt-4 first:border-t-0 first:pt-0 dark:border-slate-800">
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{site.site_name}</p>
               {hasDetailAddress({
                 line1: site.address_line_1,
                 line2: site.address_line_2,

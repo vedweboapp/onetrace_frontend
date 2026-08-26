@@ -369,7 +369,12 @@ const PersonalProfileForm = forwardRef<
             className={`flex w-full flex-col pb-10 transition-opacity duration-500 ${isMounted ? "animate-in fade-in duration-500 opacity-100" : "opacity-0"}`}
             onSubmit={handleSubmit(handleActualSubmit)}
         >
-            <div className="flex w-full flex-col rounded-xl border border-slate-200/90 bg-white px-5 py-2 dark:border-slate-700 dark:bg-slate-950 sm:px-8">
+            <div
+                className={cn(
+                    "settings-aligned-fields flex w-full min-w-0 flex-col overflow-x-hidden rounded-xl border border-slate-200/90 bg-white",
+                    "px-5 py-2 dark:border-slate-700 dark:bg-slate-950 sm:px-8",
+                )}
+            >
             {/* Header / Basic Info Summary */}
             <div className="flex w-full items-center gap-6 border-b border-slate-200/90 py-6 dark:border-slate-700/80">
                 <ProfilePictureUploader
@@ -401,7 +406,7 @@ const PersonalProfileForm = forwardRef<
             </div>
             {/* Basic Information */}
             <FormSectionCard title={t("BasicInfo")} icon={<Calendar size={20} />}>
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+                <FormFieldRow cols="2" from="lg" className="gap-x-6 gap-y-4">
                     <Input
                         label={t("FirstName")}
                         register={register("firstName")}
@@ -446,7 +451,7 @@ const PersonalProfileForm = forwardRef<
                         errors={errors.joiningDate}
                         readOnly={!isEditing}
                     />
-                </div>
+                </FormFieldRow>
             </FormSectionCard>
 
             {/* Contact Details */}

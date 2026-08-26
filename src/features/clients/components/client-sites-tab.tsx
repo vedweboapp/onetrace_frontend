@@ -160,6 +160,7 @@ export function ClientSitesTab({ clientId }: Props) {
           columns={columns}
           rows={items}
           onRowClick={(row) => openSiteDetail(row.id)}
+          fillHeight={false}
         />
         <DataTablePaginationBar
           pagination={pagination}

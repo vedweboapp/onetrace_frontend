@@ -219,11 +219,16 @@ export type EntityDataTableProps<T extends { id: number | string }> = {
   scrollClassName?: string;
   /** Hide the clip/wrap control (e.g. embedded mini tables). */
   hideTextModeToggle?: boolean;
+  /**
+   * When false, table is content-height (pagination can sit directly under rows).
+   * Default true fills remaining flex height on list pages.
+   */
+  fillHeight?: boolean;
 };
 
 /**
  * Entity list table: bordered Zoho/WMS chrome, sticky head, clip/wrap in header corner.
- * Only real data rows; remaining height stays open so pagination can pin below.
+ * With `fillHeight` (default), grows so list-page pagination can pin below the scroll body.
  */
 export function EntityDataTable<T extends { id: number | string }>({
   columns,
@@ -235,6 +240,7 @@ export function EntityDataTable<T extends { id: number | string }>({
   className,
   scrollClassName,
   hideTextModeToggle = false,
+  fillHeight = true,
 }: EntityDataTableProps<T>) {
   const clickable = !!onRowClick;
   const textMode = useDataTableTextModeStore((s) => s.textMode);
@@ -243,8 +249,15 @@ export function EntityDataTable<T extends { id: number | string }>({
   const showEmptyMessage = rows.length === 0 && Boolean(emptyMessage);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <DataTableScroll className={scrollClassName}>
+    <div
+      className={cn(
+        "flex flex-col overflow-hidden",
+        fillHeight ? "min-h-0 flex-1" : "w-full shrink-0",
+      )}
+    >
+      <DataTableScroll
+        className={cn(!fillHeight && "flex-none overflow-x-auto overflow-y-visible", scrollClassName)}
+      >
         <DataTable className={className} textWrap={wrap}>
           <DataTableHead>
             <tr>

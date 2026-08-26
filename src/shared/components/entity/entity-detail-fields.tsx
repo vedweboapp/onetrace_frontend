@@ -11,7 +11,7 @@ import { formatSettingsDetailDate } from "@/shared/components/settings/settings-
 import { cn } from "@/core/utils/http.util";
 import { entityNameLinkClassName } from "@/shared/components/entity/detail-entity-link";
 
-const linkClassName = cn("break-all font-semibold", entityNameLinkClassName);
+const linkClassName = cn("break-all font-normal", entityNameLinkClassName);
 
 const detailMetadataEmptyClassName =
   "text-sm font-normal text-slate-400 dark:text-slate-500";
@@ -120,7 +120,7 @@ export function DetailUserAttribution({
 
   return (
     <div className="min-w-0">
-      <p className="truncate text-sm font-semibold leading-normal text-slate-900 dark:text-slate-100">
+      <p className="truncate text-sm font-normal leading-normal text-slate-700 dark:text-slate-300">
         {primary}
       </p>
       {showEmail ? (
@@ -150,7 +150,7 @@ function DetailTimestampValue({
     return <DetailMetadataEmpty>{emptyLabel}</DetailMetadataEmpty>;
   }
   return (
-    <span className="min-w-0 break-words text-sm font-semibold leading-normal tabular-nums text-slate-900 dark:text-slate-100">
+    <span className="min-w-0 break-words text-sm font-normal leading-normal tabular-nums text-slate-700 dark:text-slate-300">
       {value}
     </span>
   );

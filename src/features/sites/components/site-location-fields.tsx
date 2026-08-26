@@ -183,6 +183,7 @@ export function SiteLocationFields({
   return (
     <DetailPageMapLayout
       showMap
+      mapFillHeight
       gridClassName={detailMapFormGridClassName}
       mapTitle={t("detail.sectionMap")}
       footer={footer}

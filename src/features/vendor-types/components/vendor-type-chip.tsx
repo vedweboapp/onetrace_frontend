@@ -11,30 +11,26 @@ import { cn } from "@/core/utils/http.util";
 
 type VendorTypeChipRow = Pick<VendorType, "id" | "name" | "bg_color" | "text_color">;
 
-const CHIP_GAP_PX = 6;
+const CHIP_GAP_PX = 4;
 
 export function VendorTypeChip({
   row,
   className,
   truncate,
-  fill,
 }: {
   row: VendorTypeChipRow;
   className?: string;
   /** Cap chip width so long labels end with … */
   truncate?: boolean;
-  /** Grow to use remaining row space (list cells with +N overflow). */
-  fill?: boolean;
 }) {
   const label = formatVendorTypeLabel(row);
   return (
     <span
       title={label}
       className={cn(
-        "inline-flex min-w-0 items-center rounded-full border border-black/10 px-2.5 py-0.5 text-xs font-semibold shadow-sm",
-        truncate && fill && "max-w-none flex-1 truncate",
-        truncate && !fill && "max-w-[9.5rem] shrink truncate",
-        !truncate && "max-w-full truncate",
+        "inline-flex max-w-full shrink-0 items-center rounded-md border border-black/5",
+        "px-1.5 py-px text-[10px] font-medium leading-4 tracking-wide",
+        truncate && "max-w-[7.5rem] truncate",
         className,
       )}
       style={{ backgroundColor: vendorTypeBgHex(row), color: vendorTypeTextHex(row) }}
@@ -57,7 +53,7 @@ function computeVisibleChipCount(
   for (let i = 0; i < chipWidths.length; i++) {
     const remainingCount = chipWidths.length - (i + 1);
     const overflowReserve =
-      remainingCount > 0 ? (overflowWidths.get(remainingCount) ?? 24) + CHIP_GAP_PX : 0;
+      remainingCount > 0 ? (overflowWidths.get(remainingCount) ?? 20) + CHIP_GAP_PX : 0;
     const gap = count > 0 ? CHIP_GAP_PX : 0;
     const nextTotal = used + gap + chipWidths[i] + overflowReserve;
 
@@ -73,7 +69,8 @@ function computeVisibleChipCount(
 }
 
 /**
- * Compact list cell: show as many types as fit in the column (1–2+), then `+N` for the rest.
+ * Compact list/card cell: show as many type chips as fit, then `+N` for the rest.
+ * Chips hug their label width (no stretch).
  */
 export function VendorTypeChipGroup({
   rows,
@@ -125,7 +122,6 @@ export function VendorTypeChipGroup({
 
   const visible = rows.slice(0, visibleCount);
   const remaining = rows.length - visible.length;
-  const singleExpanded = visible.length === 1 && remaining > 0;
 
   return (
     <>
@@ -134,7 +130,7 @@ export function VendorTypeChipGroup({
         aria-hidden
         className="pointer-events-none invisible fixed left-0 top-0 -z-50 opacity-0"
       >
-        <span className="inline-flex items-center gap-1.5">
+        <span className="inline-flex items-center gap-1">
           {rows.map((row) => (
             <span key={row.id} data-vendor-type-chip className="inline-flex">
               <VendorTypeChip row={row} truncate />
@@ -147,7 +143,7 @@ export function VendorTypeChipGroup({
             <span
               key={overflowCount}
               data-vendor-type-overflow={overflowCount}
-              className="inline-flex shrink-0 text-xs font-semibold"
+              className="inline-flex shrink-0 text-[10px] font-medium"
             >
               +{overflowCount}
             </span>
@@ -156,20 +152,14 @@ export function VendorTypeChipGroup({
       </span>
       <span
         ref={containerRef}
-        className={cn("flex w-full min-w-0 items-center gap-1.5 overflow-hidden", className)}
+        className={cn("inline-flex min-w-0 max-w-full items-center gap-1 overflow-hidden", className)}
         title={fullLabel}
       >
         {visible.map((row) => (
-          <VendorTypeChip
-            key={row.id}
-            row={row}
-            truncate
-            fill={singleExpanded}
-            className={visible.length > 1 ? "basis-0 flex-1" : undefined}
-          />
+          <VendorTypeChip key={row.id} row={row} truncate />
         ))}
         {remaining > 0 ? (
-          <span className="shrink-0 text-xs font-semibold text-slate-500 dark:text-slate-400">
+          <span className="shrink-0 text-[10px] font-medium text-slate-500 dark:text-slate-400">
             +{remaining}
           </span>
         ) : null}

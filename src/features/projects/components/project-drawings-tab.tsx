@@ -480,6 +480,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
           rows={items}
           onRowClick={(row) => openDrawing(row)}
           emptyMessage={t("empty")}
+          fillHeight={false}
         />
       )}
 

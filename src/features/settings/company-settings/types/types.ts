@@ -7,6 +7,7 @@ export interface OrganizationDetails {
     website: string;
     timezone: string;
     street: string;
+    street2: string;
     city: string;
     state: string;
     zip: string;

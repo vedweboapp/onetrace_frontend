@@ -40,5 +40,5 @@ export function FormFieldRow({
 
 /** Use inside `FormFieldRow` when one control should span the full logical row. */
 export function FormFieldSpanFull({ className, ...props }: ComponentPropsWithoutRef<"div">) {
-  return <div className={cn("sm:col-span-2 lg:col-span-3", className)} {...props} />;
+  return <div className={cn("col-span-full sm:col-span-2 lg:col-span-2", className)} {...props} />;
 }

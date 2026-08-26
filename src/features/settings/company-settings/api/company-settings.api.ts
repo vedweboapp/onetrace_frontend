@@ -15,7 +15,12 @@ const mapResponseToOrganization = (responseData: Record<string, unknown>): Organ
     description: (responseData.description as string) || "",
     website: (responseData.website_link as string) || "",
     timezone: (responseData.timezone as string) || "",
-    street: (responseData.street_address as string) || "",
+    street: (responseData.street_address as string) || (responseData.address_line_1 as string) || "",
+    street2:
+      (responseData.street_address_2 as string) ||
+      (responseData.address_line_2 as string) ||
+      (responseData.address_2 as string) ||
+      "",
     city: (responseData.city as string) || "",
     state: (responseData.state as string) || "",
     zip: (responseData.pincode as string) || "",
@@ -60,7 +65,14 @@ const mapPatchToApiPayload = (patch: Partial<UpdateOrganizationRequest>): Record
   if ("description" in patch) set("description", patch.description);
   if ("website" in patch) set("website_link", patch.website);
   if ("timezone" in patch) set("timezone", patch.timezone);
-  if ("street" in patch) set("street_address", patch.street);
+  if ("street" in patch) {
+    set("street_address", patch.street);
+    set("address_line_1", patch.street);
+  }
+  if ("street2" in patch) {
+    set("street_address_2", patch.street2);
+    set("address_line_2", patch.street2);
+  }
   if ("city" in patch) set("city", patch.city);
   if ("state" in patch) set("state", patch.state);
   if ("zip" in patch) set("pincode", patch.zip);
