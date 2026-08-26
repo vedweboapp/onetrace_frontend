@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "@teispace/next-themes";
 import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/features/auth/store/auth.store";
-import { useUrlParams } from "@/shared/hooks/use-url-params";
+import { useSettingsPageTab } from "@/shared/hooks/use-settings-page-tab";
 import { fetchPersonalProfile } from "../api/personal-profile.api";
 import type { PersonalProfileResponse } from "../types/types";
 import PersonalProfileHeader from "./personal-profile-header";
@@ -12,12 +12,16 @@ import PersonalProfileForm, { PersonalProfileFormHandle } from "./personal-profi
 import { AppearancePanel, type AppearancePanelHandle } from "./appearance-panel";
 import { hydrateAppearanceFromProfile } from "../utils/hydrate-appearance-from-profile";
 
+const PROFILE_TABS = [
+  { id: "profile", label: "PERSONAL PROFILE" },
+  { id: "appearance", label: "APPEARANCE" },
+] as const;
+
 const PersonalProfileDetails = () => {
   const t = useTranslations("Dashboard.settingsPersonalProfile");
   const userId = useAuthStore((s) => s.user?.id);
   const { setTheme } = useTheme();
-  const [params] = useUrlParams({ tab: "profile" });
-  const activeTab = String(params.tab || "profile");
+  const { activeTab, setTab } = useSettingsPageTab("profile");
 
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState<PersonalProfileResponse | null>(null);
@@ -26,6 +30,8 @@ const PersonalProfileDetails = () => {
   const [isSaving, setIsSaving] = useState(false);
   const formRef = useRef<PersonalProfileFormHandle>(null);
   const appearanceRef = useRef<AppearancePanelHandle>(null);
+  /** Tab we are leaving — used so cancel restores the correct panel. */
+  const previousTabRef = useRef(activeTab);
 
   const loadProfile = useCallback(async () => {
     if (!userId) {
@@ -74,21 +80,22 @@ const PersonalProfileDetails = () => {
   }, [userId, t, setTheme]);
 
   useEffect(() => {
-    loadProfile();
+    void loadProfile();
   }, [loadProfile]);
 
   useEffect(() => {
     setIsEditing(false);
     setIsSaving(false);
+    previousTabRef.current = activeTab;
   }, [activeTab]);
 
   const handleSuccess = () => {
-    loadProfile();
+    void loadProfile();
     setIsEditing(false);
   };
 
   const handleCancel = () => {
-    if (activeTab === "appearance") {
+    if (previousTabRef.current === "appearance" || activeTab === "appearance") {
       appearanceRef.current?.cancel();
     }
   };
@@ -101,9 +108,18 @@ const PersonalProfileDetails = () => {
     formRef.current?.submit();
   };
 
+  const handleTabChange = (next: string) => {
+    if (next === activeTab) return;
+    previousTabRef.current = activeTab;
+    setTab(next);
+  };
+
   return (
     <div className="flex w-full flex-col gap-4">
       <PersonalProfileHeader
+        tabs={[...PROFILE_TABS]}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
         isEditing={isEditing}
         setIsEditing={setIsEditing}
         showEdit={activeTab === "profile" || activeTab === "appearance"}

@@ -286,7 +286,7 @@ export function ProjectDetailBody({
             <DetailEditableField
               label={t("fields.startDate")}
               value={start}
-              kind="text"
+              kind="date"
               required
               requiredMessage={t("validation.startDate")}
               editAriaLabel={tActions("edit")}
@@ -297,7 +297,7 @@ export function ProjectDetailBody({
             <DetailEditableField
               label={t("fields.endDate")}
               value={end}
-              kind="text"
+              kind="date"
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ end_date: next.trim() || null })}
             >

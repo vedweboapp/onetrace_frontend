@@ -3,11 +3,11 @@
 import React from "react";
 import { useForm, Controller } from "react-hook-form";
 import { Building2, MapPin } from "lucide-react";
+import { Country, State } from "country-state-city";
 import Input from "@/shared/form/components/input";
 import Select from "@/shared/form/components/select";
 import TextBox from "@/shared/form/components/text-box";
 import ProfilePictureUploader from "@/shared/components/profile-picture-uploader";
-import { LocationSelectorGroup } from "@/shared/form/components/location-selectors";
 import { updateOrganizationDetails } from "../api/company-settings.api";
 import { OrganizationDetails } from "../types/types";
 import {
@@ -18,7 +18,7 @@ import {
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { useTranslations } from "next-intl";
 import { timeZones } from "@/shared/constants/timezones";
-import { FormFieldRow, FormFieldSpanFull } from "@/shared/ui";
+import { AddressFormFields, FormFieldRow, FormFieldSpanFull } from "@/shared/ui";
 import FormSectionCard from "@/shared/ui/form-section-card";
 import { cn } from "@/core/utils/http.util";
 
@@ -32,6 +32,84 @@ export interface OrganizationalDetailRef {
   submit: () => void;
 }
 
+type OrgFormValues = {
+  logo: string | null | File;
+  name: string;
+  size: string;
+  description: string;
+  website: string;
+  timezone: string;
+  address_line_1: string;
+  address_line_2: string;
+  country_iso: string;
+  state_iso: string;
+  city: string;
+  pincode: string;
+};
+
+function normalizeCountryIso(rawCountry: string) {
+  const normalized = (rawCountry ?? "").trim();
+  if (!normalized) return "";
+
+  const byCode = Country.getCountryByCode(normalized);
+  if (byCode) return byCode.isoCode;
+
+  const byName = Country.getAllCountries().find(
+    (country) => country.name.trim().toLowerCase() === normalized.toLowerCase(),
+  );
+  return byName?.isoCode ?? "";
+}
+
+function normalizeStateIso(countryIso: string, rawState: string) {
+  const normalized = (rawState ?? "").trim();
+  if (!countryIso || !normalized) return "";
+
+  const subdivisions = State.getStatesOfCountry(countryIso);
+  const byCode = subdivisions.find((state) => state.isoCode === normalized);
+  if (byCode) return byCode.isoCode;
+
+  const byName = subdivisions.find(
+    (state) => state.name.trim().toLowerCase() === normalized.toLowerCase(),
+  );
+  return byName?.isoCode ?? "";
+}
+
+function toFormValues(data: OrganizationDetails): OrgFormValues {
+  const countryIso = normalizeCountryIso(data.country ?? "");
+  const stateIso = normalizeStateIso(countryIso, data.state ?? "");
+  return {
+    logo: data.logo ?? null,
+    name: data.name ?? "",
+    size: data.size ?? "",
+    description: data.description ?? "",
+    website: data.website ?? "",
+    timezone: data.timezone ?? "",
+    address_line_1: data.street ?? "",
+    address_line_2: data.street2 ?? "",
+    country_iso: countryIso,
+    state_iso: stateIso,
+    city: data.city ?? "",
+    pincode: data.zip ?? "",
+  };
+}
+
+function toOrganizationPatch(data: OrgFormValues): Partial<OrganizationDetails> {
+  return {
+    logo: data.logo,
+    name: data.name,
+    size: data.size,
+    description: data.description,
+    website: data.website,
+    timezone: data.timezone,
+    street: data.address_line_1,
+    street2: data.address_line_2,
+    country: data.country_iso,
+    state: data.state_iso,
+    city: data.city,
+    zip: data.pincode,
+  };
+}
+
 const OrganizationalDetail = React.forwardRef<
   OrganizationalDetailRef,
   OrganizationalDetailProps
@@ -40,36 +118,23 @@ const OrganizationalDetail = React.forwardRef<
   const {
     register,
     control,
-    watch,
+    setValue,
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<any>({
-    defaultValues: {
-      logo: null,
-      name: "",
-      size: "",
-      description: "",
-      website: "",
-      timezone: "",
-      street: "",
-      street2: "",
-      city: "",
-      state: "",
-      zip: "",
-      country: "",
-    },
+  } = useForm<OrgFormValues>({
+    defaultValues: toFormValues(initialData),
   });
 
   React.useEffect(() => {
     if (initialData) {
-      reset(initialData);
+      reset(toFormValues(initialData));
     }
   }, [initialData, reset]);
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: OrgFormValues) => {
     try {
-      const current = { ...initialData, ...data } as OrganizationDetails;
+      const current = { ...initialData, ...toOrganizationPatch(data) } as OrganizationDetails;
       const patch = buildDirtyOrganizationPatch(
         initialData,
         current,
@@ -126,8 +191,22 @@ const OrganizationalDetail = React.forwardRef<
             render={({ field: { value, onChange } }) => (
               <ProfilePictureUploader
                 image={value}
-                setImage={(val: any) => onChange(val)}
-                originalImage={initialData?.logo}
+                setImage={(val) => {
+                  if (val == null) {
+                    onChange(null);
+                    return;
+                  }
+                  if (typeof val === "string" || val instanceof File) {
+                    onChange(val);
+                    return;
+                  }
+                  if (val instanceof Blob) {
+                    onChange(new File([val], "company-logo", { type: val.type || "image/png" }));
+                    return;
+                  }
+                  onChange(null);
+                }}
+                originalImage={typeof initialData?.logo === "string" ? initialData.logo : undefined}
                 readOnly={!isEditing}
                 size={88}
               />
@@ -147,7 +226,7 @@ const OrganizationalDetail = React.forwardRef<
           <Input
             label={t("fields.name")}
             register={register("name")}
-            errors={errors.name as any}
+            errors={errors.name as never}
             readOnly={!isEditing}
             placeholder={t("placeholders.name")}
             fieldRequired
@@ -156,13 +235,13 @@ const OrganizationalDetail = React.forwardRef<
             label={t("fields.size")}
             register={register("size")}
             options={companySizeOptions}
-            errors={errors.size as any}
+            errors={errors.size as never}
             readOnly={!isEditing}
           />
           <Input
             label={t("fields.website")}
             register={register("website")}
-            errors={errors.website as any}
+            errors={errors.website as never}
             readOnly={!isEditing}
             placeholder={t("placeholders.website")}
           />
@@ -170,7 +249,7 @@ const OrganizationalDetail = React.forwardRef<
             label={t("fields.timezone")}
             register={register("timezone")}
             options={timeZones}
-            errors={errors.timezone as any}
+            errors={errors.timezone as never}
             readOnly={!isEditing}
             fieldRequired
           />
@@ -178,7 +257,7 @@ const OrganizationalDetail = React.forwardRef<
             <TextBox
               label={t("fields.description")}
               register={register("description")}
-              errors={errors.description as any}
+              errors={errors.description as never}
               readOnly={!isEditing}
               rows={3}
             />
@@ -190,35 +269,35 @@ const OrganizationalDetail = React.forwardRef<
         title={t("addressSectionTitle")}
         icon={<MapPin size={18} strokeWidth={1.75} />}
       >
-        <FormFieldRow cols="2">
-          <Input
-            label={t("fields.address1")}
-            register={register("street")}
-            errors={errors.street as any}
-            readOnly={!isEditing}
-            placeholder={t("placeholders.address1")}
-          />
-          <Input
-            label={t("fields.address2")}
-            register={register("street2")}
-            errors={errors.street2 as any}
-            readOnly={!isEditing}
-            placeholder={t("placeholders.address2")}
-          />
-          <LocationSelectorGroup
-            register={register}
-            watch={watch}
-            errors={errors}
-            readOnly={!isEditing}
-          />
-          <Input
-            label={t("fields.zip")}
-            register={register("zip")}
-            errors={errors.zip as any}
-            readOnly={!isEditing}
-            placeholder={t("placeholders.zip")}
-          />
-        </FormFieldRow>
+        <AddressFormFields
+          idPrefix="org-address"
+          control={control}
+          register={register}
+          setValue={setValue}
+          disabled={!isEditing}
+          addressLineLayout="row"
+          labels={{
+            addressLine1: t("fields.address1"),
+            addressLine2: t("fields.address2"),
+            country: t("fields.country"),
+            state: t("fields.state"),
+            city: t("fields.city"),
+            pincode: t("fields.zip"),
+          }}
+          placeholders={{
+            country: t("placeholders.country"),
+            state: t("placeholders.state"),
+            city: t("placeholders.city"),
+          }}
+          errors={{
+            address_line_1: errors.address_line_1?.message,
+            address_line_2: errors.address_line_2?.message,
+            country_iso: errors.country_iso?.message,
+            state_iso: errors.state_iso?.message,
+            city: errors.city?.message,
+            pincode: errors.pincode?.message,
+          }}
+        />
       </FormSectionCard>
     </div>
   );

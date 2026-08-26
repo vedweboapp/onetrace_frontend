@@ -34,23 +34,32 @@ type Props = {
   onSaveContacts: (contacts: SiteContactPersonPayload[]) => Promise<void>;
 };
 
-function rowsFromDetail(
-  detail: Site,
-  contactNameById: Record<number, string>,
-): DraftRow[] {
+function emptyDraftRow(): DraftRow {
+  return {
+    key: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title: "",
+    contact: "",
+  };
+}
+
+/** Prefer title id (matches CheckmarkSelect options); fall back to name/string. */
+function resolveDraftTitleValue(rawTitle: unknown): string {
+  if (rawTitle && typeof rawTitle === "object") {
+    const obj = rawTitle as Record<string, unknown>;
+    if (obj.id != null && String(obj.id).trim()) return String(obj.id);
+    const name = obj.title ?? obj.name;
+    return name != null ? String(name) : "";
+  }
+  return rawTitle != null ? String(rawTitle) : "";
+}
+
+function rowsFromDetail(detail: Site): DraftRow[] {
   return normalizeSiteContactPersonsFromApi(detail).map((row, index) => {
     const contactId = getSiteContactPersonContactId(row.contact);
-    const rawTitle =
-      row.title && typeof row.title === "object"
-        ? String(
-            (row.title as Record<string, unknown>).title ??
-              (row.title as Record<string, unknown>).name ??
-              "",
-          )
-        : String(row.title ?? "");
+    const title = resolveDraftTitleValue(row.title);
     return {
-      key: String(row.id ?? `${rawTitle}-${contactId ?? index}`),
-      title: rawTitle,
+      key: String(row.id ?? `${title}-${contactId ?? index}`),
+      title,
       contact: contactId ? String(contactId) : "",
     };
   });
@@ -121,8 +130,16 @@ export function SiteDetailContactPersonsEditor({
     };
   }, [clientId]);
 
-  function startEdit() {
-    setDraftRows(rowsFromDetail(detail, contactNameById));
+  function startEdit(options?: { withNewRow?: boolean }) {
+    const existing = rowsFromDetail(detail);
+    if (options?.withNewRow) {
+      setDraftRows([...existing, emptyDraftRow()]);
+    } else if (existing.length === 0) {
+      // First add: show title/contact fields immediately (not another Add button only).
+      setDraftRows([emptyDraftRow()]);
+    } else {
+      setDraftRows(existing);
+    }
     setEditing(true);
   }
 
@@ -182,15 +199,19 @@ export function SiteDetailContactPersonsEditor({
   }
 
   function resolveTitleLabel(rawTitle: unknown): string {
-    const titleKey =
+    const titleKey = resolveDraftTitleValue(rawTitle);
+    const fromObjectName =
       rawTitle && typeof rawTitle === "object"
         ? String(
             (rawTitle as Record<string, unknown>).title ??
               (rawTitle as Record<string, unknown>).name ??
               "",
           )
-        : String(rawTitle ?? "");
-    const resolved = titleNameById[titleKey] || titleKey;
+        : "";
+    const resolved =
+      titleNameById[titleKey] ||
+      fromObjectName ||
+      titleKey;
     const isLegacy = ["site_contact", "finance", "emergency"].includes(resolved);
     if (isLegacy) {
       return t(`contactPerson.titles.${resolved}`, { defaultValue: resolved });
@@ -203,9 +224,26 @@ export function SiteDetailContactPersonsEditor({
       <DetailPanelCard
         title={title}
         headerRight={
-          <AppButton type="button" variant="secondary" size="sm" onClick={startEdit}>
-            {displayRows.length === 0 ? t("contactPerson.add") : tActions("edit")}
-          </AppButton>
+          displayRows.length === 0 ? (
+            <AppButton type="button" variant="secondary" size="sm" onClick={() => startEdit()}>
+              {t("contactPerson.add")}
+            </AppButton>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <AppButton
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => startEdit({ withNewRow: true })}
+              >
+                <Plus className="mr-1 size-3.5" aria-hidden />
+                {t("contactPerson.add")}
+              </AppButton>
+              <AppButton type="button" variant="secondary" size="sm" onClick={() => startEdit()}>
+                {tActions("edit")}
+              </AppButton>
+            </div>
+          )
         }
       >
         {displayRows.length === 0 ? (
@@ -333,12 +371,7 @@ export function SiteDetailContactPersonsEditor({
           variant="secondary"
           size="sm"
           disabled={saving || !clientId}
-          onClick={() =>
-            setDraftRows((prev) => [
-              ...prev,
-              { key: `new-${Date.now()}`, title: "", contact: "" },
-            ])
-          }
+          onClick={() => setDraftRows((prev) => [...prev, emptyDraftRow()])}
         >
           <Plus className="mr-1 size-3.5" aria-hidden />
           {t("contactPerson.add")}

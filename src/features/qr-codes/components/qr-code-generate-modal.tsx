@@ -4,7 +4,7 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { generateQrCodes } from "@/features/qr-codes/api/qr-code.api";
 import type { QrCodeGenerateResult } from "@/features/qr-codes/types/qr-code.types";
-import { AppButton, AppModal, FieldLabel, surfaceInputClassName } from "@/shared/ui";
+import { AppButton, AppModal, FieldErrorText, FieldGroup, surfaceInputClassName } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 
@@ -54,6 +54,7 @@ export function QrCodeGenerateModal({ open, onClose, onGenerated }: Props) {
       onClose={() => (!saving ? onClose() : undefined)}
       title={t("generate.title")}
       titleId="qr-generate-title"
+      size="sm"
       closeOnBackdrop={!saving}
       isBusy={saving}
       footer={
@@ -67,8 +68,7 @@ export function QrCodeGenerateModal({ open, onClose, onGenerated }: Props) {
         </>
       }
     >
-      <div className="space-y-2">
-        <FieldLabel htmlFor="qr-generate-count">{t("generate.countLabel")}</FieldLabel>
+      <FieldGroup label={t("generate.countLabel")} htmlFor="qr-generate-count" required>
         <input
           id="qr-generate-count"
           type="number"
@@ -86,11 +86,16 @@ export function QrCodeGenerateModal({ open, onClose, onGenerated }: Props) {
             if (!Number.isFinite(n)) return;
             setCount(String(Math.min(MAX_COUNT, Math.max(0, n))));
           }}
-          className={cn(surfaceInputClassName, "tabular-nums", error && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
+          className={cn(
+            surfaceInputClassName,
+            "w-full max-w-[10rem] tabular-nums",
+            error && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
+          )}
           autoComplete="off"
+          aria-invalid={error ? true : undefined}
         />
-        {error ? <p className="text-xs text-red-600 dark:text-red-400">{error}</p> : null}
-      </div>
+        <FieldErrorText>{error}</FieldErrorText>
+      </FieldGroup>
     </AppModal>
   );
 }

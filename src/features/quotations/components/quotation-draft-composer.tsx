@@ -30,7 +30,7 @@ import { cn } from "@/core/utils/http.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn, type QuickCreateSelectApplied } from "@/shared/hooks/use-quick-create-return";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
-import { AppButton, AppModal, CheckmarkSelect, DataTableRowActionsMenu, FieldLabel, NumericInput, surfaceInputClassName } from "@/shared/ui";
+import { AppButton, AppModal, CheckmarkSelect, DataTableRowActionsMenu, FieldErrorText, FieldGroup, NumericInput, surfaceInputClassName } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui";
 
 type DndPayload =
@@ -1402,36 +1402,28 @@ export function QuotationDraftComposer({
           </>
         }
       >
-        <div className="space-y-3">
-          <div>
-            <FieldLabel htmlFor={duplicateCountFieldId}>{t("duplicateCountLabel")}</FieldLabel>
-            <NumericInput
-              id={duplicateCountFieldId}
-              integer
-              value={duplicateCountInput}
-              onChange={(next) => {
-                setDuplicateCountInput(next);
-                setDuplicateCountError(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  confirmDuplicatePrompt();
-                }
-              }}
-              className="mt-1.5 w-full max-w-[12rem]"
-              disabled={saving}
-              autoFocus
-              invalid={duplicateCountError != null}
-            />
-        
-          </div>
-          {duplicateCountError ? (
-            <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-              {duplicateCountError}
-            </p>
-          ) : null}
-        </div>
+        <FieldGroup label={t("duplicateCountLabel")} htmlFor={duplicateCountFieldId}>
+          <NumericInput
+            id={duplicateCountFieldId}
+            integer
+            value={duplicateCountInput}
+            onChange={(next) => {
+              setDuplicateCountInput(next);
+              setDuplicateCountError(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                confirmDuplicatePrompt();
+              }
+            }}
+            className="w-full max-w-[10rem]"
+            disabled={saving}
+            autoFocus
+            invalid={duplicateCountError != null}
+          />
+          <FieldErrorText>{duplicateCountError}</FieldErrorText>
+        </FieldGroup>
       </AppModal>
     </div>
   );

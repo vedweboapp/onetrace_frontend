@@ -242,47 +242,34 @@ export function RoleFormScreen({ mode = "create", roleId }: RoleFormProps) {
                 disabled={saving}
               />
 
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  {t("fields.sharedDataWithPeers")}
-                </label>
-                <div className="flex min-h-[7.25rem] items-center justify-between rounded-xl border border-slate-200 bg-white p-4 transition-colors dark:border-slate-800 dark:bg-slate-950">
-                  <div className="space-y-1 min-w-0 pr-4">
-                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 block">
-                      {t("fields.sharedDataWithPeers")}
-                    </span>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {t("hints.sharedDataWithPeers")}
-                    </p>
-                  </div>
-
-                  <Controller
-                    control={control}
-                    name="shared_data_with_peers"
-                    render={({ field }) => (
-                      <button
-                        id="role-shared-peers"
-                        type="button"
-                        role="switch"
-                        aria-checked={field.value}
-                        disabled={saving}
-                        onClick={() => field.onChange(!field.value)}
+              <FieldGroup label={t("fields.sharedDataWithPeers")} htmlFor="role-shared-peers">
+                <Controller
+                  control={control}
+                  name="shared_data_with_peers"
+                  render={({ field }) => (
+                    <button
+                      id="role-shared-peers"
+                      type="button"
+                      role="switch"
+                      aria-checked={field.value}
+                      aria-label={t("fields.sharedDataWithPeers")}
+                      disabled={saving}
+                      onClick={() => field.onChange(!field.value)}
+                      className={cn(
+                        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20 disabled:opacity-50",
+                        field.value ? "bg-slate-900 dark:bg-slate-100" : "bg-slate-200 dark:bg-slate-700",
+                      )}
+                    >
+                      <span
                         className={cn(
-                          "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20 disabled:opacity-50",
-                          field.value ? "bg-slate-900 dark:bg-slate-100" : "bg-slate-200 dark:bg-slate-700",
+                          "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out dark:bg-slate-900",
+                          field.value ? "translate-x-5" : "translate-x-0",
                         )}
-                      >
-                        <span
-                          className={cn(
-                            "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out dark:bg-slate-900",
-                            field.value ? "translate-x-5" : "translate-x-0",
-                          )}
-                        />
-                      </button>
-                    )}
-                  />
-                </div>
-              </div>
+                      />
+                    </button>
+                  )}
+                />
+              </FieldGroup>
             </FormFieldRow>
           </form>
         )}

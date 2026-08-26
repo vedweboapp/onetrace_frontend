@@ -189,7 +189,7 @@ const CompanySettingsCurrency = ({
     settings.symbol,
     settings.currencyCode,
     settings.symbolPosition,
-    settings.digitSeparator,
+    settings.numberFormat,
     settings.decimalPlaces,
   );
 
@@ -199,7 +199,7 @@ const CompanySettingsCurrency = ({
     tempSettings.symbol,
     tempSettings.currencyCode,
     tempSettings.symbolPosition,
-    tempSettings.digitSeparator,
+    tempSettings.numberFormat,
     tempSettings.decimalPlaces,
   );
 
@@ -386,31 +386,25 @@ const CompanySettingsCurrency = ({
             </FieldGroup>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <FieldGroup label={t("currencyDigitFormat")} htmlFor="modal-currency-digit-format">
-              <CheckmarkSelect
-                id="modal-currency-digit-format"
-                listLabel={t("currencyDigitFormat")}
-                options={numberFormatOptions}
-                value={tempSettings.digitSeparator}
-                onChange={(v) => handleTempChange("digitSeparator", normalizeOrgNumberFormat(v))}
-                portaled
-                className="w-full"
-              />
-            </FieldGroup>
-
-            <FieldGroup label={t("fields.numberFormat")} htmlFor="modal-org-number-format">
-              <CheckmarkSelect
-                id="modal-org-number-format"
-                listLabel={t("fields.numberFormat")}
-                options={numberFormatOptions}
-                value={tempSettings.numberFormat}
-                onChange={(v) => handleTempChange("numberFormat", normalizeOrgNumberFormat(v))}
-                portaled
-                className="w-full"
-              />
-            </FieldGroup>
-          </div>
+          <FieldGroup label={t("fields.numberFormat")} htmlFor="modal-org-number-format">
+            <CheckmarkSelect
+              id="modal-org-number-format"
+              listLabel={t("fields.numberFormat")}
+              options={numberFormatOptions}
+              value={tempSettings.numberFormat}
+              onChange={(v) => {
+                const next = normalizeOrgNumberFormat(v);
+                setTempSettings((prev) => ({
+                  ...prev,
+                  numberFormat: next,
+                  // Keep money digit grouping in sync — no separate UI field.
+                  digitSeparator: next,
+                }));
+              }}
+              portaled
+              className="w-full"
+            />
+          </FieldGroup>
 
           <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60">
             <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">

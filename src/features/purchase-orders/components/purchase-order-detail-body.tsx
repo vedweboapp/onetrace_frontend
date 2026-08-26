@@ -192,7 +192,7 @@ export function PurchaseOrderDetailBody({
                 <DetailEditableField
                   label={t("fields.dueDate")}
                   value={formatApiDateForHtmlDateInput(detail.due_date)}
-                  kind="text"
+                  kind="date"
                   editAriaLabel={tActions("edit")}
                   empty="—"
                   onSave={(next) => patchField({ due_date: next || undefined })}

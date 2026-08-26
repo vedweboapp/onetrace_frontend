@@ -8,7 +8,7 @@ import { Controller, useWatch } from "react-hook-form";
 import { cn } from "@/core/utils/http.util";
 import { CheckmarkSelect } from "./checkmark-select";
 import { FieldErrorText, FieldGroup, surfaceInputClassName } from "./field-primitives";
-import { FormFieldRow } from "./form-field-grid";
+import { FormFieldRow, FormFieldSpanFull } from "./form-field-grid";
 
 export type CascadingLocationFieldsProps<TFieldValues extends FieldValues> = {
   control: Control<TFieldValues>;
@@ -16,7 +16,15 @@ export type CascadingLocationFieldsProps<TFieldValues extends FieldValues> = {
   countryIsoName: FieldPath<TFieldValues>;
   stateIsoName: FieldPath<TFieldValues>;
   cityName: FieldPath<TFieldValues>;
-  /** Rendered in row 1 when the country has no subdivisions (e.g. pin code). */
+  /**
+   * Optional first cell (e.g. Address line 2) so Country sits beside it —
+   * keeps a 2-column grid with no empty half-row.
+   */
+  leadingSlot?: React.ReactNode;
+  /**
+   * Last field (e.g. pincode). Paired when there is an open column;
+   * otherwise rendered full-width in a single column.
+   */
   trailingSlot?: React.ReactNode;
   labels: {
     country: React.ReactNode;
@@ -45,6 +53,7 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
   countryIsoName,
   stateIsoName,
   cityName,
+  leadingSlot,
   trailingSlot,
   labels,
   placeholders = {
@@ -153,139 +162,152 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
     }
   }, [countryIso, stateIso, cityName, setLocationField]);
 
-  return (
-    <div className={cn("space-y-4", rowClassName)}>
-      <FormFieldRow cols="2" from="md">
-        <FieldGroup
-          label={labels.country}
-          htmlFor={`${String(countryIsoName)}-select`}
-          required={countryRequired}
-        >
-          <Controller
-            control={control}
-            name={countryIsoName}
-            render={({ field }) =>
-              disabled ? (
-                renderReadOnlyValue(selectedCountry, placeholders.country)
-              ) : (
-                <CheckmarkSelect
-                  id={`${String(countryIsoName)}-select`}
-                  portaled
-                  searchable
-                  searchPlaceholder={tList("searchPlaceholder")}
-                  listLabel={String(labels.country)}
-                  options={countryOpts}
-                  emptyLabel={placeholders.country}
-                  value={(field.value as string | undefined) ?? ""}
-                  disabled={disabled}
-                  invalid={!!errors?.country}
-                  onBlur={field.onBlur}
-                  onChange={(next) => {
-                    const prev = ((field.value as string | undefined) ?? "") as string;
-                    if (next !== prev) {
-                      setLocationField(stateIsoName, "" as PathValue<TFieldValues, typeof stateIsoName>);
-                      setLocationField(cityName, "" as PathValue<TFieldValues, typeof cityName>);
-                    }
-                    setLocationField(
-                      countryIsoName,
-                      next as PathValue<TFieldValues, typeof countryIsoName>,
-                    );
-                  }}
-                />
-              )
-            }
-          />
-          <FieldErrorText>{errors?.country}</FieldErrorText>
-        </FieldGroup>
-
-        {showStateSelect ? (
-          <FieldGroup
-            label={labels.state}
-            htmlFor={`${String(stateIsoName)}-select`}
-            required={stateRequired}
-          >
-            <Controller
-              control={control}
-              name={stateIsoName}
-              render={({ field }) =>
-                disabled ? (
-                  renderReadOnlyValue(selectedState, placeholders.state)
-                ) : (
-                  <CheckmarkSelect
-                    id={`${String(stateIsoName)}-select`}
-                    portaled
-                    searchable
-                    searchPlaceholder={tList("searchPlaceholder")}
-                    listLabel={String(labels.state)}
-                    options={stateOpts}
-                    emptyLabel={placeholders.state}
-                    value={(field.value as string | undefined) ?? ""}
-                    disabled={disabled || !countryIso}
-                    invalid={!!errors?.state}
-                    onBlur={field.onBlur}
-                    onChange={(next) => {
-                      const prev = ((field.value as string | undefined) ?? "") as string;
-                      if (next !== prev) {
-                        setLocationField(cityName, "" as PathValue<TFieldValues, typeof cityName>);
-                      }
-                      setLocationField(
-                        stateIsoName,
-                        next as PathValue<TFieldValues, typeof stateIsoName>,
-                      );
-                    }}
-                  />
-                )
-              }
-            />
-            <FieldErrorText>{errors?.state}</FieldErrorText>
-          </FieldGroup>
-        ) : (
-          trailingSlot ?? null
-        )}
-      </FormFieldRow>
-
-      {showStateSelect && (showCitySelect || trailingSlot) ? (
-        <FormFieldRow cols="2" from="md" className="mt-4">
-          {showCitySelect ? (
-            <FieldGroup
-              label={labels.city}
-              htmlFor={`${String(cityName)}-select`}
-              required={cityRequired}
-            >
-              <Controller
-                control={control}
-                name={cityName}
-                render={({ field }) =>
-                  disabled ? (
-                    renderReadOnlyValue(selectedCity, placeholders.city)
-                  ) : (
-                    <CheckmarkSelect
-                      id={`${String(cityName)}-select`}
-                      portaled
-                      searchable
-                      searchPlaceholder={tList("searchPlaceholder")}
-                      listLabel={String(labels.city)}
-                      options={cityOpts}
-                      emptyLabel={placeholders.city}
-                      value={typeof field.value === "string" ? field.value : ""}
-                      disabled={disabled || !stateIso}
-                      invalid={!!errors?.city}
-                      onBlur={field.onBlur}
-                      onChange={(v) => {
-                        setLocationField(cityName, v as PathValue<TFieldValues, typeof cityName>);
-                      }}
-                    />
-                  )
-                }
-              />
-              <FieldErrorText>{errors?.city}</FieldErrorText>
-            </FieldGroup>
+  const countryField = (
+    <FieldGroup
+      label={labels.country}
+      htmlFor={`${String(countryIsoName)}-select`}
+      required={countryRequired}
+    >
+      <Controller
+        control={control}
+        name={countryIsoName}
+        render={({ field }) =>
+          disabled ? (
+            renderReadOnlyValue(selectedCountry, placeholders.country)
           ) : (
-            <div className="hidden min-h-[1px] md:block" aria-hidden />
-          )}
-          {trailingSlot ?? null}
-        </FormFieldRow>
-      ) : null}
-    </div>
+            <CheckmarkSelect
+              id={`${String(countryIsoName)}-select`}
+              portaled
+              searchable
+              searchPlaceholder={tList("searchPlaceholder")}
+              listLabel={String(labels.country)}
+              options={countryOpts}
+              emptyLabel={placeholders.country}
+              value={(field.value as string | undefined) ?? ""}
+              disabled={disabled}
+              invalid={!!errors?.country}
+              onBlur={field.onBlur}
+              onChange={(next) => {
+                const prev = ((field.value as string | undefined) ?? "") as string;
+                if (next !== prev) {
+                  setLocationField(stateIsoName, "" as PathValue<TFieldValues, typeof stateIsoName>);
+                  setLocationField(cityName, "" as PathValue<TFieldValues, typeof cityName>);
+                }
+                setLocationField(
+                  countryIsoName,
+                  next as PathValue<TFieldValues, typeof countryIsoName>,
+                );
+              }}
+            />
+          )
+        }
+      />
+      <FieldErrorText>{errors?.country}</FieldErrorText>
+    </FieldGroup>
   );
+
+  const stateField = showStateSelect ? (
+    <FieldGroup
+      label={labels.state}
+      htmlFor={`${String(stateIsoName)}-select`}
+      required={stateRequired}
+    >
+      <Controller
+        control={control}
+        name={stateIsoName}
+        render={({ field }) =>
+          disabled ? (
+            renderReadOnlyValue(selectedState, placeholders.state)
+          ) : (
+            <CheckmarkSelect
+              id={`${String(stateIsoName)}-select`}
+              portaled
+              searchable
+              searchPlaceholder={tList("searchPlaceholder")}
+              listLabel={String(labels.state)}
+              options={stateOpts}
+              emptyLabel={placeholders.state}
+              value={(field.value as string | undefined) ?? ""}
+              disabled={disabled || !countryIso}
+              invalid={!!errors?.state}
+              onBlur={field.onBlur}
+              onChange={(next) => {
+                const prev = ((field.value as string | undefined) ?? "") as string;
+                if (next !== prev) {
+                  setLocationField(cityName, "" as PathValue<TFieldValues, typeof cityName>);
+                }
+                setLocationField(
+                  stateIsoName,
+                  next as PathValue<TFieldValues, typeof stateIsoName>,
+                );
+              }}
+            />
+          )
+        }
+      />
+      <FieldErrorText>{errors?.state}</FieldErrorText>
+    </FieldGroup>
+  ) : null;
+
+  const cityField = showCitySelect ? (
+    <FieldGroup
+      label={labels.city}
+      htmlFor={`${String(cityName)}-select`}
+      required={cityRequired}
+    >
+      <Controller
+        control={control}
+        name={cityName}
+        render={({ field }) =>
+          disabled ? (
+            renderReadOnlyValue(selectedCity, placeholders.city)
+          ) : (
+            <CheckmarkSelect
+              id={`${String(cityName)}-select`}
+              portaled
+              searchable
+              searchPlaceholder={tList("searchPlaceholder")}
+              listLabel={String(labels.city)}
+              options={cityOpts}
+              emptyLabel={placeholders.city}
+              value={typeof field.value === "string" ? field.value : ""}
+              disabled={disabled || !stateIso}
+              invalid={!!errors?.city}
+              onBlur={field.onBlur}
+              onChange={(v) => {
+                setLocationField(cityName, v as PathValue<TFieldValues, typeof cityName>);
+              }}
+            />
+          )
+        }
+      />
+      <FieldErrorText>{errors?.city}</FieldErrorText>
+    </FieldGroup>
+  ) : null;
+
+  /**
+   * Build ordered cells, then emit 2-col rows. A leftover last cell
+   * (typically pincode) spans the full row as a single column.
+   */
+  const cells: React.ReactNode[] = [];
+  if (leadingSlot) cells.push(leadingSlot);
+  cells.push(countryField);
+  if (stateField) cells.push(stateField);
+  if (cityField) cells.push(cityField);
+  if (trailingSlot) cells.push(trailingSlot);
+
+  const rows: React.ReactNode[] = [];
+  for (let i = 0; i < cells.length; i += 2) {
+    const left = cells[i];
+    const right = cells[i + 1];
+    const isLastOdd = right == null && i === cells.length - 1;
+    rows.push(
+      <FormFieldRow key={`loc-row-${i}`} cols="2" from="md" className={i > 0 ? "mt-4" : undefined}>
+        {isLastOdd ? <FormFieldSpanFull>{left}</FormFieldSpanFull> : left}
+        {!isLastOdd && right != null ? right : null}
+      </FormFieldRow>,
+    );
+  }
+
+  return <div className={cn(rowClassName)}>{rows}</div>;
 }
