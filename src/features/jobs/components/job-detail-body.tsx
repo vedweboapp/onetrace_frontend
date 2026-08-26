@@ -28,11 +28,13 @@ import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status
 import type { JobChecklistItem } from "@/features/jobs/types/job.types";
 import { JobChecklistsSection } from "@/features/jobs/components/job-checklists-section";
 import { JobDetailWorkScopeEditor } from "@/features/jobs/components/job-detail-work-scope-editor";
-import { DetailEntityLink, DetailSystemMetadataSection, EntityLabelOverflowGroup } from "@/shared/components/entity";
+import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
+import { DetailMultiValue, DetailMultiValueItem } from "@/shared/components/layout/detail-multi-value";
 import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
 import {
+  DetailFieldSpanFull,
   DetailMetricCard,
   DetailMetricsGrid,
   DetailPagePadding,
@@ -912,43 +914,55 @@ export function JobDetailBody({
                 />
               </DetailMetricCard>
             )}
-            <DetailMetricCard label={t("fields.assignedWorkers")}>
-              <div className="flex min-w-0 items-center gap-1.5">
-                <div className="min-w-0 flex-1">
-                  <EntityLabelOverflowGroup
-                    items={assignedWorkers.map((worker) => ({
-                      id: worker.id,
-                      label: worker.label,
-                      href: `${routes.dashboard.settingsUsers}/${worker.id}`,
-                    }))}
-                  />
-                </div>
-                {onOpenScheduling ? (
-                  <button
-                    type="button"
-                    title={t("detail.openScheduling")}
-                    aria-label={t("detail.openScheduling")}
-                    onClick={onOpenScheduling}
-                    className={cn(
-                      "inline-flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition",
-                      "hover:bg-sky-50 hover:text-sky-700 dark:hover:bg-sky-950/40 dark:hover:text-sky-300",
+            <DetailFieldSpanFull>
+              <DetailMetricCard label={t("fields.assignedWorkers")}>
+                <div className="flex min-w-0 items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    {assignedWorkers.length === 0 ? (
+                      <span className="font-normal text-slate-400 dark:text-slate-500">—</span>
+                    ) : (
+                      <DetailMultiValue>
+                        {assignedWorkers.map((worker) => (
+                          <DetailMultiValueItem
+                            key={worker.id}
+                            href={`${routes.dashboard.settingsUsers}/${worker.id}`}
+                            title={worker.label}
+                          >
+                            {worker.label}
+                          </DetailMultiValueItem>
+                        ))}
+                      </DetailMultiValue>
                     )}
-                  >
-                    <CalendarDays className="size-4" strokeWidth={1.75} aria-hidden />
-                  </button>
-                ) : null}
-              </div>
-            </DetailMetricCard>
-            <DetailEditableField
-              label={t("fields.description")}
-              value={detail.description ?? ""}
-              kind="text"
-              multiline
-              textareaBox
-              editAriaLabel={tActions("edit")}
-              empty="—"
-              onSave={(next) => patchField({ description: next })}
-            />
+                  </div>
+                  {onOpenScheduling ? (
+                    <button
+                      type="button"
+                      title={t("detail.openScheduling")}
+                      aria-label={t("detail.openScheduling")}
+                      onClick={onOpenScheduling}
+                      className={cn(
+                        "inline-flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition",
+                        "hover:bg-sky-50 hover:text-sky-700 dark:hover:bg-sky-950/40 dark:hover:text-sky-300",
+                      )}
+                    >
+                      <CalendarDays className="size-4" strokeWidth={1.75} aria-hidden />
+                    </button>
+                  ) : null}
+                </div>
+              </DetailMetricCard>
+            </DetailFieldSpanFull>
+            <DetailFieldSpanFull>
+              <DetailEditableField
+                label={t("fields.description")}
+                value={detail.description ?? ""}
+                kind="text"
+                multiline
+                textareaBox
+                editAriaLabel={tActions("edit")}
+                empty="—"
+                onSave={(next) => patchField({ description: next })}
+              />
+            </DetailFieldSpanFull>
           </DetailMetricsGrid>
         </DetailPanelCard>
 

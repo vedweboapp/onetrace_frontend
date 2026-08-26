@@ -13,11 +13,10 @@ import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { DetailAddressLine1EditableField } from "@/shared/components/layout/detail-address-line1-field";
 import { DetailAddressLocationFields } from "@/shared/components/layout/detail-address-location-fields";
-import {
-  DetailFieldSpanFull,
-  DetailMetricsGrid,
-} from "@/shared/components/layout/detail-metric-card";
+import { DetailMetricsGrid } from "@/shared/components/layout/detail-metric-card";
 import { cn } from "@/core/utils/http.util";
+
+const detailAddressFullRowClassName = "col-span-full sm:col-span-2";
 
 export type DetailEntityAddressFieldLabels = {
   addressType: React.ReactNode;
@@ -64,6 +63,7 @@ function DetailEntityAddressLine1Field({
   required,
   requiredMessage,
   onSave,
+  className,
 }: {
   address: EntityAddress;
   label: React.ReactNode;
@@ -71,6 +71,7 @@ function DetailEntityAddressLine1Field({
   required?: boolean;
   requiredMessage?: string;
   onSave: (updater: (row: EntityAddressFormRow) => EntityAddressFormRow) => Promise<void>;
+  className?: string;
 }) {
   return (
     <DetailAddressLine1EditableField
@@ -84,6 +85,7 @@ function DetailEntityAddressLine1Field({
       editAriaLabel={editAriaLabel}
       required={required}
       requiredMessage={requiredMessage}
+      className={className}
       onSaveLine={(next) => onSave((r) => ({ ...r, address_line_1: next }))}
       onSavePlace={(place) =>
         onSave((r) => ({
@@ -105,8 +107,10 @@ function DetailEntityAddressLine1Field({
 }
 
 /**
- * One address in a detail section — flat CRM rows (same grid as overview fields):
- * Address N header, then type + line 1, line 2, country/state, city/pincode.
+ * One address in a detail section — mailing-style rows:
+ * type, line 1, line 2 (full width), then country|state and city|pincode.
+ * Full-width fields use `col-span-full` on the field itself (no wrapper) so
+ * row borders and 2-col alignment stay correct.
  */
 export function DetailEntityAddressFields({
   address,
@@ -141,7 +145,7 @@ export function DetailEntityAddressFields({
       )}
     >
       {blockHeading ? (
-        <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
+        <div className="mb-1 flex min-w-0 flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{blockHeading}</span>
           {blockIsPrimary && blockPrimaryLabel ? (
             <span className="rounded-md bg-slate-900/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white dark:bg-slate-100 dark:text-slate-900">
@@ -151,8 +155,9 @@ export function DetailEntityAddressFields({
         </div>
       ) : null}
 
-      <DetailMetricsGrid className="!gap-y-0">
+      <DetailMetricsGrid from="xl" className="!gap-y-0">
         <DetailEditableField
+          className={detailAddressFullRowClassName}
           label={labels.addressType}
           value={address.address_type ?? "other"}
           kind="select"
@@ -171,6 +176,7 @@ export function DetailEntityAddressFields({
         </DetailEditableField>
 
         <DetailEntityAddressLine1Field
+          className={detailAddressFullRowClassName}
           address={address}
           label={labels.addressLine1}
           editAriaLabel={editAriaLabel}
@@ -179,18 +185,17 @@ export function DetailEntityAddressFields({
           onSave={patchRow}
         />
 
-        <DetailFieldSpanFull>
-          <DetailEditableField
-            label={labels.addressLine2}
-            value={address.address_line_2 ?? ""}
-            kind="text"
-            editAriaLabel={editAriaLabel}
-            empty={line2Empty}
-            onSave={(next) => patchRow((r) => ({ ...r, address_line_2: next }))}
-          >
-            {address.address_line_2?.trim() ? address.address_line_2 : null}
-          </DetailEditableField>
-        </DetailFieldSpanFull>
+        <DetailEditableField
+          className={detailAddressFullRowClassName}
+          label={labels.addressLine2}
+          value={address.address_line_2 ?? ""}
+          kind="text"
+          editAriaLabel={editAriaLabel}
+          empty={line2Empty}
+          onSave={(next) => patchRow((r) => ({ ...r, address_line_2: next }))}
+        >
+          {address.address_line_2?.trim() ? address.address_line_2 : null}
+        </DetailEditableField>
 
         <DetailAddressLocationFields
           country={address.country}

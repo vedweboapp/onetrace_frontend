@@ -81,30 +81,21 @@ function formatEntityTableDate(
   return formatSettingsDetailDate(dateFmt, value);
 }
 
-/** Room for “Aug 24, 2026, 12:36 PM” inside table-fixed columns. */
 const DATE_COL_WIDTH = "min-w-[13.25rem] w-[13.25rem]";
-const DATE_COL_WIDTH_WITH_TOGGLE = "min-w-[15.25rem] w-[15.25rem]";
 
-function columnHeaderClassName<T>(
-  column: EntityTableColumn<T>,
-  opts?: { withTextModeToggle?: boolean },
-) {
+function columnHeaderClassName<T>(column: EntityTableColumn<T>) {
   return cn(
     column.responsive && entityResponsiveClass(column.responsive),
-    column.variant === "date" && (opts?.withTextModeToggle ? DATE_COL_WIDTH_WITH_TOGGLE : DATE_COL_WIDTH),
+    column.variant === "date" && DATE_COL_WIDTH,
     column.headerClassName,
   );
 }
 
-function columnCellClassName<T>(
-  column: EntityTableColumn<T>,
-  wrap: boolean,
-  opts?: { withTextModeToggle?: boolean },
-): string | undefined {
+function columnCellClassName<T>(column: EntityTableColumn<T>, wrap: boolean): string | undefined {
   return cn(
     column.responsive && entityResponsiveClass(column.responsive),
     entityTableTdClassName(column, wrap),
-    column.variant === "date" && (opts?.withTextModeToggle ? DATE_COL_WIDTH_WITH_TOGGLE : DATE_COL_WIDTH),
+    column.variant === "date" && DATE_COL_WIDTH,
     column.cellClassName,
   );
 }
@@ -227,7 +218,8 @@ export type EntityDataTableProps<T extends { id: number | string }> = {
 };
 
 /**
- * Entity list table: bordered Zoho/WMS chrome, sticky head, clip/wrap in header corner.
+ * Entity list table: bordered Zoho/WMS chrome, sticky head, clip/wrap pinned to
+ * the viewport corner (does not slide away on horizontal scroll).
  * With `fillHeight` (default), grows so list-page pagination can pin below the scroll body.
  */
 export function EntityDataTable<T extends { id: number | string }>({
@@ -245,53 +237,40 @@ export function EntityDataTable<T extends { id: number | string }>({
   const clickable = !!onRowClick;
   const textMode = useDataTableTextModeStore((s) => s.textMode);
   const wrap = textMode === "wrap";
-  const lastColIndex = columns.length - 1;
   const showEmptyMessage = rows.length === 0 && Boolean(emptyMessage);
 
   return (
     <div
       className={cn(
-        "flex flex-col overflow-hidden",
+        "relative flex flex-col overflow-hidden",
         fillHeight ? "min-h-0 flex-1" : "w-full shrink-0",
       )}
     >
+      {/* Pinned to the table viewport — stays put while the grid scrolls X/Y. */}
+      {!hideTextModeToggle ? (
+        <div className="pointer-events-none absolute right-1.5 top-1.5 z-30 sm:right-2 sm:top-2">
+          <div className="pointer-events-auto rounded-md bg-slate-100/95 shadow-sm ring-1 ring-slate-200/80 backdrop-blur-sm dark:bg-slate-800/95 dark:ring-slate-700">
+            <DataTableTextModeToggle variant="header" className="shrink-0" />
+          </div>
+        </div>
+      ) : null}
+
       <DataTableScroll
         className={cn(!fillHeight && "flex-none overflow-x-auto overflow-y-visible", scrollClassName)}
       >
-        <DataTable className={className} textWrap={wrap}>
+        <DataTable className={cn("[&_thead_th:last-child]:pr-9", className)} textWrap={wrap}>
           <DataTableHead>
             <tr>
-              {columns.map((col, index) => {
-                const isLast = index === lastColIndex;
-                const showMode = isLast && !hideTextModeToggle;
-                return (
-                  <DataTableTh
-                    key={col.id}
-                    narrow={col.narrow && col.variant !== "selection"}
-                    compact={col.variant === "selection"}
-                    className={columnHeaderClassName(col, { withTextModeToggle: showMode })}
-                  >
-                    {showMode ? (
-                      <div className="relative min-w-0">
-                        {/*
-                          Inherit th text-align so centered/right qty headers line up with values.
-                          Toggle is absolutely positioned so it does not push the label aside.
-                        */}
-                        <span className="inline-block max-w-[calc(100%-1.75rem)] truncate align-middle">
-                          {col.headerSrOnly ? <span className="sr-only">{col.header}</span> : col.header}
-                        </span>
-                        <div className="absolute right-0 top-1/2 -translate-y-1/2">
-                          <DataTableTextModeToggle variant="header" className="shrink-0" />
-                        </div>
-                      </div>
-                    ) : col.headerSrOnly ? (
-                      <span className="sr-only">{col.header}</span>
-                    ) : (
-                      col.header
-                    )}
-                  </DataTableTh>
-                );
-              })}
+              {columns.map((col) => (
+                <DataTableTh
+                  key={col.id}
+                  narrow={col.narrow && col.variant !== "selection"}
+                  compact={col.variant === "selection"}
+                  className={columnHeaderClassName(col)}
+                >
+                  {col.headerSrOnly ? <span className="sr-only">{col.header}</span> : col.header}
+                </DataTableTh>
+              ))}
             </tr>
           </DataTableHead>
           <DataTableBody>
@@ -308,16 +287,14 @@ export function EntityDataTable<T extends { id: number | string }>({
                     clickable={clickable}
                     onClick={clickable ? () => onRowClick(row) : undefined}
                   >
-                    {columns.map((col, index) => {
+                    {columns.map((col) => {
                       const isolateClick = col.variant === "actions" || col.variant === "selection";
                       return (
                         <DataTableTd
                           key={col.id}
                           narrow={col.narrow && col.variant !== "selection"}
                           compact={col.variant === "selection"}
-                          className={columnCellClassName(col, wrap, {
-                            withTextModeToggle: index === lastColIndex && !hideTextModeToggle,
-                          })}
+                          className={columnCellClassName(col, wrap)}
                           onPointerDown={isolateClick ? (e) => e.stopPropagation() : undefined}
                           onMouseDown={isolateClick ? (e) => e.stopPropagation() : undefined}
                           onClick={isolateClick ? (e) => e.stopPropagation() : undefined}
