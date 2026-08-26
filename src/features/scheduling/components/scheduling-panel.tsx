@@ -220,7 +220,7 @@ export function SchedulingPanel({
   const filterAnchorRef = React.useRef<HTMLButtonElement>(null);
   const filterRowRef = React.useRef<HTMLDivElement>(null);
 
-  const { catalog, loading: catalogLoading } = useSchedulingCatalog(t("modal.technicianFallbackTitle"), {
+  const { catalog, loading: catalogLoading, filtersLoading } = useSchedulingCatalog(t("modal.technicianFallbackTitle"), {
     // Always load clients/jobs/projects/groups so the filter is populated when opened.
     includeFilters: true,
   });
@@ -990,6 +990,9 @@ export function SchedulingPanel({
             clearable
             className="min-w-[9.5rem] shrink-0"
             size="sm"
+            listEmptyLabel={
+              filtersLoading && catalog.clients.length === 0 ? t("modal.loadingClients") : undefined
+            }
             onChange={setClientFilter}
           />
           <CheckmarkSelect
@@ -1002,6 +1005,9 @@ export function SchedulingPanel({
             clearable
             className="min-w-[9.5rem] shrink-0"
             size="sm"
+            listEmptyLabel={
+              filtersLoading && catalog.projects.length === 0 ? t("filtersLoading") : undefined
+            }
             onChange={setProjectFilter}
           />
           <CheckmarkSelect
@@ -1014,6 +1020,9 @@ export function SchedulingPanel({
             clearable
             className="min-w-[9.5rem] shrink-0"
             size="sm"
+            listEmptyLabel={
+              filtersLoading && catalog.jobs.length === 0 ? t("modal.loadingJobs") : undefined
+            }
             onChange={setJobFilter}
           />
         </>
@@ -1029,6 +1038,9 @@ export function SchedulingPanel({
         clearable
         className="min-w-[9.5rem] shrink-0"
         size="sm"
+        listEmptyLabel={
+          filtersLoading && catalog.userGroups.length === 0 ? t("filtersLoading") : undefined
+        }
         onChange={setGroupFilter}
       />
       {hasActiveFilters ? (

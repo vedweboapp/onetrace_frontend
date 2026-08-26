@@ -47,6 +47,8 @@ type Props = {
   invalid?: boolean;
 
   emptyLabel?: string;
+  /** Message when the open list has no matching options (default: "No results"). */
+  listEmptyLabel?: string;
   portaled?: boolean;
   /** Compact trigger (e.g. pagination page size). */
   size?: "md" | "sm";
@@ -188,6 +190,7 @@ export function CheckmarkSelect({
   disabled,
   invalid,
   emptyLabel = "—",
+  listEmptyLabel = "No results",
   portaled = true,
   size = "md",
   showCheckmarks = true,
@@ -377,7 +380,7 @@ export function CheckmarkSelect({
             );
           })}
           {filteredOptions.length === 0 ? (
-            <li className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">No results</li>
+            <li className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">{listEmptyLabel}</li>
           ) : null}
         </ul>
         {showAdd ? (

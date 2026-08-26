@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/core/utils/http.util";
 import { AppButton, AppTabs } from "@/shared/ui";
 import React from "react";
 
@@ -52,7 +53,13 @@ const PersonalProfileHeader = ({
   }
 
   return (
-    <div className="sticky top-0 z-40 -mx-1 flex items-center justify-between gap-3 bg-slate-50/95 px-1 pb-0 pt-1 backdrop-blur-sm dark:bg-slate-950/95">
+    <div
+      className={cn(
+        "sticky top-0 z-40 isolate -mx-1 flex items-center justify-between gap-3 px-1 pb-3 pt-1",
+        // Match page chrome exactly (opaque) so form content cannot show through while sticky.
+        "bg-slate-50 dark:bg-slate-950",
+      )}
+    >
       <AppTabs
         tabs={tabs}
         value={activeTab}

@@ -1,6 +1,7 @@
 "use client";
 
 import { AppButton, AppTabs } from "@/shared/ui";
+import { cn } from "@/core/utils/http.util";
 import React from "react";
 
 type TabItem = { id: string; label: string };
@@ -27,7 +28,13 @@ const CompanySettingsHeader = ({
   ariaLabel = "Company settings sections",
 }: Props) => {
   return (
-    <div className="flex items-end justify-between gap-3">
+    <div
+      className={cn(
+        "sticky top-0 z-40 isolate -mx-1 flex items-end justify-between gap-3 px-1 pb-3 pt-1",
+        // Match page chrome exactly (opaque) so form content cannot show through while sticky.
+        "bg-slate-50 dark:bg-slate-950",
+      )}
+    >
       <AppTabs
         tabs={tabs}
         value={activeTab}

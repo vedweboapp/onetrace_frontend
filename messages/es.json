@@ -649,7 +649,7 @@
       "homeCurrency": "Moneda principal",
       "homeCurrencyHint": "Tu moneda principal",
       "currencyFormat": "Formato de moneda",
-      "currencyFormatHint": "Formato de moneda actual",
+      "currencyFormatHint": "Refleja moneda principal, símbolo/código, posición, decimales y formato de dígitos monetarios",
       "currencyDigitFormat": "Formato de dígitos monetarios",
       "numberFormatHint": "Se usa para cantidades y campos solo numéricos",
       "customize": "Personalizar",
@@ -1679,6 +1679,7 @@
         "editWithIcon": "Editar",
         "sectionOverview": "Resumen",
         "addressUnavailable": "No hay direcciones registradas.",
+        "addressLine2Empty": "Sin dirección secundaria",
         "noAvailability": "No hay días disponibles configurados.",
         "tabsAria": "Secciones del detalle del usuario",
         "tabs": {
@@ -3473,6 +3474,7 @@
       "allWorkers": "Todos los trabajadores",
       "allUsers": "Todos los usuarios",
       "allUserGroups": "Todos los grupos",
+      "filtersLoading": "Cargando…",
       "createSchedule": "Crear programación",
       "dragToSchedule": "Arrastra para programar",
       "creatingSchedule": "Creando programación…",
@@ -3543,7 +3545,9 @@
         "errorToast": "No se pudo crear la programación. Inténtalo de nuevo.",
         "errorRescheduleToast": "No se pudo actualizar la programación. Inténtalo de nuevo.",
         "noUnassignedJobs": "No hay trabajos sin asignar para este cliente.",
-        "loadingJobs": "Cargando trabajos…"
+        "loadingJobs": "Cargando trabajos…",
+        "loadingClients": "Cargando clientes…",
+        "noClients": "No se encontraron clientes."
       },
       "timeOff": {
         "title": "Marcar no disponible",

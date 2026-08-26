@@ -52,6 +52,8 @@ type Props = {
   blockIsPrimary?: boolean;
   /** Adds a divider above this address (Address 2, 3, …). */
   separated?: boolean;
+  /** When 2-col field grid kicks in (default `xl` for detail pages with a side column). */
+  gridFrom?: "sm" | "md" | "lg" | "xl";
 };
 
 function DetailEntityAddressLine1Field({
@@ -123,6 +125,7 @@ export function DetailEntityAddressFields({
   blockPrimaryLabel,
   blockIsPrimary = false,
   separated = false,
+  gridFrom = "xl",
 }: Props) {
   async function patchRow(updater: (row: EntityAddressFormRow) => EntityAddressFormRow) {
     const rows = allAddresses.map(mapEntityAddressApiToFormRow);
@@ -151,7 +154,7 @@ export function DetailEntityAddressFields({
         </div>
       ) : null}
 
-      <DetailMetricsGrid from="xl" className="!gap-y-0">
+      <DetailMetricsGrid from={gridFrom} className="!gap-y-0">
         <DetailEditableField
           label={labels.addressType}
           value={address.address_type ?? "other"}

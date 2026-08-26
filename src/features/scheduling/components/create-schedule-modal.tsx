@@ -106,9 +106,13 @@ export function CreateScheduleModal({
 }: Props) {
   const t = useTranslations("Dashboard.scheduling");
   const isReschedule = Boolean(existingSchedule);
-  const { catalog, loading: catalogLoading } = useSchedulingCatalog(t("modal.technicianFallbackTitle"), {
-    includeFilters: open,
-  });
+  const { catalog, loading: catalogLoading, filtersLoading } = useSchedulingCatalog(
+    t("modal.technicianFallbackTitle"),
+    {
+      // Keep filters warm while closed so opening Create Schedule has options ready.
+      includeFilters: true,
+    },
+  );
 
   const [jobOptions, setJobOptions] = React.useState<CheckmarkSelectOption[]>([]);
   const [jobsById, setJobsById] = React.useState<Record<number, Job>>({});
@@ -122,7 +126,6 @@ export function CreateScheduleModal({
   const [endDate, setEndDate] = React.useState(defaultDateKey);
   const [startTime, setStartTime] = React.useState("09:00");
   const [endTime, setEndTime] = React.useState("17:00");
-  const [allDay, setAllDay] = React.useState(false);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
 
   const lockClientJob = Boolean(prefill?.lockJob || (prefill?.clientId && prefill?.jobId)) || isReschedule;
@@ -159,7 +162,6 @@ export function CreateScheduleModal({
       setEndDate(end.date || start.date || defaultDateKey);
       setStartTime(start.time || "09:00");
       setEndTime(end.time || "17:00");
-      setAllDay(Boolean(existingSchedule.all_day));
       setErrors({});
       return;
     }
@@ -171,7 +173,6 @@ export function CreateScheduleModal({
     setEndDate(dateKey);
     setStartTime(prefill?.startTime || "09:00");
     setEndTime(prefill?.endTime || "17:00");
-    setAllDay(false);
     setErrors({});
   }, [open, defaultDateKey, prefill, technician?.id, existingSchedule]);
 
@@ -234,7 +235,7 @@ export function CreateScheduleModal({
     if (!job) return;
     const durationMinutes = parseJobDurationMinutes(job.job_time);
     const keepCalendarStart = Boolean(prefill?.dateKey || prefill?.startTime || startDate || startTime);
-    if (!allDay && durationMinutes && durationMinutes > 0 && keepCalendarStart) {
+    if (durationMinutes && durationMinutes > 0 && keepCalendarStart) {
       const baseDate = startDate || prefill?.dateKey || defaultDateKey;
       const baseTime = startTime || prefill?.startTime || "09:00";
       const next = addMinutesToDateTime(baseDate, baseTime, durationMinutes);
@@ -262,11 +263,9 @@ export function CreateScheduleModal({
     if (!jobId) next.job = t("validation.job");
     if (!startDate.trim()) next.startDate = t("validation.startDate");
     if (!endDate.trim()) next.endDate = t("validation.endDate");
-    if (!allDay) {
-      if (!startTime.trim()) next.startTime = t("validation.startTime");
-      if (!endTime.trim()) next.endTime = t("validation.endTime");
-    }
-    if (!next.startTime && !next.endTime && !allDay && selectedWorker && getBookingConflict) {
+    if (!startTime.trim()) next.startTime = t("validation.startTime");
+    if (!endTime.trim()) next.endTime = t("validation.endTime");
+    if (!next.startTime && !next.endTime && selectedWorker && getBookingConflict) {
       const startIso = combineDateAndTimeToIso(startDate, startTime, false);
       const endIso = combineDateAndTimeEndToIso(endDate, endTime, false);
       const conflict = getBookingConflict({
@@ -291,8 +290,8 @@ export function CreateScheduleModal({
 
     setSaving(true);
     try {
-      const startIso = combineDateAndTimeToIso(startDate, startTime, allDay);
-      const endIso = combineDateAndTimeEndToIso(endDate, endTime, allDay);
+      const startIso = combineDateAndTimeToIso(startDate, startTime, false);
+      const endIso = combineDateAndTimeEndToIso(endDate, endTime, false);
 
       const payload = {
         job_id: jobNum,
@@ -305,7 +304,7 @@ export function CreateScheduleModal({
         notes: null,
         recurrence: "none" as const,
         recurrence_end_at: null,
-        all_day: allDay,
+        all_day: false,
       };
 
       const row = existingSchedule
@@ -401,11 +400,16 @@ export function CreateScheduleModal({
               listLabel={t("fields.client")}
               options={clientOptions}
               value={clientId}
-              disabled={saving || catalogLoading}
+              disabled={saving || catalogLoading || (filtersLoading && clientOptions.length === 0)}
               locked={lockClientJob}
               searchable
               portaled
               emptyLabel={t("placeholders.client")}
+              listEmptyLabel={
+                filtersLoading && clientOptions.length === 0
+                  ? t("modal.loadingClients")
+                  : t("modal.noClients")
+              }
               invalid={Boolean(errors.client)}
               onChange={(v) => {
                 setClientId(v);
@@ -484,47 +488,35 @@ export function CreateScheduleModal({
               className={cn(surfaceInputClassName, "min-w-[9.5rem] flex-1")}
               onChange={(e) => setEndDate(e.target.value)}
             />
-            <label className="ml-1 inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-              <input
-                type="checkbox"
-                checked={allDay}
-                disabled={saving}
-                className="size-4 rounded border-slate-300"
-                onChange={(e) => setAllDay(e.target.checked)}
-              />
-              {t("fields.allDay")}
-            </label>
           </div>
           <FieldErrorText>{errors.startDate || errors.endDate}</FieldErrorText>
         </div>
 
-        {!allDay ? (
-          <div>
-            <p className="mb-1.5 text-sm font-medium text-slate-700 dark:text-slate-200">
-              {t("fields.time")} <span className="text-red-500">*</span>
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <SurfaceDateInput
-                type="time"
-                value={startTime}
-                disabled={saving}
-                aria-label={t("fields.startTime")}
-                className={cn(surfaceInputClassName, "min-w-[8rem] flex-1")}
-                onChange={(e) => setStartTime(e.target.value)}
-              />
-              <span className="text-sm text-slate-500">{t("fields.to")}</span>
-              <SurfaceDateInput
-                type="time"
-                value={endTime}
-                disabled={saving}
-                aria-label={t("fields.endTime")}
-                className={cn(surfaceInputClassName, "min-w-[8rem] flex-1")}
-                onChange={(e) => setEndTime(e.target.value)}
-              />
-            </div>
-            <FieldErrorText>{errors.startTime || errors.endTime || errors.time}</FieldErrorText>
+        <div>
+          <p className="mb-1.5 text-sm font-medium text-slate-700 dark:text-slate-200">
+            {t("fields.time")} <span className="text-red-500">*</span>
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <SurfaceDateInput
+              type="time"
+              value={startTime}
+              disabled={saving}
+              aria-label={t("fields.startTime")}
+              className={cn(surfaceInputClassName, "min-w-[8rem] flex-1")}
+              onChange={(e) => setStartTime(e.target.value)}
+            />
+            <span className="text-sm text-slate-500">{t("fields.to")}</span>
+            <SurfaceDateInput
+              type="time"
+              value={endTime}
+              disabled={saving}
+              aria-label={t("fields.endTime")}
+              className={cn(surfaceInputClassName, "min-w-[8rem] flex-1")}
+              onChange={(e) => setEndTime(e.target.value)}
+            />
           </div>
-        ) : null}
+          <FieldErrorText>{errors.startTime || errors.endTime || errors.time}</FieldErrorText>
+        </div>
       </div>
     </AppModal>
   );
