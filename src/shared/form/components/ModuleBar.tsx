@@ -41,7 +41,10 @@ const ModuleBar: React.FC = () => {
   const sidebarLayout = useDashboardAppearanceStore((s) => s.sidebarLayout);
   const sidebarOpen = useDashboardSidebarStore((s) => s.sidebarOpen);
   const isLeftSidebar = sidebarLayout === "lithium";
+  const isHydrogen = sidebarLayout === "hydrogen";
+
   const sidebarW = isLeftSidebar ? (sidebarOpen ? SIDEBAR_EXPANDED_W : SIDEBAR_COLLAPSED_W) : 0;
+  const modulebarTop = isHydrogen ? 156 : 112;
 
   const [isLargeScreen, setIsLargeScreen] = React.useState(false);
 
@@ -59,8 +62,12 @@ const ModuleBar: React.FC = () => {
         "--modulebar-left",
         `${sidebarW}px`
       );
+      document.documentElement.style.setProperty(
+        "--modulebar-top",
+        `${modulebarTop}px`
+      );
     }
-  }, [sidebarW, isLargeScreen]);
+  }, [sidebarW, modulebarTop, isLargeScreen]);
 
   // Mobile / Tablet View: Horizontal scroll list of fields
   if (!isLargeScreen) {
@@ -87,11 +94,12 @@ const ModuleBar: React.FC = () => {
   // Desktop View (Matches original)
   return (
     <div
-      className="fixed top-28 z-10 flex flex-col bg-white dark:bg-slate-900 shadow-sm dark:shadow-slate-900/50 border-r border-gray-200 dark:border-slate-700 overflow-hidden"
+      className="fixed z-10 flex flex-col bg-white dark:bg-slate-900 shadow-sm dark:shadow-slate-900/50 border-r border-gray-200 dark:border-slate-700 overflow-hidden"
       style={{
+        top: "var(--modulebar-top, 112px)",
         left: "var(--modulebar-left, 200px)",
         width: 288,
-        height: "calc(100vh - 7rem)",
+        height: "calc(100vh - var(--modulebar-top, 112px))",
         transition: "left 300ms cubic-bezier(0.4,0,0.2,1), top 300ms cubic-bezier(0.4,0,0.2,1)",
       }}
     >
