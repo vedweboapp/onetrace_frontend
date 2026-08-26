@@ -405,12 +405,12 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                       {availableDays.map((row) => (
                         <li
                           key={row.day}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-800"
+                          className="flex w-fit max-w-full items-center gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-800"
                         >
                           <span className="font-medium text-slate-800 dark:text-slate-100">
                             {t(`availability.days.${row.day}`)}
                           </span>
-                          <span className="text-slate-600 dark:text-slate-300">
+                          <span className="tabular-nums text-slate-600 dark:text-slate-300">
                             {row.start_time} – {row.end_time}
                           </span>
                         </li>
@@ -422,15 +422,19 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                 <DetailPanelCard
                   title={t("fields.addresses")}
                   variant="flat"
+                  className="group/addrSec"
                   headerRight={
                     <button
                       type="button"
                       onClick={goEdit}
-                      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                      className={cn(
+                        "inline-flex size-7 items-center justify-center rounded-md text-slate-400 transition",
+                        "hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+                        "opacity-0 focus-visible:opacity-100 group-hover/addrSec:opacity-100 max-sm:opacity-100",
+                      )}
                       aria-label={tActions("edit")}
                     >
                       <Pencil className="size-3.5" strokeWidth={1.75} aria-hidden />
-                      {tActions("edit")}
                     </button>
                   }
                 >

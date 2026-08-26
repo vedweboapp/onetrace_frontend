@@ -66,7 +66,9 @@ function compositeAbbreviationCellClassName(rowIndex: number) {
 
 function compositeActionsCellClassName(rowIndex: number) {
   return cn(
-    "flex gap-2 px-3 py-2 sm:justify-end",
+    // Start-align so Remove sits next to Abbreviation; column width follows the
+    // widest row (Remove + Add row) and justify-end would leave a large gap.
+    "flex flex-wrap items-center gap-2 px-3 py-2",
     rowIndex > 0 && "sm:border-t sm:border-slate-100 dark:sm:border-slate-800",
   );
 }

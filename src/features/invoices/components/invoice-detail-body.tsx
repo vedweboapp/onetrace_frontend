@@ -207,7 +207,7 @@ export function InvoiceDetailBody({
               <DetailEditableField
                 label={t("fields.issueDate")}
                 value={formatApiDateForHtmlDateInput(detail.issue_date)}
-                kind="text"
+                kind="date"
                 editAriaLabel={tActions("edit")}
                 empty="—"
                 onSave={(next) => patchField({ issue_date: next || undefined })}
@@ -219,7 +219,7 @@ export function InvoiceDetailBody({
               <DetailEditableField
                 label={t("fields.dueDate")}
                 value={formatApiDateForHtmlDateInput(detail.due_date)}
-                kind="text"
+                kind="date"
                 editAriaLabel={tActions("edit")}
                 empty="—"
                 onSave={(next) => patchField({ due_date: next || undefined })}

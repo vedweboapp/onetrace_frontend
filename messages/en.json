@@ -681,6 +681,9 @@
         "description": "Company description",
         "address1": "Address 1",
         "address2": "Address 2",
+        "country": "Country",
+        "state": "State / province",
+        "city": "City",
         "zip": "Pincode / ZIP code",
         "numberFormat": "Number format"
       },
@@ -689,6 +692,9 @@
         "website": "https://example.com",
         "address1": "123 Business Park Drive",
         "address2": "Suite 100",
+        "country": "Select country",
+        "state": "Select state / region",
+        "city": "Select or type city",
         "zip": "94102"
       }
     },
@@ -832,7 +838,7 @@
       },
       "formLayoutHeading": "Form layout",
       "labelPlacementLabel": "Label placement",
-      "labelPlacementHint": "Left/right use Zoho-style side labels (label ends align, inputs in a straight column). Top stacks the label above the field. Narrow modals stack automatically so labels never overlap.",
+      "labelPlacementHint": "Left or right places the label beside the field. Top places the label above the field.",
       "labelPlacements": {
         "top": "Top",
         "left": "Left",

@@ -52,7 +52,6 @@ import {
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
-  fieldLabelClassName,
   surfaceInputClassName,
 } from "@/shared/ui";
 
@@ -533,11 +532,15 @@ export function ProjectTypeSettingsPanel() {
               <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.project_type}</p>
             ) : null}
           </FieldGroup>
-          <div>
-            <span className={fieldLabelClassName}>
-              {t("modal.bgColour")} <span className="text-red-500">*</span>
-            </span>
-            <div className="mt-1.5 flex items-center gap-2">
+          <FieldGroup
+            label={
+              <span>
+                {t("modal.bgColour")} <span className="text-red-500">*</span>
+              </span>
+            }
+            htmlFor="project-type-bg"
+          >
+            <div className="flex items-center gap-2">
               <input
                 type="color"
                 value={normalizeProjectTypeHex(bgColour, DEFAULT_BG).slice(0, 7)}
@@ -546,6 +549,7 @@ export function ProjectTypeSettingsPanel() {
                 aria-label={t("modal.bgColour")}
               />
               <input
+                id="project-type-bg"
                 value={bgColour}
                 onChange={(e) => {
                   setBgColour(e.target.value);
@@ -561,12 +565,16 @@ export function ProjectTypeSettingsPanel() {
               />
             </div>
             {errors.bg_color ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.bg_color}</p> : null}
-          </div>
-          <div>
-            <span className={fieldLabelClassName}>
-              {t("modal.textColour")} <span className="text-red-500">*</span>
-            </span>
-            <div className="mt-1.5 flex items-center gap-2">
+          </FieldGroup>
+          <FieldGroup
+            label={
+              <span>
+                {t("modal.textColour")} <span className="text-red-500">*</span>
+              </span>
+            }
+            htmlFor="project-type-text"
+          >
+            <div className="flex items-center gap-2">
               <input
                 type="color"
                 value={normalizeProjectTypeHex(textColour, DEFAULT_TEXT).slice(0, 7)}
@@ -575,6 +583,7 @@ export function ProjectTypeSettingsPanel() {
                 aria-label={t("modal.textColour")}
               />
               <input
+                id="project-type-text"
                 value={textColour}
                 onChange={(e) => {
                   setTextColour(e.target.value);
@@ -592,7 +601,7 @@ export function ProjectTypeSettingsPanel() {
             {errors.text_color ? (
               <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.text_color}</p>
             ) : null}
-          </div>
+          </FieldGroup>
           {editing ? (
             <FieldGroup label={t("modal.activeLabel")} htmlFor="project-type-active">
               <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-300">

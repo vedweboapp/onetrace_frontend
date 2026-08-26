@@ -914,24 +914,22 @@ export function JobDetailBody({
               </DetailMetricCard>
             )}
             <DetailMetricCard label={t("fields.assignedWorkers")} className="col-span-full">
-                <div className="flex min-w-0 items-start gap-2">
-                  <div className="min-w-0 flex-1">
-                    {assignedWorkers.length === 0 ? (
-                      <span className="font-normal text-slate-400 dark:text-slate-500">—</span>
-                    ) : (
-                      <DetailMultiValue>
-                        {assignedWorkers.map((worker) => (
-                          <DetailMultiValueItem
-                            key={worker.id}
-                            href={`${routes.dashboard.settingsUsers}/${worker.id}`}
-                            title={worker.label}
-                          >
-                            {worker.label}
-                          </DetailMultiValueItem>
-                        ))}
-                      </DetailMultiValue>
-                    )}
-                  </div>
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  {assignedWorkers.length === 0 ? (
+                    <span className="font-normal text-slate-400 dark:text-slate-500">—</span>
+                  ) : (
+                    <DetailMultiValue>
+                      {assignedWorkers.map((worker) => (
+                        <DetailMultiValueItem
+                          key={worker.id}
+                          href={`${routes.dashboard.settingsUsers}/${worker.id}`}
+                          title={worker.label}
+                        >
+                          {worker.label}
+                        </DetailMultiValueItem>
+                      ))}
+                    </DetailMultiValue>
+                  )}
                   {onOpenScheduling ? (
                     <button
                       type="button"

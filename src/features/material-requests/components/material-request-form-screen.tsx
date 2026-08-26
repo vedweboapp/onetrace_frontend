@@ -90,7 +90,7 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
   const [jobsModalOpen, setJobsModalOpen] = React.useState(false);
   const [applyingJobs, setApplyingJobs] = React.useState(false);
 
-  const { options: statusOptions, loading: statusCatalogLoading } = useMaterialStatusCatalog();
+  const { options: statusOptions, loading: statusCatalogLoading, byKey } = useMaterialStatusCatalog();
 
   const schema = React.useMemo(
     () =>
@@ -119,7 +119,17 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
   const { fields: jobFields } = useFieldArray({ control, name: "jobs" });
 
   const watchedWorker = useWatch({ control, name: "worker_name" });
+  const watchedStatus = useWatch({ control, name: "status" });
   const watchedJobs = useWatch({ control, name: "jobs" }) ?? [];
+
+  /** Create form: default to Draft status id once metadata catalog loads. */
+  React.useEffect(() => {
+    if (isEdit || statusCatalogLoading || watchedStatus?.trim()) return;
+    const draftId = byKey.draft?.id;
+    if (draftId != null && draftId > 0) {
+      setValue("status", String(draftId), { shouldDirty: false });
+    }
+  }, [isEdit, statusCatalogLoading, watchedStatus, byKey, setValue]);
 
   const workerId =
     watchedWorker && /^\d+$/.test(watchedWorker) ? Number.parseInt(watchedWorker, 10) : null;

@@ -13,7 +13,7 @@ import {
 import { reportLocalFormSubmitApiError, zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
-import { AppButton, AppModal, FieldGroup, fieldLabelClassName, surfaceInputClassName } from "@/shared/ui";
+import { AppButton, AppModal, FieldGroup, surfaceInputClassName } from "@/shared/ui";
 
 const DEFAULT_BG = "#DBEAFE";
 const DEFAULT_TEXT = "#1E40AF";
@@ -136,11 +136,15 @@ export function VendorTypeFormModal({ open, onClose, editing = null, onSaved }: 
           />
           {errors.name ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.name}</p> : null}
         </FieldGroup>
-        <div>
-          <span className={fieldLabelClassName}>
-            {t("modal.bgColour")} <span className="text-red-500">*</span>
-          </span>
-          <div className="mt-1.5 flex items-center gap-2">
+        <FieldGroup
+          label={
+            <span>
+              {t("modal.bgColour")} <span className="text-red-500">*</span>
+            </span>
+          }
+          htmlFor="vendor-type-modal-bg"
+        >
+          <div className="flex items-center gap-2">
             <input
               type="color"
               value={normalizeVendorTypeHex(bgColour, DEFAULT_BG).slice(0, 7)}
@@ -149,6 +153,7 @@ export function VendorTypeFormModal({ open, onClose, editing = null, onSaved }: 
               aria-label={t("modal.bgColour")}
             />
             <input
+              id="vendor-type-modal-bg"
               value={bgColour}
               onChange={(e) => {
                 setBgColour(e.target.value);
@@ -164,12 +169,16 @@ export function VendorTypeFormModal({ open, onClose, editing = null, onSaved }: 
             />
           </div>
           {errors.bg_color ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.bg_color}</p> : null}
-        </div>
-        <div>
-          <span className={fieldLabelClassName}>
-            {t("modal.textColour")} <span className="text-red-500">*</span>
-          </span>
-          <div className="mt-1.5 flex items-center gap-2">
+        </FieldGroup>
+        <FieldGroup
+          label={
+            <span>
+              {t("modal.textColour")} <span className="text-red-500">*</span>
+            </span>
+          }
+          htmlFor="vendor-type-modal-text"
+        >
+          <div className="flex items-center gap-2">
             <input
               type="color"
               value={normalizeVendorTypeHex(textColour, DEFAULT_TEXT).slice(0, 7)}
@@ -178,6 +187,7 @@ export function VendorTypeFormModal({ open, onClose, editing = null, onSaved }: 
               aria-label={t("modal.textColour")}
             />
             <input
+              id="vendor-type-modal-text"
               value={textColour}
               onChange={(e) => {
                 setTextColour(e.target.value);
@@ -195,7 +205,7 @@ export function VendorTypeFormModal({ open, onClose, editing = null, onSaved }: 
           {errors.text_color ? (
             <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.text_color}</p>
           ) : null}
-        </div>
+        </FieldGroup>
         {isEdit ? (
           <FieldGroup label={t("modal.activeLabel")} htmlFor="vendor-type-active">
             <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
