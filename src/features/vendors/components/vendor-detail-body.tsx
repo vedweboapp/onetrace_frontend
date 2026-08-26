@@ -9,7 +9,6 @@ import type { Vendor } from "@/features/vendors/types/vendor.types";
 import { VendorTypeChip } from "@/features/vendor-types/components/vendor-type-chip";
 import { getVendorTypeIds, getVendorTypeRows, parseVendorCoord } from "@/features/vendors/utils/vendor-nested-fields.util";
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
-import { DetailAddressBlock } from "@/shared/components/layout/detail-address-block";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { DetailEntityAddressFields } from "@/shared/components/layout/detail-entity-address-fields";
 import {
@@ -225,28 +224,26 @@ export function VendorDetailBody({
           {addresses.length === 0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>
           ) : (
-            <ul className="space-y-0 overflow-visible">
+            <div className="space-y-4 overflow-visible">
               {sortedAddresses.map(({ address: addr, originalIndex, displayIndex }) => (
-                <li key={addr.id ?? originalIndex} className="min-w-0 overflow-visible">
-                  <DetailAddressBlock separated={displayIndex > 0}>
-                    <DetailEntityAddressFields
-                      blockHeading={t("addresses.rowLabel", { index: displayIndex + 1 })}
-                      blockPrimaryLabel={t("addresses.primary")}
-                      blockIsPrimary={Boolean(addr.is_primary)}
-                      address={addr}
-                      addressIndex={originalIndex}
-                      allAddresses={addresses}
-                      labels={addressFieldLabels}
-                      requiredMessages={addressRequiredMessages}
-                      addressTypeOptions={addressTypeOptions}
-                      addressTypeValue={t(`addressType.${addr.address_type ?? "other"}`)}
-                      editAriaLabel={tActions("edit")}
-                      onSaveAddresses={patchAddresses}
-                    />
-                  </DetailAddressBlock>
-                </li>
+                <DetailEntityAddressFields
+                  key={addr.id ?? originalIndex}
+                  separated={displayIndex > 0}
+                  blockHeading={t("addresses.rowLabel", { index: displayIndex + 1 })}
+                  blockPrimaryLabel={t("addresses.primary")}
+                  blockIsPrimary={Boolean(addr.is_primary)}
+                  address={addr}
+                  addressIndex={originalIndex}
+                  allAddresses={addresses}
+                  labels={addressFieldLabels}
+                  requiredMessages={addressRequiredMessages}
+                  addressTypeOptions={addressTypeOptions}
+                  addressTypeValue={t(`addressType.${addr.address_type ?? "other"}`)}
+                  editAriaLabel={tActions("edit")}
+                  onSaveAddresses={patchAddresses}
+                />
               ))}
-            </ul>
+            </div>
           )}
         </DetailPanelCard>
 
