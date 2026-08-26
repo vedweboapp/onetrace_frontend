@@ -10,14 +10,13 @@ type Props = {
   className?: string;
 };
 
-/** Soft card wrapper for each address in multi-address detail sections. */
+/** @deprecated Prefer `separated` on `DetailEntityAddressFields` — kept for compatibility. */
 export function DetailAddressBlock({ children, separated = false, className }: Props) {
   return (
     <div
       className={cn(
-        "min-w-0 rounded-xl border border-slate-200/90 bg-slate-50/40 p-4 sm:p-5",
-        "dark:border-slate-800 dark:bg-slate-900/30",
-        separated && "mt-4",
+        "min-w-0",
+        separated && "border-t border-slate-200/90 pt-4 dark:border-slate-800",
         className,
       )}
     >
