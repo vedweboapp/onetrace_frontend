@@ -45,6 +45,7 @@ type Props = {
   requiredMessage?: string;
   empty?: React.ReactNode;
   children?: React.ReactNode;
+  className?: string;
   onSaveLine: (next: string) => Promise<void>;
   onSavePlace: (place: PlaceSuggestion) => Promise<void>;
 };
@@ -63,6 +64,7 @@ export function DetailAddressLine1EditableField({
   requiredMessage,
   empty,
   children,
+  className,
   onSaveLine,
   onSavePlace,
 }: Props) {
@@ -94,6 +96,7 @@ export function DetailAddressLine1EditableField({
       required={required}
       requiredMessage={requiredMessage}
       empty={empty}
+      className={className}
       onEditStart={() => {
         pickedPlaceRef.current = null;
       }}

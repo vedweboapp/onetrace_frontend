@@ -69,6 +69,10 @@ export type PersonalProfileResponse = {
             dashboard_layout?: string;
             page_label_position?: string;
             mandatory_field_display?: string;
+            detail_row_line?: {
+                width?: string;
+                style?: string;
+            };
         };
         available_options?: Record<string, unknown>;
     };
