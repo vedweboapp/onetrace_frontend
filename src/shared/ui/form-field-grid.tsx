@@ -1,10 +1,13 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { cn } from "@/core/utils/http.util";
 
-/** Responsive registry row: stacks on xs, `{2}` cols from `sm` (or later), `{3}` from `lg` when requested. */
+/**
+ * Zoho-style form row: 2 fields side-by-side when there is room,
+ * 1 field per row when the row host is narrow (container query) or below `from`.
+ */
 export function FormFieldRow({
   cols = "2",
-  from = "sm",
+  from = "md",
   className,
   children,
 }: {
@@ -24,21 +27,23 @@ export function FormFieldRow({
           : "grid-cols-1 sm:grid-cols-2";
 
   return (
-    <div
-      className={cn(
-        "form-field-row grid w-full gap-x-5 gap-y-4",
-        cols === "1" && "grid-cols-1",
-        cols === "2" && twoCol,
-        cols === "3" && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
-        className,
-      )}
-    >
-      {children}
+    <div className="form-fields-host">
+      <div
+        className={cn(
+          "form-field-row grid w-full gap-x-8 gap-y-5",
+          cols === "1" && "grid-cols-1",
+          cols === "2" && twoCol,
+          cols === "3" && "grid-cols-1 md:grid-cols-2 xl:grid-cols-3",
+          className,
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }
 
 /** Use inside `FormFieldRow` when one control should span the full logical row. */
 export function FormFieldSpanFull({ className, ...props }: ComponentPropsWithoutRef<"div">) {
-  return <div className={cn("col-span-full sm:col-span-2 lg:col-span-2", className)} {...props} />;
+  return <div className={cn("col-span-full", className)} {...props} />;
 }

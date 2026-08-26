@@ -110,7 +110,6 @@ const OrganizationalDetail = React.forwardRef<
         "settings-aligned-fields w-full min-w-0 overflow-x-hidden rounded-xl border border-slate-200/90 bg-white",
         "px-4 py-5 sm:px-6 sm:py-6 dark:border-slate-800 dark:bg-slate-950",
       )}
-      data-labels="top"
     >
       <FormSectionCard
         title={t("orgSectionTitle")}
@@ -144,7 +143,7 @@ const OrganizationalDetail = React.forwardRef<
           </div>
         </div>
 
-        <FormFieldRow cols="2" from="md" className="gap-x-5 gap-y-5">
+        <FormFieldRow cols="2">
           <Input
             label={t("fields.name")}
             register={register("name")}
@@ -175,7 +174,7 @@ const OrganizationalDetail = React.forwardRef<
             readOnly={!isEditing}
             fieldRequired
           />
-          <FormFieldSpanFull className="md:col-span-2 lg:col-span-2">
+          <FormFieldSpanFull>
             <TextBox
               label={t("fields.description")}
               register={register("description")}
@@ -191,7 +190,7 @@ const OrganizationalDetail = React.forwardRef<
         title={t("addressSectionTitle")}
         icon={<MapPin size={18} strokeWidth={1.75} />}
       >
-        <FormFieldRow cols="2" from="md" className="gap-x-5 gap-y-5">
+        <FormFieldRow cols="2">
           <Input
             label={t("fields.address1")}
             register={register("street")}

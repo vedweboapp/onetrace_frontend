@@ -374,7 +374,6 @@ const PersonalProfileForm = forwardRef<
                     "settings-aligned-fields flex w-full min-w-0 flex-col overflow-x-hidden rounded-xl border border-slate-200/90 bg-white",
                     "px-5 py-2 dark:border-slate-700 dark:bg-slate-950 sm:px-8",
                 )}
-                data-labels="top"
             >
             {/* Header / Basic Info Summary */}
             <div className="flex w-full items-center gap-6 border-b border-slate-200/90 py-6 dark:border-slate-700/80">
@@ -407,7 +406,7 @@ const PersonalProfileForm = forwardRef<
             </div>
             {/* Basic Information */}
             <FormSectionCard title={t("BasicInfo")} icon={<Calendar size={20} />}>
-                <FormFieldRow cols="2" from="md" className="gap-x-5 gap-y-5">
+                <FormFieldRow cols="2">
                     <Input
                         label={t("FirstName")}
                         register={register("firstName")}
