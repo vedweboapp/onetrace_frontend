@@ -13,7 +13,10 @@ import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { DetailAddressLine1EditableField } from "@/shared/components/layout/detail-address-line1-field";
 import { DetailAddressLocationFields } from "@/shared/components/layout/detail-address-location-fields";
-import { DetailMetricsGrid } from "@/shared/components/layout/detail-metric-card";
+import {
+  DetailFieldSpanFull,
+  DetailMetricsGrid,
+} from "@/shared/components/layout/detail-metric-card";
 import { cn } from "@/core/utils/http.util";
 
 export type DetailEntityAddressFieldLabels = {
@@ -50,6 +53,8 @@ type Props = {
   blockHeading?: React.ReactNode;
   blockPrimaryLabel?: React.ReactNode;
   blockIsPrimary?: boolean;
+  /** Adds a divider above this address (Address 2, 3, …). */
+  separated?: boolean;
 };
 
 function DetailEntityAddressLine1Field({
@@ -100,9 +105,8 @@ function DetailEntityAddressLine1Field({
 }
 
 /**
- * One address in a detail section — mailing-style block:
- * header (title + primary + type), then line 1 / line 2 full width,
- * then country / state / city / pincode in a 2-col grid.
+ * One address in a detail section — flat CRM rows (same grid as overview fields):
+ * Address N header, then type + line 1, line 2, country/state, city/pincode.
  */
 export function DetailEntityAddressFields({
   address,
@@ -118,6 +122,7 @@ export function DetailEntityAddressFields({
   blockHeading,
   blockPrimaryLabel,
   blockIsPrimary = false,
+  separated = false,
 }: Props) {
   async function patchRow(updater: (row: EntityAddressFormRow) => EntityAddressFormRow) {
     const rows = allAddresses.map(mapEntityAddressApiToFormRow);
@@ -129,19 +134,24 @@ export function DetailEntityAddressFields({
   }
 
   return (
-    <div className="min-w-0 space-y-3">
-      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          {blockHeading ? (
-            <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{blockHeading}</h4>
-          ) : null}
+    <div
+      className={cn(
+        "min-w-0",
+        separated && "border-t border-slate-200/90 pt-4 dark:border-slate-800",
+      )}
+    >
+      {blockHeading ? (
+        <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{blockHeading}</span>
           {blockIsPrimary && blockPrimaryLabel ? (
             <span className="rounded-md bg-slate-900/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white dark:bg-slate-100 dark:text-slate-900">
               {blockPrimaryLabel}
             </span>
           ) : null}
         </div>
+      ) : null}
 
+      <DetailMetricsGrid className="!gap-y-0">
         <DetailEditableField
           label={labels.addressType}
           value={address.address_type ?? "other"}
@@ -150,10 +160,6 @@ export function DetailEntityAddressFields({
           editAriaLabel={editAriaLabel}
           required={Boolean(requiredMessages?.addressType)}
           requiredMessage={requiredMessages?.addressType}
-          className={cn(
-            "w-full min-w-0 sm:w-auto sm:min-w-[11rem] sm:max-w-[14rem]",
-            "sm:[&_.field-label]:sr-only",
-          )}
           onSave={(next) =>
             patchRow((r) => ({
               ...r,
@@ -163,9 +169,7 @@ export function DetailEntityAddressFields({
         >
           {addressTypeValue || "—"}
         </DetailEditableField>
-      </div>
 
-      <DetailMetricsGrid columns={1} wide className="!gap-y-0 rounded-lg border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-950">
         <DetailEntityAddressLine1Field
           address={address}
           label={labels.addressLine1}
@@ -174,19 +178,20 @@ export function DetailEntityAddressFields({
           requiredMessage={requiredMessages?.addressLine1}
           onSave={patchRow}
         />
-        <DetailEditableField
-          label={labels.addressLine2}
-          value={address.address_line_2 ?? ""}
-          kind="text"
-          editAriaLabel={editAriaLabel}
-          empty={line2Empty}
-          onSave={(next) => patchRow((r) => ({ ...r, address_line_2: next }))}
-        >
-          {address.address_line_2?.trim() ? address.address_line_2 : null}
-        </DetailEditableField>
-      </DetailMetricsGrid>
 
-      <DetailMetricsGrid columns={2} wide from="sm" className="!gap-y-0 rounded-lg border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-950">
+        <DetailFieldSpanFull>
+          <DetailEditableField
+            label={labels.addressLine2}
+            value={address.address_line_2 ?? ""}
+            kind="text"
+            editAriaLabel={editAriaLabel}
+            empty={line2Empty}
+            onSave={(next) => patchRow((r) => ({ ...r, address_line_2: next }))}
+          >
+            {address.address_line_2?.trim() ? address.address_line_2 : null}
+          </DetailEditableField>
+        </DetailFieldSpanFull>
+
         <DetailAddressLocationFields
           country={address.country}
           state={address.state}
@@ -221,6 +226,7 @@ export function DetailEntityAddressFields({
             await patchRow((r) => ({ ...r, city: cityName }));
           }}
         />
+
         <DetailEditableField
           label={labels.pincode}
           value={address.pincode ?? ""}
