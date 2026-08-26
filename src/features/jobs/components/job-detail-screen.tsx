@@ -93,6 +93,21 @@ export function JobDetailScreen({ jobId }: Props) {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }, [detailForNav, pathname, router, searchParams]);
 
+  const prevTabRef = React.useRef(activeTab);
+  const reloadQuietRef = React.useRef<(() => Promise<void>) | null>(null);
+
+  React.useEffect(() => {
+    const prev = prevTabRef.current;
+    prevTabRef.current = activeTab;
+    if (prev === "scheduling" && activeTab === "overview") {
+      void reloadQuietRef.current?.();
+    }
+  }, [activeTab]);
+
+  const bindReloadQuiet = React.useCallback((fn: () => Promise<void>) => {
+    reloadQuietRef.current = fn;
+  }, []);
+
   return (
     <EntityDetailScreen
       entityId={jobId}
@@ -139,7 +154,52 @@ export function JobDetailScreen({ jobId }: Props) {
           t={t}
         />
       )}
-      renderSurface={({ detail, loading, error, retry, dateFmt }) => (
+      renderSurface={({ detail, loading, error, retry, reloadQuiet, dateFmt }) => (
+        <JobDetailTabPanel
+          activeTab={activeTab}
+          detail={detail}
+          loading={loading}
+          error={error}
+          retry={retry}
+          reloadQuiet={reloadQuiet}
+          dateFmt={dateFmt}
+          bindReloadQuiet={bindReloadQuiet}
+          onOpenScheduling={() => handleTabChange("scheduling")}
+          t={t}
+        />
+      )}
+    />
+  );
+}
+
+function JobDetailTabPanel({
+  activeTab,
+  detail,
+  loading,
+  error,
+  retry,
+  reloadQuiet,
+  dateFmt,
+  bindReloadQuiet,
+  onOpenScheduling,
+  t,
+}: {
+  activeTab: JobDetailTabId;
+  detail: Job | null;
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+  reloadQuiet: () => Promise<void>;
+  dateFmt: Intl.DateTimeFormat;
+  bindReloadQuiet: (fn: () => Promise<void>) => void;
+  onOpenScheduling: () => void;
+  t: ReturnType<typeof useTranslations<"Dashboard.jobs">>;
+}) {
+  React.useEffect(() => {
+    bindReloadQuiet(reloadQuiet);
+  }, [bindReloadQuiet, reloadQuiet]);
+
+  return (
         <div
           role="tabpanel"
           id={`job-detail-tab-${activeTab}`}
@@ -163,7 +223,7 @@ export function JobDetailScreen({ jobId }: Props) {
               dateFmt={dateFmt}
               onChecklistsUpdated={retry}
               onSaved={retry}
-              onOpenScheduling={() => handleTabChange("scheduling")}
+              onOpenScheduling={onOpenScheduling}
             />
           ) : detail && activeTab === "scheduling" ? (
             <Suspense
@@ -174,7 +234,7 @@ export function JobDetailScreen({ jobId }: Props) {
                 </div>
               }
             >
-              <JobSchedulingTab detail={detail} />
+              <JobSchedulingTab detail={detail} onJobSchedulesChanged={() => void reloadQuiet()} />
             </Suspense>
           ) : detail && activeTab === "materials" ? (
             <JobMaterialsTab detail={detail} />
@@ -184,8 +244,6 @@ export function JobDetailScreen({ jobId }: Props) {
             <JobReturnsTab detail={detail} />
           ) : null}
         </div>
-      )}
-    />
   );
 }
 

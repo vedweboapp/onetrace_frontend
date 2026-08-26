@@ -55,7 +55,7 @@ export function DetailCollapsibleSection({
     >
       <div
         className={cn(
-          "flex flex-wrap items-center gap-2 px-4 py-3.5 sm:px-6 sm:py-4",
+          "flex flex-nowrap items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3",
           isOpen && "border-b border-slate-200/80 dark:border-slate-800",
         )}
       >
@@ -83,7 +83,7 @@ export function DetailCollapsibleSection({
         {headerRight ? (
           <div
             data-collapsible-action=""
-            className="ml-auto flex shrink-0 flex-wrap items-center gap-2"
+            className="ml-auto flex shrink-0 items-center gap-2"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >

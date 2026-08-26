@@ -832,7 +832,7 @@
       },
       "formLayoutHeading": "Form layout",
       "labelPlacementLabel": "Label placement",
-      "labelPlacementHint": "Position of field labels relative to inputs on forms and detail screens.",
+      "labelPlacementHint": "Left/right use Zoho-style side labels (label ends align, inputs in a straight column). Top stacks the label above the field. Narrow modals stack automatically so labels never overlap.",
       "labelPlacements": {
         "top": "Top",
         "left": "Left",
@@ -4137,6 +4137,8 @@
         "upload": "Upload",
         "open": "Open",
         "empty": "No drawings yet. Upload a PDF or image to get started.",
+        "emptyTitle": "No drawings yet",
+        "emptyDescription": "Upload a PDF or image blueprint to get started with pins and plots on this project.",
         "loadError": "Could not load drawings. Try again.",
         "pageLabel": "Showing {start}-{end} of {total} drawings",
         "prev": "Previous",

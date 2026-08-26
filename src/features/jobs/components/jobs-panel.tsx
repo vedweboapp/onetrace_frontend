@@ -85,7 +85,7 @@ export function JobsPanel() {
     setPage,
     setPageSize,
     setListViewMode,
-  } = useListUrlState({ defaultPageSize: 10 });
+  } = useListUrlState({ defaultPageSize: 20 });
 
   const jobStatusParam = searchParams.get("job_status");
   const assignedWorkerParam = searchParams.get("assigned_worker");
@@ -116,7 +116,7 @@ export function JobsPanel() {
     total_records: 0,
     total_pages: 1,
     current_page: 1,
-    page_size: 10,
+    page_size: 20,
     next: null as string | null,
     previous: null as string | null,
   });

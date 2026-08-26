@@ -108,7 +108,7 @@ export function QuotationAdditionalContactsFields({
               />
             </FieldGroup>
 
-            <div className="flex items-end sm:pb-0.5">
+            <div className="form-row-side-action">
               <AppButton
                 type="button"
                 variant="ghost"

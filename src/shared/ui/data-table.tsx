@@ -6,7 +6,7 @@ export function DataTableScroll({ className, ...props }: ComponentPropsWithoutRe
   return (
     <div
       className={cn(
-        "min-h-0 flex-1 overflow-auto overscroll-contain",
+        "min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain",
         "rounded-none",
         className,
       )}

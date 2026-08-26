@@ -41,7 +41,7 @@ export const detailTabErrorClassName =
  * Outer dashboard `overflow-y-auto` is the single scrollbar (same as client/site detail).
  * Do not add min-h / flex-1 / overflow here or the white card nests a second scroll.
  */
-export const entityDetailPageClassName = cn("w-full min-w-0");
+export const entityDetailPageClassName = cn("w-full min-w-0 shrink-0");
 
 /** White record shell — grows with content; no nested overflow scroll. */
 export const entityDetailSurfaceClassName = cn("mt-2 min-w-0 overflow-visible");
@@ -62,15 +62,17 @@ export const detailTabFillViewportClassName = cn(
 
 /**
  * Detail-tab empty / loading / error when the entity detail page is
- * content-height (not a flex fill page). Matches Home WIP panel height.
+ * content-height (not a flex fill page).
+ * Avoid `100dvh` mins — they stack under the header and create a page scrollbar
+ * + empty strip when the sidebar collapses.
  */
 export const detailTabStandaloneFillClassName = cn(
-  "flex w-full flex-col",
-  "min-h-[calc(100dvh-14rem)] sm:min-h-[calc(100dvh-13rem)]",
+  "flex w-full flex-col justify-center",
+  "min-h-[12rem] sm:min-h-[16rem]",
 );
 
 /** Centered empty / loading / error content inside a fill tab or list shell. */
 export const detailTabFillStateClassName = cn(
   "flex h-full w-full min-h-0 flex-1 flex-col items-center justify-center",
-  "px-6 py-12 text-center sm:px-10 sm:py-16",
+  "px-6 py-8 text-center sm:px-10 sm:py-10",
 );

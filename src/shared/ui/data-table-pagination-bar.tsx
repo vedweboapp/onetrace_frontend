@@ -62,6 +62,7 @@ export type DataTablePaginationBarProps = {
 
 /**
  * Compact table footer pinned under the scroll body.
+ * Hidden when there is only one page (no page nav / page-size needed).
  * Page number controls render only when `total_pages > 1`.
  */
 export function DataTablePaginationBar({
@@ -75,7 +76,17 @@ export function DataTablePaginationBar({
   pageSizeControl,
   className,
 }: DataTablePaginationBarProps) {
-  const { current_page, total_pages } = pagination;
+  const { current_page, total_pages, total_records } = pagination;
+  const pageSize = pageSizeControl?.value;
+  const needsPagination =
+    total_pages > 1 ||
+    (Number.isFinite(total_records) &&
+      Number.isFinite(pageSize) &&
+      (pageSize as number) > 0 &&
+      total_records > (pageSize as number));
+
+  if (!needsPagination) return null;
+
   const showPageNav = total_pages > 1;
   const pages = showPageNav ? buildPageList(current_page, total_pages) : [];
 
@@ -94,7 +105,9 @@ export function DataTablePaginationBar({
   return (
     <div
       className={cn(
-        "sticky bottom-0 z-20 flex shrink-0 items-center border-t border-slate-200 bg-white px-3 py-2.5 sm:px-4 sm:py-3",
+        // Pin via flex (sibling of flex-1 scroll body) — avoid sticky, which can leave
+        // an empty strip under the bar when the sidebar width reflows.
+        "z-20 flex shrink-0 items-center border-t border-slate-200 bg-white px-3 py-2.5 sm:px-4 sm:py-3",
         "dark:border-slate-800 dark:bg-slate-950",
         className,
       )}
