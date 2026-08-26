@@ -244,7 +244,7 @@ const VideoRecorder: React.FC<VideoRecorderProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-1 w-full ">
+    <div className="video-recorder-root flex flex-col gap-1 w-full">
       {label && (
         <label className="text-sm font-medium text-mutedtext">
           {label}

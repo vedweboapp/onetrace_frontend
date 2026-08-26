@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Suspense } from "react";
-import { Mail, Pencil, Phone, User } from "lucide-react";
+import { Mail, Phone, User } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -14,8 +14,8 @@ import { SchedulingPanel } from "@/features/scheduling/components/scheduling-pan
 import { routes } from "@/shared/config/routes";
 import { DetailSystemMetadataSection, EntityDetailLoadingSkeleton } from "@/shared/components/entity";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
+import { DetailEntityAddressFields } from "@/shared/components/layout/detail-entity-address-fields";
 import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
-import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
 import {
   detailRecordInnerClassName,
   detailRecordSurfaceShellClassName,
@@ -32,6 +32,7 @@ import {
   buildCurrentPageBackHref,
   buildPathWithStoredBack,
 } from "@/shared/utils/detail-from-list.util";
+import { entityAddressTypeOptions, sortEntityAddressesForDisplay } from "@/shared/form/entity-address-form.util";
 import { AppButton, AppTabs, EditButton, SurfaceShell, type AppTabItem, type CheckmarkSelectOption } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import { parseOrgMoneyInput } from "@/shared/money/format-money.util";
@@ -189,7 +190,43 @@ export function UserDetailScreen({ userId }: { userId: number }) {
     () => setRefreshNonce((k) => k + 1),
   );
 
+  const patchAddresses = useDetailPatch(
+    (addressPayloads: NonNullable<Parameters<typeof updateUserProfile>[1]["addresses"]>) =>
+      updateUserProfile(userId, { addresses: addressPayloads }),
+    { success: t("updatedToast"), error: t("saveError") },
+    () => setRefreshNonce((k) => k + 1),
+  );
+
   const addresses = detail ? resolveUserAddresses(detail) : [];
+  const sortedAddresses = React.useMemo(
+    () => sortEntityAddressesForDisplay(addresses),
+    [addresses],
+  );
+  const addressTypeOptions = React.useMemo(() => entityAddressTypeOptions((key) => t(key)), [t]);
+  const addressFieldLabels = React.useMemo(
+    () => ({
+      addressType: t("fields.addressType"),
+      addressLine1: t("fields.addressLine1"),
+      addressLine2: t("fields.addressLine2"),
+      pincode: t("fields.pincode"),
+      country: t("fields.country"),
+      state: t("fields.state"),
+      city: t("fields.city"),
+      primary: t("addresses.primary"),
+    }),
+    [t],
+  );
+  const addressRequiredMessages = React.useMemo(
+    () => ({
+      addressType: t("validation.addressType"),
+      addressLine1: t("validation.addressLine1"),
+      pincode: t("validation.pincode"),
+      country: t("validation.country"),
+      state: t("validation.state"),
+      city: t("validation.city"),
+    }),
+    [t],
+  );
   const basePay = detail ? resolveBasePay(detail) : "";
   const basePayType = detail ? resolveBasePayType(detail) : "fixed_amount";
   const availableDays = detail ? resolveUserAvailability(detail) : [];
@@ -405,9 +442,12 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                       {availableDays.map((row) => (
                         <li
                           key={row.day}
-                          className="flex w-fit max-w-full items-center gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-800"
+                          className={cn(
+                            "grid w-full max-w-md grid-cols-[8.5rem_minmax(0,1fr)] items-center gap-x-6",
+                            "rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-800",
+                          )}
                         >
-                          <span className="font-medium text-slate-800 dark:text-slate-100">
+                          <span className="min-w-0 truncate font-medium text-slate-800 dark:text-slate-100">
                             {t(`availability.days.${row.day}`)}
                           </span>
                           <span className="tabular-nums text-slate-600 dark:text-slate-300">
@@ -419,59 +459,34 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                   </DetailPanelCard>
                 ) : null}
 
-                <DetailPanelCard
-                  title={t("fields.addresses")}
-                  variant="flat"
-                  className="group/addrSec"
-                  headerRight={
-                    <button
-                      type="button"
-                      onClick={goEdit}
-                      className={cn(
-                        "inline-flex size-7 items-center justify-center rounded-md text-slate-400 transition",
-                        "hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100",
-                        "opacity-0 focus-visible:opacity-100 group-hover/addrSec:opacity-100 max-sm:opacity-100",
-                      )}
-                      aria-label={tActions("edit")}
-                    >
-                      <Pencil className="size-3.5" strokeWidth={1.75} aria-hidden />
-                    </button>
-                  }
-                >
+                <DetailPanelCard title={t("fields.addresses")} variant="flat">
                   {addresses.length === 0 ? (
                     <p className="text-sm text-slate-500 dark:text-slate-400">
                       {t("detail.addressUnavailable")}
                     </p>
                   ) : (
-                    <ul className="space-y-6">
-                      {addresses.map((addr, index) => (
-                        <li key={addr.id ?? `${addr.address_type}-${index}`} className="min-w-0">
-                          <div className="mb-2 flex flex-wrap items-center gap-2">
-                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                              {t(`addressType.${addr.address_type}`)}
-                            </span>
-                            {addr.is_primary ? (
-                              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                                {t("addresses.primary")}
-                              </span>
-                            ) : null}
-                          </div>
-                          <DetailFormattedAddress
-                            line1={addr.address_line_1}
-                            line2={addr.address_line_2}
-                            city={addr.city}
-                            state={addr.state}
-                            pincode={addr.pincode}
-                            country={addr.country}
-                            emptyMessage={
-                              <p className="text-sm text-slate-500 dark:text-slate-400">
-                                {t("detail.addressUnavailable")}
-                              </p>
-                            }
-                          />
-                        </li>
+                    <div className="space-y-4 overflow-visible">
+                      {sortedAddresses.map(({ address: addr, originalIndex, displayIndex }) => (
+                        <DetailEntityAddressFields
+                          key={addr.id ?? `${addr.address_type}-${originalIndex}`}
+                          separated={displayIndex > 0}
+                          blockHeading={t("addresses.rowLabel", { index: displayIndex + 1 })}
+                          blockPrimaryLabel={t("addresses.primary")}
+                          blockIsPrimary={Boolean(addr.is_primary)}
+                          address={addr}
+                          addressIndex={originalIndex}
+                          allAddresses={addresses}
+                          labels={addressFieldLabels}
+                          requiredMessages={addressRequiredMessages}
+                          addressTypeOptions={addressTypeOptions}
+                          addressTypeValue={t(`addressType.${addr.address_type ?? "other"}`)}
+                          editAriaLabel={tActions("edit")}
+                          line2Empty={t("detail.addressLine2Empty")}
+                          gridFrom="sm"
+                          onSaveAddresses={patchAddresses}
+                        />
                       ))}
-                    </ul>
+                    </div>
                   )}
                 </DetailPanelCard>
 

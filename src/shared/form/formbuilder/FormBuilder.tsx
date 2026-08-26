@@ -11,6 +11,7 @@ import { fieldRequiredMarkClassName } from "@/shared/ui/field-primitives";
 import { cn } from "@/core/utils/http.util";
 import { useFormStore } from "@/features/form-builder/store/form-builder.store";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
+import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 import { routes } from "@/shared/config/routes";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { AppTabs } from "@/shared/ui/app-tabs";
@@ -1654,17 +1655,29 @@ export default function FormBuilderLayout({
     setDirty(true);
   };
 
+  const sidebarLayout = useDashboardAppearanceStore((s) => s.sidebarLayout);
   const sidebarOpen = useDashboardSidebarStore((s) => s.sidebarOpen);
-  const sidebarW = sidebarOpen ? 224 : 56;
-  const canvasMarginLeft = 288;
+  const isLeftSidebar = sidebarLayout === "lithium";
+  const isRightSidebar = sidebarLayout === "boron";
+  const isHydrogen = sidebarLayout === "hydrogen";
 
-  // Keep CSS variables in sync with sidebar width so fixed sub-header and
-  // ModuleBar left-position animate purely via CSS (no React render delay).
+  const leftSidebarW = isLeftSidebar ? (sidebarOpen ? 224 : 56) : 0;
+  const rightSidebarW = isRightSidebar ? (sidebarOpen ? 224 : 56) : 0;
+  const canvasMarginLeft = 288;
+  const subheaderTop = isHydrogen ? 100 : 56;
+  const modulebarTop = isHydrogen ? 156 : 112;
+
+  // Keep CSS variables in sync with sidebar width & top offset so fixed sub-header and
+  // ModuleBar position animate purely via CSS (no React render delay).
   React.useLayoutEffect(() => {
     if (isLargeScreen) {
-      document.documentElement.style.setProperty("--subheader-sidebar-w", `${sidebarW}px`);
+      document.documentElement.style.setProperty("--subheader-left-w", `${leftSidebarW}px`);
+      document.documentElement.style.setProperty("--subheader-right-w", `${rightSidebarW}px`);
+      document.documentElement.style.setProperty("--subheader-sidebar-w", `${leftSidebarW}px`);
+      document.documentElement.style.setProperty("--subheader-top", `${subheaderTop}px`);
+      document.documentElement.style.setProperty("--modulebar-top", `${modulebarTop}px`);
     }
-  }, [sidebarW, isLargeScreen]);
+  }, [leftSidebarW, rightSidebarW, subheaderTop, modulebarTop, isLargeScreen]);
 
   const {
     formRef,
@@ -1769,15 +1782,16 @@ export default function FormBuilderLayout({
       {/* Responsive Sub-header */}
       <div
         className={`z-20 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-gray-700 transition-all duration-300 ${isLargeScreen
-            ? "fixed top-14 flex items-center justify-between h-14 px-6"
+            ? "fixed flex items-center justify-between h-14 px-6"
             : "relative w-full flex flex-col gap-4 p-4"
           }`}
         style={
           isLargeScreen
             ? {
-              left: "var(--subheader-sidebar-w, 200px)",
-              width: "calc(100% - var(--subheader-sidebar-w, 200px))",
-              transition: "left 300ms cubic-bezier(0.4,0,0.2,1), width 300ms cubic-bezier(0.4,0,0.2,1)",
+              top: "var(--subheader-top, 56px)",
+              left: "var(--subheader-left-w, 0px)",
+              width: "calc(100% - var(--subheader-left-w, 0px) - var(--subheader-right-w, 0px))",
+              transition: "left 300ms cubic-bezier(0.4,0,0.2,1), width 300ms cubic-bezier(0.4,0,0.2,1), top 300ms cubic-bezier(0.4,0,0.2,1)",
             }
             : undefined
         }
@@ -1855,7 +1869,7 @@ export default function FormBuilderLayout({
       {/* Main builder canvas offset past sidebar + ModuleBar */}
       <div
         className="px-2 py-4 lg:p-6 transition-all duration-300 pt-4 lg:pt-10"
-        style={isLargeScreen ? { marginLeft: canvasMarginLeft } : { marginLeft: 0 }}
+        style={isLargeScreen ? { marginLeft: canvasMarginLeft, marginTop: isHydrogen ? 44 : 0 } : { marginLeft: 0 }}
       >
 
         <div className="mx-auto">

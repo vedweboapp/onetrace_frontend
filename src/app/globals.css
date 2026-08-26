@@ -392,11 +392,19 @@ html[data-font-size] :is(.text-2xl) {
 }
 
 /* Tall controls: keep label top-aligned with the first line of the field. */
-.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(textarea) {
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(textarea),
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.signature-pad-root),
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.video-recorder-root),
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.image-upload-root),
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.file-uploader-root) {
   align-items: start;
 }
 
-.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(textarea) .field-label {
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(textarea) .field-label,
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.signature-pad-root) .field-label,
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.video-recorder-root) .field-label,
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.image-upload-root) .field-label,
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.file-uploader-root) .field-label {
   padding-top: 0.625rem;
 }
 

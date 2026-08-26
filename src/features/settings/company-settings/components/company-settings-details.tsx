@@ -130,7 +130,7 @@ const CompanySettingsDetails = () => {
   };
 
   return (
-    <div className="flex w-full flex-col gap-4">
+    <div className="flex w-full flex-col">
       <CompanySettingsHeader
         tabs={[...COMPANY_TABS]}
         activeTab={activeTab}
@@ -140,7 +140,7 @@ const CompanySettingsDetails = () => {
         onSave={() => orgDetailRef.current?.submit()}
         showEdit={activeTab === "organization"}
       />
-      {renderTabContent()}
+      <div className="min-w-0 pt-1">{renderTabContent()}</div>
     </div>
   );
 };

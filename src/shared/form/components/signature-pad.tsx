@@ -96,7 +96,7 @@ const SignaturePad = React.forwardRef<HTMLDivElement, SignaturePadProps>(
 
     return (
       <div
-        className="flex flex-col gap-1.5 w-full"
+        className="signature-pad-root flex flex-col gap-1.5 w-full"
         ref={(node) => {
           containerRef.current = node;
           if (typeof ref === "function") {

@@ -24,7 +24,8 @@ export function useLogin() {
         organizations: data.organizations,
       });
       router.push(routes.dashboard.root);
-    } catch {
+    } catch (err) {
+      throw err;
     } finally {
       setIsSubmitting(false);
     }

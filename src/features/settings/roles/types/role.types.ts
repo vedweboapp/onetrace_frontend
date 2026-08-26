@@ -4,6 +4,7 @@ export type Role = {
   name?: string;
   parent_role?: number | null;
   parent_role_detail?: Role | null;
+  parent_role_details?: Role | null;
   description?: string | null;
   shared_data_with_peers?: boolean;
   is_active?: boolean;

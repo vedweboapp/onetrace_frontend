@@ -189,7 +189,7 @@ const CompanySettingsCurrency = ({
     settings.symbol,
     settings.currencyCode,
     settings.symbolPosition,
-    settings.numberFormat,
+    settings.digitSeparator,
     settings.decimalPlaces,
   );
 
@@ -199,7 +199,7 @@ const CompanySettingsCurrency = ({
     tempSettings.symbol,
     tempSettings.currencyCode,
     tempSettings.symbolPosition,
-    tempSettings.numberFormat,
+    tempSettings.digitSeparator,
     tempSettings.decimalPlaces,
   );
 
@@ -305,86 +305,94 @@ const CompanySettingsCurrency = ({
             />
           </FieldGroup>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_7.5rem]">
-            <FieldGroup label={t("currencyFormat")} htmlFor="currency-format">
-              <div
-                id="currency-format"
-                role="group"
-                aria-label={t("currencyFormat")}
-                className="flex h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800"
-              >
-                {(
-                  [
-                    { kind: "symbol" as const, label: t("symbol") },
-                    { kind: "code" as const, label: t("formatTypeCode") },
-                  ] as const
-                ).map(({ kind, label }) => (
-                  <button
-                    key={kind}
-                    type="button"
-                    onClick={() => handleTempChange("formatType", kind)}
-                    className={cn(
-                      "min-w-0 flex-1 truncate rounded-lg px-2 text-sm font-semibold transition",
-                      tempSettings.formatType === kind
-                        ? "bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white"
-                        : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </FieldGroup>
+          <FieldGroup label={t("currencyFormat")} htmlFor="currency-format">
+            <div
+              id="currency-format"
+              role="group"
+              aria-label={t("currencyFormat")}
+              className="flex h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800"
+            >
+              {(
+                [
+                  { kind: "symbol" as const, label: t("symbol") },
+                  { kind: "code" as const, label: t("formatTypeCode") },
+                ] as const
+              ).map(({ kind, label }) => (
+                <button
+                  key={kind}
+                  type="button"
+                  onClick={() => handleTempChange("formatType", kind)}
+                  className={cn(
+                    "min-w-0 flex-1 truncate rounded-lg px-2 text-sm font-semibold transition",
+                    tempSettings.formatType === kind
+                      ? "bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white"
+                      : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </FieldGroup>
 
-            <FieldGroup label={t("symbol")} htmlFor="currency-symbol">
-              <input
-                id="currency-symbol"
-                type="text"
-                value={
-                  tempSettings.formatType === "symbol"
-                    ? tempSettings.symbol
-                    : tempSettings.currencyCode
-                }
-                readOnly
-                className={cn(
-                  surfaceInputClassName,
-                  "field-control cursor-not-allowed bg-slate-50 text-center dark:bg-slate-800/50",
-                )}
-              />
-            </FieldGroup>
-          </div>
+          <FieldGroup label={t("symbol")} htmlFor="currency-symbol">
+            <input
+              id="currency-symbol"
+              type="text"
+              value={
+                tempSettings.formatType === "symbol"
+                  ? tempSettings.symbol
+                  : tempSettings.currencyCode
+              }
+              readOnly
+              className={cn(
+                surfaceInputClassName,
+                "field-control cursor-not-allowed bg-slate-50 dark:bg-slate-800/50",
+              )}
+            />
+          </FieldGroup>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <FieldGroup label={t("symbolPosition")} htmlFor="currency-position" required>
-              <CheckmarkSelect
-                id="currency-position"
-                listLabel={t("symbolPosition")}
-                options={[
-                  { value: "before", label: t("symbolBefore") },
-                  { value: "after", label: t("symbolAfter") },
-                ]}
-                value={tempSettings.symbolPosition}
-                onChange={(v) => handleTempChange("symbolPosition", v)}
-                portaled
-                className="w-full"
-              />
-            </FieldGroup>
+          <FieldGroup label={t("symbolPosition")} htmlFor="currency-position" required>
+            <CheckmarkSelect
+              id="currency-position"
+              listLabel={t("symbolPosition")}
+              options={[
+                { value: "before", label: t("symbolBefore") },
+                { value: "after", label: t("symbolAfter") },
+              ]}
+              value={tempSettings.symbolPosition}
+              onChange={(v) => handleTempChange("symbolPosition", v)}
+              portaled
+              className="w-full"
+            />
+          </FieldGroup>
 
-            <FieldGroup label={t("decimalPlaces")} htmlFor="currency-decimals" required>
-              <NumericInput
-                id="currency-decimals"
-                integer
-                value={tempSettings.decimalPlaces}
-                onChange={(next) => {
-                  const n = Number.parseInt(next, 10);
-                  handleTempChange(
-                    "decimalPlaces",
-                    Number.isFinite(n) ? Math.max(0, Math.min(6, n)) : 0,
-                  );
-                }}
-              />
-            </FieldGroup>
-          </div>
+          <FieldGroup label={t("decimalPlaces")} htmlFor="currency-decimals" required>
+            <NumericInput
+              id="currency-decimals"
+              integer
+              value={tempSettings.decimalPlaces}
+              onChange={(next) => {
+                const n = Number.parseInt(next, 10);
+                handleTempChange(
+                  "decimalPlaces",
+                  Number.isFinite(n) ? Math.max(0, Math.min(6, n)) : 0,
+                );
+              }}
+            />
+          </FieldGroup>
+
+          <FieldGroup label={t("currencyDigitFormat")} htmlFor="modal-currency-digit-format">
+            <CheckmarkSelect
+              id="modal-currency-digit-format"
+              listLabel={t("currencyDigitFormat")}
+              options={numberFormatOptions}
+              value={tempSettings.digitSeparator}
+              onChange={(v) => handleTempChange("digitSeparator", normalizeOrgNumberFormat(v))}
+              portaled
+              className="w-full"
+            />
+          </FieldGroup>
 
           <FieldGroup label={t("fields.numberFormat")} htmlFor="modal-org-number-format">
             <CheckmarkSelect
@@ -392,15 +400,7 @@ const CompanySettingsCurrency = ({
               listLabel={t("fields.numberFormat")}
               options={numberFormatOptions}
               value={tempSettings.numberFormat}
-              onChange={(v) => {
-                const next = normalizeOrgNumberFormat(v);
-                setTempSettings((prev) => ({
-                  ...prev,
-                  numberFormat: next,
-                  // Keep money digit grouping in sync — no separate UI field.
-                  digitSeparator: next,
-                }));
-              }}
+              onChange={(v) => handleTempChange("numberFormat", normalizeOrgNumberFormat(v))}
               portaled
               className="w-full"
             />
@@ -411,7 +411,7 @@ const CompanySettingsCurrency = ({
               <Eye className="size-3.5 shrink-0" aria-hidden />
               {t("preview")}
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="min-w-0">
                 <span className="block text-xs text-slate-500 dark:text-slate-400">
                   {t("currencyFormat")}
@@ -419,6 +419,9 @@ const CompanySettingsCurrency = ({
                 <span className="mt-0.5 block truncate text-base font-semibold tracking-tight text-slate-800 dark:text-slate-100 sm:text-lg">
                   {formattedPreviewValue}
                 </span>
+                <p className="mt-1 text-[11px] leading-snug text-slate-400 dark:text-slate-500">
+                  {t("currencyFormatHint")}
+                </p>
               </div>
               <div className="min-w-0">
                 <span className="block text-xs text-slate-500 dark:text-slate-400">
@@ -427,6 +430,9 @@ const CompanySettingsCurrency = ({
                 <span className="mt-0.5 block truncate text-base font-semibold tracking-tight text-slate-800 dark:text-slate-100 sm:text-lg">
                   {formatOrgNumber(1234567.89, 2, tempSettings.numberFormat)}
                 </span>
+                <p className="mt-1 text-[11px] leading-snug text-slate-400 dark:text-slate-500">
+                  {t("numberFormatHint")}
+                </p>
               </div>
             </div>
           </div>

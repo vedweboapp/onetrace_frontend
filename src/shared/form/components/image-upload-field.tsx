@@ -80,7 +80,7 @@ export function ImageUploadField({
   }
 
   return (
-    <div className={cn("relative w-full max-w-[220px]", className)}>
+    <div className={cn("image-upload-root relative w-full max-w-[220px]", className)}>
       <button
         type="button"
         onClick={openFilePicker}

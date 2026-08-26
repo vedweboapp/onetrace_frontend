@@ -42,13 +42,14 @@ export type SchedulingCatalog = {
 type FilterCatalog = Pick<SchedulingCatalog, "clients" | "jobs" | "projects" | "userGroups">;
 
 /** Bump when filter/technician shape changes so in-memory caches reset. */
-const CATALOG_VERSION = 5;
+const CATALOG_VERSION = 6;
 let techniciansCacheVersion = 0;
 let filterCacheVersion = 0;
 let techniciansCache: SchedulingTechnician[] | null = null;
 let techniciansPromise: Promise<SchedulingTechnician[]> | null = null;
 let filterCache: FilterCatalog | null = null;
 let filterPromise: Promise<FilterCatalog> | null = null;
+const filterSubscribers = new Set<(next: FilterCatalog) => void>();
 const jobsByClientCache = new Map<number, Job[]>();
 
 const EMPTY_FILTERS: FilterCatalog = {
@@ -57,6 +58,12 @@ const EMPTY_FILTERS: FilterCatalog = {
   projects: [],
   userGroups: [],
 };
+
+function publishFilterCatalog(next: FilterCatalog) {
+  filterCache = next;
+  filterCacheVersion = CATALOG_VERSION;
+  filterSubscribers.forEach((fn) => fn(next));
+}
 
 export function invalidateSchedulingCatalog(): void {
   techniciansCache = null;
@@ -91,45 +98,82 @@ async function loadTechnicians(fallbackTechnicianTitle: string): Promise<Schedul
   return techniciansPromise;
 }
 
+/**
+ * Loads filter catalogs in parallel and publishes each resource as soon as it
+ * resolves so clients/groups/projects appear without waiting on the slowest call.
+ */
 async function loadFilterCatalog(options?: { force?: boolean }): Promise<FilterCatalog> {
   if (!options?.force && filterCache && filterCacheVersion === CATALOG_VERSION) {
     return filterCache;
   }
-  if (!options?.force && filterPromise) return filterPromise;
+  // Always join an in-flight load (even when force) to avoid duplicate Promise.all work.
+  if (filterPromise) return filterPromise;
 
-  const run = Promise.all([
-    fetchClientsPage(1, 500, { is_active: true }, { silent: true }).catch(() => ({ items: [] })),
-    fetchJobsPage(1, 500, { is_active: true }, { silent: true }).catch(() => ({ items: [] })),
-    fetchProjectsPage(1, 500, { is_active: true }).catch(() => ({ items: [] })),
-    // Do not swallow failures into a cached empty list — that permanently hides groups
-    // in the scheduling filter after a single transient error.
-    fetchUserGroupsPage(1, 100),
-  ])
-    .then(([clientsRes, jobsRes, projectsRes, groupsRes]) => {
-      const next: FilterCatalog = {
-        clients: clientsRes.items.map((c) => ({ id: c.id, name: c.name })),
-        jobs: jobsRes.items.map((job) => ({
-          id: job.id,
-          label: jobSelectLabel(job),
-          clientId: getJobClientId(job.client),
-          projectId: getJobProjectId(job.project),
-        })),
-        projects: projectsRes.items.map((p) => ({
-          id: p.id,
-          name: p.name,
-          clientId: typeof p.client === "number" ? p.client : (p.client?.id ?? null),
-        })),
-        userGroups: Array.isArray(groupsRes.items) ? groupsRes.items : [],
-      };
-      filterCache = next;
-      filterCacheVersion = CATALOG_VERSION;
-      return next;
-    })
-    .finally(() => {
-      if (filterPromise === run) filterPromise = null;
-    });
+  let partial: FilterCatalog =
+    filterCache && filterCacheVersion === CATALOG_VERSION
+      ? { ...filterCache }
+      : { ...EMPTY_FILTERS };
+
+  const publish = (patch: Partial<FilterCatalog>) => {
+    partial = { ...partial, ...patch };
+    publishFilterCatalog(partial);
+  };
+
+  const run = (async () => {
+    await Promise.all([
+      fetchClientsPage(1, 500, { is_active: true }, { silent: true })
+        .then((res) => {
+          publish({
+            clients: res.items.map((c) => ({ id: c.id, name: c.name })),
+          });
+        })
+        .catch(() => {
+          if (partial.clients.length === 0) publish({ clients: [] });
+        }),
+      fetchJobsPage(1, 500, { is_active: true }, { silent: true })
+        .then((res) => {
+          publish({
+            jobs: res.items.map((job) => ({
+              id: job.id,
+              label: jobSelectLabel(job),
+              clientId: getJobClientId(job.client),
+              projectId: getJobProjectId(job.project),
+            })),
+          });
+        })
+        .catch(() => {
+          if (partial.jobs.length === 0) publish({ jobs: [] });
+        }),
+      fetchProjectsPage(1, 500, { is_active: true })
+        .then((res) => {
+          publish({
+            projects: res.items.map((p) => ({
+              id: p.id,
+              name: p.name,
+              clientId: typeof p.client === "number" ? p.client : (p.client?.id ?? null),
+            })),
+          });
+        })
+        .catch(() => {
+          if (partial.projects.length === 0) publish({ projects: [] });
+        }),
+      fetchUserGroupsPage(1, 100)
+        .then((groupsRes) => {
+          publish({
+            userGroups: Array.isArray(groupsRes.items) ? groupsRes.items : [],
+          });
+        })
+        .catch(() => {
+          // Keep prior groups on transient failure — do not wipe a good cache.
+        }),
+    ]);
+    return partial;
+  })();
 
   filterPromise = run;
+  void run.finally(() => {
+    if (filterPromise === run) filterPromise = null;
+  });
   return run;
 }
 
@@ -146,6 +190,9 @@ export function useSchedulingCatalog(
   );
   const [loading, setLoading] = React.useState(
     !(techniciansCache && techniciansCacheVersion === CATALOG_VERSION),
+  );
+  const [filtersLoading, setFiltersLoading] = React.useState(
+    includeFilters && !(filterCache && filterCacheVersion === CATALOG_VERSION),
   );
   const [error, setError] = React.useState<unknown>(null);
 
@@ -174,30 +221,45 @@ export function useSchedulingCatalog(
   }, [fallbackTechnicianTitle]);
 
   React.useEffect(() => {
-    if (!includeFilters) return;
-    let cancelled = false;
-
-    const cached = filterCache && filterCacheVersion === CATALOG_VERSION ? filterCache : null;
-    // Refetch when cache is missing OR groups were never populated (stale empty from older builds).
-    const needsFetch = !cached || cached.userGroups.length === 0;
-
-    if (cached && cached.userGroups.length > 0) {
-      setFilters(cached);
+    if (!includeFilters) {
+      setFiltersLoading(false);
       return;
     }
 
-    void loadFilterCatalog({ force: needsFetch && Boolean(cached) })
+    let cancelled = false;
+    const onUpdate = (next: FilterCatalog) => {
+      if (!cancelled) setFilters(next);
+    };
+    filterSubscribers.add(onUpdate);
+
+    const cached = filterCache && filterCacheVersion === CATALOG_VERSION ? filterCache : null;
+    if (cached) {
+      setFilters(cached);
+      setFiltersLoading(false);
+    } else {
+      setFiltersLoading(true);
+    }
+
+    void loadFilterCatalog()
       .then((next) => {
         if (!cancelled) setFilters(next);
       })
       .catch(() => {
         if (!cancelled) {
-          // Keep prior non-empty groups if a refresh fails; otherwise clear.
-          setFilters((prev) => (prev.userGroups.length > 0 ? prev : EMPTY_FILTERS));
+          setFilters((prev) =>
+            prev.clients.length > 0 || prev.projects.length > 0 || prev.userGroups.length > 0
+              ? prev
+              : EMPTY_FILTERS,
+          );
         }
+      })
+      .finally(() => {
+        if (!cancelled) setFiltersLoading(false);
       });
+
     return () => {
       cancelled = true;
+      filterSubscribers.delete(onUpdate);
     };
   }, [includeFilters]);
 
@@ -212,7 +274,7 @@ export function useSchedulingCatalog(
     [technicians, filters],
   );
 
-  return { catalog, loading, error };
+  return { catalog, loading, filtersLoading, error };
 }
 
 export async function loadUnassignedJobsForClient(clientId: number): Promise<Job[]> {
