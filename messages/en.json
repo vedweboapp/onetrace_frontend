@@ -99,7 +99,9 @@
       "resend": "Resend",
       "newPassword": "New Password",
       "otpInput": "Enter the 6-digit code sent to your email",
-      "newPasswordPlaceholder": "Enter new password"
+      "newPasswordPlaceholder": "Enter new password",
+      "passwordResetSuccess": "Password reset successfully! Please sign in.",
+      "otpVerified": "Email verified successfully!"
     },
     "resetPassword": {
       "title": "Reset Password",

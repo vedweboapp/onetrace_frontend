@@ -6,7 +6,7 @@ export const fieldRequiredMarkClassName = "ml-0.5 text-red-600 dark:text-red-400
 export const fieldErrorTextClassName = "mt-1.5 text-sm text-red-600 dark:text-red-400";
 
 export const fieldLabelClassName = cn(
-  "field-label block font-medium text-slate-700 dark:text-slate-300",
+  "field-label block font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide",
   "text-[length:var(--dash-label-size,0.875rem)]",
 );
 
