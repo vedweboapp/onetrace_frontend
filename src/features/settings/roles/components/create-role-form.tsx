@@ -247,26 +247,28 @@ export function RoleFormScreen({ mode = "create", roleId }: RoleFormProps) {
                   control={control}
                   name="shared_data_with_peers"
                   render={({ field }) => (
-                    <button
-                      id="role-shared-peers"
-                      type="button"
-                      role="switch"
-                      aria-checked={field.value}
-                      aria-label={t("fields.sharedDataWithPeers")}
-                      disabled={saving}
-                      onClick={() => field.onChange(!field.value)}
-                      className={cn(
-                        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20 disabled:opacity-50",
-                        field.value ? "bg-slate-900 dark:bg-slate-100" : "bg-slate-200 dark:bg-slate-700",
-                      )}
-                    >
-                      <span
+                    <div className="flex h-11 items-center">
+                      <button
+                        id="role-shared-peers"
+                        type="button"
+                        role="switch"
+                        aria-checked={field.value}
+                        aria-label={t("fields.sharedDataWithPeers")}
+                        disabled={saving}
+                        onClick={() => field.onChange(!field.value)}
                         className={cn(
-                          "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out dark:bg-slate-900",
-                          field.value ? "translate-x-5" : "translate-x-0",
+                          "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20 disabled:opacity-50",
+                          field.value ? "bg-slate-900 dark:bg-slate-100" : "bg-slate-200 dark:bg-slate-700",
                         )}
-                      />
-                    </button>
+                      >
+                        <span
+                          className={cn(
+                            "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out dark:bg-slate-900",
+                            field.value ? "translate-x-5" : "translate-x-0",
+                          )}
+                        />
+                      </button>
+                    </div>
                   )}
                 />
               </FieldGroup>

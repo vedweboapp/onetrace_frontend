@@ -493,34 +493,35 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
           </FieldGroup>
         </div>
 
-        <FieldGroup label={t("quantity")} htmlFor={qtyId} required>
-          <NumericInput
-            id={qtyId}
-            integer
-            value={qty}
-            onChange={setQty}
-            disabled={submitting}
-          />
-        </FieldGroup>
-
-        <FieldGroup label={t("installationType")}>
-          {installationTypesError ? (
-            <p className="mb-1.5 text-sm text-amber-700 dark:text-amber-300">{installationTypesError}</p>
-          ) : null}
-          <CheckmarkSelect
-            listLabel={t("installationType")}
-            buttonAriaLabel={t("installationType")}
-            value={installationType}
-            onChange={setInstallationType}
-            options={installationTypeOptions}
-            emptyLabel={t("installationTypePlaceholder")}
-            disabled={submitting}
-            portaled
-            searchable
-            clearable
-            className="w-full"
-          />
-        </FieldGroup>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FieldGroup label={t("quantity")} htmlFor={qtyId} required>
+            <NumericInput
+              id={qtyId}
+              integer
+              value={qty}
+              onChange={setQty}
+              disabled={submitting}
+            />
+          </FieldGroup>
+          <FieldGroup label={t("installationType")}>
+            {installationTypesError ? (
+              <p className="mb-1.5 text-sm text-amber-700 dark:text-amber-300">{installationTypesError}</p>
+            ) : null}
+            <CheckmarkSelect
+              listLabel={t("installationType")}
+              buttonAriaLabel={t("installationType")}
+              value={installationType}
+              onChange={setInstallationType}
+              options={installationTypeOptions}
+              emptyLabel={t("installationTypePlaceholder")}
+              disabled={submitting}
+              portaled
+              searchable
+              clearable
+              className="w-full"
+            />
+          </FieldGroup>
+        </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FieldGroup label={t("costPrice")} htmlFor={costId} required>

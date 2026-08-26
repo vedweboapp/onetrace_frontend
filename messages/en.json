@@ -99,7 +99,9 @@
       "resend": "Resend",
       "newPassword": "New Password",
       "otpInput": "Enter the 6-digit code sent to your email",
-      "newPasswordPlaceholder": "Enter new password"
+      "newPasswordPlaceholder": "Enter new password",
+      "passwordResetSuccess": "Password reset successfully! Please sign in.",
+      "otpVerified": "Email verified successfully!"
     },
     "resetPassword": {
       "title": "Reset Password",
@@ -658,7 +660,7 @@
       "homeCurrency": "Home currency",
       "homeCurrencyHint": "Your primary currency",
       "currencyFormat": "Currency format",
-      "currencyFormatHint": "Current money format",
+      "currencyFormatHint": "Reflects home currency, symbol/code, position, decimals, and money digit format",
       "currencyDigitFormat": "Money digit format",
       "numberFormatHint": "Used for quantities and number-only fields",
       "customize": "Customize",
@@ -1688,6 +1690,7 @@
         "editWithIcon": "Edit",
         "sectionOverview": "Overview",
         "addressUnavailable": "No addresses on file.",
+        "addressLine2Empty": "No secondary address provided",
         "noAvailability": "No available days set.",
         "tabsAria": "User detail sections",
         "tabs": {
@@ -3483,6 +3486,7 @@
       "allWorkers": "All workers",
       "allUsers": "All users",
       "allUserGroups": "All groups",
+      "filtersLoading": "Loading…",
       "createSchedule": "Create Schedule",
       "dragToSchedule": "Drag to schedule",
       "creatingSchedule": "Creating schedule…",
@@ -3553,7 +3557,9 @@
         "errorToast": "Could not create the schedule. Try again.",
         "errorRescheduleToast": "Could not update the schedule. Try again.",
         "noUnassignedJobs": "No unassigned jobs for this client.",
-        "loadingJobs": "Loading jobs…"
+        "loadingJobs": "Loading jobs…",
+        "loadingClients": "Loading clients…",
+        "noClients": "No clients found."
       },
       "timeOff": {
         "title": "Mark unavailable",

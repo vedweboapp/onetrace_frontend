@@ -29,7 +29,7 @@ import CitySelect from "../components/CitySelect";
 import RichTextEditor from "../components/rich-text-editor";
 import { FormRule, SECTION_RULE_TARGET_PREFIX, FIELD_RULE_TARGET_PREFIX } from "./form-rules.types";
 import { buildFieldRuleState, FieldRuleState, RuleTargetGroups } from "./form-rules-engine";
-import { surfaceInputClassName } from "@/shared/ui";
+import { surfaceInputClassName, FieldGroup, FieldErrorText } from "@/shared/ui";
 import { signatureDataUrlToFileSync } from "@/shared/utils/signature-to-file.util";
 import { cn } from "@/core/utils/http.util";
 
@@ -520,7 +520,7 @@ const FormField: React.FC<{
 
   const label = (
     <div className="flex items-center gap-1 mb-1">
-      <span className="text-[13px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+      <span className="text-[length:var(--dash-label-size,0.875rem)] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
         {field.field_label}
       </span>
       {isRequired && (
@@ -598,28 +598,33 @@ const FormField: React.FC<{
     );
   }
 
+  const cleanLabel = field.field_label || "";
+
   if (normType === "multi_line" && getEditorType(field) === "rich") {
     const richTextValidations = buildRichTextValidations(validations, field);
 
     return (
       <div className={fieldShellClass}>
-        <Controller
-          name={field.api_name}
-          control={control}
-          rules={richTextValidations}
-          render={({ field: { onChange, onBlur, value } }) => (
-            <RichTextEditor
-              label={label}
-              name={field.api_name}
-              value={value || ""}
-              onChange={onChange}
-              onBlur={onBlur}
-              errors={getError(field.api_name)}
-              readOnly={isReadOnly}
-              placeholder={field.placeholder}
-            />
-          )}
-        />
+        <FieldGroup label={cleanLabel} required={isRequired} className="w-full">
+          <Controller
+            name={field.api_name}
+            control={control}
+            rules={richTextValidations}
+            render={({ field: { onChange, onBlur, value } }) => (
+              <RichTextEditor
+                label={null}
+                name={field.api_name}
+                value={value || ""}
+                onChange={onChange}
+                onBlur={onBlur}
+                errors={getError(field.api_name)}
+                readOnly={isReadOnly}
+                placeholder={field.placeholder}
+              />
+            )}
+          />
+          <FieldErrorText>{getError(field.api_name)?.message}</FieldErrorText>
+        </FieldGroup>
       </div>
     );
   }
@@ -629,53 +634,56 @@ const FormField: React.FC<{
     const currencyDefault = buildCurrencyFieldDefault(field);
     return (
       <div className={fieldShellClass}>
-        <Controller
-          name={field.api_name}
-          control={control}
-          rules={validations}
-          defaultValue={
-            normType === "currency"
-              ? currencyDefault
-              : normType === "multi_select" || normType === "user" || normType === "multi_image_upload"
-                ? []
-                : undefined
-          }
-          render={({ field: { onChange, value } }) => (
-            <Component
-              label={label}
-              name={field.api_name}
-              value={
-                normType === "currency"
-                  ? resolveCurrencyFieldValue(value, field)
-                  : value ??
-                    (normType === "multi_select" || normType === "user"
-                      ? []
-                      : "")
-              }
-              onChange={onChange}
-              control={control} // For FileUploader
-              errors={getError(field.api_name)}
-              readOnly={isReadOnly}
-              disabled={isDisabled}
-              options={field.options || []}
-              placeholder={field.placeholder}
-              properties={field.properties}
-              defaultCurrency={normType === "currency" ? getFieldCurrencyDefault(field as Record<string, unknown>) : undefined}
-              allowedTypes={
-                field.allowedTypes ??
-                field.properties?.validation_rules?.allowedTypes ??
-                field.properties?.validation_rules?.allowed_types
-              }
-              maxFileSize={
-                field.maxFileSize ??
-                field.properties?.validation_rules?.maxFileSize ??
-                field.properties?.validation_rules?.max_file_size
-              }
-              maxSize={normType === "video_recorder" ? (field.maxSize ?? field.properties?.maxSize) : undefined}
-              recordingTime={normType === "video_recorder" ? (field.recordingTime ?? field.properties?.recordingTime) : undefined}
-            />
-          )}
-        />
+        <FieldGroup label={cleanLabel} required={isRequired} className="w-full">
+          <Controller
+            name={field.api_name}
+            control={control}
+            rules={validations}
+            defaultValue={
+              normType === "currency"
+                ? currencyDefault
+                : normType === "multi_select" || normType === "user" || normType === "multi_image_upload"
+                  ? []
+                  : undefined
+            }
+            render={({ field: { onChange, value } }) => (
+              <Component
+                label={null}
+                name={field.api_name}
+                value={
+                  normType === "currency"
+                    ? resolveCurrencyFieldValue(value, field)
+                    : value ??
+                      (normType === "multi_select" || normType === "user"
+                        ? []
+                        : "")
+                }
+                onChange={onChange}
+                control={control} // For FileUploader
+                errors={getError(field.api_name)}
+                readOnly={isReadOnly}
+                disabled={isDisabled}
+                options={field.options || []}
+                placeholder={field.placeholder}
+                properties={field.properties}
+                defaultCurrency={normType === "currency" ? getFieldCurrencyDefault(field as Record<string, unknown>) : undefined}
+                allowedTypes={
+                  field.allowedTypes ??
+                  field.properties?.validation_rules?.allowedTypes ??
+                  field.properties?.validation_rules?.allowed_types
+                }
+                maxFileSize={
+                  field.maxFileSize ??
+                  field.properties?.validation_rules?.maxFileSize ??
+                  field.properties?.validation_rules?.max_file_size
+                }
+                maxSize={normType === "video_recorder" ? (field.maxSize ?? field.properties?.maxSize) : undefined}
+                recordingTime={normType === "video_recorder" ? (field.recordingTime ?? field.properties?.recordingTime) : undefined}
+              />
+            )}
+          />
+          <FieldErrorText>{getError(field.api_name)?.message}</FieldErrorText>
+        </FieldGroup>
       </div>
     );
   }
@@ -1229,7 +1237,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
               <div key={sIdx} className="form-section my-6 first:mt-0">
                 {section.name && (
                   <div className="flex items-center gap-4 mb-4">
-                    <h3 className="text-[14px] font-bold text-gray-800 dark:text-gray-100 uppercase tracking-widest">
+                    <h3 className="text-[length:var(--dash-label-size,0.875rem)] font-bold text-gray-800 dark:text-gray-100 uppercase tracking-widest">
                       {section.name}
                     </h3>
                     <div className="h-px bg-gradient-to-r from-gray-100 dark:from-slate-700 to-transparent flex-1"></div>
@@ -1262,7 +1270,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
             >
               {section.name && (
                 <div className="flex items-center gap-4 mb-4">
-                  <h3 className="text-[14px] font-bold text-gray-800 dark:text-gray-100 uppercase tracking-widest">
+                  <h3 className="text-[length:var(--dash-label-size,0.875rem)] font-bold text-gray-800 dark:text-gray-100 uppercase tracking-widest">
                     {section.name}
                   </h3>
                   <div className="h-px bg-gradient-to-r from-gray-100 dark:from-slate-700 to-transparent flex-1"></div>

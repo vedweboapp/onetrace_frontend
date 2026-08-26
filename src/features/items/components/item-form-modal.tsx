@@ -352,7 +352,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
           </FieldGroup>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FieldGroup label={t("unitType")} htmlFor={unitId}>
             <CheckmarkSelect
               id={unitId}
@@ -422,9 +422,16 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
           ) : null}
         </FieldGroup>
 
-        <div className="space-y-4 pt-1">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("fulfilmentDetails")}</h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
+        <div
+          className={cn(
+            "grid w-full gap-x-[var(--form-label-gap,0.75rem)] gap-y-3 pt-1",
+            "md:grid-cols-[var(--form-label-col,9.5rem)_minmax(0,1fr)]",
+          )}
+        >
+          <h3 className="field-label text-sm font-semibold text-slate-900 dark:text-slate-100 md:pt-[calc((var(--form-control-height,2.75rem)-1.35em)/2)]">
+            {t("fulfilmentDetails")}
+          </h3>
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
             <FieldGroup label={t("dimensions")} htmlFor="modal-item-dimensions">
               <DimensionsLwhInput
                 id="modal-item-dimensions"

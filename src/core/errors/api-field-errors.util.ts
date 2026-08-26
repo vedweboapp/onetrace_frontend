@@ -11,9 +11,13 @@ export function getRawApiErrors(error: unknown): unknown {
   if (isApiBusinessError(error)) return error.errors;
   if (axios.isAxiosError(error)) {
     const data = error.response?.data;
-    if (data && typeof data === "object" && "errors" in data) {
+    if (!data || typeof data !== "object") return null;
+    if (Array.isArray(data)) return data;
+    if ("errors" in data && (data as { errors?: unknown }).errors) {
       return (data as { errors?: unknown }).errors;
     }
+    // Return direct object if it represents DRF/Django validation field errors
+    return data;
   }
   return null;
 }

@@ -7,6 +7,8 @@ import { z } from "zod";
 import { useTranslations } from "next-intl";
 import { Mail, Loader2, Eye, EyeClosed } from "lucide-react";
 import { AUTH_OTP_PURPOSE, requestForgotPasswordOtp, resetPasswordConfirm, verifyOtp } from "@/features/auth/api/auth.api";
+import { toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { getApiFieldErrorMap } from "@/shared/form/report-form-api-error.util";
 import { cn } from "@/core/utils/http.util";
 import { Link, useRouter } from "@/i18n/navigation";
 import { routes } from "@/shared/config/routes";
@@ -105,21 +107,38 @@ export function ForgotPasswordForm() {
           purpose: AUTH_OTP_PURPOSE.passwordReset,
         })
         setResendVisible(false)
+        toastSuccess(t("otpSent", { email: values.email }));
       } else {
         await ApiCalls.find((call) => call.key === curerntStep)?.call();
-
       }
+
       if (curerntStep == "reset-password") {
+        toastSuccess(t("forgotPassword.passwordResetSuccess"));
         router.push(routes.auth.login);
         return;
       }
 
-      setCurrentStep(curerntStep == "send-otp" ? "verify-otp" : (curerntStep == "verify-otp" && !resendPressedRef.current) ? "reset-password" : "verify-otp")
+      const nextStep = curerntStep == "send-otp"
+        ? "verify-otp"
+        : (curerntStep == "verify-otp" && !resendPressedRef.current)
+          ? "reset-password"
+          : "verify-otp";
+
+      if (curerntStep == "send-otp" || (curerntStep == "verify-otp" && resendPressedRef.current)) {
+        toastSuccess(t("otpSent", { email: values.email }));
+        setSuccessMessage(t("otpSent", { email: values.email }));
+      } else if (curerntStep == "verify-otp") {
+        toastSuccess(t("forgotPassword.otpVerified"));
+      }
+
+      setCurrentStep(nextStep);
       setResendPressed(false);
       resendPressedRef.current = false;
-      setSuccessMessage(t("otpSent", { email: values.email }));
-    } catch {
-      setApiError(t("otpSendError"));
+    } catch (err: any) {
+      const fieldErrors = getApiFieldErrorMap(err);
+      const errMsg = fieldErrors.email || fieldErrors.otp || fieldErrors.new_password || getApiErrorDisplayMessage(err, t("otpSendError"));
+      setApiError(errMsg);
+      toastApiError(err, errMsg);
     } finally {
       setIsSubmitting(false);
     }

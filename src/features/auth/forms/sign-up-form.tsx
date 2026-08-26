@@ -77,6 +77,8 @@ const SignUpForm = () => {
     clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<SignUpInput>({
+    mode: "onChange",
+    reValidateMode: "onChange",
     defaultValues: { otp: "", company_size: "" },
   });
 
@@ -200,7 +202,7 @@ const SignUpForm = () => {
       setError("otp", { type: "manual", message: errorMsg });
     }
   };
-
+  const agreementChecked = watch("terms_and_conditions")
   const inputClass =
     "h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-[14px] text-slate-900 placeholder:text-slate-400 outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-900/8";
 
@@ -372,7 +374,7 @@ const SignUpForm = () => {
             <button
               type="button"
               onClick={sendEmail}
-              disabled={emailSending}
+              disabled={emailSending || !agreementChecked}
               className={cn(
                 "w-full h-12 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2",
               )}
@@ -410,7 +412,10 @@ const SignUpForm = () => {
                 <div>
                   <OTPInput
                     value={field.value}
-                    onChange={field.onChange}
+                    onChange={(val) => {
+                      field.onChange(val);
+                      if (errors.otp) clearErrors("otp");
+                    }}
                     maxLength={6}
                     render={({ slots }) => (
                       <div className="flex items-center justify-evenly mt-2 gap-2">

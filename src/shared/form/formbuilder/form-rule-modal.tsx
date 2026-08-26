@@ -365,12 +365,20 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
     <>
       <button
         type="button"
-        className={`fixed inset-0 z-[25] bg-slate-950/30 ${FORM_BUILDER_SUBHEADER_OFFSET}`}
+        className="fixed inset-0 z-[25] bg-slate-950/30"
+        style={{
+          top: "var(--modulebar-top, 112px)",
+        }}
         aria-label="Close rule panel"
         onClick={onClose}
       />
       <aside
-        className={`fixed right-0 z-[30] flex w-full max-w-5xl flex-col overflow-hidden border-l border-gray-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 sm:w-[45%] ${FORM_BUILDER_SUBHEADER_OFFSET} ${FORM_BUILDER_DRAWER_HEIGHT}`}
+        className="fixed right-0 z-[30] flex w-full max-w-5xl flex-col overflow-hidden border-l border-gray-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 sm:w-[45%]"
+        style={{
+          top: "var(--modulebar-top, 112px)",
+          right: "var(--subheader-right-w, 0px)",
+          height: "calc(100vh - var(--modulebar-top, 112px))",
+        }}
         role="dialog"
         aria-modal="true"
         aria-label="Form rule"

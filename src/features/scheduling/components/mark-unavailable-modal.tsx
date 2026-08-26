@@ -119,7 +119,7 @@ export function MarkUnavailableModal({
         <p className="mb-4 text-sm font-semibold text-slate-800 dark:text-slate-100">{technician.name}</p>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-4">
         <FieldGroup label={t("fields.startDate")} htmlFor="timeoff-start-date" required>
           <SurfaceDateInput
             id="timeoff-start-date"
@@ -164,19 +164,18 @@ export function MarkUnavailableModal({
           />
           <FieldErrorText>{errors.endTime}</FieldErrorText>
         </FieldGroup>
+        <FieldGroup label={t("timeOff.reason")} htmlFor="timeoff-reason">
+          <textarea
+            id="timeoff-reason"
+            value={reason}
+            disabled={saving}
+            rows={3}
+            placeholder={t("timeOff.reasonPlaceholder")}
+            className={surfaceInputClassName}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </FieldGroup>
       </div>
-
-      <FieldGroup label={t("timeOff.reason")} htmlFor="timeoff-reason" className="mt-4">
-        <textarea
-          id="timeoff-reason"
-          value={reason}
-          disabled={saving}
-          rows={3}
-          placeholder={t("timeOff.reasonPlaceholder")}
-          className={surfaceInputClassName}
-          onChange={(e) => setReason(e.target.value)}
-        />
-      </FieldGroup>
     </AppModal>
   );
 }

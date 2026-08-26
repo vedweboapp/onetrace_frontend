@@ -115,7 +115,7 @@ const PersonalProfileDetails = () => {
   };
 
   return (
-    <div className="flex w-full flex-col gap-4">
+    <div className="flex w-full flex-col">
       <PersonalProfileHeader
         tabs={[...PROFILE_TABS]}
         activeTab={activeTab}
@@ -128,6 +128,7 @@ const PersonalProfileDetails = () => {
         isSaving={isSaving}
       />
 
+      <div className="min-w-0 pt-1">
       {activeTab === "appearance" ? (
         isLoading ? (
           <div className="flex w-full items-center justify-center p-20">
@@ -160,6 +161,7 @@ const PersonalProfileDetails = () => {
           setIsSaving={setIsSaving}
         />
       )}
+      </div>
     </div>
   );
 };
