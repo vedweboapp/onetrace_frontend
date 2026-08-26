@@ -9,6 +9,7 @@ import { CheckmarkSelect, type CheckmarkSelectOption } from "@/shared/ui/checkma
 import { MultiCheckSelect } from "@/shared/ui/multi-check-select";
 import { PhoneNumberInput } from "@/shared/ui/phone-number-input";
 import { MoneyInput } from "@/shared/ui/money-input";
+import { openNativeDatePicker, SurfaceDateInput } from "@/shared/ui/surface-date-input";
 import { FieldErrorText, RequiredMark, fieldLabelClassName } from "@/shared/ui/field-primitives";
 import { isAppValidPhoneNumber, normalizePhoneForPhoneInput } from "@/shared/utils/phone-input.util";
 import {
@@ -19,7 +20,7 @@ import {
 } from "@/shared/components/layout/detail-inline-edit-lock";
 import { FIELD_MAX_LENGTH, clampFieldLength } from "@/shared/form/field-max-length.util";
 
-export type DetailEditableFieldKind = "text" | "email" | "tel" | "select" | "multiselect" | "money";
+export type DetailEditableFieldKind = "text" | "email" | "tel" | "date" | "select" | "multiselect" | "money";
 
 type DetailEditableFieldEditorProps = {
   draft: string;
@@ -175,6 +176,11 @@ export function DetailEditableField({
     if (!editing) return;
     if (kind === "tel" || kind === "select" || kind === "multiselect" || kind === "money") return;
     const id = window.requestAnimationFrame(() => {
+      if (kind === "date") {
+        inputRef.current?.focus();
+        openNativeDatePicker(inputRef.current);
+        return;
+      }
       if (useTextareaBox || useGrowingEditor) textareaRef.current?.focus();
       else inputRef.current?.focus();
     });
@@ -399,6 +405,38 @@ export function DetailEditableField({
                       return;
                     }
                     void commit();
+                  }}
+                />
+              ) : kind === "date" ? (
+                <SurfaceDateInput
+                  ref={inputRef}
+                  type="date"
+                  value={draft}
+                  disabled={saving}
+                  aria-label={editAriaLabel}
+                  invalid={Boolean(error)}
+                  className={cn(
+                    detailInlineEditorClassName,
+                    "h-auto",
+                    error && "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/20",
+                  )}
+                  onChange={(e) => {
+                    setError(null);
+                    const next = e.target.value;
+                    setDraft(next);
+                    // Native picker closes after a pick — save without waiting for blur
+                    // (blur often fires when the calendar opens and would cancel the edit).
+                    void commit(next);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void commit();
+                    }
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      cancelEdit();
+                    }
                   }}
                 />
               ) : useTextareaBox ? (

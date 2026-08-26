@@ -23,7 +23,9 @@ export function InvoiceStatusBadge({ status, label, className }: Props) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset",
+        // w-fit / self-start: detail field wraps use align-items:stretch and would
+        // otherwise pull the pill to full column width.
+        "inline-flex w-fit max-w-full shrink-0 self-start items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset",
         tone,
         className,
       )}

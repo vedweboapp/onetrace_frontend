@@ -13,7 +13,7 @@ import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { DetailAddressLine1EditableField } from "@/shared/components/layout/detail-address-line1-field";
 import { DetailAddressLocationFields } from "@/shared/components/layout/detail-address-location-fields";
-import { DetailMetricsGrid } from "@/shared/components/layout/detail-metric-card";
+import { DetailMetricsGrid, DetailFieldSpanFull } from "@/shared/components/layout/detail-metric-card";
 import { cn } from "@/core/utils/http.util";
 
 export type DetailEntityAddressFieldLabels = {
@@ -225,17 +225,19 @@ export function DetailEntityAddressFields({
           }}
         />
 
-        <DetailEditableField
-          label={labels.pincode}
-          value={address.pincode ?? ""}
-          kind="text"
-          editAriaLabel={editAriaLabel}
-          required={Boolean(requiredMessages?.pincode)}
-          requiredMessage={requiredMessages?.pincode}
-          onSave={(next) => patchRow((r) => ({ ...r, pincode: next }))}
-        >
-          {address.pincode?.trim() ? address.pincode : null}
-        </DetailEditableField>
+        <DetailFieldSpanFull>
+          <DetailEditableField
+            label={labels.pincode}
+            value={address.pincode ?? ""}
+            kind="text"
+            editAriaLabel={editAriaLabel}
+            required={Boolean(requiredMessages?.pincode)}
+            requiredMessage={requiredMessages?.pincode}
+            onSave={(next) => patchRow((r) => ({ ...r, pincode: next }))}
+          >
+            {address.pincode?.trim() ? address.pincode : null}
+          </DetailEditableField>
+        </DetailFieldSpanFull>
       </DetailMetricsGrid>
     </div>
   );

@@ -672,6 +672,9 @@
         "description": "Descripción de la empresa",
         "address1": "Dirección 1",
         "address2": "Dirección 2",
+        "country": "País",
+        "state": "Estado / provincia",
+        "city": "Ciudad",
         "zip": "Código postal",
         "numberFormat": "Formato numérico"
       },
@@ -680,6 +683,9 @@
         "website": "https://ejemplo.com",
         "address1": "Calle Principal 123",
         "address2": "Oficina 100",
+        "country": "Seleccionar país",
+        "state": "Seleccionar estado / región",
+        "city": "Seleccionar o escribir ciudad",
         "zip": "94102"
       }
     },
@@ -823,7 +829,7 @@
       },
       "formLayoutHeading": "Diseño de formularios",
       "labelPlacementLabel": "Posición de etiquetas",
-      "labelPlacementHint": "Izquierda/derecha usan etiquetas laterales estilo Zoho (finales alineados, campos en columna). Arriba apila la etiqueta sobre el campo. En modales estrechos se apilan solos para no solaparse.",
+      "labelPlacementHint": "Izquierda o derecha coloca la etiqueta junto al campo. Arriba la coloca sobre el campo.",
       "labelPlacements": {
         "top": "Arriba",
         "left": "Izquierda",

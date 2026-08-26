@@ -23,7 +23,6 @@ import {
   DimensionsLwhInput,
   FieldErrorText,
   FieldGroup,
-  FieldLabel,
   InputWithEndSelect,
   MoneyInput,
   MultiCheckSelect,
@@ -354,8 +353,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <FieldLabel htmlFor={unitId}>{t("unitType")}</FieldLabel>
+          <FieldGroup label={t("unitType")} htmlFor={unitId}>
             <CheckmarkSelect
               id={unitId}
               listLabel={t("unitType")}
@@ -371,9 +369,8 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               onChange={setUnitType}
             />
             {unitTypesError ? <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{unitTypesError}</p> : null}
-          </div>
-          <div>
-            <FieldLabel htmlFor={qtyId}>{t("quantity")}</FieldLabel>
+          </FieldGroup>
+          <FieldGroup label={t("quantity")} htmlFor={qtyId}>
             <NumericInput
               id={qtyId}
               integer
@@ -381,9 +378,8 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               onChange={setQty}
               disabled={submitting}
             />
-          </div>
-          <div>
-            <FieldLabel htmlFor={costId}>{t("costPrice")}</FieldLabel>
+          </FieldGroup>
+          <FieldGroup label={t("costPrice")} htmlFor={costId} required>
             <MoneyInput
               id={costId}
               type="number"
@@ -394,9 +390,8 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               onChange={(e) => setCost(e.target.value)}
               disabled={submitting}
             />
-          </div>
-          <div>
-            <FieldLabel htmlFor={sellId}>{t("sellingPrice")}</FieldLabel>
+          </FieldGroup>
+          <FieldGroup label={t("sellingPrice")} htmlFor={sellId} required>
             <MoneyInput
               id={sellId}
               type="number"
@@ -407,7 +402,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               onChange={(e) => setSell(e.target.value)}
               disabled={submitting}
             />
-          </div>
+          </FieldGroup>
         </div>
 
         <FieldGroup label={t("vendors")} htmlFor="modal-item-vendors">
@@ -430,32 +425,28 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
         <div className="space-y-4 pt-1">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("fulfilmentDetails")}</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
-            <div className="min-w-0">
-              <FieldLabel htmlFor="modal-item-dimensions">{t("dimensions")}</FieldLabel>
-              <div className="mt-1.5">
-                <DimensionsLwhInput
-                  id="modal-item-dimensions"
-                  length={length}
-                  width={width}
-                  height={height}
-                  onChange={(next) => {
-                    setLength(next.length);
-                    setWidth(next.width);
-                    setHeight(next.height);
-                  }}
-                  unit={dimensionsUnit}
-                  onUnitChange={(v) => setDimensionsUnit((v as DimensionUnit) || "cm")}
-                  unitAriaLabel={t("dimensionsUnit")}
-                  lengthAriaLabel={t("dimensionsLength")}
-                  widthAriaLabel={t("dimensionsWidth")}
-                  heightAriaLabel={t("dimensionsHeight")}
-                  disabled={submitting}
-                />
-              </div>
+            <FieldGroup label={t("dimensions")} htmlFor="modal-item-dimensions">
+              <DimensionsLwhInput
+                id="modal-item-dimensions"
+                length={length}
+                width={width}
+                height={height}
+                onChange={(next) => {
+                  setLength(next.length);
+                  setWidth(next.width);
+                  setHeight(next.height);
+                }}
+                unit={dimensionsUnit}
+                onUnitChange={(v) => setDimensionsUnit((v as DimensionUnit) || "cm")}
+                unitAriaLabel={t("dimensionsUnit")}
+                lengthAriaLabel={t("dimensionsLength")}
+                widthAriaLabel={t("dimensionsWidth")}
+                heightAriaLabel={t("dimensionsHeight")}
+                disabled={submitting}
+              />
               <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{t("dimensionsHint")}</p>
-            </div>
-            <div className="min-w-0">
-              <FieldLabel htmlFor="modal-item-weight">{t("weight")}</FieldLabel>
+            </FieldGroup>
+            <FieldGroup label={t("weight")} htmlFor="modal-item-weight">
               <InputWithEndSelect
                 inputId="modal-item-weight"
                 inputType="number"
@@ -474,7 +465,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
                 ]}
                 selectAriaLabel={t("weightUnit")}
               />
-            </div>
+            </FieldGroup>
           </div>
         </div>
       </form>

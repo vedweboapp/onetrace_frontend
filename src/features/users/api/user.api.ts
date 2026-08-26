@@ -53,7 +53,7 @@ export async function inviteUser(body: InviteUserPayload): Promise<{ id: number;
 }
 
 export async function updateUserProfile(id: number, body: UpdateUserProfilePayload): Promise<UserProfile> {
-  const { data } = await api.put<ApiEnvelope<UserProfile>>(USER_PATHS.detail(id), body);
+  const { data } = await api.patch<ApiEnvelope<UserProfile>>(USER_PATHS.detail(id), body);
   assertApiSuccess(data);
   return data.data;
 }

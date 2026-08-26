@@ -13,7 +13,7 @@ export function ActiveStatusBadge({ active, label, className }: ActiveStatusBadg
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
+        "inline-flex w-fit max-w-full shrink-0 self-start items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
         active
           ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
           : "bg-rose-100 text-rose-800 dark:bg-rose-950/45 dark:text-rose-200",

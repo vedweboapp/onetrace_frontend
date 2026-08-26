@@ -249,7 +249,7 @@ export function AddressFormFields<T extends FieldValues>({
         withCoordinates={withCoordinates}
         rowCols={addressLineLayout === "stacked" ? "1" : "2"}
       />
-      <div className={addressLineLayout === "stacked" ? "mt-4" : undefined}>
+      <div className="mt-4">
         <AddressLocationFields
           idPrefix={idPrefix}
           control={control}

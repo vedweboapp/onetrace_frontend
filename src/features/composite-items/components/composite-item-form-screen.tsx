@@ -58,8 +58,8 @@ import {
   AppButton,
   CheckmarkSelect,
   type CheckmarkSelectOption,
-  FieldLabel,
-  fieldErrorTextClassName,
+  FieldErrorText,
+  FieldGroup,
   DimensionsLwhInput,
   InputWithEndSelect,
   MoneyInput,
@@ -988,20 +988,17 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
         ) : (
           <form id="composite-item-form-screen" className="space-y-5 p-4 sm:p-6" onSubmit={(e) => void submit(e)}>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <FieldLabel htmlFor={nameId} required>{tModal("name")}</FieldLabel>
+              <FieldGroup label={tModal("name")} htmlFor={nameId} required>
                 <input id={nameId} type="text" autoComplete="off" value={name} onChange={(e) => setName(sanitizeTitleInput(e.target.value))} onBlur={() => setNameTouched(true)} disabled={submitting} placeholder={tModal("namePlaceholder")} className={surfaceInputClassName} />
-                {nameInvalid ? <p className={fieldErrorTextClassName}>{tModal("nameError")}</p> : null}
-              </div>
-              <div>
-                <FieldLabel htmlFor={skuId} required>{tModal("sku")}</FieldLabel>
+                {nameInvalid ? <FieldErrorText>{tModal("nameError")}</FieldErrorText> : null}
+              </FieldGroup>
+              <FieldGroup label={tModal("sku")} htmlFor={skuId} required>
                 <input id={skuId} type="text" autoComplete="off" value={sku} onChange={(e) => setSku(e.target.value)} onBlur={() => setSkuTouched(true)} disabled={submitting} placeholder={tModal("skuPlaceholder")} className={cn(surfaceInputClassName, skuInvalid && "border-red-500 focus:border-red-500 focus:ring-red-500/20")} />
-                {skuInvalid ? <p className={fieldErrorTextClassName}>{tModal("skuError")}</p> : null}
-              </div>
+                {skuInvalid ? <FieldErrorText>{tModal("skuError")}</FieldErrorText> : null}
+              </FieldGroup>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <FieldLabel htmlFor={unitId}>{tModal("unitType")}</FieldLabel>
+              <FieldGroup label={tModal("unitType")} htmlFor={unitId}>
                 <CheckmarkSelect
                   id={unitId}
                   listLabel={tModal("unitType")}
@@ -1022,9 +1019,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                 {unitTypesError ? (
                   <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{unitTypesError}</p>
                 ) : null}
-              </div>
-              <div>
-                <FieldLabel htmlFor={qtyId} required>{tModal("quantity")}</FieldLabel>
+              </FieldGroup>
+              <FieldGroup label={tModal("quantity")} htmlFor={qtyId} required>
                 <NumericInput
                   id={qtyId}
                   integer
@@ -1032,35 +1028,31 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   onChange={setQty}
                   disabled={submitting}
                 />
-              </div>
+              </FieldGroup>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <FieldLabel>{tModal("installationType")}</FieldLabel>
+              <FieldGroup label={tModal("installationType")}>
                 {installationTypesError ? (
-                  <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">{installationTypesError}</p>
+                  <p className="mb-1.5 text-sm text-amber-700 dark:text-amber-300">{installationTypesError}</p>
                 ) : null}
-                <div className="mt-2">
-                  <CheckmarkSelect
-                    listLabel={tModal("installationType")}
-                    buttonAriaLabel={tModal("installationType")}
-                    value={installationType}
-                    onChange={setInstallationType}
-                    options={installationTypeOptions}
-                    emptyLabel={tModal("installationTypePlaceholder")}
-                    disabled={submitting}
-                    portaled
-                    searchable
-                    clearable
-                    className="w-full"
-                    onAdd={installationTypeQuickAdd.onAdd}
-                    addAriaLabel={installationTypeQuickAdd.addAriaLabel}
-                    addLabel={installationTypeQuickAdd.addLabel}
-                  />
-                </div>
-              </div>
-              <div>
-                <FieldLabel htmlFor="composite-installation-cost">{tModal("installationCost")}</FieldLabel>
+                <CheckmarkSelect
+                  listLabel={tModal("installationType")}
+                  buttonAriaLabel={tModal("installationType")}
+                  value={installationType}
+                  onChange={setInstallationType}
+                  options={installationTypeOptions}
+                  emptyLabel={tModal("installationTypePlaceholder")}
+                  disabled={submitting}
+                  portaled
+                  searchable
+                  clearable
+                  className="w-full"
+                  onAdd={installationTypeQuickAdd.onAdd}
+                  addAriaLabel={installationTypeQuickAdd.addAriaLabel}
+                  addLabel={installationTypeQuickAdd.addLabel}
+                />
+              </FieldGroup>
+              <FieldGroup label={tModal("installationCost")} htmlFor="composite-installation-cost">
                 <InputWithEndSelect
                   inputId="composite-installation-cost"
                   orgMoney
@@ -1075,9 +1067,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   selectOptions={installationCostTypeOptions}
                   selectAriaLabel={tModal("installationCostType")}
                 />
-              </div>
-              <div>
-                <FieldLabel htmlFor="composite-installation-hours">{tModal("installationHours")}</FieldLabel>
+              </FieldGroup>
+              <FieldGroup label={tModal("installationHours")} htmlFor="composite-installation-hours">
                 <NumericInput
                   id="composite-installation-hours"
                   maxDecimals={2}
@@ -1086,11 +1077,10 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   placeholder={tModal("installationHoursPlaceholder")}
                   disabled={submitting}
                 />
-              </div>
+              </FieldGroup>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <FieldLabel htmlFor={costId} required>{tModal("costPrice")}</FieldLabel>
+              <FieldGroup label={tModal("costPrice")} htmlFor={costId} required>
                 <MoneyInput
                   id={costId}
                   type="number"
@@ -1104,9 +1094,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   min={0}
                   step="0.01"
                 />
-              </div>
-              <div>
-                <FieldLabel htmlFor={sellId} required>{tModal("sellingPrice")}</FieldLabel>
+              </FieldGroup>
+              <FieldGroup label={tModal("sellingPrice")} htmlFor={sellId} required>
                 <MoneyInput
                   id={sellId}
                   type="number"
@@ -1120,38 +1109,34 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   min={0}
                   step="0.01"
                 />
-              </div>
+              </FieldGroup>
             </div>
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tModal("fulfilmentDetails")}</h3>
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-start">
-                <div>
-                  <FieldLabel htmlFor="composite-dimensions">{tModal("dimensions")}</FieldLabel>
-                  <div className="mt-1.5">
-                    <DimensionsLwhInput
-                      id="composite-dimensions"
-                      length={length}
-                      width={width}
-                      height={height}
-                      onChange={(next) => {
-                        setLength(next.length);
-                        setWidth(next.width);
-                        setHeight(next.height);
-                        setDimensionsInput(composeDimensionsInput(next.length, next.width, next.height));
-                      }}
-                      unit={dimensionsUnit}
-                      onUnitChange={(v) => setDimensionsUnit((v as DimensionUnit) ?? "cm")}
-                      unitAriaLabel={tModal("dimensionsUnit")}
-                      lengthAriaLabel={tModal("dimensionsLength")}
-                      widthAriaLabel={tModal("dimensionsWidth")}
-                      heightAriaLabel={tModal("dimensionsHeight")}
-                      disabled={submitting}
-                    />
-                  </div>
-                  <p className="mt-1.5 text-center text-xs text-slate-500 dark:text-slate-400">{tModal("dimensionsHint")}</p>
-                </div>
-                <div>
-                  <FieldLabel htmlFor="composite-weight">{tModal("weight")}</FieldLabel>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
+                <FieldGroup label={tModal("dimensions")} htmlFor="composite-dimensions">
+                  <DimensionsLwhInput
+                    id="composite-dimensions"
+                    length={length}
+                    width={width}
+                    height={height}
+                    onChange={(next) => {
+                      setLength(next.length);
+                      setWidth(next.width);
+                      setHeight(next.height);
+                      setDimensionsInput(composeDimensionsInput(next.length, next.width, next.height));
+                    }}
+                    unit={dimensionsUnit}
+                    onUnitChange={(v) => setDimensionsUnit((v as DimensionUnit) ?? "cm")}
+                    unitAriaLabel={tModal("dimensionsUnit")}
+                    lengthAriaLabel={tModal("dimensionsLength")}
+                    widthAriaLabel={tModal("dimensionsWidth")}
+                    heightAriaLabel={tModal("dimensionsHeight")}
+                    disabled={submitting}
+                  />
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{tModal("dimensionsHint")}</p>
+                </FieldGroup>
+                <FieldGroup label={tModal("weight")} htmlFor="composite-weight">
                   <InputWithEndSelect
                     inputId="composite-weight"
                     inputType="number"
@@ -1166,13 +1151,12 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                     selectOptions={weightUnitOptions}
                     selectAriaLabel={tModal("weightUnit")}
                   />
-                </div>
+                </FieldGroup>
               </div>
             </div>
-            <div>
-              <FieldLabel>{tModal("components")}</FieldLabel>
-              {itemsError ? <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">{itemsError}</p> : null}
-              <div className="mt-2 space-y-2">
+            <FieldGroup label={tModal("components")}>
+              {itemsError ? <p className="mb-1.5 text-sm text-amber-700 dark:text-amber-300">{itemsError}</p> : null}
+              <div className="space-y-2">
                 {rows.map((r, idx) => (
                   <div key={r.id} className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
                     <div className="min-w-0 w-full sm:max-w-[22rem] sm:flex-1">
@@ -1216,11 +1200,10 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   </div>
                 ))}
               </div>
-              {componentsInvalid ? <p className={fieldErrorTextClassName}>{tModal("atLeastOneComponentError")}</p> : null}
-            </div>
-            <div>
-              <FieldLabel>{tModal("attachments")}</FieldLabel>
-              <div className="mt-2 flex items-center gap-2">
+              {componentsInvalid ? <FieldErrorText>{tModal("atLeastOneComponentError")}</FieldErrorText> : null}
+            </FieldGroup>
+            <FieldGroup label={tModal("attachments")}>
+              <div className="flex items-center gap-2">
                 <input
                   ref={attachmentInputRef}
                   type="file"
@@ -1277,7 +1260,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   })}
                 </ul>
               ) : null}
-            </div>
+            </FieldGroup>
           </form>
         )}
       </SurfaceShell>

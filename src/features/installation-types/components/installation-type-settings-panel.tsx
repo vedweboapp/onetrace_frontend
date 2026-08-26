@@ -52,7 +52,6 @@ import {
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
-  fieldLabelClassName,
   surfaceInputClassName,
 } from "@/shared/ui";
 
@@ -542,11 +541,15 @@ export function InstallationTypeSettingsPanel() {
               <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.installation_type}</p>
             ) : null}
           </FieldGroup>
-          <div>
-            <span className={fieldLabelClassName}>
-              {t("modal.bgColour")} <span className="text-red-500">*</span>
-            </span>
-            <div className="mt-1.5 flex items-center gap-2">
+          <FieldGroup
+            label={
+              <span>
+                {t("modal.bgColour")} <span className="text-red-500">*</span>
+              </span>
+            }
+            htmlFor="installation-type-bg"
+          >
+            <div className="flex items-center gap-2">
               <input
                 type="color"
                 value={normalizeInstallationTypeHex(bgColour, DEFAULT_BG).slice(0, 7)}
@@ -555,6 +558,7 @@ export function InstallationTypeSettingsPanel() {
                 aria-label={t("modal.bgColour")}
               />
               <input
+                id="installation-type-bg"
                 value={bgColour}
                 onChange={(e) => {
                   setBgColour(e.target.value);
@@ -570,12 +574,16 @@ export function InstallationTypeSettingsPanel() {
               />
             </div>
             {errors.bg_color ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.bg_color}</p> : null}
-          </div>
-          <div>
-            <span className={fieldLabelClassName}>
-              {t("modal.textColour")} <span className="text-red-500">*</span>
-            </span>
-            <div className="mt-1.5 flex items-center gap-2">
+          </FieldGroup>
+          <FieldGroup
+            label={
+              <span>
+                {t("modal.textColour")} <span className="text-red-500">*</span>
+              </span>
+            }
+            htmlFor="installation-type-text"
+          >
+            <div className="flex items-center gap-2">
               <input
                 type="color"
                 value={normalizeInstallationTypeHex(textColour, DEFAULT_TEXT).slice(0, 7)}
@@ -584,6 +592,7 @@ export function InstallationTypeSettingsPanel() {
                 aria-label={t("modal.textColour")}
               />
               <input
+                id="installation-type-text"
                 value={textColour}
                 onChange={(e) => {
                   setTextColour(e.target.value);
@@ -601,7 +610,7 @@ export function InstallationTypeSettingsPanel() {
             {errors.text_color ? (
               <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.text_color}</p>
             ) : null}
-          </div>
+          </FieldGroup>
           {editing ? (
             <FieldGroup label={t("modal.activeLabel")} htmlFor="installation-type-active">
               <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-300">

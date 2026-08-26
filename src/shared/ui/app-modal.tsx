@@ -91,7 +91,7 @@ export function AppModal({
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
         className={cn(
-          "relative max-h-[92vh] w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl sm:p-7",
+          "app-modal relative max-h-[92vh] w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl sm:p-7",
           sizeClass[size],
           "dark:border-slate-700 dark:bg-slate-900",
           className,

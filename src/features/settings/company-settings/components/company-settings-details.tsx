@@ -1,13 +1,19 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useUrlParams } from "@/shared/hooks/use-url-params";
 import OrganizationalDetail, { OrganizationalDetailRef } from "./organizational-detail";
 import CompanySettingsHeader from "./company-settings-header";
 import CompanySettingsCurrency from "./company-settings-currency";
 import CompanySettingSchedule from "./company-setting-schedule";
 import { getOrganizationDetails } from "../api/company-settings.api";
 import { OrganizationDetails } from "../types/types";
+import { useSettingsPageTab } from "@/shared/hooks/use-settings-page-tab";
+
+const COMPANY_TABS = [
+  { id: "organization", label: "ORGANIZATION DETAILS" },
+  { id: "currencies", label: "CURRENCIES" },
+  { id: "schedule", label: "SCHEDULE" },
+] as const;
 
 const defaultOrgDetails: OrganizationDetails = {
   id: 1,
@@ -39,8 +45,7 @@ const defaultOrgDetails: OrganizationDetails = {
 
 const CompanySettingsDetails = () => {
   const orgDetailRef = React.useRef<OrganizationalDetailRef>(null);
-  const [params] = useUrlParams({ tab: "organization" });
-  const activeTab = (params.tab as string) || "organization";
+  const { activeTab, setTab } = useSettingsPageTab("organization");
 
   const [isEditing, setIsEditing] = useState(false);
   const [orgDetails, setOrgDetails] = useState<OrganizationDetails | null>(null);
@@ -60,14 +65,24 @@ const CompanySettingsDetails = () => {
   };
 
   useEffect(() => {
-    fetchOrgDetails();
+    void fetchOrgDetails();
   }, []);
+
+  useEffect(() => {
+    setIsEditing(false);
+  }, [activeTab]);
+
+  const handleTabChange = (next: string) => {
+    if (next === activeTab) return;
+    setIsEditing(false);
+    setTab(next);
+  };
 
   const handleUpdateSuccess = (updatedData?: OrganizationDetails) => {
     if (updatedData) {
       setOrgDetails(updatedData);
     } else {
-      fetchOrgDetails();
+      void fetchOrgDetails();
     }
     setIsEditing(false);
   };
@@ -75,8 +90,8 @@ const CompanySettingsDetails = () => {
   const renderTabContent = () => {
     if (isLoading) {
       return (
-        <div className="flex items-center justify-center p-20 w-full">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="flex w-full items-center justify-center p-20">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
         </div>
       );
     }
@@ -87,6 +102,7 @@ const CompanySettingsDetails = () => {
       case "currencies":
         return (
           <CompanySettingsCurrency
+            key={`currency-${orgDetails.id}`}
             initialData={orgDetails}
             onSaveSuccess={handleUpdateSuccess}
           />
@@ -94,6 +110,7 @@ const CompanySettingsDetails = () => {
       case "schedule":
         return (
           <CompanySettingSchedule
+            key={`schedule-${orgDetails.id}`}
             initialData={orgDetails}
             onSaveSuccess={handleUpdateSuccess}
           />
@@ -102,6 +119,7 @@ const CompanySettingsDetails = () => {
       default:
         return (
           <OrganizationalDetail
+            key={`org-${orgDetails.id}`}
             ref={orgDetailRef}
             isEditing={isEditing}
             initialData={orgDetails}
@@ -112,8 +130,11 @@ const CompanySettingsDetails = () => {
   };
 
   return (
-    <div className="flex flex-col gap-4 w-full">
+    <div className="flex w-full flex-col gap-4">
       <CompanySettingsHeader
+        tabs={[...COMPANY_TABS]}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
         isEditing={isEditing}
         setIsEditing={setIsEditing}
         onSave={() => orgDetailRef.current?.submit()}

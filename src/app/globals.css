@@ -294,7 +294,7 @@ html[data-font-size] :is(.text-2xl) {
   align-items: stretch;
   gap: 0.375rem;
 }
-.dash-appearance-scope[data-form-label="top"] .field-label {
+.dash-appearance-scope[data-form-label="top"] .field-group > .field-label {
   margin-bottom: 0;
   text-align: left;
   padding-top: 0;
@@ -302,8 +302,12 @@ html[data-font-size] :is(.text-2xl) {
   padding-left: 0;
 }
 
-.dash-appearance-scope:not([data-form-label]) .field-label,
-.dash-appearance-scope[data-form-label="left"] .field-label {
+/*
+ * Zoho side labels only apply inside FieldGroup.
+ * Bare FieldLabel (stacked above a control in modals) stays left-aligned.
+ */
+.dash-appearance-scope:not([data-form-label]) .field-group:not(.detail-field) > .field-label,
+.dash-appearance-scope[data-form-label="left"] .field-group:not(.detail-field) > .field-label {
   margin-bottom: 0;
   padding-right: 0;
   /* Zoho: end of each label lines up; short labels leave space on the start side. */
@@ -318,7 +322,56 @@ html[data-font-size] :is(.text-2xl) {
   padding-top: calc((var(--form-control-height, 2.75rem) - 1.35em) / 2);
 }
 
-.dash-appearance-scope[data-form-label="right"] .field-label {
+/*
+ * App modals: label left of control on one row, left-aligned text
+ * (override Zoho end-aligned labels — those look “stuck on the right” in narrow dialogs).
+ */
+.app-modal .field-group:not(.detail-field) {
+  display: grid !important;
+  grid-template-columns: minmax(6.5rem, 9.5rem) minmax(0, 1fr) !important;
+  align-items: start;
+  column-gap: var(--form-label-gap, 0.75rem);
+  row-gap: 0.25rem;
+  /* Avoid per-field container stacking that parks labels above and right-aligned. */
+  container-type: normal;
+}
+
+.app-modal .field-group:not(.detail-field) > .field-label {
+  text-align: left !important;
+  order: 0 !important;
+  grid-column: auto !important;
+  margin-bottom: 0;
+  padding-top: calc((var(--form-control-height, 2.75rem) - 1.35em) / 2);
+  white-space: normal;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  line-height: 1.35;
+  align-self: start;
+  justify-self: stretch;
+}
+
+.app-modal .field-group:not(.detail-field) > .field-control-wrap {
+  order: 0 !important;
+  grid-column: auto !important;
+  min-width: 0;
+}
+
+@media (max-width: 639px) {
+  .app-modal .field-group:not(.detail-field) {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.375rem;
+    grid-template-columns: none !important;
+  }
+
+  .app-modal .field-group:not(.detail-field) > .field-label {
+    padding-top: 0 !important;
+    text-align: left !important;
+  }
+}
+
+.dash-appearance-scope[data-form-label="right"] .field-group:not(.detail-field) > .field-label {
   margin-bottom: 0;
   padding-left: 0;
   /* Mirrored Zoho: label sits after the control, start-aligned toward the field. */
@@ -333,7 +386,7 @@ html[data-font-size] :is(.text-2xl) {
   padding-top: calc((var(--form-control-height, 2.75rem) - 1.35em) / 2);
 }
 
-.dash-appearance-scope[data-form-label="right"] .field-control-wrap {
+.dash-appearance-scope[data-form-label="right"] .field-group:not(.detail-field) > .field-control-wrap {
   order: 1;
   min-width: 0;
 }

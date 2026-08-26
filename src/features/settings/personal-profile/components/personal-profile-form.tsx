@@ -683,7 +683,7 @@ const PersonalProfileForm = forwardRef<
                                             </div>
                                         </div>
 
-                                        <FormFieldRow cols="1">
+                                        <FormFieldRow cols="2">
                                             <Controller
                                                 control={control}
                                                 name={`addresses.${index}.address1`}
@@ -719,9 +719,6 @@ const PersonalProfileForm = forwardRef<
                                                     </FieldGroup>
                                                 )}
                                             />
-                                        </FormFieldRow>
-
-                                        <FormFieldRow cols="1">
                                             <Controller
                                                 control={control}
                                                 name={`addresses.${index}.address2`}
@@ -753,6 +750,7 @@ const PersonalProfileForm = forwardRef<
                                             countryIsoName={`addresses.${index}.country_iso`}
                                             stateIsoName={`addresses.${index}.state_iso`}
                                             cityName={`addresses.${index}.city`}
+                                            rowClassName="mt-4"
                                             labels={{
                                                 country: t("fields.country"),
                                                 state: t("fields.state"),

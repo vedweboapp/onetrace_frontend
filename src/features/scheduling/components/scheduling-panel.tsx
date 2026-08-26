@@ -48,7 +48,7 @@ import {
 } from "@/features/scheduling/utils/scheduling-availability.util";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
 import { rowsForTechnician, technicianMatchesWorkerId, technicianWorkerIds, workerDayRows } from "@/features/scheduling/utils/scheduling-technician.util";
-import { scheduleJobLabel, scheduleMatchesJob, scheduleWorkerIds } from "@/features/scheduling/utils/schedule-map.util";
+import { scheduleWorkerIds } from "@/features/scheduling/utils/schedule-map.util";
 import {
   addDays,
   addMonths,
@@ -124,7 +124,7 @@ export function SchedulingPanel({
   defaultClientId,
   defaultProjectId,
   defaultAssignedWorkerId,
-  defaultJobSerial,
+  defaultJobSerial: _defaultJobSerial,
   syncUrl = true,
   onJobSchedulesChanged,
 }: SchedulingPanelProps) {
@@ -186,7 +186,6 @@ export function SchedulingPanel({
   });
 
   const [schedules, setSchedules] = React.useState<Schedule[]>([]);
-  const [jobScopedSchedules, setJobScopedSchedules] = React.useState<Schedule[]>([]);
   const [timeOffs, setTimeOffs] = React.useState<WorkerTimeOff[]>([]);
   const [loadingSchedules, setLoadingSchedules] = React.useState(true);
   const [techSearch, setTechSearch] = React.useState("");
@@ -260,11 +259,8 @@ export function SchedulingPanel({
       if (workerFilter && Number.isFinite(Number(workerFilter))) {
         timeOffFilters.worker_id = Number(workerFilter);
       }
-      const [rows, scopedRows, offs] = await Promise.all([
+      const [rows, offs] = await Promise.all([
         fetchSchedules(filters),
-        jobScopedId
-          ? fetchSchedules({ job_id: jobScopedId }).catch(() => [] as Schedule[])
-          : Promise.resolve([] as Schedule[]),
         fetchWorkerTimeOff(timeOffFilters).catch(() => [] as WorkerTimeOff[]),
       ]);
       let nextRows = rows;
@@ -277,23 +273,10 @@ export function SchedulingPanel({
         });
       }
       setSchedules(nextRows);
-      if (jobScopedId) {
-        const seen = new Set<number>();
-        const scoped: Schedule[] = [];
-        for (const row of [...scopedRows, ...nextRows]) {
-          if (seen.has(row.id) || !scheduleMatchesJob(row, jobScopedId, defaultJobSerial)) continue;
-          seen.add(row.id);
-          scoped.push(row);
-        }
-        setJobScopedSchedules(scoped);
-      } else {
-        setJobScopedSchedules([]);
-      }
       setTimeOffs(offs);
     } catch (error) {
       toastApiError(error, t("loadError"));
       setSchedules([]);
-      setJobScopedSchedules([]);
       setTimeOffs([]);
     } finally {
       setLoadingSchedules(false);
@@ -308,7 +291,6 @@ export function SchedulingPanel({
     projectFilter,
     catalog,
     jobScopedId,
-    defaultJobSerial,
     t,
   ]);
 
@@ -475,8 +457,9 @@ export function SchedulingPanel({
     return [...all, ...(catalog.userGroups ?? []).map((g) => ({ value: String(g.id), label: g.name }))];
   }, [catalog, t]);
 
-  // Job tab may have many schedules (one per worker). Always show this job's rows when scoped.
-  const visibleSchedules = jobScopedId ? jobScopedSchedules : schedules;
+  // Always show every schedule in range (including other jobs) so occupied times are visible.
+  // Job-scoped create still locks client/job via defaultJobId — display must not hide conflicts.
+  const visibleSchedules = schedules;
   const allowCreate = true;
 
   const filteredTechs = React.useMemo(() => {

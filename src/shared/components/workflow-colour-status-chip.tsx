@@ -25,7 +25,7 @@ export function WorkflowColourStatusChip({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full truncate rounded-full border border-black/10 px-3 py-1 text-xs font-semibold shadow-sm",
+        "inline-flex w-fit max-w-full shrink-0 self-start truncate rounded-full border border-black/10 px-3 py-1 text-xs font-semibold shadow-sm",
         className,
       )}
       style={{

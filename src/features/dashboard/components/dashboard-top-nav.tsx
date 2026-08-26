@@ -53,8 +53,8 @@ export function TopNavLink({
 
 /**
  * Parent item with hover/click dropdown (Quotes, Jobs, Contacts, Products).
- * Menu is portaled and opens upward so it is never clipped by the nav’s
- * horizontal scroll container.
+ * Menu is portaled below the trigger so it isn’t clipped by the top of the viewport
+ * or the nav’s horizontal scroll container.
  */
 export function TopNavGroup({
   label,
@@ -94,9 +94,9 @@ export function TopNavGroup({
     if (left + menuWidth > window.innerWidth - pad) {
       left = Math.max(pad, window.innerWidth - menuWidth - pad);
     }
-    // Prefer above the trigger so the menu stays clear of the scroll strip.
+    // Open just below the trigger (portaled — not clipped by the nav strip).
     setCoords({
-      top: Math.max(pad, rect.top - 6),
+      top: rect.bottom + 4,
       left,
       width: menuWidth,
     });
@@ -146,7 +146,7 @@ export function TopNavGroup({
             role="menu"
             aria-label={label}
             className={cn(
-              "fixed z-[120] min-w-[11rem] -translate-y-full rounded-lg border border-slate-200/90 bg-white p-1 shadow-lg",
+              "fixed z-[120] min-w-[11rem] rounded-lg border border-slate-200/90 bg-white p-1 shadow-lg",
               "ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
             )}
             style={{ top: coords.top, left: coords.left, width: coords.width }}

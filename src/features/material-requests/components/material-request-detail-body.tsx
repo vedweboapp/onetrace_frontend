@@ -7,6 +7,7 @@ import type { MaterialRequestDetail } from "@/features/material-requests/types/m
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import { MaterialRequestStatusBadge } from "@/features/material-requests/components/material-request-status-badge";
 import {
+  getMaterialRequestStatusId,
   materialRequestExtraItemName,
   materialRequestItemGroupName,
   materialRequestItemProductName,
@@ -17,7 +18,6 @@ import {
   materialRequestJobSerial,
   materialRequestWorkerLabel,
   nestedId,
-  normalizeMaterialRequestStatus,
 } from "@/features/material-requests/utils/material-request-nested-fields.util";
 import type { MaterialRequestItemSummary } from "@/features/material-requests/types/material-request.types";
 import { DispatchedQuantityCell } from "@/shared/components/quantity/dispatched-quantity-cell";
@@ -55,7 +55,7 @@ type Props = {
   dateFmt: Intl.DateTimeFormat;
   dueFmt: Intl.DateTimeFormat;
   statusLabel: string;
-  statusRow?: Pick<WorkflowColourStatus, "status_name" | "bg_colour" | "text_colour"> | null;
+  statusRow?: Pick<WorkflowColourStatus, "id" | "status_name" | "bg_colour" | "text_colour"> | null;
   /** Status select options from `useMaterialStatusCatalog()` on the detail screen. */
   statusOptions?: { value: string; label: string }[];
   /** Refresh detail after a successful quick-edit PATCH. */
@@ -100,7 +100,10 @@ export function MaterialRequestDetailBody({
   const dispatchIds = detail.dispatch_ids ?? [];
   const itemRows = itemRowsFromDetail(detail);
   const showRestockedColumn = itemRows.some((row) => row.restocked_quantity > 0);
-  const statusValue = normalizeMaterialRequestStatus(detail.status);
+  const statusId =
+    getMaterialRequestStatusId(detail.status) ??
+    (statusRow && statusRow.id > 0 ? statusRow.id : null);
+  const statusValue = statusId != null ? String(statusId) : "";
   const notes = detail.notes?.trim() ?? "";
 
   const patchField = useDetailPatch(
@@ -133,7 +136,11 @@ export function MaterialRequestDetailBody({
               kind="select"
               options={statusOptions}
               editAriaLabel={tActions("edit")}
-              onSave={(next) => patchField({ status: next })}
+              onSave={(next) => {
+                const id = Number.parseInt(next, 10);
+                if (!Number.isFinite(id) || id <= 0) return Promise.resolve();
+                return patchField({ status: id });
+              }}
             >
               <MaterialRequestStatusBadge status={detail.status} label={statusLabel} statusRow={statusRow} />
             </DetailEditableField>
@@ -145,7 +152,7 @@ export function MaterialRequestDetailBody({
           <DetailEditableField
             label={t("fields.requestedDate")}
             value={formatApiDateForHtmlDateInput(detail.requested_date)}
-            kind="text"
+            kind="date"
             required
             requiredMessage={t("validation.requestedDate")}
             editAriaLabel={tActions("edit")}

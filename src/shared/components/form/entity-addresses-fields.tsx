@@ -271,25 +271,6 @@ export function EntityAddressesFields<T extends FieldValues>({
                   </FieldGroup>
                 )}
               />
-
-              <Controller
-                control={control}
-                name={`addresses.${index}.address_line_2` as Path<T>}
-                render={({ field: f }) => (
-                  <FieldGroup label={labels.addressLine2} htmlFor={`${rowIdPrefix}-line2`}>
-                    <input
-                      id={`${rowIdPrefix}-line2`}
-                      autoComplete="address-line2"
-                      className={surfaceInputClassName}
-                      disabled={disabled}
-                      maxLength={FIELD_MAX_LENGTH.ADDRESS_LINE}
-                      value={String(f.value ?? "")}
-                      onChange={(e) => f.onChange(sanitizeAddressInput(e.target.value))}
-                      onBlur={f.onBlur}
-                    />
-                  </FieldGroup>
-                )}
-              />
             </FormFieldRow>
 
             <CascadingLocationFields
@@ -299,6 +280,7 @@ export function EntityAddressesFields<T extends FieldValues>({
               stateIsoName={`addresses.${index}.state_iso` as Path<T>}
               cityName={`addresses.${index}.city` as Path<T>}
               disabled={disabled}
+              rowClassName="mt-4"
               labels={{
                 country: labels.country,
                 state: labels.state,
@@ -314,6 +296,26 @@ export function EntityAddressesFields<T extends FieldValues>({
                 state: rowErrors?.state_iso?.message as string | undefined,
                 city: rowErrors?.city?.message as string | undefined,
               }}
+              leadingSlot={
+                <Controller
+                  control={control}
+                  name={`addresses.${index}.address_line_2` as Path<T>}
+                  render={({ field: f }) => (
+                    <FieldGroup label={labels.addressLine2} htmlFor={`${rowIdPrefix}-line2`}>
+                      <input
+                        id={`${rowIdPrefix}-line2`}
+                        autoComplete="address-line2"
+                        className={surfaceInputClassName}
+                        disabled={disabled}
+                        maxLength={FIELD_MAX_LENGTH.ADDRESS_LINE}
+                        value={String(f.value ?? "")}
+                        onChange={(e) => f.onChange(sanitizeAddressInput(e.target.value))}
+                        onBlur={f.onBlur}
+                      />
+                    </FieldGroup>
+                  )}
+                />
+              }
               trailingSlot={
                 <FieldGroup label={labels.pincode} htmlFor={`${rowIdPrefix}-pincode`} required>
                   <Controller
