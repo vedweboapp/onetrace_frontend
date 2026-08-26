@@ -102,6 +102,8 @@ export type SchedulingPanelProps = {
   defaultJobSerial?: string | null;
   /** Sync view/filters to URL search params. Default true on /scheduling. */
   syncUrl?: boolean;
+  /** Fired after create/delete so parent screens can refresh job assignment data. */
+  onJobSchedulesChanged?: () => void;
 };
 
 function startOfLocalDaySafe(d: Date): Date {
@@ -124,6 +126,7 @@ export function SchedulingPanel({
   defaultAssignedWorkerId,
   defaultJobSerial,
   syncUrl = true,
+  onJobSchedulesChanged,
 }: SchedulingPanelProps) {
   const t = useTranslations("Dashboard.scheduling");
   const tList = useTranslations("Dashboard.list");
@@ -219,9 +222,8 @@ export function SchedulingPanel({
   const filterRowRef = React.useRef<HTMLDivElement>(null);
 
   const { catalog, loading: catalogLoading } = useSchedulingCatalog(t("modal.technicianFallbackTitle"), {
-    includeFilters:
-      filtersOpen ||
-      Boolean((!jobScopedId && (clientFilter || jobFilter)) || projectFilter || groupFilter),
+    // Always load clients/jobs/projects/groups so the filter is populated when opened.
+    includeFilters: true,
   });
 
   const weekStart = React.useMemo(() => startOfWeekMonday(anchorDate), [anchorDate]);
@@ -851,6 +853,7 @@ export function SchedulingPanel({
       }
     }
     setRefreshKey((k) => k + 1);
+    onJobSchedulesChanged?.();
   }
 
   const clearTimelineFocus = React.useCallback(() => {
@@ -916,6 +919,7 @@ export function SchedulingPanel({
       toastSuccess(t("detail.deletedToast"));
       setDeleteTarget(null);
       setRefreshKey((k) => k + 1);
+      onJobSchedulesChanged?.();
     } catch (error) {
       toastApiError(error, t("detail.deleteError"));
     } finally {
@@ -1034,6 +1038,7 @@ export function SchedulingPanel({
       <CheckmarkSelect
         listLabel={t("allUserGroups")}
         buttonAriaLabel={t("allUserGroups")}
+        emptyLabel={t("allUserGroups")}
         options={groupOptions}
         value={groupFilter}
         searchable

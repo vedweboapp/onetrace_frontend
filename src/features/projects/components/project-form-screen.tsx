@@ -574,7 +574,6 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                       />
                     )}
                   />
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("hints.sitesMultiSelect")}</p>
                 </FieldGroup>
                 <FieldGroup label="Managers" htmlFor="project-managers">
                   <Controller

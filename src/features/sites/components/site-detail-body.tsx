@@ -190,14 +190,13 @@ export function SiteDetailBody({
           </DetailMetricsGrid>
         </DetailPanelCard>
 
-        <DetailPanelCard title={t("contactPerson.sectionTitle")}>
-          <SiteDetailContactPersonsEditor
-            detail={detail}
-            contactNameById={contactNameById}
-            titleNameById={titleNameById}
-            onSaveContacts={(contacts) => patchSiteField({ contacts })}
-          />
-        </DetailPanelCard>
+        <SiteDetailContactPersonsEditor
+          title={t("contactPerson.sectionTitle")}
+          detail={detail}
+          contactNameById={contactNameById}
+          titleNameById={titleNameById}
+          onSaveContacts={(contacts) => patchSiteField({ contacts })}
+        />
 
         <DetailPanelCard title={t("detail.sectionAddress")}>
           <DetailMetricsGrid>

@@ -24,6 +24,8 @@ export function useEntityDetailScreen<T>({ entityId, fetch, loadError }: UseEnti
   fetchRef.current = fetch;
   const loadErrorRef = React.useRef(loadError);
   loadErrorRef.current = loadError;
+  const entityIdRef = React.useRef(entityId);
+  entityIdRef.current = entityId;
 
   React.useEffect(() => {
     let cancelled = false;
@@ -52,7 +54,22 @@ export function useEntityDetailScreen<T>({ entityId, fetch, loadError }: UseEnti
     };
   }, [entityId, refreshNonce]);
 
-  return { detail, loading, error, notFound, retry, dateFmt };
+  /** Refetch without clearing the current detail / flashing the loading skeleton. */
+  const reloadQuiet = React.useCallback(async () => {
+    const id = entityIdRef.current;
+    try {
+      const row = await fetchRef.current(id);
+      if (entityIdRef.current === id) {
+        setDetail(row);
+        setError(null);
+        setNotFound(false);
+      }
+    } catch {
+      /* Keep showing the last good detail. */
+    }
+  }, []);
+
+  return { detail, loading, error, notFound, retry, reloadQuiet, dateFmt };
 }
 
 /** PATCH + toast + refresh for Zoho-style detail inline edit (one hook, no duplicated try/catch). */

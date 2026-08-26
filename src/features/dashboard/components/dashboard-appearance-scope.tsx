@@ -122,6 +122,22 @@ export function DashboardAppearanceScope({ children, className }: Props) {
     document.head.appendChild(link);
   }, []);
 
+  // Keep document from scrolling under the h-dvh shell (double scrollbar + bottom gap
+  // when the sidebar width changes and content briefly overflows the viewport).
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+    const html = document.documentElement;
+    const { body } = document;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+    };
+  }, []);
+
   React.useEffect(() => {
     if (typeof document === "undefined") return;
     const root = document.documentElement;

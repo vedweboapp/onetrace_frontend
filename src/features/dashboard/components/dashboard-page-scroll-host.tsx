@@ -9,66 +9,38 @@ import {
 } from "@/shared/config/dashboard-shell";
 import { cn } from "@/core/utils/http.util";
 
-function detectFillPage(root: HTMLElement | null): boolean {
-  if (!root) return false;
-  return Boolean(
-    root.querySelector(
-      ".dashboard-list-page, [data-list-page], [data-dashboard-fill-page]",
-    ),
-  );
-}
-
 /**
- * Constrains dashboard page height to the viewport and chooses scroll mode:
- * - fill pages (lists, entity detail): no outer scroll; inner panes scroll
- * - everything else: main column scrolls
+ * Constrains dashboard page height to the viewport and chooses scroll mode via CSS `:has()`:
+ * - fill pages (`.dashboard-list-page` / data markers): no outer scroll; inner panes scroll
+ * - everything else: this pane scrolls
+ *
+ * CSS-driven mode avoids JS starting in "scroll" mode and desyncing when the sidebar
+ * width animates (which previously left a second scrollbar + empty bottom strip).
  */
 export function DashboardPageScrollHost({ children }: { children: ReactNode }) {
-  const hostRef = React.useRef<HTMLDivElement>(null);
-  const [fillPage, setFillPage] = React.useState(false);
   const sidebarOpen = useDashboardSidebarStore((s) => s.sidebarOpen);
 
-  const syncFillMode = React.useCallback(() => {
-    setFillPage(detectFillPage(hostRef.current));
-  }, []);
-
+  // Sidebar width transition changes available width — nudge layout after it settles.
   React.useLayoutEffect(() => {
-    syncFillMode();
-    const root = hostRef.current;
-    if (!root) return;
-
-    const observer = new MutationObserver(syncFillMode);
-    observer.observe(root, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, [syncFillMode, children]);
-
-  // Sidebar width transition reflows the flex column — re-sync during/after toggle.
-  React.useLayoutEffect(() => {
-    syncFillMode();
-    const frames: number[] = [];
-    frames.push(requestAnimationFrame(() => syncFillMode()));
-    const t1 = window.setTimeout(syncFillMode, 200);
-    const t2 = window.setTimeout(syncFillMode, 360);
+    const bump = () => window.dispatchEvent(new Event("resize"));
+    const frame = requestAnimationFrame(bump);
+    const t = window.setTimeout(bump, 220);
     return () => {
-      frames.forEach((id) => cancelAnimationFrame(id));
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
+      cancelAnimationFrame(frame);
+      window.clearTimeout(t);
     };
-  }, [sidebarOpen, syncFillMode]);
+  }, [sidebarOpen]);
 
   return (
-    <div
-      ref={hostRef}
-      className="flex min-h-0 flex-1 flex-col overflow-hidden"
-    >
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <div
         className={cn(
+          "dashboard-page-scroll-pane",
           dashboardPageContainerClassName,
           dashboardMainGutterClassName,
-          "flex min-h-0 flex-1 flex-col",
-          fillPage
-            ? "overflow-hidden pt-4 sm:pt-5"
-            : "overflow-y-auto overscroll-y-contain py-4 sm:py-5",
+          "flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overscroll-y-contain",
+          // Default: natural-height pages scroll here. Fill pages override in globals.css.
+          "overflow-y-auto pt-4 pb-4 sm:pt-5 sm:pb-5",
         )}
       >
         {children}

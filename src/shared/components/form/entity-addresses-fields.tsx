@@ -32,7 +32,6 @@ import {
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
-  FormFieldSpanFull,
   surfaceInputClassName,
 } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
@@ -273,26 +272,24 @@ export function EntityAddressesFields<T extends FieldValues>({
                 )}
               />
 
-              <FormFieldSpanFull>
-                <Controller
-                  control={control}
-                  name={`addresses.${index}.address_line_2` as Path<T>}
-                  render={({ field: f }) => (
-                    <FieldGroup label={labels.addressLine2} htmlFor={`${rowIdPrefix}-line2`}>
-                      <input
-                        id={`${rowIdPrefix}-line2`}
-                        autoComplete="address-line2"
-                        className={surfaceInputClassName}
-                        disabled={disabled}
-                        maxLength={FIELD_MAX_LENGTH.ADDRESS_LINE}
-                        value={String(f.value ?? "")}
-                        onChange={(e) => f.onChange(sanitizeAddressInput(e.target.value))}
-                        onBlur={f.onBlur}
-                      />
-                    </FieldGroup>
-                  )}
-                />
-              </FormFieldSpanFull>
+              <Controller
+                control={control}
+                name={`addresses.${index}.address_line_2` as Path<T>}
+                render={({ field: f }) => (
+                  <FieldGroup label={labels.addressLine2} htmlFor={`${rowIdPrefix}-line2`}>
+                    <input
+                      id={`${rowIdPrefix}-line2`}
+                      autoComplete="address-line2"
+                      className={surfaceInputClassName}
+                      disabled={disabled}
+                      maxLength={FIELD_MAX_LENGTH.ADDRESS_LINE}
+                      value={String(f.value ?? "")}
+                      onChange={(e) => f.onChange(sanitizeAddressInput(e.target.value))}
+                      onBlur={f.onBlur}
+                    />
+                  </FieldGroup>
+                )}
+              />
             </FormFieldRow>
 
             <CascadingLocationFields

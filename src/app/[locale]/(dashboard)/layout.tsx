@@ -16,7 +16,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </Suspense>
       <DashboardAppearanceScope
         className={cn(
-          "flex h-dvh min-h-0 overflow-hidden bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100",
+          "flex h-dvh max-h-dvh min-h-0 overflow-hidden bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100",
         )}
       >
         <DashboardShellLayout>{children}</DashboardShellLayout>

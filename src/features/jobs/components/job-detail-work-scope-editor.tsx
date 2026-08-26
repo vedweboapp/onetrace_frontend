@@ -16,6 +16,7 @@ import {
 import { jobToFormDefaults } from "@/features/jobs/utils/job-form-map";
 import { formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
 import { DetailEntityLink } from "@/shared/components/entity";
+import { DetailPanelCard } from "@/shared/components/layout/detail-metric-card";
 import {
   DetailLinkedTable,
   DetailLinkedTableRow,
@@ -27,6 +28,7 @@ import { AppButton, CheckmarkSelect, NumericInput } from "@/shared/ui";
 import { MoneyInput } from "@/shared/ui/money-input";
 import { ensureCheckmarkOption } from "@/shared/utils/checkmark-options.util";
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
+import type { ReactNode } from "react";
 
 type Option = { value: string; label: string };
 
@@ -56,9 +58,11 @@ function rowsFromDetail(detail: Job): DraftRow[] {
 }
 
 export function JobDetailWorkScopeEditor({
+  title,
   detail,
   onSave,
 }: {
+  title: ReactNode;
   detail: Job;
   onSave: (job_meta: JobMetaPayload) => Promise<void>;
 }) {
@@ -187,12 +191,14 @@ export function JobDetailWorkScopeEditor({
 
   if (!editing) {
     return (
-      <div className="space-y-3">
-        <div className="flex justify-end">
+      <DetailPanelCard
+        title={title}
+        headerRight={
           <AppButton type="button" variant="secondary" size="sm" onClick={startEdit}>
             {compositeRows.length === 0 ? t("lineItems.addItem") : tActions("edit")}
           </AppButton>
-        </div>
+        }
+      >
         {compositeRows.length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">{t("lineItems.empty")}</p>
         ) : (
@@ -307,11 +313,24 @@ export function JobDetailWorkScopeEditor({
             </div>
           </div>
         )}
-      </div>
+      </DetailPanelCard>
     );
   }
 
   return (
+    <DetailPanelCard
+      title={title}
+      headerRight={
+        <div className="flex flex-wrap items-center gap-2">
+          <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={cancelEdit}>
+            {tActions("cancel")}
+          </AppButton>
+          <AppButton type="button" variant="primary" size="sm" loading={saving} onClick={() => void save()}>
+            {tActions("save")}
+          </AppButton>
+        </div>
+      }
+    >
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-end gap-2">
         <AppButton
@@ -323,12 +342,6 @@ export function JobDetailWorkScopeEditor({
         >
           <Plus className="size-4" aria-hidden />
           {t("lineItems.addItem")}
-        </AppButton>
-        <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={cancelEdit}>
-          {tActions("cancel")}
-        </AppButton>
-        <AppButton type="button" variant="primary" size="sm" loading={saving} onClick={() => void save()}>
-          {tActions("save")}
         </AppButton>
       </div>
       <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
@@ -452,5 +465,6 @@ export function JobDetailWorkScopeEditor({
         </div>
       </div>
     </div>
+    </DetailPanelCard>
   );
 }

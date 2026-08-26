@@ -283,7 +283,7 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
           ) : (
             <div className="hidden min-h-[1px] md:block" aria-hidden />
           )}
-          {showCitySelect ? trailingSlot ?? null : <div className="col-span-full">{trailingSlot}</div>}
+          {trailingSlot ?? null}
         </FormFieldRow>
       ) : null}
     </div>

@@ -34,7 +34,6 @@ import { DetailMultiValue, DetailMultiValueItem } from "@/shared/components/layo
 import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
 import {
-  DetailFieldSpanFull,
   DetailMetricCard,
   DetailMetricsGrid,
   DetailPagePadding,
@@ -914,8 +913,7 @@ export function JobDetailBody({
                 />
               </DetailMetricCard>
             )}
-            <DetailFieldSpanFull>
-              <DetailMetricCard label={t("fields.assignedWorkers")}>
+            <DetailMetricCard label={t("fields.assignedWorkers")} className="col-span-full">
                 <div className="flex min-w-0 items-start gap-2">
                   <div className="min-w-0 flex-1">
                     {assignedWorkers.length === 0 ? (
@@ -950,19 +948,17 @@ export function JobDetailBody({
                   ) : null}
                 </div>
               </DetailMetricCard>
-            </DetailFieldSpanFull>
-            <DetailFieldSpanFull>
               <DetailEditableField
                 label={t("fields.description")}
                 value={detail.description ?? ""}
                 kind="text"
                 multiline
                 textareaBox
+                span="full"
                 editAriaLabel={tActions("edit")}
                 empty="—"
                 onSave={(next) => patchField({ description: next })}
               />
-            </DetailFieldSpanFull>
           </DetailMetricsGrid>
         </DetailPanelCard>
 
@@ -1033,12 +1029,11 @@ export function JobDetailBody({
         />
 
         {!isProjectJob ? (
-          <DetailPanelCard title={t("detail.sectionWorkScope")}>
-            <JobDetailWorkScopeEditor
-              detail={detail}
-              onSave={(job_meta) => patchField({ job_meta })}
-            />
-          </DetailPanelCard>
+          <JobDetailWorkScopeEditor
+            title={t("detail.sectionWorkScope")}
+            detail={detail}
+            onSave={(job_meta) => patchField({ job_meta })}
+          />
         ) : null}
 
         {detail.qr_code?.qr_image ? (

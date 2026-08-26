@@ -409,7 +409,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
               ? cn(entityDetailTabPanelClassName, "w-full overflow-y-auto")
               : entityDetailTabPanelClassName
           }
-          style={activeTab === "location" ? { maxHeight: "calc(100dvh - 200px)" } : undefined}
+          style={activeTab === "location" ? { maxHeight: "calc(100dvh - 22rem)" } : undefined}
         >
           {loading && activeTab === "details" ? (
             <EntityDetailLoadingSkeleton fill />

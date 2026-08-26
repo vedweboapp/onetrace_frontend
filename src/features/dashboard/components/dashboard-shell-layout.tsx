@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { useShallow } from "zustand/react/shallow";
+import { cn } from "@/core/utils/http.util";
 import { DashboardChromeSlot } from "@/features/dashboard/components/dashboard-chrome-slot";
 import { DashboardHeader } from "@/features/dashboard/components/dashboard-header";
 import { DashboardPageScrollHost } from "@/features/dashboard/components/dashboard-page-scroll-host";
@@ -18,13 +19,15 @@ type Props = {
  * - lithium: left sidebar (default)
  * - hydrogen: top navigation (sidebar hidden on md+)
  * - boron: right sidebar
+ *
+ * Tree order stays stable (sidebar then content) so switching layout does not
+ * remount page state (e.g. Appearance Save/Cancel while previewing Boron).
  */
 export function DashboardShellLayout({ children }: Props) {
   const sidebarLayout = useDashboardAppearanceStore(
     useShallow((s) => s.sidebarLayout),
   );
 
-  const isHydrogen = sidebarLayout === "hydrogen";
   const isBoron = sidebarLayout === "boron";
 
   const sidebar = (
@@ -43,48 +46,32 @@ export function DashboardShellLayout({ children }: Props) {
   );
 
   const main = (
-    <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-slate-950">
+    <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-slate-950">
       {/*
-        Scroll host picks mode from page markers:
+        Scroll host picks mode from page markers (CSS :has):
         - list / fill pages: lock height, scroll inside the table only
         - other pages: main column scrolls
-        Re-syncs when the sidebar opens/closes so width reflow does not leave
-        an empty strip + outer scrollbar.
       */}
       <DashboardPageScrollHost>{children}</DashboardPageScrollHost>
     </main>
   );
 
   const contentColumn = (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <div className="flex h-full max-h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       {headerBlock}
       {main}
     </div>
   );
 
-  if (isHydrogen) {
-    return (
-      <>
-        {/* Keep sidebar for mobile / accessibility; hide on md+ when Hydrogen is active */}
-        <div className="contents md:hidden">{sidebar}</div>
-        {contentColumn}
-      </>
-    );
-  }
-
-  if (isBoron) {
-    return (
-      <>
-        {contentColumn}
-        {sidebar}
-      </>
-    );
-  }
-
   return (
-    <>
+    <div
+      className={cn(
+        "flex h-full max-h-full min-h-0 min-w-0 flex-1 overflow-hidden",
+        isBoron && "flex-row-reverse",
+      )}
+    >
       {sidebar}
       {contentColumn}
-    </>
+    </div>
   );
 }
