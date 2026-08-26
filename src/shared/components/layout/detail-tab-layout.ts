@@ -21,10 +21,13 @@ export const detailTabBodyClassName = "px-4 py-3 sm:px-6 sm:py-4";
 
 /**
  * Table + pagination body for detail list tabs — edge-to-edge table,
- * flex column so pagination sticks to the card footer.
+ * natural height so pagination sits directly under rows (no empty gap).
  */
 export const detailTabTableBodyClassName = cn(
-  "flex min-h-0 flex-1 flex-col overflow-hidden",
+  "flex w-full flex-col",
+  // Collapse nested EntityDataTable / DataTableScroll flex growth
+  "[&>*:first-child]:flex-none [&>*:first-child]:min-h-0",
+  "[&>*:first-child_.overflow-auto]:flex-none",
 );
 
 export const detailTabEmptyClassName =
@@ -49,13 +52,21 @@ export const entityDetailSurfaceInnerClassName = "min-w-0 w-full";
 export const entityDetailTabPanelClassName = "min-w-0 w-full";
 
 /**
- * List-style detail tabs / empty shells — grow with the parent flex column.
- * Avoid large `100dvh` mins (they stack under header/sidebar and create a
- * spurious page scrollbar + empty strip when the sidebar collapses).
+ * List-style detail tabs / empty shells — grow with the parent flex column
+ * when that parent already fills the viewport (list pages, Home WIP).
  */
 export const detailTabFillViewportClassName = cn(
   "flex min-h-0 w-full flex-1 flex-col",
   "min-h-[12rem] sm:min-h-[16rem]",
+);
+
+/**
+ * Detail-tab empty / loading / error when the entity detail page is
+ * content-height (not a flex fill page). Matches Home WIP panel height.
+ */
+export const detailTabStandaloneFillClassName = cn(
+  "flex w-full flex-col",
+  "min-h-[calc(100dvh-14rem)] sm:min-h-[calc(100dvh-13rem)]",
 );
 
 /** Centered empty / loading / error content inside a fill tab or list shell. */

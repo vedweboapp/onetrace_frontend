@@ -435,7 +435,7 @@ export function ProjectFormsTab() {
             </ListPageCardGrid>
           </div>
         ) : (
-          <EntityDataTable columns={tableColumns} rows={items} onRowClick={openEdit} />
+          <EntityDataTable columns={tableColumns} rows={items} onRowClick={openEdit} fillHeight={false} />
         )}
 
         {!loading && !loadError && items.length > 0 ? (

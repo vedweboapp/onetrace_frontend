@@ -35,10 +35,10 @@ export const detailFieldLabelClassName = cn(
   "text-sm font-normal normal-case tracking-normal text-slate-500 dark:text-slate-400",
 );
 
-/** Soft box shared by display + edit so height/width feel the same. */
+/** Soft box shared by display + edit — weight/color match list table cells. */
 export const detailValueSurfaceClassName = cn(
-  "w-full min-w-0 min-h-9 rounded-md px-2 py-1.5 text-sm font-semibold leading-normal text-slate-900",
-  "dark:text-slate-100",
+  "w-full min-w-0 min-h-8 rounded-md px-1.5 py-1 text-sm font-normal leading-snug text-slate-700",
+  "dark:text-slate-300",
 );
 
 export const detailInlineEditorClassName = cn(

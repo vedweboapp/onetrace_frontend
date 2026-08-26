@@ -23,7 +23,7 @@ import type { EntityTableColumn } from "@/shared/components/entity";
 import {
   detailTabBodyClassName,
   detailTabErrorClassName,
-  detailTabFillViewportClassName,
+  detailTabStandaloneFillClassName,
   detailTabSectionClassName,
   detailTabTitleClassName,
 } from "@/shared/components/layout/detail-tab-layout";
@@ -322,7 +322,7 @@ export function ProjectQuotationsTab({ projectId }: Props) {
             <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
           </div>
         ) : items.length === 0 ? (
-          <div className={detailTabFillViewportClassName}>
+          <div className={detailTabStandaloneFillClassName}>
             <ListPageEmptyStates
               emptyStateKind={emptyStateKind}
               onboarding={{
@@ -335,7 +335,7 @@ export function ProjectQuotationsTab({ projectId }: Props) {
             />
           </div>
         ) : (
-          <DataTableScroll>
+          <DataTableScroll className="flex-none overflow-x-auto overflow-y-visible">
             <DataTable>
               <DataTableHead>
                 <tr>

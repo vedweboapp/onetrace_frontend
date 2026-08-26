@@ -32,7 +32,7 @@ import {
   detailTabBodyClassName,
   detailTabErrorClassName,
   detailTabFilterBarClassName,
-  detailTabFillViewportClassName,
+  detailTabStandaloneFillClassName,
   detailTabSectionClassName,
   detailTabTitleClassName,
 } from "@/shared/components/layout/detail-tab-layout";
@@ -528,7 +528,7 @@ export function ProjectJobsTab({ projectId }: Props) {
             </div>
           </SurfaceShell>
         ) : tableRows.length === 0 ? (
-          <div className={detailTabFillViewportClassName}>
+          <div className={detailTabStandaloneFillClassName}>
             <ListPageEmptyStates
               emptyStateKind={emptyStateKind}
               onboarding={{
@@ -549,6 +549,7 @@ export function ProjectJobsTab({ projectId }: Props) {
               getRowClassName={(row) => highlightClassName(row.id)}
               rowHighlightId={(row) => row.id}
               scrollClassName="rounded-none"
+              fillHeight={false}
             />
             {tableRows.length > 0 && (
               <DataTablePaginationBar

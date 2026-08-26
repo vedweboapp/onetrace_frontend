@@ -11,8 +11,6 @@ import { fetchVendorTypesPage } from "@/features/vendor-types/api/vendor-type.ap
 import { VendorTypeChipGroup } from "@/features/vendor-types/components/vendor-type-chip";
 import {
   getVendorTypeRows,
-  vendorAddressSummary,
-  vendorPrimaryAddress,
 } from "@/features/vendors/utils/vendor-nested-fields.util";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
@@ -260,7 +258,6 @@ export function VendorsPanel() {
       }, { cellClassName: "min-w-0" }),
       c.truncate("email", t("table.email"), (r) => r.email),
       c.phone("phone", t("table.phone"), (r) => r.phone),
-      c.custom("location", t("table.location"), (row) => vendorAddressSummary(vendorPrimaryAddress(row))),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
     ];
   }, [t, dateFmt, massSel.tableColumn]);
@@ -349,18 +346,17 @@ export function VendorsPanel() {
                     leading={massSel.cardLeading(row)}
                     title={row.name}
                     subtitle={row.email}
-                    meta={vendorAddressSummary(vendorPrimaryAddress(row))}
                     footer={
-                      <div className="flex w-full flex-wrap items-center justify-between gap-3">
-                        <div className="flex min-w-0 flex-wrap items-center gap-2">
-                          {typeRows.length > 0 ? <VendorTypeChipGroup rows={typeRows} /> : null}
-                          {row.phone?.trim() ? (
-                            <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                              <Phone className="size-3.5" aria-hidden />
-                              {row.phone}
-                            </span>
-                          ) : null}
+                      <div className="flex w-full flex-wrap items-center justify-between gap-2">
+                        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                          {typeRows.length > 0 ? <VendorTypeChipGroup rows={typeRows} maxVisible={3} /> : null}
                         </div>
+                        {row.phone?.trim() ? (
+                          <span className="inline-flex shrink-0 items-center gap-1 text-xs text-slate-600 dark:text-slate-400">
+                            <Phone className="size-3.5" aria-hidden />
+                            {row.phone}
+                          </span>
+                        ) : null}
                       </div>
                     }
                     onCardClick={() => openDetail(row.id)}

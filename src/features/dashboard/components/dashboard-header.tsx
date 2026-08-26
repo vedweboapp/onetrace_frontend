@@ -403,7 +403,7 @@ export function DashboardHeader() {
       >
         {settingsMode ? (
           <>
-            <TopNavLink href={personalProfileHref} label={tSettingsNav("appearance")} icon={Palette} active={personalProfileActive} resolved={resolved} />
+            <TopNavLink href={personalProfileHref} label={tSettingsNav("personalProfile")} icon={UserRound} active={personalProfileActive} resolved={resolved} />
             <TopNavLink href={companySettingsHref} label={tSettingsNav("companySettings")} icon={Building2} active={companySettingsActive} resolved={resolved} />
             <TopNavLink href={modulesHref} label={tSettingsNav("modules")} icon={Settings} active={modulesActive} resolved={resolved} />
             <TopNavLink href={projectFormsHref} label={tSettingsNav("projectForms")} icon={FileText} active={projectFormsActive} resolved={resolved} />
