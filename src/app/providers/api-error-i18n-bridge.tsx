@@ -17,6 +17,20 @@ const GENERIC_PHRASE_RE =
 const ENTITY_FIELD_EXISTS_RE =
   /^(.+?)\s+with this\s+(.+?)\s+already exists$/i;
 
+const ENTITY_EXISTS_IN_ORG_RE =
+  /^(.+?)\s+already exists in your organization$/i;
+
+const ENTITY_EXISTS_RE = /^(.+?)\s+already exists$/i;
+
+function resolveEntityLabel(
+  entityRaw: string,
+  t: ReturnType<typeof useTranslations<"ApiErrors">>,
+): string {
+  const key = API_ERROR_ENTITY_KEYS[entityRaw.toLowerCase()];
+  if (key && t.has(`entities.${key}`)) return t(`entities.${key}`);
+  return entityRaw.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 /**
  * Wires next-intl `ApiErrors` into toast + form field error display so backend
  * English strings follow Appearance → Language (en / es).
@@ -39,17 +53,25 @@ export function ApiErrorI18nBridge() {
       if (existsMatch && t.has("messages.entityFieldExists")) {
         const entityRaw = existsMatch[1].trim().toLowerCase();
         const fieldRaw = existsMatch[2].trim().toLowerCase();
-        const entityKey = API_ERROR_ENTITY_KEYS[entityRaw];
         const fieldKey = API_ERROR_FIELD_KEYS[fieldRaw];
-        const entity =
-          entityKey && t.has(`entities.${entityKey}`)
-            ? t(`entities.${entityKey}`)
-            : existsMatch[1].trim();
+        const entity = resolveEntityLabel(entityRaw, t);
         const field =
           fieldKey && t.has(`fields.${fieldKey}`)
             ? t(`fields.${fieldKey}`)
             : existsMatch[2].trim();
         return t("messages.entityFieldExists", { entity, field });
+      }
+
+      const existsInOrgMatch = ENTITY_EXISTS_IN_ORG_RE.exec(normalized);
+      if (existsInOrgMatch && t.has("messages.entityExistsInOrganization")) {
+        const entity = resolveEntityLabel(existsInOrgMatch[1].trim(), t);
+        return t("messages.entityExistsInOrganization", { entity });
+      }
+
+      const entityExistsMatch = ENTITY_EXISTS_RE.exec(normalized);
+      if (entityExistsMatch && t.has("messages.entityExists")) {
+        const entity = resolveEntityLabel(entityExistsMatch[1].trim(), t);
+        return t("messages.entityExists", { entity });
       }
 
       return trimmed;

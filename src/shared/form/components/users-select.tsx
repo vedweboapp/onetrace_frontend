@@ -225,7 +225,7 @@ const UsersSelect = React.forwardRef<HTMLDivElement, UsersSelectProps>(
         {label && (
           <div className="flex items-center justify-between">
             {typeof label === "string" ? (
-              <label className="text-[13px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+              <label className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 tracking-normal">
                 {label}
               </label>
             ) : (

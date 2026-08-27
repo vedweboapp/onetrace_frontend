@@ -138,7 +138,22 @@
       "job": "Job",
       "invoice": "Invoice",
       "quotation": "Quotation",
-      "group": "Group"
+      "group": "Group",
+      "projectType": "Project Type",
+      "installationType": "Installation Type",
+      "vendorType": "Vendor Type",
+      "unitType": "Unit Type",
+      "rejectionReason": "Rejection Reason",
+      "checklistType": "Checklist Type",
+      "projectStatus": "Project Status",
+      "pinStatus": "Pin Status",
+      "jobStatus": "Job Status",
+      "materialStatus": "Material Status",
+      "status": "Status",
+      "tag": "Tag",
+      "title": "Title",
+      "role": "Role",
+      "profile": "Profile"
     },
     "fields": {
       "email": "email",
@@ -155,6 +170,20 @@
       "userEmailExists": "User with this email already exists.",
       "emailAlreadyExists": "This email already exists.",
       "entityFieldExists": "{entity} with this {field} already exists.",
+      "entityExists": "{entity} already exists.",
+      "entityExistsInOrganization": "{entity} already exists in your organization.",
+      "projectTypeExistsInOrganization": "Project Type already exists in your organization.",
+      "installationTypeExistsInOrganization": "Installation Type already exists in your organization.",
+      "vendorTypeExistsInOrganization": "Vendor Type already exists in your organization.",
+      "unitTypeExistsInOrganization": "Unit Type already exists in your organization.",
+      "rejectionReasonExistsInOrganization": "Rejection Reason already exists in your organization.",
+      "checklistTypeExistsInOrganization": "Checklist Type already exists in your organization.",
+      "projectStatusExistsInOrganization": "Project Status already exists in your organization.",
+      "pinStatusExistsInOrganization": "Pin Status already exists in your organization.",
+      "jobStatusExistsInOrganization": "Job Status already exists in your organization.",
+      "materialStatusExistsInOrganization": "Material Status already exists in your organization.",
+      "tagExistsInOrganization": "Tag already exists in your organization.",
+      "titleExistsInOrganization": "Title already exists in your organization.",
       "fieldRequired": "This field is required.",
       "invalidEmail": "Enter a valid email address.",
       "invalidPhone": "Enter a valid phone number.",
@@ -852,8 +881,8 @@
       "fontFamilyLabel": "Font Family",
       "fontFamilyHint": "Applied across the dashboard for consistent reading.",
       "fontSizeLabel": "Font Size",
-      "fontSizeHint": "Adjust base text size for labels and body copy.",
-      "fontSizePreview": "Preview: The quick brown fox jumps over the lazy dog.",
+      "fontSizeHint": "Choose a base size from 6px to 40px. Tables, forms, detail pages, and modals all follow this size.",
+      "fontSizeOption": "{px}px",
       "fonts": {
         "inter": "Inter",
         "roboto": "Roboto",
@@ -861,11 +890,6 @@
         "openSans": "Open Sans",
         "dmSans": "DM Sans",
         "system": "System default"
-      },
-      "fontSizes": {
-        "small": "Small",
-        "medium": "Medium",
-        "large": "Large"
       },
       "layoutHeading": "Dashboard layout",
       "sidebarLayoutLabel": "Navigation Layout",
@@ -899,7 +923,7 @@
         "redLine": "Red line"
       },
       "formPreviewHeading": "Live preview",
-      "formPreviewLabel": "Sample Required Field",
+      "formPreviewLabel": "Sample Field",
       "formPreviewValue": "Sample value",
       "storageHint": "Appearance is saved on this device for your signed-in account (not sent to the server yet). After you log in again on this browser, your last choices are restored.",
       "detailRowLineWidthLabel": "Detail Row Line Width",
@@ -1686,7 +1710,7 @@
         "add": "Add Address",
         "remove": "Remove Address",
         "primary": "Primary",
-        "rowLabel": "Address {Index}"
+        "rowLabel": "Address {number}"
       },
       "addressType": {
         "billing": "Billing",
@@ -2058,7 +2082,7 @@
         "add": "Add Address",
         "remove": "Remove",
         "primary": "Primary",
-        "rowLabel": "Address {Index}"
+        "rowLabel": "Address {number}"
       },
       "addressType": {
         "billing": "Billing",
@@ -2147,7 +2171,7 @@
         "add": "Add Address",
         "remove": "Remove",
         "primary": "Primary",
-        "rowLabel": "Address {Index}"
+        "rowLabel": "Address {number}"
       },
       "addressType": {
         "billing": "Billing",
@@ -2527,7 +2551,7 @@
         "mapPickHint": "Add address details or search above, then place the pin on the map.",
         "mapNotFoundHint": "Could not locate this address — set city, state, and postal code, or click the map to place the pin.",
         "addressFromPin": "Address fields updated from the pin location.",
-        "coordsLabel": "Coordinates: {Lat}, {Lon}"
+        "coordsLabel": "Coordinates: {lat}, {lon}"
       }
     },
     "quotations": {
@@ -2785,7 +2809,7 @@
         "remove": "Remove additional contact",
         "empty": "No additional contacts added yet.",
         "selectClientFirst": "Select a client first to add additional contacts.",
-        "rowLabel": "Additional Contact {Number}"
+        "rowLabel": "Additional Contact {number}"
       },
       "modal": {
         "createTitle": "New Quotation",
@@ -2952,7 +2976,7 @@
         "add": "Add Address",
         "remove": "Remove",
         "primary": "Primary",
-        "rowLabel": "Address {Index}"
+        "rowLabel": "Address {number}"
       },
       "addressType": {
         "billing": "Billing",
@@ -3115,7 +3139,7 @@
         "add": "Add Address",
         "remove": "Remove",
         "primary": "Primary",
-        "rowLabel": "Address {Index}"
+        "rowLabel": "Address {number}"
       },
       "addressType": {
         "billing": "Billing",
@@ -3197,7 +3221,7 @@
       },
       "card": {
         "requestDate": "Request Date",
-        "items": "{Count} Items"
+        "items": "{count} Items"
       },
       "tabs": {
         "overview": "Overview",
@@ -3460,7 +3484,7 @@
         },
         "card": {
           "requestedAt": "Requested",
-          "items": "{Count} Items · {Qty} Units"
+          "items": "{count} Items · {qty} Units"
         },
         "filterStatus": "Status",
         "filterWorker": "Worker",
@@ -4459,7 +4483,7 @@
         "name": "Name",
         "itemCount": "Linked Items",
         "compositeItems": "Composite Items",
-        "moreCompositeItems": "+{Count} More",
+        "moreCompositeItems": "+{count} More",
         "created": "Created",
         "status": "Status",
         "actions": "Actions"

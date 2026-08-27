@@ -283,7 +283,7 @@ export function InvoiceDetailBody({
                   <DetailEntityAddressFields
                     key={addr.id ?? `${addr.address_type}-${originalIndex}`}
                     separated={displayIndex > 0}
-                    blockHeading={t("addresses.rowLabel", { index: displayIndex + 1 })}
+                    blockHeading={t("addresses.rowLabel", { number: displayIndex + 1   })}
                     address={addr}
                     addressIndex={originalIndex}
                     allAddresses={addresses}

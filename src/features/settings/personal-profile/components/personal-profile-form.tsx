@@ -460,7 +460,8 @@ const PersonalProfileForm = forwardRef<
             {/* Contact Details */}
             <FormSectionCard title={t("ContactDetails")} icon={<Mail size={20} />}>
                 <div className="flex flex-col gap-8">
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div className="form-fields-host">
+                      <div className="form-field-row grid grid-cols-1 gap-6 md:grid-cols-2">
                         <div className="min-w-0 space-y-3">
                             <div className="flex items-center justify-between gap-2">
                                 <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -597,6 +598,7 @@ const PersonalProfileForm = forwardRef<
                                 ))}
                             </div>
                         </div>
+                    </div>
                     </div>
                     {/* Emails Section */}
 

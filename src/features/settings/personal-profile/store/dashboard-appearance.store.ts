@@ -29,7 +29,42 @@ export type DashboardFontFamily =
   | "dmSans"
   | "system";
 
-export type DashboardFontSize = "small" | "medium" | "large";
+/** Base body font size in px (Appearance → Font size). Allowed range 6–40. */
+export type DashboardFontSize = number;
+
+export const FONT_SIZE_PX_MIN = 6;
+export const FONT_SIZE_PX_MAX = 40;
+export const DEFAULT_FONT_SIZE_PX = 16;
+
+/** Select options: every integer px from 6 through 40. */
+export const FONT_SIZE_PX_OPTIONS: DashboardFontSize[] = Array.from(
+  { length: FONT_SIZE_PX_MAX - FONT_SIZE_PX_MIN + 1 },
+  (_, i) => FONT_SIZE_PX_MIN + i,
+);
+
+export function clampFontSizePx(value: unknown, fallback: DashboardFontSize = DEFAULT_FONT_SIZE_PX): DashboardFontSize {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.min(FONT_SIZE_PX_MAX, Math.max(FONT_SIZE_PX_MIN, Math.round(value)));
+  }
+  if (typeof value === "string") {
+    const legacy: Record<string, number> = {
+      small: 14,
+      medium: 16,
+      default: 16,
+      large: 18,
+      xlarge: 20,
+    };
+    if (value in legacy) return legacy[value]!;
+    const parsed = Number.parseInt(value.replace(/px$/i, "").trim(), 10);
+    if (Number.isFinite(parsed)) {
+      return Math.min(FONT_SIZE_PX_MAX, Math.max(FONT_SIZE_PX_MIN, parsed));
+    }
+  }
+  return fallback;
+}
+
+/** @deprecated Use FONT_SIZE_PX_OPTIONS */
+export const FONT_SIZE_ORDER: DashboardFontSize[] = FONT_SIZE_PX_OPTIONS;
 
 export type FormLabelPlacement = "top" | "left" | "right";
 
@@ -63,8 +98,6 @@ export const FONT_FAMILY_ORDER: DashboardFontFamily[] = [
   "dmSans",
   "system",
 ];
-
-export const FONT_SIZE_ORDER: DashboardFontSize[] = ["small", "medium", "large"];
 
 export const SIDEBAR_LAYOUT_ORDER: DashboardSidebarLayout[] = [
   "lithium",
@@ -162,7 +195,7 @@ export const useDashboardAppearanceStore = create<State>()(
       accent: "black",
       customAccentHex: DEFAULT_HEX,
       fontFamily: "inter",
-      fontSize: "medium",
+      fontSize: DEFAULT_FONT_SIZE_PX,
       sidebarLayout: "lithium",
       formLabelPlacement: "left",
       requiredIndicator: "asterisk",
@@ -175,7 +208,7 @@ export const useDashboardAppearanceStore = create<State>()(
           customAccentHex: hex.trim() || DEFAULT_HEX,
         }),
       setFontFamily: (fontFamily) => set({ fontFamily }),
-      setFontSize: (fontSize) => set({ fontSize }),
+      setFontSize: (fontSize) => set({ fontSize: clampFontSizePx(fontSize) }),
       setSidebarLayout: (sidebarLayout) => set({ sidebarLayout }),
       setFormLabelPlacement: (formLabelPlacement) => set({ formLabelPlacement }),
       setRequiredIndicator: (requiredIndicator) => set({ requiredIndicator }),
@@ -197,7 +230,7 @@ export const useDashboardAppearanceStore = create<State>()(
           accent: p?.accent ?? current.accent,
           customAccentHex: p?.customAccentHex ?? current.customAccentHex,
           fontFamily: pickEnum(p?.fontFamily, FONT_FAMILY_ORDER, current.fontFamily),
-          fontSize: pickEnum(p?.fontSize, FONT_SIZE_ORDER, current.fontSize),
+          fontSize: clampFontSizePx(p?.fontSize, current.fontSize),
           sidebarLayout: pickEnum(p?.sidebarLayout, SIDEBAR_LAYOUT_ORDER, current.sidebarLayout),
           formLabelPlacement: pickEnum(
             p?.formLabelPlacement,

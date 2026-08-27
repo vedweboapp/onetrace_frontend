@@ -30,6 +30,18 @@ export const API_ERROR_MESSAGE_KEYS: Record<string, string> = {
   "a user with this email already exists": "userEmailExists",
   "email already exists": "emailAlreadyExists",
   "this email already exists": "emailAlreadyExists",
+  "project type already exists in your organization": "projectTypeExistsInOrganization",
+  "installation type already exists in your organization": "installationTypeExistsInOrganization",
+  "vendor type already exists in your organization": "vendorTypeExistsInOrganization",
+  "unit type already exists in your organization": "unitTypeExistsInOrganization",
+  "rejection reason already exists in your organization": "rejectionReasonExistsInOrganization",
+  "checklist type already exists in your organization": "checklistTypeExistsInOrganization",
+  "project status already exists in your organization": "projectStatusExistsInOrganization",
+  "pin status already exists in your organization": "pinStatusExistsInOrganization",
+  "job status already exists in your organization": "jobStatusExistsInOrganization",
+  "material status already exists in your organization": "materialStatusExistsInOrganization",
+  "tag already exists in your organization": "tagExistsInOrganization",
+  "title already exists in your organization": "titleExistsInOrganization",
   "this field is required": "fieldRequired",
   "this field may not be blank": "fieldRequired",
   "this field may not be null": "fieldRequired",
@@ -58,7 +70,12 @@ export const API_ERROR_MESSAGE_KEYS: Record<string, string> = {
   "error": "fallback",
 };
 
-/** Known entity / field tokens in the "{Entity} with this {field} already exists" pattern. */
+/**
+ * Known entity tokens for:
+ * - "{Entity} with this {field} already exists"
+ * - "{Entity} already exists in your organization"
+ * Keys are lowercase English phrases from the API.
+ */
 export const API_ERROR_ENTITY_KEYS: Record<string, string> = {
   client: "client",
   vendor: "vendor",
@@ -72,6 +89,21 @@ export const API_ERROR_ENTITY_KEYS: Record<string, string> = {
   quotation: "quotation",
   quote: "quotation",
   group: "group",
+  "project type": "projectType",
+  "installation type": "installationType",
+  "vendor type": "vendorType",
+  "unit type": "unitType",
+  "rejection reason": "rejectionReason",
+  "checklist type": "checklistType",
+  "project status": "projectStatus",
+  "pin status": "pinStatus",
+  "job status": "jobStatus",
+  "material status": "materialStatus",
+  status: "status",
+  tag: "tag",
+  title: "title",
+  role: "role",
+  profile: "profile",
 };
 
 export const API_ERROR_FIELD_KEYS: Record<string, string> = {
@@ -81,6 +113,11 @@ export const API_ERROR_FIELD_KEYS: Record<string, string> = {
   username: "username",
   code: "code",
   sku: "sku",
+  project_type: "name",
+  installation_type: "name",
+  status_name: "name",
+  tag_name: "name",
+  title: "name",
 };
 
 export function localizeApiErrorMessage(message: string): string {

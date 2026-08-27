@@ -121,7 +121,7 @@ export function VendorDetailBody({
     const lon = parseVendorCoord(addr.longitude);
     return {
       id: addr.id ?? displayIndex,
-      label: t("addresses.rowLabel", { index: displayIndex + 1 }),
+      label: t("addresses.rowLabel", { number: displayIndex + 1   }),
       addressParts: {
         line1: addr.address_line_1,
         line2: addr.address_line_2,
@@ -226,7 +226,7 @@ export function VendorDetailBody({
                 <DetailEntityAddressFields
                   key={addr.id ?? originalIndex}
                   separated={displayIndex > 0}
-                  blockHeading={t("addresses.rowLabel", { index: displayIndex + 1 })}
+                  blockHeading={t("addresses.rowLabel", { number: displayIndex + 1   })}
                   address={addr}
                   addressIndex={originalIndex}
                   allAddresses={addresses}

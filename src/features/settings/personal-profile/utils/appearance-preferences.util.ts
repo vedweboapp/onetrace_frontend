@@ -10,6 +10,8 @@ import type {
   RequiredFieldIndicator,
 } from "../store/dashboard-appearance.store";
 import {
+  clampFontSizePx,
+  DEFAULT_FONT_SIZE_PX,
   DETAIL_ROW_LINE_STYLE_ORDER,
   DETAIL_ROW_LINE_WIDTH_ORDER,
 } from "../store/dashboard-appearance.store";
@@ -66,7 +68,7 @@ export const DEFAULT_API_APPEARANCE_PREFERENCES: Required<
   mandatory_field_display: "asterisk",
   font: {
     family: "inter",
-    size: "default",
+    size: "16px",
   },
   accent: {
     type: "preset",
@@ -96,18 +98,13 @@ export type AppearanceStoreSlice = {
   detailRowLineStyle: DetailRowLineStyle;
 };
 
-const API_FONT_SIZE_TO_STORE: Record<string, DashboardFontSize> = {
-  small: "small",
-  default: "medium",
-  large: "large",
-  xlarge: "large",
-};
+function fontSizeFromApi(raw: string | undefined): DashboardFontSize {
+  return clampFontSizePx(raw, DEFAULT_FONT_SIZE_PX);
+}
 
-const STORE_FONT_SIZE_TO_API: Record<DashboardFontSize, string> = {
-  small: "small",
-  medium: "default",
-  large: "large",
-};
+function fontSizeToApi(size: DashboardFontSize): string {
+  return `${clampFontSizePx(size)}px`;
+}
 
 const API_FONT_FAMILY_TO_STORE: Record<string, DashboardFontFamily> = {
   inter: "inter",
@@ -184,7 +181,7 @@ export function appearanceStoreFromApiPreferences(
     out.fontFamily = API_FONT_FAMILY_TO_STORE[prefs.font.family] ?? "inter";
   }
   if (prefs.font?.size) {
-    out.fontSize = API_FONT_SIZE_TO_STORE[prefs.font.size] ?? "medium";
+    out.fontSize = fontSizeFromApi(prefs.font.size);
   }
 
   if (prefs.accent?.type === "custom" && prefs.accent.custom_hex) {
@@ -228,7 +225,7 @@ export function buildApiAppearancePreferences(input: {
 
   return {
     font: {
-      size: STORE_FONT_SIZE_TO_API[store.fontSize],
+      size: fontSizeToApi(store.fontSize),
       family: STORE_FONT_FAMILY_TO_API[store.fontFamily],
     },
     accent: {

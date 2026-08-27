@@ -60,6 +60,7 @@ import {
   type CheckmarkSelectOption,
   FieldErrorText,
   FieldGroup,
+  FormFieldRow,
   DimensionsLwhInput,
   InputWithEndSelect,
   MoneyInput,
@@ -987,7 +988,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
           </div>
         ) : (
           <form id="composite-item-form-screen" className="space-y-5 p-4 sm:p-6" onSubmit={(e) => void submit(e)}>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormFieldRow cols="2" from="md" className="gap-4">
               <FieldGroup label={tModal("name")} htmlFor={nameId} required>
                 <input id={nameId} type="text" autoComplete="off" value={name} onChange={(e) => setName(sanitizeTitleInput(e.target.value))} onBlur={() => setNameTouched(true)} disabled={submitting} placeholder={tModal("namePlaceholder")} className={surfaceInputClassName} />
                 {nameInvalid ? <FieldErrorText>{tModal("nameError")}</FieldErrorText> : null}
@@ -996,8 +997,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                 <input id={skuId} type="text" autoComplete="off" value={sku} onChange={(e) => setSku(e.target.value)} onBlur={() => setSkuTouched(true)} disabled={submitting} placeholder={tModal("skuPlaceholder")} className={cn(surfaceInputClassName, skuInvalid && "border-red-500 focus:border-red-500 focus:ring-red-500/20")} />
                 {skuInvalid ? <FieldErrorText>{tModal("skuError")}</FieldErrorText> : null}
               </FieldGroup>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            </FormFieldRow>
+            <FormFieldRow cols="2" from="md" className="gap-4">
               <FieldGroup label={tModal("unitType")} htmlFor={unitId}>
                 <CheckmarkSelect
                   id={unitId}
@@ -1029,8 +1030,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   disabled={submitting}
                 />
               </FieldGroup>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            </FormFieldRow>
+            <FormFieldRow cols="2" from="md" className="gap-4">
               <FieldGroup label={tModal("installationType")}>
                 {installationTypesError ? (
                   <p className="mb-1.5 text-sm text-amber-700 dark:text-amber-300">{installationTypesError}</p>
@@ -1068,8 +1069,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   selectAriaLabel={tModal("installationCostType")}
                 />
               </FieldGroup>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            </FormFieldRow>
+            <FormFieldRow cols="2" from="md" className="gap-4">
               <FieldGroup label={tModal("installationHours")} htmlFor="composite-installation-hours">
                 <NumericInput
                   id="composite-installation-hours"
@@ -1080,8 +1081,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   disabled={submitting}
                 />
               </FieldGroup>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            </FormFieldRow>
+            <FormFieldRow cols="2" from="md" className="gap-4">
               <FieldGroup label={tModal("costPrice")} htmlFor={costId} required>
                 <MoneyInput
                   id={costId}
@@ -1112,7 +1113,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   step="0.01"
                 />
               </FieldGroup>
-            </div>
+            </FormFieldRow>
             <div
               className={cn(
                 "grid w-full gap-x-[var(--form-label-gap,0.75rem)] gap-y-3",
@@ -1122,7 +1123,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
               <h3 className="field-label text-sm font-semibold text-slate-900 dark:text-slate-100 md:pt-[calc((var(--form-control-height,2.75rem)-1.35em)/2)]">
                 {tModal("fulfilmentDetails")}
               </h3>
-              <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
+              <div className="form-fields-host min-w-0">
+                <div className="form-field-row grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
                 <FieldGroup label={tModal("dimensions")} htmlFor="composite-dimensions">
                   <DimensionsLwhInput
                     id="composite-dimensions"
@@ -1161,6 +1163,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                     selectAriaLabel={tModal("weightUnit")}
                   />
                 </FieldGroup>
+              </div>
               </div>
             </div>
             <FieldGroup label={tModal("components")}>
