@@ -1972,6 +1972,7 @@
         "phone": "Phone",
         "status": "Status",
         "created": "Created",
+        "createdBy": "Created By",
         "actions": "Actions"
       },
       "status": {
@@ -2037,7 +2038,8 @@
         "pincode": "Postal / ZIP Code",
         "createdAt": "Created",
         "updatedAt": "Last Updated",
-        "createdBy": "Created By"
+        "createdBy": "Created By",
+        "modifiedBy": "Modified By"
       },
       "modal": {
         "createTitle": "New Client",

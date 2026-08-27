@@ -1526,7 +1526,6 @@
         "currentFile": "Archivo actual",
         "validationFile": "Por favor adjunta un archivo",
         "concentricPoint": "Punto concéntrico"
-
       },
       "deleteConfirmTitle": "¿Eliminar este tipo de lista de verificación?",
       "deleteConfirmBody": "Los formularios de trabajo que usen esta lista pueden verse afectados. Esta acción no se puede deshacer.",
@@ -1962,7 +1961,8 @@
         "phone": "Teléfono",
         "status": "Estado",
         "created": "Creado",
-        "actions": "Acciones"
+        "actions": "Acciones",
+        "createdBy": "Creado por"
       },
       "status": {
         "active": "Activo",
@@ -2027,7 +2027,8 @@
         "pincode": "Código postal",
         "createdAt": "Creado",
         "updatedAt": "Última actualización",
-        "createdBy": "Creado por"
+        "createdBy": "Creado por",
+        "modifiedBy": "Modificado por"
       },
       "modal": {
         "createTitle": "Nuevo cliente",
@@ -3942,7 +3943,7 @@
         "createdAt": "Creado",
         "updatedAt": "Última actualización",
         "createdBy": "Creado por",
-        "checklists":"lista de verificación",
+        "checklists": "lista de verificación",
         "selectCheckList": "Seleccionar lista de verificación"
       },
       "modal": {

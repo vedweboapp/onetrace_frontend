@@ -152,12 +152,13 @@ export function ClientDetailBody({
           dateFmt={dateFmt}
           createdBy={detail.created_by}
           modifiedBy={detail.modified_by}
+          defaultOpen
           labels={{
             sectionTitle: tMeta("systemMetadata"),
             createdAt: t("fields.createdAt"),
             updatedAt: t("fields.updatedAt"),
             createdBy: t("fields.createdBy"),
-            modifiedBy: tMeta("modifiedBy"),
+            modifiedBy: t("fields.modifiedBy"),
             notModifiedYet: tMeta("notModifiedYet"),
           }}
         />
