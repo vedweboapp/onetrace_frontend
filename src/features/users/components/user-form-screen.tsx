@@ -350,7 +350,6 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
                 sectionTitle: t("fields.addresses"),
                 add: t("addresses.add"),
                 remove: t("addresses.remove"),
-                primary: t("addresses.primary"),
                 rowLabel: (index) => t("addresses.rowLabel", { index }),
                 addressType: t("fields.addressType"),
                 addressLine1: t("fields.addressLine1"),

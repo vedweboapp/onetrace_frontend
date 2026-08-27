@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/core/utils/http.util";
 
 export const lockedSurfaceFieldClassName = cn(
-  "field-control flex h-11 w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-left shadow-sm",
+  "field-control flex h-[var(--form-control-height,2.5rem)] w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-left shadow-sm",
   "text-[length:var(--dash-body-size,0.875rem)] font-medium text-slate-400",
   "cursor-not-allowed dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-500",
 );

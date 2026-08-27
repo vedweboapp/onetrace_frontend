@@ -40,7 +40,6 @@ export type EntityAddressesFieldsLabels = {
   sectionTitle: string;
   add: string;
   remove: string;
-  primary: string;
   rowLabel: (index: number) => string;
   addressType: string;
   addressLine1: string;
@@ -110,12 +109,6 @@ export function EntityAddressesFields<T extends FieldValues>({
     [labels.addressTypeBilling, labels.addressTypeOther, labels.addressTypeShipping],
   );
 
-  const setPrimary = (index: number) => {
-    fields.forEach((_, i) => {
-      setValue(`addresses.${i}.is_primary` as Path<T>, (i === index) as never);
-    });
-  };
-
   /** Nested address fields need explicit validate/clear — zodResolver can leave sticky array errors. */
   const setAddressTextField = React.useCallback(
     (name: Path<T>, value: string) => {
@@ -135,7 +128,7 @@ export function EntityAddressesFields<T extends FieldValues>({
   const addressesRootError = (errors.addresses as { message?: string } | undefined)?.message;
 
   return (
-    <section className="w-full space-y-5 border-t border-slate-200/90 pt-6 dark:border-slate-700/80">
+    <section className="w-full space-y-6 border-t border-slate-200/90 pt-6 dark:border-slate-700/80">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-[length:var(--dash-body-size,0.875rem)] font-semibold text-slate-900 dark:text-slate-100">
           {labels.sectionTitle}
@@ -174,36 +167,24 @@ export function EntityAddressesFields<T extends FieldValues>({
         return (
           <div
             key={field.id}
-            className="w-full space-y-4 border-b border-slate-100 pb-6 last:border-b-0 last:pb-0 dark:border-slate-800"
+            className="w-full space-y-5 border-b border-slate-100 pb-6 last:border-b-0 last:pb-0 dark:border-slate-800"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
                 {labels.rowLabel(index + 1)}
               </span>
-              <div className="flex items-center gap-3">
-                <label className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                  <input
-                    type="radio"
-                    name={`${idPrefix}-primary`}
-                    checked={Boolean(row?.is_primary)}
-                    disabled={disabled}
-                    onChange={() => setPrimary(index)}
-                  />
-                  {labels.primary}
-                </label>
-                {fields.length > 1 ? (
-                  <AppButton
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    disabled={disabled}
-                    onClick={() => remove(index)}
-                  >
-                    <Trash2 className="size-4" aria-hidden />
-                    {labels.remove}
-                  </AppButton>
-                ) : null}
-              </div>
+              {fields.length > 1 ? (
+                <AppButton
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={disabled}
+                  onClick={() => remove(index)}
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                  {labels.remove}
+                </AppButton>
+              ) : null}
             </div>
 
             <FormFieldRow cols="2">

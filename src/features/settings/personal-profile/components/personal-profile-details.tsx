@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "@teispace/next-themes";
 import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/features/auth/store/auth.store";
+import { dashboardFillPageFrameClassName } from "@/shared/config/dashboard-shell";
 import { useSettingsPageTab } from "@/shared/hooks/use-settings-page-tab";
+import { cn } from "@/core/utils/http.util";
 import { fetchPersonalProfile } from "../api/personal-profile.api";
 import type { PersonalProfileResponse } from "../types/types";
 import PersonalProfileHeader from "./personal-profile-header";
@@ -115,7 +117,7 @@ const PersonalProfileDetails = () => {
   };
 
   return (
-    <div className="flex w-full flex-col">
+    <div className={cn(dashboardFillPageFrameClassName, "w-full")}>
       <PersonalProfileHeader
         tabs={[...PROFILE_TABS]}
         activeTab={activeTab}
@@ -128,39 +130,39 @@ const PersonalProfileDetails = () => {
         isSaving={isSaving}
       />
 
-      <div className="min-w-0 pt-1">
-      {activeTab === "appearance" ? (
-        isLoading ? (
+      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain pb-4 pt-1 sm:pb-5">
+        {activeTab === "appearance" ? (
+          isLoading ? (
+            <div className="flex w-full items-center justify-center p-20">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+            </div>
+          ) : (
+            <AppearancePanel
+              ref={appearanceRef}
+              isEditing={isEditing}
+              isSaving={isSaving}
+              setIsSaving={setIsSaving}
+              onSaved={() => setIsEditing(false)}
+              initialErrorMessage={profile?.appearance_settings?.preferences?.error_message}
+            />
+          )
+        ) : isLoading ? (
           <div className="flex w-full items-center justify-center p-20">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
           </div>
+        ) : error ? (
+          <p className="text-sm font-medium text-red-500">{error}</p>
         ) : (
-          <AppearancePanel
-            ref={appearanceRef}
+          <PersonalProfileForm
+            ref={formRef}
             isEditing={isEditing}
+            initialData={profile}
+            isLoading={isLoading}
+            onSuccess={handleSuccess}
             isSaving={isSaving}
             setIsSaving={setIsSaving}
-            onSaved={() => setIsEditing(false)}
-            initialErrorMessage={profile?.appearance_settings?.preferences?.error_message}
           />
-        )
-      ) : isLoading ? (
-        <div className="flex w-full items-center justify-center p-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
-        </div>
-      ) : error ? (
-        <p className="text-sm font-medium text-red-500">{error}</p>
-      ) : (
-        <PersonalProfileForm
-          ref={formRef}
-          isEditing={isEditing}
-          initialData={profile}
-          isLoading={isLoading}
-          onSuccess={handleSuccess}
-          isSaving={isSaving}
-          setIsSaving={setIsSaving}
-        />
-      )}
+        )}
       </div>
     </div>
   );

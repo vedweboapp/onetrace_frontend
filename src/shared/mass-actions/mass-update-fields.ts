@@ -237,9 +237,6 @@ export type SiteMassUpdateLabels = {
   what3words: string;
   latitude: string;
   longitude: string;
-  isActive: string;
-  activeLabel: string;
-  inactiveLabel: string;
 };
 
 export function buildSiteMassUpdateFields(
@@ -260,7 +257,6 @@ export function buildSiteMassUpdateFields(
     textField("what3words", labels.what3words),
     numberField("latitude", labels.latitude),
     numberField("longitude", labels.longitude),
-    selectField("is_active", labels.isActive, activeInactiveSelectOptions(labels.activeLabel, labels.inactiveLabel), "boolean"),
   ];
 }
 

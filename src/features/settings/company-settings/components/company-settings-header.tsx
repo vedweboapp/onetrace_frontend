@@ -30,8 +30,8 @@ const CompanySettingsHeader = ({
   return (
     <div
       className={cn(
-        "sticky top-0 z-40 isolate -mx-1 flex items-end justify-between gap-3 px-1 pb-3 pt-1",
-        // Match page chrome exactly (opaque) so form content cannot show through while sticky.
+        "relative z-10 -mx-1 flex shrink-0 items-end justify-between gap-3 px-1 pb-3 pt-1",
+        // Opaque chrome so scrolling body content never peeks above the tabs.
         "bg-slate-50 dark:bg-slate-950",
       )}
     >

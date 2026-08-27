@@ -40,7 +40,7 @@ export function DataTableHead({ className, ...props }: ComponentPropsWithoutRef<
   return (
     <thead
       className={cn(
-        "sticky top-0 z-10 border-b border-slate-200 bg-slate-100 text-[11px] font-semibold uppercase tracking-wide text-slate-600",
+        "sticky top-0 z-10 border-b border-slate-200 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-600",
         "dark:border-slate-700 dark:bg-slate-800/95 dark:text-slate-300",
         "[&>tr>th]:border-r [&>tr>th]:border-slate-200/90 [&>tr>th]:last:border-r-0",
         "dark:[&>tr>th]:border-slate-700/80",

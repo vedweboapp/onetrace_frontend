@@ -62,7 +62,6 @@ export function ClientDetailBody({
       country: t("fields.country"),
       state: t("fields.stateProvince"),
       city: t("fields.city"),
-      primary: t("addresses.primary"),
     }),
     [t],
   );
@@ -131,8 +130,6 @@ export function ClientDetailBody({
                   key={addr.id ?? `${addr.address_type}-${originalIndex}`}
                   separated={displayIndex > 0}
                   blockHeading={t("addresses.rowLabel", { index: displayIndex + 1 })}
-                  blockPrimaryLabel={t("addresses.primary")}
-                  blockIsPrimary={Boolean(addr.is_primary)}
                   address={addr}
                   addressIndex={originalIndex}
                   allAddresses={addresses}
@@ -155,12 +152,13 @@ export function ClientDetailBody({
           dateFmt={dateFmt}
           createdBy={detail.created_by}
           modifiedBy={detail.modified_by}
+          defaultOpen
           labels={{
             sectionTitle: tMeta("systemMetadata"),
             createdAt: t("fields.createdAt"),
             updatedAt: t("fields.updatedAt"),
             createdBy: t("fields.createdBy"),
-            modifiedBy: tMeta("modifiedBy"),
+            modifiedBy: t("fields.modifiedBy"),
             notModifiedYet: tMeta("notModifiedYet"),
           }}
         />

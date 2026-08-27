@@ -24,7 +24,6 @@ export type DetailEntityAddressFieldLabels = {
   country: React.ReactNode;
   state: React.ReactNode;
   city: React.ReactNode;
-  primary?: React.ReactNode;
 };
 
 export type DetailEntityAddressRequiredMessages = {
@@ -48,8 +47,6 @@ type Props = {
   allAddresses: EntityAddress[];
   addressIndex: number;
   blockHeading?: React.ReactNode;
-  blockPrimaryLabel?: React.ReactNode;
-  blockIsPrimary?: boolean;
   /** Adds a divider above this address (Address 2, 3, …). */
   separated?: boolean;
   /** When 2-col field grid kicks in (default `xl` for detail pages with a side column). */
@@ -122,8 +119,6 @@ export function DetailEntityAddressFields({
   allAddresses,
   addressIndex,
   blockHeading,
-  blockPrimaryLabel,
-  blockIsPrimary = false,
   separated = false,
   gridFrom = "xl",
 }: Props) {
@@ -146,11 +141,6 @@ export function DetailEntityAddressFields({
       {blockHeading ? (
         <div className="mb-1 flex min-w-0 flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{blockHeading}</span>
-          {blockIsPrimary && blockPrimaryLabel ? (
-            <span className="rounded-md bg-slate-900/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white dark:bg-slate-100 dark:text-slate-900">
-              {blockPrimaryLabel}
-            </span>
-          ) : null}
         </div>
       ) : null}
 

@@ -130,7 +130,7 @@ export function NumericInput({
             "field-control w-full min-w-0 rounded-xl border border-slate-200 bg-white text-slate-900 shadow-sm outline-none transition",
             "focus:border-[color:var(--dash-accent,#111111)] focus:ring-2 focus:ring-[color:var(--dash-accent,#111111)]/20",
             "dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100",
-            compact ? "h-8 rounded-lg px-2.5 text-sm" : "h-11 px-3.5 text-[length:var(--dash-body-size,0.875rem)]",
+            compact ? "h-8 rounded-lg px-2.5 text-sm" : "h-[var(--form-control-height,2.5rem)] px-3.5 text-[length:var(--dash-body-size,0.875rem)]",
             invalid && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
             disabled && "cursor-not-allowed opacity-60",
           ),

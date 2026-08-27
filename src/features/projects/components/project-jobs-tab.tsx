@@ -245,7 +245,7 @@ export function ProjectJobsTab({ projectId }: Props) {
         const [clients, projects, sites] = await Promise.all([
           fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
           fetchProjectsPage(1, 500, { is_active: true }),
-          fetchSitesPage(1, 500, { is_active: true }),
+          fetchSitesPage(1, 500),
         ]);
         if (cancelled) return;
 

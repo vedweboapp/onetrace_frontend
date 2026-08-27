@@ -20,6 +20,7 @@ import type { JobFormSubmission } from "@/features/job-forms/types/job-form-subm
 import {
   applyReadOnlyToSections,
   buildFieldMaps,
+  enrichSectionsWithSubmissionFiles,
 } from "@/features/job-forms/utils/job-form-schema.util";
 import {
   buildJobFormSubmissionFormData,
@@ -128,19 +129,23 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
       }
 
       const schema = await fetchJobFormSchema(formId);
-      const maps = buildFieldMaps(schema.sections);
-      setFieldMaps(maps);
       setFormTitle(schema.name?.trim() || formNameHint?.trim() || t("untitledForm"));
-      setSchemaSections(schema.sections);
       setRules(normalizeRules(schema.rules));
 
       const existing = await loadJobFormSubmission(jobId, jobFormId, formId, submissionIdHint);
       setSubmission(existing);
 
+      const sectionsForRender = existing?.files?.length
+        ? enrichSectionsWithSubmissionFiles(schema.sections, existing.files)
+        : schema.sections;
+      const maps = buildFieldMaps(sectionsForRender);
+      setFieldMaps(maps);
+      setSchemaSections(sectionsForRender);
+
       const defaults = existing
         ? mapSubmissionValuesToFormDefaults(
             existing.values,
-            schema.sections,
+            sectionsForRender,
             maps.apiNameByFieldId,
             maps.fieldTypeByFieldId,
             existing.files,

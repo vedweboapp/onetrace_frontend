@@ -7,7 +7,9 @@ import CompanySettingsCurrency from "./company-settings-currency";
 import CompanySettingSchedule from "./company-setting-schedule";
 import { getOrganizationDetails } from "../api/company-settings.api";
 import { OrganizationDetails } from "../types/types";
+import { dashboardFillPageFrameClassName } from "@/shared/config/dashboard-shell";
 import { useSettingsPageTab } from "@/shared/hooks/use-settings-page-tab";
+import { cn } from "@/core/utils/http.util";
 
 const COMPANY_TABS = [
   { id: "organization", label: "ORGANIZATION DETAILS" },
@@ -130,7 +132,7 @@ const CompanySettingsDetails = () => {
   };
 
   return (
-    <div className="flex w-full flex-col">
+    <div className={cn(dashboardFillPageFrameClassName, "w-full")}>
       <CompanySettingsHeader
         tabs={[...COMPANY_TABS]}
         activeTab={activeTab}
@@ -140,7 +142,9 @@ const CompanySettingsDetails = () => {
         onSave={() => orgDetailRef.current?.submit()}
         showEdit={activeTab === "organization"}
       />
-      <div className="min-w-0 pt-1">{renderTabContent()}</div>
+      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain pb-4 pt-1 sm:pb-5">
+        {renderTabContent()}
+      </div>
     </div>
   );
 };

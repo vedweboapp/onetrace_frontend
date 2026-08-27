@@ -147,125 +147,148 @@ export function SiteContactPersonsFields({
     getFormDraft,
   });
 
+  function addRow() {
+    append({ title: "", contact: "" });
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("contactPerson.sectionTitle")}</h3>
-          <FieldErrorText>{contactsSectionError}</FieldErrorText>
-        </div>
-        <AppButton
-          type="button"
-          variant="secondary"
-          size="sm"
-          disabled={!canAdd || loadingContacts}
-          onClick={() => append({ title: "", contact: "" })}
-        >
-          <Plus className="size-4" aria-hidden />
-          {t("contactPerson.add")}
-        </AppButton>
+    <section className="max-w-3xl rounded-xl border border-slate-200/90 bg-slate-50/40 p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900/25">
+      <div className="space-y-1">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          {t("contactPerson.sectionTitle")}
+        </h3>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t("contactPerson.sectionHint")}</p>
+        <FieldErrorText>{contactsSectionError}</FieldErrorText>
       </div>
 
       {!clientId ? (
-        <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+        <p className="mt-4 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-400">
           {t("contactPerson.selectClientFirst")}
         </p>
       ) : null}
 
-      {fields.length === 0 && clientId ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400">{t("contactPerson.empty")}</p>
+      {clientId && fields.length === 0 ? (
+        <div className="mt-4 flex flex-col items-start gap-3 rounded-lg border border-dashed border-slate-300 bg-white px-4 py-5 dark:border-slate-600 dark:bg-slate-950/50">
+          <p className="text-sm text-slate-600 dark:text-slate-400">{t("contactPerson.empty")}</p>
+          <AppButton
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={!canAdd || loadingContacts}
+            onClick={addRow}
+          >
+            <Plus className="size-4" aria-hidden />
+            {t("contactPerson.add")}
+          </AppButton>
+        </div>
       ) : null}
 
-      <div className="space-y-3">
-        {fields.map((field, index) => {
-          const titleErr = rowErrors?.[index]?.title?.message;
-          const contactErr = rowErrors?.[index]?.contact?.message;
-          return (
-            <div
-              key={field.id}
-              className={cn(
-                "grid gap-3 rounded-lg border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-900/40",
-                "sm:grid-cols-[1fr_1fr_auto]",
-              )}
-            >
-              <FieldGroup label={t("contactPerson.titleLabel")} htmlFor={`site-cp-title-${index}`} required>
-                <Controller
-                  control={control}
-                  name={`contacts.${index}.title`}
-                  render={({ field: titleField }) => (
-                    <CheckmarkSelect
-                      id={`site-cp-title-${index}`}
-                      portaled
-                      listLabel={t("contactPerson.titleLabel")}
-                      options={getRowTitleOptions(titleField.value)}
-                      value={titleField.value}
-                      emptyLabel={t("contactPerson.titlePlaceholder")}
-                      disabled={disabled}
-                      invalid={!!titleErr}
-                      onBlur={titleField.onBlur}
-                      onChange={titleField.onChange}
+      {fields.length > 0 ? (
+        <div className="mt-4 space-y-3">
+          {fields.map((field, index) => {
+            const titleErr = rowErrors?.[index]?.title?.message;
+            const contactErr = rowErrors?.[index]?.contact?.message;
+            return (
+              <div
+                key={field.id}
+                className={cn(
+                  "rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/80",
+                )}
+              >
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    {t("contactPerson.rowLabel", { number: index + 1 })}
+                  </p>
+                  <AppButton
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-slate-500 hover:text-red-600 dark:hover:text-red-400"
+                    disabled={disabled}
+                    aria-label={t("contactPerson.remove")}
+                    onClick={() => remove(index)}
+                  >
+                    <Trash2 className="size-4" aria-hidden />
+                  </AppButton>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FieldGroup label={t("contactPerson.titleLabel")} htmlFor={`site-cp-title-${index}`} required>
+                    <Controller
+                      control={control}
+                      name={`contacts.${index}.title`}
+                      render={({ field: titleField }) => (
+                        <CheckmarkSelect
+                          id={`site-cp-title-${index}`}
+                          portaled
+                          listLabel={t("contactPerson.titleLabel")}
+                          options={getRowTitleOptions(titleField.value)}
+                          value={titleField.value}
+                          emptyLabel={t("contactPerson.titlePlaceholder")}
+                          disabled={disabled}
+                          invalid={!!titleErr}
+                          onBlur={titleField.onBlur}
+                          onChange={titleField.onChange}
+                        />
+                      )}
                     />
-                  )}
-                />
-                <FieldErrorText>{titleErr}</FieldErrorText>
-              </FieldGroup>
+                    <FieldErrorText>{titleErr}</FieldErrorText>
+                  </FieldGroup>
 
-              <FieldGroup label={t("contactPerson.contactLabel")} htmlFor={`site-cp-contact-${index}`} required>
-                <Controller
-                  control={control}
-                  name={`contacts.${index}.contact`}
-                  render={({ field: contactField }) => (
-                    <CheckmarkSelect
-                      id={`site-cp-contact-${index}`}
-                      portaled
-                      searchable
-                      listLabel={t("contactPerson.contactLabel")}
-                      options={contactSelectOptions}
-                      value={contactField.value}
-                      emptyLabel={
-                        loadingContacts
-                          ? t("contactPerson.loadingContacts")
-                          : contactOptions.length === 0
-                            ? t("contactPerson.noContactsForClient")
-                            : t("contactPerson.contactPlaceholder")
-                      }
-                      disabled={disabled || !clientId || loadingContacts}
-                      invalid={!!contactErr}
-                      onBlur={contactField.onBlur}
-                      onChange={contactField.onChange}
-                      onAdd={
-                        contactQuickCreate.onAdd
-                          ? () => {
-                              pendingContactRowRef.current = index;
-                              contactQuickCreate.onAdd?.();
-                            }
-                          : undefined
-                      }
-                      addAriaLabel={contactQuickCreate.addAriaLabel}
-                      addLabel={contactQuickCreate.addLabel}
+                  <FieldGroup label={t("contactPerson.contactLabel")} htmlFor={`site-cp-contact-${index}`} required>
+                    <Controller
+                      control={control}
+                      name={`contacts.${index}.contact`}
+                      render={({ field: contactField }) => (
+                        <CheckmarkSelect
+                          id={`site-cp-contact-${index}`}
+                          portaled
+                          searchable
+                          listLabel={t("contactPerson.contactLabel")}
+                          options={contactSelectOptions}
+                          value={contactField.value}
+                          emptyLabel={
+                            loadingContacts
+                              ? t("contactPerson.loadingContacts")
+                              : contactOptions.length === 0
+                                ? t("contactPerson.noContactsForClient")
+                                : t("contactPerson.contactPlaceholder")
+                          }
+                          disabled={disabled || !clientId || loadingContacts}
+                          invalid={!!contactErr}
+                          onBlur={contactField.onBlur}
+                          onChange={contactField.onChange}
+                          onAdd={
+                            contactQuickCreate.onAdd
+                              ? () => {
+                                  pendingContactRowRef.current = index;
+                                  contactQuickCreate.onAdd?.();
+                                }
+                              : undefined
+                          }
+                          addAriaLabel={contactQuickCreate.addAriaLabel}
+                          addLabel={contactQuickCreate.addLabel}
+                        />
+                      )}
                     />
-                  )}
-                />
-                <FieldErrorText>{contactErr}</FieldErrorText>
-              </FieldGroup>
-
-              <div className="form-row-side-action">
-                <AppButton
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="size-9 p-0 text-slate-500 hover:text-red-600 dark:hover:text-red-400"
-                  disabled={disabled}
-                  aria-label={t("contactPerson.remove")}
-                  onClick={() => remove(index)}
-                >
-                  <Trash2 className="size-4" aria-hidden />
-                </AppButton>
+                    <FieldErrorText>{contactErr}</FieldErrorText>
+                  </FieldGroup>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+            );
+          })}
+
+          <AppButton
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={!canAdd || loadingContacts}
+            onClick={addRow}
+          >
+            <Plus className="size-4" aria-hidden />
+            {t("contactPerson.addAnother")}
+          </AppButton>
+        </div>
+      ) : null}
+    </section>
   );
 }
