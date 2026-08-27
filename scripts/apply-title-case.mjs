@@ -3,16 +3,25 @@ import fs from "fs";
 const KEEP_UPPER = new Set(["zip", "id", "qr", "url", "api", "utc", "csv", "pdf", "pin", "po", "hr", "sku", "vat"]);
 
 function toTitleCase(str) {
-  return str.replace(/\S+/g, (word) => {
+  // Protect ICU placeholders like {index} / {count, plural, ...} from word casing.
+  const slots = [];
+  const protectedStr = str.replace(/\{[^{}]+\}/g, (m) => {
+    const i = slots.length;
+    slots.push(m);
+    return `\u0000${i}\u0000`;
+  });
+  const cased = protectedStr.replace(/\S+/g, (word) => {
+    if (word.includes("\u0000")) return word;
     const match = word.match(/^([^a-zA-Z0-9']*)([a-zA-Z0-9']+)(.*)$/);
     if (!match) return word;
     const [, prefix, bare, suffix] = match;
     const lower = bare.toLowerCase();
-    const cased = KEEP_UPPER.has(lower)
+    const next = KEEP_UPPER.has(lower)
       ? bare.toUpperCase()
       : bare.charAt(0).toUpperCase() + bare.slice(1);
-    return `${prefix}${cased}${suffix}`;
+    return `${prefix}${next}${suffix}`;
   });
+  return cased.replace(/\u0000(\d+)\u0000/g, (_, i) => slots[Number(i)] ?? "");
 }
 
 function shouldSkip(path, key, value) {
@@ -23,7 +32,8 @@ function shouldSkip(path, key, value) {
   if (/\.actions\.(save|cancel|delete|confirm|retry|export|edit|add)$/.test(path)) return true;
   if (value.endsWith(".") && value.length > 40) return true;
   if (value.includes("…") || value.includes("...")) return true;
-  if (/\{[a-z]+\}/.test(value)) return true;
+  // Any ICU placeholder — never title-case these strings.
+  if (/\{[^{}]+\}/.test(value)) return true;
   return false;
 }
 

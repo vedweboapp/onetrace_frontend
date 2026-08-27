@@ -42,7 +42,7 @@ export const detailFlatSectionTitleClassName =
 
 /** Inline sub-heading inside a section (e.g. Contact information). */
 export const detailSubsectionTitleClassName =
-  "mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400";
+  "mb-3 text-xs font-semibold tracking-normal text-slate-500 dark:text-slate-400";
 
 export function activeStatusSelectOptions(
   activeLabel: string,

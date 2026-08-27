@@ -17,11 +17,11 @@ Font family and size come from **Settings → Appearance** (`useDashboardAppeara
 | `--dash-label-size` | Form/detail field labels |
 | `--dash-text-xs` … `--dash-text-2xl` | Tailwind `text-xs` … `text-2xl` |
 
-## Presets (base / xs)
+## Font size
 
-- **Small:** 14px / 12px
-- **Medium:** 16px / 14px (default)
-- **Large:** 18px / 16px
+- User picks **6px–40px** (default **16px**)
+- Scale is built in `buildDashTextScale()` from that base
+- Tables, forms, detail pages, and modals inherit via the CSS variables above
 
 ## Do
 

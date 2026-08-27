@@ -63,13 +63,6 @@ export function ClientSitesTab({ clientId }: Props) {
       c.primary("name", tSites("table.name"), (r) => r.site_name),
       c.truncate("address", tSites("table.address"), (r) => siteAddressSummary(r), { maxWidth: "lg" }),
       c.truncate("what3words", tSites("table.what3words"), (r) => r.what3words?.trim() || "—", { maxWidth: "sm", responsive: "md" }),
-      c.status(
-        "status",
-        tSites("table.status"),
-        (r) => r.is_active,
-        tSites("status.active"),
-        tSites("status.inactive"),
-      ),
       c.date("created", tSites("table.created"), (r) => r.created_at, dateFmt),
     ];
   }, [tSites, dateFmt]);

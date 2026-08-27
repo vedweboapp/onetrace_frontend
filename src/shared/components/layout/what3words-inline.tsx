@@ -11,7 +11,7 @@ export function What3WordsInline({ value, label, className }: Props) {
   const words = value!.trim();
   return (
     <div className={className}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="text-xs font-semibold tracking-normal text-slate-500 dark:text-slate-400">{label}</p>
       <a
         href={what3WordsHref(words)}
         target="_blank"

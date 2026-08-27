@@ -275,7 +275,7 @@ const SubForm: React.FC<SubFormProps> = ({
     <div className="w-full">
       {label && (
         <div className="flex items-center gap-1.5 mb-3">
-          <span className="text-[13px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+          <span className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 tracking-normal">
             {label}
           </span>
           {required && <span className="text-red-500 font-bold">*</span>}

@@ -204,7 +204,7 @@ export function MultiCheckSelect({
   }
 
   const triggerClass = cn(
-    "field-control flex min-h-[var(--form-control-height,2.5rem)] w-full min-w-0 items-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-left text-slate-900 outline-none transition",
+    "field-control field-control--grow flex min-h-[var(--form-control-height,2.5rem)] w-full min-w-0 items-start rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-left text-slate-900 outline-none transition",
     "text-[length:var(--dash-body-size,0.875rem)]",
     "hover:border-[color:var(--dash-accent,#111111)] hover:bg-slate-50",
     "focus-visible:border-[color:var(--dash-accent,#111111)] focus-visible:ring-2 focus-visible:ring-[color:var(--dash-accent,#111111)]/20",
@@ -310,21 +310,21 @@ export function MultiCheckSelect({
         onClick={() => !disabled && setOpen((v) => !v)}
         className={triggerClass}
       >
-        <div className="flex w-full items-center justify-between gap-2">
+        <div className="flex w-full items-start justify-between gap-2">
           {selectedOptions.length === 0 ? (
-            <span className="truncate text-slate-400 dark:text-slate-500">{placeholder}</span>
+            <span className="truncate py-0.5 text-slate-400 dark:text-slate-500">{placeholder}</span>
           ) : (
-            <div className="flex min-h-6 flex-1 flex-wrap content-center gap-1">
+            <div className="flex max-h-[min(12rem,40vh)] min-w-0 flex-1 flex-wrap content-start gap-1.5 overflow-y-auto py-0.5">
               {selectedOptions.map((opt) => (
                 <span
                   key={opt.value}
-                  className="inline-flex max-w-full items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-xs leading-tight text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  className="inline-flex max-w-full items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[length:var(--dash-text-xs,0.75rem)] leading-snug text-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
-                  <span className="truncate">{opt.label}</span>
+                  <span className="min-w-0 break-words">{opt.label}</span>
                   <span
                     role="button"
                     tabIndex={0}
-                    className="rounded p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700"
+                    className="shrink-0 rounded p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700"
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleOne(opt.value);
@@ -337,13 +337,13 @@ export function MultiCheckSelect({
                       }
                     }}
                   >
-                    <X className="size-3" />
+                    <X className="size-3.5" />
                   </span>
                 </span>
               ))}
             </div>
           )}
-          <ChevronDown className={cn("mt-0.5 size-4 shrink-0 transition", open && "rotate-180")} />
+          <ChevronDown className={cn("mt-1 size-4 shrink-0 transition", open && "rotate-180")} />
         </div>
       </button>
       {open && !disabled && (portaled && typeof document !== "undefined" ? createPortal(panel, document.body) : panel)}

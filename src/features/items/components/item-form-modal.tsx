@@ -23,6 +23,7 @@ import {
   DimensionsLwhInput,
   FieldErrorText,
   FieldGroup,
+  FormFieldRow,
   InputWithEndSelect,
   MoneyInput,
   MultiCheckSelect,
@@ -314,7 +315,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
       }
     >
       <form id="item-form" className="space-y-5" onSubmit={(e) => void submit(e)}>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <FormFieldRow cols="2" from="md" className="gap-4">
           <FieldGroup label={t("name")} htmlFor={nameId} required>
             <input
               id={nameId}
@@ -350,9 +351,9 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
             />
             <FieldErrorText>{skuError}</FieldErrorText>
           </FieldGroup>
-        </div>
+        </FormFieldRow>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <FormFieldRow cols="2" from="md" className="gap-4">
           <FieldGroup label={t("unitType")} htmlFor={unitId}>
             <CheckmarkSelect
               id={unitId}
@@ -403,7 +404,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               disabled={submitting}
             />
           </FieldGroup>
-        </div>
+        </FormFieldRow>
 
         <FieldGroup label={t("vendors")} htmlFor="modal-item-vendors">
           <MultiCheckSelect
@@ -431,7 +432,8 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
           <h3 className="field-label text-sm font-semibold text-slate-900 dark:text-slate-100 md:pt-[calc((var(--form-control-height,2.75rem)-1.35em)/2)]">
             {t("fulfilmentDetails")}
           </h3>
-          <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
+          <div className="form-fields-host min-w-0">
+            <div className="form-field-row grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
             <FieldGroup label={t("dimensions")} htmlFor="modal-item-dimensions">
               <DimensionsLwhInput
                 id="modal-item-dimensions"
@@ -473,6 +475,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
                 selectAriaLabel={t("weightUnit")}
               />
             </FieldGroup>
+          </div>
           </div>
         </div>
       </form>

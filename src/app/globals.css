@@ -41,6 +41,8 @@ input[type="number"]::-webkit-outer-spin-button {
   gap: 0.5rem;
   width: 100%;
   min-width: 0;
+  min-height: var(--form-control-height, 2.5rem);
+  height: var(--form-control-height, 2.5rem);
   border-radius: 0.75rem;
   border: 1px solid rgb(226 232 240);
   background: rgb(255 255 255);
@@ -59,11 +61,12 @@ input[type="number"]::-webkit-outer-spin-button {
 .surface-phone-root .PhoneInputInput {
   min-width: 0;
   flex: 1;
-  height: 2.75rem;
+  height: 100%;
+  min-height: 0;
   border: 0;
   background: transparent;
   font-size: var(--dash-body-size, 0.875rem);
-  line-height: 1.25rem;
+  line-height: 1.25;
   color: rgb(15 23 42);
   outline: none;
 }
@@ -208,19 +211,26 @@ html[data-font-size] .text-\[12px\],
  * Labels pin to the control top so FieldErrorText never shifts the input upward.
  */
 .dash-appearance-scope {
-  --form-label-col: 9.5rem;
-  --detail-label-col: 9.5rem;
+  --form-label-col: calc(9.5rem * var(--dash-type-scale, 1));
+  --detail-label-col: calc(9.5rem * var(--dash-type-scale, 1));
   --form-label-gap: 0.75rem;
   --detail-label-gap: 0.75rem;
-  --form-control-height: 2.5rem; /* slightly compact vs h-11 */
+  /* Grows with Appearance font size so single-line inputs never clip text. */
+  --form-control-height: calc(var(--dash-body-size, 1rem) + 1.35rem);
   --detail-value-height: 1.875rem;
   --form-field-row-gap-y: 1.625rem;
 }
 
-/* Uniform compact control height across form inputs, selects, and triggers. */
-.dash-appearance-scope .field-control:not(textarea) {
+/* Uniform control height; multi-value controls opt into --grow and expand. */
+.dash-appearance-scope .field-control:not(textarea):not(.field-control--grow) {
   height: var(--form-control-height);
   min-height: var(--form-control-height);
+}
+
+.dash-appearance-scope .field-control.field-control--grow {
+  height: auto !important;
+  min-height: var(--form-control-height);
+  max-height: none;
 }
 
 .dash-appearance-scope textarea.field-control {
@@ -233,7 +243,9 @@ html[data-font-size] .text-\[12px\],
   margin-top: 0.375rem;
 }
 
-/* Each FormFieldRow measures its own width and collapses to 1 col when tight. */
+/* Each FormFieldRow measures its own width and collapses to 1 col when tight.
+ * Side labels (left/right) need ~9.5rem + control per field — two columns need
+ * roughly 48rem+ of host width before they stay side-by-side. */
 .form-fields-host {
   container-type: inline-size;
   container-name: form-fields;
@@ -241,28 +253,34 @@ html[data-font-size] .text-\[12px\],
   min-width: 0;
 }
 
-@container form-fields (max-width: 36rem) {
+@container form-fields (max-width: 48rem) {
   .form-field-row {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
 
-/* Narrow form hosts (modals, drawers): stack label above control — no overlap. */
-@container form-fields (max-width: 26rem) {
+/* Narrow form hosts (modals, drawers, phones): stack label above control. */
+@container form-fields (max-width: 32rem) {
   .form-field-row .field-group:not(.detail-field) {
-    grid-template-columns: minmax(0, 1fr) !important;
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.375rem;
+    grid-template-columns: none !important;
   }
 
   .form-field-row .field-group:not(.detail-field) .field-label,
   .form-field-row .field-group:not(.detail-field) .field-control-wrap {
-    grid-column: 1 / -1;
+    grid-column: auto;
     order: 0 !important;
+    width: 100%;
   }
 
   .form-field-row .field-group:not(.detail-field) .field-label {
     padding-top: 0 !important;
     margin-bottom: 0;
     text-align: left !important;
+    white-space: normal;
   }
 }
 
@@ -274,7 +292,7 @@ html[data-font-size] .text-\[12px\],
   min-width: 0;
 }
 
-@container settings-fields (max-width: 42rem) {
+@container settings-fields (max-width: 48rem) {
   .settings-aligned-fields .form-field-row {
     grid-template-columns: minmax(0, 1fr) !important;
   }
@@ -285,15 +303,20 @@ html[data-font-size] .text-\[12px\],
   }
 }
 
-@container settings-fields (max-width: 26rem) {
+@container settings-fields (max-width: 32rem) {
   .settings-aligned-fields .field-group:not(.detail-field) {
-    grid-template-columns: minmax(0, 1fr) !important;
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.375rem;
+    grid-template-columns: none !important;
   }
 
   .settings-aligned-fields .field-group:not(.detail-field) .field-label,
   .settings-aligned-fields .field-group:not(.detail-field) .field-control-wrap {
-    grid-column: 1 / -1;
+    grid-column: auto;
     order: 0 !important;
+    width: 100%;
   }
 
   .settings-aligned-fields .field-group:not(.detail-field) .field-label {
@@ -400,6 +423,38 @@ html[data-font-size] .text-\[12px\],
   min-width: 0;
 }
 
+/* Modal bodies: collapse field rows + stack labels when the dialog is narrow. */
+.app-modal {
+  container-type: inline-size;
+  container-name: app-modal;
+}
+
+@container app-modal (max-width: 40rem) {
+  .form-field-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@container app-modal (max-width: 32rem) {
+  .field-group:not(.detail-field) {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.375rem;
+    grid-template-columns: none !important;
+  }
+
+  .field-group:not(.detail-field) > .field-label {
+    padding-top: 0 !important;
+    text-align: left !important;
+    order: 0 !important;
+  }
+
+  .field-group:not(.detail-field) > .field-control-wrap {
+    order: 0 !important;
+  }
+}
+
 @media (max-width: 639px) {
   .app-modal .field-group:not(.detail-field) {
     display: flex !important;
@@ -440,7 +495,8 @@ html[data-font-size] .text-\[12px\],
 .dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.signature-pad-root),
 .dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.video-recorder-root),
 .dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.image-upload-root),
-.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.file-uploader-root) {
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.file-uploader-root),
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.field-control--grow) {
   align-items: start;
 }
 
@@ -448,19 +504,21 @@ html[data-font-size] .text-\[12px\],
 .dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.signature-pad-root) .field-label,
 .dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.video-recorder-root) .field-label,
 .dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.image-upload-root) .field-label,
-.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.file-uploader-root) .field-label {
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.file-uploader-root) .field-label,
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.field-control--grow) .field-label {
   padding-top: 0.625rem;
 }
 
 /*
  * Per-field stack when a 2-col cell / modal half is too narrow for side labels
- * (label + control each take a full row — no overlap).
+ * (label above control — works for Appearance left / right / top).
  */
-@container form-field (max-width: 22rem) {
+@container form-field (max-width: 24rem) {
   .field-label,
   .field-control-wrap {
-    grid-column: 1 / -1;
+    grid-column: 1 / -1 !important;
     order: 0 !important;
+    width: 100%;
   }
 
   .field-label {

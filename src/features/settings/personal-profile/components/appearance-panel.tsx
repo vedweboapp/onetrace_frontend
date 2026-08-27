@@ -12,25 +12,24 @@ import {
   DETAIL_ROW_LINE_STYLE_ORDER,
   DETAIL_ROW_LINE_WIDTH_ORDER,
   FONT_FAMILY_ORDER,
-  FONT_SIZE_ORDER,
+  FONT_SIZE_PX_OPTIONS,
   FORM_LABEL_PLACEMENT_ORDER,
   REQUIRED_INDICATOR_ORDER,
   SIDEBAR_LAYOUT_ORDER,
   useDashboardAppearanceStore,
   type DashboardAccentId,
   type DashboardFontFamily,
-  type DashboardFontSize,
   type DashboardSidebarLayout,
   type DetailRowLineStyle,
   type DetailRowLineWidth,
   type FormLabelPlacement,
   type RequiredFieldIndicator,
 } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
-import { ACCENT_HEX } from "@/features/dashboard/utils/accent-hex.util";
+import { ACCENT_HEX, accentOnAccentHex } from "@/features/dashboard/utils/accent-hex.util";
 import { useShallow } from "zustand/react/shallow";
 import { AppButton, CheckmarkSelect, FieldGroup, surfaceInputClassName } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
-import { LayoutPanelLeft, LayoutPanelTop, Moon, PanelRight, Sun } from "lucide-react";
+import { Check, LayoutPanelLeft, LayoutPanelTop, Moon, PanelRight, Sun } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { updatePersonalProfile } from "../api/personal-profile.api";
 import {
@@ -191,7 +190,18 @@ function FormLayoutPreview({
       <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
         {t("formPreviewHeading")}
       </p>
-      <div className="dash-appearance-scope max-w-md" data-form-label={placement} data-required-indicator={requiredIndicator}>
+      <div
+        className={cn(
+          "dash-appearance-scope w-full max-w-2xl",
+          /* Keep the sample label on one line beside the control in left/right layouts. */
+          "[&_.field-group:not(.detail-field)>.field-label]:whitespace-nowrap",
+          "[&_.field-group:not(.detail-field)>.field-label]:overflow-visible",
+          "[&_.field-group:not(.detail-field)>.field-label]:[overflow-wrap:normal]",
+        )}
+        style={{ ["--form-label-col" as string]: "10.5rem" }}
+        data-form-label={placement}
+        data-required-indicator={requiredIndicator}
+      >
         <FieldGroup label={t("formPreviewLabel")} htmlFor="appearance-preview-field" required>
           <input
             id="appearance-preview-field"
@@ -433,6 +443,15 @@ export const AppearancePanel = React.forwardRef<AppearancePanelHandle, Appearanc
       [t],
     );
 
+    const fontSizeOptions = React.useMemo(
+      () =>
+        FONT_SIZE_PX_OPTIONS.map((px) => ({
+          value: String(px),
+          label: t("fontSizeOption", { px }),
+        })),
+      [t],
+    );
+
     function handleApplyCustom() {
       if (!isEditing) return;
       const n = normalizeHex(hexDraft);
@@ -495,86 +514,119 @@ export const AppearancePanel = React.forwardRef<AppearancePanelHandle, Appearanc
           </SettingRow>
 
           <SettingRow label={t("accentPresetsLabel")} hint={t("customHint")}>
-            <div className="space-y-6">
-              <div className="flex flex-wrap gap-5">
-                {ACCENT_ORDER.map((id: DashboardAccentId) => {
-                  const hex = ACCENT_HEX[id];
-                  const selected = accentKind === "preset" && accent === id;
-                  return (
-                    <div key={id} className="flex flex-col items-center gap-2">
+            <div className="max-w-lg space-y-3">
+              <div
+                className={cn(
+                  "rounded-lg border border-slate-200 bg-slate-50/60 p-3 dark:border-slate-700 dark:bg-slate-900/40",
+                  !canEdit && "opacity-80",
+                )}
+              >
+                <div className="flex flex-wrap gap-1.5" role="listbox" aria-label={t("accentPresetsLabel")}>
+                  {ACCENT_ORDER.map((id: DashboardAccentId) => {
+                    const hex = ACCENT_HEX[id];
+                    const selected = accentKind === "preset" && accent === id;
+                    const checkColor = accentOnAccentHex(hex);
+                    return (
                       <button
+                        key={id}
                         type="button"
+                        role="option"
+                        aria-selected={selected}
                         disabled={!canEdit}
                         onClick={() => {
                           setAccentPreset(id);
                           setHexDraft(hex);
                         }}
                         className={cn(
-                          "size-10 rounded-full transition hover:scale-105",
+                          "relative flex size-7 items-center justify-center rounded-md border transition",
                           selected
-                            ? "ring-2 ring-[color:var(--dash-accent)] ring-offset-2 dark:ring-offset-slate-950"
-                            : "ring-1 ring-slate-200 dark:ring-slate-700",
+                            ? "border-slate-900 shadow-sm dark:border-white"
+                            : "border-slate-200/80 hover:border-slate-400 dark:border-slate-600 dark:hover:border-slate-400",
                           !canEdit && "pointer-events-none",
                         )}
                         style={{ background: hex }}
                         title={t(`accents.${id}`)}
                         aria-label={t(`accents.${id}`)}
-                      />
-                      <span className="text-[10px] font-semibold uppercase tracking-tight text-slate-500">
-                        {t(`accents.${id}`)}
+                      >
+                        {selected ? (
+                          <Check className="size-3.5" strokeWidth={2.5} style={{ color: checkColor }} aria-hidden />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2.5 text-xs text-slate-600 dark:text-slate-300">
+                  {accentKind === "preset" ? (
+                    <>
+                      <span className="font-medium text-slate-800 dark:text-slate-100">
+                        {t(`accents.${accent}`)}
                       </span>
-                    </div>
-                  );
-                })}
+                      <span className="mx-1.5 text-slate-300 dark:text-slate-600">·</span>
+                      <span className="font-mono tabular-nums text-slate-500 dark:text-slate-400">
+                        {ACCENT_HEX[accent]}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-medium text-slate-800 dark:text-slate-100">
+                        {t("accentCustom")}
+                      </span>
+                      <span className="mx-1.5 text-slate-300 dark:text-slate-600">·</span>
+                      <span className="font-mono tabular-nums text-slate-500 dark:text-slate-400">
+                        {normalizeHex(customAccentHex)}
+                      </span>
+                    </>
+                  )}
+                </p>
               </div>
 
-              <div className="max-w-md">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  {t("customHexLabel")}
-                </p>
-                <div className="flex overflow-hidden items-center rounded-xl border border-slate-200 bg-white focus-within:ring-2 focus-within:ring-slate-900/10 dark:border-slate-800 dark:bg-slate-900">
-                  <div className="flex flex-1 items-center gap-3 px-3 py-2">
-                    <button
-                      type="button"
-                      disabled={!canEdit}
-                      className="size-6 rounded-md border border-slate-200 dark:border-slate-700 disabled:opacity-70"
-                      style={{ background: normalizeHex(hexDraft) }}
-                      onClick={() => colorInputRef.current?.click()}
-                      aria-label={t("customColorPicker")}
-                    />
-                    <input
-                      ref={colorInputRef}
-                      type="color"
-                      className="sr-only"
-                      disabled={!canEdit}
-                      value={normalizeHex(hexDraft).slice(0, 7)}
-                      onChange={(e) => {
-                        setHexDraft(e.target.value);
-                        setAccentCustom(e.target.value);
-                      }}
-                    />
-                    <input
-                      type="text"
-                      value={hexDraft}
-                      disabled={!canEdit}
-                      onChange={(e) => setHexDraft(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleApplyCustom()}
-                      className="w-full bg-transparent font-mono text-sm font-semibold outline-none text-slate-900 disabled:opacity-70 dark:text-white"
-                      placeholder="#111111"
-                      spellCheck={false}
-                    />
-                  </div>
-                  {canEdit ? (
-                    <AppButton
-                      variant="primary"
-                      type="button"
-                      onClick={handleApplyCustom}
-                      className="mx-2 px-5 py-2 text-xs font-bold uppercase tracking-wider"
-                    >
-                      {t("applyCustom")}
-                    </AppButton>
-                  ) : null}
+              <div className="flex items-stretch overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+                <button
+                  type="button"
+                  disabled={!canEdit}
+                  className="w-10 shrink-0 border-r border-slate-200 dark:border-slate-700 disabled:opacity-70"
+                  style={{ background: normalizeHex(hexDraft) }}
+                  onClick={() => colorInputRef.current?.click()}
+                  aria-label={t("customColorPicker")}
+                />
+                <input
+                  ref={colorInputRef}
+                  type="color"
+                  className="sr-only"
+                  disabled={!canEdit}
+                  value={normalizeHex(hexDraft).slice(0, 7)}
+                  onChange={(e) => {
+                    setHexDraft(e.target.value);
+                    setAccentCustom(e.target.value);
+                  }}
+                />
+                <div className="flex min-w-0 flex-1 flex-col justify-center px-3 py-1.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    {t("customHexLabel")}
+                  </span>
+                  <input
+                    type="text"
+                    value={hexDraft}
+                    disabled={!canEdit}
+                    onChange={(e) => setHexDraft(e.target.value)}
+                    onBlur={handleApplyCustom}
+                    onKeyDown={(e) => e.key === "Enter" && handleApplyCustom()}
+                    className="w-full bg-transparent font-mono text-sm text-slate-900 outline-none disabled:opacity-70 dark:text-white"
+                    placeholder="#111111"
+                    spellCheck={false}
+                    aria-label={t("customHexLabel")}
+                  />
                 </div>
+                {canEdit ? (
+                  <AppButton
+                    variant="secondary"
+                    type="button"
+                    onClick={handleApplyCustom}
+                    className="m-1.5 shrink-0 px-3 py-1.5 text-xs font-semibold"
+                  >
+                    {t("applyCustom")}
+                  </AppButton>
+                ) : null}
               </div>
             </div>
           </SettingRow>
@@ -594,19 +646,16 @@ export const AppearancePanel = React.forwardRef<AppearancePanelHandle, Appearanc
           </SettingRow>
 
           <SettingRow label={t("fontSizeLabel")} hint={t("fontSizeHint")}>
-            <div className="flex flex-wrap gap-2">
-              {FONT_SIZE_ORDER.map((size: DashboardFontSize) => (
-                <ChoiceChip
-                  key={size}
-                  active={fontSize === size}
-                  disabled={!canEdit}
-                  onClick={() => setFontSize(size)}
-                >
-                  {t(`fontSizes.${size}`)}
-                </ChoiceChip>
-              ))}
-            </div>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{t("fontSizePreview")}</p>
+            <CheckmarkSelect
+              id="appearance-font-size"
+              listLabel={t("fontSizeLabel")}
+              options={fontSizeOptions}
+              value={String(fontSize)}
+              onChange={(v) => setFontSize(Number.parseInt(v, 10))}
+              disabled={!canEdit}
+              className="w-full max-w-md"
+              searchable
+            />
           </SettingRow>
         </SectionShell>
 

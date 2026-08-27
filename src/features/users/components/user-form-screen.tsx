@@ -210,7 +210,7 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
             noValidate
             onSubmit={handleSubmit(submit)}
           >
-            <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+            <FormFieldRow cols="2" from="md">
               <SurfaceTextField
                 register={register}
                 name="first_name"
@@ -232,7 +232,7 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
                 error={errors.last_name?.message}
               />
             </FormFieldRow>
-            <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+            <FormFieldRow cols="2" from="md">
               <SurfaceTextField
                 register={register}
                 name="email"
@@ -254,7 +254,7 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
                 countryIso={phoneCountry}
               />
             </FormFieldRow>
-            <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+            <FormFieldRow cols="2" from="md">
               <FieldGroup label={t("fields.gender")} htmlFor="user-gender" required>
                 <Controller
                   control={control}
@@ -301,7 +301,7 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
               </FieldGroup>
             </FormFieldRow>
 
-            <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+            <FormFieldRow cols="2" from="md">
               <FieldGroup label={t("fields.basePay")} htmlFor="user-base-pay">
                 <Controller
                   control={control}
@@ -350,7 +350,7 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
                 sectionTitle: t("fields.addresses"),
                 add: t("addresses.add"),
                 remove: t("addresses.remove"),
-                rowLabel: (index) => t("addresses.rowLabel", { index }),
+                rowLabel: (index) => t("addresses.rowLabel", { number: index  }),
                 addressType: t("fields.addressType"),
                 addressLine1: t("fields.addressLine1"),
                 addressLine2: t("fields.addressLine2"),

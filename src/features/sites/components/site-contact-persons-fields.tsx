@@ -196,7 +196,7 @@ export function SiteContactPersonsFields({
                 )}
               >
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  <p className="text-xs font-semibold tracking-normal text-slate-500 dark:text-slate-400">
                     {t("contactPerson.rowLabel", { number: index + 1 })}
                   </p>
                   <AppButton

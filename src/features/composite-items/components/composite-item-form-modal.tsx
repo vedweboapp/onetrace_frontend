@@ -26,6 +26,7 @@ import {
   type CheckmarkSelectOption,
   FieldErrorText,
   FieldGroup,
+  FormFieldRow,
   MoneyInput,
   NumericInput,
   surfaceInputClassName,
@@ -461,7 +462,7 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
       }
     >
       <form id="composite-item-form" className="space-y-5" onSubmit={(e) => void submit(e)}>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <FormFieldRow cols="2" from="md" className="gap-4">
           <FieldGroup label={t("name")} htmlFor={nameId} required>
             <input
               id={nameId}
@@ -491,9 +492,9 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
             />
             {skuInvalid ? <FieldErrorText>{t("skuError")}</FieldErrorText> : null}
           </FieldGroup>
-        </div>
+        </FormFieldRow>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <FormFieldRow cols="2" from="md" className="gap-4">
           <FieldGroup label={t("quantity")} htmlFor={qtyId} required>
             <NumericInput
               id={qtyId}
@@ -521,9 +522,9 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
               className="w-full"
             />
           </FieldGroup>
-        </div>
+        </FormFieldRow>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <FormFieldRow cols="2" from="md" className="gap-4">
           <FieldGroup label={t("costPrice")} htmlFor={costId} required>
             <MoneyInput
               id={costId}
@@ -554,7 +555,7 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
               step="0.01"
             />
           </FieldGroup>
-        </div>
+        </FormFieldRow>
 
         <FieldGroup label={t("components")}>
           {itemsError ? (

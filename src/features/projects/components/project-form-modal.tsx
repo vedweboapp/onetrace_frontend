@@ -386,7 +386,7 @@ export function ProjectFormModal({
           </p>
         ) : null}
 
-        <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+        <FormFieldRow cols="2" from="md">
           <FieldGroup label={t("fields.name")} htmlFor="project-name" required>
             <input
               id="project-name"
@@ -459,7 +459,7 @@ export function ProjectFormModal({
           </FieldGroup>
         </FormFieldRow>
 
-        <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+        <FormFieldRow cols="2" from="md">
           <FieldGroup label={t("fields.sites")} htmlFor="project-sites">
             <Controller
               control={control}
@@ -523,7 +523,7 @@ export function ProjectFormModal({
           <FieldErrorText id="project-desc-err">{errors.description?.message}</FieldErrorText>
         </FieldGroup>
 
-        <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+        <FormFieldRow cols="2" from="md">
           <FieldGroup label={t("fields.startDate")} htmlFor="project-start" required>
             <SurfaceDateInput
               id="project-start"

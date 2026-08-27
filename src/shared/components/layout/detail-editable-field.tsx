@@ -30,10 +30,10 @@ type DetailEditableFieldEditorProps = {
   editorClassName: string;
 };
 
-/** Detail label — muted, sentence case; placement follows Appearance (left/right/top). */
+/** Detail label — muted; placement follows Appearance (left/right/top). */
 export const detailFieldLabelClassName = cn(
   fieldLabelClassName,
-  "font-normal normal-case tracking-normal text-slate-500 dark:text-slate-400",
+  "font-normal text-slate-500 dark:text-slate-400",
 );
 
 /** Soft box shared by display + edit — weight/color match list table cells. */

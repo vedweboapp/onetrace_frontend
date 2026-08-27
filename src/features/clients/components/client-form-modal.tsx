@@ -201,7 +201,7 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved, onCreate
               sectionTitle: t("fields.addresses"),
               add: t("addresses.add"),
               remove: t("addresses.remove"),
-              rowLabel: (index) => t("addresses.rowLabel", { index }),
+              rowLabel: (index) => t("addresses.rowLabel", { number: index  }),
               addressType: t("fields.addressType"),
               addressLine1: t("fields.addressLine1"),
               addressLine2: t("fields.addressLine2"),

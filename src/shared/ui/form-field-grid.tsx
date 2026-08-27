@@ -4,6 +4,9 @@ import { cn } from "@/core/utils/http.util";
 /**
  * Zoho-style form row: 2 fields side-by-side when there is room,
  * 1 field per row when the row host is narrow (container query) or below `from`.
+ *
+ * Prefer `cols="2"` (default) over `cols="1" className="…grid-cols-2"` so
+ * `.form-fields-host` container queries can collapse rows on small screens.
  */
 export function FormFieldRow({
   cols = "2",
