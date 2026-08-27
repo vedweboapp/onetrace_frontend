@@ -104,12 +104,15 @@ function SidebarNavLink({
   label,
   icon: Icon,
   expanded,
+  dataNav,
 }: {
   href: string;
   active: boolean;
   label: string;
   icon: LucideIcon;
   expanded: boolean;
+  /** Stable hook for fly-to celebrations (e.g. `dispatches`). */
+  dataNav?: string;
   /** Kept for call-site consistency; leaf items use soft active styles. */
   resolved?: ReturnType<typeof resolveDashboardAccent>;
 }) {
@@ -129,6 +132,7 @@ function SidebarNavLink({
       <Link
         href={href}
         title={label}
+        data-nav={dataNav}
         className="flex w-full shrink-0 justify-center py-0.5"
       >
         <span
@@ -147,6 +151,7 @@ function SidebarNavLink({
   return (
     <Link
       href={href}
+      data-nav={dataNav}
       className={cn(
         "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
         active ? navLeafActive() : navInactive(),
@@ -650,6 +655,7 @@ function DashboardMainSidebar({
           icon={Truck}
           expanded={expanded}
           resolved={resolved}
+          dataNav="dispatches"
         />
         <SidebarNavLink
           href={returnToStockHref}
