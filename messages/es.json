@@ -132,7 +132,22 @@
       "job": "Trabajo",
       "invoice": "Factura",
       "quotation": "Cotización",
-      "group": "Grupo"
+      "group": "Grupo",
+      "projectType": "Tipo de proyecto",
+      "installationType": "Tipo de instalación",
+      "vendorType": "Tipo de proveedor",
+      "unitType": "Tipo de unidad",
+      "rejectionReason": "Motivo de rechazo",
+      "checklistType": "Tipo de checklist",
+      "projectStatus": "Estado de proyecto",
+      "pinStatus": "Estado de pin",
+      "jobStatus": "Estado de trabajo",
+      "materialStatus": "Estado de material",
+      "status": "Estado",
+      "tag": "Etiqueta",
+      "title": "Título",
+      "role": "Rol",
+      "profile": "Perfil"
     },
     "fields": {
       "email": "correo",
@@ -149,6 +164,20 @@
       "userEmailExists": "Ya existe un usuario con este correo.",
       "emailAlreadyExists": "Este correo ya existe.",
       "entityFieldExists": "Ya existe un {entity} con este {field}.",
+      "entityExists": "Ya existe {entity}.",
+      "entityExistsInOrganization": "Ya existe {entity} en tu organización.",
+      "projectTypeExistsInOrganization": "Ya existe un tipo de proyecto en tu organización.",
+      "installationTypeExistsInOrganization": "Ya existe un tipo de instalación en tu organización.",
+      "vendorTypeExistsInOrganization": "Ya existe un tipo de proveedor en tu organización.",
+      "unitTypeExistsInOrganization": "Ya existe un tipo de unidad en tu organización.",
+      "rejectionReasonExistsInOrganization": "Ya existe un motivo de rechazo en tu organización.",
+      "checklistTypeExistsInOrganization": "Ya existe un tipo de checklist en tu organización.",
+      "projectStatusExistsInOrganization": "Ya existe un estado de proyecto en tu organización.",
+      "pinStatusExistsInOrganization": "Ya existe un estado de pin en tu organización.",
+      "jobStatusExistsInOrganization": "Ya existe un estado de trabajo en tu organización.",
+      "materialStatusExistsInOrganization": "Ya existe un estado de material en tu organización.",
+      "tagExistsInOrganization": "Ya existe una etiqueta en tu organización.",
+      "titleExistsInOrganization": "Ya existe un título en tu organización.",
       "fieldRequired": "Este campo es obligatorio.",
       "invalidEmail": "Ingresa un correo válido.",
       "invalidPhone": "Ingresa un teléfono válido.",
@@ -841,8 +870,8 @@
       "fontFamilyLabel": "Familia tipográfica",
       "fontFamilyHint": "Se aplica en todo el panel para una lectura uniforme.",
       "fontSizeLabel": "Tamaño de fuente",
-      "fontSizeHint": "Ajusta el tamaño base de etiquetas y texto.",
-      "fontSizePreview": "Vista previa: El veloz murciélago hindú comía feliz cardillo y kiwi.",
+      "fontSizeHint": "Elige un tamaño base de 6px a 40px. Tablas, formularios, detalles y modales usan este tamaño.",
+      "fontSizeOption": "{px}px",
       "fonts": {
         "inter": "Inter",
         "roboto": "Roboto",
@@ -850,11 +879,6 @@
         "openSans": "Open Sans",
         "dmSans": "DM Sans",
         "system": "Sistema"
-      },
-      "fontSizes": {
-        "small": "Pequeño",
-        "medium": "Mediano",
-        "large": "Grande"
       },
       "layoutHeading": "Diseño del panel",
       "sidebarLayoutLabel": "Diseño de navegación",
@@ -888,7 +912,7 @@
         "redLine": "Línea roja"
       },
       "formPreviewHeading": "Vista previa",
-      "formPreviewLabel": "Campo obligatorio de ejemplo",
+      "formPreviewLabel": "Campo de ejemplo",
       "formPreviewValue": "Valor de ejemplo",
       "storageHint": "La apariencia se guarda en este dispositivo para tu cuenta (aún no se envía al servidor). Al volver a iniciar sesión en este navegador, se restauran tus últimas opciones.",
       "detailRowLineWidthLabel": "Grosor de línea en detalle",
@@ -1675,7 +1699,7 @@
         "add": "Añadir dirección",
         "remove": "Eliminar dirección",
         "primary": "Principal",
-        "rowLabel": "Dirección {index}"
+        "rowLabel": "Dirección {number}"
       },
       "addressType": {
         "billing": "Facturación",
@@ -2047,7 +2071,7 @@
         "add": "Añadir dirección",
         "remove": "Eliminar",
         "primary": "Principal",
-        "rowLabel": "Dirección {index}"
+        "rowLabel": "Dirección {number}"
       },
       "addressType": {
         "billing": "Facturación",
@@ -2136,7 +2160,7 @@
         "add": "Añadir dirección",
         "remove": "Eliminar",
         "primary": "Principal",
-        "rowLabel": "Dirección {index}"
+        "rowLabel": "Dirección {number}"
       },
       "addressType": {
         "billing": "Facturación",
@@ -2937,7 +2961,7 @@
         "add": "Añadir dirección",
         "remove": "Eliminar",
         "primary": "Principal",
-        "rowLabel": "Dirección {index}"
+        "rowLabel": "Dirección {number}"
       },
       "addressType": {
         "billing": "Facturación",
@@ -3100,7 +3124,7 @@
         "add": "Añadir dirección",
         "remove": "Eliminar",
         "primary": "Principal",
-        "rowLabel": "Dirección {index}"
+        "rowLabel": "Dirección {number}"
       },
       "addressType": {
         "billing": "Facturación",

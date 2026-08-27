@@ -18,9 +18,9 @@ import {
 } from "@/features/dashboard/utils/accent-hex.util";
 import {
   FONT_FAMILY_CSS,
-  FONT_SIZE_CSS,
   GOOGLE_FONTS_STYLESHEET,
   applyDashTextScaleVars,
+  buildDashTextScale,
 } from "@/features/dashboard/utils/appearance-typography.util";
 import { cn } from "@/core/utils/http.util";
 
@@ -96,7 +96,7 @@ export function DashboardAppearanceScope({ children, className }: Props) {
   }
 
   const onHex = accentOnAccentHex(hex);
-  const typeScale = FONT_SIZE_CSS[fontSize];
+  const typeScale = buildDashTextScale(fontSize);
 
   const style = {
     "--dash-accent": hex,
@@ -156,7 +156,7 @@ export function DashboardAppearanceScope({ children, className }: Props) {
     root.style.setProperty("--dash-detail-row-line-style", detailRowLineStyle);
     root.style.fontFamily = "var(--dash-font-family)";
     root.style.fontSize = typeScale.root;
-    root.setAttribute("data-font-size", fontSize);
+    root.setAttribute("data-font-size", String(fontSize));
     root.setAttribute("data-font-family", fontFamily);
     root.setAttribute("data-form-label", formLabelPlacement);
     root.setAttribute("data-required-indicator", requiredIndicator);
@@ -190,7 +190,7 @@ export function DashboardAppearanceScope({ children, className }: Props) {
       data-detail-row-line-width={detailRowLineWidth}
       data-detail-row-line-style={detailRowLineStyle}
       data-font-family={fontFamily}
-      data-font-size={fontSize}
+      data-font-size={String(fontSize)}
     >
       {children}
     </div>

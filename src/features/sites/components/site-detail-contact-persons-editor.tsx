@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { SITE_CONTACT_PERSON_TITLES } from "@/features/sites/constants/site-contact-person.constants";
@@ -219,69 +219,83 @@ export function SiteDetailContactPersonsEditor({
     return resolved || "—";
   }
 
+  const headerAddEdit = !editing ? (
+    <div className="flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        className="text-sm font-semibold text-[color:var(--dash-accent,#111111)] underline-offset-2 hover:underline"
+        onClick={() => startEdit(displayRows.length > 0 ? { withNewRow: true } : undefined)}
+      >
+        {tActions("add")}
+      </button>
+      {displayRows.length > 0 ? (
+        <button
+          type="button"
+          className="text-sm font-semibold text-slate-600 underline-offset-2 hover:underline dark:text-slate-300"
+          onClick={() => startEdit()}
+        >
+          {tActions("edit")}
+        </button>
+      ) : null}
+    </div>
+  ) : (
+    <div className="flex flex-wrap items-center gap-2">
+      <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={cancelEdit}>
+        {tActions("cancel")}
+      </AppButton>
+      <AppButton
+        type="button"
+        size="sm"
+        loading={saving}
+        disabled={saving || !clientId}
+        onClick={() => void save()}
+      >
+        {tActions("save")}
+      </AppButton>
+    </div>
+  );
+
   if (!editing) {
     return (
-      <DetailPanelCard title={title}>
+      <DetailPanelCard title={title} headerRight={headerAddEdit}>
         {displayRows.length === 0 ? (
-          <div className="flex max-w-lg flex-col items-start gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50/50 px-4 py-5 dark:border-slate-600 dark:bg-slate-900/30">
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t("contactPerson.empty")}</p>
-            <AppButton type="button" variant="secondary" size="sm" onClick={() => startEdit()}>
-              <Plus className="size-4" aria-hidden />
-              {t("contactPerson.add")}
-            </AppButton>
-          </div>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t("contactPerson.empty")}</p>
         ) : (
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2 dark:border-slate-800">
-                <span className="text-xs font-bold uppercase tracking-[0.05em] text-slate-400 dark:text-slate-500">
-                  {t("contactPerson.titleLabel")}
-                </span>
-                <span className="text-xs font-bold uppercase tracking-[0.05em] text-slate-400 dark:text-slate-500">
-                  {t("contactPerson.contactLabel")}
-                </span>
-              </div>
-              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                {displayRows.map((row, index) => {
-                  const contactId = getSiteContactPersonContactId(row.contact);
-                  const contactLabel = formatSiteContactPersonContactLabel(row.contact, contactNameById);
-                  return (
-                    <li
-                      key={row.id ?? `${String(row.title)}-${contactId ?? index}`}
-                      className="flex flex-wrap items-center justify-between gap-3 py-3 last:pb-0"
-                    >
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                        {resolveTitleLabel(row.title)}
-                      </span>
-                      {contactId ? (
-                        <DetailEntityLink
-                          href={`${routes.dashboard.contacts}/${contactId}`}
-                          className="text-sm font-semibold text-blue-600 underline-offset-2 hover:underline"
-                        >
-                          {contactLabel}
-                        </DetailEntityLink>
-                      ) : (
-                        <span className="text-sm text-slate-600 dark:text-slate-400">{contactLabel}</span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2 dark:border-slate-800">
+              <span className="text-xs font-semibold tracking-normal text-slate-400 dark:text-slate-500">
+                {t("contactPerson.titleLabel")}
+              </span>
+              <span className="text-xs font-semibold tracking-normal text-slate-400 dark:text-slate-500">
+                {t("contactPerson.contactLabel")}
+              </span>
             </div>
-            <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
-              <AppButton
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => startEdit({ withNewRow: true })}
-              >
-                <Plus className="size-4" aria-hidden />
-                {t("contactPerson.addAnother")}
-              </AppButton>
-              <AppButton type="button" variant="secondary" size="sm" onClick={() => startEdit()}>
-                {tActions("edit")}
-              </AppButton>
-            </div>
+            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+              {displayRows.map((row, index) => {
+                const contactId = getSiteContactPersonContactId(row.contact);
+                const contactLabel = formatSiteContactPersonContactLabel(row.contact, contactNameById);
+                return (
+                  <li
+                    key={row.id ?? `${String(row.title)}-${contactId ?? index}`}
+                    className="flex flex-wrap items-center justify-between gap-3 py-3 last:pb-0"
+                  >
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      {resolveTitleLabel(row.title)}
+                    </span>
+                    {contactId ? (
+                      <DetailEntityLink
+                        href={`${routes.dashboard.contacts}/${contactId}`}
+                        className="text-sm font-semibold text-blue-600 underline-offset-2 hover:underline"
+                      >
+                        {contactLabel}
+                      </DetailEntityLink>
+                    ) : (
+                      <span className="text-sm text-slate-600 dark:text-slate-400">{contactLabel}</span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         )}
       </DetailPanelCard>
@@ -289,92 +303,70 @@ export function SiteDetailContactPersonsEditor({
   }
 
   return (
-    <DetailPanelCard
-      title={title}
-      headerRight={
-        <div className="flex flex-wrap items-center gap-2">
-          <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={cancelEdit}>
-            {tActions("cancel")}
-          </AppButton>
-          <AppButton
-            type="button"
-            size="sm"
-            loading={saving}
-            disabled={saving || !clientId}
-            onClick={() => void save()}
-          >
-            {tActions("save")}
-          </AppButton>
-        </div>
-      }
-    >
+    <DetailPanelCard title={title} headerRight={headerAddEdit}>
       <div className="space-y-3">
-      {!clientId ? (
-        <p className="text-sm text-amber-700 dark:text-amber-400">{t("validation.client")}</p>
-      ) : null}
-      <ul className="space-y-3">
-        {draftRows.map((row, index) => (
-          <li
-            key={row.key}
-            className="grid gap-2 rounded-lg border border-slate-100 p-3 sm:grid-cols-[1fr_1fr_auto] dark:border-slate-800"
-          >
-            <CheckmarkSelect
-              listLabel={t("contactPerson.titleLabel")}
-              options={titleOptionsFor(row.title)}
-              value={row.title}
-              disabled={saving || !clientId}
-              size="sm"
-              portaled
-              searchable
-              className="w-full min-w-0"
-              onChange={(v) => {
-                setDraftRows((prev) =>
-                  prev.map((r, i) => (i === index ? { ...r, title: v } : r)),
-                );
-              }}
-            />
-            <CheckmarkSelect
-              listLabel={t("contactPerson.contactLabel")}
-              options={contactSelectOptions}
-              value={row.contact}
-              disabled={saving || !clientId}
-              size="sm"
-              portaled
-              searchable
-              className="w-full min-w-0"
-              onChange={(v) => {
-                setDraftRows((prev) =>
-                  prev.map((r, i) => (i === index ? { ...r, contact: v } : r)),
-                );
-              }}
-            />
-            <button
-              type="button"
-              disabled={saving}
-              className={cn(
-                "inline-flex size-9 items-center justify-center rounded-md text-slate-500",
-                "hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-800",
-              )}
-              aria-label={tActions("delete")}
-              onClick={() => setDraftRows((prev) => prev.filter((_, i) => i !== index))}
+        {!clientId ? (
+          <p className="text-sm text-amber-700 dark:text-amber-400">{t("validation.client")}</p>
+        ) : null}
+        <ul className="space-y-3">
+          {draftRows.map((row, index) => (
+            <li
+              key={row.key}
+              className="grid gap-2 rounded-lg border border-slate-100 p-3 sm:grid-cols-[1fr_1fr_auto] dark:border-slate-800"
             >
-              <Trash2 className="size-4" strokeWidth={1.75} />
-            </button>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-3 border-t border-slate-100 pt-4 dark:border-slate-800">
-        <AppButton
+              <CheckmarkSelect
+                listLabel={t("contactPerson.titleLabel")}
+                options={titleOptionsFor(row.title)}
+                value={row.title}
+                disabled={saving || !clientId}
+                size="sm"
+                portaled
+                searchable
+                className="w-full min-w-0"
+                onChange={(v) => {
+                  setDraftRows((prev) =>
+                    prev.map((r, i) => (i === index ? { ...r, title: v } : r)),
+                  );
+                }}
+              />
+              <CheckmarkSelect
+                listLabel={t("contactPerson.contactLabel")}
+                options={contactSelectOptions}
+                value={row.contact}
+                disabled={saving || !clientId}
+                size="sm"
+                portaled
+                searchable
+                className="w-full min-w-0"
+                onChange={(v) => {
+                  setDraftRows((prev) =>
+                    prev.map((r, i) => (i === index ? { ...r, contact: v } : r)),
+                  );
+                }}
+              />
+              <button
+                type="button"
+                disabled={saving}
+                className={cn(
+                  "inline-flex size-9 items-center justify-center rounded-md text-slate-500",
+                  "hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-800",
+                )}
+                aria-label={tActions("delete")}
+                onClick={() => setDraftRows((prev) => prev.filter((_, i) => i !== index))}
+              >
+                <Trash2 className="size-4" strokeWidth={1.75} />
+              </button>
+            </li>
+          ))}
+        </ul>
+        <button
           type="button"
-          variant="secondary"
-          size="sm"
           disabled={saving || !clientId}
+          className="text-sm font-semibold text-[color:var(--dash-accent,#111111)] underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
           onClick={() => setDraftRows((prev) => [...prev, emptyDraftRow()])}
         >
-          <Plus className="size-4" aria-hidden />
-          {t("contactPerson.addAnother")}
-        </AppButton>
-      </div>
+          {tActions("add")}
+        </button>
       </div>
     </DetailPanelCard>
   );

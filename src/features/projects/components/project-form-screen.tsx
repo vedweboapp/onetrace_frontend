@@ -435,7 +435,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                   {t("noProjectTypesHint")}
                 </p>
               ) : null}
-              <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+              <FormFieldRow cols="2" from="md">
                 <FieldGroup label={t("fields.name")} htmlFor="project-name" required>
                   <input
                     id="project-name"
@@ -553,7 +553,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">No forms found for this project type.</p>
                 )}
               </FieldGroup>
-              <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+              <FormFieldRow cols="2" from="md">
                 <FieldGroup label={t("fields.sites")} htmlFor="project-sites">
                   <Controller
                     control={control}
@@ -612,7 +612,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                 />
                 <FieldErrorText id="project-desc-err">{errors.description?.message}</FieldErrorText>
               </FieldGroup>
-              <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+              <FormFieldRow cols="2" from="md">
                 <FieldGroup label={t("fields.startDate")} htmlFor="project-start" required>
                   <SurfaceDateInput
                     id="project-start"

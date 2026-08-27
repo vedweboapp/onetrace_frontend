@@ -1,6 +1,8 @@
-import type {
-  DashboardFontFamily,
-  DashboardFontSize,
+import type { DashboardFontFamily } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
+import {
+  clampFontSizePx,
+  DEFAULT_FONT_SIZE_PX,
+  type DashboardFontSize,
 } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 
 /** CSS font-family stacks keyed by appearance preference. */
@@ -26,48 +28,38 @@ export type DashTextScale = {
   text2xl: string;
 };
 
+const BASE_PX = DEFAULT_FONT_SIZE_PX; // 16 — ratios match former Medium preset
+
+function px(n: number): string {
+  return `${Math.round(n)}px`;
+}
+
 /**
- * Appearance type scale. `root` is the dashboard base size (px).
- * Small/Medium/Large rescale Tailwind `text-*`, form controls, tables, and detail pages.
- * Micro copy (xs) is bumped so Small ≈ 12px and Medium ≈ 14px minimum.
+ * Build the full dash type scale from a chosen base body size (6–40px).
+ * Tables, forms, detail labels, and Tailwind text tokens all follow these vars.
  */
-export const FONT_SIZE_CSS: Record<DashboardFontSize, DashTextScale> = {
-  small: {
-    root: "14px",
-    label: "13px",
-    body: "14px",
-    scale: "0.875",
-    textXs: "12px",
-    textSm: "13px",
-    textBase: "14px",
-    textLg: "16px",
-    textXl: "18px",
-    text2xl: "21px",
-  },
-  medium: {
-    root: "16px",
-    label: "15px",
-    body: "16px",
-    scale: "1",
-    textXs: "14px",
-    textSm: "15px",
-    textBase: "16px",
-    textLg: "18px",
-    textXl: "20px",
-    text2xl: "24px",
-  },
-  large: {
-    root: "18px",
-    label: "17px",
-    body: "18px",
-    scale: "1.125",
-    textXs: "16px",
-    textSm: "17px",
-    textBase: "18px",
-    textLg: "20px",
-    textXl: "23px",
-    text2xl: "27px",
-  },
+export function buildDashTextScale(bodyPx: DashboardFontSize): DashTextScale {
+  const body = clampFontSizePx(bodyPx);
+  const scale = body / BASE_PX;
+  return {
+    root: px(body),
+    label: px(Math.max(6, body * 0.94)),
+    body: px(body),
+    scale: String(Number(scale.toFixed(4))),
+    textXs: px(Math.max(6, body * 0.875)),
+    textSm: px(Math.max(6, body * 0.9375)),
+    textBase: px(body),
+    textLg: px(Math.min(48, body * 1.125)),
+    textXl: px(Math.min(52, body * 1.25)),
+    text2xl: px(Math.min(56, body * 1.5)),
+  };
+}
+
+/** @deprecated Prefer `buildDashTextScale`. Kept for any residual preset lookups. */
+export const FONT_SIZE_CSS: Record<"small" | "medium" | "large", DashTextScale> = {
+  small: buildDashTextScale(14),
+  medium: buildDashTextScale(16),
+  large: buildDashTextScale(18),
 };
 
 /** Apply the full dash typography scale to a CSSStyleDeclaration target (e.g. html). */
@@ -75,7 +67,7 @@ export function applyDashTextScaleVars(
   target: { setProperty: (name: string, value: string) => void },
   fontSize: DashboardFontSize,
 ) {
-  const scale = FONT_SIZE_CSS[fontSize];
+  const scale = buildDashTextScale(fontSize);
   target.setProperty("--dash-font-size", scale.root);
   target.setProperty("--dash-label-size", scale.label);
   target.setProperty("--dash-body-size", scale.body);

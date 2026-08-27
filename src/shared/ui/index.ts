@@ -37,6 +37,7 @@ export {
   surfaceSelectClassName,
   surfaceTextareaClassName,
   fieldControlClassName,
+  fieldControlGrowClassName,
 } from "./field-primitives";
 export {
   SurfaceDateInput,

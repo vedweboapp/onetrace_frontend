@@ -520,7 +520,7 @@ const FormField: React.FC<{
 
   const label = (
     <div className="flex items-center gap-1 mb-1">
-      <span className="text-[length:var(--dash-label-size,0.875rem)] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+      <span className="text-[length:var(--dash-label-size,0.875rem)] font-semibold text-gray-600 dark:text-gray-300 tracking-normal">
         {field.field_label}
       </span>
       {isRequired && (
@@ -1237,7 +1237,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
               <div key={sIdx} className="form-section my-6 first:mt-0">
                 {section.name && (
                   <div className="flex items-center gap-4 mb-4">
-                    <h3 className="text-[length:var(--dash-label-size,0.875rem)] font-bold text-gray-800 dark:text-gray-100 uppercase tracking-widest">
+                    <h3 className="text-[length:var(--dash-label-size,0.875rem)] font-semibold text-gray-800 dark:text-gray-100 tracking-normal">
                       {section.name}
                     </h3>
                     <div className="h-px bg-gradient-to-r from-gray-100 dark:from-slate-700 to-transparent flex-1"></div>
@@ -1270,7 +1270,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
             >
               {section.name && (
                 <div className="flex items-center gap-4 mb-4">
-                  <h3 className="text-[length:var(--dash-label-size,0.875rem)] font-bold text-gray-800 dark:text-gray-100 uppercase tracking-widest">
+                  <h3 className="text-[length:var(--dash-label-size,0.875rem)] font-semibold text-gray-800 dark:text-gray-100 tracking-normal">
                     {section.name}
                   </h3>
                   <div className="h-px bg-gradient-to-r from-gray-100 dark:from-slate-700 to-transparent flex-1"></div>
