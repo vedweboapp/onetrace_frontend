@@ -29,16 +29,20 @@ export function TopNavLink({
   icon: Icon,
   active,
   resolved,
+  dataNav,
 }: {
   href: string;
   label: string;
   icon: LucideIcon;
   active: boolean;
   resolved: AccentResolved;
+  /** Stable hook for fly-to celebrations (e.g. `dispatches`). */
+  dataNav?: string;
 }) {
   return (
     <Link
       href={href}
+      data-nav={dataNav}
       className={cn(
         "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium",
         active ? resolved.navActiveClassName : navInactive(),
