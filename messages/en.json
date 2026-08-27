@@ -24,7 +24,6 @@
     "continue": "Continue",
     "sendOtp": "Send OTP",
     "otpRequired": "Enter the 6-digit OTP.",
-
     "otpSent": "OTP sent to {email}",
     "otpSendError": "Could not send OTP. Please try again.",
     "otpVerifyError": "Could not verify OTP. Check the code and try again.",
@@ -127,7 +126,50 @@
     "NETWORK": "Network error. Check your connection and try again.",
     "fallback": "Something went wrong. Please try again.",
     "HTTP_404": "Record not found",
-    "HTTP_500": "The server had a problem. Please try again later."
+    "HTTP_500": "The server had a problem. Please try again later.",
+    "entities": {
+      "client": "Client",
+      "vendor": "Vendor",
+      "contact": "Contact",
+      "user": "User",
+      "site": "Site",
+      "project": "Project",
+      "item": "Item",
+      "job": "Job",
+      "invoice": "Invoice",
+      "quotation": "Quotation",
+      "group": "Group"
+    },
+    "fields": {
+      "email": "email",
+      "phone": "phone",
+      "name": "name",
+      "username": "username",
+      "code": "code",
+      "sku": "SKU"
+    },
+    "messages": {
+      "clientEmailExists": "Client with this email already exists.",
+      "vendorEmailExists": "Vendor with this email already exists.",
+      "contactEmailExists": "Contact with this email already exists.",
+      "userEmailExists": "User with this email already exists.",
+      "emailAlreadyExists": "This email already exists.",
+      "entityFieldExists": "{entity} with this {field} already exists.",
+      "fieldRequired": "This field is required.",
+      "invalidEmail": "Enter a valid email address.",
+      "invalidPhone": "Enter a valid phone number.",
+      "invalidInteger": "A valid integer is required.",
+      "invalidNumber": "A valid number is required.",
+      "invalidCredentials": "Invalid email or password.",
+      "authRequired": "Please sign in to continue.",
+      "permissionDenied": "You do not have permission to perform this action.",
+      "notFound": "Record not found.",
+      "network": "Network error. Check your connection and try again.",
+      "requestFailed": "Request failed.",
+      "validationFailed": "Validation failed.",
+      "badRequest": "Bad request.",
+      "fallback": "Something went wrong. Please try again."
+    }
   },
   "NotFound": {
     "title": "Page not found",
@@ -136,7 +178,7 @@
   },
   "Public": {
     "quotation": {
-      "pageTitle": "Pin details",
+      "pageTitle": "PIN Details",
       "pageDescription": "Preview pin data and location for quotations.",
       "eyebrow": "Pin details",
       "title": "Pin details",
@@ -158,7 +200,7 @@
       "pinPreviewUnavailable": "Pin preview unavailable"
     },
     "qrCode": {
-      "pageTitle": "QR code",
+      "pageTitle": "QR Code",
       "pageDescription": "Public QR code scan page.",
       "eyebrow": "QR code",
       "title": "QR code",
@@ -169,19 +211,19 @@
   "Dashboard": {
     "quickCreate": {
       "add": {
-        "client": "Add new client",
-        "vendor": "Add new vendor",
-        "contact": "Add new contact",
-        "site": "Add new site",
-        "project": "Add new project",
-        "group": "Add new group",
-        "composite-item": "Add new composite item",
-        "item": "Add new item",
-        "vendorType": "Add vendor type",
-        "unitType": "Add unit type",
-        "installationType": "Add installation type",
-        "materialStatus": "Add material status",
-        "user": "Add new user"
+        "client": "Add New Client",
+        "vendor": "Add New Vendor",
+        "contact": "Add New Contact",
+        "site": "Add New Site",
+        "project": "Add New Project",
+        "group": "Add New Group",
+        "composite-item": "Add New Composite Item",
+        "item": "Add New Item",
+        "vendorType": "Add Vendor Type",
+        "unitType": "Add Unit Type",
+        "installationType": "Add Installation Type",
+        "materialStatus": "Add Material Status",
+        "user": "Add New User"
       }
     },
     "common": {
@@ -208,11 +250,11 @@
       },
       "address": {
         "legacy": "Address",
-        "line1": "Address line 1",
-        "line2": "Address line 2",
+        "line1": "Address Line 1",
+        "line2": "Address Line 2",
         "city": "City",
-        "state": "State / region",
-        "pincode": "Postal code",
+        "state": "State / Region",
+        "pincode": "Postal Code",
         "country": "Country"
       },
       "user": {
@@ -220,16 +262,16 @@
         "email": "Email"
       },
       "detail": {
-        "systemMetadata": "System metadata",
-        "createdAt": "Created at",
-        "updatedAt": "Updated at",
-        "createdBy": "Created by",
-        "modifiedBy": "Modified by",
+        "systemMetadata": "System Metadata",
+        "createdAt": "Created At",
+        "updatedAt": "Updated At",
+        "createdBy": "Created By",
+        "modifiedBy": "Modified By",
         "notModifiedYet": "Not modified yet",
         "requiredField": "This field is required.",
-        "recordNotFoundTitle": "Record not found",
+        "recordNotFoundTitle": "Record Not Found",
         "recordNotFoundDescription": "This record may have been deleted or the link is incorrect.",
-        "loadErrorTitle": "Something went wrong",
+        "loadErrorTitle": "Something Went Wrong",
         "backToList": "Back to list"
       },
       "lockedField": {
@@ -460,7 +502,7 @@
         "samplePayloadHint": "Send this JSON body from Zoho. Required keys are listed below — do not include a required flag in the payload.",
         "samplePayloadJson": "JSON to send",
         "requiredHighlightLegend": "indicates required fields in the webhook payload.",
-        "mappingNoteTitle": "Need more fields?",
+        "mappingNoteTitle": "Need More Fields?",
         "mappingNoteBody": "Map additional Zoho fields under Configuration → {mappingTitle} first. Mapped fields then appear in this sample payload.",
         "mappingNoteLink": "Open field mapping",
         "copy": "Copy",
@@ -474,11 +516,11 @@
         "description": "Review your Zoho connection status and manage sync settings.",
         "setupWebhook": "Setup custom webhook",
         "configureMapping": "Configuration",
-        "connectionDetailsTitle": "Connection details",
+        "connectionDetailsTitle": "Connection Details",
         "connectionDetailsSubtitle": "Status and sync overview for this integration.",
         "reconnect": "Reconnect",
         "connectAction": "Connect",
-        "webhookTitle": "Custom webhook setup",
+        "webhookTitle": "Custom Webhook Setup",
         "backToDetails": "Back to details",
         "backToIntegrations": "Back to integrations",
         "loadError": "Failed to load connection details. Please try again.",
@@ -491,18 +533,22 @@
         "mappingConfigured": "Mapping configured",
         "importedRecords": "Historical records",
         "webhookConfigured": "Webhook configured",
-        "webhookLastReceived": "Webhook last received",
+        "webhookLastReceived": "Webhook Last Received",
+        "lastHistorySync": "Last History Sync",
+        "lastWebhookSync": "Last Webhook Sync",
+        "connectionEstablished": "Connection Established",
+        "connectedBy": "Connected By",
         "notAvailable": "—",
         "yes": "Yes",
         "no": "No",
         "disconnected": "Disconnected"
       },
       "zohoResources": {
-        "mappingPageTitle": "Map Zoho Inventory fields",
+        "mappingPageTitle": "Map Zoho Inventory Fields",
         "mappingPageDescription": "Match Zoho fields to your SimHo fields for each resource before syncing data.",
-        "webhookPageTitle": "Zoho webhook setup",
+        "webhookPageTitle": "Zoho Webhook Setup",
         "webhookPageDescription": "Create webhooks in Zoho Inventory using the shared settings below. Each resource has its own URL and sample JSON.",
-        "resourceValuesTitle": "Webhook URL & sample payload",
+        "resourceValuesTitle": "Webhook URL & Sample Payload",
         "resourceValuesDescription": "These values differ per resource. Expand a section to copy the webhook URL and JSON payload for that resource.",
         "items": {
           "title": "Items and composite items",
@@ -591,12 +637,12 @@
       "Addresses": "Addresses",
       "Primary": "Primary",
       "fields": {
-        "address1": "Address line 1",
-        "address2": "Address line 2",
+        "address1": "Address Line 1",
+        "address2": "Address Line 2",
         "country": "Country",
         "state": "State",
         "city": "City",
-        "pincode": "Pin code"
+        "pincode": "PIN Code"
       },
       "placeholders": {
         "country": "Select country",
@@ -650,10 +696,10 @@
       "currencyUpdatedToast": "Currency settings saved successfully",
       "scheduleUpdatedToast": "Schedule settings saved successfully",
       "noChangesToast": "No changes to save",
-      "orgSectionTitle": "Organization information",
+      "orgSectionTitle": "Organization Information",
       "orgSectionSubtitle": "Update your company details and contact information.",
-      "addressSectionTitle": "Address information",
-      "logoLabel": "Company logo",
+      "addressSectionTitle": "Address Information",
+      "logoLabel": "Company Logo",
       "logoHint": "512×512px recommended",
       "currencySectionTitle": "Currency",
       "currencySectionSubtitle": "Set the home currency, money format, and number format.",
@@ -664,7 +710,7 @@
       "currencyDigitFormat": "Money digit format",
       "numberFormatHint": "Used for quantities and number-only fields",
       "customize": "Customize",
-      "customizeCurrencySettings": "Customize currency settings",
+      "customizeCurrencySettings": "Customize Currency Settings",
       "symbol": "Symbol",
       "formatTypeCode": "Code",
       "symbolPosition": "Symbol position",
@@ -676,18 +722,18 @@
       "confirm": "Confirm",
       "saving": "Saving…",
       "fields": {
-        "name": "Organization name",
-        "size": "Company size",
+        "name": "Organization Name",
+        "size": "Company Size",
         "website": "Website URL",
         "timezone": "Timezone",
-        "description": "Company description",
+        "description": "Company Description",
         "address1": "Address 1",
         "address2": "Address 2",
         "country": "Country",
-        "state": "State / province",
+        "state": "State / Province",
         "city": "City",
-        "zip": "Pincode / ZIP code",
-        "numberFormat": "Number format"
+        "zip": "Pincode / ZIP Code",
+        "numberFormat": "Number Format"
       },
       "placeholders": {
         "name": "Company name",
@@ -705,7 +751,7 @@
       "layoutCreatedToast": "Layout created successfully",
       "layoutUpdatedToast": "Layout updated successfully",
       "moduleCreatedToast": "Module created successfully",
-      "nameLabel": "Form name",
+      "nameLabel": "Form Name",
       "namePlaceholder": "Enter form name",
       "nameRequired": "Form name is required."
     },
@@ -736,7 +782,7 @@
         "inactive": "Inactive"
       },
       "modal": {
-        "selectProjectTypeTitle": "Select project type",
+        "selectProjectTypeTitle": "Select Project Type",
         "selectProjectTypeDescription": "Choose the project type this form belongs to.",
         "cancel": "Cancel",
         "next": "Next",
@@ -774,16 +820,16 @@
       },
       "languageHeading": "Language",
       "languageHint": "Updates all dashboard and settings labels for your account on this device.",
-      "languageSelectLabel": "Display language",
+      "languageSelectLabel": "Display Language",
       "languages": {
         "en": "English",
         "es": "Español"
       },
       "accentHeading": "Accent color",
-      "accentPresetsLabel": "Primary color",
-      "accentCustomLabel": "Custom color",
+      "accentPresetsLabel": "Primary Color",
+      "accentCustomLabel": "Custom Color",
       "accentCustom": "Custom",
-      "customHexLabel": "Custom hex color",
+      "customHexLabel": "Custom Hex Color",
       "customColorPicker": "Pick a color",
       "applyCustom": "Apply",
       "customHint": "Use a 6-digit hex value (e.g. #2563eb). Accent colors apply to navigation and key actions.",
@@ -803,9 +849,9 @@
         "orange": "Orange"
       },
       "typographyHeading": "Typography",
-      "fontFamilyLabel": "Font family",
+      "fontFamilyLabel": "Font Family",
       "fontFamilyHint": "Applied across the dashboard for consistent reading.",
-      "fontSizeLabel": "Font size",
+      "fontSizeLabel": "Font Size",
       "fontSizeHint": "Adjust base text size for labels and body copy.",
       "fontSizePreview": "Preview: The quick brown fox jumps over the lazy dog.",
       "fonts": {
@@ -822,7 +868,7 @@
         "large": "Large"
       },
       "layoutHeading": "Dashboard layout",
-      "sidebarLayoutLabel": "Navigation layout",
+      "sidebarLayoutLabel": "Navigation Layout",
       "sidebarLayoutHint": "Choose where primary navigation appears on desktop.",
       "layouts": {
         "lithium": {
@@ -839,29 +885,29 @@
         }
       },
       "formLayoutHeading": "Form layout",
-      "labelPlacementLabel": "Label placement",
+      "labelPlacementLabel": "Label Placement",
       "labelPlacementHint": "Left or right places the label beside the field. Top places the label above the field.",
       "labelPlacements": {
         "top": "Top",
         "left": "Left",
         "right": "Right"
       },
-      "requiredIndicatorLabel": "Required field indicator",
+      "requiredIndicatorLabel": "Required Field Indicator",
       "requiredIndicatorHint": "How mandatory fields are marked across the app.",
       "requiredIndicators": {
         "asterisk": "Asterisk (*)",
         "redLine": "Red line"
       },
       "formPreviewHeading": "Live preview",
-      "formPreviewLabel": "Sample required field",
+      "formPreviewLabel": "Sample Required Field",
       "formPreviewValue": "Sample value",
       "storageHint": "Appearance is saved on this device for your signed-in account (not sent to the server yet). After you log in again on this browser, your last choices are restored.",
-      "detailRowLineWidthLabel": "Detail row line width",
+      "detailRowLineWidthLabel": "Detail Row Line Width",
       "detailRowLineWidthHint": "Thickness of the divider under each field row on detail pages.",
       "detailRowLineWidths": {
         "none": "None"
       },
-      "detailRowLineStyleLabel": "Detail row line type",
+      "detailRowLineStyleLabel": "Detail Row Line Type",
       "detailRowLineStyleHint": "Solid, dashed, or dotted dividers between detail fields.",
       "detailRowLineStyles": {
         "solid": "Solid",
@@ -870,7 +916,7 @@
       }
     },
     "pinStatus": {
-      "metaTitle": "Pin Statuses",
+      "metaTitle": "PIN Statuses",
       "title": "Pin Statuses",
       "subtitle": "Create and manage workflow labels for pins. Colors are used when displaying status chips across the app.",
       "add": "Add",
@@ -880,29 +926,29 @@
       "deactivate": "Deactivate",
       "table": {
         "type": "Type",
-        "kindPin": "Pin",
+        "kindPin": "PIN",
         "kindJob": "Job",
         "name": "Name",
         "tag": "Tag",
         "status": "Status",
-        "createdBy": "Created by",
-        "createdAt": "Created at",
+        "createdBy": "Created By",
+        "createdAt": "Created At",
         "created": "Created",
-        "updated": "Last updated",
+        "updated": "Last Updated",
         "actions": "Actions"
       },
       "detail": {
         "idLabel": "ID {id}",
         "createdAt": "Created",
-        "updatedAt": "Last updated",
+        "updatedAt": "Last Updated",
         "byUser": "By {user}"
       },
       "empty": "No pin statuses yet. Add one to get started.",
-      "emptyTitle": "No pin statuses yet",
+      "emptyTitle": "No PIN Statuses Yet",
       "emptyDescription": "Create workflow labels for pins used across your projects.",
       "loadError": "Could not load pin statuses. Try again.",
       "modal": {
-        "createTitle": "New pin status",
+        "createTitle": "New PIN Status",
         "editTitle": "Edit",
         "statusName": "Status name",
         "bgColour": "Background color",
@@ -910,7 +956,7 @@
         "save": "Save",
         "cancel": "Cancel"
       },
-      "deleteConfirmTitle": "Delete this status?",
+      "deleteConfirmTitle": "Delete This Status?",
       "deleteConfirmBody": "Pins using this status may need to be updated. This action cannot be undone.",
       "confirmDelete": "Delete",
       "pageLabel": "Showing {start}-{end} of {total} statuses",
@@ -941,29 +987,29 @@
       "deactivate": "Deactivate",
       "table": {
         "type": "Type",
-        "kindPin": "Pin",
+        "kindPin": "PIN",
         "kindJob": "Job",
         "name": "Name",
         "tag": "Tag",
         "status": "Status",
-        "createdBy": "Created by",
-        "createdAt": "Created at",
+        "createdBy": "Created By",
+        "createdAt": "Created At",
         "created": "Created",
-        "updated": "Last updated",
+        "updated": "Last Updated",
         "actions": "Actions"
       },
       "detail": {
         "idLabel": "ID {id}",
         "createdAt": "Created",
-        "updatedAt": "Last updated",
+        "updatedAt": "Last Updated",
         "byUser": "By {user}"
       },
       "empty": "No project statuses yet. Add one to get started.",
-      "emptyTitle": "No project statuses yet",
+      "emptyTitle": "No Project Statuses Yet",
       "emptyDescription": "Create workflow labels for projects used across your workspace.",
       "loadError": "Could not load project statuses. Try again.",
       "modal": {
-        "createTitle": "New project status",
+        "createTitle": "New Project Status",
         "editTitle": "Edit",
         "statusName": "Status name",
         "category": "Category",
@@ -977,7 +1023,7 @@
         "save": "Save",
         "cancel": "Cancel"
       },
-      "deleteConfirmTitle": "Delete this status?",
+      "deleteConfirmTitle": "Delete This Status?",
       "deleteConfirmBody": "Projects using this status may need to be updated. This action cannot be undone.",
       "confirmDelete": "Delete",
       "pageLabel": "Showing {start}-{end} of {total} statuses",
@@ -1008,29 +1054,29 @@
       "deactivate": "Deactivate",
       "table": {
         "type": "Type",
-        "kindPin": "Pin",
+        "kindPin": "PIN",
         "kindJob": "Job",
         "name": "Name",
         "tag": "Tag",
         "status": "Status",
-        "createdBy": "Created by",
-        "createdAt": "Created at",
+        "createdBy": "Created By",
+        "createdAt": "Created At",
         "created": "Created",
-        "updated": "Last updated",
+        "updated": "Last Updated",
         "actions": "Actions"
       },
       "detail": {
         "idLabel": "ID {id}",
         "createdAt": "Created",
-        "updatedAt": "Last updated",
+        "updatedAt": "Last Updated",
         "byUser": "By {user}"
       },
       "empty": "No job statuses yet. Add one to get started.",
-      "emptyTitle": "No job statuses yet",
+      "emptyTitle": "No Job Statuses Yet",
       "emptyDescription": "Create workflow labels for jobs used across your projects.",
       "loadError": "Could not load job statuses. Try again.",
       "modal": {
-        "createTitle": "New job status",
+        "createTitle": "New Job Status",
         "editTitle": "Edit",
         "statusName": "Status name",
         "bgColour": "Background color",
@@ -1038,7 +1084,7 @@
         "save": "Save",
         "cancel": "Cancel"
       },
-      "deleteConfirmTitle": "Delete this status?",
+      "deleteConfirmTitle": "Delete This Status?",
       "deleteConfirmBody": "Jobs using this status may need to be updated. This action cannot be undone.",
       "confirmDelete": "Delete",
       "pageLabel": "Showing {start}-{end} of {total} statuses",
@@ -1069,29 +1115,29 @@
       "deactivate": "Deactivate",
       "table": {
         "type": "Type",
-        "kindPin": "Pin",
+        "kindPin": "PIN",
         "kindJob": "Job",
         "name": "Name",
         "tag": "Tag",
         "status": "Status",
-        "createdBy": "Created by",
-        "createdAt": "Created at",
+        "createdBy": "Created By",
+        "createdAt": "Created At",
         "created": "Created",
-        "updated": "Last updated",
+        "updated": "Last Updated",
         "actions": "Actions"
       },
       "detail": {
         "idLabel": "ID {id}",
         "createdAt": "Created",
-        "updatedAt": "Last updated",
+        "updatedAt": "Last Updated",
         "byUser": "By {user}"
       },
       "empty": "No material statuses yet. Add one to get started.",
-      "emptyTitle": "No material statuses yet",
+      "emptyTitle": "No Material Statuses Yet",
       "emptyDescription": "Create workflow labels for material requests used across your workspace.",
       "loadError": "Could not load material statuses. Try again.",
       "modal": {
-        "createTitle": "New material status",
+        "createTitle": "New Material Status",
         "editTitle": "Edit",
         "statusName": "Status name",
         "bgColour": "Background color",
@@ -1099,7 +1145,7 @@
         "save": "Save",
         "cancel": "Cancel"
       },
-      "deleteConfirmTitle": "Delete this status?",
+      "deleteConfirmTitle": "Delete This Status?",
       "deleteConfirmBody": "Material requests using this status may need to be updated. This action cannot be undone.",
       "confirmDelete": "Delete",
       "pageLabel": "Showing {start}-{end} of {total} statuses",
@@ -1131,22 +1177,22 @@
       "filterState": "Active state",
       "table": {
         "name": "Unit",
-        "shortForm": "Short form",
+        "shortForm": "Short Form",
         "status": "Status",
         "created": "Created",
-        "updated": "Last updated",
+        "updated": "Last Updated",
         "actions": "Actions"
       },
       "status": {
         "active": "Active",
         "inactive": "Inactive"
       },
-      "emptyTitle": "No unit types yet",
+      "emptyTitle": "No Unit Types Yet",
       "emptyDescription": "Create your first unit type (e.g. Kg, box) for items and pricing.",
       "loadError": "Could not load unit types. Try again.",
       "modal": {
-        "createTitle": "New unit type",
-        "editTitle": "Edit unit type",
+        "createTitle": "New Unit Type",
+        "editTitle": "Edit Unit Type",
         "unitName": "Name",
         "unitNamePlaceholder": "e.g. Kg",
         "unitShortForm": "Short form",
@@ -1154,7 +1200,7 @@
         "save": "Save",
         "cancel": "Cancel"
       },
-      "deleteConfirmTitle": "Delete this unit type?",
+      "deleteConfirmTitle": "Delete This Unit Type?",
       "deleteConfirmBody": "This action cannot be undone.",
       "confirmDelete": "Delete",
       "pageLabel": "Showing {start}-{end} of {total} unit types",
@@ -1183,7 +1229,7 @@
         "name": "Reason",
         "status": "Status",
         "created": "Created",
-        "updated": "Last updated",
+        "updated": "Last Updated",
         "actions": "Actions"
       },
       "status": {
@@ -1193,21 +1239,21 @@
       "detail": {
         "idLabel": "ID {id}",
         "createdAt": "Created",
-        "updatedAt": "Last updated",
+        "updatedAt": "Last Updated",
         "byUser": "By {user}"
       },
-      "emptyTitle": "No rejection reasons yet",
+      "emptyTitle": "No Rejection Reasons Yet",
       "emptyDescription": "Create your first rejection reason (e.g. Damaged Product, Wrong Item).",
       "loadError": "Could not load rejection reasons. Try again.",
       "modal": {
-        "createTitle": "New rejection reason",
-        "editTitle": "Edit rejection reason",
+        "createTitle": "New Rejection Reason",
+        "editTitle": "Edit Rejection Reason",
         "name": "Name",
         "namePlaceholder": "e.g. Damaged Product",
         "save": "Save",
         "cancel": "Cancel"
       },
-      "deleteConfirmTitle": "Delete this rejection reason?",
+      "deleteConfirmTitle": "Delete This Rejection Reason?",
       "deleteConfirmBody": "This action cannot be undone.",
       "confirmDelete": "Delete",
       "pageLabel": "Showing {start}-{end} of {total} rejection reasons",
@@ -1231,27 +1277,27 @@
       "table": {
         "title": "Title",
         "created": "Created",
-        "updated": "Last updated",
+        "updated": "Last Updated",
         "actions": "Actions"
       },
       "detail": {
         "idLabel": "ID {id}",
         "createdAt": "Created",
-        "updatedAt": "Last updated",
+        "updatedAt": "Last Updated",
         "byUser": "By {user}"
       },
-      "emptyTitle": "No titles yet",
+      "emptyTitle": "No Titles Yet",
       "emptyDescription": "Create your first title to use across records.",
       "loadError": "Could not load titles. Try again.",
       "modal": {
-        "createTitle": "New title",
-        "editTitle": "Edit title",
+        "createTitle": "New Title",
+        "editTitle": "Edit Title",
         "titleName": "Name",
         "titleNamePlaceholder": "Enter title name",
         "save": "Save",
         "cancel": "Cancel"
       },
-      "deleteConfirmTitle": "Delete this title?",
+      "deleteConfirmTitle": "Delete This Title?",
       "deleteConfirmBody": "This action cannot be undone.",
       "confirmDelete": "Delete",
       "pageLabel": "Showing {start}-{end} of {total} titles",
@@ -1276,7 +1322,7 @@
       "table": {
         "tag": "Tag",
         "created": "Created",
-        "updated": "Last updated",
+        "updated": "Last Updated",
         "actions": "Actions"
       },
       "status": {
@@ -1286,14 +1332,14 @@
       "detail": {
         "idLabel": "ID {id}",
         "createdAt": "Created",
-        "updatedAt": "Last updated",
+        "updatedAt": "Last Updated",
         "byUser": "By {user}"
       },
-      "emptyTitle": "No tags yet",
+      "emptyTitle": "No Tags Yet",
       "emptyDescription": "Create your first tag to organize pin annotations.",
       "loadError": "Could not load tags. Try again.",
       "modal": {
-        "createTitle": "New tag",
+        "createTitle": "New Tag",
         "editTitle": "Edit",
         "tagName": "Tag name",
         "bgColour": "Background color",
@@ -1301,7 +1347,7 @@
         "save": "Save",
         "cancel": "Cancel"
       },
-      "deleteConfirmTitle": "Delete this tag?",
+      "deleteConfirmTitle": "Delete This Tag?",
       "deleteConfirmBody": "Pins using this tag may need to be updated. This action cannot be undone.",
       "confirmDelete": "Delete",
       "pageLabel": "Showing {start}-{end} of {total} tags",
@@ -1328,10 +1374,10 @@
       "deactivate": "Deactivate",
       "filterState": "Active state",
       "table": {
-        "type": "Project type",
-        "status": "Record status",
+        "type": "Project Type",
+        "status": "Record Status",
         "created": "Created",
-        "updated": "Last updated",
+        "updated": "Last Updated",
         "actions": "Actions"
       },
       "status": {
@@ -1341,15 +1387,15 @@
       "detail": {
         "idLabel": "ID {id}",
         "createdAt": "Created",
-        "updatedAt": "Last updated",
+        "updatedAt": "Last Updated",
         "byUser": "By {user}"
       },
-      "emptyTitle": "No project types yet",
+      "emptyTitle": "No Project Types Yet",
       "emptyDescription": "Create your first project type to classify projects.",
       "loadError": "Could not load project types. Try again.",
       "modal": {
-        "createTitle": "New project type",
-        "editTitle": "Edit project type",
+        "createTitle": "New Project Type",
+        "editTitle": "Edit Project Type",
         "typeName": "Name",
         "bgColour": "Background color",
         "textColour": "Text color",
@@ -1357,7 +1403,7 @@
         "save": "Save",
         "cancel": "Cancel"
       },
-      "deleteConfirmTitle": "Delete this project type?",
+      "deleteConfirmTitle": "Delete This Project Type?",
       "deleteConfirmBody": "Projects using this type may need to be updated. This action cannot be undone.",
       "confirmDelete": "Delete",
       "pageLabel": "Showing {start}-{end} of {total} project types",
@@ -1384,10 +1430,10 @@
       "deactivate": "Deactivate",
       "filterState": "Active state",
       "table": {
-        "type": "Installation type",
-        "status": "Record status",
+        "type": "Installation Type",
+        "status": "Record Status",
         "created": "Created",
-        "updated": "Last updated",
+        "updated": "Last Updated",
         "actions": "Actions"
       },
       "status": {
@@ -1397,15 +1443,15 @@
       "detail": {
         "idLabel": "ID {id}",
         "createdAt": "Created",
-        "updatedAt": "Last updated",
+        "updatedAt": "Last Updated",
         "byUser": "By {user}"
       },
-      "emptyTitle": "No installation types yet",
+      "emptyTitle": "No Installation Types Yet",
       "emptyDescription": "Create your first installation type to classify work.",
       "loadError": "Could not load installation types. Try again.",
       "modal": {
-        "createTitle": "New installation type",
-        "editTitle": "Edit installation type",
+        "createTitle": "New Installation Type",
+        "editTitle": "Edit Installation Type",
         "typeName": "Name",
         "bgColour": "Background color",
         "textColour": "Text color",
@@ -1413,7 +1459,7 @@
         "save": "Save",
         "cancel": "Cancel"
       },
-      "deleteConfirmTitle": "Delete this installation type?",
+      "deleteConfirmTitle": "Delete This Installation Type?",
       "deleteConfirmBody": "Records using this type may need to be updated. This action cannot be undone.",
       "confirmDelete": "Delete",
       "pageLabel": "Showing {start}-{end} of {total} installation types",
@@ -1447,12 +1493,12 @@
       "sequenceUpdateError": "Could not update checklist order. Try again.",
       "table": {
         "title": "Title",
-        "projectType": "Project type",
+        "projectType": "Project Type",
         "sequence": "Sequence",
         "required": "Required",
-        "status": "Record status",
+        "status": "Record Status",
         "created": "Created",
-        "updated": "Last updated",
+        "updated": "Last Updated",
         "actions": "Actions"
       },
       "required": {
@@ -1466,19 +1512,19 @@
       "detail": {
         "idLabel": "ID {id}",
         "createdAt": "Created",
-        "updatedAt": "Last updated",
+        "updatedAt": "Last Updated",
         "byUser": "By {user}"
       },
-      "emptyTitle": "No checklist types yet",
+      "emptyTitle": "No Checklist Types Yet",
       "emptyDescription": "Create your first checklist type for job forms.",
       "loadError": "Could not load checklist types. Try again.",
       "modal": {
-        "createTitle": "New checklist type",
-        "editTitle": "Edit checklist type",
+        "createTitle": "New Checklist Type",
+        "editTitle": "Edit Checklist Type",
         "title": "Title",
         "projectType": "Project type",
         "sequence": "Sequence",
-        "requiredLabel": "Required on job forms",
+        "requiredLabel": "Required On Job Forms",
         "activeLabel": "Active",
         "save": "Save",
         "cancel": "Cancel",
@@ -1491,9 +1537,8 @@
         "currentFile": "Current file",
         "validationFile": "Please attach a file",
         "concentricPoint": "Concentric Point"
-
       },
-      "deleteConfirmTitle": "Delete this checklist type?",
+      "deleteConfirmTitle": "Delete This Checklist Type?",
       "deleteConfirmBody": "Job forms using this checklist may need to be updated. This action cannot be undone.",
       "confirmDelete": "Delete",
       "pageLabel": "Showing {start}-{end} of {total} checklist types",
@@ -1520,10 +1565,10 @@
       "deactivate": "Deactivate",
       "filterState": "Active state",
       "table": {
-        "type": "Vendor type",
-        "status": "Record status",
+        "type": "Vendor Type",
+        "status": "Record Status",
         "created": "Created",
-        "updated": "Last updated",
+        "updated": "Last Updated",
         "actions": "Actions"
       },
       "status": {
@@ -1533,15 +1578,15 @@
       "detail": {
         "idLabel": "ID {id}",
         "createdAt": "Created",
-        "updatedAt": "Last updated",
+        "updatedAt": "Last Updated",
         "byUser": "By {user}"
       },
-      "emptyTitle": "No vendor types yet",
+      "emptyTitle": "No Vendor Types Yet",
       "emptyDescription": "Create your first vendor type to classify vendors.",
       "loadError": "Could not load vendor types. Try again.",
       "modal": {
-        "createTitle": "New vendor type",
-        "editTitle": "Edit vendor type",
+        "createTitle": "New Vendor Type",
+        "editTitle": "Edit Vendor Type",
         "typeName": "Name",
         "bgColour": "Background color",
         "textColour": "Text color",
@@ -1549,7 +1594,7 @@
         "save": "Save",
         "cancel": "Cancel"
       },
-      "deleteConfirmTitle": "Delete this vendor type?",
+      "deleteConfirmTitle": "Delete This Vendor Type?",
       "deleteConfirmBody": "Vendors using this type may need to be updated. This action cannot be undone.",
       "confirmDelete": "Delete",
       "pageLabel": "Showing {start}-{end} of {total} vendor types",
@@ -1567,13 +1612,13 @@
     },
     "users": {
       "metaTitle": "Users",
-      "detailMetaTitle": "User details",
+      "detailMetaTitle": "User Details",
       "title": "Users",
       "subtitle": "Invite and manage users in your organization.",
       "tabs": {
         "users": "Users",
         "groups": "Groups",
-        "aria": "Users sections"
+        "aria": "Users Sections"
       },
       "invite": "Add",
       "edit": "Edit",
@@ -1582,7 +1627,7 @@
       "createdToast": "User invited successfully",
       "updatedToast": "User updated successfully",
       "saveError": "Could not save user. Try again.",
-      "emptyTitle": "No users yet",
+      "emptyTitle": "No Users Yet",
       "emptyDescription": "Invite your first user to collaborate.",
       "pageLabel": "Showing {start}-{end} of {total} users",
       "prev": "Previous",
@@ -1592,34 +1637,34 @@
         "email": "Email",
         "phone": "Phone",
         "role": "Role",
-        "inviteStatus": "Invite status",
+        "inviteStatus": "Invite Status",
         "created": "Created",
         "actions": "Actions"
       },
       "fields": {
-        "firstName": "First name",
-        "lastName": "Last name",
+        "firstName": "First Name",
+        "lastName": "Last Name",
         "email": "Email",
-        "phone": "Phone number",
+        "phone": "Phone Number",
         "gender": "Gender",
         "role": "Role",
-        "basePay": "Base pay",
-        "basePayType": "Pay type",
-        "basePayTypeFixed": "Fixed pay",
-        "basePayTypeRate": "Pay per hr",
+        "basePay": "Base Pay",
+        "basePayType": "Pay Type",
+        "basePayTypeFixed": "Fixed Pay",
+        "basePayTypeRate": "Pay Per HR",
         "addresses": "Addresses",
-        "addressType": "Address type",
-        "addressLine1": "Address line 1",
-        "addressLine2": "Address line 2",
-        "address1": "Address line 1",
-        "address2": "Address line 2",
+        "addressType": "Address Type",
+        "addressLine1": "Address Line 1",
+        "addressLine2": "Address Line 2",
+        "address1": "Address Line 1",
+        "address2": "Address Line 2",
         "country": "Country",
         "state": "State",
         "city": "City",
         "pincode": "Pincode",
-        "inviteStatus": "Invite status",
-        "invitationSentAt": "Invitation sent at",
-        "availableDays": "Available days",
+        "inviteStatus": "Invite Status",
+        "invitationSentAt": "Invitation Sent At",
+        "availableDays": "Available Days",
         "availableDaysHint": "Select the days and times this user is available to work."
       },
       "availability": {
@@ -1638,10 +1683,10 @@
         }
       },
       "addresses": {
-        "add": "Add address",
-        "remove": "Remove address",
+        "add": "Add Address",
+        "remove": "Remove Address",
         "primary": "Primary",
-        "rowLabel": "Address {index}"
+        "rowLabel": "Address {Index}"
       },
       "addressType": {
         "billing": "Billing",
@@ -1699,15 +1744,15 @@
         }
       },
       "page": {
-        "createTitle": "Invite user",
+        "createTitle": "Invite User",
         "createSubtitle": "Fill in user details and send invitation.",
         "editTitle": "Edit",
         "editSubtitle": "Update user details and save changes."
       }
     },
     "userGroups": {
-      "metaTitle": "User groups",
-      "detailMetaTitle": "Group details",
+      "metaTitle": "User Groups",
+      "detailMetaTitle": "Group Details",
       "title": "Groups",
       "subtitle": "Group users for scheduling and assignments.",
       "edit": "Edit",
@@ -1719,24 +1764,24 @@
       "updatedToast": "Group updated",
       "deleted": "Group deleted",
       "deleteError": "Could not delete the group. Try again.",
-      "emptyTitle": "No user groups yet",
+      "emptyTitle": "No User Groups Yet",
       "emptyDescription": "Create a group, then add users to it.",
       "pageLabel": "Showing {start}-{end} of {total} groups",
       "prev": "Previous",
       "next": "Next",
       "table": {
-        "name": "Group name",
+        "name": "Group Name",
         "members": "Users",
-        "noMembers": "No users",
+        "noMembers": "No Users",
         "created": "Created",
         "actions": "Actions"
       },
       "fields": {
-        "name": "Group name",
+        "name": "Group Name",
         "users": "Users",
-        "createdAt": "Created at",
-        "updatedAt": "Updated at",
-        "createdBy": "Created by"
+        "createdAt": "Created At",
+        "updatedAt": "Updated At",
+        "createdBy": "Created By"
       },
       "placeholders": {
         "name": "e.g. Field technicians"
@@ -1755,7 +1800,7 @@
         "save": "Save",
         "cancel": "Cancel"
       },
-      "deleteConfirmTitle": "Delete this group?",
+      "deleteConfirmTitle": "Delete This Group?",
       "deleteConfirmBody": "Users are not deleted. Only the group is removed.",
       "detail": {
         "backAria": "Back to groups list",
@@ -1767,13 +1812,13 @@
         "byUser": "By {user}"
       },
       "page": {
-        "createTitle": "New group",
-        "editTitle": "Edit group"
+        "createTitle": "New Group",
+        "editTitle": "Edit Group"
       }
     },
     "roles": {
       "metaTitle": "Roles",
-      "detailMetaTitle": "Role details",
+      "detailMetaTitle": "Role Details",
       "title": "Roles",
       "subtitle": "Manage organization roles, hierarchy, and peer sharing settings.",
       "add": "Add role",
@@ -1784,7 +1829,7 @@
       "updatedToast": "Role updated successfully",
       "deletedToast": "Role deleted successfully",
       "saveError": "Could not save role. Check the fields and try again.",
-      "emptyTitle": "No roles found",
+      "emptyTitle": "No Roles Found",
       "emptyDescription": "Create a role to manage user permissions and hierarchy.",
       "fields": {
         "roleName": "Role Name",
@@ -1823,7 +1868,7 @@
     },
     "profiles": {
       "metaTitle": "Profiles",
-      "detailMetaTitle": "Profile details",
+      "detailMetaTitle": "Profile Details",
       "title": "Profiles",
       "subtitle": "Manage organization profiles and their types.",
       "add": "Add profile",
@@ -1836,7 +1881,7 @@
       "updatedToast": "Profile updated successfully",
       "deletedToast": "Profile deleted successfully",
       "saveError": "Could not save profile. Check the fields and try again.",
-      "emptyTitle": "No profiles found",
+      "emptyTitle": "No Profiles Found",
       "emptyDescription": "Create a profile to organize user types in your workspace.",
       "deleteTitle": "Delete Profile",
       "deleteBody": "Are you sure you want to delete this profile? This action cannot be undone.",
@@ -1877,10 +1922,10 @@
       "searchPlaceholder": "Search module...",
       "searchAria": "Search module",
       "loadError": "Could not load modules. Try again.",
-      "emptyTitle": "No modules found",
+      "emptyTitle": "No Modules Found",
       "emptyDescription": "Create a module to organize custom data in your workspace.",
       "table": {
-        "displayName": "Displayed in tabs as",
+        "displayName": "Displayed In Tabs As",
         "moduleName": "Module Name",
         "createdBy": "Created By",
         "lastModified": "Last Modified"
@@ -1894,12 +1939,12 @@
     },
     "clients": {
       "metaTitle": "Clients",
-      "detailMetaTitle": "Client details",
+      "detailMetaTitle": "Client Details",
       "title": "Clients",
       "subtitle": "Organizations and contacts you work with. Click a row for full details.",
       "add": "Add",
       "empty": "No clients yet. Add your first client to get started.",
-      "emptyTitle": "No clients yet",
+      "emptyTitle": "No Clients Yet",
       "emptyDescription": "Create your first client to start organizing contacts and jobs.",
       "loadError": "Could not load clients. Try again.",
       "missingOrganization": "No workspace organization on this session. Sign out and sign in again, or contact support.",
@@ -1918,7 +1963,7 @@
       "next": "Next",
       "edit": "Edit",
       "delete": "Delete",
-      "deleteConfirmTitle": "Delete this client?",
+      "deleteConfirmTitle": "Delete This Client?",
       "deleteConfirmBody": "This action cannot be undone.",
       "confirmDelete": "Delete client",
       "table": {
@@ -1927,6 +1972,7 @@
         "phone": "Phone",
         "status": "Status",
         "created": "Created",
+        "createdBy": "Created By",
         "actions": "Actions"
       },
       "status": {
@@ -1979,39 +2025,40 @@
         "city": "Select or type city"
       },
       "fields": {
-        "name": "Client name",
+        "name": "Client Name",
         "email": "Email",
         "phone": "Phone",
         "addresses": "Addresses",
-        "addressType": "Address type",
-        "addressLine1": "Address line 1",
-        "addressLine2": "Address line 2",
+        "addressType": "Address Type",
+        "addressLine1": "Address Line 1",
+        "addressLine2": "Address Line 2",
         "country": "Country",
-        "stateProvince": "State / province",
+        "stateProvince": "State / Province",
         "city": "City",
-        "pincode": "Postal / ZIP code",
+        "pincode": "Postal / ZIP Code",
         "createdAt": "Created",
-        "updatedAt": "Last updated",
-        "createdBy": "Created by"
+        "updatedAt": "Last Updated",
+        "createdBy": "Created By",
+        "modifiedBy": "Modified By"
       },
       "modal": {
-        "createTitle": "New client",
+        "createTitle": "New Client",
         "editTitle": "Edit",
         "cancel": "Cancel",
         "save": "Save",
         "saveChanges": "Save changes"
       },
       "page": {
-        "createTitle": "Create client",
+        "createTitle": "Create Client",
         "createSubtitle": "Fill in client details and save.",
         "editTitle": "Edit",
         "editSubtitle": "Update client details and save changes."
       },
       "addresses": {
-        "add": "Add address",
+        "add": "Add Address",
         "remove": "Remove",
         "primary": "Primary",
-        "rowLabel": "Address {index}"
+        "rowLabel": "Address {Index}"
       },
       "addressType": {
         "billing": "Billing",
@@ -2034,7 +2081,7 @@
     },
     "vendors": {
       "metaTitle": "Vendors",
-      "detailMetaTitle": "Vendor details",
+      "detailMetaTitle": "Vendor Details",
       "title": "Vendors",
       "subtitle": "Manage suppliers and their locations.",
       "loadError": "Could not load vendors. Try again.",
@@ -2053,17 +2100,17 @@
       "next": "Next",
       "edit": "Edit",
       "delete": "Delete",
-      "deleteConfirmTitle": "Delete this vendor?",
+      "deleteConfirmTitle": "Delete This Vendor?",
       "deleteConfirmBody": "This action cannot be undone.",
       "confirmDelete": "Delete vendor",
-      "emptyTitle": "No vendors yet",
+      "emptyTitle": "No Vendors Yet",
       "emptyDescription": "Create your first vendor to manage suppliers and addresses.",
       "table": {
         "name": "Vendor",
         "type": "Type",
         "email": "Email",
         "phone": "Phone",
-        "location": "Primary location",
+        "location": "Primary Location",
         "status": "Status",
         "created": "Created",
         "actions": "Actions"
@@ -2076,19 +2123,19 @@
         "name": "Name",
         "email": "Email",
         "phone": "Phone",
-        "type": "Vendor types",
+        "type": "Vendor Types",
         "status": "Status",
         "addresses": "Addresses",
-        "addressType": "Address type",
-        "addressLine1": "Address line 1",
-        "addressLine2": "Address line 2",
+        "addressType": "Address Type",
+        "addressLine1": "Address Line 1",
+        "addressLine2": "Address Line 2",
         "country": "Country",
-        "stateProvince": "State / province",
+        "stateProvince": "State / Province",
         "city": "City",
-        "pincode": "Postal / ZIP code",
+        "pincode": "Postal / ZIP Code",
         "createdAt": "Created",
-        "updatedAt": "Last updated",
-        "createdBy": "Created by"
+        "updatedAt": "Last Updated",
+        "createdBy": "Created By"
       },
       "placeholders": {
         "country": "Select country",
@@ -2097,10 +2144,10 @@
         "type": "Select vendor types"
       },
       "addresses": {
-        "add": "Add address",
+        "add": "Add Address",
         "remove": "Remove",
         "primary": "Primary",
-        "rowLabel": "Address {index}"
+        "rowLabel": "Address {Index}"
       },
       "addressType": {
         "billing": "Billing",
@@ -2111,7 +2158,7 @@
         "backAria": "Back to vendors",
         "retry": "Retry",
         "sectionOverview": "Overview",
-        "sectionMap": "Locations map",
+        "sectionMap": "Locations Map",
         "addressUnavailable": "No addresses on file.",
         "notProvided": "Not provided",
         "tabsAria": "Vendor detail sections",
@@ -2132,9 +2179,9 @@
         "saveChanges": "Save changes"
       },
       "page": {
-        "createTitle": "Create vendor",
+        "createTitle": "Create Vendor",
         "createSubtitle": "Add vendor details and one or more addresses.",
-        "editTitle": "Edit vendor",
+        "editTitle": "Edit Vendor",
         "editSubtitle": "Update vendor details and addresses."
       },
       "validation": {
@@ -2152,11 +2199,11 @@
       }
     },
     "qrCodes": {
-      "metaTitle": "QR codes",
-      "detailMetaTitle": "QR code details",
+      "metaTitle": "QR Codes",
+      "detailMetaTitle": "QR Code Details",
       "loadError": "Could not load QR codes. Try again.",
       "detailLoadError": "Could not load QR code details. Try again.",
-      "emptyTitle": "No QR codes yet",
+      "emptyTitle": "No QR Codes Yet",
       "emptyDescription": "Generate QR codes to assign them to jobs and track scans.",
       "searchPlaceholder": "Search by QR code ID…",
       "filterStatus": "Status",
@@ -2165,7 +2212,7 @@
       "prev": "Previous",
       "next": "Next",
       "delete": "Delete",
-      "deleteConfirmTitle": "Delete this QR code?",
+      "deleteConfirmTitle": "Delete This QR Code?",
       "deleteConfirmBody": "This action cannot be undone.",
       "confirmDelete": "Delete QR code",
       "deletedToast": "QR code deleted",
@@ -2178,20 +2225,20 @@
         "notAssigned": "Not assigned"
       },
       "table": {
-        "qrImage": "QR code",
+        "qrImage": "QR Code",
         "qrCodeId": "QR ID",
-        "batchNumber": "Batch no.",
+        "batchNumber": "Batch No.",
         "status": "Status",
-        "assignedJob": "Assigned job",
+        "assignedJob": "Assigned Job",
         "scanCount": "Scans",
-        "lastScanned": "Last scanned",
+        "lastScanned": "Last Scanned",
         "created": "Created",
         "actions": "Actions"
       },
       "generate": {
         "button": "Generate QR codes",
         "title": "Generate QR codes",
-        "countLabel": "Number of QR codes",
+        "countLabel": "Number Of QR Codes",
         "countHint": "Enter a value between {min} and {max}.",
         "submit": "Generate",
         "cancel": "Cancel",
@@ -2206,7 +2253,7 @@
           "batchNumber": "Batch number",
           "quantity": "Quantity",
           "createdAt": "Created",
-          "createdBy": "Created by",
+          "createdBy": "Created By",
           "codesCount": "{count, plural, one {# QR code generated} other {# QR codes generated}}"
         }
       },
@@ -2214,7 +2261,7 @@
         "loadingTitle": "Loading…",
         "retry": "Retry",
         "backAria": "Back to QR codes list",
-        "sectionQr": "QR code",
+        "sectionQr": "QR Code",
         "sectionDetails": "Details",
         "assignedJob": "Assigned job",
         "notAssigned": "Not assigned",
@@ -2223,13 +2270,13 @@
       },
       "fields": {
         "createdAt": "Created",
-        "updatedAt": "Last updated",
-        "createdBy": "Created by"
+        "updatedAt": "Last Updated",
+        "createdBy": "Created By"
       }
     },
     "contacts": {
       "metaTitle": "Contacts",
-      "detailMetaTitle": "Contact details",
+      "detailMetaTitle": "Contact Details",
       "title": "Contacts",
       "subtitle": "People associated with clients and vendors. Use tabs, search, and filters to find them quickly.",
       "add": "Add",
@@ -2239,7 +2286,7 @@
       "activatedToast": "Contact activated",
       "deactivatedToast": "Contact deactivated",
       "toggleActiveError": "Could not update contact status. Try again.",
-      "emptyTitle": "No contacts yet",
+      "emptyTitle": "No Contacts Yet",
       "emptyDescription": "Create your first contact to start tracking client communication.",
       "loadError": "Could not load contacts. Try again.",
       "missingOrganization": "No workspace organization on this session. Sign out and sign in again, or contact support.",
@@ -2292,30 +2339,30 @@
       "detailLoadError": "Could not load contact details. Try again.",
       "fields": {
         "name": "Name",
-        "contactType": "Contact type",
+        "contactType": "Contact Type",
         "client": "Client",
         "vendor": "Vendor",
         "email": "Email",
         "phone": "Phone",
-        "addressLine1": "Address line 1",
-        "addressLine2": "Address line 2",
+        "addressLine1": "Address Line 1",
+        "addressLine2": "Address Line 2",
         "status": "Status",
         "city": "City",
-        "stateProvince": "State / province",
+        "stateProvince": "State / Province",
         "country": "Country",
-        "pincode": "Postal / ZIP code",
+        "pincode": "Postal / ZIP Code",
         "createdAt": "Created",
-        "updatedAt": "Last updated",
-        "createdBy": "Created by"
+        "updatedAt": "Last Updated",
+        "createdBy": "Created By"
       },
       "modal": {
-        "createTitle": "New contact",
+        "createTitle": "New Contact",
         "cancel": "Cancel",
         "save": "Save",
         "saveChanges": "Save changes"
       },
       "page": {
-        "createTitle": "Create contact",
+        "createTitle": "Create Contact",
         "createSubtitle": "Fill in contact details and save.",
         "editTitle": "Edit",
         "editSubtitle": "Update contact details and save changes."
@@ -2344,11 +2391,11 @@
     },
     "sites": {
       "metaTitle": "Sites",
-      "detailMetaTitle": "Site details",
+      "detailMetaTitle": "Site Details",
       "title": "Sites",
       "subtitle": "Track client sites and their addresses. Open a row for full details.",
       "add": "Add",
-      "emptyTitle": "No sites yet",
+      "emptyTitle": "No Sites Yet",
       "emptyDescription": "Create your first site to manage location-wise work.",
       "loadError": "Could not load sites. Try again.",
       "missingOrganization": "No workspace organization on this session. Sign out and sign in again, or contact support.",
@@ -2370,14 +2417,14 @@
       "next": "Next",
       "edit": "Edit",
       "delete": "Delete",
-      "deleteConfirmTitle": "Delete this site?",
+      "deleteConfirmTitle": "Delete This Site?",
       "deleteConfirmBody": "This action cannot be undone.",
       "confirmDelete": "Delete site",
       "table": {
         "name": "Site",
         "client": "Client",
         "address": "Address",
-        "what3words": "what3words",
+        "what3words": "What3words",
         "status": "Status",
         "created": "Created",
         "actions": "Actions"
@@ -2406,42 +2453,45 @@
         "what3words": "e.g. filled.count.soap"
       },
       "fields": {
-        "siteName": "Site name",
+        "siteName": "Site Name",
         "client": "Client",
-        "addressLine1": "Address line 1",
-        "addressLine2": "Address line 2",
+        "addressLine1": "Address Line 1",
+        "addressLine2": "Address Line 2",
         "country": "Country",
-        "stateProvince": "State / province",
+        "stateProvince": "State / Province",
         "city": "City",
-        "pincode": "Postal / ZIP code",
+        "pincode": "Postal / ZIP Code",
         "what3words": "What3words",
         "latitude": "Latitude",
         "longitude": "Longitude",
         "status": "Status",
         "createdAt": "Created",
-        "updatedAt": "Last updated",
-        "createdBy": "Created by"
+        "updatedAt": "Last Updated",
+        "createdBy": "Created By"
       },
       "modal": {
-        "createTitle": "New site",
+        "createTitle": "New Site",
         "editTitle": "Edit",
         "cancel": "Cancel",
         "save": "Save",
         "saveChanges": "Save changes"
       },
       "page": {
-        "createTitle": "Create site",
+        "createTitle": "Create Site",
         "createSubtitle": "Fill in site details and save.",
         "editTitle": "Edit",
         "editSubtitle": "Update site details and save changes."
       },
       "contactPerson": {
-        "sectionTitle": "Contact persons",
-        "add": "Add contact person",
-        "remove": "Remove contact person",
+        "sectionTitle": "Contact Persons",
+        "sectionHint": "Link people from the selected client to this site.",
+        "add": "Add Contact Person",
+        "addAnother": "Add Another Contact Person",
+        "remove": "Remove Contact Person",
+        "rowLabel": "Contact Person {number}",
         "titleLabel": "Title",
         "titlePlaceholder": "Select title",
-        "contactLabel": "Contact person",
+        "contactLabel": "Contact Person",
         "contactPlaceholder": "Select contact",
         "selectClientFirst": "Select a client first to add contact persons.",
         "empty": "No contact persons added yet.",
@@ -2477,12 +2527,12 @@
         "mapPickHint": "Add address details or search above, then place the pin on the map.",
         "mapNotFoundHint": "Could not locate this address — set city, state, and postal code, or click the map to place the pin.",
         "addressFromPin": "Address fields updated from the pin location.",
-        "coordsLabel": "Coordinates: {lat}, {lon}"
+        "coordsLabel": "Coordinates: {Lat}, {Lon}"
       }
     },
     "quotations": {
       "metaTitle": "Quotations",
-      "detailMetaTitle": "Quotation details",
+      "detailMetaTitle": "Quotation Details",
       "title": "Quotations",
       "subtitle": "Create and track quotes linked to clients, sites, and projects. Switch between table and card view.",
       "add": "Add",
@@ -2499,7 +2549,7 @@
         "all": "All formats",
         "failed": "Could not export. Try again."
       },
-      "emptyTitle": "No quotations yet",
+      "emptyTitle": "No Quotations Yet",
       "emptyDescription": "Create your first quotation to capture scope, schedule, and team assignments.",
       "loadError": "Could not load quotations. Try again.",
       "detailLoadError": "Could not load quotation details. Try again.",
@@ -2548,7 +2598,7 @@
         "technicians": "Technicians",
         "tags": "Tags",
         "status": "Status",
-        "due": "Due date",
+        "due": "Due Date",
         "created": "Created"
       },
       "status": {
@@ -2564,13 +2614,13 @@
         "createJobToast": "Job created from quotation",
         "createJobError": "Could not create a job from this quotation. Try again.",
         "sectionOverview": "Overview",
-        "sectionPeople": "People & roles",
-        "sectionProject": "Project & levels",
+        "sectionPeople": "People & Roles",
+        "sectionProject": "Project & Levels",
         "sectionRecord": "Record",
-        "sectionSiteLocation": "Site location",
-        "sectionSiteAddress": "Site address",
+        "sectionSiteLocation": "Site Location",
+        "sectionSiteAddress": "Site Address",
         "sectionMap": "Map",
-        "sectionQuoteScope": "Quoted scope",
+        "sectionQuoteScope": "Quoted Scope",
         "noDescription": "No description provided.",
         "allLevelsSelected": "All levels"
       },
@@ -2623,10 +2673,10 @@
         "selectAllSections": "Select all blocks",
         "selectProjectHint": "Select a project to load drawings and plots.",
         "loadingDraft": "Loading sections…",
-        "newSectionLabel": "New section name",
+        "newSectionLabel": "New Section Name",
         "newSectionPlaceholder": "Section name",
         "addSection": "Add section",
-        "newPlotLabel": "New plot name",
+        "newPlotLabel": "New Plot Name",
         "newPlotPlaceholder": "Plot name",
         "defaultPlotName": "Plot",
         "plotsHeading": "Plots",
@@ -2659,7 +2709,7 @@
         "duplicateSection": "Duplicate",
         "duplicateCountTitle": "Duplicate",
         "duplicateCountDescription": "Choose how many copies to add right after the original.",
-        "duplicateCountLabel": "Number of copies",
+        "duplicateCountLabel": "Number Of Copies",
         "duplicateCountConfirm": "Duplicate",
         "duplicateCountInvalid": "Enter a  number between 1 and 50.",
         "copySection": "Copy section",
@@ -2670,12 +2720,12 @@
         "editComposite": "View details"
       },
       "blockScope": {
-        "metaTitle": "Block items",
+        "metaTitle": "Block Items",
         "loadingTitle": "Loading…",
         "missingTitle": "Block not available",
         "missingBody": "Open this page from Scope & Pricing by clicking a composite row.",
         "backAria": "Back to quote scope",
-        "blockLabel": "Block name",
+        "blockLabel": "Block Name",
         "colProduct": "Product name",
         "colQty": "Qty",
         "colListPrice": "List price",
@@ -2687,7 +2737,7 @@
         "emptyBlock": "No composite items in this block."
       },
       "compositeScope": {
-        "metaTitle": "Composite item details",
+        "metaTitle": "Composite Item Details",
         "loadingTitle": "Loading…",
         "loadError": "Could not load this composite item.",
         "backAria": "Back to quote scope",
@@ -2705,50 +2755,50 @@
         "noComponents": "No component items defined for this package."
       },
       "fields": {
-        "quoteName": "Quote name",
+        "quoteName": "Quote Name",
         "customer": "Client",
         "site": "Site",
         "sites": "Sites",
         "what3words": "What3words",
         "project": "Project",
-        "primaryContact": "Primary contact",
-        "additionalContact": "Additional contact",
-        "additionalContacts": "Additional contacts",
-        "siteContact": "Site contact",
-        "orderNumber": "Order number",
-        "dueDate": "Due date",
+        "primaryContact": "Primary Contact",
+        "additionalContact": "Additional Contact",
+        "additionalContacts": "Additional Contacts",
+        "siteContact": "Site Contact",
+        "orderNumber": "Order Number",
+        "dueDate": "Due Date",
         "salesperson": "Salesperson",
-        "projectManager": "Project manager",
+        "projectManager": "Project Manager",
         "technicians": "Technicians",
         "tags": "Tags",
         "description": "Description",
-        "levels": "Section name",
-        "selectAllLevels": "Select all sections in this project",
-        "status": "Active state",
+        "levels": "Section Name",
+        "selectAllLevels": "Select All Sections In This Project",
+        "status": "Active State",
         "createdAt": "Created",
-        "updatedAt": "Last updated",
-        "createdBy": "Created by",
-        "clientResponse": "Client response"
+        "updatedAt": "Last Updated",
+        "createdBy": "Created By",
+        "clientResponse": "Client Response"
       },
       "additionalContacts": {
         "add": "Add additional contact",
         "remove": "Remove additional contact",
         "empty": "No additional contacts added yet.",
         "selectClientFirst": "Select a client first to add additional contacts.",
-        "rowLabel": "Additional contact {number}"
+        "rowLabel": "Additional Contact {Number}"
       },
       "modal": {
-        "createTitle": "New quotation",
+        "createTitle": "New Quotation",
         "cancel": "Cancel",
         "save": "Save"
       },
       "page": {
-        "createTitle": "Create quotation",
+        "createTitle": "Create Quotation",
         "createSubtitle": "Fill in quotation details and save.",
         "editTitle": "Edit",
         "saveEdit": "Save changes",
         "lastUpdated": "Last updated {date}",
-        "editQuoteScopeTitle": "Quoted scope",
+        "editQuoteScopeTitle": "Quoted Scope",
         "editQuoteScopeHint": "Sections, plots, and line items as saved on this quotation (from the quotation API).",
         "editQuoteScopeEmpty": "No quoted scope is stored on this quotation yet."
       },
@@ -2771,14 +2821,14 @@
     },
     "invoices": {
       "metaTitle": "Invoices",
-      "detailMetaTitle": "Invoice details",
+      "detailMetaTitle": "Invoice Details",
       "title": "Invoice History",
       "subtitle": "Generate and track client billing across all active projects.",
       "createInvoice": "Create Invoice",
       "edit": "Edit",
       "searchPlaceholder": "Search invoices…",
       "searchAria": "Search invoices",
-      "emptyTitle": "No invoices yet",
+      "emptyTitle": "No Invoices Yet",
       "emptyDescription": "Create your first invoice to bill clients for completed work.",
       "loadError": "Could not load invoices. Try again.",
       "detailLoadError": "Could not load invoice details. Try again.",
@@ -2802,28 +2852,28 @@
       },
       "table": {
         "invoiceNumber": "Invoice #",
-        "clientName": "Client name",
-        "projectName": "Project name",
-        "jobName": "Job name",
+        "clientName": "Client Name",
+        "projectName": "Project Name",
+        "jobName": "Job Name",
         "amount": "Amount",
-        "issueDate": "Issue date",
+        "issueDate": "Issue Date",
         "status": "Status"
       },
       "card": {
-        "issueDate": "Issue date",
+        "issueDate": "Issue Date",
         "amount": "Amount"
       },
       "tabs": {
         "overview": "Overview",
-        "lineItems": "Line items"
+        "lineItems": "Line Items"
       },
       "detail": {
         "loadingTitle": "Loading…",
         "retry": "Retry",
         "backAria": "Back to invoices list",
-        "sectionInvoiceDetails": "Invoice details",
-        "sectionLineItems": "Invoice line items",
-        "sectionSystemMetadata": "System metadata",
+        "sectionInvoiceDetails": "Invoice Details",
+        "sectionLineItems": "Invoice Line Items",
+        "sectionSystemMetadata": "System Metadata",
         "notModifiedYet": "Not modified yet"
       },
       "actions": {
@@ -2845,32 +2895,32 @@
         "failed": "Could not send the invoice. Try again."
       },
       "fields": {
-        "clientName": "Client name",
-        "contactPerson": "Contact person",
-        "invoiceNumber": "Invoice number",
-        "projectName": "Project name",
-        "issueDate": "Issue date",
-        "dueDate": "Due date",
-        "paymentTerms": "Payment terms",
+        "clientName": "Client Name",
+        "contactPerson": "Contact Person",
+        "invoiceNumber": "Invoice Number",
+        "projectName": "Project Name",
+        "issueDate": "Issue Date",
+        "dueDate": "Due Date",
+        "paymentTerms": "Payment Terms",
         "status": "Status",
         "addresses": "Addresses",
-        "addressType": "Address type",
-        "billTo": "Bill to",
-        "shipTo": "Ship to",
-        "addressLine1": "Address line 1",
-        "addressLine2": "Address line 2",
+        "addressType": "Address Type",
+        "billTo": "Bill To",
+        "shipTo": "Ship To",
+        "addressLine1": "Address Line 1",
+        "addressLine2": "Address Line 2",
         "city": "City",
         "state": "State",
-        "zipCode": "Zip code",
+        "zipCode": "ZIP Code",
         "country": "Country",
-        "notesAndTerms": "Notes & terms",
-        "clientNotes": "Client notes",
-        "internalNotes": "Internal notes (private)",
-        "totalBalance": "Total balance",
-        "createdAt": "Created at",
-        "updatedAt": "Updated at",
-        "createdBy": "Created by",
-        "modifiedBy": "Modified by"
+        "notesAndTerms": "Notes & Terms",
+        "clientNotes": "Client Notes",
+        "internalNotes": "Internal Notes (Private)",
+        "totalBalance": "Total Balance",
+        "createdAt": "Created At",
+        "updatedAt": "Updated At",
+        "createdBy": "Created By",
+        "modifiedBy": "Modified By"
       },
       "placeholders": {
         "client": "Select client",
@@ -2899,10 +2949,10 @@
         "notes": "Notes & terms"
       },
       "addresses": {
-        "add": "Add address",
+        "add": "Add Address",
         "remove": "Remove",
         "primary": "Primary",
-        "rowLabel": "Address {index}"
+        "rowLabel": "Address {Index}"
       },
       "addressType": {
         "billing": "Billing",
@@ -2934,8 +2984,8 @@
         "totalAmount": "Total amount"
       },
       "page": {
-        "createTitle": "Create invoice",
-        "editTitle": "Edit invoice"
+        "createTitle": "Create Invoice",
+        "editTitle": "Edit Invoice"
       },
       "modal": {
         "cancel": "Cancel",
@@ -2956,15 +3006,15 @@
       }
     },
     "purchaseOrders": {
-      "metaTitle": "Purchase orders",
-      "detailMetaTitle": "Purchase order details",
+      "metaTitle": "Purchase Orders",
+      "detailMetaTitle": "Purchase Order Details",
       "title": "Purchase orders",
       "subtitle": "Create and track purchase orders for vendors and projects.",
       "createPurchaseOrder": "Create purchase order",
       "edit": "Edit",
       "searchPlaceholder": "Search purchase orders…",
       "searchAria": "Search purchase orders",
-      "emptyTitle": "No purchase orders yet",
+      "emptyTitle": "No Purchase Orders Yet",
       "emptyDescription": "Create your first purchase order to track vendor procurement.",
       "loadError": "Could not load purchase orders. Try again.",
       "detailLoadError": "Could not load purchase order details. Try again.",
@@ -2991,51 +3041,51 @@
         "vendorName": "Vendor",
         "projectName": "Project",
         "amount": "Amount",
-        "issueDate": "Issue date",
+        "issueDate": "Issue Date",
         "status": "Status"
       },
       "card": {
-        "issueDate": "Issue date",
+        "issueDate": "Issue Date",
         "amount": "Amount"
       },
       "tabs": {
         "overview": "Overview",
-        "lineItems": "Line items"
+        "lineItems": "Line Items"
       },
       "detail": {
         "loadingTitle": "Loading…",
         "retry": "Retry",
         "backAria": "Back to purchase orders list",
-        "sectionOrderDetails": "Purchase order details",
-        "sectionLineItems": "Line items",
-        "sectionSystemMetadata": "System metadata",
+        "sectionOrderDetails": "Purchase Order Details",
+        "sectionLineItems": "Line Items",
+        "sectionSystemMetadata": "System Metadata",
         "notModifiedYet": "Not modified yet"
       },
       "fields": {
         "vendorName": "Vendor",
         "contactPerson": "Contact",
-        "purchaseOrderNumber": "PO number",
+        "purchaseOrderNumber": "PO Number",
         "projectName": "Project",
-        "issueDate": "Issue date",
-        "dueDate": "Due date",
-        "paymentTerms": "Payment terms",
+        "issueDate": "Issue Date",
+        "dueDate": "Due Date",
+        "paymentTerms": "Payment Terms",
         "status": "Status",
         "addresses": "Addresses",
-        "addressType": "Address type",
-        "billTo": "Bill to",
-        "shipTo": "Ship to",
-        "addressLine1": "Address line 1",
-        "addressLine2": "Address line 2",
+        "addressType": "Address Type",
+        "billTo": "Bill To",
+        "shipTo": "Ship To",
+        "addressLine1": "Address Line 1",
+        "addressLine2": "Address Line 2",
         "city": "City",
         "state": "State",
-        "zipCode": "Zip code",
+        "zipCode": "ZIP Code",
         "country": "Country",
-        "vendorNotes": "Vendor notes",
-        "internalNotes": "Internal notes (private)",
-        "createdAt": "Created at",
-        "updatedAt": "Updated at",
-        "createdBy": "Created by",
-        "modifiedBy": "Modified by"
+        "vendorNotes": "Vendor Notes",
+        "internalNotes": "Internal Notes (Private)",
+        "createdAt": "Created At",
+        "updatedAt": "Updated At",
+        "createdBy": "Created By",
+        "modifiedBy": "Modified By"
       },
       "placeholders": {
         "vendor": "Select vendor",
@@ -3062,10 +3112,10 @@
         "notes": "Notes"
       },
       "addresses": {
-        "add": "Add address",
+        "add": "Add Address",
         "remove": "Remove",
         "primary": "Primary",
-        "rowLabel": "Address {index}"
+        "rowLabel": "Address {Index}"
       },
       "addressType": {
         "billing": "Billing",
@@ -3088,8 +3138,8 @@
         "totalAmount": "Total amount"
       },
       "page": {
-        "createTitle": "Create purchase order",
-        "editTitle": "Edit purchase order"
+        "createTitle": "Create Purchase Order",
+        "editTitle": "Edit Purchase Order"
       },
       "modal": {
         "cancel": "Cancel",
@@ -3109,15 +3159,15 @@
       }
     },
     "materialRequests": {
-      "metaTitle": "Material requests",
-      "detailMetaTitle": "Material request details",
+      "metaTitle": "Material Requests",
+      "detailMetaTitle": "Material Request Details",
       "title": "Material requests",
       "subtitle": "Manage and monitor material procurement and distribution across job sites.",
       "createRequest": "Create material request",
       "edit": "Edit",
       "searchPlaceholder": "Search material requests…",
       "searchAria": "Search material requests",
-      "emptyTitle": "No material requests yet",
+      "emptyTitle": "No Material Requests Yet",
       "emptyDescription": "Material requests from the field will appear here for dispatch and return.",
       "loadError": "Could not load material requests. Try again.",
       "detailLoadError": "Could not load material request details. Try again.",
@@ -3140,14 +3190,14 @@
       "table": {
         "requestNumber": "Request",
         "jobName": "Job",
-        "workerName": "Worker name",
-        "requestDate": "Request date",
+        "workerName": "Worker Name",
+        "requestDate": "Request Date",
         "items": "Items",
         "status": "Status"
       },
       "card": {
-        "requestDate": "Request date",
-        "items": "{count} items"
+        "requestDate": "Request Date",
+        "items": "{Count} Items"
       },
       "tabs": {
         "overview": "Overview",
@@ -3163,32 +3213,32 @@
         "tabTimeline": "Timeline",
         "tabLogs": "Logs",
         "tabActivityTimeline": "Activity timeline",
-        "sectionLogs": "Activity logs",
-        "sectionActivityTimeline": "Activity timeline",
+        "sectionLogs": "Activity Logs",
+        "sectionActivityTimeline": "Activity Timeline",
         "sectionDispatches": "Dispatches",
         "dispatchLink": "View dispatch",
         "sectionOverview": "Overview",
         "sectionJobs": "Jobs",
         "sectionItems": "Items",
         "sectionDispatch": "Dispatch",
-        "sectionTimeline": "Dispatch timeline",
-        "sectionSystemMetadata": "System metadata",
+        "sectionTimeline": "Dispatch Timeline",
+        "sectionSystemMetadata": "System Metadata",
         "notModifiedYet": "Not modified yet"
       },
       "actions": {
         "dispatch": "Dispatch"
       },
       "fields": {
-        "workerName": "Worker name",
-        "requestedDate": "Requested date",
+        "workerName": "Worker Name",
+        "requestedDate": "Requested Date",
         "status": "Status",
-        "projectName": "Project name",
-        "clientName": "Client name",
+        "projectName": "Project Name",
+        "clientName": "Client Name",
         "notes": "Notes",
-        "createdAt": "Created at",
-        "updatedAt": "Updated at",
-        "createdBy": "Created by",
-        "modifiedBy": "Modified by"
+        "createdAt": "Created At",
+        "updatedAt": "Updated At",
+        "createdBy": "Created By",
+        "modifiedBy": "Modified By"
       },
       "placeholders": {
         "worker": "Select worker",
@@ -3243,7 +3293,7 @@
         "empty": "No dispatch data for this request.",
         "modalTitle": "Dispatch materials",
         "modalHint": "Enter quantities to dispatch now. You can also add extra items not on the original request.",
-        "pageTitle": "Dispatch materials",
+        "pageTitle": "Dispatch Materials",
         "pageSubtitle": "Dispatch quantities for {requestNumber}",
         "pageSubtitleGeneric": "Record material dispatch for this request",
         "pageHint": "Enter quantities to dispatch now. You may dispatch more than requested; surplus will show as +qty. You can also add extra items not on the original request.",
@@ -3270,7 +3320,7 @@
       },
       "restock": {
         "column": "Restocked",
-        "sectionTitle": "Restock unused items",
+        "sectionTitle": "Restock Unused Items",
         "hint": "Return unused dispatched quantities back to inventory.",
         "alreadyRestocked": "Already restocked",
         "returnQty": "Return qty",
@@ -3278,8 +3328,8 @@
         "successToast": "Items restocked to inventory"
       },
       "page": {
-        "createTitle": "Material request form",
-        "editTitle": "Edit material request",
+        "createTitle": "Material Request Form",
+        "editTitle": "Edit Material Request",
         "formSubtitle": "Please fill out the details below to request project materials."
       },
       "modal": {
@@ -3299,14 +3349,14 @@
     },
     "dispatches": {
       "metaTitle": "Dispatches",
-      "detailMetaTitle": "Dispatch details",
+      "detailMetaTitle": "Dispatch Details",
       "loadingTitle": "Loading...",
       "pageTitle": "Dispatches",
       "pageSubtitle": "Track material dispatches created from material requests.",
       "searchPlaceholder": "Search dispatches…",
       "loadError": "Could not load dispatches. Try again.",
       "detailLoadError": "Could not load dispatch details. Try again.",
-      "emptyTitle": "No dispatches yet",
+      "emptyTitle": "No Dispatches Yet",
       "emptyDescription": "Dispatch materials from a material request to create dispatch records here.",
       "emptyAction": "Go to material requests",
       "pageLabel": "Showing {start} to {end} of {total} results",
@@ -3317,13 +3367,13 @@
         "view": "View details"
       },
       "table": {
-        "dispatchId": "Dispatch number",
-        "jobName": "Job name",
-        "dispatchDate": "Dispatch date",
+        "dispatchId": "Dispatch Number",
+        "jobName": "Job Name",
+        "dispatchDate": "Dispatch Date",
         "status": "Status",
-        "workerName": "Worker name",
+        "workerName": "Worker Name",
         "qty": "Qty",
-        "materialItem": "Material item",
+        "materialItem": "Material Item",
         "requested": "Requested",
         "pending": "Pending",
         "dispatched": "Dispatched",
@@ -3410,18 +3460,18 @@
         },
         "card": {
           "requestedAt": "Requested",
-          "items": "{count} items · {qty} units"
+          "items": "{Count} Items · {Qty} Units"
         },
         "filterStatus": "Status",
         "filterWorker": "Worker",
         "detail": {
-          "metaTitle": "Return request details",
+          "metaTitle": "Return Request Details",
           "backAria": "Back to return to stock list",
           "requestNumber": "Request number",
           "requestedAt": "Requested",
           "returnedAt": "Returned to stock",
           "sectionOverview": "Overview",
-          "sectionItems": "Return items"
+          "sectionItems": "Return Items"
         }
       },
       "status": {
@@ -3433,23 +3483,23 @@
         "delayed": "Delayed"
       },
       "fields": {
-        "dispatchId": "Dispatch number",
-        "dispatchTo": "Dispatch to",
-        "dispatchedBy": "Dispatched by",
-        "dispatchDate": "Dispatch date",
-        "materialRequest": "Material request",
-        "jobName": "Job name",
-        "createdAt": "Created at",
-        "updatedAt": "Last modified",
-        "createdBy": "Created by",
-        "modifiedBy": "Modified by"
+        "dispatchId": "Dispatch Number",
+        "dispatchTo": "Dispatch To",
+        "dispatchedBy": "Dispatched By",
+        "dispatchDate": "Dispatch Date",
+        "materialRequest": "Material Request",
+        "jobName": "Job Name",
+        "createdAt": "Created At",
+        "updatedAt": "Last Modified",
+        "createdBy": "Created By",
+        "modifiedBy": "Modified By"
       },
       "detail": {
         "backAria": "Back to dispatches list",
         "retry": "Retry",
         "sectionOverview": "Overview",
-        "sectionItems": "Material items",
-        "sectionSystemMetadata": "System metadata",
+        "sectionItems": "Material Items",
+        "sectionSystemMetadata": "System Metadata",
         "notModifiedYet": "Not modified yet",
         "noItems": "No items on this dispatch.",
         "extraItem": "Extra item (not on original request)",
@@ -3562,7 +3612,7 @@
         "noClients": "No clients found."
       },
       "timeOff": {
-        "title": "Mark unavailable",
+        "title": "Mark Unavailable",
         "subtitle": "Block this time so jobs are not booked here.",
         "reason": "Reason",
         "reasonPlaceholder": "e.g. Leave, training, travel…",
@@ -3575,7 +3625,7 @@
         "errorToast": "Could not save time off. Try again.",
         "deletedToast": "Time off removed",
         "deleteError": "Could not remove time off. Try again.",
-        "deleteConfirmTitle": "Remove time off?",
+        "deleteConfirmTitle": "Remove Time Off?",
         "deleteConfirmBody": "This blocked time will be available again on the calendar."
       },
       "detail": {
@@ -3592,7 +3642,7 @@
         "recurrenceEnds": "Repeat ends on {date}",
         "deletedToast": "Schedule deleted",
         "deleteError": "Could not delete the schedule. Try again.",
-        "deleteConfirmTitle": "Delete schedule?",
+        "deleteConfirmTitle": "Delete Schedule?",
         "deleteConfirmBody": "This schedule will be removed from the calendar.",
         "timesheetSoon": "Create timesheet will be available when the API is connected.",
         "replacementSoon": "Find replacement will be available when the API is connected.",
@@ -3600,25 +3650,25 @@
       },
       "fields": {
         "worker": "Worker",
-        "assignedWorker": "Assigned worker",
-        "client": "Client name",
-        "job": "Job name",
+        "assignedWorker": "Assigned Worker",
+        "client": "Client Name",
+        "job": "Job Name",
         "jobId": "Job ID",
-        "project": "Project name",
+        "project": "Project Name",
         "date": "Date",
         "time": "Time",
-        "startDate": "Start date",
-        "endDate": "End date",
-        "startTime": "Start time",
-        "endTime": "End time",
-        "allDay": "All day",
+        "startDate": "Start Date",
+        "endDate": "End Date",
+        "startTime": "Start Time",
+        "endTime": "End Time",
+        "allDay": "All Day",
         "notes": "Notes",
         "recurrence": "Recurrence",
-        "recurrenceNone": "Does not repeat",
+        "recurrenceNone": "Does Not Repeat",
         "recurrenceDaily": "Daily",
         "recurrenceWeekly": "Weekly",
-        "recurrenceEnd": "Repeat ends",
-        "to": "to"
+        "recurrenceEnd": "Repeat Ends",
+        "to": "To"
       },
       "placeholders": {
         "client": "Select client",
@@ -3639,14 +3689,14 @@
     },
     "jobs": {
       "metaTitle": "Jobs",
-      "detailMetaTitle": "Job details",
+      "detailMetaTitle": "Job Details",
       "title": "Jobs",
       "subtitle": "Schedule and track field work. Assign technicians and update job status as work progresses.",
       "add": "Add",
       "edit": "Edit",
       "createSchedule": "Create Schedule",
       "reschedule": "Reschedule",
-      "emptyTitle": "No jobs yet",
+      "emptyTitle": "No Jobs Yet",
       "emptyDescription": "Create your first job to assign work to technicians and track status.",
       "loadError": "Could not load jobs. Try again.",
       "detailLoadError": "Could not load job details. Try again.",
@@ -3690,13 +3740,13 @@
       "prev": "Previous",
       "next": "Next",
       "delete": "Delete",
-      "deleteConfirmTitle": "Delete this job?",
+      "deleteConfirmTitle": "Delete This Job?",
       "deleteConfirmBody": "This action cannot be undone.",
       "confirmDelete": "Delete job",
       "table": {
         "title": "Job",
-        "jobStatus": "Job status",
-        "assignedWorker": "Assigned workers",
+        "jobStatus": "Job Status",
+        "assignedWorker": "Assigned Workers",
         "projectCategory": "Category",
         "start": "Start",
         "serialNo": "Job",
@@ -3713,9 +3763,9 @@
         "retry": "Retry",
         "backAria": "Back to jobs list",
         "editWithIcon": "Edit",
-        "sectionRelations": "Client & links",
-        "sectionWorkScope": "Work scope",
-        "sectionQrCode": "QR code",
+        "sectionRelations": "Client & Links",
+        "sectionWorkScope": "Work Scope",
+        "sectionQrCode": "QR Code",
         "sectionSchedule": "Schedule",
         "sectionDescription": "Description",
         "statusUnknown": "Not set",
@@ -3773,7 +3823,7 @@
         "approvedToast": "Quality assurance approved",
         "rejectedToast": "Quality assurance rejected",
         "error": "Could not submit quality assurance. Try again.",
-        "sectionTitle": "Quality assurance",
+        "sectionTitle": "Quality Assurance",
         "status": "Status",
         "statusApproved": "Approved",
         "statusRejected": "Rejected",
@@ -3788,7 +3838,7 @@
       },
       "forms": {
         "sectionTitle": "Forms",
-        "pageTitle": "Job form",
+        "pageTitle": "Job Form",
         "fillSubtitle": "Fill out the form and submit when complete.",
         "viewSubtitle": "Submitted form details.",
         "editSubtitle": "Update submitted values and save.",
@@ -3813,7 +3863,6 @@
         "layoutDesktop": "Desktop",
         "layoutPhone": "Phone",
         "checklistSaveError": "Could not save checklist. Try again."
-        
       },
       "checklists": {
         "sectionTitle": "Checklists",
@@ -3836,9 +3885,9 @@
         "backToJob": "Back to job"
       },
       "page": {
-        "createTitle": "New job",
+        "createTitle": "New Job",
         "createSubtitle": "Define the work, schedule, and assigned technician.",
-        "editTitle": "Edit job",
+        "editTitle": "Edit Job",
         "editSubtitle": "Update job details and save."
       },
       "placeholders": {
@@ -3886,31 +3935,31 @@
         "site": "Site",
         "form": "Form",
         "forms": "Forms",
-        "assignedWorker": "Assigned worker",
-        "assignedWorkers": "Assigned workers",
+        "assignedWorker": "Assigned Worker",
+        "assignedWorkers": "Assigned Workers",
         "workerName": "Name",
         "workerEmail": "Email",
         "workerPhone": "Phone",
         "workerRole": "Role",
-        "startDate": "Start date & time",
-        "jobTime": "Job time",
-        "endDate": "End date & time",
-        "jobStatus": "Job status",
-        "sectionName": "Section name",
-        "plotName": "Plot name",
+        "startDate": "Start Date & Time",
+        "jobTime": "Job Time",
+        "endDate": "End Date & Time",
+        "jobStatus": "Job Status",
+        "sectionName": "Section Name",
+        "plotName": "Plot Name",
         "plotGroup": "Group",
-        "compositeItem": "Composite item",
+        "compositeItem": "Composite Item",
         "compositeQuantity": "Quantity",
-        "plotTotal": "Plot total",
-        "scopeTotal": "Scope total",
-        "recordStatus": "Record status",
+        "plotTotal": "Plot Total",
+        "scopeTotal": "Scope Total",
+        "recordStatus": "Record Status",
         "isActive": "Active",
         "jobId": "Job ID",
-        "pinStatus": "Pin status",
+        "pinStatus": "PIN Status",
         "completedAt": "Completed",
         "createdAt": "Created",
-        "updatedAt": "Last updated",
-        "createdBy": "Created by",
+        "updatedAt": "Last Updated",
+        "createdBy": "Created By",
         "checklists": "Check List",
         "selectCheckList": "Select Check List"
       },
@@ -3954,7 +4003,7 @@
       "selectRow": "Select row",
       "selectAllError": "Could not select all rows. Try again.",
       "success": "Bulk action completed",
-      "deleteConfirmTitle": "Delete selected records?",
+      "deleteConfirmTitle": "Delete Selected Records?",
       "deleteConfirmBody": "You are about to delete {count} records. This cannot be undone.",
       "deleteConfirm": "Delete",
       "actions": {
@@ -3989,16 +4038,16 @@
     },
     "projects": {
       "metaTitle": "Projects",
-      "detailMetaTitle": "Project details",
+      "detailMetaTitle": "Project Details",
       "title": "Projects",
       "subtitle": "Track work by client and schedule. Open a row for full details.",
       "add": "Add",
       "empty": "No projects yet. Create your first project to get started.",
-      "emptyTitle": "No projects yet",
+      "emptyTitle": "No Projects Yet",
       "emptyDescription": "Create your first project to begin planning and tracking work.",
       "loadError": "Could not load projects. Try again.",
       "pins": {
-        "pageTitle": "Pin details",
+        "pageTitle": "PIN Details",
         "backAria": "Back",
         "loadError": "Could not load this pin. Try again.",
         "pinDetails": "Pin details",
@@ -4036,15 +4085,15 @@
       "prev": "Previous",
       "next": "Next",
       "delete": "Delete",
-      "deleteConfirmTitle": "Delete this project?",
+      "deleteConfirmTitle": "Delete This Project?",
       "deleteConfirmBody": "This action cannot be undone.",
       "confirmDelete": "Delete project",
       "table": {
         "name": "Project",
         "client": "Client",
-        "projectType": "Project type",
-        "start": "Start date",
-        "end": "End date",
+        "projectType": "Project Type",
+        "start": "Start Date",
+        "end": "End Date",
         "description": "Description",
         "status": "Status",
         "activeState": "Active",
@@ -4098,7 +4147,7 @@
           "plot": "Plot",
           "Product": "Product",
           "status": "Status",
-          "createdAt": "Created at"
+          "createdAt": "Created At"
         }
       },
       "location": {
@@ -4136,7 +4185,6 @@
         "actionFieldForm": "Form",
         "actionFieldVariation": "Variation",
         "actionFieldQuantity": "Quantity"
-        
       },
       "drawings": {
         "title": "Drawings",
@@ -4149,7 +4197,7 @@
         "upload": "Upload",
         "open": "Open",
         "empty": "No drawings yet. Upload a PDF or image to get started.",
-        "emptyTitle": "No drawings yet",
+        "emptyTitle": "No Drawings Yet",
         "emptyDescription": "Upload a PDF or image blueprint to get started with pins and plots on this project.",
         "loadError": "Could not load drawings. Try again.",
         "pageLabel": "Showing {start}-{end} of {total} drawings",
@@ -4164,9 +4212,9 @@
           "block": "Block",
           "level": "Level",
           "file": "File",
-          "created": "Created by",
+          "created": "Created By",
           "pins": "Pins",
-          "updated": "Last updated",
+          "updated": "Last Updated",
           "actions": "Actions"
         },
         "modal": {
@@ -4277,16 +4325,16 @@
         "projectTypeSearch": "Search project types",
         "loadingProjectTypes": "Loading project types…",
         "projectTypesLoadError": "Could not load project types. Try again.",
-        "selectProjectTypeTitle": "Select project type",
+        "selectProjectTypeTitle": "Select Project Type",
         "selectProjectTypeDescription": "Choose a project type before creating a form.",
         "status": {
           "active": "Active",
           "inactive": "Inactive"
         },
         "table": {
-          "name": "Form name",
-          "projectType": "Project type",
-          "installationType": "Installation type",
+          "name": "Form Name",
+          "projectType": "Project Type",
+          "installationType": "Installation Type",
           "status": "Status",
           "created": "Created",
           "actions": "Actions"
@@ -4298,7 +4346,7 @@
         "searchPlaceholder": "Search jobs…",
         "searchAria": "Search project jobs",
         "loadError": "Could not load project jobs. Try again.",
-        "emptyTitle": "No jobs on this project",
+        "emptyTitle": "No Jobs On This Project",
         "emptyDescription": "Quotation jobs appear under levels and plots. Switch job source to Manual to view manually created jobs.",
         "emptyManualTitle": "No manual jobs",
         "emptyManualDescription": "Manually created jobs for this project will appear here.",
@@ -4331,7 +4379,7 @@
         "searchPlaceholder": "Search quotations…",
         "searchAria": "Search project quotations",
         "loadError": "Could not load project quotations. Try again.",
-        "emptyTitle": "No quotations on this project",
+        "emptyTitle": "No Quotations On This Project",
         "emptyDescription": "Quotations linked to this project will appear here.",
         "pageLabel": "Showing {start}-{end} of {total} quotations",
         "prev": "Previous",
@@ -4345,32 +4393,32 @@
         "projectStatus": "Select project status"
       },
       "fields": {
-        "name": "Project name",
+        "name": "Project Name",
         "client": "Client",
-        "projectType": "Project type",
+        "projectType": "Project Type",
         "site": "Site",
         "sites": "Sites",
         "description": "Description",
-        "startDate": "Start date",
-        "endDate": "End date",
+        "startDate": "Start Date",
+        "endDate": "End Date",
         "createdAt": "Created",
-        "updatedAt": "Last updated",
-        "createdBy": "Created by",
+        "updatedAt": "Last Updated",
+        "createdBy": "Created By",
         "projectStatus": "Project Status",
-        "manager":"Managers"
+        "manager": "Managers"
       },
       "hints": {
         "sitesMultiSelect": "Select one or more sites for this project."
       },
       "modal": {
-        "createTitle": "New project",
+        "createTitle": "New Project",
         "editTitle": "Edit",
         "cancel": "Cancel",
         "save": "Save",
         "saveChanges": "Save changes"
       },
       "page": {
-        "createTitle": "Create project",
+        "createTitle": "Create Project",
         "createSubtitle": "Fill in project details and save.",
         "editTitle": "Edit",
         "editSubtitle": "Update project details and save changes."
@@ -4387,7 +4435,7 @@
     },
     "groups": {
       "metaTitle": "Groups",
-      "detailMetaTitle": "Group details",
+      "detailMetaTitle": "Group Details",
       "title": "Groups",
       "subtitle": "Create and name groups for your catalog (e.g. Materials). Composite items belong to exactly one group.",
       "compositeHint": {
@@ -4397,7 +4445,7 @@
       },
       "add": "Add group",
       "empty": "No groups yet. Create one to organize composite items.",
-      "emptyTitle": "No groups yet",
+      "emptyTitle": "No Groups Yet",
       "emptyDescription": "Create groups to organize your composite item catalog.",
       "loadError": "Could not load groups. Try again.",
       "detailLoadError": "Could not load group details. Try again.",
@@ -4409,9 +4457,9 @@
       "deletedToast": "Group deleted",
       "table": {
         "name": "Name",
-        "itemCount": "Linked items",
-        "compositeItems": "Composite items",
-        "moreCompositeItems": "+{count} more",
+        "itemCount": "Linked Items",
+        "compositeItems": "Composite Items",
+        "moreCompositeItems": "+{Count} More",
         "created": "Created",
         "status": "Status",
         "actions": "Actions"
@@ -4420,15 +4468,15 @@
       "statusInactive": "Inactive",
       "fields": {
         "createdAt": "Created",
-        "updatedAt": "Last updated"
+        "updatedAt": "Last Updated"
       },
       "edit": "Edit",
       "delete": "Delete",
-      "deleteConfirmTitle": "Delete this group?",
+      "deleteConfirmTitle": "Delete This Group?",
       "deleteConfirmBody": "Composite items in this group may need to be reassigned. This action cannot be undone.",
       "confirmDelete": "Delete group",
       "modal": {
-        "createTitle": "New group",
+        "createTitle": "New Group",
         "editTitle": "Edit",
         "cancel": "Cancel",
         "save": "Save",
@@ -4454,7 +4502,7 @@
         "updatedToast": "Group updated"
       },
       "page": {
-        "createTitle": "Create group",
+        "createTitle": "Create Group",
         "createSubtitle": "Fill in group details and save.",
         "editTitle": "Edit",
         "editSubtitle": "Update group details and save changes."
@@ -4465,7 +4513,7 @@
         "backAria": "Back to groups list",
         "sectionOverview": "Overview",
         "metaGroupId": "Group ID",
-        "sectionItems": "Linked items",
+        "sectionItems": "Linked Items",
         "colNo": "#",
         "colItem": "Composite item",
         "colComponentCount": "Components",
@@ -4475,16 +4523,16 @@
         "items": "Items with abbreviation",
         "noItems": "No items linked to this group.",
         "sectionRecord": "Record",
-        "createdAt": "Created at",
-        "updatedAt": "Updated at",
-        "createdBy": "Created by",
-        "modifiedBy": "Modified by",
-        "sectionCreatedBy": "Created by",
-        "sectionModifiedBy": "Last modified by"
+        "createdAt": "Created At",
+        "updatedAt": "Updated At",
+        "createdBy": "Created By",
+        "modifiedBy": "Modified By",
+        "sectionCreatedBy": "Created By",
+        "sectionModifiedBy": "Last Modified By"
       }
     },
     "compositeItems": {
-      "metaTitle": "Composite items",
+      "metaTitle": "Composite Items",
       "title": "Composite items",
       "subtitle": "Catalog entries linked to a group (e.g. materials). Filter by group, add rows, edit or remove.",
       "groupsHint": {
@@ -4494,7 +4542,7 @@
       },
       "add": "Add",
       "empty": "No composite items yet. Create a group first, then add items here.",
-      "emptyTitle": "No composite items yet",
+      "emptyTitle": "No Composite Items Yet",
       "emptyDescription": "Create composite items and assign them to groups.",
       "loadError": "Could not load composite items. Try again.",
       "groupsLoadError": "Could not load groups for filters — dropdown may be empty.",
@@ -4515,7 +4563,7 @@
       },
       "table": {
         "name": "Name",
-        "installationType": "Installation type",
+        "installationType": "Installation Type",
         "group": "Group",
         "componentCount": "Components",
         "organization": "Organization",
@@ -4527,11 +4575,11 @@
       "statusInactive": "Inactive",
       "edit": "Edit",
       "delete": "Delete",
-      "deleteConfirmTitle": "Delete this item?",
+      "deleteConfirmTitle": "Delete This Item?",
       "deleteConfirmBody": "This action cannot be undone.",
       "confirmDelete": "Delete",
       "modal": {
-        "createTitle": "New composite item",
+        "createTitle": "New Composite Item",
         "editTitle": "Edit",
         "cancel": "Cancel",
         "save": "Save",
@@ -4590,7 +4638,7 @@
         "updatedToast": "Composite item updated"
       },
       "page": {
-        "createTitle": "Create composite item",
+        "createTitle": "Create Composite Item",
         "createSubtitle": "Fill in composite item details and save.",
         "editTitle": "Edit",
         "editSubtitle": "Update composite item details and save changes."
@@ -4598,12 +4646,12 @@
     },
     "items": {
       "metaTitle": "Items",
-      "detailMetaTitle": "Item details",
+      "detailMetaTitle": "Item Details",
       "title": "Items",
       "subtitle": "Catalog items and materials. Search, view details, and delete.",
       "add": "Add",
       "empty": "No items yet.",
-      "emptyTitle": "No items yet",
+      "emptyTitle": "No Items Yet",
       "emptyDescription": "Create your first item to start building your catalog.",
       "loadError": "Could not load items. Try again.",
       "deleteError": "Could not delete item. Try again.",
@@ -4618,7 +4666,7 @@
       "cancel": "Cancel",
       "madeCompositeToast": "Item moved to composite items",
       "makeCompositeError": "Could not convert item to composite. Try again.",
-      "deleteConfirmTitle": "Delete this item?",
+      "deleteConfirmTitle": "Delete This Item?",
       "deleteConfirmBody": "This action cannot be undone.",
       "confirmDelete": "Delete",
       "table": {
@@ -4661,15 +4709,15 @@
         "componentItem": "Item",
         "componentQty": "Qty",
         "noComponents": "No components linked to this item.",
-        "createdAt": "Created at",
-        "updatedAt": "Updated at",
-        "createdBy": "Created by",
-        "modifiedBy": "Modified by",
-        "sectionCreatedBy": "Created by",
-        "sectionModifiedBy": "Last modified by"
+        "createdAt": "Created At",
+        "updatedAt": "Updated At",
+        "createdBy": "Created By",
+        "modifiedBy": "Modified By",
+        "sectionCreatedBy": "Created By",
+        "sectionModifiedBy": "Last Modified By"
       },
       "modal": {
-        "createTitle": "New item",
+        "createTitle": "New Item",
         "editTitle": "Edit",
         "cancel": "Cancel",
         "save": "Save",
@@ -4708,7 +4756,7 @@
         "updatedToast": "Item updated"
       },
       "page": {
-        "createTitle": "Create item",
+        "createTitle": "Create Item",
         "createSubtitle": "Fill in item details and save.",
         "editTitle": "Edit",
         "editSubtitle": "Update item details and save changes."

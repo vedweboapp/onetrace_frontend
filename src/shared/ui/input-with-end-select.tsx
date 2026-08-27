@@ -39,7 +39,7 @@ type Props = {
 };
 
 const frameClassName = cn(
-  "flex h-11 w-full min-w-0 items-center overflow-hidden rounded-xl border border-slate-200 bg-white text-sm shadow-sm transition",
+  "flex h-[var(--form-control-height,2.5rem)] w-full min-w-0 items-center overflow-hidden rounded-xl border border-slate-200 bg-white text-sm shadow-sm transition",
   "focus-within:border-[color:var(--dash-accent,#111111)] focus-within:ring-2 focus-within:ring-[color:var(--dash-accent,#111111)]/20",
   "dark:border-slate-700 dark:bg-slate-950",
 );

@@ -135,13 +135,8 @@ export function DetailMetricCard({
   return (
     <div className={cn("field-group detail-field min-w-0", className)}>
       <p className={detailFieldLabelClassName}>{label}</p>
-      <div
-        className={cn(
-          "field-control-wrap min-w-0 flex-1",
-          detailValueSurfaceClassName,
-        )}
-      >
-        {children}
+      <div className="field-control-wrap min-w-0 flex-1">
+        <div className={cn(detailValueSurfaceClassName, "flex-wrap gap-x-2 gap-y-1")}>{children}</div>
       </div>
     </div>
   );

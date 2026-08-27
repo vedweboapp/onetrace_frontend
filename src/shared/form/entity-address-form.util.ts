@@ -176,16 +176,13 @@ export function entityAddressTypeOptions(
   }));
 }
 
-/** Display order: primary first, then original API order. */
+/** Display order: preserve original API order. */
 export function sortEntityAddressesForDisplay<T extends EntityAddress>(
   addresses: T[],
 ): Array<{ address: T; originalIndex: number; displayIndex: number }> {
-  const indexed = addresses.map((address, originalIndex) => ({ address, originalIndex }));
-  indexed.sort((a, b) => {
-    const aPrimary = Boolean(a.address.is_primary);
-    const bPrimary = Boolean(b.address.is_primary);
-    if (aPrimary !== bPrimary) return aPrimary ? -1 : 1;
-    return a.originalIndex - b.originalIndex;
-  });
-  return indexed.map((item, displayIndex) => ({ ...item, displayIndex }));
+  return addresses.map((address, originalIndex) => ({
+    address,
+    originalIndex,
+    displayIndex: originalIndex,
+  }));
 }

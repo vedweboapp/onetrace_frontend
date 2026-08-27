@@ -22,6 +22,7 @@ import {
   Receipt,
   RotateCcw,
   Settings,
+  ShieldCheck,
   Store,
   Truck,
   UserRound,
@@ -136,6 +137,8 @@ export function DashboardHeader() {
   const projectFormsHref = routes.dashboard.settingsProjectForms;
   const usersHref = routes.dashboard.settingsUsers;
   const userGroupsHref = routes.dashboard.settingsUserGroups;
+  const rolesHref = routes.dashboard.settingsRoles;
+  const profilesHref = routes.dashboard.settingsProfiles;
   const integrationsHref = routes.dashboard.settingsIntegrations;
 
   const homeActive = pathname === homeHref;
@@ -224,6 +227,10 @@ export function DashboardHeader() {
     pathname.startsWith(`${usersHref}/`) ||
     pathname === userGroupsHref ||
     pathname.startsWith(`${userGroupsHref}/`);
+  const rolesActive =
+    pathname === rolesHref || pathname.startsWith(`${rolesHref}/`);
+  const profilesActive =
+    pathname === profilesHref || pathname.startsWith(`${profilesHref}/`);
   const integrationsActive =
     pathname === integrationsHref || pathname.startsWith(`${integrationsHref}/`);
 
@@ -303,11 +310,15 @@ export function DashboardHeader() {
                                                                     ? tSettingsNav("projectTypes")
                                                                     : usersActive
                                                                       ? tSettingsNav("users")
-                                                                      : integrationsActive
-                                                                        ? tSettingsNav("integrations")
-                                                                        : projectFormsActive
-                                                                          ? tSettingsNav("projectForms")
-                                                                          : tNav("home");
+                                                                      : rolesActive
+                                                                        ? tSettingsNav("roles")
+                                                                        : profilesActive
+                                                                          ? tSettingsNav("profiles")
+                                                                          : integrationsActive
+                                                                            ? tSettingsNav("integrations")
+                                                                            : projectFormsActive
+                                                                              ? tSettingsNav("projectForms")
+                                                                              : tNav("home");
 
   const sidebarToggle = !isHydrogen ? (
     <button
@@ -409,6 +420,8 @@ export function DashboardHeader() {
             <TopNavLink href={projectFormsHref} label={tSettingsNav("projectForms")} icon={FileText} active={projectFormsActive} resolved={resolved} />
             <TopNavLink href={customizationHref} label={tSettingsNav("customization.label")} icon={Palette} active={customizationActive} resolved={resolved} />
             <TopNavLink href={usersHref} label={tSettingsNav("users")} icon={UserRound} active={usersActive} resolved={resolved} />
+            <TopNavLink href={rolesHref} label={tSettingsNav("roles")} icon={ShieldCheck} active={rolesActive} resolved={resolved} />
+            <TopNavLink href={profilesHref} label={tSettingsNav("profiles")} icon={Layers} active={profilesActive} resolved={resolved} />
             <TopNavLink href={integrationsHref} label={tSettingsNav("integrations")} icon={Plug} active={integrationsActive} resolved={resolved} />
           </>
         ) : (

@@ -434,7 +434,7 @@ function RejectionDialog({
             <div className="mb-5">
               <CheckmarkSelect
                 id="rejection-reason"
-                label="Rejection reason"
+                label="Rejection Reason"
                 options={reasonOptions}
                 value={selectedReasonId}
                 onChange={setSelectedReasonId}

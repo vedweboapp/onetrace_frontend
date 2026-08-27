@@ -115,16 +115,20 @@ html {
   --dash-accent: #111111;
   --dash-on-accent: #ffffff;
   --dash-font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --dash-font-size: 15px;
+  --dash-font-size: 16px;
   --dash-type-scale: 1;
-  --dash-label-size: calc(var(--dash-font-size) * 0.933);
-  --dash-body-size: var(--dash-font-size);
-  --dash-text-xs: calc(var(--dash-font-size) * 0.8);
-  --dash-text-sm: calc(var(--dash-font-size) * 0.933);
-  --dash-text-base: var(--dash-font-size);
-  --dash-text-lg: calc(var(--dash-font-size) * 1.125);
-  --dash-text-xl: calc(var(--dash-font-size) * 1.25);
-  --dash-text-2xl: calc(var(--dash-font-size) * 1.5);
+  --dash-label-size: 15px;
+  --dash-body-size: 16px;
+  --dash-text-xs: 14px;
+  --dash-text-sm: 15px;
+  --dash-text-base: 16px;
+  --dash-text-lg: 18px;
+  --dash-text-xl: 20px;
+  --dash-text-2xl: 24px;
+}
+
+html[data-font-family] {
+  font-family: var(--dash-font-family);
 }
 
 html.dark {
@@ -135,7 +139,7 @@ html.dark {
 
 body {
   font-family: var(--dash-font-family, var(--font-sans));
-  font-size: var(--dash-font-size, 15px);
+  font-size: var(--dash-font-size, 16px);
 }
 
 /*
@@ -167,9 +171,32 @@ html[data-font-size] :is(.text-2xl) {
   font-size: var(--dash-text-2xl) !important;
 }
 
+/*
+ * Legacy fixed micro sizes (tables, badges, meta) → appearance scale.
+ * Keeps add/edit forms, tables, and detail pages readable when Small/Medium/Large changes.
+ */
+html[data-font-size] :is(.text-\[10px\], .text-\[11px\]),
+.dash-appearance-scope :is(.text-\[10px\], .text-\[11px\]) {
+  font-size: var(--dash-text-xs) !important;
+}
+
+html[data-font-size] .text-\[12px\],
+.dash-appearance-scope .text-\[12px\] {
+  font-size: var(--dash-text-sm) !important;
+}
+
 .dash-appearance-scope {
   font-family: var(--dash-font-family);
   font-size: var(--dash-font-size);
+}
+
+/* Form controls + table cells inherit appearance family/size when not explicitly set. */
+.dash-appearance-scope :where(input, textarea, select, button, table) {
+  font-family: inherit;
+}
+
+.dash-appearance-scope table {
+  font-size: var(--dash-text-sm);
 }
 
 /*
@@ -185,8 +212,25 @@ html[data-font-size] :is(.text-2xl) {
   --detail-label-col: 9.5rem;
   --form-label-gap: 0.75rem;
   --detail-label-gap: 0.75rem;
-  --form-control-height: 2.75rem; /* matches surfaceInput h-11 */
-  --detail-value-height: 2rem; /* matches detail value min-h-8 */
+  --form-control-height: 2.5rem; /* slightly compact vs h-11 */
+  --detail-value-height: 1.875rem;
+  --form-field-row-gap-y: 1.625rem;
+}
+
+/* Uniform compact control height across form inputs, selects, and triggers. */
+.dash-appearance-scope .field-control:not(textarea) {
+  height: var(--form-control-height);
+  min-height: var(--form-control-height);
+}
+
+.dash-appearance-scope textarea.field-control {
+  height: auto;
+  min-height: 4.5rem;
+}
+
+/* Extra air between stacked form rows (add/edit screens). */
+.dash-appearance-scope .form-fields-host + .form-fields-host {
+  margin-top: 0.375rem;
 }
 
 /* Each FormFieldRow measures its own width and collapses to 1 col when tight. */
@@ -441,7 +485,7 @@ html[data-font-size] :is(.text-2xl) {
 .dash-appearance-scope[data-form-label="left"] .detail-field.field-group {
   display: grid;
   grid-template-columns: var(--detail-label-col, 9.5rem) minmax(0, 1fr);
-  align-items: start;
+  align-items: center;
   column-gap: var(--detail-label-gap, 0.75rem);
 }
 
@@ -449,7 +493,7 @@ html[data-font-size] :is(.text-2xl) {
   display: grid;
   /* Mirror left: value flexes, fixed label column on the right. */
   grid-template-columns: minmax(0, 1fr) var(--detail-label-col, 9.5rem);
-  align-items: start;
+  align-items: center;
   column-gap: var(--detail-label-gap, 0.75rem);
 }
 
@@ -477,11 +521,11 @@ html[data-font-size] :is(.text-2xl) {
 
 .dash-appearance-scope .detail-field .field-label {
   margin-bottom: 0;
-  align-self: start;
-  line-height: 1.4;
+  align-self: center;
+  line-height: 1.25;
   overflow-wrap: break-word;
   hyphens: auto;
-  padding-top: calc((var(--detail-value-height, 2rem) - 1.4em) / 2);
+  padding-top: 0;
 }
 
 .dash-appearance-scope:not([data-form-label]) .detail-field .field-label,
@@ -500,7 +544,7 @@ html[data-font-size] :is(.text-2xl) {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  justify-content: flex-start;
+  justify-content: center;
   overflow: visible;
 }
 
@@ -512,13 +556,14 @@ html[data-font-size] :is(.text-2xl) {
 
 .dash-appearance-scope .detail-field.field-group:has(textarea) .field-label,
 .dash-appearance-scope .detail-field--block .field-label {
-  padding-top: 0.2rem;
+  padding-top: 0.125rem;
   align-self: start;
 }
 
 .dash-appearance-scope .detail-field.field-group:has(textarea) .field-control-wrap,
 .dash-appearance-scope .detail-field--block .field-control-wrap {
   align-items: stretch;
+  justify-content: flex-start;
 }
 
 /* Beside a map / narrow pane: one field per row until the pane is wide enough. */
@@ -574,13 +619,13 @@ html[data-font-size] :is(.text-2xl) {
   }
 }
 
-/* Keep label optically aligned with the value box; error/edit chrome grows below. */
+/* Single-line detail rows: vertically center label + value. */
 .dash-appearance-scope .detail-metrics-grid > .detail-field.field-group {
-  align-items: start;
+  align-items: center;
 }
 
 .dash-appearance-scope .detail-metrics-grid > .detail-field.field-group .field-label {
-  align-self: start;
+  align-self: center;
 }
 
 .dash-appearance-scope .detail-metrics-grid > .detail-field.field-group .field-control-wrap {
@@ -630,8 +675,8 @@ html[data-font-size] :is(.text-2xl) {
   border-bottom-width: var(--dash-detail-row-line-width, 1px);
   border-bottom-style: var(--dash-detail-row-line-style, solid);
   border-bottom-color: rgb(241 245 249); /* slate-100 */
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
 }
 
 .dash-appearance-scope.dark .detail-metrics-grid > .detail-field,

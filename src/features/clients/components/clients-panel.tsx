@@ -8,6 +8,7 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { deleteClient, fetchAllClientIds, fetchClientsPage, updateClient } from "@/features/clients/api/client.api";
 import type { Client } from "@/features/clients/types/client.types";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { settingsDetailUserLabel } from "@/shared/components/settings/settings-detail-view";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
@@ -233,7 +234,14 @@ export function ClientsPanel() {
       c.primary("name", t("table.name"), (r) => r.name),
       c.truncate("email", t("table.email"), (r) => r.email),
       c.phone("phone", t("table.phone"), (r) => r.phone),
-      c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
+      c.truncate("createdBy", t("table.createdBy"), (r) => settingsDetailUserLabel(r.created_by), {
+        title: (r) => {
+          const label = settingsDetailUserLabel(r.created_by);
+          return label === "—" ? undefined : label;
+        },
+        responsive: "md",
+      }),
+      c.date("created", t("table.created"), (r) => r.created_at, dateFmt, { responsive: "lg" }),
       // c.actions("actions", t("table.actions"), (row) => (
       //   <DataTableRowActionsMenu
       //     menuAriaLabel={tList("openRowActions")}
@@ -373,7 +381,20 @@ export function ClientsPanel() {
                           </span>
                         ) : undefined
                       }
-                      end={formatFlexibleApiDate(row.created_at, dateFmt)}
+                      end={
+                        <span className="truncate text-xs text-slate-500 dark:text-slate-400">
+                          {[
+                            settingsDetailUserLabel(row.created_by) !== "—"
+                              ? settingsDetailUserLabel(row.created_by)
+                              : null,
+                            formatFlexibleApiDate(row.created_at, dateFmt) !== "—"
+                              ? formatFlexibleApiDate(row.created_at, dateFmt)
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ") || "—"}
+                        </span>
+                      }
                     />
                   }
                   onCardClick={() => openClientDetail(row.id)}

@@ -30,7 +30,7 @@ export function FormFieldRow({
     <div className="form-fields-host">
       <div
         className={cn(
-          "form-field-row grid w-full gap-x-8 gap-y-5",
+          "form-field-row grid w-full gap-x-8 gap-y-[var(--form-field-row-gap-y,1.625rem)]",
           cols === "1" && "grid-cols-1",
           cols === "2" && twoCol,
           cols === "3" && "grid-cols-1 md:grid-cols-2 xl:grid-cols-3",

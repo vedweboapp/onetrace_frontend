@@ -100,7 +100,6 @@ export function VendorDetailBody({
       country: t("fields.country"),
       state: t("fields.stateProvince"),
       city: t("fields.city"),
-      primary: t("addresses.primary"),
     }),
     [t],
   );
@@ -122,9 +121,7 @@ export function VendorDetailBody({
     const lon = parseVendorCoord(addr.longitude);
     return {
       id: addr.id ?? displayIndex,
-      label: addr.is_primary
-        ? t("addresses.primary")
-        : t("addresses.rowLabel", { index: displayIndex + 1 }),
+      label: t("addresses.rowLabel", { index: displayIndex + 1 }),
       addressParts: {
         line1: addr.address_line_1,
         line2: addr.address_line_2,
@@ -230,8 +227,6 @@ export function VendorDetailBody({
                   key={addr.id ?? originalIndex}
                   separated={displayIndex > 0}
                   blockHeading={t("addresses.rowLabel", { index: displayIndex + 1 })}
-                  blockPrimaryLabel={t("addresses.primary")}
-                  blockIsPrimary={Boolean(addr.is_primary)}
                   address={addr}
                   addressIndex={originalIndex}
                   allAddresses={addresses}

@@ -652,38 +652,17 @@ const PersonalProfileForm = forwardRef<
                                             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
                                                 {t("AddressN", { n: index + 1 })}
                                             </span>
-                                            <div className="flex items-center gap-3">
-                                                {isEditing ? (
-                                                    <label className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                                                        <input
-                                                            type="radio"
-                                                            name="address_primary"
-                                                            checked={Boolean(row?.is_primary)}
-                                                            onChange={() => {
-                                                                addressFields.forEach((_, i) => {
-                                                                    setValue(`addresses.${i}.is_primary`, i === index);
-                                                                });
-                                                            }}
-                                                        />
-                                                        {t("Primary")}
-                                                    </label>
-                                                ) : row?.is_primary ? (
-                                                    <span className="rounded bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-tight text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                                                        {t("Primary")}
-                                                    </span>
-                                                ) : null}
-                                                {isEditing && addressFields.length > 1 ? (
-                                                    <AppButton
-                                                        type="button"
-                                                        variant="secondary"
-                                                        size="sm"
-                                                        onClick={() => removeAddress(index)}
-                                                    >
-                                                        <Trash2 className="size-4" aria-hidden />
-                                                        {t("RemoveAddress")}
-                                                    </AppButton>
-                                                ) : null}
-                                            </div>
+                                            {isEditing && addressFields.length > 1 ? (
+                                                <AppButton
+                                                    type="button"
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    onClick={() => removeAddress(index)}
+                                                >
+                                                    <Trash2 className="size-4" aria-hidden />
+                                                    {t("RemoveAddress")}
+                                                </AppButton>
+                                            ) : null}
                                         </div>
 
                                         <FormFieldRow cols="2">

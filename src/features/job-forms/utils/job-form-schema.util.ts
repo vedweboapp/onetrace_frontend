@@ -132,3 +132,87 @@ export function buildFieldMaps(sections: NormalizedFormSection[]) {
 
   return { apiNameByFieldId, fieldLabelByFieldId, fieldTypeByFieldId };
 }
+
+/**
+ * Append read-only fields for submission files whose api_name / field_id is not
+ * already present in the layout (e.g. Signature submitted from mobile but removed
+ * from the form builder later). Keeps submitted evidence visible on review screens.
+ */
+export function enrichSectionsWithSubmissionFiles(
+  sections: NormalizedFormSection[],
+  files:
+    | Array<{
+        field_id?: number | null;
+        field_label?: string | null;
+        api_name?: string | null;
+        field_type?: string | null;
+        file_url?: string | null;
+        is_deleted?: boolean;
+      }>
+    | undefined,
+): NormalizedFormSection[] {
+  if (!files?.length) return sections;
+
+  const knownApiNames = new Set<string>();
+  const knownFieldIds = new Set<number>();
+  for (const section of sections) {
+    for (const field of section.fields) {
+      if (field.api_name) knownApiNames.add(field.api_name);
+      if (field.id != null) knownFieldIds.add(field.id);
+    }
+  }
+
+  const orphans: NormalizedFormField[] = [];
+  const seenApi = new Set<string>();
+  for (const file of files) {
+    if (file.is_deleted) continue;
+    const apiName = file.api_name?.trim();
+    if (!apiName || !file.file_url?.trim() || seenApi.has(apiName)) continue;
+    seenApi.add(apiName);
+    const fieldId =
+      typeof file.field_id === "number" && Number.isFinite(file.field_id) && file.field_id > 0
+        ? file.field_id
+        : undefined;
+    if (knownApiNames.has(apiName) || (fieldId != null && knownFieldIds.has(fieldId))) {
+      continue;
+    }
+    orphans.push({
+      id: fieldId,
+      api_name: apiName,
+      field_label: String(file.field_label?.trim() || apiName),
+      field_type: String(file.field_type?.trim() || "file_upload"),
+      readOnly: true,
+      order: orphans.length,
+    });
+  }
+
+  if (orphans.length === 0) return sections;
+
+  const next = sections.map((section) => ({
+    ...section,
+    fields: [...section.fields],
+  }));
+  const targetIdx = (() => {
+    for (let i = next.length - 1; i >= 0; i--) {
+      if (!next[i]?.is_subform) return i;
+    }
+    return -1;
+  })();
+
+  if (targetIdx >= 0) {
+    next[targetIdx] = {
+      ...next[targetIdx],
+      fields: [...next[targetIdx].fields, ...orphans],
+    };
+    return next;
+  }
+
+  return [
+    ...next,
+    {
+      name: "Submitted files",
+      column_count: 1,
+      fields: orphans,
+    },
+  ];
+}

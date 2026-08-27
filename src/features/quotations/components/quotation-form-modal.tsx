@@ -140,7 +140,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     if (!open) return;
     (async () => {
       try {
-        const filters: { is_active: true; client?: number } = { is_active: true };
+        const filters: { is_active?: boolean; client?: number } = { is_active: true };
         if (customerId && customerId > 0) filters.client = customerId;
         const { items: projects } = await fetchProjectsPage(1, 500, filters);
         if (!cancelled) setProjectRows(projects);
@@ -185,7 +185,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     }
     (async () => {
       try {
-        const { items } = await fetchSitesPage(1, 500, { project: projectId, is_active: true });
+        const { items } = await fetchSitesPage(1, 500, { project: projectId });
         if (!cancelled) setSiteRows(items);
       } catch {
         if (!cancelled) setSiteRows([]);
@@ -204,7 +204,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     }
     (async () => {
       try {
-        const { items } = await fetchContactsPage(1, 500, { client: customerId, is_active: true });
+        const { items } = await fetchContactsPage(1, 500, { client: customerId });
         if (!cancelled) {
           setContactOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
         }

@@ -1,0 +1,35 @@
+---
+description: Title Case for UI labels, headings, and field names in forms and detail pages
+globs: messages/en.json,src/**/*.{tsx,ts}
+alwaysApply: false
+---
+
+# UI label casing (English)
+
+Use **Title Case** for user-facing labels and headings:
+
+- Page/modal titles: `Create Client`, `Edit Vendor`, `Client Details`
+- Section headings: `Organization Information`, `Address Information`
+- Field labels: `Client Name`, `Address Line 1`, `Postal / ZIP Code`
+- Table column headers: `Issue Date`, `Last Updated`
+- Detail metadata rows: `Created At`, `Modified By`
+
+## Rules
+
+- Capitalize **every word** in labels/headings (not sentence case).
+- Preserve acronyms: `ZIP`, `QR`, `ID`, `URL`, `PIN`, `PO`, `HR`, `VAT`, `API`.
+- Keep **subtitles**, hints, placeholders, error messages, and long descriptions in **sentence case**.
+- Prefer `messages/en.json` (`next-intl`) over hardcoded strings in components.
+- Spanish (`messages/es.json`) follows normal Spanish capitalization, not English Title Case.
+
+## Examples
+
+| Avoid | Prefer |
+|-------|--------|
+| Create client | Create Client |
+| Client name | Client Name |
+| Address line 1 | Address Line 1 |
+| Last updated | Last Updated |
+| New pin status | New PIN Status |
+
+Run `node scripts/apply-title-case.mjs` after bulk i18n updates.

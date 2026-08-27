@@ -114,7 +114,7 @@ export function SchedulingWeekDayStrip({
   return (
     <div
       className={cn(
-        "flex h-full flex-col overflow-hidden rounded-md",
+        "flex h-full flex-col gap-0.5 overflow-hidden rounded-md",
         hasBlocks ? "min-h-[7.5rem]" : "min-h-[4.5rem]",
       )}
     >

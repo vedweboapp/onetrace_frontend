@@ -104,9 +104,12 @@ type DropdownPlacement = {
 function measureDropdownPlacement(
   anchor: HTMLElement,
   side: "top" | "bottom" | "auto",
+  menuMinWidth = 0,
 ): DropdownPlacement {
   const r = anchor.getBoundingClientRect();
   const vh = window.innerHeight;
+  const vw = window.innerWidth;
+  const pad = 8;
   const spaceBelow = vh - r.bottom - DROPDOWN_GAP;
   const spaceAbove = r.top - DROPDOWN_GAP;
 
@@ -120,11 +123,24 @@ function measureDropdownPlacement(
     Math.min(DROPDOWN_PREFERRED_MAX, (openUp ? spaceAbove : spaceBelow) - 8),
   );
 
+  const width = Math.min(
+    Math.max(r.width, menuMinWidth),
+    Math.max(80, vw - pad * 2),
+  );
+
+  // Prefer left-align to the trigger; if that overflows the viewport, right-align
+  // to the trigger, then clamp into the padded viewport.
+  let left = r.left;
+  if (left + width > vw - pad) {
+    left = r.right - width;
+  }
+  left = Math.min(Math.max(pad, left), vw - pad - width);
+
   if (openUp) {
     return {
       top: r.top - DROPDOWN_GAP,
-      left: r.left,
-      width: r.width,
+      left,
+      width,
       transform: "translateY(-100%)",
       maxHeight,
       openUp: true,
@@ -133,8 +149,8 @@ function measureDropdownPlacement(
 
   return {
     top: r.bottom + DROPDOWN_GAP,
-    left: r.left,
-    width: r.width,
+    left,
+    width,
     transform: "none",
     maxHeight,
     openUp: false,
@@ -145,6 +161,7 @@ function useDropdownPlacement(
   open: boolean,
   anchorRef: React.RefObject<HTMLElement | null>,
   side: "top" | "bottom" | "auto" = "auto",
+  menuMinWidth = 0,
 ) {
   const [placement, setPlacement] = React.useState<DropdownPlacement>({
     top: 0,
@@ -158,8 +175,8 @@ function useDropdownPlacement(
   const update = React.useCallback(() => {
     const el = anchorRef.current;
     if (!el || !open) return;
-    setPlacement(measureDropdownPlacement(el, side));
-  }, [open, anchorRef, side]);
+    setPlacement(measureDropdownPlacement(el, side, menuMinWidth));
+  }, [open, anchorRef, side, menuMinWidth]);
 
   React.useLayoutEffect(() => {
     update();
@@ -240,7 +257,8 @@ export function CheckmarkSelect({
   const showAdd = Boolean(onAdd && !disabled && !locked);
   // Show add action only in dropdown footer, not on trigger.
   const useSplitTrigger = canClear;
-  const dropdownPlacement = useDropdownPlacement(open, anchorRef, side);
+  const resolvedMenuMinWidth = menuMinWidth ?? (size === "sm" ? 200 : 240);
+  const dropdownPlacement = useDropdownPlacement(open, anchorRef, side, resolvedMenuMinWidth);
   const [portalAccent, setPortalAccent] = React.useState("#111111");
   const [portalOnAccent, setPortalOnAccent] = React.useState("#ffffff");
 
@@ -411,7 +429,7 @@ export function CheckmarkSelect({
     "field-control flex w-full items-center justify-between gap-1.5 border text-left font-medium outline-none transition",
     size === "sm"
       ? "h-8 min-h-8 rounded-md px-2 text-[length:var(--dash-text-xs,0.75rem)] shadow-sm"
-      : "h-11 gap-2 rounded-xl px-3.5 text-[length:var(--dash-body-size,0.875rem)] shadow-sm",
+      : "h-[var(--form-control-height,2.5rem)] min-h-[var(--form-control-height,2.5rem)] gap-2 rounded-xl px-3.5 text-[length:var(--dash-body-size,0.875rem)] shadow-sm",
     disabled
       ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-600"
       : cn(
@@ -428,7 +446,7 @@ export function CheckmarkSelect({
     "field-control flex w-full min-w-0 items-stretch overflow-hidden border text-left font-medium shadow-sm outline-none transition",
     size === "sm"
       ? "h-8 min-h-8 rounded-md text-[length:var(--dash-text-xs,0.75rem)]"
-      : "h-11 min-h-11 rounded-xl text-[length:var(--dash-body-size,0.875rem)]",
+      : "h-[var(--form-control-height,2.5rem)] min-h-[var(--form-control-height,2.5rem)] rounded-xl text-[length:var(--dash-body-size,0.875rem)]",
     disabled
       ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-600"
       : cn(
@@ -563,13 +581,12 @@ export function CheckmarkSelect({
                 position: "fixed",
                 top: dropdownPlacement.top,
                 left: dropdownPlacement.left,
-                width: Math.max(dropdownPlacement.width, menuMinWidth ?? (size === "sm" ? 200 : 240)),
+                width: dropdownPlacement.width,
                 transform: dropdownPlacement.transform,
                 zIndex: 200,
                 ["--dash-accent" as string]: portalAccent,
                 ["--dash-on-accent" as string]: portalOnAccent,
               },
-              "max-w-[calc(100vw-1rem)]",
             ),
             document.body,
           )

@@ -166,7 +166,7 @@ export type DetailSystemMetadataLabels = {
 };
 
 export type DetailSystemMetadataSectionProps = {
-  createdAt: string;
+  createdAt?: string | null;
   modifiedAt?: string | null;
   dateFmt: Intl.DateTimeFormat;
   createdBy?: unknown;
@@ -182,6 +182,8 @@ export type DetailSystemMetadataSectionProps = {
   extra?: ReactNode;
   /** Flat section for single-surface detail pages (no nested card). */
   variant?: "card" | "flat";
+  /** Defaults to collapsed; open when audit fields are the primary focus. */
+  defaultOpen?: boolean;
 };
 
 /** Standard audit block — timestamps and created/modified by — shown last on detail pages. */
@@ -195,16 +197,19 @@ export function DetailSystemMetadataSection({
   status,
   extra,
   variant = "flat",
+  defaultOpen = false,
 }: DetailSystemMetadataSectionProps) {
   const createdByUser = normalizeDetailAuditUser(createdBy);
   const modifiedByUser = normalizeDetailAuditUser(modifiedBy);
+  const formattedCreatedAt = formatSettingsDetailDate(dateFmt, createdAt);
   const formattedModifiedAt = modifiedAt?.trim()
     ? formatSettingsDetailDate(dateFmt, modifiedAt)
     : "—";
+  const hasCreatedAt = formattedCreatedAt !== "—";
   const hasModifiedAt = formattedModifiedAt !== "—";
 
   return (
-    <DetailPanelCard title={labels.sectionTitle} defaultOpen={false} variant={variant}>
+    <DetailPanelCard title={labels.sectionTitle} defaultOpen={defaultOpen} variant={variant}>
       <DetailMetricsGrid>
         {status ? (
           <DetailMetadataField label={status.statusLabel}>
@@ -215,7 +220,11 @@ export function DetailSystemMetadataSection({
           </DetailMetadataField>
         ) : null}
         <DetailMetadataField label={labels.createdAt}>
-          <DetailTimestampValue value={formatSettingsDetailDate(dateFmt, createdAt)} />
+          <DetailTimestampValue
+            value={hasCreatedAt ? formattedCreatedAt : null}
+            emptyLabel="—"
+            isEmpty={!hasCreatedAt}
+          />
         </DetailMetadataField>
         <DetailMetadataField label={labels.updatedAt}>
           <DetailTimestampValue

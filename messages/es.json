@@ -120,7 +120,50 @@
     "NETWORK": "Error de red. Comprueba tu conexión e inténtalo de nuevo.",
     "fallback": "Algo salió mal. Inténtalo de nuevo.",
     "HTTP_404": "Registro no encontrado",
-    "HTTP_500": "El servidor tuvo un problema. Inténtalo más tarde."
+    "HTTP_500": "El servidor tuvo un problema. Inténtalo más tarde.",
+    "entities": {
+      "client": "Cliente",
+      "vendor": "Proveedor",
+      "contact": "Contacto",
+      "user": "Usuario",
+      "site": "Sitio",
+      "project": "Proyecto",
+      "item": "Artículo",
+      "job": "Trabajo",
+      "invoice": "Factura",
+      "quotation": "Cotización",
+      "group": "Grupo"
+    },
+    "fields": {
+      "email": "correo",
+      "phone": "teléfono",
+      "name": "nombre",
+      "username": "nombre de usuario",
+      "code": "código",
+      "sku": "SKU"
+    },
+    "messages": {
+      "clientEmailExists": "Ya existe un cliente con este correo.",
+      "vendorEmailExists": "Ya existe un proveedor con este correo.",
+      "contactEmailExists": "Ya existe un contacto con este correo.",
+      "userEmailExists": "Ya existe un usuario con este correo.",
+      "emailAlreadyExists": "Este correo ya existe.",
+      "entityFieldExists": "Ya existe un {entity} con este {field}.",
+      "fieldRequired": "Este campo es obligatorio.",
+      "invalidEmail": "Ingresa un correo válido.",
+      "invalidPhone": "Ingresa un teléfono válido.",
+      "invalidInteger": "Se requiere un número entero válido.",
+      "invalidNumber": "Se requiere un número válido.",
+      "invalidCredentials": "Correo o contraseña no válidos.",
+      "authRequired": "Inicia sesión para continuar.",
+      "permissionDenied": "No tienes permiso para realizar esta acción.",
+      "notFound": "Registro no encontrado.",
+      "network": "Error de red. Comprueba tu conexión e inténtalo de nuevo.",
+      "requestFailed": "La solicitud falló.",
+      "validationFailed": "La validación falló.",
+      "badRequest": "Solicitud incorrecta.",
+      "fallback": "Algo salió mal. Inténtalo de nuevo."
+    }
   },
   "NotFound": {
     "title": "Página no encontrada",
@@ -1483,7 +1526,6 @@
         "currentFile": "Archivo actual",
         "validationFile": "Por favor adjunta un archivo",
         "concentricPoint": "Punto concéntrico"
-
       },
       "deleteConfirmTitle": "¿Eliminar este tipo de lista de verificación?",
       "deleteConfirmBody": "Los formularios de trabajo que usen esta lista pueden verse afectados. Esta acción no se puede deshacer.",
@@ -1919,7 +1961,8 @@
         "phone": "Teléfono",
         "status": "Estado",
         "created": "Creado",
-        "actions": "Acciones"
+        "actions": "Acciones",
+        "createdBy": "Creado por"
       },
       "status": {
         "active": "Activo",
@@ -1984,7 +2027,8 @@
         "pincode": "Código postal",
         "createdAt": "Creado",
         "updatedAt": "Última actualización",
-        "createdBy": "Creado por"
+        "createdBy": "Creado por",
+        "modifiedBy": "Modificado por"
       },
       "modal": {
         "createTitle": "Nuevo cliente",
@@ -3899,7 +3943,7 @@
         "createdAt": "Creado",
         "updatedAt": "Última actualización",
         "createdBy": "Creado por",
-        "checklists":"lista de verificación",
+        "checklists": "lista de verificación",
         "selectCheckList": "Seleccionar lista de verificación"
       },
       "modal": {

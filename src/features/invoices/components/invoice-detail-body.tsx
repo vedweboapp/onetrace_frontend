@@ -163,7 +163,6 @@ export function InvoiceDetailBody({
       country: t("fields.country"),
       state: t("fields.state"),
       city: t("fields.city"),
-      primary: t("addresses.primary"),
     }),
     [t],
   );
@@ -285,8 +284,6 @@ export function InvoiceDetailBody({
                     key={addr.id ?? `${addr.address_type}-${originalIndex}`}
                     separated={displayIndex > 0}
                     blockHeading={t("addresses.rowLabel", { index: displayIndex + 1 })}
-                    blockPrimaryLabel={t("addresses.primary")}
-                    blockIsPrimary={Boolean(addr.is_primary)}
                     address={addr}
                     addressIndex={originalIndex}
                     allAddresses={addresses}

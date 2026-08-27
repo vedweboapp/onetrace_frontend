@@ -292,7 +292,7 @@ export function JobsPanel() {
         const [clients, projects, sites] = await Promise.all([
           fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
           fetchProjectsPage(1, 500, { is_active: true }),
-          fetchSitesPage(1, 500, { is_active: true }),
+          fetchSitesPage(1, 500),
         ]);
         if (!cancelled) {
           setMassClientOptions(clients.items.map((c) => ({ value: String(c.id), label: c.name })));

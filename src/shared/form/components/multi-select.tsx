@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { X, ChevronDown, Check } from "lucide-react";
+import { X, ChevronDown } from "lucide-react";
 import { FieldError } from "react-hook-form";
 
 interface Option {
@@ -157,14 +157,15 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
               normalizedOptions.map((opt, idx) => (
                 <div
                   key={`opt-${idx}-${String(opt.value)}`}
+                  role="option"
+                  aria-selected={isSelected(opt.value)}
                   onClick={() => toggleOption(opt.value)}
                   className={`
-                    px-4 py-2 text-sm flex items-center justify-between cursor-pointer transition-colors
-                    ${isSelected(opt.value) ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400" : "hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-300"}
+                    px-4 py-2 text-sm cursor-pointer transition-colors
+                    ${isSelected(opt.value) ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium" : "hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-300"}
                   `}
                 >
                   {opt.label}
-                  {isSelected(opt.value) && <Check size={16} />}
                 </div>
               ))
             ) : (

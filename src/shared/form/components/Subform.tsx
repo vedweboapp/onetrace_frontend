@@ -289,7 +289,7 @@ const SubForm: React.FC<SubFormProps> = ({
               {activeFields.map((f) => (
                 <th
                   key={f.api_name}
-                  className="px-4 py-3 text-left text-[12px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-slate-700 whitespace-nowrap"
+                  className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-slate-700 whitespace-nowrap"
                 >
                   <span>{f.field_label}</span>
                   {(f.required === true || f.required === "true") && (

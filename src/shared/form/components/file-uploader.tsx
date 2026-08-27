@@ -81,6 +81,25 @@ const formatAcceptLabel = (accept: string): string => {
     return "the allowed file types";
 };
 
+function normalizeFileValues(value: unknown): string[] {
+    if (value == null || value === "") return [];
+    if (Array.isArray(value)) {
+        return value.filter((item): item is string => typeof item === "string" && item.trim() !== "");
+    }
+    if (typeof value === "string" && value.trim() !== "") return [value];
+    return [];
+}
+
+function fileNameFromValue(value: string): string {
+    if (value.startsWith("data:")) return "Attached File";
+    try {
+        const path = value.split("?")[0] ?? value;
+        return decodeURIComponent(path.split("/").pop() || "Uploaded File");
+    } catch {
+        return value.split("/").pop() || "Uploaded File";
+    }
+}
+
 const FileUploader: React.FC<FileUploaderProps> = (props) => {
     const {
         control,
@@ -110,7 +129,8 @@ const FileUploader: React.FC<FileUploaderProps> = (props) => {
 
     const handleFileChange = (
         e: React.ChangeEvent<HTMLInputElement>,
-        onChange: (value: string | null) => void
+        onChange: (value: string | string[] | null) => void,
+        currentValue: unknown,
     ) => {
         const file = e.target.files?.[0];
 
@@ -163,26 +183,41 @@ const FileUploader: React.FC<FileUploaderProps> = (props) => {
 
             setPreview(isImageFile(file.type) ? base64String : null);
 
-            onChange(base64String);
+            const existing = normalizeFileValues(currentValue);
+            // Keep previously loaded remote URLs when adding a new local file.
+            if (existing.length > 0 && existing.every((v) => !v.startsWith("data:"))) {
+                onChange([...existing, base64String]);
+            } else {
+                onChange(base64String);
+            }
         };
 
         reader.readAsDataURL(file);
     };
 
     const handleRemove = (
-        onChange: (value: string | null) => void
+        onChange: (value: string | string[] | null) => void,
+        currentValue: unknown,
+        removeIndex?: number,
     ) => {
-        setPreview(null);
-        setFileName(null);
-        setFileType(null);
-        setFileSize(null);
-        setError(null);
+        const existing = normalizeFileValues(currentValue);
+        if (removeIndex == null || existing.length <= 1) {
+            setPreview(null);
+            setFileName(null);
+            setFileType(null);
+            setFileSize(null);
+            setError(null);
 
-        if (fileInputRef.current) {
-            fileInputRef.current.value = "";
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+
+            onChange(null);
+            return;
         }
 
-        onChange(null);
+        const next = existing.filter((_, idx) => idx !== removeIndex);
+        onChange(next.length === 1 ? next[0] : next);
     };
 
     return (
@@ -194,32 +229,33 @@ const FileUploader: React.FC<FileUploaderProps> = (props) => {
                 field: { onChange, value },
                 fieldState: { error: fieldError },
             }) => {
+                const fileValues = normalizeFileValues(value);
+                const isMulti = fileValues.length > 1;
+
                 useEffect(() => {
-                    if (value && typeof value === "string") {
-                        if (!fileName) {
-                            if (value.startsWith("data:")) {
-                                const type = value
-                                    .split(";")[0]
-                                    .split(":")[1];
-
-                                setFileType(type);
-                                setFileName("Attached File");
-                                setPreview(isImageFile(type) ? value : null);
-                            } else {
-                                const nameFromUrl = value.split("/").pop();
-
-                                setFileName(
-                                    nameFromUrl || "Uploaded File"
-                                );
-                                setPreview(null);
-                            }
+                    if (fileValues.length === 1) {
+                        const single = fileValues[0];
+                        if (single.startsWith("data:")) {
+                            const type = single.split(";")[0]?.split(":")[1] ?? null;
+                            setFileType(type);
+                            setFileName("Attached File");
+                            setPreview(isImageFile(type) ? single : null);
+                        } else {
+                            setFileName(fileNameFromValue(single));
+                            setFileType(null);
+                            setPreview(null);
                         }
-                    } else if (!value) {
+                    } else if (fileValues.length === 0) {
                         setPreview(null);
                         setFileName(null);
                         setFileType(null);
                         setFileSize(null);
                         setError(null);
+                    } else {
+                        setPreview(null);
+                        setFileName(null);
+                        setFileType(null);
+                        setFileSize(null);
                     }
                 }, [value]);
 
@@ -228,10 +264,75 @@ const FileUploader: React.FC<FileUploaderProps> = (props) => {
                     fileInputRef.current?.click();
                 };
 
-                const fileUrl =
-                    value && typeof value === "string" && !value.startsWith("data:")
-                        ? value
-                        : null;
+                const renderFileRow = (fileValue: string, index: number) => {
+                    const nameLabel = fileNameFromValue(fileValue);
+                    const remoteUrl =
+                        fileValue && !fileValue.startsWith("data:") ? fileValue : null;
+                    return (
+                        <div
+                            key={`${nameLabel}-${index}`}
+                            className={`
+                                    flex items-center justify-between w-full h-[42px] px-3 
+                                    border rounded-[8px] text-left transition-all duration-200 outline-none
+                                    ${isLocked
+                                    ? "bg-gray-100 dark:bg-slate-800/50 cursor-default border-gray-200 dark:border-slate-700"
+                                    : "bg-white dark:bg-slate-900 cursor-pointer hover:shadow-sm hover:border-[color:var(--dash-accent,#111111)]"
+                                }
+                                    ${(error || fieldError)
+                                    ? "border-red-500 focus:ring-red-500/20 focus:border-red-500"
+                                    : !isLocked
+                                        ? "border-gray-300 dark:border-slate-700"
+                                        : ""
+                                }
+                                `}
+                            role={isLocked ? undefined : "button"}
+                            tabIndex={isLocked ? undefined : 0}
+                            onClick={isLocked ? undefined : handleContainerClick}
+                            onKeyDown={
+                                isLocked
+                                    ? undefined
+                                    : (e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                            e.preventDefault();
+                                            handleContainerClick();
+                                        }
+                                    }
+                            }
+                        >
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <File size={16} className="text-red-500 flex-shrink-0" />
+                                {isLocked && remoteUrl ? (
+                                    <a
+                                        href={remoteUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate flex-1 hover:underline"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        {nameLabel}
+                                    </a>
+                                ) : (
+                                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate flex-1">
+                                        {nameLabel}
+                                    </span>
+                                )}
+                            </div>
+                            {!isLocked ? (
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemove(onChange, value, index);
+                                    }}
+                                    className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors cursor-pointer flex-shrink-0 ml-2"
+                                    title="Remove file"
+                                >
+                                    <X size={16} />
+                                </button>
+                            ) : null}
+                        </div>
+                    );
+                };
 
                 return (
                     <div
@@ -247,7 +348,13 @@ const FileUploader: React.FC<FileUploaderProps> = (props) => {
                         )}
 
                         <div className="w-full relative space-y-2">
-                            {isImageFile(fileType) && preview ? (
+                            {isMulti ? (
+                                <div className="flex flex-col gap-2">
+                                    {fileValues.map((fileValue, index) =>
+                                        renderFileRow(fileValue, index),
+                                    )}
+                                </div>
+                            ) : isImageFile(fileType) && preview ? (
                                 <div className="relative rounded-[8px] border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50 overflow-hidden">
                                     <img
                                         src={preview}
@@ -257,7 +364,7 @@ const FileUploader: React.FC<FileUploaderProps> = (props) => {
                                     {!isLocked ? (
                                         <button
                                             type="button"
-                                            onClick={() => handleRemove(onChange)}
+                                            onClick={() => handleRemove(onChange, value)}
                                             className="absolute top-2 right-2 p-1.5 bg-white/90 dark:bg-slate-900/90 text-gray-500 hover:text-red-500 rounded-full shadow-sm border border-gray-200 dark:border-slate-600 transition-colors"
                                             title="Remove file"
                                         >
@@ -275,6 +382,8 @@ const FileUploader: React.FC<FileUploaderProps> = (props) => {
                                         </div>
                                     )}
                                 </div>
+                            ) : fileValues.length === 1 ? (
+                                renderFileRow(fileValues[0], 0)
                             ) : (
                                 <div
                                     role={isLocked ? undefined : "button"}
@@ -305,59 +414,11 @@ const FileUploader: React.FC<FileUploaderProps> = (props) => {
                                         }
                                 `}
                                 >
-                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                        {fileName ? (
-                                            <>
-                                                <File size={16} className="text-red-500 flex-shrink-0" />
-                                                {isLocked && fileUrl ? (
-                                                    <a
-                                                        href={fileUrl}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate flex-1 hover:underline"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    >
-                                                        {fileName}
-                                                    </a>
-                                                ) : (
-                                                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate flex-1">
-                                                        {fileName}
-                                                        {fileSize != null && (
-                                                            <span className="text-xs text-gray-400 dark:text-slate-500 font-normal ml-1.5">
-                                                                ({(fileSize / 1024).toFixed(1)} KB)
-                                                            </span>
-                                                        )}
-                                                    </span>
-                                                )}
-                                            </>
-                                        ) : (
-                                            <span className="text-sm text-gray-400 dark:text-slate-500">
-                                                {isLocked ? "—" : "Choose file"}
-                                            </span>
-                                        )}
-                                    </div>
-
+                                    <span className="text-sm text-gray-400 dark:text-slate-500">
+                                        {isLocked ? "—" : "Choose file"}
+                                    </span>
                                     {!isLocked ? (
-                                        <div
-                                            className="flex items-center gap-1.5 flex-shrink-0 ml-2"
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            {fileName ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleRemove(onChange);
-                                                    }}
-                                                    className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors cursor-pointer"
-                                                    title="Remove file"
-                                                >
-                                                    <X size={16} />
-                                                </button>
-                                            ) : (
-                                                <ChevronDown size={16} className="text-gray-400 dark:text-slate-500" />
-                                            )}
-                                        </div>
+                                        <ChevronDown size={16} className="text-gray-400 dark:text-slate-500" />
                                     ) : null}
                                 </div>
                             )}
@@ -370,7 +431,7 @@ const FileUploader: React.FC<FileUploaderProps> = (props) => {
                                     className="hidden"
                                     accept={accept === "*" ? undefined : accept}
                                     onChange={(e) =>
-                                        handleFileChange(e, onChange)
+                                        handleFileChange(e, onChange, value)
                                     }
                                 />
                             ) : null}

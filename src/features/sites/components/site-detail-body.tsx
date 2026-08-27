@@ -3,7 +3,7 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
-import { patchSite, updateSite } from "@/features/sites/api/site.api";
+import { updateSite } from "@/features/sites/api/site.api";
 import { SiteDetailContactPersonsEditor } from "@/features/sites/components/site-detail-contact-persons-editor";
 import type { Site, SiteContactPersonPayload, SiteUpdatePayload } from "@/features/sites/types/site.types";
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
@@ -29,7 +29,7 @@ import {
 } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
 import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
-import { ActiveStatusBadge, type CheckmarkSelectOption } from "@/shared/ui";
+import { type CheckmarkSelectOption } from "@/shared/ui";
 
 const AddressMiniMap = dynamic(
   () => import("@/shared/components/maps/address-mini-map").then((m) => m.AddressMiniMap),
@@ -67,14 +67,6 @@ export function SiteDetailBody({
         ? detail.client.id
         : null;
 
-  const statusOptions = React.useMemo(
-    () => [
-      { value: "true", label: t("status.active") },
-      { value: "false", label: t("status.inactive") },
-    ],
-    [t],
-  );
-
   const clientSelectOptions = React.useMemo(() => {
     const list = [...clientOptions];
     if (clientId != null && !list.some((o) => o.value === String(clientId))) {
@@ -85,12 +77,6 @@ export function SiteDetailBody({
     }
     return list;
   }, [clientOptions, clientId, clientName]);
-
-  const patchActive = useDetailPatch(
-    (is_active: boolean) => patchSite(detail.id, { is_active }),
-    { success: t("updatedToast"), error: t("toggleActiveError") },
-    onSaved,
-  );
 
   const patchSiteField = useDetailPatch(
     (body: Partial<SiteUpdatePayload>) => updateSite(detail.id, body as SiteUpdatePayload),
@@ -145,19 +131,6 @@ export function SiteDetailBody({
               {detail.site_name}
             </DetailEditableField>
             <DetailEditableField
-              label={t("fields.status")}
-              value={detail.is_active ? "true" : "false"}
-              kind="select"
-              options={statusOptions}
-              editAriaLabel={tActions("edit")}
-              onSave={(next) => patchActive(next === "true")}
-            >
-              <ActiveStatusBadge
-                active={detail.is_active}
-                label={detail.is_active ? t("status.active") : t("status.inactive")}
-              />
-            </DetailEditableField>
-            <DetailEditableField
               label={t("fields.client")}
               value={clientId != null ? String(clientId) : ""}
               kind="select"
@@ -189,14 +162,6 @@ export function SiteDetailBody({
             </DetailEditableField>
           </DetailMetricsGrid>
         </DetailPanelCard>
-
-        <SiteDetailContactPersonsEditor
-          title={t("contactPerson.sectionTitle")}
-          detail={detail}
-          contactNameById={contactNameById}
-          titleNameById={titleNameById}
-          onSaveContacts={(contacts) => patchSiteField({ contacts })}
-        />
 
         <DetailPanelCard title={t("detail.sectionAddress")}>
           <DetailMetricsGrid>
@@ -280,6 +245,14 @@ export function SiteDetailBody({
             </DetailEditableField>
           </DetailMetricsGrid>
         </DetailPanelCard>
+
+        <SiteDetailContactPersonsEditor
+          title={t("contactPerson.sectionTitle")}
+          detail={detail}
+          contactNameById={contactNameById}
+          titleNameById={titleNameById}
+          onSaveContacts={(contacts) => patchSiteField({ contacts })}
+        />
 
         <DetailSystemMetadataSection
           createdAt={detail.created_at}

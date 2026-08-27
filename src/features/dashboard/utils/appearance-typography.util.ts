@@ -13,34 +13,80 @@ export const FONT_FAMILY_CSS: Record<DashboardFontFamily, string> = {
   system: 'ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',
 };
 
+export type DashTextScale = {
+  root: string;
+  label: string;
+  body: string;
+  scale: string;
+  textXs: string;
+  textSm: string;
+  textBase: string;
+  textLg: string;
+  textXl: string;
+  text2xl: string;
+};
+
 /**
  * Appearance type scale. `root` is the dashboard base size (px).
- * Label/body are derived in CSS from `--dash-font-size` so Small/Medium/Large
- * actually rescale Tailwind `text-*` utilities and form controls.
+ * Small/Medium/Large rescale Tailwind `text-*`, form controls, tables, and detail pages.
+ * Micro copy (xs) is bumped so Small ≈ 12px and Medium ≈ 14px minimum.
  */
-export const FONT_SIZE_CSS: Record<
-  DashboardFontSize,
-  { root: string; label: string; body: string; scale: string }
-> = {
+export const FONT_SIZE_CSS: Record<DashboardFontSize, DashTextScale> = {
   small: {
-    root: "13px",
-    label: "calc(var(--dash-font-size) * 0.92)",
-    body: "calc(var(--dash-font-size) * 1)",
-    scale: "0.867",
+    root: "14px",
+    label: "13px",
+    body: "14px",
+    scale: "0.875",
+    textXs: "12px",
+    textSm: "13px",
+    textBase: "14px",
+    textLg: "16px",
+    textXl: "18px",
+    text2xl: "21px",
   },
   medium: {
-    root: "15px",
-    label: "calc(var(--dash-font-size) * 0.933)",
-    body: "calc(var(--dash-font-size) * 1)",
+    root: "16px",
+    label: "15px",
+    body: "16px",
     scale: "1",
+    textXs: "14px",
+    textSm: "15px",
+    textBase: "16px",
+    textLg: "18px",
+    textXl: "20px",
+    text2xl: "24px",
   },
   large: {
-    root: "17px",
-    label: "calc(var(--dash-font-size) * 0.94)",
-    body: "calc(var(--dash-font-size) * 1)",
-    scale: "1.133",
+    root: "18px",
+    label: "17px",
+    body: "18px",
+    scale: "1.125",
+    textXs: "16px",
+    textSm: "17px",
+    textBase: "18px",
+    textLg: "20px",
+    textXl: "23px",
+    text2xl: "27px",
   },
 };
+
+/** Apply the full dash typography scale to a CSSStyleDeclaration target (e.g. html). */
+export function applyDashTextScaleVars(
+  target: { setProperty: (name: string, value: string) => void },
+  fontSize: DashboardFontSize,
+) {
+  const scale = FONT_SIZE_CSS[fontSize];
+  target.setProperty("--dash-font-size", scale.root);
+  target.setProperty("--dash-label-size", scale.label);
+  target.setProperty("--dash-body-size", scale.body);
+  target.setProperty("--dash-type-scale", scale.scale);
+  target.setProperty("--dash-text-xs", scale.textXs);
+  target.setProperty("--dash-text-sm", scale.textSm);
+  target.setProperty("--dash-text-base", scale.textBase);
+  target.setProperty("--dash-text-lg", scale.textLg);
+  target.setProperty("--dash-text-xl", scale.textXl);
+  target.setProperty("--dash-text-2xl", scale.text2xl);
+}
 
 /** Google Fonts stylesheet URL for non-system families. */
 export const GOOGLE_FONTS_STYLESHEET =

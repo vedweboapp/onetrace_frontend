@@ -239,10 +239,10 @@ export function ZohoConnectionDetailsScreen() {
                   value={boolLabel(connection.mapping_configured, t)}
                 />
                 <DetailRow label={t("importedRecords")} value={String(connection.synced_records ?? 0)} />
-                <DetailRow label="Last history sync" value={connection.last_history_sync ? new Date(connection.last_history_sync).toLocaleString() : "Never"} />
-                <DetailRow label="Last webhook sync " value={connection?.webhook?.last_received_at ? new Date(connection.webhook.last_received_at).toLocaleString() : "Never"} />
-                <DetailRow label="Connection established" value={new Date(connection.connection_created_at ?? 0).toLocaleString()} />
-                <DetailRow label="Connected by" value={connection.connection_created_by} />
+                <DetailRow label={t("lastHistorySync")} value={connection.last_history_sync ? new Date(connection.last_history_sync).toLocaleString() : "Never"} />
+                <DetailRow label={t("lastWebhookSync")} value={connection?.webhook?.last_received_at ? new Date(connection.webhook.last_received_at).toLocaleString() : "Never"} />
+                <DetailRow label={t("connectionEstablished")} value={new Date(connection.connection_created_at ?? 0).toLocaleString()} />
+                <DetailRow label={t("connectedBy")} value={connection.connection_created_by} />
                 <DetailRow
                   label={t("status")}
                   value={

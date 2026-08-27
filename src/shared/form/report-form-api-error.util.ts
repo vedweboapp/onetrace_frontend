@@ -1,12 +1,18 @@
 import type { FieldValues, Path, UseFormSetError } from "react-hook-form";
 import { getRawApiErrors, isFieldKeyedApiErrors } from "@/core/errors/api-field-errors.util";
+import { localizeApiErrorMessage } from "@/core/errors/api-error-localize.util";
 import { markApiErrorToasted, toastApiError } from "@/core/errors/api-error-toast.util";
 import { mapApiErrorsToFieldStrings } from "@/shared/form/map-field-errors";
 
 export function getApiFieldErrorMap(error: unknown): Record<string, string> {
   const raw = getRawApiErrors(error);
   if (!isFieldKeyedApiErrors(raw)) return {};
-  return mapApiErrorsToFieldStrings(raw);
+  const mapped = mapApiErrorsToFieldStrings(raw);
+  const localized: Record<string, string> = {};
+  for (const [key, message] of Object.entries(mapped)) {
+    localized[key] = localizeApiErrorMessage(message);
+  }
+  return localized;
 }
 
 /**

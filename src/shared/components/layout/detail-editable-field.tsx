@@ -33,12 +33,13 @@ type DetailEditableFieldEditorProps = {
 /** Detail label — muted, sentence case; placement follows Appearance (left/right/top). */
 export const detailFieldLabelClassName = cn(
   fieldLabelClassName,
-  "text-sm font-normal normal-case tracking-normal text-slate-500 dark:text-slate-400",
+  "font-normal normal-case tracking-normal text-slate-500 dark:text-slate-400",
 );
 
 /** Soft box shared by display + edit — weight/color match list table cells. */
 export const detailValueSurfaceClassName = cn(
-  "w-full min-w-0 min-h-8 rounded-md px-1.5 py-1 text-sm font-normal leading-snug text-slate-700",
+  "flex w-full min-w-0 min-h-[var(--detail-value-height,1.875rem)] items-center rounded-md px-1.5",
+  "text-[length:var(--dash-body-size,0.875rem)] font-normal leading-normal text-slate-700",
   "dark:text-slate-300",
 );
 

@@ -124,7 +124,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
         ],
       },
       { type: "textarea", label: "Placeholder", key: "placeholder" },
-      { type: "number", label: "Character limit", key: "maxLength" },
+      { type: "number", label: "Character Limit", key: "maxLength" },
       { type: "checkbox", label: "Required", key: "required" },
       // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
       // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
@@ -288,7 +288,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       { type: "text", label: "Field Label", key: "label", required: true, maxLength: 100 },
       {
         type: "drop-down",
-        label: "Number of digits allowed",
+        label: "Number Of Digits Allowed",
         key: "max",
         options: [
           { value: 1, label: "1" }, { value: 2, label: "2" },
@@ -357,7 +357,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       },
       {
         type: "drop-down",
-        label: "Maximum digits allowed",
+        label: "Maximum Digits Allowed",
         options: [
           { value: 1, label: "1" }, { value: 2, label: "2" },
           { value: 3, label: "3" }, { value: 4, label: "4" },
@@ -394,7 +394,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
       {
         type: "drop-down",
-        label: "Maximum digits allowed",
+        label: "Maximum Digits Allowed",
         options: [
           { value: 1, label: "1" }, { value: 2, label: "2" },
           { value: 3, label: "3" }, { value: 4, label: "4" },
@@ -546,7 +546,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
     }),
     configFields: [
       { type: "text", label: "Field Label", key: "label", required: true,maxLenght : 100 },
-      { type: "number", label: "Number of characters allowed", key: "max" },
+      { type: "number", label: "Number Of Characters Allowed", key: "max" },
       { type: "text", label: "Placeholder", key: "placeholder" },
       { type: "checkbox", label: "Required", key: "required" },
       // { type: "checkbox", label: "Mark as Public", key: "markAsPublic", showInfoIcon: true },
@@ -695,7 +695,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
     icon: BarChart3,
     defaultConfig: () => ({
       type: "rollup_summary",
-      label: "Total count",
+      label: "Total Count",
       name: "",
       summaryType: "SUM",
       markAsPublic: false,
@@ -818,7 +818,7 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
         ]
       },
       { type: "text", label: "Parent Field", key: "parent_field", required: true },
-      { type: "text", label: "Search for", key: "search_for", required: true },
+      { type: "text", label: "Search For", key: "search_for", required: true },
     ]
   },
   signature: {
