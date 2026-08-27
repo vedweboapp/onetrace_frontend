@@ -467,7 +467,7 @@ export function DashboardHeader() {
             <TopNavLink href={projectsHref} label={tNav("projects")} icon={FolderKanban} active={projectsActive} resolved={resolved} />
             <TopNavLink href={groupsHref} label={tNav("groups")} icon={Layers} active={groupsActive} resolved={resolved} />
             <TopNavLink href={materialRequestsHref} label={tNav("materialRequests")} icon={ClipboardList} active={materialRequestsActive} resolved={resolved} />
-            <TopNavLink href={dispatchesHref} label={tNav("dispatches")} icon={Truck} active={dispatchesActive} resolved={resolved} />
+            <TopNavLink href={dispatchesHref} label={tNav("dispatches")} icon={Truck} active={dispatchesActive} resolved={resolved} dataNav="dispatches" />
             <TopNavLink href={returnToStockHref} label={tNav("returnToStock")} icon={RotateCcw} active={returnToStockActive} resolved={resolved} />
             <TopNavGroup
               label={tNav("products")}

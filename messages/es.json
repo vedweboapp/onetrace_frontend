@@ -3309,6 +3309,7 @@
         "backAria": "Volver a la solicitud",
         "confirm": "Confirmar envío",
         "successToast": "Envío registrado",
+        "flyCardLabel": "Enviado",
         "sectionLines": "Ítems solicitados",
         "sectionExtra": "Añadir ítems extra",
         "sectionExtraSent": "Ítems extra enviados",

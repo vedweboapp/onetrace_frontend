@@ -3324,6 +3324,7 @@
         "backAria": "Back to material request",
         "confirm": "Confirm dispatch",
         "successToast": "Dispatch recorded",
+        "flyCardLabel": "Dispatched",
         "sectionLines": "Requested items",
         "sectionExtra": "Add extra items",
         "sectionExtraSent": "Extra items dispatched",
