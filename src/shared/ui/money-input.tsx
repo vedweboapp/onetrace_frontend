@@ -185,7 +185,7 @@ export function MoneyInput({
     <div
       className={cn(
         "field-control flex w-full min-w-0 items-center rounded-xl border border-slate-200 bg-white text-[length:var(--dash-body-size,0.875rem)] shadow-sm transition",
-        compact ? "h-8 rounded-lg" : "h-11",
+        compact ? "h-8 rounded-lg" : "h-[var(--form-control-height,2.5rem)]",
         "focus-within:border-[color:var(--dash-accent,#111111)] focus-within:ring-2 focus-within:ring-[color:var(--dash-accent,#111111)]/20",
         "dark:border-slate-700 dark:bg-slate-950",
         invalid && "border-red-500 focus-within:border-red-500 focus-within:ring-red-500/20",

@@ -285,7 +285,6 @@ export function JobFormScreen({ mode, jobId }: Props) {
     try {
       const { items } = await fetchProjectsPage(1, 500, {
         client: clientId,
-        is_active: true,
         search: searchTerm || undefined,
       });
       setProjectOptions((prev) => {
@@ -313,7 +312,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
       return;
     }
     try {
-      const { items } = await fetchSitesPage(1, 500, { client: clientId, is_active: true });
+      const { items } = await fetchSitesPage(1, 500, { client: clientId });
       setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name })));
     } catch {
       setSiteOptions([]);

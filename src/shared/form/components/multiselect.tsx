@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { X, ChevronDown, Check, Search, CircleSlash } from "lucide-react";
+import { X, ChevronDown, Search, CircleSlash } from "lucide-react";
 import { FieldError } from "react-hook-form";
 
 export interface Option {
@@ -239,9 +239,11 @@ const MultiSelect = React.forwardRef<HTMLDivElement, MultiSelectProps>(
                     return (
                       <div
                         key={opt.value}
+                        role="option"
+                        aria-selected={isSelected}
                         onClick={() => toggleOption(opt.value)}
                         className={`
-                          px-3 py-2 text-sm flex items-center justify-between cursor-pointer rounded-[4px] transition-all duration-150 select-none
+                          px-3 py-2 text-sm cursor-pointer rounded-[4px] transition-all duration-150 select-none truncate
                           ${
                             isSelected
                               ? "bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium"
@@ -249,8 +251,7 @@ const MultiSelect = React.forwardRef<HTMLDivElement, MultiSelectProps>(
                           }
                         `}
                       >
-                        <span className="truncate pr-4">{opt.label}</span>
-                        {isSelected && <Check size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                        {opt.label}
                       </div>
                     );
                   })

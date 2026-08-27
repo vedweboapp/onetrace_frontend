@@ -145,6 +145,13 @@ api.interceptors.request.use((config) => {
   if (typeof config.url === "string" && config.url.length > 0) {
     config.url = ensureTrailingSlashUrl(toBaseRelativeApiPath(config.url));
   }
+  // Tip backend to localize when supported; FE also maps known English strings.
+  if (typeof document !== "undefined") {
+    const lang = (document.documentElement.lang || "en").trim() || "en";
+    const headers = AxiosHeaders.from(config.headers ?? {});
+    headers.set("Accept-Language", lang);
+    config.headers = headers;
+  }
   return config;
 });
 

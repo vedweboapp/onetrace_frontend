@@ -247,7 +247,7 @@ export function RoleFormScreen({ mode = "create", roleId }: RoleFormProps) {
                   control={control}
                   name="shared_data_with_peers"
                   render={({ field }) => (
-                    <div className="flex h-11 items-center">
+                    <div className="flex h-[var(--form-control-height,2.5rem)] items-center">
                       <button
                         id="role-shared-peers"
                         type="button"

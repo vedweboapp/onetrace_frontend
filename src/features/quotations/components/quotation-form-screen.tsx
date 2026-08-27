@@ -403,7 +403,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const filters: { is_active: true; client?: number } = { is_active: true };
+        const filters: { is_active?: boolean; client?: number } = { is_active: true };
         if (customerId && customerId > 0) filters.client = customerId;
         const { items: projects } = await fetchProjectsPage(1, 500, filters);
         if (!cancelled) setProjectRows(projects);
@@ -448,7 +448,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       }
       (async () => {
         try {
-          const { items } = await fetchSitesPage(1, 500, { client: customerId, is_active: true });
+          const { items } = await fetchSitesPage(1, 500, { client: customerId });
           if (!cancelled) setSiteRows(items);
         } catch {
           if (!cancelled) setSiteRows([]);
@@ -461,7 +461,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       }
       (async () => {
         try {
-          const { items } = await fetchSitesPage(1, 500, { project: projectId, is_active: true });
+          const { items } = await fetchSitesPage(1, 500, { project: projectId });
           if (!cancelled) setSiteRows(items);
         } catch {
           if (!cancelled) setSiteRows([]);
@@ -481,7 +481,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     }
     (async () => {
       try {
-        const { items } = await fetchContactsPage(1, 500, { client: customerId, is_active: true });
+        const { items } = await fetchContactsPage(1, 500, { client: customerId });
         if (!cancelled) {
           setContactOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
         }
@@ -710,17 +710,17 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
       if (reloadCustomerId) {
         const [projects, contacts] = await Promise.all([
-          fetchProjectsPage(1, 500, { client: reloadCustomerId, is_active: true }),
-          fetchContactsPage(1, 500, { client: reloadCustomerId, is_active: true }),
+          fetchProjectsPage(1, 500, { client: reloadCustomerId }),
+          fetchContactsPage(1, 500, { client: reloadCustomerId }),
         ]);
         setProjectRows(projects.items);
         setContactOptions(contacts.items.map((c) => ({ value: String(c.id), label: c.name })));
       }
       if (isServiceQuotation && reloadCustomerId) {
-        const { items } = await fetchSitesPage(1, 500, { client: reloadCustomerId, is_active: true });
+        const { items } = await fetchSitesPage(1, 500, { client: reloadCustomerId });
         setSiteRows(items);
       } else if (reloadProjectId) {
-        const { items } = await fetchSitesPage(1, 500, { project: reloadProjectId, is_active: true });
+        const { items } = await fetchSitesPage(1, 500, { project: reloadProjectId });
         setSiteRows(items);
       }
     },

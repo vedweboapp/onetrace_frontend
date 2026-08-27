@@ -114,7 +114,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchSitesPage(1, 500, { client: clientId, is_active: true });
+        const { items } = await fetchSitesPage(1, 500, { client: clientId });
         if (!cancelled) {
           setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name?.trim() || `#${s.id}` })));
         }
@@ -406,10 +406,9 @@ export function ProjectDetailScreen({ projectId }: Props) {
           aria-labelledby={`project-detail-tab-trigger-${activeTab}`}
           className={
             activeTab === "location"
-              ? cn(entityDetailTabPanelClassName, "w-full overflow-y-auto")
+              ? cn(entityDetailTabPanelClassName, "flex min-h-0 w-full flex-col")
               : entityDetailTabPanelClassName
           }
-          style={activeTab === "location" ? { maxHeight: "calc(100dvh - 22rem)" } : undefined}
         >
           {loading && activeTab === "details" ? (
             <EntityDetailLoadingSkeleton fill />

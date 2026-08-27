@@ -221,69 +221,67 @@ export function SiteDetailContactPersonsEditor({
 
   if (!editing) {
     return (
-      <DetailPanelCard
-        title={title}
-        headerRight={
-          displayRows.length === 0 ? (
+      <DetailPanelCard title={title}>
+        {displayRows.length === 0 ? (
+          <div className="flex max-w-lg flex-col items-start gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50/50 px-4 py-5 dark:border-slate-600 dark:bg-slate-900/30">
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t("contactPerson.empty")}</p>
             <AppButton type="button" variant="secondary" size="sm" onClick={() => startEdit()}>
+              <Plus className="size-4" aria-hidden />
               {t("contactPerson.add")}
             </AppButton>
-          ) : (
-            <div className="flex flex-wrap items-center gap-2">
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2 dark:border-slate-800">
+                <span className="text-xs font-bold uppercase tracking-[0.05em] text-slate-400 dark:text-slate-500">
+                  {t("contactPerson.titleLabel")}
+                </span>
+                <span className="text-xs font-bold uppercase tracking-[0.05em] text-slate-400 dark:text-slate-500">
+                  {t("contactPerson.contactLabel")}
+                </span>
+              </div>
+              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                {displayRows.map((row, index) => {
+                  const contactId = getSiteContactPersonContactId(row.contact);
+                  const contactLabel = formatSiteContactPersonContactLabel(row.contact, contactNameById);
+                  return (
+                    <li
+                      key={row.id ?? `${String(row.title)}-${contactId ?? index}`}
+                      className="flex flex-wrap items-center justify-between gap-3 py-3 last:pb-0"
+                    >
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                        {resolveTitleLabel(row.title)}
+                      </span>
+                      {contactId ? (
+                        <DetailEntityLink
+                          href={`${routes.dashboard.contacts}/${contactId}`}
+                          className="text-sm font-semibold text-blue-600 underline-offset-2 hover:underline"
+                        >
+                          {contactLabel}
+                        </DetailEntityLink>
+                      ) : (
+                        <span className="text-sm text-slate-600 dark:text-slate-400">{contactLabel}</span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
               <AppButton
                 type="button"
                 variant="secondary"
                 size="sm"
                 onClick={() => startEdit({ withNewRow: true })}
               >
-                <Plus className="mr-1 size-3.5" aria-hidden />
-                {t("contactPerson.add")}
+                <Plus className="size-4" aria-hidden />
+                {t("contactPerson.addAnother")}
               </AppButton>
               <AppButton type="button" variant="secondary" size="sm" onClick={() => startEdit()}>
                 {tActions("edit")}
               </AppButton>
             </div>
-          )
-        }
-      >
-        {displayRows.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">{t("contactPerson.empty")}</p>
-        ) : (
-          <div className="space-y-1">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2 dark:border-slate-800">
-              <span className="text-xs font-bold uppercase tracking-[0.05em] text-slate-400 dark:text-slate-500">
-                {t("contactPerson.titleLabel")}
-              </span>
-              <span className="text-xs font-bold uppercase tracking-[0.05em] text-slate-400 dark:text-slate-500">
-                {t("contactPerson.contactLabel")}
-              </span>
-            </div>
-            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-              {displayRows.map((row, index) => {
-                const contactId = getSiteContactPersonContactId(row.contact);
-                const contactLabel = formatSiteContactPersonContactLabel(row.contact, contactNameById);
-                return (
-                  <li
-                    key={row.id ?? `${String(row.title)}-${contactId ?? index}`}
-                    className="flex flex-wrap items-center justify-between gap-3 py-3 last:pb-0"
-                  >
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                      {resolveTitleLabel(row.title)}
-                    </span>
-                    {contactId ? (
-                      <DetailEntityLink
-                        href={`${routes.dashboard.contacts}/${contactId}`}
-                        className="text-sm font-semibold text-blue-600 underline-offset-2 hover:underline"
-                      >
-                        {contactLabel}
-                      </DetailEntityLink>
-                    ) : (
-                      <span className="text-sm text-slate-600 dark:text-slate-400">{contactLabel}</span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
           </div>
         )}
       </DetailPanelCard>
@@ -365,7 +363,7 @@ export function SiteDetailContactPersonsEditor({
           </li>
         ))}
       </ul>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="mt-3 border-t border-slate-100 pt-4 dark:border-slate-800">
         <AppButton
           type="button"
           variant="secondary"
@@ -373,8 +371,8 @@ export function SiteDetailContactPersonsEditor({
           disabled={saving || !clientId}
           onClick={() => setDraftRows((prev) => [...prev, emptyDraftRow()])}
         >
-          <Plus className="mr-1 size-3.5" aria-hidden />
-          {t("contactPerson.add")}
+          <Plus className="size-4" aria-hidden />
+          {t("contactPerson.addAnother")}
         </AppButton>
       </div>
       </div>

@@ -1,0 +1,37 @@
+---
+description: Appearance font family and size scale for dashboard UI
+globs: src/app/globals.css,src/features/dashboard/**/*,src/shared/ui/**/*,src/shared/components/**/*
+alwaysApply: false
+---
+
+# Appearance typography
+
+Font family and size come from **Settings → Appearance** (`useDashboardAppearanceStore`).
+
+## CSS variables (set on `html` + `.dash-appearance-scope`)
+
+| Token | Use |
+|-------|-----|
+| `--dash-font-family` | All dashboard UI |
+| `--dash-body-size` | Inputs, selects, detail values |
+| `--dash-label-size` | Form/detail field labels |
+| `--dash-text-xs` … `--dash-text-2xl` | Tailwind `text-xs` … `text-2xl` |
+
+## Presets (base / xs)
+
+- **Small:** 14px / 12px
+- **Medium:** 16px / 14px (default)
+- **Large:** 18px / 16px
+
+## Do
+
+- Use `text-[length:var(--dash-body-size)]` or `text-[length:var(--dash-label-size)]` on custom controls
+- Use Tailwind `text-xs`, `text-sm`, `text-base` (they scale with appearance)
+- Use `FieldLabel`, `fieldLabelClassName`, `surfaceInputClassName` from `@/shared/ui/field-primitives`
+
+## Avoid
+
+- Hardcoded `text-[10px]`, `text-[11px]`, `text-[12px]` in dashboard UI (legacy sizes are remapped in `globals.css`, but prefer scalable tokens)
+- Fixed `text-sm` on detail values when appearance body size is preferred
+
+Update scale in `src/features/dashboard/utils/appearance-typography.util.ts`.

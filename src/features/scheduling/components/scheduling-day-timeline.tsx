@@ -582,8 +582,11 @@ export function SchedulingDayTimeline({
                       key={row.id}
                       timeOff={row}
                       compact
-                      className="absolute inset-y-0 z-[1] h-full min-h-0 rounded-none"
-                      style={{ left: `${leftPct}%`, width: `max(${widthPct}%, 6rem)` }}
+                      className="absolute inset-y-1 z-[1] min-h-0 rounded-md"
+                      style={{
+                        left: `calc(${leftPct}% + 3px)`,
+                        width: `max(calc(${widthPct}% - 6px), 5.5rem)`,
+                      }}
                       onRemove={onRemoveTimeOff ? () => onRemoveTimeOff(row) : undefined}
                     />
                   );
@@ -601,8 +604,11 @@ export function SchedulingDayTimeline({
                       key={schedule.id}
                       schedule={schedule}
                       compact
-                      className="absolute inset-y-0 z-[1] h-full min-h-0 rounded-none"
-                      style={{ left: `${leftPct}%`, width: `max(${widthPct}%, 7rem)` }}
+                      className="absolute inset-y-1 z-[1] min-h-0 rounded-md"
+                      style={{
+                        left: `calc(${leftPct}% + 3px)`,
+                        width: `max(calc(${widthPct}% - 6px), 6.5rem)`,
+                      }}
                       onOpen={() => onScheduleClick(schedule)}
                       onCopy={onCopySchedule ? () => onCopySchedule(schedule) : undefined}
                       onRemove={onRemoveSchedule ? () => onRemoveSchedule(schedule) : undefined}

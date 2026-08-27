@@ -193,7 +193,6 @@ export function QuotationsPanel() {
       try {
         const { items } = await fetchSitesPage(1, 500, {
           client: customerFilter,
-          is_active: true,
         });
         if (!cancelled) setSiteRows(items);
       } catch {
@@ -230,7 +229,7 @@ export function QuotationsPanel() {
           fetchContactsPage(1, 500, { is_active: true }),
           fetchTagsPage(1, 500, { is_active: true }),
           fetchUsersForAppRoles(["technician", "manager", "sales"]),
-          fetchSitesPage(1, 500, { is_active: true }),
+          fetchSitesPage(1, 500),
         ]);
         if (!cancelled) {
           setMassContactOptions(contactsRes.items.map((c) => ({ value: String(c.id), label: c.name })));

@@ -411,7 +411,7 @@ export function CheckmarkSelect({
     "field-control flex w-full items-center justify-between gap-1.5 border text-left font-medium outline-none transition",
     size === "sm"
       ? "h-8 min-h-8 rounded-md px-2 text-[length:var(--dash-text-xs,0.75rem)] shadow-sm"
-      : "h-11 gap-2 rounded-xl px-3.5 text-[length:var(--dash-body-size,0.875rem)] shadow-sm",
+      : "h-[var(--form-control-height,2.5rem)] min-h-[var(--form-control-height,2.5rem)] gap-2 rounded-xl px-3.5 text-[length:var(--dash-body-size,0.875rem)] shadow-sm",
     disabled
       ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-600"
       : cn(
@@ -428,7 +428,7 @@ export function CheckmarkSelect({
     "field-control flex w-full min-w-0 items-stretch overflow-hidden border text-left font-medium shadow-sm outline-none transition",
     size === "sm"
       ? "h-8 min-h-8 rounded-md text-[length:var(--dash-text-xs,0.75rem)]"
-      : "h-11 min-h-11 rounded-xl text-[length:var(--dash-body-size,0.875rem)]",
+      : "h-[var(--form-control-height,2.5rem)] min-h-[var(--form-control-height,2.5rem)] rounded-xl text-[length:var(--dash-body-size,0.875rem)]",
     disabled
       ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-600"
       : cn(

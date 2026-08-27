@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, Plus, X } from "lucide-react";
+import { ChevronDown, Plus, X } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import type { CheckmarkSelectOption } from "./checkmark-select";
 
@@ -204,7 +204,7 @@ export function MultiCheckSelect({
   }
 
   const triggerClass = cn(
-    "field-control flex min-h-11 w-full min-w-0 items-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-left text-slate-900 outline-none transition",
+    "field-control flex min-h-[var(--form-control-height,2.5rem)] w-full min-w-0 items-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-left text-slate-900 outline-none transition",
     "text-[length:var(--dash-body-size,0.875rem)]",
     "hover:border-[color:var(--dash-accent,#111111)] hover:bg-slate-50",
     "focus-visible:border-[color:var(--dash-accent,#111111)] focus-visible:ring-2 focus-visible:ring-[color:var(--dash-accent,#111111)]/20",
@@ -254,29 +254,22 @@ export function MultiCheckSelect({
         {filteredOptions.map((opt) => {
           const checked = selectedMap.has(opt.value);
           return (
-            <li key={opt.value || "__empty__"}>
+            <li key={opt.value || "__empty__"} role="presentation">
               <button
                 type="button"
+                role="option"
+                aria-selected={checked}
                 disabled={disabled}
                 onClick={() => !disabled && toggleOne(opt.value)}
                 className={cn(
-                  "flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm transition",
+                  "flex w-full items-center px-3 py-2.5 text-left text-sm transition",
                   checked
                     ? "bg-slate-50 font-semibold text-[color:var(--dash-accent,#111111)] dark:bg-slate-800/80"
                     : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800",
+                  disabled && "pointer-events-none opacity-50",
                 )}
               >
-                <span
-                  className={cn(
-                    "flex size-5 shrink-0 items-center justify-center rounded-md border",
-                    checked
-                      ? "border-transparent bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)] shadow-sm"
-                      : "border-slate-300 text-transparent dark:border-slate-600",
-                  )}
-                >
-                  <Check className="size-3.5" strokeWidth={2.5} />
-                </span>
-                <span className="truncate">{opt.label}</span>
+                <span className="min-w-0 flex-1 truncate">{opt.label}</span>
               </button>
             </li>
           );
@@ -325,7 +318,7 @@ export function MultiCheckSelect({
               {selectedOptions.map((opt) => (
                 <span
                   key={opt.value}
-                  className="inline-flex max-w-full items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] leading-tight text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  className="inline-flex max-w-full items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-xs leading-tight text-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
                   <span className="truncate">{opt.label}</span>
                   <span

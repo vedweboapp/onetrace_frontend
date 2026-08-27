@@ -21,7 +21,7 @@ export const FieldButton: React.FC<FieldButtonProps> = ({ icon: Icon, label, onC
     className="flex items-center px-1 gap-1 py-3 border border-gray-300 dark:border-slate-600 bg-gray-100 dark:bg-slate-800 rounded-[4px] hover:bg-gray-50 dark:hover:bg-slate-700 hover:border-gray-400 dark:hover:border-slate-500 transition-all text-left w-full"
   >
     <Icon size={18} className="text-gray-600 dark:text-gray-400" />
-    <span className="text-gray-700 dark:text-gray-200 font-medium truncate text-[12px]">{label}</span>
+    <span className="text-[length:var(--dash-text-sm,0.875rem)] font-medium truncate">{label}</span>
   </button>
 );
 

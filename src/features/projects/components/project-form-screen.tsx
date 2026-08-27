@@ -185,7 +185,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       return;
     }
     try {
-      const { items } = await fetchSitesPage(1, 500, { client: clientIdForQuick, is_active: true });
+      const { items } = await fetchSitesPage(1, 500, { client: clientIdForQuick });
       setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name })));
     } catch {
       setSiteOptions([]);

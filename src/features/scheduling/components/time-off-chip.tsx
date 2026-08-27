@@ -25,9 +25,8 @@ export function TimeOffChip({ timeOff, onRemove, compact, detailed, className, s
     <div
       data-timeoff-chip
       className={cn(
-        "group/chip relative overflow-hidden border border-amber-300 bg-amber-50 text-left shadow-sm",
+        "group/chip relative overflow-hidden rounded-md border border-amber-300 bg-amber-50 text-left shadow-sm",
         "dark:border-amber-800 dark:bg-amber-950/40",
-        compact ? "rounded-none" : "rounded-md",
         className,
       )}
       style={style}

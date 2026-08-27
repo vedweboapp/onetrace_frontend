@@ -409,7 +409,7 @@ function ProjectPinRow({
   const formId = resolvePinProjectFormId(pin);
   const formHref =
     formId != null && projectId
-      ? `/projects/${projectId}/job-forms?purpose=edit_project_job_form&layout_id=${formId}`
+      ? `/projects/${projectId}/job-forms?purpose=edit_project_job_form&layout_id=${formId}&return_tab=location`
       : null;
 
   return (
@@ -1312,7 +1312,7 @@ const ProjectPinsListTab = ({
     },
   ];
   return (
-    <div className="min-w-0 w-full ">
+    <div className="flex h-[calc(100dvh-12rem)] min-h-[22rem] w-full min-w-0 flex-col overflow-hidden">
       {dialogVisible && (
         <div className="fixed inset-0 z-[99] flex items-center justify-center bg-black/50 px-4 py-6 backdrop-blur-sm sm:py-10">
           <div className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-lg bg-white shadow-xl dark:bg-slate-950">
@@ -1503,7 +1503,7 @@ const ProjectPinsListTab = ({
       )}
 
       {/* ── Sticky header: title + filters (single responsive row) ── */}
-      <div className="sticky top-0 z-10 shrink-0 divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-950">
+      <div className="z-10 shrink-0 divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-950">
 
         <div className="flex min-w-0 flex-col gap-3 px-4 lg:px-6 py-3 lg:flex-row sm:items-center sm:justify-between sm:gap-4 w-full">
           {/* Title + subtitle */}
@@ -1720,8 +1720,8 @@ const ProjectPinsListTab = ({
 
       </div>{/* end sticky header */}
 
-      {/* ── Scrollable content ── */}
-      <div>
+      {/* ── Scrollable content (fills remaining viewport under filters) ── */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {loadError && locations.length === 0 ? (
           <p className="px-4 py-10 text-center text-sm text-red-600 dark:text-red-400 sm:px-6">
             {loadError}
@@ -1729,7 +1729,7 @@ const ProjectPinsListTab = ({
         ) : loading ? (
           <ProjectPinsListLoadingSkeleton />
         ) : emptyStateKind !== "none" ? (
-          <div className={detailTabStandaloneFillClassName}>
+          <div className={cn(detailTabStandaloneFillClassName, "h-full min-h-0 flex-1")}>
             <ListPageEmptyStates
               emptyStateKind={emptyStateKind}
               onboarding={{

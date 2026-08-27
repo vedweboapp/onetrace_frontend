@@ -20,6 +20,7 @@ import {
   FONT_FAMILY_CSS,
   FONT_SIZE_CSS,
   GOOGLE_FONTS_STYLESHEET,
+  applyDashTextScaleVars,
 } from "@/features/dashboard/utils/appearance-typography.util";
 import { cn } from "@/core/utils/http.util";
 
@@ -105,6 +106,12 @@ export function DashboardAppearanceScope({ children, className }: Props) {
     "--dash-label-size": typeScale.label,
     "--dash-body-size": typeScale.body,
     "--dash-type-scale": typeScale.scale,
+    "--dash-text-xs": typeScale.textXs,
+    "--dash-text-sm": typeScale.textSm,
+    "--dash-text-base": typeScale.textBase,
+    "--dash-text-lg": typeScale.textLg,
+    "--dash-text-xl": typeScale.textXl,
+    "--dash-text-2xl": typeScale.text2xl,
     "--dash-detail-row-line-width": `${detailRowLineWidth}px`,
     "--dash-detail-row-line-style": detailRowLineStyle,
     fontFamily: "var(--dash-font-family)",
@@ -144,12 +151,11 @@ export function DashboardAppearanceScope({ children, className }: Props) {
     root.style.setProperty("--dash-accent", hex);
     root.style.setProperty("--dash-on-accent", onHex);
     root.style.setProperty("--dash-font-family", FONT_FAMILY_CSS[fontFamily]);
-    root.style.setProperty("--dash-font-size", typeScale.root);
-    root.style.setProperty("--dash-label-size", typeScale.label);
-    root.style.setProperty("--dash-body-size", typeScale.body);
-    root.style.setProperty("--dash-type-scale", typeScale.scale);
+    applyDashTextScaleVars(root.style, fontSize);
     root.style.setProperty("--dash-detail-row-line-width", `${detailRowLineWidth}px`);
     root.style.setProperty("--dash-detail-row-line-style", detailRowLineStyle);
+    root.style.fontFamily = "var(--dash-font-family)";
+    root.style.fontSize = typeScale.root;
     root.setAttribute("data-font-size", fontSize);
     root.setAttribute("data-font-family", fontFamily);
     root.setAttribute("data-form-label", formLabelPlacement);
@@ -169,6 +175,9 @@ export function DashboardAppearanceScope({ children, className }: Props) {
     typeScale.label,
     typeScale.body,
     typeScale.scale,
+    typeScale.textXs,
+    typeScale.textSm,
+    typeScale.textBase,
   ]);
 
   return (

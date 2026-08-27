@@ -153,7 +153,7 @@ export function ProjectFormModal({
       return;
     }
     try {
-      const { items } = await fetchSitesPage(1, 500, { client: clientIdForQuick, is_active: true, search: searchQuery });
+      const { items } = await fetchSitesPage(1, 500, { client: clientIdForQuick, search: searchQuery });
       const newOptions = items.map((s) => ({ value: String(s.id), label: s.site_name }));
       newOptions.forEach((opt) => {
         accumulatedSiteLabels.current[opt.value] = opt.label;

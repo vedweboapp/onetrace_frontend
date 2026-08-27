@@ -10,6 +10,7 @@ import {
 import {
   applyReadOnlyToSections,
   buildFieldMaps,
+  enrichSectionsWithSubmissionFiles,
 } from "@/features/job-forms/utils/job-form-schema.util";
 import { mapSubmissionValuesToFormDefaults } from "@/features/job-forms/utils/job-form-values.util";
 import { fetchJob } from "@/features/jobs/api/job.api";
@@ -289,11 +290,11 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
         const schema = await fetchJobFormSchema(projectFormId);
         if (cancelled) return;
 
-        const maps = buildFieldMaps(schema.sections);
         setRules(normalizeRules((schema.rules ?? []) as FormRule[]));
 
         let nextDefaults: Record<string, unknown> = {};
         let nextHasSubmission = false;
+        let sectionsForRender = schema.sections;
 
         if (jobId != null && jobId > 0 && jobFormId != null && jobFormId > 0) {
           const existing = await loadJobFormSubmission(
@@ -305,11 +306,16 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
           if (cancelled) return;
           if (existing) {
             nextHasSubmission = true;
+            sectionsForRender = enrichSectionsWithSubmissionFiles(
+              schema.sections,
+              existing.files,
+            );
+            const mapsForDefaults = buildFieldMaps(sectionsForRender);
             nextDefaults = mapSubmissionValuesToFormDefaults(
               existing.values,
-              schema.sections,
-              maps.apiNameByFieldId,
-              maps.fieldTypeByFieldId,
+              sectionsForRender,
+              mapsForDefaults.apiNameByFieldId,
+              mapsForDefaults.fieldTypeByFieldId,
               existing.files,
             );
           }
@@ -318,7 +324,7 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
         const readOnly = nextHasSubmission || submittedHint || jobId == null;
         setHasSubmission(nextHasSubmission);
         setDefaultValues(nextDefaults);
-        setSchemaSections(applyReadOnlyToSections(schema.sections, readOnly));
+        setSchemaSections(applyReadOnlyToSections(sectionsForRender, readOnly));
       } catch (error) {
         if (!cancelled) {
           setFormError(getApiErrorDisplayMessage(error, t("loadError")));

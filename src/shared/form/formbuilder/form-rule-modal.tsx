@@ -385,7 +385,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
       >
         <header className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-slate-700">
           <span className="font-bold text-slate-900 dark:text-slate-100">
-            {initialRule ? "Edit rule" : "Add rule"}
+            {initialRule ? "Edit Rule" : "Add Rule"}
           </span>
           <AppButton
             type="button"

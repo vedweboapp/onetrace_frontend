@@ -1,12 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { Pencil, Plus, Power, PowerOff, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { deleteSite, fetchAllSiteIds, fetchSitesPage, patchSite } from "@/features/sites/api/site.api";
+import { deleteSite, fetchAllSiteIds, fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
 import {
   MassActionBar,
@@ -21,7 +21,6 @@ import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-u
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
-  ActiveStatusBadge,
   AddButton,
   AppButton,
   CheckmarkSelect,
@@ -112,7 +111,6 @@ export function SitesPanel() {
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deletingSite, setDeletingSite] = React.useState<Site | null>(null);
   const [deleting, setDeleting] = React.useState(false);
-  const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
@@ -138,9 +136,6 @@ export function SitesPanel() {
         what3words: t("fields.what3words"),
         latitude: t("fields.latitude"),
         longitude: t("fields.longitude"),
-        isActive: t("table.status"),
-        activeLabel: t("status.active"),
-        inactiveLabel: t("status.inactive"),
       }),
     [clientOptions, t],
   );
@@ -211,19 +206,6 @@ export function SitesPanel() {
   });
   const pageRange = getListPageRange(pagination);
 
-  async function handleToggleActive(row: Site, next: boolean) {
-    setTogglingId(row.id);
-    try {
-      await patchSite(row.id, { is_active: next });
-      toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
-      setRefreshNonce((n) => n + 1);
-    } catch (error) {
-      toastApiError(error, t("toggleActiveError"));
-    } finally {
-      setTogglingId(null);
-    }
-  }
-
   const tableColumns = React.useMemo(() => {
     const c = entityCol<Site>();
     return [
@@ -263,11 +245,10 @@ export function SitesPanel() {
       ),
       c.truncate("address", t("table.address"), (r) => r.address_line_1?.trim() || "—", { maxWidth: "md" }),
       c.truncate("what3words", t("table.what3words"), (r) => r.what3words?.trim() || "—", { maxWidth: "sm", responsive: "md" }),
-      c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive")),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
 
     ];
-  }, [t, tList, dateFmt, clientLabelById, togglingId, listHref, pathname, router, mass, items.length]);
+  }, [t, dateFmt, clientLabelById, mass, items.length]);
 
   return (
     <div className={listPageRootClassName()}>
@@ -346,7 +327,7 @@ export function SitesPanel() {
               ),
             }}
             onClearFilters={() =>
-              setUrl({ search: null, is_active: null, client: null, page: null }, { replace: true })
+              setUrl({ search: null, client: null, page: null }, { replace: true })
             }
           />
         ) : listViewMode === "list" ? (
@@ -384,7 +365,11 @@ export function SitesPanel() {
                     )
                   }
                   meta={row.city?.trim() || row.state?.trim() || row.country?.trim() || "—"}
-                  footer={<div className="flex w-full items-center justify-between gap-3"><ActiveStatusBadge active={row.is_active} label={row.is_active ? t("status.active") : t("status.inactive")} /><span className="text-xs text-slate-500 dark:text-slate-400">{tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}</span></div>}
+                  footer={
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}
+                    </span>
+                  }
                   onCardClick={() => openSiteDetail(row.id)}
                   menu={
                     <DataTableRowActionsMenu
@@ -392,9 +377,6 @@ export function SitesPanel() {
                       items={[
                         { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => router.push(buildPathWithStoredBack(`${pathname}/${row.id}/edit`, listHref)) },
                         { id: "delete", label: t("delete"), icon: Trash2, tone: "danger", onSelect: () => { setDeletingSite(row); setDeleteOpen(true); } },
-                        row.is_active
-                          ? { id: "deactivate", label: t("deactivate"), icon: PowerOff, onSelect: () => void handleToggleActive(row, false), disabled: togglingId === row.id }
-                          : { id: "activate", label: t("activate"), icon: Power, onSelect: () => void handleToggleActive(row, true), disabled: togglingId === row.id },
                       ]}
                     />
                   }
