@@ -6,6 +6,7 @@ import { Pencil } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 import { updateQuotation } from "@/features/quotations/api/quotation.api";
 import {
   QUOTE_CATEGORY,
@@ -89,7 +90,7 @@ function quotationContactToAudit(
   if (typeof contact === "number") return normalizeDetailAuditUser(contact);
   return normalizeDetailAuditUser({
     id: contact.id,
-    name: contact.name,
+    name: formatContactName(contact),
     email: contact.email,
     phone: contact.phone,
   });
@@ -177,10 +178,7 @@ function QuotationDetailPeopleSection({
                   </DetailMultiValueItem>
                 );
               }
-              const label =
-                entry.contact.name?.trim() ||
-                entry.contact.email?.trim() ||
-                `#${entry.contact.id}`;
+              const label = formatContactName(entry.contact) || `#${entry.contact.id}`;
               return (
                 <DetailMultiValueItem
                   key={`addl-${entry.contact.id}-${index}`}

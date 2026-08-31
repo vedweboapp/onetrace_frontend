@@ -1,9 +1,13 @@
 export type AuditTrailUserRef = {
   id?: number;
+  user_id?: number;
   email?: string | null;
   username?: string | null;
   first_name?: string | null;
   last_name?: string | null;
+  /** API may return a single display name. */
+  name?: string | null;
+  role?: string | null;
 };
 
 export type AuditTrailEntry = {
@@ -18,6 +22,8 @@ export type AuditTrailEntry = {
   details?: string | null;
   object_id?: number | null;
   record_id?: number | null;
+  model_name?: string | null;
+  ip_address?: string | null;
   created_at?: string | null;
   occurred_at?: string | null;
   timestamp?: string | null;

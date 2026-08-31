@@ -4,6 +4,7 @@ import type {
   PurchaseOrderListItem,
   PurchaseOrderVendorRef,
 } from "@/features/purchase-orders/types/purchase-order.types";
+import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 import { parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
 
 export function nestedId(value: number | { id: number } | null | undefined): number | undefined {
@@ -37,7 +38,7 @@ export function purchaseOrderContactLabel(
   if (contact && typeof contact === "object") {
     const person = contact.contact_person?.trim();
     if (person) return person;
-    const name = contact.name?.trim();
+    const name = formatContactName(contact);
     if (name) return name;
   }
   if (fallbackName?.trim()) return fallbackName.trim();

@@ -189,7 +189,8 @@ export function buildVendorMassUpdateFields(
 }
 
 export type ContactMassUpdateLabels = {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   phone: string;
   client: string;
@@ -209,7 +210,8 @@ export function buildContactMassUpdateFields(
   labels: ContactMassUpdateLabels,
 ): MassUpdateFieldDef[] {
   return [
-    nameField("name", labels.name),
+    nameField("first_name", labels.firstName),
+    nameField("last_name", labels.lastName),
     emailField("email", labels.email),
     phoneField("phone", labels.phone),
     selectField("client", labels.client, clientOptions, "number"),

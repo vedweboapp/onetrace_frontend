@@ -5,6 +5,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Controller, useFieldArray, useWatch, type Control, type FieldErrors } from "react-hook-form";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import { SITE_CONTACT_PERSON_TITLES } from "@/features/sites/constants/site-contact-person.constants";
 import { fetchTitlesPage } from "@/features/titles/api/title.api";
 import type { Title } from "@/features/titles/types/title.types";
@@ -49,7 +50,7 @@ export function SiteContactPersonsFields({
       setContactOptions(
         items.map((c) => ({
           value: String(c.id),
-          label: c.name?.trim() || c.email?.trim() || `#${c.id}`,
+          label: formatContactOptionLabel(c),
         })),
       );
     } catch {

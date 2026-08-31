@@ -10,6 +10,7 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import { createInvoice, fetchInvoice, sendInvoice, updateInvoice } from "@/features/invoices/api/invoice.api";
 import { createInvoiceFormSchema, type InvoiceFormValues } from "@/features/invoices/schemas/invoice-form-schema";
@@ -188,7 +189,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
         setContactOptions(
           contacts.items.map((c) => ({
             value: String(c.id),
-            label: c.name?.trim() || c.email?.trim() || `#${c.id}`,
+            label: formatContactOptionLabel(c),
           })),
         );
         setProjectOptions(projects.items.map((p) => ({ value: String(p.id), label: p.name })));
@@ -302,7 +303,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
           setContactOptions(
             items.map((c) => ({
               value: String(c.id),
-              label: c.name?.trim() || c.email?.trim() || `#${c.id}`,
+              label: formatContactOptionLabel(c),
             })),
           );
         }

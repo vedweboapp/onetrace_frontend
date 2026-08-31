@@ -7,6 +7,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import { createQuotation, fetchProjectLevelRowsForQuotation } from "@/features/quotations/api/quotation.api";
 import { QuotationAdditionalContactsFields } from "@/features/quotations/components/quotation-additional-contacts-fields";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
@@ -206,7 +207,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
       try {
         const { items } = await fetchContactsPage(1, 500, { client: customerId });
         if (!cancelled) {
-          setContactOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
+          setContactOptions(items.map((c) => ({ value: String(c.id), label: formatContactOptionLabel(c) })));
         }
       } catch {
         if (!cancelled) setContactOptions([]);
