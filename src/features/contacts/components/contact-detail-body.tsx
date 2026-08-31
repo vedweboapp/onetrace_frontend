@@ -9,18 +9,11 @@ import {
   getContactType,
   getContactVendorId,
 } from "@/features/contacts/utils/contact-nested-fields.util";
+import { formatContactName } from "@/features/contacts/utils/contact-name.util";
+import { resolveContactAddresses } from "@/features/contacts/utils/contact-form-map";
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
-import {
-  DetailAddressLine1EditableField,
-  flatAddressPatchFromPlace,
-} from "@/shared/components/layout/detail-address-line1-field";
-import {
-  DetailAddressLocationFields,
-  detailLocationCountryPayload,
-  detailLocationStatePayload,
-} from "@/shared/components/layout/detail-address-location-fields";
-import { countryIsoFromName } from "@/shared/form/entity-address-form.util";
+import { DetailEntityAddressFields } from "@/shared/components/layout/detail-entity-address-fields";
 import {
   DetailActiveStatusField,
   DetailMetricsGrid,
@@ -29,6 +22,7 @@ import {
   detailPageBodyPaddingClassName,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
+import { entityAddressTypeOptions, sortEntityAddressesForDisplay } from "@/shared/form/entity-address-form.util";
 import { routes } from "@/shared/config/routes";
 import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
@@ -61,10 +55,46 @@ export function ContactDetailBody({
   const clientId = getContactClientId(detail);
   const vendorId = getContactVendorId(detail);
 
+  const addresses = resolveContactAddresses(detail);
+  const sortedAddresses = React.useMemo(() => sortEntityAddressesForDisplay(addresses), [addresses]);
+  const addressTypeOptions = React.useMemo(() => entityAddressTypeOptions((key) => t(key)), [t]);
+
   const patchField = useDetailPatch(
     (body: Parameters<typeof updateContact>[1]) => updateContact(detail.id, body),
     { success: t("updatedToast"), error: t("toggleActiveError") },
     onSaved,
+  );
+
+  const patchAddresses = useDetailPatch(
+    (addressPayloads: Parameters<typeof updateContact>[1]["addresses"]) =>
+      updateContact(detail.id, { addresses: addressPayloads }),
+    { success: t("updatedToast"), error: t("toggleActiveError") },
+    onSaved,
+  );
+
+  const addressFieldLabels = React.useMemo(
+    () => ({
+      addressType: t("fields.addressType"),
+      addressLine1: t("fields.addressLine1"),
+      addressLine2: t("fields.addressLine2"),
+      pincode: t("fields.pincode"),
+      country: t("fields.country"),
+      state: t("fields.stateProvince"),
+      city: t("fields.city"),
+    }),
+    [t],
+  );
+
+  const addressRequiredMessages = React.useMemo(
+    () => ({
+      addressType: t("validation.addressType"),
+      addressLine1: t("validation.addressLine1"),
+      pincode: t("validation.pincode"),
+      country: t("validation.country"),
+      state: t("validation.state"),
+      city: t("validation.city"),
+    }),
+    [t],
   );
 
   return (
@@ -128,15 +158,27 @@ export function ContactDetailBody({
             )}
 
             <DetailEditableField
-              label={t("fields.name")}
-              value={detail.name}
+              label={t("fields.firstName")}
+              value={detail.first_name ?? ""}
               kind="text"
               required
-              requiredMessage={t("validation.name")}
+              requiredMessage={t("validation.firstName")}
               editAriaLabel={tActions("edit")}
-              onSave={(next) => patchField({ name: next })}
+              onSave={(next) => patchField({ first_name: next })}
             >
-              {detail.name}
+              {detail.first_name?.trim() || "—"}
+            </DetailEditableField>
+
+            <DetailEditableField
+              label={t("fields.lastName")}
+              value={detail.last_name ?? ""}
+              kind="text"
+              required
+              requiredMessage={t("validation.lastName")}
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchField({ last_name: next })}
+            >
+              {detail.last_name?.trim() || "—"}
             </DetailEditableField>
 
             <DetailEditableField
@@ -175,76 +217,29 @@ export function ContactDetailBody({
         </DetailPanelCard>
 
         <DetailPanelCard title={t("detail.sectionAddress")} variant="flat">
-          <DetailMetricsGrid>
-            <DetailAddressLine1EditableField
-              fieldId={String(detail.id)}
-              label={t("fields.addressLine1")}
-              addressLine1={detail.address_line_1}
-              country={detail.country}
-              state={detail.state}
-              city={detail.city}
-              pincode={detail.pincode}
-              required
-              requiredMessage={t("validation.addressLine1")}
-              editAriaLabel={tActions("edit")}
-              onSaveLine={(next) => patchField({ address_line_1: next })}
-              onSavePlace={(place) => patchField(flatAddressPatchFromPlace(place))}
-            >
-              {detail.address_line_1?.trim() ? detail.address_line_1 : null}
-            </DetailAddressLine1EditableField>
-            <DetailEditableField
-              label={t("fields.addressLine2")}
-              value={detail.address_line_2 ?? ""}
-              kind="text"
-              editAriaLabel={tActions("edit")}
-              empty="—"
-              onSave={(next) => patchField({ address_line_2: next })}
-            >
-              {detail.address_line_2?.trim() ? detail.address_line_2 : null}
-            </DetailEditableField>
-            <DetailAddressLocationFields
-              country={detail.country}
-              state={detail.state}
-              city={detail.city}
-              labels={{
-                country: t("fields.country"),
-                state: t("fields.stateProvince"),
-                city: t("fields.city"),
-              }}
-              editAriaLabel={tActions("edit")}
-              requiredMessages={{
-                country: t("validation.country"),
-                state: t("validation.state"),
-                city: t("validation.city"),
-              }}
-              onSaveCountry={async (countryIso) => {
-                await patchField({
-                  country: detailLocationCountryPayload(countryIso),
-                  state: "",
-                  city: "",
-                });
-              }}
-              onSaveState={async (stateIsoOrName) => {
-                const iso = countryIsoFromName(detail.country);
-                await patchField({
-                  state: detailLocationStatePayload(iso, stateIsoOrName) || stateIsoOrName,
-                  city: "",
-                });
-              }}
-              onSaveCity={(cityName) => patchField({ city: cityName })}
-            />
-            <DetailEditableField
-              label={t("fields.pincode")}
-              value={detail.pincode ?? ""}
-              kind="text"
-              required
-              requiredMessage={t("validation.pincode")}
-              editAriaLabel={tActions("edit")}
-              onSave={(next) => patchField({ pincode: next })}
-            >
-              {detail.pincode?.trim() ? detail.pincode : null}
-            </DetailEditableField>
-          </DetailMetricsGrid>
+          {addresses.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>
+          ) : (
+            <div className="space-y-4">
+              {sortedAddresses.map(({ address: addr, originalIndex, displayIndex }) => (
+                <DetailEntityAddressFields
+                  key={addr.id ?? `${addr.address_type}-${originalIndex}`}
+                  separated={displayIndex > 0}
+                  blockHeading={t("addresses.rowLabel", { number: displayIndex + 1 })}
+                  address={addr}
+                  addressIndex={originalIndex}
+                  allAddresses={addresses}
+                  labels={addressFieldLabels}
+                  requiredMessages={addressRequiredMessages}
+                  addressTypeOptions={addressTypeOptions}
+                  addressTypeValue={t(`addressType.${addr.address_type}`)}
+                  editAriaLabel={tActions("edit")}
+                  line2Empty={t("detail.addressLine2Empty")}
+                  onSaveAddresses={patchAddresses}
+                />
+              ))}
+            </div>
+          )}
         </DetailPanelCard>
 
         <DetailSystemMetadataSection

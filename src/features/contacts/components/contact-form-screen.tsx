@@ -12,6 +12,7 @@ import { createContactFormSchema, type ContactFormValues } from "@/features/cont
 import { contactToFormDefaults, emptyContactFormDefaults, mapContactFormToPayload } from "@/features/contacts/utils/contact-form-map";
 import type { ContactType } from "@/features/contacts/types/contact.types";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
+import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -21,7 +22,7 @@ import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
 import { buildCurrentPageBackHref, mergeUrlQueryParam, pathWithoutQueryAndHash } from "@/shared/utils/detail-from-list.util";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
-import { usePhoneCountryFromCountryIso } from "@/shared/hooks/use-phone-country-from-address";
+import { usePhoneCountryFromAddresses } from "@/shared/hooks/use-phone-country-from-address";
 import {
   QUICK_CREATE_CLIENT_PARAM,
   QUICK_CREATE_CONTACT_TYPE_PARAM,
@@ -31,8 +32,6 @@ import {
 } from "@/shared/utils/quick-create-navigation.util";
 import {
   AppButton,
-  AddressLineAutocompleteFields,
-  AddressLocationFields,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
@@ -69,7 +68,8 @@ export function ContactFormScreen({ mode, contactId }: Props) {
   const schema = React.useMemo(
     () =>
       createContactFormSchema({
-        name: t("validation.name"),
+        firstName: t("validation.firstName"),
+        lastName: t("validation.lastName"),
         email: t("validation.email"),
         phoneInvalid: t("validation.phoneInvalid"),
         contactType: t("validation.contactType"),
@@ -80,6 +80,8 @@ export function ContactFormScreen({ mode, contactId }: Props) {
         state: t("validation.state"),
         city: t("validation.city"),
         pincode: t("validation.pincode"),
+        addressType: t("validation.addressType"),
+        addressesMin: t("validation.addressesMin"),
       }),
     [t],
   );
@@ -90,6 +92,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
     reset,
     setValue,
     getValues,
+    clearErrors,
     setError,
     handleSubmit,
     formState: { errors },
@@ -99,7 +102,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
   });
 
   const contactType = useWatch({ control, name: "contact_type" }) ?? "client";
-  const phoneCountry = usePhoneCountryFromCountryIso(control);
+  const phoneCountry = usePhoneCountryFromAddresses(control);
 
   /** Client contacts → only Client; Vendor contacts → only Vendor (from URL / loaded record). */
   const urlContactType = parseContactTypeParam(searchParams.get(QUICK_CREATE_CONTACT_TYPE_PARAM));
@@ -405,13 +408,23 @@ export function ContactFormScreen({ mode, contactId }: Props) {
               )}
               <SurfaceTextField
                 register={register}
-                name="name"
-                id="contact-name"
-                label={t("fields.name")}
+                name="first_name"
+                id="contact-first-name"
+                label={t("fields.firstName")}
                 kind="name"
                 required
-                autoComplete="name"
-                error={errors.name?.message}
+                autoComplete="given-name"
+                error={errors.first_name?.message}
+              />
+              <SurfaceTextField
+                register={register}
+                name="last_name"
+                id="contact-last-name"
+                label={t("fields.lastName")}
+                kind="name"
+                required
+                autoComplete="family-name"
+                error={errors.last_name?.message}
               />
               <SurfaceTextField
                 register={register}
@@ -433,44 +446,35 @@ export function ContactFormScreen({ mode, contactId }: Props) {
                 disabled={saving}
                 countryIso={phoneCountry}
               />
-              <AddressLineAutocompleteFields
-                idPrefix="contact"
-                control={control}
-                setValue={setValue}
-                wrapInRow={false}
-                disabled={saving}
-                labels={{
-                  addressLine1: t("fields.addressLine1"),
-                  addressLine2: t("fields.addressLine2"),
-                }}
-                errors={{
-                  address_line_1: errors.address_line_1?.message,
-                  address_line_2: errors.address_line_2?.message,
-                }}
-              />
             </FormFieldRow>
-            <AddressLocationFields
-              idPrefix="contact"
+
+            <EntityAddressesFields
               control={control}
               register={register}
               setValue={setValue}
+              clearErrors={clearErrors}
+              errors={errors}
               disabled={saving}
+              idPrefix="contact-address"
+              includeGeo={false}
               labels={{
+                sectionTitle: t("fields.addresses"),
+                add: t("addresses.add"),
+                remove: t("addresses.remove"),
+                rowLabel: (index) => t("addresses.rowLabel", { number: index }),
+                addressType: t("fields.addressType"),
+                addressLine1: t("fields.addressLine1"),
+                addressLine2: t("fields.addressLine2"),
                 country: t("fields.country"),
                 state: t("fields.stateProvince"),
                 city: t("fields.city"),
                 pincode: t("fields.pincode"),
-              }}
-              placeholders={{
-                country: t("placeholders.country"),
-                state: t("placeholders.state"),
-                city: t("placeholders.city"),
-              }}
-              errors={{
-                country_iso: errors.country_iso?.message,
-                state_iso: errors.state_iso?.message,
-                city: errors.city?.message,
-                pincode: errors.pincode?.message,
+                countryPlaceholder: t("placeholders.country"),
+                statePlaceholder: t("placeholders.state"),
+                cityPlaceholder: t("placeholders.city"),
+                addressTypeBilling: t("addressType.billing"),
+                addressTypeShipping: t("addressType.shipping"),
+                addressTypeOther: t("addressType.other"),
               }}
             />
           </form>

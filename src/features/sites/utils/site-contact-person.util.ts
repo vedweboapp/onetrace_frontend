@@ -1,4 +1,5 @@
 import type { Site, SiteContactPerson, SiteContactPersonTitle } from "@/features/sites/types/site.types";
+import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 
 export function getSiteContactPersonContactId(
   contact: SiteContactPerson["contact"],
@@ -15,10 +16,8 @@ export function formatSiteContactPersonContactLabel(
   contactNameById?: Record<number, string>,
 ): string {
   if (contact && typeof contact === "object") {
-    const name = contact.name?.trim();
+    const name = formatContactName(contact);
     if (name) return name;
-    const email = contact.email?.trim();
-    if (email) return email;
     return `#${contact.id}`;
   }
   const id = getSiteContactPersonContactId(contact);

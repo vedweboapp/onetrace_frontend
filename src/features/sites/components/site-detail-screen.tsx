@@ -4,6 +4,7 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 import { getSiteContactPersonContactId, normalizeSiteContactPersonsFromApi } from "@/features/sites/utils/site-contact-person.util";
 import { fetchSite } from "@/features/sites/api/site.api";
 import { fetchTitlesPage } from "@/features/titles/api/title.api";
@@ -68,8 +69,9 @@ function SiteDetailBodyWithContacts({
     if (!needsFetch) {
       const fromRows: Record<number, string> = {};
       for (const row of rows) {
-        if (row.contact && typeof row.contact === "object" && row.contact.name?.trim()) {
-          fromRows[row.contact.id] = row.contact.name.trim();
+        if (row.contact && typeof row.contact === "object") {
+          const label = formatContactName(row.contact);
+          if (label) fromRows[row.contact.id] = label;
         }
       }
       const timer = window.setTimeout(() => {
@@ -84,7 +86,7 @@ function SiteDetailBodyWithContacts({
         if (!cancelled) {
           const mapped: Record<number, string> = {};
           for (const c of items) {
-            mapped[c.id] = c.name?.trim() || c.email?.trim() || "—";
+            mapped[c.id] = formatContactName(c) || "—";
           }
           setContactNameById(mapped);
         }

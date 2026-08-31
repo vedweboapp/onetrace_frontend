@@ -2344,19 +2344,23 @@
         "retry": "Reintentar",
         "backAria": "Volver a la lista de contactos",
         "sectionOverview": "Resumen",
-        "sectionAddress": "Dirección",
+        "sectionAddress": "Direcciones",
         "sectionRecord": "Registro",
-        "addressUnavailable": "Aún no hay dirección guardada para este contacto.",
+        "addressUnavailable": "Aún no hay direcciones guardadas para este contacto.",
         "addressLine2Empty": "No hay segunda línea de dirección"
       },
       "detailLoadError": "No se pudieron cargar los detalles del contacto. Inténtalo de nuevo.",
       "fields": {
         "name": "Nombre",
+        "firstName": "Nombre",
+        "lastName": "Apellido",
         "contactType": "Tipo de contacto",
         "client": "Cliente",
         "vendor": "Proveedor",
         "email": "Correo",
         "phone": "Teléfono",
+        "addresses": "Direcciones",
+        "addressType": "Tipo de dirección",
         "addressLine1": "Línea de dirección 1",
         "addressLine2": "Línea de dirección 2",
         "status": "Estado",
@@ -2376,9 +2380,20 @@
       },
       "page": {
         "createTitle": "Crear contacto",
-        "createSubtitle": "Completa los datos del contacto y guarda.",
+        "createSubtitle": "Completa los datos del contacto y una o más direcciones.",
         "editTitle": "Editar",
-        "editSubtitle": "Actualiza los datos del contacto y guarda los cambios."
+        "editSubtitle": "Actualiza los datos del contacto y las direcciones."
+      },
+      "addresses": {
+        "add": "Añadir dirección",
+        "remove": "Eliminar",
+        "primary": "Principal",
+        "rowLabel": "Dirección {number}"
+      },
+      "addressType": {
+        "billing": "Facturación",
+        "shipping": "Envío",
+        "other": "Otro"
       },
       "placeholders": {
         "contactType": "Seleccionar tipo de contacto",
@@ -2390,6 +2405,8 @@
       },
       "validation": {
         "name": "Introduce un nombre de contacto.",
+        "firstName": "Introduce el nombre.",
+        "lastName": "Introduce el apellido.",
         "email": "Introduce un correo válido.",
         "phoneInvalid": "Introduce un número válido con prefijo internacional.",
         "contactType": "Selecciona un tipo de contacto.",
@@ -2399,7 +2416,9 @@
         "country": "Selecciona un país.",
         "state": "Selecciona un estado o provincia.",
         "city": "Selecciona o escribe una ciudad.",
-        "pincode": "Introduce un código postal."
+        "pincode": "Introduce un código postal.",
+        "addressType": "Selecciona un tipo de dirección.",
+        "addressesMin": "Añade al menos una dirección."
       }
     },
     "sites": {
@@ -3323,7 +3342,9 @@
       },
       "timeline": {
         "empty": "Aún no hay eventos.",
-        "event": "Evento"
+        "event": "Evento",
+        "byActor": "Por {name}",
+        "byActorRole": "Por {name} · {role}"
       },
       "logs": {
         "viewDispatch": "Ver registro de envío"
@@ -3566,7 +3587,7 @@
       "markTimeOff": "Tiempo libre",
       "offDuty": "Libre",
       "availableHoursNote": "Disponible {hours}",
-      "monthJobCount": "{count} trabajos",
+      "monthJobCount": "{count, plural, one {# programación} other {# programaciones}}",
       "monthTimeOffCount": "{count} tiempo libre",
       "conflict": {
         "booked": "Ese horario ya está programado.",
@@ -3578,14 +3599,14 @@
       },
       "agenda": {
         "title": "Programación del día",
-        "subtitle": "{jobs} trabajos · {timeOff} tiempo libre",
+        "subtitle": "{jobs, plural, one {# programación} other {# programaciones}} · {timeOff, plural, one {# tiempo libre} other {# tiempos libres}}",
         "openDay": "Vista diaria",
-        "emptyJobs": "No hay trabajos programados este día.",
+        "emptyJobs": "No hay programaciones este día.",
         "emptyTimeOff": "No hay tiempo libre este día.",
-        "jobsTab": "Trabajos",
+        "jobsTab": "Programaciones",
         "timeOffTab": "Tiempo libre",
         "tabsAria": "Secciones del día",
-        "searchPlaceholder": "Buscar trabajos o usuarios…",
+        "searchPlaceholder": "Buscar programaciones o usuarios…",
         "clientLine": "Cliente – {name}",
         "assignToLine": "Asignar a – {name}"
       },

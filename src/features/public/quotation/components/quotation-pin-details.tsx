@@ -14,6 +14,7 @@ import {
   submitPublicQuotationResponse,
 } from "@/features/public/quotation/api/public-pin.api";
 import { fetchQuotation } from "@/features/quotations/api/quotation.api";
+import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import type { DrawingPlot, DrawingPin } from "@/features/projects/types/drawing.types";
 import type {
@@ -142,8 +143,8 @@ function getContactName(contact: unknown): string {
   if (!contact) return "—";
   if (typeof contact === "number") return `#${contact}`;
   if (typeof contact === "object") {
-    const c = contact as any;
-    return c.name ?? c.full_name ?? c.email ?? "—";
+    const label = formatContactName(contact as Parameters<typeof formatContactName>[0]);
+    return label || "—";
   }
   return "—";
 }

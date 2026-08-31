@@ -2,7 +2,11 @@
 
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { setApiErrorTextResolver } from "@/core/errors/api-error-text";
+import {
+  setApiErrorTextResolver,
+  isHtmlOrDebugDump,
+  sanitizeApiErrorLine,
+} from "@/core/errors/api-error-text";
 import {
   API_ERROR_ENTITY_KEYS,
   API_ERROR_FIELD_KEYS,
@@ -40,7 +44,7 @@ export function ApiErrorI18nBridge() {
 
   useEffect(() => {
     const localizeLine = (raw: string): string => {
-      const trimmed = raw.trim();
+      const trimmed = sanitizeApiErrorLine(raw) ?? "";
       if (!trimmed) return trimmed;
 
       const normalized = normalizeApiErrorMessageForLookup(trimmed);
@@ -80,7 +84,9 @@ export function ApiErrorI18nBridge() {
     setApiErrorMessageLocalizer(localizeLine);
 
     setApiErrorTextResolver(({ errorCode, message, errors }) => {
-      const errs = (errors ?? []).map((e) => e.trim()).filter(Boolean);
+      const errs = (errors ?? [])
+        .map((e) => sanitizeApiErrorLine(e))
+        .filter((e): e is string => Boolean(e));
       const specificErrors = errs.filter((e) => !GENERIC_PHRASE_RE.test(e));
 
       if (specificErrors.length > 0) {
@@ -91,8 +97,9 @@ export function ApiErrorI18nBridge() {
         return t(errorCode);
       }
 
-      if (message?.trim() && !GENERIC_PHRASE_RE.test(message.trim())) {
-        return localizeLine(message.trim());
+      const cleanMessage = sanitizeApiErrorLine(message);
+      if (cleanMessage && !GENERIC_PHRASE_RE.test(cleanMessage) && !isHtmlOrDebugDump(cleanMessage)) {
+        return localizeLine(cleanMessage);
       }
 
       if (errs.length > 0) {

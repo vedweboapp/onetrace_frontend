@@ -4,6 +4,7 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 import { fetchInvoice, previewInvoicePdf, sendInvoice } from "@/features/invoices/api/invoice.api";
 import { InvoiceDetailBody } from "@/features/invoices/components/invoice-detail-body";
 import { InvoiceExportDropdown } from "@/features/invoices/components/invoice-export-dropdown";
@@ -64,7 +65,7 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
         if (!cancelled) {
           const mapped: Record<number, string> = {};
           for (const row of contacts) {
-            const label = row.name?.trim() || row.email?.trim();
+            const label = formatContactName(row);
             if (label) mapped[row.id] = label;
           }
           setContactNames(mapped);
