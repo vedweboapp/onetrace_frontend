@@ -2355,19 +2355,23 @@
         "retry": "Retry",
         "backAria": "Back to contacts list",
         "sectionOverview": "Overview",
-        "sectionAddress": "Address",
+        "sectionAddress": "Addresses",
         "sectionRecord": "Record",
-        "addressUnavailable": "No address saved for this contact yet.",
+        "addressUnavailable": "No addresses saved for this contact yet.",
         "addressLine2Empty": "No secondary address provided"
       },
       "detailLoadError": "Could not load contact details. Try again.",
       "fields": {
         "name": "Name",
+        "firstName": "First Name",
+        "lastName": "Last Name",
         "contactType": "Contact Type",
         "client": "Client",
         "vendor": "Vendor",
         "email": "Email",
         "phone": "Phone",
+        "addresses": "Addresses",
+        "addressType": "Address Type",
         "addressLine1": "Address Line 1",
         "addressLine2": "Address Line 2",
         "status": "Status",
@@ -2387,9 +2391,20 @@
       },
       "page": {
         "createTitle": "Create Contact",
-        "createSubtitle": "Fill in contact details and save.",
+        "createSubtitle": "Fill in contact details and one or more addresses.",
         "editTitle": "Edit",
-        "editSubtitle": "Update contact details and save changes."
+        "editSubtitle": "Update contact details and addresses."
+      },
+      "addresses": {
+        "add": "Add Address",
+        "remove": "Remove",
+        "primary": "Primary",
+        "rowLabel": "Address {number}"
+      },
+      "addressType": {
+        "billing": "Billing",
+        "shipping": "Shipping",
+        "other": "Other"
       },
       "placeholders": {
         "contactType": "Select contact type",
@@ -2401,6 +2416,8 @@
       },
       "validation": {
         "name": "Enter a contact name.",
+        "firstName": "Enter a first name.",
+        "lastName": "Enter a last name.",
         "email": "Enter a valid email address.",
         "phoneInvalid": "Enter a valid phone number including country code.",
         "contactType": "Select a contact type.",
@@ -2410,7 +2427,9 @@
         "country": "Select a country.",
         "state": "Select a state or region.",
         "city": "Enter or select a city.",
-        "pincode": "Enter a postal or ZIP code."
+        "pincode": "Enter a postal or ZIP code.",
+        "addressType": "Select an address type.",
+        "addressesMin": "Add at least one address."
       }
     },
     "sites": {
@@ -3338,7 +3357,9 @@
       },
       "timeline": {
         "empty": "No timeline events yet.",
-        "event": "Event"
+        "event": "Event",
+        "byActor": "By {name}",
+        "byActorRole": "By {name} · {role}"
       },
       "logs": {
         "viewDispatch": "View dispatch record"
@@ -3581,7 +3602,7 @@
       "markTimeOff": "Time off",
       "offDuty": "Off",
       "availableHoursNote": "Available {hours}",
-      "monthJobCount": "{count} jobs",
+      "monthJobCount": "{count, plural, one {# schedule} other {# schedules}}",
       "monthTimeOffCount": "{count} time off",
       "conflict": {
         "booked": "That time is already scheduled.",
@@ -3593,14 +3614,14 @@
       },
       "agenda": {
         "title": "Day schedule",
-        "subtitle": "{jobs} jobs · {timeOff} time off",
+        "subtitle": "{jobs, plural, one {# schedule} other {# schedules}} · {timeOff, plural, one {# time off} other {# time off}}",
         "openDay": "Day view",
-        "emptyJobs": "No jobs scheduled on this day.",
+        "emptyJobs": "No schedules on this day.",
         "emptyTimeOff": "No time off on this day.",
-        "jobsTab": "Jobs",
+        "jobsTab": "Schedules",
         "timeOffTab": "Time off",
         "tabsAria": "Day schedule sections",
-        "searchPlaceholder": "Search jobs or users…",
+        "searchPlaceholder": "Search schedules or users…",
         "clientLine": "Client – {name}",
         "assignToLine": "Assign to – {name}"
       },

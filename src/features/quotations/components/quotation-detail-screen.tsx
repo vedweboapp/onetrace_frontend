@@ -6,9 +6,11 @@ import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
-import { fetchQuotation, sendQuotation, updateQuotation } from "@/features/quotations/api/quotation.api";
+import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
+import { fetchQuotation, createJobFromServiceQuotation, sendQuotation, updateQuotation } from "@/features/quotations/api/quotation.api";
 import {
   parseQuoteCategoryParam,
+  QUOTE_CATEGORY,
   resolveQuotationQuoteCategory,
 } from "@/features/quotations/constants/quotation-category";
 import { QuotationDetailBody } from "@/features/quotations/components/quotation-detail-body";
@@ -19,6 +21,8 @@ import {
   getQuotationCustomerId,
   getQuotationProjectId,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
+import { normalizeQuotationStatusValue } from "@/features/quotations/utils/quotation-status.util";
+import { quotationHasLinkedJob } from "@/features/quotations/utils/quotation-job.util";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { fetchTagsPage } from "@/features/tags/api/tag.api";
 import { resolveQuotationSiteDetails } from "@/features/quotations/utils/quotation-site-details.util";
@@ -155,7 +159,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
           setContactOptions(
             items.map((c) => ({
               value: String(c.id),
-              label: c.name?.trim() || c.email?.trim() || `#${c.id}`,
+              label: formatContactOptionLabel(c),
             })),
           );
         }
@@ -300,6 +304,20 @@ function QuotationDetailActions({
   const [statusOpen, setStatusOpen] = React.useState(false);
   const [statusSaving, setStatusSaving] = React.useState(false);
   const [sending, setSending] = React.useState(false);
+  const [creatingJob, setCreatingJob] = React.useState(false);
+  const [jobCreatedLocally, setJobCreatedLocally] = React.useState(false);
+
+  const isServiceQuotation = resolveQuotationQuoteCategory(detail) === QUOTE_CATEGORY.service;
+  const isApproved = normalizeQuotationStatusValue(detail.status) === "approved";
+  const showCreateJob =
+    isServiceQuotation &&
+    isApproved &&
+    !quotationHasLinkedJob(detail) &&
+    !jobCreatedLocally;
+
+  React.useEffect(() => {
+    setJobCreatedLocally(false);
+  }, [detail.id]);
 
   async function handleStatusUpdate(status: string) {
     setStatusSaving(true);
@@ -328,8 +346,35 @@ function QuotationDetailActions({
     }
   }
 
+  async function handleCreateJob() {
+    setCreatingJob(true);
+    try {
+      await createJobFromServiceQuotation(quotationId);
+      toastSuccess(t("detail.createJobToast"));
+      setJobCreatedLocally(true);
+      onStatusSaved();
+    } catch (error) {
+      toastApiError(error, t("detail.createJobError"));
+    } finally {
+      setCreatingJob(false);
+    }
+  }
+
   return (
     <div className="flex flex-wrap gap-2">
+      {showCreateJob ? (
+        <AppButton
+          type="button"
+          variant="primary"
+          size="sm"
+          loading={creatingJob}
+          disabled={creatingJob}
+          aria-label={t("detail.createJobAria")}
+          onClick={() => void handleCreateJob()}
+        >
+          {t("detail.createJob")}
+        </AppButton>
+      ) : null}
       <AppButton type="button" variant="secondary" size="sm" onClick={() => setStatusOpen(true)}>
         {t("updateStatus.action")}
       </AppButton>

@@ -7,6 +7,7 @@ import type {
   QuotationTagNested,
   QuotationUserRef,
 } from "@/features/quotations/types/quotation.types";
+import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 import type { Site } from "@/features/sites/types/site.types";
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -197,7 +198,7 @@ export function quotationContactLabel(contact: number | QuotationContactNested |
   if (contact == null) return "—";
   if (typeof contact === "number") return `#${contact}`;
   if (!isRecord(contact)) return "—";
-  const name = typeof contact.name === "string" ? contact.name.trim() : "";
+  const name = formatContactName(contact);
   const email = typeof contact.email === "string" ? contact.email.trim() : "";
   const phone = typeof contact.phone === "string" ? contact.phone.trim() : "";
   const id = typeof contact.id === "number" && contact.id > 0 ? contact.id : null;

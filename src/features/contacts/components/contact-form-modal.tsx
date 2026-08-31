@@ -12,17 +12,16 @@ import {
   emptyContactFormDefaults,
   mapContactFormToPayload,
 } from "@/features/contacts/utils/contact-form-map";
+import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave, mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
-import { usePhoneCountryFromCountryIso } from "@/shared/hooks/use-phone-country-from-address";
+import { usePhoneCountryFromAddresses } from "@/shared/hooks/use-phone-country-from-address";
 import {
   AppButton,
   AppModal,
-  AddressLineAutocompleteFields,
-  AddressLocationFields,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
@@ -61,7 +60,8 @@ export function ContactFormModal({
   const schema = React.useMemo(
     () =>
       createContactFormSchema({
-        name: t("validation.name"),
+        firstName: t("validation.firstName"),
+        lastName: t("validation.lastName"),
         email: t("validation.email"),
         phoneInvalid: t("validation.phoneInvalid"),
         contactType: t("validation.contactType"),
@@ -72,6 +72,8 @@ export function ContactFormModal({
         state: t("validation.state"),
         city: t("validation.city"),
         pincode: t("validation.pincode"),
+        addressType: t("validation.addressType"),
+        addressesMin: t("validation.addressesMin"),
       }),
     [t],
   );
@@ -81,6 +83,7 @@ export function ContactFormModal({
     register,
     reset,
     setValue,
+    clearErrors,
     setError,
     handleSubmit,
     formState: { errors },
@@ -89,7 +92,7 @@ export function ContactFormModal({
     defaultValues: emptyContactFormDefaults(),
   });
 
-  const phoneCountry = usePhoneCountryFromCountryIso(control);
+  const phoneCountry = usePhoneCountryFromAddresses(control);
 
   React.useEffect(() => {
     if (!open) return;
@@ -170,15 +173,25 @@ export function ContactFormModal({
 
         <FormFieldRow cols="2">
           <SurfaceTextField
-                register={register}
-                name="name"
-                id="contact-name"
-                label={t("fields.name")}
-                kind="name"
-                required
-                autoComplete="name"
-                error={errors.name?.message}
-              />
+            register={register}
+            name="first_name"
+            id="contact-first-name"
+            label={t("fields.firstName")}
+            kind="name"
+            required
+            autoComplete="given-name"
+            error={errors.first_name?.message}
+          />
+          <SurfaceTextField
+            register={register}
+            name="last_name"
+            id="contact-last-name"
+            label={t("fields.lastName")}
+            kind="name"
+            required
+            autoComplete="family-name"
+            error={errors.last_name?.message}
+          />
           {lockClient ? (
             <FieldGroup label={t("fields.client")} htmlFor="contact-client" required>
               <CheckmarkSelect
@@ -220,15 +233,15 @@ export function ContactFormModal({
             </FieldGroup>
           )}
           <SurfaceTextField
-                register={register}
-                name="email"
-                id="contact-email"
-                label={t("fields.email")}
-                kind="email"
-                required
-                autoComplete="email"
-                error={errors.email?.message}
-              />
+            register={register}
+            name="email"
+            id="contact-email"
+            label={t("fields.email")}
+            kind="email"
+            required
+            autoComplete="email"
+            error={errors.email?.message}
+          />
           <SurfacePhoneField
             control={control}
             name="phone"
@@ -239,45 +252,35 @@ export function ContactFormModal({
             disabled={saving}
             countryIso={phoneCountry}
           />
-          <AddressLineAutocompleteFields
-            idPrefix="contact"
-            control={control}
-            setValue={setValue}
-            wrapInRow={false}
-            disabled={saving}
-            labels={{
-              addressLine1: t("fields.addressLine1"),
-              addressLine2: t("fields.addressLine2"),
-            }}
-            errors={{
-              address_line_1: errors.address_line_1?.message,
-              address_line_2: errors.address_line_2?.message,
-            }}
-          />
         </FormFieldRow>
 
-        <AddressLocationFields
-          idPrefix="contact"
+        <EntityAddressesFields
           control={control}
           register={register}
           setValue={setValue}
+          clearErrors={clearErrors}
+          errors={errors}
           disabled={saving}
+          idPrefix="contact-address"
+          includeGeo={false}
           labels={{
+            sectionTitle: t("fields.addresses"),
+            add: t("addresses.add"),
+            remove: t("addresses.remove"),
+            rowLabel: (index) => t("addresses.rowLabel", { number: index }),
+            addressType: t("fields.addressType"),
+            addressLine1: t("fields.addressLine1"),
+            addressLine2: t("fields.addressLine2"),
             country: t("fields.country"),
             state: t("fields.stateProvince"),
             city: t("fields.city"),
             pincode: t("fields.pincode"),
-          }}
-          placeholders={{
-            country: t("placeholders.country"),
-            state: t("placeholders.state"),
-            city: t("placeholders.city"),
-          }}
-          errors={{
-            country_iso: errors.country_iso?.message,
-            state_iso: errors.state_iso?.message,
-            city: errors.city?.message,
-            pincode: errors.pincode?.message,
+            countryPlaceholder: t("placeholders.country"),
+            statePlaceholder: t("placeholders.state"),
+            cityPlaceholder: t("placeholders.city"),
+            addressTypeBilling: t("addressType.billing"),
+            addressTypeShipping: t("addressType.shipping"),
+            addressTypeOther: t("addressType.other"),
           }}
         />
       </form>

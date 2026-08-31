@@ -76,6 +76,8 @@ export type MaterialRequestTimelineEntry = {
   occurred_at?: string | null;
   tag?: string | null;
   dispatch_id?: number | null;
+  actor_name?: string | null;
+  actor_role?: string | null;
 };
 
 export type MaterialRequestLogEntry = MaterialRequestTimelineEntry;

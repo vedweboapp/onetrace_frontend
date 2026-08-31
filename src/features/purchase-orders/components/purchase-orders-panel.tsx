@@ -12,6 +12,7 @@ import {
   fetchPurchaseOrdersPage,
 } from "@/features/purchase-orders/api/purchase-order.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { PurchaseOrderStatusBadge } from "@/features/purchase-orders/components/purchase-order-status-badge";
 import type { PurchaseOrderListItem } from "@/features/purchase-orders/types/purchase-order.types";
@@ -185,7 +186,7 @@ export function PurchaseOrdersPanel() {
         setContactOptions(
           contactsRes.items.map((c) => ({
             value: String(c.id),
-            label: c.name?.trim() || `#${c.id}`,
+            label: formatContactOptionLabel(c),
           })),
         );
         setProjectOptions(projectsRes.items.map((p) => ({ value: String(p.id), label: p.name })));

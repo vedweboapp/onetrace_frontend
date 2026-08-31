@@ -10,6 +10,7 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchAllInvoiceIds, fetchInvoicesPage } from "@/features/invoices/api/invoice.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { InvoiceStatusBadge } from "@/features/invoices/components/invoice-status-badge";
 import type { InvoiceListItem } from "@/features/invoices/types/invoice.types";
@@ -185,7 +186,7 @@ export function InvoicesPanel() {
         setContactOptions(
           contactsRes.items.map((c) => ({
             value: String(c.id),
-            label: c.name?.trim() || `#${c.id}`,
+            label: formatContactOptionLabel(c),
           })),
         );
         setProjectOptions(projectsRes.items.map((p) => ({ value: String(p.id), label: p.name })));

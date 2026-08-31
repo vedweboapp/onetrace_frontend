@@ -9,6 +9,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import {
   createQuotation,
   fetchProjectLevelRowsForQuotation,
@@ -483,7 +484,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       try {
         const { items } = await fetchContactsPage(1, 500, { client: customerId });
         if (!cancelled) {
-          setContactOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
+          setContactOptions(items.map((c) => ({ value: String(c.id), label: formatContactOptionLabel(c) })));
         }
       } catch {
         if (!cancelled) setContactOptions([]);
@@ -714,7 +715,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
           fetchContactsPage(1, 500, { client: reloadCustomerId }),
         ]);
         setProjectRows(projects.items);
-        setContactOptions(contacts.items.map((c) => ({ value: String(c.id), label: c.name })));
+        setContactOptions(contacts.items.map((c) => ({ value: String(c.id), label: formatContactOptionLabel(c) })));
       }
       if (isServiceQuotation && reloadCustomerId) {
         const { items } = await fetchSitesPage(1, 500, { client: reloadCustomerId });

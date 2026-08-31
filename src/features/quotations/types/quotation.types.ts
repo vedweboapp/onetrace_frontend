@@ -254,6 +254,13 @@ export type QuotationListItem = {
   quote_category?: string | null;
   /** @deprecated Prefer `quote_category`. */
   category?: string | null;
+  /** Set when a job was created from this service quotation. */
+  job?: number | { id: number } | null;
+  job_id?: number | null;
+  has_job?: boolean | null;
+  is_job_created?: boolean | null;
+  service_job?: number | { id: number } | null;
+  linked_job?: number | { id: number } | null;
   is_active: boolean;
   organization: number | null;
 };

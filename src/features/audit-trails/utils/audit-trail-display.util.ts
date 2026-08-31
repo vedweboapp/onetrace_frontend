@@ -1,8 +1,14 @@
 import type { AuditTrailEntry, AuditTrailUserRef } from "@/features/audit-trails/types/audit-trail.types";
 import type { MaterialRequestLogEntry } from "@/features/material-requests/types/material-request.types";
 
+function auditTrailActor(row: AuditTrailEntry): AuditTrailUserRef | null {
+  return row.actor ?? row.created_by ?? row.user ?? null;
+}
+
 function auditTrailUserLabel(user: AuditTrailUserRef | null | undefined): string | null {
   if (!user) return null;
+  const displayName = user.name?.trim();
+  if (displayName) return displayName;
   const parts = [user.first_name?.trim(), user.last_name?.trim()].filter(Boolean);
   if (parts.length > 0) return parts.join(" ");
   const username = user.username?.trim();
@@ -12,7 +18,7 @@ function auditTrailUserLabel(user: AuditTrailUserRef | null | undefined): string
   return null;
 }
 
-function auditTrailActionLabel(row: AuditTrailEntry): string {
+export function auditTrailActionLabel(row: AuditTrailEntry): string {
   const raw =
     row.action?.trim() ||
     row.event?.trim() ||
@@ -23,19 +29,32 @@ function auditTrailActionLabel(row: AuditTrailEntry): string {
   return raw.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function auditTrailDescription(row: AuditTrailEntry): string | null {
-  const direct =
-    row.description?.trim() ||
-    row.message?.trim() ||
-    row.details?.trim() ||
-    "";
+/** Insert spaces where API descriptions glue words to codes (MR059, JB437, etc.). */
+export function formatAuditTrailDescription(raw: string | null | undefined): string {
+  let text = raw?.trim() ?? "";
+  if (!text) return "";
+
+  text = text.replace(/(Material Request)(MR\d+)/gi, "$1 $2");
+  text = text.replace(/(MR\d+)(genearted|generated)/gi, "$1 $2");
+  text = text.replace(/\bfor job(JB\d+)/gi, "for job $1");
+  text = text.replace(/(Dispatch)(DISP\d+)/gi, "$1 $2");
+  text = text.replace(/\s+/g, " ").trim();
+
+  return text;
+}
+
+function auditTrailPrimaryText(row: AuditTrailEntry): string {
+  const direct = formatAuditTrailDescription(
+    row.description?.trim() || row.message?.trim() || row.details?.trim() || "",
+  );
   if (direct) return direct;
 
-  const actor = auditTrailUserLabel(row.created_by ?? row.user ?? row.actor);
+  const actor = auditTrailUserLabel(auditTrailActor(row));
   const action = auditTrailActionLabel(row);
   if (actor && action) return `${actor} — ${action}`;
+  if (action) return action;
   if (actor) return actor;
-  return null;
+  return "";
 }
 
 function auditTrailOccurredAt(row: AuditTrailEntry): string | null {
@@ -48,28 +67,56 @@ function auditTrailObjectId(row: AuditTrailEntry): number | null {
   return null;
 }
 
-/** Map audit-trail API rows into material-request timeline entries. */
-export function auditTrailToMaterialRequestLogEntry(row: AuditTrailEntry): MaterialRequestLogEntry {
+function auditTrailDispatchId(row: AuditTrailEntry): number | undefined {
   const metadata = row.metadata;
-  const dispatchIdRaw =
+  const fromMeta =
     metadata && typeof metadata === "object" && metadata !== null && "dispatch_id" in metadata
       ? metadata.dispatch_id
       : undefined;
-  const dispatchId =
-    typeof dispatchIdRaw === "number" && Number.isFinite(dispatchIdRaw) && dispatchIdRaw > 0
-      ? dispatchIdRaw
-      : undefined;
+  if (typeof fromMeta === "number" && Number.isFinite(fromMeta) && fromMeta > 0) {
+    return fromMeta;
+  }
+
+  const model = row.model_name?.trim().toLowerCase() ?? "";
+  if (model === "dispatch" || row.action?.trim().toLowerCase() === "dispatch_created") {
+    const objectId = auditTrailObjectId(row);
+    if (objectId != null) return objectId;
+  }
+
+  return undefined;
+}
+
+/** Map audit-trail API rows into material-request timeline entries. */
+export function auditTrailToMaterialRequestLogEntry(row: AuditTrailEntry): MaterialRequestLogEntry {
+  const actor = auditTrailActor(row);
 
   return {
     id: row.id,
-    title: auditTrailActionLabel(row) || undefined,
-    description: auditTrailDescription(row) ?? undefined,
+    title: auditTrailPrimaryText(row) || auditTrailActionLabel(row) || undefined,
     occurred_at: auditTrailOccurredAt(row) ?? undefined,
-    tag: row.action?.trim() || row.event?.trim() || row.module?.trim() || undefined,
-    dispatch_id: dispatchId,
+    tag: auditTrailActionLabel(row) || row.model_name?.trim() || row.module?.trim() || undefined,
+    dispatch_id: auditTrailDispatchId(row),
+    actor_name: auditTrailUserLabel(actor) ?? undefined,
+    actor_role: actor?.role?.trim() || undefined,
   };
 }
 
+/**
+ * Sort audit rows newest-first for activity timelines.
+ * API order is usually correct; this keeps display stable when it is not.
+ */
+export function sortAuditTrailsByDateDesc(rows: AuditTrailEntry[]): AuditTrailEntry[] {
+  return [...rows].sort((a, b) => {
+    const aTime = Date.parse(auditTrailOccurredAt(a) ?? "") || 0;
+    const bTime = Date.parse(auditTrailOccurredAt(b) ?? "") || 0;
+    return bTime - aTime;
+  });
+}
+
+/**
+ * @deprecated Prefer trusting API `object_id` filter — related rows (e.g. dispatches)
+ * may use their own object_id while still belonging to the material request timeline.
+ */
 export function filterAuditTrailsForObject(
   rows: AuditTrailEntry[],
   objectId: number,

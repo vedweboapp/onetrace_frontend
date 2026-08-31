@@ -13,6 +13,7 @@ import {
   contactVendorName,
   getContactType,
 } from "@/features/contacts/utils/contact-nested-fields.util";
+import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import {
   EntityDetailEditButton,
@@ -116,7 +117,7 @@ export function ContactDetailScreen({ contactId }: Props) {
       listRoute={routes.dashboard.contacts}
       loadError={t("detailLoadError")}
       fetch={fetchContact}
-      getTitle={(detail) => detail.name}
+      getTitle={(detail) => formatContactName(detail) || `#${detail.id}`}
       onDetailChange={syncContactTypeInUrl}
       labels={{
         metaTitle: t("detailMetaTitle"),
