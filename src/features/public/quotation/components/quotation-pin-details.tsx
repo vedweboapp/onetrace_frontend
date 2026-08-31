@@ -485,7 +485,7 @@ function RejectionDialog({
               >
                 Cancel
               </button>
-              
+
               <button
                 type="button"
                 onClick={handleSubmit}
@@ -938,7 +938,7 @@ function QuotationInfoPanel({
       {detail.description?.trim() && (
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm min-w-0">
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">Description</p>
-          <p className="text-sm text-slate-600 whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed">{detail.description}</p>
+          <p className="text-sm text-slate-600 whitespace-pre-wrap break-all [overflow-wrap:anywhere] leading-relaxed">{detail.description}</p>
         </div>
       )}
     </div>
@@ -1344,7 +1344,7 @@ export function QuotationPinDetails() {
     if (!token) return;
     fetchPublicQuotationByToken(token)
       .then((data) => setQuotationDetail(data))
-      .catch(() => {});
+      .catch(() => { });
   };
 
   /* ── Scroll lock: prevent body scroll while any dialog is open ── */
