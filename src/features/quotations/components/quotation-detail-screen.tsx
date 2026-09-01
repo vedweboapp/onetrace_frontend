@@ -21,12 +21,16 @@ import {
   getQuotationCustomerId,
   getQuotationProjectId,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
+import {
+  fetchQuotationSiteRows,
+  mergeQuotationSiteOptionRows,
+  quotationSiteOptionRowsToRecord,
+} from "@/features/quotations/utils/quotation-site-options.util";
 import { normalizeQuotationStatusValue } from "@/features/quotations/utils/quotation-status.util";
-import { quotationHasLinkedJob } from "@/features/quotations/utils/quotation-job.util";
+import { quotationHasLinkedJob, markServiceQuoteJobCreated } from "@/features/quotations/utils/quotation-job.util";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { fetchTagsPage } from "@/features/tags/api/tag.api";
 import { resolveQuotationSiteDetails } from "@/features/quotations/utils/quotation-site-details.util";
-import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
 import {
   fetchUsersForAppRoles,
@@ -92,12 +96,23 @@ export function QuotationDetailScreen({ quotationId }: Props) {
 
   React.useEffect(() => {
     let cancelled = false;
+    const customerId = detailForSite ? getQuotationCustomerId(detailForSite.customer) : null;
     (async () => {
       try {
-        const { items: projects } = await fetchProjectsPage(1, 500, { is_active: true });
+        const filters: { is_active?: boolean; client?: number } = { is_active: true };
+        if (customerId && customerId > 0) filters.client = customerId;
+        const { items: projects } = await fetchProjectsPage(1, 500, filters);
         if (!cancelled) {
           const mapped: Record<number, string> = {};
           for (const row of projects) mapped[row.id] = row.name;
+          const projectId = detailForSite ? getQuotationProjectId(detailForSite.project) : null;
+          if (projectId != null && !mapped[projectId]) {
+            const nested =
+              detailForSite?.project && typeof detailForSite.project === "object"
+                ? detailForSite.project
+                : null;
+            mapped[projectId] = nested?.name?.trim() || `Project #${projectId}`;
+          }
           setProjectNames(mapped);
         }
       } catch {
@@ -107,26 +122,52 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [detailForSite]);
 
   React.useEffect(() => {
     let cancelled = false;
-    (async () => {
+    if (!detailForSite) {
+      setSiteNames({});
+      return;
+    }
+
+    const customerId = getQuotationCustomerId(detailForSite.customer);
+    const projectId = getQuotationProjectId(detailForSite.project);
+    const isServiceQuotation = resolveQuotationQuoteCategory(detailForSite) === QUOTE_CATEGORY.service;
+    const sitesSourceReady = isServiceQuotation
+      ? customerId != null && customerId > 0
+      : projectId != null && projectId > 0;
+
+    if (!sitesSourceReady) {
+      setSiteNames(quotationSiteOptionRowsToRecord(mergeQuotationSiteOptionRows([], detailForSite)));
+      return;
+    }
+
+    void (async () => {
       try {
-        const { items: sites } = await fetchSitesPage(1, 500);
+        const rows = await fetchQuotationSiteRows({
+          isServiceQuotation,
+          clientId: customerId,
+          projectId,
+        });
         if (!cancelled) {
-          const mapped: Record<number, string> = {};
-          for (const row of sites) mapped[row.id] = row.site_name;
-          setSiteNames(mapped);
+          setSiteNames(
+            quotationSiteOptionRowsToRecord(mergeQuotationSiteOptionRows(rows, detailForSite)),
+          );
         }
       } catch {
-        if (!cancelled) setSiteNames({});
+        if (!cancelled) {
+          setSiteNames(
+            quotationSiteOptionRowsToRecord(mergeQuotationSiteOptionRows([], detailForSite)),
+          );
+        }
       }
     })();
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [detailForSite]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -234,12 +275,13 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),
       }}
-      actions={({ detail, listBack, retry }) => (
+      actions={({ detail, listBack, retry, reloadQuiet }) => (
         <QuotationDetailActions
           quotationId={quotationId}
           detail={detail}
           listBack={listBack}
           onStatusSaved={retry}
+          onJobCreated={() => void reloadQuiet()}
           t={t}
         />
       )}
@@ -293,31 +335,31 @@ function QuotationDetailActions({
   detail,
   listBack,
   onStatusSaved,
+  onJobCreated,
   t,
 }: {
   quotationId: number;
   detail: QuotationDetail;
   listBack: string;
   onStatusSaved: () => void;
+  onJobCreated: () => void;
   t: ReturnType<typeof useTranslations<"Dashboard.quotations">>;
 }) {
   const [statusOpen, setStatusOpen] = React.useState(false);
   const [statusSaving, setStatusSaving] = React.useState(false);
   const [sending, setSending] = React.useState(false);
   const [creatingJob, setCreatingJob] = React.useState(false);
-  const [jobCreatedLocally, setJobCreatedLocally] = React.useState(false);
+  const [jobCreated, setJobCreated] = React.useState(() => quotationHasLinkedJob(detail, quotationId));
+
+  React.useEffect(() => {
+    if (quotationHasLinkedJob(detail, quotationId)) {
+      setJobCreated(true);
+    }
+  }, [detail, quotationId]);
 
   const isServiceQuotation = resolveQuotationQuoteCategory(detail) === QUOTE_CATEGORY.service;
   const isApproved = normalizeQuotationStatusValue(detail.status) === "approved";
-  const showCreateJob =
-    isServiceQuotation &&
-    isApproved &&
-    !quotationHasLinkedJob(detail) &&
-    !jobCreatedLocally;
-
-  React.useEffect(() => {
-    setJobCreatedLocally(false);
-  }, [detail.id]);
+  const showCreateJob = isServiceQuotation && isApproved && !jobCreated;
 
   async function handleStatusUpdate(status: string) {
     setStatusSaving(true);
@@ -349,10 +391,11 @@ function QuotationDetailActions({
   async function handleCreateJob() {
     setCreatingJob(true);
     try {
-      await createJobFromServiceQuotation(quotationId);
+      const job = await createJobFromServiceQuotation(quotationId);
+      markServiceQuoteJobCreated(quotationId, job.id);
+      setJobCreated(true);
       toastSuccess(t("detail.createJobToast"));
-      setJobCreatedLocally(true);
-      onStatusSaved();
+      onJobCreated();
     } catch (error) {
       toastApiError(error, t("detail.createJobError"));
     } finally {
