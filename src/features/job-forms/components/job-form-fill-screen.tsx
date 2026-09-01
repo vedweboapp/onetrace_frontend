@@ -59,7 +59,7 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
   const [formTitle, setFormTitle] = React.useState(formNameHint?.trim() || t("untitledForm"));
   const [schemaSections, setSchemaSections] = React.useState<
     ReturnType<typeof applyReadOnlyToSections>
-  >([]);  
+  >([]);
   const [rules, setRules] = React.useState<FormRule[]>([]);
   const [defaultValues, setDefaultValues] = React.useState<Record<string, unknown>>({});
   const [submission, setSubmission] = React.useState<JobFormSubmission | null>(null);
@@ -127,7 +127,7 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
         }
       }
 
-      const schema = await fetchJobFormSchema(formId);
+      const schema = await fetchJobFormSchema(formId, jobId);
       const maps = buildFieldMaps(schema.sections);
       setFieldMaps(maps);
       setFormTitle(schema.name?.trim() || formNameHint?.trim() || t("untitledForm"));
@@ -139,12 +139,12 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
 
       const defaults = existing
         ? mapSubmissionValuesToFormDefaults(
-            existing.values,
-            schema.sections,
-            maps.apiNameByFieldId,
-            maps.fieldTypeByFieldId,
-            existing.files,
-          )
+          existing.values,
+          schema.sections,
+          maps.apiNameByFieldId,
+          maps.fieldTypeByFieldId,
+          existing.files,
+        )
         : {};
       setDefaultValues(defaults);
     } catch (error) {
@@ -220,31 +220,31 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
     } else {
       router.push(safeBack);
     }
-  }  
+  }
 
   const displaySections = readOnly ? applyReadOnlyToSections(schemaSections, true) : schemaSections;
 
   const headerActions = checklistBlocked ? null : uiMode === "view" ? (
-      <AppButton type="button" variant="secondary" size="sm" onClick={enterEditMode}>
-        {t("edit")}
+    <AppButton type="button" variant="secondary" size="sm" onClick={enterEditMode}>
+      {t("edit")}
+    </AppButton>
+  ) : (
+    <div className="flex items-center gap-2">
+      <AppButton type="button" variant="secondary" size="sm" disabled={submitting} onClick={cancelEdit}>
+        {t("cancel")}
       </AppButton>
-    ) : (
-      <div className="flex items-center gap-2">
-        <AppButton type="button" variant="secondary" size="sm" disabled={submitting} onClick={cancelEdit}>
-          {t("cancel")}
-        </AppButton>
-        <AppButton
-          type="button"
-          variant="primary"
-          size="sm"
-          loading={submitting}
-          disabled={submitting || loading}
-          onClick={() => void handleFormSubmit()}
-        >
-          {uiMode === "edit" ? t("saveChanges") : t("submit")}
-        </AppButton>
-      </div>
-    );
+      <AppButton
+        type="button"
+        variant="primary"
+        size="sm"
+        loading={submitting}
+        disabled={submitting || loading}
+        onClick={() => void handleFormSubmit()}
+      >
+        {uiMode === "edit" ? t("saveChanges") : t("submit")}
+      </AppButton>
+    </div>
+  );
 
   return (
     <div className="pb-12">
