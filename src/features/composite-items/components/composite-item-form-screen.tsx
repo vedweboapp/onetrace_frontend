@@ -61,6 +61,7 @@ import {
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
+  FormSubsection,
   DimensionsLwhInput,
   InputWithEndSelect,
   MoneyInput,
@@ -1081,8 +1082,6 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   disabled={submitting}
                 />
               </FieldGroup>
-            </FormFieldRow>
-            <FormFieldRow cols="2" from="md" className="gap-4">
               <FieldGroup label={tModal("costPrice")} htmlFor={costId} required>
                 <MoneyInput
                   id={costId}
@@ -1098,6 +1097,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   step="0.01"
                 />
               </FieldGroup>
+            </FormFieldRow>
+            <FormFieldRow cols="2" from="md" className="gap-4">
               <FieldGroup label={tModal("sellingPrice")} htmlFor={sellId} required>
                 <MoneyInput
                   id={sellId}
@@ -1114,17 +1115,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                 />
               </FieldGroup>
             </FormFieldRow>
-            <div
-              className={cn(
-                "grid w-full gap-x-[var(--form-label-gap,0.75rem)] gap-y-3",
-                "md:grid-cols-[var(--form-label-col,9.5rem)_minmax(0,1fr)]",
-              )}
-            >
-              <h3 className="field-label text-sm font-semibold text-slate-900 dark:text-slate-100 md:pt-[calc((var(--form-control-height,2.75rem)-1.35em)/2)]">
-                {tModal("fulfilmentDetails")}
-              </h3>
-              <div className="form-fields-host min-w-0">
-                <div className="form-field-row grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+            <FormSubsection title={tModal("fulfilmentDetails")}>
+              <FormFieldRow cols="2" from="md" className="gap-4" labelTop>
                 <FieldGroup label={tModal("dimensions")} htmlFor="composite-dimensions">
                   <DimensionsLwhInput
                     id="composite-dimensions"
@@ -1163,10 +1155,9 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                     selectAriaLabel={tModal("weightUnit")}
                   />
                 </FieldGroup>
-              </div>
-              </div>
-            </div>
-            <FieldGroup label={tModal("components")}>
+              </FormFieldRow>
+            </FormSubsection>
+            <FormSubsection title={tModal("components")}>
               {itemsError ? <p className="mb-1.5 text-sm text-amber-700 dark:text-amber-300">{itemsError}</p> : null}
               <div className="space-y-2">
                 {rows.map((r, idx) => (
@@ -1213,8 +1204,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                 ))}
               </div>
               {componentsInvalid ? <FieldErrorText>{tModal("atLeastOneComponentError")}</FieldErrorText> : null}
-            </FieldGroup>
-            <FieldGroup label={tModal("attachments")}>
+            </FormSubsection>
+            <FormSubsection title={tModal("attachments")}>
               <div className="flex items-center gap-2">
                 <input
                   ref={attachmentInputRef}
@@ -1272,7 +1263,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   })}
                 </ul>
               ) : null}
-            </FieldGroup>
+            </FormSubsection>
           </form>
         )}
       </SurfaceShell>

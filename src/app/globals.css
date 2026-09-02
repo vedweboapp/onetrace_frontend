@@ -253,6 +253,10 @@ html[data-font-size] .text-\[12px\],
   min-width: 0;
 }
 
+.form-field-row {
+  align-items: start;
+}
+
 @container form-fields (max-width: 48rem) {
   .form-field-row {
     grid-template-columns: minmax(0, 1fr) !important;
@@ -282,6 +286,29 @@ html[data-font-size] .text-\[12px\],
     text-align: left !important;
     white-space: normal;
   }
+}
+
+/* Explicit top labels (fulfilment blocks, nested field pairs). */
+.form-field-row--label-top .field-group:not(.detail-field) {
+  display: flex !important;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.375rem;
+  grid-template-columns: none !important;
+}
+
+.form-field-row--label-top .field-group:not(.detail-field) .field-label,
+.form-field-row--label-top .field-group:not(.detail-field) .field-control-wrap {
+  grid-column: auto;
+  order: 0 !important;
+  width: 100%;
+}
+
+.form-field-row--label-top .field-group:not(.detail-field) .field-label {
+  padding-top: 0 !important;
+  margin-bottom: 0;
+  text-align: left !important;
+  white-space: normal;
 }
 
 /* Optional host used by settings pages (same Zoho side-label behavior). */
@@ -337,11 +364,12 @@ html[data-font-size] .text-\[12px\],
 }
 
 /* Default + left: fixed label col, Zoho right-aligned labels, control fills the rest. */
-.dash-appearance-scope:not([data-form-label]) .field-group,
-.dash-appearance-scope[data-form-label="left"] .field-group {
+.dash-appearance-scope:not([data-form-label]) .field-group:not(.detail-field),
+.dash-appearance-scope[data-form-label="left"] .field-group:not(.detail-field) {
   display: grid;
   grid-template-columns: var(--form-label-col, 9.5rem) minmax(0, 1fr);
   align-items: start;
+  align-content: start;
   column-gap: var(--form-label-gap, 0.75rem);
   row-gap: 0.25rem;
 }
@@ -351,6 +379,7 @@ html[data-font-size] .text-\[12px\],
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--form-label-col, 9.5rem);
   align-items: start;
+  align-content: start;
   column-gap: var(--form-label-gap, 0.75rem);
   row-gap: 0.25rem;
 }
@@ -507,6 +536,72 @@ html[data-font-size] .text-\[12px\],
 .dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.file-uploader-root) .field-label,
 .dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.field-control--grow) .field-label {
   padding-top: 0.625rem;
+}
+
+/* Stack control + validation message in the control column (side-label forms). */
+.dash-appearance-scope .field-group:not(.detail-field) > .field-control-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+}
+
+/*
+ * When a field error is a sibling of `.field-group` (e.g. CheckmarkSelect with its
+ * own label wrapper), align the message under the control column — not under the label.
+ */
+.form-field-row > div:has(> .field-group + p[role="alert"]) {
+  display: grid;
+  grid-template-columns: var(--form-label-col, 9.5rem) minmax(0, 1fr);
+  column-gap: var(--form-label-gap, 0.75rem);
+  row-gap: 0.25rem;
+  align-items: start;
+  min-width: 0;
+}
+
+.form-field-row > div:has(> .field-group + p[role="alert"]) > .field-group {
+  display: contents;
+}
+
+.form-field-row > div:has(> .field-group + p[role="alert"]) > p[role="alert"] {
+  grid-column: 2;
+  margin-top: 0;
+}
+
+.dash-appearance-scope[data-form-label="right"] .form-field-row > div:has(> .field-group + p[role="alert"]) {
+  grid-template-columns: minmax(0, 1fr) var(--form-label-col, 9.5rem);
+}
+
+.dash-appearance-scope[data-form-label="right"] .form-field-row > div:has(> .field-group + p[role="alert"]) > p[role="alert"] {
+  grid-column: 1;
+}
+
+.dash-appearance-scope[data-form-label="top"] .form-field-row > div:has(> .field-group + p[role="alert"]) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.dash-appearance-scope[data-form-label="top"] .form-field-row > div:has(> .field-group + p[role="alert"]) > p[role="alert"] {
+  grid-column: 1;
+}
+
+@media (max-width: 639px) {
+  .form-field-row > div:has(> .field-group + p[role="alert"]) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .form-field-row > div:has(> .field-group + p[role="alert"]) > p[role="alert"] {
+    grid-column: 1;
+  }
+}
+
+@container form-fields (max-width: 32rem) {
+  .form-field-row > div:has(> .field-group + p[role="alert"]) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .form-field-row > div:has(> .field-group + p[role="alert"]) > p[role="alert"] {
+    grid-column: 1;
+  }
 }
 
 /*

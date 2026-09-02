@@ -17,6 +17,7 @@ export type CompositeLineLabels = {
   duplicateLine: string;
   removeLine: string;
   rowActions: string;
+  unitPrice: string;
 };
 
 type Props = {
@@ -119,6 +120,14 @@ export function QuotationDraftCompositeLines({
                 </p>
               </div>
               <div className="ml-auto flex items-center justify-end gap-3">
+                {row.unitPrice > 0 ? (
+                  <span
+                    className="min-w-[5rem] shrink-0 text-right text-xs tabular-nums text-slate-500 dark:text-slate-400"
+                    title={labels.unitPrice}
+                  >
+                    {formatMoneyDisplay(row.unitPrice, locale)}
+                  </span>
+                ) : null}
                 <span className="min-w-[5.5rem] shrink-0 text-right text-sm font-semibold tabular-nums text-[color:var(--dash-accent)] sm:min-w-[6rem]">
                   {formatMoneyDisplay(row.lineTotal, locale)}
                 </span>

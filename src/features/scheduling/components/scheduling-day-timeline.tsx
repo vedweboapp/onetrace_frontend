@@ -32,6 +32,9 @@ import {
 import { SchedulingEmptyUsers } from "@/features/scheduling/components/scheduling-empty-users";
 import {
   buildDayHourLabels,
+  clipMinutesRange,
+  dayTimelineBandStyle,
+  dayTimelineChipStyle,
   formatHourParts,
   scheduleTimelineSpan,
   SCHEDULE_DAY_END_HOUR,
@@ -43,10 +46,13 @@ import { cn } from "@/core/utils/http.util";
 
 const HOUR_WIDTH_PX = 88;
 const END_LABEL_PX = 44;
-const EMPTY_ROW_HEIGHT_PX = 56;
-const SCHEDULED_ROW_HEIGHT_PX = 72;
-const SINGLE_ROW_HEIGHT_PX = 112;
-const WORKER_COL_PX = 228;
+const EMPTY_ROW_HEIGHT_PX = 64;
+const SCHEDULED_ROW_HEIGHT_PX = 80;
+const SINGLE_ROW_HEIGHT_PX = 120;
+const WORKER_COL_PX = 240;
+/** Horizontal inset for schedule/time-off blocks on the day timeline. */
+const TIMELINE_CHIP_INSET_PX = 6;
+const TIMELINE_CHIP_GUTTER_PX = 12;
 
 function HourStamp({ hour, locale, className }: { hour: number; locale: string; className?: string }) {
   const { time, period } = formatHourParts(hour, locale);
@@ -388,8 +394,14 @@ export function SchedulingDayTimeline({
             technicianMatchesWorkerId(tech, pendingCreate.techId)
               ? pendingCreate
               : null;
-          const pendingStartMin = pendingForRow ? timeToMinutes(pendingForRow.startTime) : null;
-          const pendingEndMin = pendingForRow ? timeToMinutes(pendingForRow.endTime) : null;
+          const pendingStartRaw = pendingForRow ? timeToMinutes(pendingForRow.startTime) : null;
+          const pendingEndRaw = pendingForRow ? timeToMinutes(pendingForRow.endTime) : null;
+          const pendingRange =
+            pendingStartRaw != null && pendingEndRaw != null
+              ? clipMinutesRange(pendingStartRaw, pendingEndRaw, window)
+              : null;
+          const pendingStartMin = pendingRange?.startMinutes ?? null;
+          const pendingEndMin = pendingRange?.endMinutes ?? null;
           const availabilityBands = buildDayTimeSegments({
             dayKey,
             window,
@@ -407,12 +419,12 @@ export function SchedulingDayTimeline({
                 if (node) workerRowRefs.current.set(tech.id, node);
                 else workerRowRefs.current.delete(tech.id);
               }}
-              className="group/row flex border-b border-slate-100 dark:border-slate-800/80"
+              className="group/row flex border-b border-slate-100 py-2 dark:border-slate-800/80"
               style={{ minHeight: rowHeight }}
             >
               {hideWorkerColumn ? null : (
                 <div
-                  className="sticky left-0 z-10 flex shrink-0 items-start gap-2 border-r border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950"
+                  className="sticky left-0 z-10 flex shrink-0 items-start gap-2.5 border-r border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950"
                   style={{ width: WORKER_COL_PX }}
                 >
                   <div
@@ -461,7 +473,7 @@ export function SchedulingDayTimeline({
 
               <div
                 className={cn(
-                  "group/cell relative shrink-0 select-none",
+                  "group/cell relative shrink-0 select-none overflow-hidden pl-2",
                   onRangeSelect && (canMarkTimeOff || canBook) ? "cursor-crosshair" : null,
                 )}
                 style={{ width: timelineWidth, minHeight: rowHeight, touchAction: "none" }}
@@ -551,24 +563,26 @@ export function SchedulingDayTimeline({
                   />
                 ) : null}
 
-                {pendingStartMin != null && pendingEndMin != null ? (
+                {pendingStartMin != null && pendingEndMin != null && pendingEndMin > pendingStartMin ? (() => {
+                  const { leftPct, widthPct } = minutesBandPct(pendingStartMin, pendingEndMin, SCHEDULE_DAY_START_HOUR, SCHEDULE_DAY_END_HOUR, {
+                    minSpanMinutes: 0,
+                  });
+                  return (
                   <div
                     className={cn(
                       "pointer-events-none absolute inset-y-1 z-[3] flex items-center gap-1.5 overflow-hidden",
                       "rounded-md border border-sky-400 bg-sky-100/90 px-2 text-sky-900 shadow-sm",
                       "dark:border-sky-500 dark:bg-sky-950/80 dark:text-sky-100",
                     )}
-                    style={{
-                      left: `${minutesBandPct(pendingStartMin, pendingEndMin).leftPct}%`,
-                      width: `${Math.max(minutesBandPct(pendingStartMin, pendingEndMin).widthPct, 8)}%`,
-                    }}
+                    style={dayTimelineBandStyle(leftPct, widthPct)}
                     aria-busy
                     aria-label={t("creatingSchedule")}
                   >
                     <Loader2 className="size-3.5 shrink-0 animate-spin" strokeWidth={2.5} aria-hidden />
                     <span className="truncate text-[10px] font-semibold">{t("creatingSchedule")}</span>
                   </div>
-                ) : null}
+                  );
+                })() : null}
 
                 {cellTimeOffs.map((row) => {
                   const { leftPct, widthPct } = scheduleTimelineSpan(
@@ -583,10 +597,7 @@ export function SchedulingDayTimeline({
                       timeOff={row}
                       compact
                       className="absolute inset-y-1 z-[1] min-h-0 rounded-md"
-                      style={{
-                        left: `calc(${leftPct}% + 3px)`,
-                        width: `max(calc(${widthPct}% - 6px), 5.5rem)`,
-                      }}
+                      style={dayTimelineChipStyle(leftPct, widthPct, TIMELINE_CHIP_INSET_PX, TIMELINE_CHIP_GUTTER_PX)}
                       onRemove={onRemoveTimeOff ? () => onRemoveTimeOff(row) : undefined}
                     />
                   );
@@ -605,10 +616,7 @@ export function SchedulingDayTimeline({
                       schedule={schedule}
                       compact
                       className="absolute inset-y-1 z-[1] min-h-0 rounded-md"
-                      style={{
-                        left: `calc(${leftPct}% + 3px)`,
-                        width: `max(calc(${widthPct}% - 6px), 6.5rem)`,
-                      }}
+                      style={dayTimelineChipStyle(leftPct, widthPct, TIMELINE_CHIP_INSET_PX, TIMELINE_CHIP_GUTTER_PX)}
                       onOpen={() => onScheduleClick(schedule)}
                       onCopy={onCopySchedule ? () => onCopySchedule(schedule) : undefined}
                       onRemove={onRemoveSchedule ? () => onRemoveSchedule(schedule) : undefined}

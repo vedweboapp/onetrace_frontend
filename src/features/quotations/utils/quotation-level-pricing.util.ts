@@ -103,7 +103,7 @@ function pinDisplayName(pin: QuotationPlotPin): string {
 
 function pinUnitPrice(pin: QuotationPlotPin): number {
   const detail = pin.item_detail;
-  const fromDetail = parseMoneyValue(detail?.selling_price ?? detail?.cost_price);
+  const fromDetail = parseMoneyValue(detail?.selling_price);
   if (fromDetail > 0) return fromDetail;
   return parseMoneyValue(pin.selling_price ?? pin.price ?? pin.amount);
 }

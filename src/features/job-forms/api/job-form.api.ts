@@ -4,6 +4,7 @@ import { assertApiSuccess } from "@/core/types/api.types";
 import type {
   JobFormSubmission,
   SubmitJobFormSummary,
+  WorkerFormSubmissionsGroup,
 } from "@/features/job-forms/types/job-form-submission.types";
 import { normalizeProjectFormMetadataResponse } from "@/features/job-forms/utils/job-form-schema.util";
 import { JOB_FORM_PATHS } from "./job-form.paths";
@@ -24,6 +25,19 @@ function normalizeSubmissionRow(
     values: Array.isArray(row.values) ? row.values : [],
     files: Array.isArray(row.files) ? row.files : [],
   };
+}
+
+export async function fetchJobWorkerFormSubmissions(
+  jobId: number,
+): Promise<WorkerFormSubmissionsGroup[]> {
+  const { data } = await api.get<ApiEnvelope<WorkerFormSubmissionsGroup[]>>(
+    JOB_FORM_PATHS.workerFormSubmissions(jobId),
+  );
+  assertApiSuccess(data);
+  return data.data.map((group) => ({
+    ...group,
+    submissions: Array.isArray(group.submissions) ? group.submissions : [],
+  }));
 }
 
 export async function fetchJobSubmittedForms(jobId: number): Promise<JobFormSubmission[]> {

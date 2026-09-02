@@ -5,6 +5,9 @@ export const fieldRequiredMarkClassName = "ml-0.5 text-red-600 dark:text-red-400
 
 export const fieldErrorTextClassName = "mt-1.5 text-sm text-red-600 dark:text-red-400";
 
+/** Reserves one line below controls so paired fields stay aligned when only one shows an error. */
+export const fieldErrorSlotClassName = "field-error-slot min-h-[1.625rem]";
+
 export const fieldLabelClassName = cn(
   "field-label block font-semibold text-gray-600 dark:text-gray-300 tracking-normal",
   "text-[length:var(--dash-label-size,0.875rem)]",
@@ -104,5 +107,14 @@ export function FieldErrorText({ id, children }: { id?: string; children?: React
     <p id={id} className={fieldErrorTextClassName} role="alert">
       {children}
     </p>
+  );
+}
+
+/** Wrap {@link FieldErrorText} so side-by-side fields keep inputs aligned when one field errors. */
+export function FieldErrorSlot({ id, children }: { id?: string; children?: ReactNode }) {
+  return (
+    <div className={fieldErrorSlotClassName}>
+      <FieldErrorText id={id}>{children}</FieldErrorText>
+    </div>
   );
 }

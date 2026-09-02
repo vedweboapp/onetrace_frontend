@@ -3826,7 +3826,8 @@
           "scheduling": "Scheduling",
           "materials": "Materials",
           "dispatch": "Dispatch",
-          "returns": "Returns"
+          "returns": "Returns",
+          "forms": "Forms"
         },
         "schedulingTitle": "Scheduling",
         "schedulingEmpty": "This job is not scheduled yet.",
@@ -3843,7 +3844,16 @@
         "dispatchesLoadError": "Failed to load dispatches.",
         "returnsTitle": "Returns",
         "returnsEmpty": "No return requests have been made for this job.",
-        "returnsLoadError": "Failed to load returns."
+        "returnsLoadError": "Failed to load returns.",
+        "formsTitle": "Forms",
+        "formsEmpty": "No worker form submissions for this job yet.",
+        "formsLoadError": "Could not load form submissions. Try again.",
+        "formsTable": {
+          "id": "ID",
+          "workerName": "Worker",
+          "projectFormName": "Project form",
+          "submittedAt": "Submitted at"
+        }
       },
       "updateStatus": {
         "action": "Update status",
