@@ -46,10 +46,12 @@ import { cn } from "@/core/utils/http.util";
 
 const HOUR_WIDTH_PX = 88;
 const END_LABEL_PX = 44;
-const EMPTY_ROW_HEIGHT_PX = 64;
-const SCHEDULED_ROW_HEIGHT_PX = 80;
-const SINGLE_ROW_HEIGHT_PX = 120;
+const EMPTY_ROW_HEIGHT_PX = 52;
+const SCHEDULED_ROW_HEIGHT_PX = 68;
+const SINGLE_ROW_HEIGHT_PX = 100;
 const WORKER_COL_PX = 240;
+/** Small horizontal gap between the sticky worker column and the timeline grid. */
+const WORKER_TIMELINE_GAP_PX = 8;
 /** Horizontal inset for schedule/time-off blocks on the day timeline. */
 const TIMELINE_CHIP_INSET_PX = 6;
 const TIMELINE_CHIP_GUTTER_PX = 12;
@@ -329,7 +331,10 @@ export function SchedulingDayTimeline({
   return (
     <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
       <div className="min-w-max">
-        <div className="sticky top-0 z-20 flex border-b border-slate-200 bg-white pt-1 dark:border-slate-800 dark:bg-slate-950">
+        <div
+          className="sticky top-0 z-20 flex border-b border-slate-200 bg-white pt-1 dark:border-slate-800 dark:bg-slate-950"
+          style={{ gap: WORKER_TIMELINE_GAP_PX }}
+        >
           {hideWorkerColumn ? null : (
             <div
               className="sticky left-0 z-30 flex shrink-0 items-center border-r border-slate-200 bg-white px-2 py-1.5 dark:border-slate-800 dark:bg-slate-950"
@@ -419,12 +424,12 @@ export function SchedulingDayTimeline({
                 if (node) workerRowRefs.current.set(tech.id, node);
                 else workerRowRefs.current.delete(tech.id);
               }}
-              className="group/row flex border-b border-slate-100 py-2 dark:border-slate-800/80"
-              style={{ minHeight: rowHeight }}
+              className="group/row flex border-b border-slate-100 dark:border-slate-800/80"
+              style={{ minHeight: rowHeight, gap: WORKER_TIMELINE_GAP_PX }}
             >
               {hideWorkerColumn ? null : (
                 <div
-                  className="sticky left-0 z-10 flex shrink-0 items-start gap-2.5 border-r border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950"
+                  className="sticky left-0 z-10 flex shrink-0 items-start gap-2.5 border-r border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-950"
                   style={{ width: WORKER_COL_PX }}
                 >
                   <div
@@ -473,7 +478,7 @@ export function SchedulingDayTimeline({
 
               <div
                 className={cn(
-                  "group/cell relative shrink-0 select-none overflow-hidden pl-2",
+                  "group/cell relative shrink-0 select-none overflow-hidden",
                   onRangeSelect && (canMarkTimeOff || canBook) ? "cursor-crosshair" : null,
                 )}
                 style={{ width: timelineWidth, minHeight: rowHeight, touchAction: "none" }}
@@ -570,7 +575,7 @@ export function SchedulingDayTimeline({
                   return (
                   <div
                     className={cn(
-                      "pointer-events-none absolute inset-y-1 z-[3] flex items-center gap-1.5 overflow-hidden",
+                      "pointer-events-none absolute inset-y-0.5 z-[3] flex items-center gap-1.5 overflow-hidden",
                       "rounded-md border border-sky-400 bg-sky-100/90 px-2 text-sky-900 shadow-sm",
                       "dark:border-sky-500 dark:bg-sky-950/80 dark:text-sky-100",
                     )}
@@ -596,7 +601,7 @@ export function SchedulingDayTimeline({
                       key={row.id}
                       timeOff={row}
                       compact
-                      className="absolute inset-y-1 z-[1] min-h-0 rounded-md"
+                      className="absolute inset-y-0.5 z-[1] min-h-0 rounded-md"
                       style={dayTimelineChipStyle(leftPct, widthPct, TIMELINE_CHIP_INSET_PX, TIMELINE_CHIP_GUTTER_PX)}
                       onRemove={onRemoveTimeOff ? () => onRemoveTimeOff(row) : undefined}
                     />
@@ -615,7 +620,7 @@ export function SchedulingDayTimeline({
                       key={schedule.id}
                       schedule={schedule}
                       compact
-                      className="absolute inset-y-1 z-[1] min-h-0 rounded-md"
+                      className="absolute inset-y-0.5 z-[1] min-h-0 rounded-md"
                       style={dayTimelineChipStyle(leftPct, widthPct, TIMELINE_CHIP_INSET_PX, TIMELINE_CHIP_GUTTER_PX)}
                       onOpen={() => onScheduleClick(schedule)}
                       onCopy={onCopySchedule ? () => onCopySchedule(schedule) : undefined}

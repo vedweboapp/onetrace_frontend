@@ -525,7 +525,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
             </FormFieldRow>
 
             <FormSubsection title={tModal("fulfilmentDetails")}>
-              <FormFieldRow cols="2" from="md" className="gap-4" labelTop>
+              <FormFieldRow cols="2" from="md" className="gap-4">
                 <FieldGroup label={tModal("dimensions")} htmlFor="item-dimensions">
                   <DimensionsLwhInput
                     id="item-dimensions"

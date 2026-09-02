@@ -1116,7 +1116,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
               </FieldGroup>
             </FormFieldRow>
             <FormSubsection title={tModal("fulfilmentDetails")}>
-              <FormFieldRow cols="2" from="md" className="gap-4" labelTop>
+              <FormFieldRow cols="2" from="md" className="gap-4">
                 <FieldGroup label={tModal("dimensions")} htmlFor="composite-dimensions">
                   <DimensionsLwhInput
                     id="composite-dimensions"
