@@ -123,6 +123,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
   const schema = React.useMemo(
     () =>
       createJobFormSchema({
+        client: t("validation.client"),
         assignedWorker: t("validation.assignedWorker"),
         startDate: t("validation.startDate"),
         optionalId: t("validation.optionalId"),
@@ -765,6 +766,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                       <CheckmarkSelect
                         id="job-client"
                         label={t("fields.client")}
+                        required
                         options={clientOptions}
                         value={field.value}
                         onChange={(v) => {

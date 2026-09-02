@@ -261,6 +261,8 @@ export type QuotationListItem = {
   is_job_created?: boolean | null;
   service_job?: number | { id: number } | null;
   linked_job?: number | { id: number } | null;
+  created_job?: number | { id: number } | null;
+  job_created?: boolean | null;
   is_active: boolean;
   organization: number | null;
 };

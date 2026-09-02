@@ -3,6 +3,7 @@ import { zTrimmedNonEmpty } from "@/shared/form";
 
 export type JobFormMessages = {
   // title: string;
+  client: string;
   assignedWorker: string;
   startDate: string;
   optionalId: string;
@@ -47,7 +48,13 @@ export function createJobFormSchema(
       description: z.string(),
       forms: z.array(z.string()),
       job_status: optionalPositiveId(messages.optionalId),
-      client: optionalPositiveId(messages.optionalId),
+      client: z
+        .string()
+        .trim()
+        .min(1, { message: messages.client })
+        .refine((v) => /^\d+$/.test(v) && Number.parseInt(v, 10) > 0, {
+          message: messages.client,
+        }),
       project: optionalPositiveId(messages.optionalId),
       site: optionalPositiveId(messages.optionalId),
       job_category: z.string().optional(),

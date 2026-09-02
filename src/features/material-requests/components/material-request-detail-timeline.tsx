@@ -60,10 +60,17 @@ export function MaterialRequestDetailTimeline({ materialRequestId, dateFmt }: Pr
         ) : logs.length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">{t("timeline.empty")}</p>
         ) : (
-          <ol className="relative space-y-6 border-l border-slate-200 pl-6 dark:border-slate-700">
+          <ol className="relative space-y-6">
+            <span
+              aria-hidden
+              className="pointer-events-none absolute bottom-0 left-[5px] top-0 w-px bg-slate-200 dark:bg-slate-700"
+            />
             {logs.map((entry, index) => (
-              <li key={`${entry.id ?? "log"}-${index}`} className="relative">
-                <span className="absolute -left-[1.625rem] top-1.5 size-2.5 rounded-full bg-slate-900 dark:bg-slate-100" />
+              <li key={`${entry.id ?? "log"}-${index}`} className="relative pl-6">
+                <span
+                  aria-hidden
+                  className="absolute left-[5px] top-1.5 size-2.5 -translate-x-1/2 rounded-full bg-slate-900 ring-2 ring-white dark:bg-slate-100 dark:ring-slate-950"
+                />
                 <div className="flex flex-wrap items-center gap-2">
                   {entry.tag?.trim() ? (
                     <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
