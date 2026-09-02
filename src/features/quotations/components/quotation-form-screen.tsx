@@ -865,7 +865,6 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
               showMap
               mapFillHeight
               gridClassName={detailMapFormGridClassName}
-              mapTitle={t("detail.sectionMap")}
               map={
                 <AddressMultiMiniMap
                   points={selectedSiteMapPoints}

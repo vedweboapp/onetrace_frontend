@@ -323,7 +323,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
                   </FieldGroup>
                 </FormFieldRow>
               }
-              footer={
+              trailing={
                 <SiteContactPersonsFields
                   control={control}
                   errors={errors}

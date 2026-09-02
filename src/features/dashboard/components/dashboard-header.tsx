@@ -43,6 +43,8 @@ import {
 } from "@/features/jobs/constants/job-category";
 import {
   isProjectQuoteCategory,
+  isServiceQuoteCategory,
+  parseQuoteCategoryFromBackParam,
   parseQuoteCategoryParam,
 } from "@/features/quotations/constants/quotation-category";
 import { routes } from "@/shared/config/routes";
@@ -157,11 +159,14 @@ export function DashboardHeader() {
   const quotationsActive =
     pathname === quotationsHref || pathname.startsWith(`${quotationsHref}/`);
   const quoteCategory = quotationsActive
-    ? parseQuoteCategoryParam(searchParams.get("quote_category"))
+    ? parseQuoteCategoryParam(searchParams.get("quote_category")) ??
+      parseQuoteCategoryFromBackParam(searchParams.get("back"))
     : undefined;
   const quotationServiceActive =
     quotationsActive &&
-    (quoteCategory == null ? pathname === quotationsHref : !isProjectQuoteCategory(quoteCategory));
+    (quoteCategory == null
+      ? pathname === quotationsHref
+      : isServiceQuoteCategory(quoteCategory));
   const quotationProjectActive = quotationsActive && isProjectQuoteCategory(quoteCategory);
   const invoicesActive =
     pathname === invoicesHref || pathname.startsWith(`${invoicesHref}/`);
@@ -241,7 +246,9 @@ export function DashboardHeader() {
       : quotationsActive
         ? quotationProjectActive
           ? tNav("quotationProject")
-          : tNav("quotationService")
+          : quotationServiceActive
+            ? tNav("quotationService")
+            : tNav("quotations")
         : invoicesActive
           ? tNav("invoices")
           : purchaseOrdersActive

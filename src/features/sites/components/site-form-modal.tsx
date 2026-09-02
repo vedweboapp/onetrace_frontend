@@ -249,7 +249,7 @@ export function SiteFormModal({
               </FieldGroup>
             </FormFieldRow>
           }
-          footer={
+          trailing={
             <SiteContactPersonsFields
               control={control}
               errors={errors}

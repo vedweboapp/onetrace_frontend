@@ -37,7 +37,9 @@ type Props = {
   leading?: React.ReactNode;
   /** what3words and similar — left column below address, beside the map. */
   afterAddress?: React.ReactNode;
-  /** Contact persons — full width below the map row when present. */
+  /** Contact persons and similar — left column below address (map stays full-height on the right). */
+  trailing?: React.ReactNode;
+  /** @deprecated Prefer `trailing` so content stays in the map column beside the extended map. */
   footer?: React.ReactNode;
 };
 
@@ -68,6 +70,7 @@ export function SiteLocationFields({
   disabled,
   leading,
   afterAddress,
+  trailing,
   footer,
 }: Props) {
   const t = useTranslations("Dashboard.sites");
@@ -185,7 +188,6 @@ export function SiteLocationFields({
       showMap
       mapFillHeight
       gridClassName={detailMapFormGridClassName}
-      mapTitle={t("detail.sectionMap")}
       footer={footer}
       map={
         <SiteLocationMapPicker
@@ -216,6 +218,7 @@ export function SiteLocationFields({
         {leading}
         {addressFields}
         {afterAddress}
+        {trailing}
       </div>
     </DetailPageMapLayout>
   );
