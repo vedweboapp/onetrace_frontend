@@ -8,8 +8,10 @@ import type {
 import { normalizeProjectFormMetadataResponse } from "@/features/job-forms/utils/job-form-schema.util";
 import { JOB_FORM_PATHS } from "./job-form.paths";
 
-export async function fetchJobFormSchema(formId: number) {
-  const { data: raw } = await api.get(`project-forms/${formId}/metadata/`);
+export async function fetchJobFormSchema(formId: number, jobId?: number | string) {
+  const { data: raw } = await api.get(`project-forms/${formId}/metadata/`, {
+    params: jobId != null ? { job_id: jobId } : undefined,
+  });
   return normalizeProjectFormMetadataResponse(raw);
 }
 
