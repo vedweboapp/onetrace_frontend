@@ -3999,6 +3999,7 @@
       },
       "validation": {
         "title": "Introduce un título.",
+        "client": "Selecciona un cliente.",
         "assignedWorker": "Selecciona un técnico asignado.",
         "startDate": "Introduce fecha y hora de inicio.",
         "endDate": "Introduce fecha y hora de fin.",

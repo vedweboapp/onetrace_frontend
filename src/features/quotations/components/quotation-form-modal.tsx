@@ -26,8 +26,7 @@ import {
 } from "@/features/quotations/utils/quotation-form-map";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
-import { fetchSitesPage } from "@/features/sites/api/site.api";
-import type { Site } from "@/features/sites/types/site.types";
+import { fetchQuotationSiteRows, type QuotationSiteOptionRow } from "@/features/quotations/utils/quotation-site-options.util";
 import {
   fetchUsersForAppRoles,
   userProfilesToSelectOptions,
@@ -75,7 +74,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     if (open) setFormTab("project");
   }, [open]);
   const [clientOptions, setClientOptions] = React.useState<Option[]>([]);
-  const [siteRows, setSiteRows] = React.useState<Site[]>([]);
+  const [siteRows, setSiteRows] = React.useState<QuotationSiteOptionRow[]>([]);
   const [projectRows, setProjectRows] = React.useState<Project[]>([]);
   const [contactOptions, setContactOptions] = React.useState<Option[]>([]);
   const [salesOptions, setSalesOptions] = React.useState<Option[]>([]);
@@ -184,10 +183,13 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
       setSiteRows([]);
       return;
     }
-    (async () => {
+    void (async () => {
       try {
-        const { items } = await fetchSitesPage(1, 500, { project: projectId });
-        if (!cancelled) setSiteRows(items);
+        const rows = await fetchQuotationSiteRows({
+          isServiceQuotation: false,
+          projectId,
+        });
+        if (!cancelled) setSiteRows(rows);
       } catch {
         if (!cancelled) setSiteRows([]);
       }

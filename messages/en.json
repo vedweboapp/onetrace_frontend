@@ -4016,6 +4016,7 @@
       },
       "validation": {
         "title": "Enter a job title.",
+        "client": "Select a client.",
         "assignedWorker": "Select an assigned worker.",
         "startDate": "Enter a start date and time.",
         "endDate": "Enter an end date and time.",
