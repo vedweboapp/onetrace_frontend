@@ -177,8 +177,8 @@ function PlotTable({
               const pinLink = quotationId
                 ? `${frontendAddr}/public/quotation?token=${quotationId}${sp.pin_id ? `&pin=${sp.pin_id}&pinDialog=true` : ""}`
                 : sp.pin_id
-                ? `${frontendAddr}/public/quotation?token=${sp.pin_id}&pinDialog=true`
-                : null;
+                  ? `${frontendAddr}/public/quotation?token=${sp.pin_id}&pinDialog=true`
+                  : null;
 
               return (
                 <tr key={rowIdx} style={{ borderTop: "1px solid #f1f5f9", background: rowIdx % 2 === 1 ? "#f8fafc" : "white" }}>
@@ -341,10 +341,10 @@ function TermsSection() {
       <div style={{ color: "#4b5563" }}>
         The quotation covers only the following items, undertaken strictly in accordance with the fire-strategy
         drawings supplied by the Client and the manufacturers' tested details:
-        <ol type="1" style={{ paddingLeft: 20, marginTop: 4, marginBottom: 4 , listStyle: "decimal"}}>
+        <ol type="1" style={{ paddingLeft: 20, marginTop: 4, marginBottom: 4, listStyle: "decimal" }}>
           <li>Mastic-seal cable and pipe penetrations within ceiling voids in plots and communal areas.
             <span className="font-bold">Any work additional to mastic seals within bin/bike stores may need to be reviewed
-            (price currently not included, but may not be required).</span></li>
+              (price currently not included, but may not be required).</span></li>
           <li>Seal service-entry penetrations from communal areas into plots.</li>
           <li>Seal SVP penetrations through ceilings by wrap and compound in concrete slab zones.</li>
           <li>Seal sleeves to low-profile ducting. <span className="font-bold">Ducting passing through the ceiling of top floor
@@ -354,9 +354,9 @@ function TermsSection() {
             flattened PDF report on completion.</li>
           <li>Deliver toolbox talks with relevant trades to coordinate installation strategy prior to first fix.</li>
         </ol>
-       <span className="font-bold">Cost for riser cupboard floor seals has been omitted. Please note if GRP grates are to be installed,
-        some firestopping may be required to seal the hollowcore slab edge prior to the installation of grates.
-        Any item not expressly listed above is excluded.</span>
+        <span className="font-bold">Cost for riser cupboard floor seals has been omitted. Please note if GRP grates are to be installed,
+          some firestopping may be required to seal the hollowcore slab edge prior to the installation of grates.
+          Any item not expressly listed above is excluded.</span>
       </div>
 
       <div style={{ fontWeight: 600, marginTop: 10 }}>4. Drawings, Specifications & Design Responsibility</div>
@@ -501,14 +501,24 @@ export function DocumentBody({ data, pinSnapshots, sections, onPinClick }: Docum
 
         {/* Description */}
         {data.description && (
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 24, width: "100%", maxWidth: "100%", minWidth: 0 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>
               Description / Scope of Work
             </div>
             <div style={{
-              padding: 12, background: "#f8fafc", borderRadius: 8,
-              border: "1px solid #e2e8f0", fontSize: 11, color: "#374151",
-              whiteSpace: "pre-line", lineHeight: 1.6,
+              padding: 12,
+              background: "#f8fafc",
+              borderRadius: 8,
+              border: "1px solid #e2e8f0",
+              fontSize: 11,
+              color: "#374151",
+              lineHeight: 1.6,
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-all",
+              overflowWrap: "anywhere",
+              width: "100%",
+              maxWidth: "100%",
+              boxSizing: "border-box",
             }}>
               {data.description}
             </div>
