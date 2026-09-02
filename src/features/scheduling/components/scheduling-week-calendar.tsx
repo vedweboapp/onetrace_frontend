@@ -158,7 +158,7 @@ export function SchedulingWeekCalendar({
   const colTemplate = `${TIME_COL_PX}px repeat(${days.length}, minmax(0, 1fr))`;
   const labelCount = Math.max(1, labelHours.length - 1);
 
-  function bandStyle(startMin: number, endMin: number, gapPx = 0): React.CSSProperties {
+  function bandStyle(startMin: number, endMin: number, gapPx = 3): React.CSSProperties {
     if (fillHeight) {
       const start = ((startMin - START_HOUR * 60) / totalMinutes) * 100;
       const span = Math.max(1.5, ((endMin - startMin) / totalMinutes) * 100);
@@ -338,7 +338,7 @@ export function SchedulingWeekCalendar({
                       <div
                         key={`off-${segment.timeOff.id}-${segment.startMinutes}`}
                         className="absolute inset-x-1 z-[1] overflow-hidden rounded-md border border-amber-300 bg-amber-100 px-1.5 py-1 text-left dark:border-amber-800 dark:bg-amber-950/60"
-                        style={bandStyle(segment.startMinutes, segment.endMinutes, 2)}
+                        style={bandStyle(segment.startMinutes, segment.endMinutes, 3)}
                       >
                         <p className="truncate pr-4 text-[11px] font-semibold text-amber-950 dark:text-amber-100">
                           {segment.timeOff.reason || t("legendTimeOff")}
@@ -366,7 +366,7 @@ export function SchedulingWeekCalendar({
                       <div
                         key={`job-${segment.schedule.id}-${segment.startMinutes}`}
                         className="absolute inset-x-1 z-[1] overflow-hidden rounded-md border border-sky-300 bg-sky-200 px-1.5 py-1 text-left shadow-sm dark:border-sky-800 dark:bg-sky-900/70"
-                        style={bandStyle(segment.startMinutes, segment.endMinutes, 2)}
+                        style={bandStyle(segment.startMinutes, segment.endMinutes, 3)}
                       >
                         <button
                           type="button"

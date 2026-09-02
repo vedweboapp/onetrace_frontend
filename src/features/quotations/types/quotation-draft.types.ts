@@ -10,6 +10,9 @@ export type QuotationDraftLine = {
   name: string;
   quantity: number;
   selling_price: number;
+  /** Selected product group when the line was added (service quote manual lines). */
+  group_id?: number | null;
+  group_name?: string | null;
   /** How many drawing pins this line represents (not catalog/item stock quantity). */
   pin_count?: number;
   source_pins?: QuotationQuoteSectionSourcePin[];

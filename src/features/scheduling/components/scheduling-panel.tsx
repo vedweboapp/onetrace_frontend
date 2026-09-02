@@ -951,7 +951,7 @@ export function SchedulingPanel({
 
   const loading = catalogLoading || loadingSchedules;
   const showScheduleSkeleton = !schedulesReady && loading;
-  const colTemplate = `minmax(220px, 240px) repeat(${days.length}, minmax(140px, 1fr))`;
+  const colTemplate = `minmax(232px, 252px) repeat(${days.length}, minmax(148px, 1fr))`;
 
   function clearPeopleFilters() {
     setTechSearch("");
@@ -1416,10 +1416,10 @@ export function SchedulingPanel({
             {filteredTechs.map((tech) => (
               <div
                 key={tech.id}
-                className="grid border-b border-slate-100 dark:border-slate-800/80"
+                className="grid border-b border-slate-100 py-2 dark:border-slate-800/80"
                 style={{ gridTemplateColumns: colTemplate }}
               >
-                <div className="flex min-w-0 items-center gap-2.5 border-r border-slate-200 px-3 py-2.5 dark:border-slate-800">
+                <div className="flex min-w-0 items-center gap-3 border-r border-slate-200 px-4 py-3 dark:border-slate-800">
                   <div
                     className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold uppercase text-white dark:bg-slate-200 dark:text-slate-900"
                     aria-hidden
@@ -1451,7 +1451,7 @@ export function SchedulingPanel({
                   return (
                     <div
                       key={`${tech.id}-${dayKey}`}
-                      className="min-h-[4.5rem] border-r border-slate-100 p-1 last:border-r-0 dark:border-slate-800/60"
+                      className="min-h-[4.75rem] border-r border-slate-100 px-2 py-1.5 last:border-r-0 dark:border-slate-800/60"
                     >
                       <SchedulingWeekDayStrip
                         tech={tech}

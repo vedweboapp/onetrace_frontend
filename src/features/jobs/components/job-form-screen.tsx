@@ -762,11 +762,9 @@ export function JobFormScreen({ mode, jobId }: Props) {
                   control={control}
                   name="client"
                   render={({ field }) => (
-                    <div>
+                    <FieldGroup label={t("fields.client")} htmlFor="job-client" required>
                       <CheckmarkSelect
                         id="job-client"
-                        label={t("fields.client")}
-                        required
                         options={clientOptions}
                         value={field.value}
                         onChange={(v) => {
@@ -784,7 +782,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                         addAriaLabel={clientQuickCreate.addAriaLabel}
                       />
                       <FieldErrorText>{errors.client?.message}</FieldErrorText>
-                    </div>
+                    </FieldGroup>
                   )}
                 />
                 {isProjectJob && (
@@ -792,10 +790,9 @@ export function JobFormScreen({ mode, jobId }: Props) {
                     control={control}
                     name="project"
                     render={({ field }) => (
-                      <div>
+                      <FieldGroup label={t("fields.project")} htmlFor="job-project">
                         <CheckmarkSelect
                           id="job-project"
-                          label={t("fields.project")}
                           options={projectOptions}
                           value={field.value}
                           onChange={(v) => {
@@ -814,7 +811,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                           addAriaLabel={projectQuickCreate.addAriaLabel}
                         />
                         <FieldErrorText>{errors.project?.message}</FieldErrorText>
-                      </div>
+                      </FieldGroup>
                     )}
                   />
                 )}
@@ -823,10 +820,9 @@ export function JobFormScreen({ mode, jobId }: Props) {
                   control={control}
                   name="site"
                   render={({ field }) => (
-                    <div>
+                    <FieldGroup label={t("fields.site")} htmlFor="job-site">
                       <CheckmarkSelect
                         id="job-site"
-                        label={t("fields.site")}
                         options={siteOptions}
                         value={field.value}
                         onChange={field.onChange}
@@ -840,7 +836,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                         addAriaLabel={siteQuickCreate.addAriaLabel}
                       />
                       <FieldErrorText>{errors.site?.message}</FieldErrorText>
-                    </div>
+                    </FieldGroup>
                   )}
                 />
               </FormFieldRow>
@@ -881,10 +877,9 @@ export function JobFormScreen({ mode, jobId }: Props) {
                   control={control}
                   name="job_status"
                   render={({ field }) => (
-                    <div>
+                    <FieldGroup label={t("fields.jobStatus")} htmlFor="job-status">
                       <CheckmarkSelect
                         id="job-status"
-                        label={t("fields.jobStatus")}
                         options={jobStatusOptions}
                         value={field.value}
                         onChange={field.onChange}
@@ -899,7 +894,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                         addLabel="Add new"
                       />
                       <FieldErrorText>{errors.job_status?.message}</FieldErrorText>
-                    </div>
+                    </FieldGroup>
                   )}
                 />
 
@@ -907,24 +902,22 @@ export function JobFormScreen({ mode, jobId }: Props) {
                   control={control}
                   name="checklists"
                   render={({ field }) => (
-                    <div>
-                      <FieldGroup required label={t("fields.checklists")} htmlFor="job-checklists">
-                        <MultiCheckSelect
-                          id="job-checklists"
-                          options={checklistOptions}
-                          values={field.value ?? []}
-                          onChange={(next) => field.onChange(next)}
-                          onSearchChange={setChecklistSearch}
-                          placeholder={t("fields.selectCheckList")}
-                          disabled={saving || checklistLoading || (isProjectJob && !projectTypeId)}
-                          invalid={!!errors.checklists}
-                          listLabel={t("fields.checklists")}
-                          portaled
-                          searchable
-                        />
-                        <FieldErrorText>{errors.checklists?.message}</FieldErrorText>
-                      </FieldGroup>
-                    </div>
+                    <FieldGroup required label={t("fields.checklists")} htmlFor="job-checklists">
+                      <MultiCheckSelect
+                        id="job-checklists"
+                        options={checklistOptions}
+                        values={field.value ?? []}
+                        onChange={(next) => field.onChange(next)}
+                        onSearchChange={setChecklistSearch}
+                        placeholder={t("fields.selectCheckList")}
+                        disabled={saving || checklistLoading || (isProjectJob && !projectTypeId)}
+                        invalid={!!errors.checklists}
+                        listLabel={t("fields.checklists")}
+                        portaled
+                        searchable
+                      />
+                      <FieldErrorText>{errors.checklists?.message}</FieldErrorText>
+                    </FieldGroup>
                   )}
                 />
               </FormFieldRow>

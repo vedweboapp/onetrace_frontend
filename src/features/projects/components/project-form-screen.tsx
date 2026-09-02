@@ -532,27 +532,45 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                   <FieldErrorText>{errors.project_status?.message}</FieldErrorText>
                 </FieldGroup>
               </FormFieldRow>
-              <FieldGroup label="Forms" htmlFor="project-form-ids">
-                <Controller
-                  control={control}
-                  name="form_ids"
-                  render={({ field }) => (
-                    <MultiCheckSelect
-                      id="project-form-ids"
-                      options={formOptions}
-                      values={field.value ?? []}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      disabled={saving || !selectedProjectType || formOptions.length === 0}
-                      placeholder="Select forms..."
-                      listLabel="Forms"
-                    />
-                  )}
-                />
-                {selectedProjectType && formOptions.length === 0 && (
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">No forms found for this project type.</p>
-                )}
-              </FieldGroup>
+              <FormFieldRow cols="2" from="md">
+                <FieldGroup label="Forms" htmlFor="project-form-ids">
+                  <Controller
+                    control={control}
+                    name="form_ids"
+                    render={({ field }) => (
+                      <MultiCheckSelect
+                        id="project-form-ids"
+                        options={formOptions}
+                        values={field.value ?? []}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={saving || !selectedProjectType || formOptions.length === 0}
+                        placeholder="Select forms..."
+                        listLabel="Forms"
+                      />
+                    )}
+                  />
+                  {selectedProjectType && formOptions.length === 0 ? (
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">No forms found for this project type.</p>
+                  ) : null}
+                </FieldGroup>
+                <FieldGroup label={t("fields.description")} htmlFor="project-description" required>
+                  <textarea
+                    id="project-description"
+                    rows={4}
+                    aria-invalid={errors.description ? true : undefined}
+                    aria-describedby={errors.description ? "project-desc-err" : undefined}
+                    className={cn(
+                      surfaceInputClassName,
+                      "h-auto min-h-[100px] resize-y overflow-y-auto py-3 leading-5 [field-sizing:fixed]",
+                      errors.description && "border-red-500 dark:border-red-500",
+                    )}
+                    {...register("description", rhfRegisterOptions("description"))}
+                    maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
+                  />
+                  <FieldErrorText id="project-desc-err">{errors.description?.message}</FieldErrorText>
+                </FieldGroup>
+              </FormFieldRow>
               <FormFieldRow cols="2" from="md">
                 <FieldGroup label={t("fields.sites")} htmlFor="project-sites">
                   <Controller
@@ -596,22 +614,6 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                   />
                 </FieldGroup>
               </FormFieldRow>
-              <FieldGroup label={t("fields.description")} htmlFor="project-description" required>
-                <textarea
-                  id="project-description"
-                  rows={4}
-                  aria-invalid={errors.description ? true : undefined}
-                  aria-describedby={errors.description ? "project-desc-err" : undefined}
-                  className={cn(
-                    surfaceInputClassName,
-                    "h-auto min-h-[100px] resize-y overflow-y-auto py-3 leading-5 [field-sizing:fixed]",
-                    errors.description && "border-red-500 dark:border-red-500",
-                  )}
-                  {...register("description", rhfRegisterOptions("description"))}
-                  maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
-                />
-                <FieldErrorText id="project-desc-err">{errors.description?.message}</FieldErrorText>
-              </FieldGroup>
               <FormFieldRow cols="2" from="md">
                 <FieldGroup label={t("fields.startDate")} htmlFor="project-start" required>
                   <SurfaceDateInput

@@ -71,6 +71,9 @@ function mapQuoteApiPinsToDraft(pins: QuotationQuoteSectionPin[]): QuotationDraf
             : "—",
       quantity: p.quantity,
       selling_price: p.selling_price,
+      group_id:
+        typeof p.group_id === "number" && Number.isFinite(p.group_id) && p.group_id > 0 ? p.group_id : null,
+      group_name: typeof p.group_name === "string" && p.group_name.trim() ? p.group_name.trim() : null,
       pin_count: 1,
       source_pins: Array.isArray(p.source_pins) ? p.source_pins : [],
     }));

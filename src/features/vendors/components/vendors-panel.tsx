@@ -255,7 +255,7 @@ export function VendorsPanel() {
         const typeRows = getVendorTypeRows(row);
         if (typeRows.length === 0) return "—";
         return <VendorTypeChipGroup rows={typeRows} />;
-      }, { cellClassName: "min-w-0" }),
+      }, { cellClassName: "min-w-[11rem]" }),
       c.truncate("email", t("table.email"), (r) => r.email),
       c.phone("phone", t("table.phone"), (r) => r.phone),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt),

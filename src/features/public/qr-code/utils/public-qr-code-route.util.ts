@@ -49,7 +49,7 @@ export function isPublicQrCodeRoute(orgId: string, qrUuid: string): boolean {
   return isPublicQrOrgId(orgId) && isPublicQrUuid(qrUuid);
 }
 
-
+ 
 export function publicQrCodePath(orgId: string, qrUuid: string): string {
   return `/${orgId.trim()}/${qrUuid.trim()}`;
 }

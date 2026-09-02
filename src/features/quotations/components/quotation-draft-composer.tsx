@@ -6,6 +6,11 @@ import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import type { Item } from "@/features/items/types/item.types";
+import {
+  catalogSellingPriceNumber,
+  catalogSellingPriceString,
+  parseItemSellingPrice,
+} from "@/features/items/utils/item-selling-price.util";
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
 import type { QuotationDraft, QuotationDraftLine, QuotationDraftPlot, QuotationDraftSection } from "@/features/quotations/types/quotation-draft.types";
@@ -21,6 +26,7 @@ import {
   draftSectionTotal,
 } from "@/features/quotations/utils/quotation-draft-compute.util";
 import { reorderArray } from "@/features/quotations/utils/quotation-draft-ops.util";
+import { resolveQuotationDraftLineGroup } from "@/features/quotations/utils/quotation-draft-line-group.util";
 import {
   QuotationDraftCompositeLines,
   type CompositeLineLabels,
@@ -30,7 +36,7 @@ import { cn } from "@/core/utils/http.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn, type QuickCreateSelectApplied } from "@/shared/hooks/use-quick-create-return";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
-import { AppButton, AppModal, CheckmarkSelect, DataTableRowActionsMenu, FieldErrorText, FieldGroup, NumericInput, surfaceInputClassName } from "@/shared/ui";
+import { AppButton, AppModal, CheckmarkSelect, DataTableRowActionsMenu, FieldErrorText, FieldGroup, MoneyInput, NumericInput, surfaceInputClassName } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui";
 
 type DndPayload =
@@ -49,6 +55,8 @@ type DraftRowPick = {
   compositeId: string;
   /** Catalog quantity entered when adding a composite/item line. */
   quantity: string;
+  /** Unit selling price (SP) for the picked item; defaults from catalog when item changes. */
+  unitPrice: string;
 };
 
 function normalizeRowPick(raw: Partial<DraftRowPick> | undefined | null): DraftRowPick {
@@ -56,7 +64,28 @@ function normalizeRowPick(raw: Partial<DraftRowPick> | undefined | null): DraftR
     groupId: typeof raw?.groupId === "string" ? raw.groupId : "",
     compositeId: typeof raw?.compositeId === "string" ? raw.compositeId : "",
     quantity: typeof raw?.quantity === "string" && raw.quantity.trim() !== "" ? raw.quantity : "1",
+    unitPrice: typeof raw?.unitPrice === "string" ? raw.unitPrice : "",
   };
+}
+
+function catalogUnitPriceForItem(itemRows: Item[], compositeId: string): string {
+  const id = Number.parseInt(compositeId, 10);
+  if (!Number.isFinite(id) || id <= 0) return "";
+  const picked = itemRows.find((r) => r.id === id);
+  return catalogSellingPriceString(picked);
+}
+
+function withPickedItemUnitPrice(itemRows: Item[], pick: DraftRowPick, compositeId: string): DraftRowPick {
+  return { ...pick, compositeId, unitPrice: catalogUnitPriceForItem(itemRows, compositeId) };
+}
+
+function resolveRowPickUnitPrice(itemRows: Item[], row: DraftRowPick): number {
+  const fromRow = parseItemSellingPrice(row.unitPrice);
+  if (fromRow > 0) return fromRow;
+  const id = Number.parseInt(row.compositeId, 10);
+  if (!Number.isFinite(id) || id <= 0) return 0;
+  const picked = itemRows.find((r) => r.id === id);
+  return catalogSellingPriceNumber(picked);
 }
 
 function parseRowPickQuantity(raw: string): number {
@@ -158,9 +187,11 @@ function DraftCompositeAddRow({
   groupId,
   compositeId,
   quantity,
+  unitPrice,
   onGroupChange,
   onCompositeChange,
   onQuantityChange,
+  onUnitPriceChange,
   onSave,
   saveDisabled,
   showNoItemsMessage,
@@ -179,9 +210,11 @@ function DraftCompositeAddRow({
   groupId: string;
   compositeId: string;
   quantity: string;
+  unitPrice: string;
   onGroupChange: (v: string) => void;
   onCompositeChange: (v: string) => void;
   onQuantityChange: (v: string) => void;
+  onUnitPriceChange: (v: string) => void;
   onSave: () => void;
   saveDisabled: boolean;
   showNoItemsMessage: boolean;
@@ -196,6 +229,7 @@ function DraftCompositeAddRow({
   const tDraw = useTranslations("Dashboard.projects.drawings.editor");
   const t = useTranslations("Dashboard.quotations.draft");
   const qtyId = `${idPrefix}-qty`;
+  const unitId = `${idPrefix}-unit`;
   return (
     <div className="w-full min-w-0 space-y-1.5" data-draft-composite-add>
       <div className="flex max-w-4xl min-w-0 flex-row flex-wrap items-center gap-2">
@@ -243,6 +277,20 @@ function DraftCompositeAddRow({
             aria-label={t("qty")}
             placeholder={t("qty")}
             className="w-full"
+          />
+        </div>
+        <div className="w-[7.5rem] shrink-0 sm:w-32">
+          <MoneyInput
+            id={unitId}
+            size="sm"
+            value={unitPrice}
+            onChange={(e) => onUnitPriceChange(e.target.value)}
+            disabled={saving || !compositeId}
+            aria-label={t("unitPrice")}
+            placeholder={t("unitPrice")}
+            className="w-full"
+            min={0}
+            step="0.01"
           />
         </div>
         <AppButton type="button" variant="secondary" size="sm" disabled={saveDisabled || saving} onClick={onSave}>
@@ -315,6 +363,7 @@ export function QuotationDraftComposer({
       duplicateLine: t("duplicateLine"),
       removeLine: t("removeLine"),
       rowActions: t("rowActions"),
+      unitPrice: t("unitPrice"),
     }),
     [t],
   );
@@ -395,7 +444,7 @@ export function QuotationDraftComposer({
     if (selectTarget === "group") {
       setRowPick((prev) => ({
         ...prev,
-        [key]: { ...normalizeRowPick(prev[key]), groupId: selectId, compositeId: "" },
+        [key]: { ...normalizeRowPick(prev[key]), groupId: selectId, compositeId: "", unitPrice: "" },
       }));
       void fetchGroup(Number.parseInt(selectId, 10))
         .then((row) => {
@@ -407,11 +456,11 @@ export function QuotationDraftComposer({
     } else if (selectTarget === "item") {
       setRowPick((prev) => {
         const cur = normalizeRowPick(prev[key]);
-        return { ...prev, [key]: { ...cur, compositeId: selectId } };
+        return { ...prev, [key]: withPickedItemUnitPrice(itemRows, cur, selectId) };
       });
     }
     pendingRowKeyRef.current = null;
-  }, []);
+  }, [itemRows]);
 
   const groupQuickCreate = useQuickCreate({
     kind: "group",
@@ -836,7 +885,7 @@ export function QuotationDraftComposer({
   function handleGroupPickChange(rowKey: string, g: string) {
     setRowPick((prev) => ({
       ...prev,
-      [rowKey]: { ...normalizeRowPick(prev[rowKey]), groupId: g, compositeId: "" },
+      [rowKey]: { ...normalizeRowPick(prev[rowKey]), groupId: g, compositeId: "", unitPrice: "" },
     }));
     if (!g) return;
     void fetchGroup(Number.parseInt(g, 10))
@@ -859,8 +908,12 @@ export function QuotationDraftComposer({
     const opts = getCompositeOptions(row.groupId);
     const picked = itemRows.find((r) => r.id === id);
     const label = picked?.name ?? opts.find((o) => o.value === pickVal)?.label ?? `Item ${id}`;
-    const unit = picked ? parseMoneyValue(picked.selling_price ?? picked.cost_price) : 0;
+    const unit = resolveRowPickUnitPrice(itemRows, row);
     const quantity = parseRowPickQuantity(row.quantity);
+    const group = resolveQuotationDraftLineGroup(row.groupId, {
+      groups,
+      optionLabelById: Object.fromEntries(groupOptions.filter((o) => o.value).map((o) => [o.value, o.label])),
+    });
     const newLine: QuotationDraftLine = {
       id: newQuotationDraftId("line"),
       pin_id: null,
@@ -868,6 +921,7 @@ export function QuotationDraftComposer({
       name: label,
       quantity,
       selling_price: unit,
+      ...group,
       pin_count: 1,
     };
     if (pi === null) {
@@ -1234,17 +1288,24 @@ export function QuotationDraftComposer({
                       groupId={secGroupId}
                       compositeId={secPick.compositeId}
                       quantity={secPick.quantity}
+                      unitPrice={secPick.unitPrice}
                       onGroupChange={(g) => handleGroupPickChange(secKey, g)}
                       onCompositeChange={(c) =>
                         setRowPick((prev) => {
                           const cur = normalizeRowPick(prev[secKey]);
-                          return { ...prev, [secKey]: { ...cur, compositeId: c } };
+                          return { ...prev, [secKey]: withPickedItemUnitPrice(itemRows, cur, c) };
                         })
                       }
                       onQuantityChange={(q) =>
                         setRowPick((prev) => {
                           const cur = normalizeRowPick(prev[secKey]);
                           return { ...prev, [secKey]: { ...cur, quantity: q } };
+                        })
+                      }
+                      onUnitPriceChange={(v) =>
+                        setRowPick((prev) => {
+                          const cur = normalizeRowPick(prev[secKey]);
+                          return { ...prev, [secKey]: { ...cur, unitPrice: v } };
                         })
                       }
                       onSave={() => addCompositeLineForKey(si, null, section.id, null)}
@@ -1309,17 +1370,24 @@ export function QuotationDraftComposer({
                               groupId={plotGroupId}
                               compositeId={plotPick.compositeId}
                               quantity={plotPick.quantity}
+                              unitPrice={plotPick.unitPrice}
                               onGroupChange={(g) => handleGroupPickChange(plotKey, g)}
                               onCompositeChange={(c) =>
                                 setRowPick((prev) => {
                                   const cur = normalizeRowPick(prev[plotKey]);
-                                  return { ...prev, [plotKey]: { ...cur, compositeId: c } };
+                                  return { ...prev, [plotKey]: withPickedItemUnitPrice(itemRows, cur, c) };
                                 })
                               }
                               onQuantityChange={(q) =>
                                 setRowPick((prev) => {
                                   const cur = normalizeRowPick(prev[plotKey]);
                                   return { ...prev, [plotKey]: { ...cur, quantity: q } };
+                                })
+                              }
+                              onUnitPriceChange={(v) =>
+                                setRowPick((prev) => {
+                                  const cur = normalizeRowPick(prev[plotKey]);
+                                  return { ...prev, [plotKey]: { ...cur, unitPrice: v } };
                                 })
                               }
                               onSave={() => addCompositeLineForKey(si, pi, section.id, plot.id)}
